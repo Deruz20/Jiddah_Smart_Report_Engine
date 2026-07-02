@@ -8,4 +8,9 @@
   Run `npm i` to install the dependencies.
 
   Run `npm run dev` to start the development server.
+
+  ## Environment
+
+  Copy `apps/dashboard/.env.example` to `apps/dashboard/.env.local` if you need local env values.
+  In development, the dashboard proxies `/api` and `/admin` to `http://localhost:3000`.
   

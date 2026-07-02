@@ -25,3 +25,5 @@ apps/backend/*.html
 apps/backend/tsc_output.txt
 apps/backend/.env.local
 !apps/backend/.env.example
+apps/dashboard/.env.local
+!apps/dashboard/.env.example

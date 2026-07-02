@@ -16,8 +16,6 @@ coverage/
 .cursor/
 
 # Local scratch / non-app folders
-PrimaryEOT_report_figma/
-report_engine_dashboard/
 school-budge.jpeg
 temp_findings.txt
 

@@ -17,11 +17,11 @@ Complete the frontend that Cursor left incomplete. Make it production-ready: sec
 Review these files and tell me what you find:
 
 ```
-report_engine_dashboard/
+apps/dashboard/
 ├── src/services/api/client.ts       → Review API client security
 ├── src/hooks/                       → Review hook patterns
-├── src/pages/                       → Review page structure  
-├── src/components/forms/            → Review form validation
+├── src/app/pages/                   → Review page structure  
+├── src/app/components/forms/        → Review form validation
 └── vite.config.ts                   → Review proxy config
 ```
 

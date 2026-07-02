@@ -33,8 +33,8 @@
 ## Architecture (as built)
 
 ```
-report_engine_dashboard (Vite :5173)
-  └─ proxy /api, /admin → jiddah-smart-report (Next.js :3000)
+apps/dashboard (Vite :5173)
+  └─ proxy /api, /admin → apps/backend (Next.js :3000)
        └─ Supabase (enrollments, circular_marks, theology_marks, terms, teachers, …)
 ```
 
@@ -68,13 +68,13 @@ report_engine_dashboard (Vite :5173)
 
 | Step | Route / file | Notes |
 |------|--------------|-------|
-| **Data API** | `jiddah-smart-report/src/app/api/report/route.ts` | Enrollment + term → full report JSON (circular + theology, aggregates, division, position) |
-| **Legacy data API** | `jiddah-smart-report/src/app/api/reports/route.ts` | Old `marks` table; ranking via grade aggregate |
-| **Generator UI (canonical)** | `jiddah-smart-report/src/app/admin/reports/page.tsx` → `ReportGeneratorClient.tsx` | Select enrollment + term → fetch `/api/report` → render |
-| **Legacy EOT page** | `jiddah-smart-report/src/app/admin/reports/eot/page.tsx` | Reads `circular_results` / `theology_results` — **do not use for MVP** |
+| **Data API** | `apps/backend/src/app/api/report/route.ts` | Enrollment + term → full report JSON (circular + theology, aggregates, division, position) |
+| **Legacy data API** | `apps/backend/src/app/api/reports/route.ts` | Old `marks` table; ranking via grade aggregate |
+| **Generator UI (canonical)** | `apps/backend/src/app/admin/reports/page.tsx` → `ReportGeneratorClient.tsx` | Select enrollment + term → fetch `/api/report` → render |
+| **Legacy EOT page** | `apps/backend/src/app/admin/reports/eot/page.tsx` | Reads `circular_results` / `theology_results` — **do not use for MVP** |
 | **Components** | `PrimaryEOTReport.tsx`, `P7EOTReport.tsx`, `PrimaryMOTReport.tsx`, `Nursery*`, `Theology*` | A4 landscape/portrait via `ReportContainer` |
 | **Print CSS** | Inline in each report + `ReportGeneratorClient` print media queries | `window.print()` after 200–400ms delay |
-| **Dashboard** | `report_engine_dashboard/src/app/pages/ReportsPage.tsx` | Calls `/api/report` to validate; preview should open `/admin/reports?enrollment_id=…` |
+| **Dashboard** | `apps/dashboard/src/app/pages/ReportsPage.tsx` | Calls `/api/report` to validate; preview should open `/admin/reports?enrollment_id=…` |
 
 ### Marks calculation
 
@@ -149,7 +149,7 @@ Rule enforced at registration: P.7 → `theology_class_id` must be null; all oth
 
 | Task | Files |
 |------|-------|
-| Align `PrimaryEOTReport` with `PrimaryEOT_report_figma/` | `PrimaryEOTReport.tsx`, `report-constants.ts` |
+| Align `PrimaryEOTReport` with `design/figma/` | `PrimaryEOTReport.tsx`, `report-constants.ts` |
 | P7 layout QA | `P7EOTReport.tsx` |
 | Batch print class (queue `window.print` per student) | `ReportGeneratorClient.tsx` or new batch route |
 | PDF export (optional: `@react-pdf` or print-to-PDF) | TBD |
@@ -201,7 +201,7 @@ Rule enforced at registration: P.7 → `theology_class_id` must be null; all oth
 
 ## What to do tomorrow morning (5 bullets)
 
-1. **Start both servers:** `jiddah-smart-report` on `:3000`, `report_engine_dashboard` on `:5173`.
+1. **Start both servers:** `apps/backend` on `:3000`, `apps/dashboard` on `:5173`.
 2. **Register one test student** (e.g. P.3 + theology class) if none exist — Students page.
 3. **Enter EOT marks** for all circular and theology subjects — Marks Entry page.
 4. **Reports page → Generate** for that class, then **Preview** — confirm combined PrimaryEOT card opens with real scores.
@@ -236,11 +236,11 @@ Rule enforced at registration: P.7 → `theology_class_id` must be null; all oth
 
 | Concern | Path |
 |---------|------|
-| Report data | `jiddah-smart-report/src/app/api/report/route.ts` |
-| Marks API | `jiddah-smart-report/src/app/api/marks/route.ts` |
-| Grading | `jiddah-smart-report/src/lib/grading.ts` |
-| Report UI | `jiddah-smart-report/src/components/ReportGeneratorClient.tsx` |
-| Primary EOT card | `jiddah-smart-report/src/components/reports/PrimaryEOTReport.tsx` |
-| Dashboard reports | `report_engine_dashboard/src/app/pages/ReportsPage.tsx` |
-| Dashboard marks | `report_engine_dashboard/src/app/pages/MarksEntryPage.tsx` |
-| API client | `report_engine_dashboard/src/services/api/client.ts` |
+| Report data | `apps/backend/src/app/api/report/route.ts` |
+| Marks API | `apps/backend/src/app/api/marks/route.ts` |
+| Grading | `apps/backend/src/lib/grading.ts` |
+| Report UI | `apps/backend/src/components/ReportGeneratorClient.tsx` |
+| Primary EOT card | `apps/backend/src/components/reports/PrimaryEOTReport.tsx` |
+| Dashboard reports | `apps/dashboard/src/app/pages/ReportsPage.tsx` |
+| Dashboard marks | `apps/dashboard/src/app/pages/MarksEntryPage.tsx` |
+| API client | `apps/dashboard/src/services/api/client.ts` |

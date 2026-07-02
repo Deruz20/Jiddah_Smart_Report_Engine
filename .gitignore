@@ -1,0 +1,28 @@
+.env
+.env.local
+.env.*
+!.env.example
+
+node_modules/
+.next/
+out/
+dist/
+coverage/
+*.log
+*.tsbuildinfo
+.vscode/
+.venv/
+.claude/
+.cursor/
+
+# Local scratch / non-app folders
+PrimaryEOT_report_figma/
+report_engine_dashboard/
+school-budge.jpeg
+temp_findings.txt
+
+# App-specific scratch and generated artifacts
+jiddah-smart-report/scratch-*.js
+jiddah-smart-report/*.html
+jiddah-smart-report/tsc_output.txt
+jiddah-smart-report/.env*

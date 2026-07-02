@@ -23,4 +23,5 @@ temp_findings.txt
 apps/backend/scratch-*.js
 apps/backend/*.html
 apps/backend/tsc_output.txt
-apps/backend/.env*
+apps/backend/.env.local
+!apps/backend/.env.example

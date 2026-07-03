@@ -28,7 +28,8 @@ const ALLOWED_ORIGINS = [
 
 export function withCors<T>(request: Request, response: NextResponse<T>): NextResponse<T> {
   const origin = request.headers.get('origin')
-  if (origin && ALLOWED_ORIGINS.includes(origin)) {
+  const isVercelPreview = origin && /^https:\/\/(jiddah-smart-report-engine-dashboard|dashboard-zeta-neon-68).*\.vercel\.app$/.test(origin)
+  if (origin && (ALLOWED_ORIGINS.includes(origin) || isVercelPreview)) {
     response.headers.set('Access-Control-Allow-Origin', origin)
     response.headers.set('Access-Control-Allow-Credentials', 'true')
     response.headers.set('Vary', 'Origin')

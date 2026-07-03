@@ -1,9 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const ALLOWED_ORIGINS = [
+function parseAllowedOrigins(originValue?: string): string[] {
+  if (!originValue) return []
+  return originValue
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean)
+}
+
+const DEFAULT_ALLOWED_ORIGINS = [
   'http://localhost:5173',
   'http://127.0.0.1:5173',
-  process.env.DASHBOARD_ORIGIN,
+  'https://jiddah-smart-report-engine.vercel.app',
+  'https://jiddah-smart-report-engine-dashboard.vercel.app',
+  'https://jiddah-smart-report-engine-dashboard-deruzdevs-projects.vercel.app',
+  'https://jiddah-smart-report-engine-dashboard-fz2r6ddkt.vercel.app',
+  'https://jiddah-smart-report-engine-dashboar.vercel.app',
+  'https://dashboard-deruzdevs-projects.vercel.app',
+  'https://dashboard-deruzdev-deruzdevs-projects.vercel.app',
+  'https://dashboard-zeta-neon-68.vercel.app',
+]
+
+const ALLOWED_ORIGINS = [
+  ...DEFAULT_ALLOWED_ORIGINS,
+  ...parseAllowedOrigins(process.env.DASHBOARD_ORIGIN),
 ].filter(Boolean) as string[]
 
 function applyCors(request: NextRequest, response: NextResponse): NextResponse {

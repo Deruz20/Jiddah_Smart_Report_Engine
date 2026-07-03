@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 2,
   "builds": [
     {
       "src": "package.json",
@@ -8,12 +8,15 @@
   ],
   "routes": [
     {
-      "src": "/(.*)",
-      "dest": "/$1"
+      "handle": "filesystem"
+    },
+    {
+      "src": "/.*",
+      "dest": "/index.html"
     }
   ],
   "env": {
-    "VITE_API_BASE_URL": "@api_base_url",
-    "VITE_ENV": "development"
+    "VITE_API_BASE_URL": "https://jiddah-smart-report-engine-backend.vercel.app",
+    "VITE_ENV": "production"
   }
 }

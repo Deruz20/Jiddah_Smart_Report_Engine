@@ -27,6 +27,9 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('settings/terms/active POST error:', error.message)
+      if (error.code === 'P0002') {
+        return withCors(request, NextResponse.json({ error: 'term not found' }, { status: 404 }))
+      }
       return withCors(request, NextResponse.json({ error: error.message }, { status: 500 }))
     }
 

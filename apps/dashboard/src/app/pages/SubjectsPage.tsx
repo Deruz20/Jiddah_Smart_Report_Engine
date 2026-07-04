@@ -11,7 +11,7 @@ import { Label } from "@/app/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/app/components/ui/dialog";
 
-const API_BASE = "http://localhost:3001/api";
+const API_BASE = "/api";
 
 const getSectionColor = (section: string) => {
   const colors: Record<string, string> = {

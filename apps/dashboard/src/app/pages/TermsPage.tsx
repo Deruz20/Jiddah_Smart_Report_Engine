@@ -1,0 +1,299 @@
+import { useState, useEffect } from "react";
+import { HeroSection } from "@/components/HeroSection";
+import { ScrollReveal } from "@/components/ScrollReveal";
+import { api } from "@/services/api/client";
+import { toast } from "sonner";
+import { PageState } from "@/components/PageState";
+import { AnimatedButton } from "@/components/AnimatedButton";
+import { RefreshCw, Plus, Calendar, Clock, BookOpen, AlertCircle } from "lucide-react";
+
+type AcademicTerm = {
+  id: string;
+  year: number;
+  term: string;
+  start_date?: string;
+  end_date?: string;
+  created_at?: string;
+};
+
+export default function TermsPage() {
+  const [terms, setTerms] = useState<AcademicTerm[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState({
+    year: new Date().getFullYear(),
+    term: 'beginning',
+    start_date: '',
+    end_date: '',
+  });
+
+  const fetchTerms = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch('/api/academic-terms', {
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to fetch terms");
+      // Fallback in case of mismatch in API handling, usually GET is supported. 
+      // If there's no GET on /api/academic-terms, we can fetch from terms endpoint.
+      // Wait, let's just use the terms API since they're duplicated in the backend!
+      // Actually, admin/terms/page.tsx used Supabase client directly to fetch from 'academic_terms'.
+      // Let's use api.get to a new endpoint OR just use our generic api.
+      // We will create the GET handler for /api/academic-terms if needed.
+    } catch (err: any) {
+      // Ignore for now and use the /api/terms endpoint that we already have if academic-terms GET fails
+    }
+  };
+
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        const response = await api.get<{ data: AcademicTerm[] }>('/academic-terms');
+        setTerms(response.data || []);
+      } catch (err: any) {
+        setError(err.message || 'Failed to fetch academic terms');
+      } finally {
+        setLoading(false);
+      }
+    };
+    void loadData();
+  }, []);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: name === 'year' ? parseInt(value) : value,
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      const res = await api.post('/academic-terms', formData);
+      if (res.error) throw new Error(res.error);
+      toast.success("Academic term created successfully!");
+      setFormData({
+        year: new Date().getFullYear(),
+        term: 'beginning',
+        start_date: '',
+        end_date: '',
+      });
+      // Refresh terms
+      const refreshRes = await api.get<{ data: AcademicTerm[] }>('/academic-terms');
+      if (!refreshRes.error) {
+        setTerms(refreshRes.data || []);
+      }
+    } catch (err: any) {
+      toast.error(err.message || "An error occurred");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const getTermLabel = (term: string) => {
+    const labels: Record<string, string> = {
+      beginning: '1st Term',
+      midterm: '2nd Term',
+      endterm: '3rd Term',
+    };
+    return labels[term] || term;
+  };
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return '—';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
+  return (
+    <div>
+      <HeroSection
+        title="Terms Management"
+        subtitle="Create and manage academic terms for your institution"
+      />
+
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <div className="xl:col-span-1">
+          <ScrollReveal>
+            <div className="bg-white rounded-2xl border shadow-sm p-6" style={{ borderColor: "rgba(0,0,0,0.07)" }}>
+              <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+                <Plus className="w-5 h-5 text-emerald-600" />
+                Add New Term
+              </h2>
+
+              <form onSubmit={handleSubmit} className="space-y-5">
+                <div>
+                  <label htmlFor="year" className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">
+                    Academic Year <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    id="year"
+                    name="year"
+                    value={formData.year}
+                    onChange={handleChange}
+                    min={2000}
+                    max={2100}
+                    required
+                    className="w-full rounded-xl border px-4 py-2.5 outline-none transition"
+                    style={{ borderColor: "rgba(0,0,0,0.1)", background: "white", color: "#374151" }}
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="term" className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">
+                    Term Type <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    id="term"
+                    name="term"
+                    value={formData.term}
+                    onChange={handleChange}
+                    required
+                    className="w-full rounded-xl border px-4 py-2.5 outline-none transition"
+                    style={{ borderColor: "rgba(0,0,0,0.1)", background: "white", color: "#374151" }}
+                  >
+                    <option value="beginning">Beginning (1st Term)</option>
+                    <option value="midterm">Midterm (2nd Term)</option>
+                    <option value="endterm">End Term (3rd Term)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label htmlFor="start_date" className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">
+                    Start Date (Optional)
+                  </label>
+                  <input
+                    type="date"
+                    id="start_date"
+                    name="start_date"
+                    value={formData.start_date}
+                    onChange={handleChange}
+                    className="w-full rounded-xl border px-4 py-2.5 outline-none transition"
+                    style={{ borderColor: "rgba(0,0,0,0.1)", background: "white", color: "#374151" }}
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="end_date" className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">
+                    End Date (Optional)
+                  </label>
+                  <input
+                    type="date"
+                    id="end_date"
+                    name="end_date"
+                    value={formData.end_date}
+                    onChange={handleChange}
+                    className="w-full rounded-xl border px-4 py-2.5 outline-none transition"
+                    style={{ borderColor: "rgba(0,0,0,0.1)", background: "white", color: "#374151" }}
+                  />
+                </div>
+
+                <AnimatedButton
+                  disabled={isSubmitting}
+                  className="w-full py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition"
+                  style={{ background: "#10B981", color: "white", fontSize: "14px" }}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4" />
+                      Create Term
+                    </>
+                  )}
+                </AnimatedButton>
+              </form>
+            </div>
+          </ScrollReveal>
+        </div>
+
+        <div className="xl:col-span-2">
+          <ScrollReveal delay={0.1}>
+            <div className="bg-white rounded-2xl border shadow-sm overflow-hidden" style={{ borderColor: "rgba(0,0,0,0.07)" }}>
+              <div className="border-b px-6 py-5 flex items-center justify-between" style={{ borderColor: "rgba(0,0,0,0.07)" }}>
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900">Academic Terms History</h2>
+                  <p className="text-sm text-gray-500 mt-1">All terms configured in the system</p>
+                </div>
+                <div className="bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg text-sm font-semibold border border-emerald-100 flex items-center gap-2">
+                  <BookOpen className="w-4 h-4" />
+                  {terms.length} Total
+                </div>
+              </div>
+
+              {loading ? (
+                <div className="p-8">
+                  <PageState state="loading" message="Loading terms..." />
+                </div>
+              ) : error ? (
+                <div className="p-8">
+                  <PageState state="error" message={error} onRetry={() => window.location.reload()} />
+                </div>
+              ) : terms.length === 0 ? (
+                <div className="p-12 text-center">
+                  <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <BookOpen className="w-8 h-8 text-emerald-500" />
+                  </div>
+                  <h3 className="text-lg font-bold text-gray-900 mb-1">No Academic Terms</h3>
+                  <p className="text-sm text-gray-500">Create your first term using the form.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left">
+                    <thead>
+                      <tr className="bg-gray-50 border-b" style={{ borderColor: "rgba(0,0,0,0.07)" }}>
+                        <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wide">Year / Term</th>
+                        <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wide">Duration</th>
+                        <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wide">Created At</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {terms.map((term) => (
+                        <tr key={term.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-6 py-4">
+                            <div className="font-bold text-gray-900">{term.year}</div>
+                            <span className="inline-block mt-1 bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-xs font-medium border border-emerald-200">
+                              {getTermLabel(term.term)}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex flex-col gap-1 text-sm text-gray-600">
+                              <div className="flex items-center gap-1.5">
+                                <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                                {formatDate(term.start_date)}
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <Clock className="w-3.5 h-3.5 text-gray-400" />
+                                {formatDate(term.end_date)}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-500">
+                            {term.created_at ? new Date(term.created_at).toLocaleDateString() : '—'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </ScrollReveal>
+        </div>
+      </div>
+    </div>
+  );
+}

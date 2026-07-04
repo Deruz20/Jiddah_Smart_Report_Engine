@@ -15,6 +15,7 @@ import AccountPage from "./pages/AccountPage";
 import UploadPage from "./pages/UploadPage";
 import ClassesPage from "./pages/ClassesPage";
 import ActivityPage from "./pages/ActivityPage";
+import TermsPage from "./pages/TermsPage";
 
 export const router = createBrowserRouter([
   {
@@ -41,6 +42,7 @@ export const router = createBrowserRouter([
       { path: "upload", Component: UploadPage },
       { path: "notifications", Component: NotificationsPage },
       { path: "settings", Component: SettingsPage },
+      { path: "terms", Component: TermsPage },
       { path: "account", Component: AccountPage },
       { path: "activity", Component: ActivityPage },
     ],

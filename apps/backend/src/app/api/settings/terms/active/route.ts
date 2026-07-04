@@ -1,0 +1,38 @@
+import { createClient } from '@/utils/supabase/server'
+import { cookies } from 'next/headers'
+import { NextRequest, NextResponse } from 'next/server'
+import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
+
+export async function OPTIONS(request: NextRequest) {
+  return apiOptions(request)
+}
+
+export async function POST(request: NextRequest) {
+  const preflight = corsPreflight(request)
+  if (preflight) return preflight
+  
+  try {
+    const cookieStore = await cookies()
+    const supabase = createClient(cookieStore)
+
+    const body = await request.json()
+    const { termId } = body
+
+    if (!termId) {
+      return withCors(request, NextResponse.json({ error: 'termId is required' }, { status: 400 }))
+    }
+
+    // Call the RPC to atomically set the active term
+    const { error } = await supabase.rpc('set_active_term', { p_term_id: termId })
+
+    if (error) {
+      console.error('settings/terms/active POST error:', error.message)
+      return withCors(request, NextResponse.json({ error: error.message }, { status: 500 }))
+    }
+
+    return withCors(request, NextResponse.json({ success: true, message: 'Active term updated' }))
+  } catch (err: any) {
+    console.error('settings/terms/active POST error:', err)
+    return withCors(request, NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 }))
+  }
+}

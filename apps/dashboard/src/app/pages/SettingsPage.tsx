@@ -9,6 +9,7 @@ import { AnimatedButton } from "@/components/AnimatedButton";
 import { HeroSection } from "@/components/HeroSection";
 import { ScrollReveal } from "@/components/ScrollReveal";
 import { useTerms } from "@/hooks/useTerms";
+import { Term } from "@/hooks/useTerms";
 import { api } from "@/services/api/client";
 import { ENDPOINTS } from "@/services/api/endpoints";
 import { PageState } from "@/components/PageState";
@@ -224,68 +225,154 @@ export default function SettingsPage() {
           <div className="space-y-6">
             <div>
               <h2 style={{ fontSize: "18px", fontWeight: 700, color: "#374151" }}>Term Settings</h2>
-              <p style={{ fontSize: "13px", color: "#9CA3AF" }}>Select the current academic term and year, then set the next term start date.</p>
+              <p style={{ fontSize: "13px", color: "#9CA3AF" }}>Manage term dates and set the active term for the system.</p>
             </div>
 
-            {settingsError ? (
+            {termsError ? (
               <div className="rounded-2xl border border-rose-100 bg-rose-50 p-5 text-sm text-rose-700">
-                Could not load settings. Is the backend running?
+                Could not load terms. {termsError}
               </div>
             ) : null}
 
-            {loadingSchoolSettings ? (
+            {termsLoading ? (
               <div className="rounded-2xl p-6 bg-slate-100 animate-pulse" style={{ minHeight: 220 }} />
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                <div className="rounded-2xl border border-slate-200 bg-white p-5">
-                  <label className="block mb-2" style={{ fontSize: "13px", fontWeight: 600, color: "#374151" }}>Current Term</label>
-                  <select
-                    {...register("current_term")}
-                    className="w-full px-4 py-2.5 rounded-xl outline-none"
-                    style={{ border: "1.5px solid #E5E7EB", background: "white", fontSize: "13.5px", color: "#374151" }}
-                  >
-                    <option value="Term 1">Term 1</option>
-                    <option value="Term 2">Term 2</option>
-                    <option value="Term 3">Term 3</option>
-                  </select>
-                  {errors.current_term && <p className="mt-2 text-sm text-red-600">{errors.current_term.message}</p>}
-                </div>
+              <div className="space-y-10 mt-6">
+                {Array.from(new Set(terms.map((t: any) => t.academic_year)))
+                  .sort((a: any, b: any) => b - a)
+                  .map(year => (
+                    <div key={year as number}>
+                      <h2 className="text-base font-bold text-gray-500 uppercase tracking-widest mb-4">
+                        Academic Year {year as number}
+                      </h2>
+                      <div className="space-y-4">
+                        {terms
+                          .filter((t: any) => t.academic_year === year)
+                          .sort((a: any, b: any) => a.term_number - b.term_number)
+                          .map((term: any) => (
+                            <div key={term.id} className={`bg-white rounded-2xl p-6 transition-all ${term.is_current ? 'ring-2 ring-emerald-500 shadow-sm' : 'border shadow-sm hover:border-emerald-200'}`} style={{ borderColor: term.is_current ? 'transparent' : 'rgba(0,0,0,0.07)' }}>
+                              <div className="flex items-center justify-between mb-5">
+                                <div>
+                                  <h3 className="text-lg font-bold text-gray-900">{term.label}</h3>
+                                  <p className="text-sm text-gray-500 mt-0.5">
+                                    Academic Year {term.academic_year} &bull; Term {term.term_number}
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  {term.is_current ? (
+                                    <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold" style={{ background: "rgba(16,185,129,0.1)", color: "#065F46" }}>
+                                      <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
+                                      Active Term
+                                    </span>
+                                  ) : (
+                                    <AnimatedButton 
+                                      onClick={async () => {
+                                        try {
+                                          if (!confirm("Are you sure you want to set this as the active term? This affects all teachers and students.")) return;
+                                          const res = await api.post(`/settings/terms/active`, { termId: term.id });
+                                          if (res.error) throw new Error(res.error);
+                                          toast.success("Active term updated");
+                                          refetchTerms();
+                                        } catch(e: any) {
+                                          toast.error(e.message || "Failed to update active term");
+                                        }
+                                      }}
+                                      className="px-4 py-1.5 rounded-xl text-xs font-semibold border transition-all hover:bg-gray-50"
+                                      style={{ borderColor: "rgba(0,0,0,0.1)", color: "#374151" }}>
+                                      Set as Active
+                                    </AnimatedButton>
+                                  )}
+                                </div>
+                              </div>
 
-                <div className="rounded-2xl border border-slate-200 bg-white p-5">
-                  <label className="block mb-2" style={{ fontSize: "13px", fontWeight: 600, color: "#374151" }}>Current Year</label>
-                  <input
-                    type="number"
-                    {...register("current_year", { valueAsNumber: true })}
-                    className="w-full px-4 py-2.5 rounded-xl outline-none"
-                    style={{ border: "1.5px solid #E5E7EB", background: "white", fontSize: "13.5px", color: "#374151" }}
-                  />
-                  {errors.current_year && <p className="mt-2 text-sm text-red-600">{errors.current_year.message}</p>}
-                </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div>
+                                  <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">
+                                    Start Date
+                                  </label>
+                                  <input
+                                    type="date"
+                                    defaultValue={term.start_date?.slice(0, 10) ?? ''}
+                                    onChange={(e) => {
+                                      setTermDates(prev => ({
+                                        ...prev,
+                                        [term.id]: { ...(prev[term.id] || {}), start_date: e.target.value }
+                                      }))
+                                    }}
+                                    className="w-full rounded-xl border px-3 py-2 text-sm outline-none transition"
+                                    style={{ borderColor: "rgba(0,0,0,0.1)", background: "white", color: "#374151" }}
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">
+                                    End Date
+                                  </label>
+                                  <input
+                                    type="date"
+                                    defaultValue={term.end_date?.slice(0, 10) ?? ''}
+                                    onChange={(e) => {
+                                      setTermDates(prev => ({
+                                        ...prev,
+                                        [term.id]: { ...(prev[term.id] || {}), end_date: e.target.value }
+                                      }))
+                                    }}
+                                    className="w-full rounded-xl border px-3 py-2 text-sm outline-none transition"
+                                    style={{ borderColor: "rgba(0,0,0,0.1)", background: "white", color: "#374151" }}
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">
+                                    Next Term Starts
+                                  </label>
+                                  <input
+                                    type="date"
+                                    defaultValue={term.next_term_start?.slice(0, 10) ?? ''}
+                                    onChange={(e) => {
+                                      setTermDates(prev => ({
+                                        ...prev,
+                                        [term.id]: { ...(prev[term.id] || {}), next_term_start: e.target.value }
+                                      }))
+                                    }}
+                                    className="w-full rounded-xl border px-3 py-2 text-sm outline-none transition"
+                                    style={{ borderColor: "rgba(0,0,0,0.1)", background: "white", color: "#374151" }}
+                                  />
+                                </div>
+                              </div>
 
-                <div className="rounded-2xl border border-slate-200 bg-white p-5">
-                  <label className="block mb-2" style={{ fontSize: "13px", fontWeight: 600, color: "#374151" }}>Next Term Starts</label>
-                  <input
-                    type="date"
-                    value={nextTermStart}
-                    onChange={(event) => setNextTermStart(event.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl outline-none"
-                    style={{ border: "1.5px solid #E5E7EB", background: "white", fontSize: "13.5px", color: "#374151" }}
-                  />
-                </div>
+                              <div className="flex items-center gap-3 mt-5">
+                                <AnimatedButton
+                                  onClick={async () => {
+                                    try {
+                                      const updates = termDates[term.id] || {};
+                                      const res = await api.patch(`/settings/terms`, {
+                                        termId: term.id,
+                                        ...updates
+                                      });
+                                      if (res.error) throw new Error(res.error);
+                                      toast.success("Dates saved");
+                                      refetchTerms();
+                                    } catch (err: any) {
+                                      toast.error(err.message || "Failed to save dates");
+                                    }
+                                  }}
+                                  className="inline-flex items-center gap-2 rounded-xl px-5 py-2 text-xs font-semibold transition"
+                                  style={{ background: "#10B981", color: "white" }}
+                                >
+                                  Save Dates
+                                </AnimatedButton>
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  ))}
+                {terms.length === 0 && (
+                  <div className="text-center py-16 text-gray-400 text-sm">
+                    No terms found. Create terms first in the Terms management page.
+                  </div>
+                )}
               </div>
             )}
-
-            <div className="flex justify-end">
-              <AnimatedButton
-                onClick={handleSave}
-                disabled={saving || !isValid || loadingSchoolSettings}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl hover:opacity-90 disabled:opacity-60 transition-all"
-                style={{ background: "linear-gradient(135deg, #10B981, #065F46)", color: "white", fontSize: "13px", fontWeight: 600 }}
-              >
-                {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : saved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-                {saving ? "Saving..." : saved ? "Saved ✓" : "Save Term Settings"}
-              </AnimatedButton>
-            </div>
           </div>
         );
 

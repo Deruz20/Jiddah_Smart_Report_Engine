@@ -14,6 +14,7 @@ import SettingsPage from "./pages/SettingsPage";
 import AccountPage from "./pages/AccountPage";
 import UploadPage from "./pages/UploadPage";
 import ClassesPage from "./pages/ClassesPage";
+import SubjectsPage from "./pages/SubjectsPage";
 import ActivityPage from "./pages/ActivityPage";
 import TermsPage from "./pages/TermsPage";
 
@@ -35,6 +36,7 @@ export const router = createBrowserRouter([
       { path: "students", Component: StudentsPage },
       { path: "teachers", Component: TeachersPage },
       { path: "classes", Component: ClassesPage },
+      { path: "subjects", Component: SubjectsPage },
       { path: "marks", Component: MarksEntryPage },
       { path: "reports", Component: ReportsPage },
       { path: "signatures", Component: SignaturesPage },

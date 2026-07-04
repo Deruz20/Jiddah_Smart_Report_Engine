@@ -4,7 +4,7 @@ import { AnimatedButton } from "@/components/AnimatedButton";
 import { HeroSection } from "@/components/HeroSection";
 import { ScrollReveal } from "@/components/ScrollReveal";
 import { useClasses } from "@/hooks/useClasses";
-import { useStudents } from "@/hooks/useStudents";
+import { useEnrollments } from "@/hooks/useEnrollments";
 import { useTerms } from "@/hooks/useTerms";
 import { api } from "@/services/api/client";
 import { ENDPOINTS } from "@/services/api/endpoints";
@@ -14,6 +14,7 @@ import { PageState } from "@/components/PageState";
 import { toast } from "sonner";
 import { marksEntrySchema } from "@/lib/validation";
 import { logger } from "@/lib/logger";
+import { motion, AnimatePresence } from "framer-motion";
 
 const getGrade = (score: number) => {
   if (score >= 90) return { grade: "A+", color: "#10B981" };
@@ -29,10 +30,10 @@ type MarksTrack = "circular" | "theology";
 
 export default function MarksEntryPage() {
   const { classes, loading: classesLoading } = useClasses();
-  const { students, loading: studentsLoading, error: studentsError, refetch: refetchStudents } = useStudents();
+  const [selectedClassName, setSelectedClassName] = useState("");
+  const { enrollments, loading: studentsLoading, error: studentsError, refetch: refetchStudents } = useEnrollments(selectedClassName);
   const { terms, currentTerm, loading: termsLoading } = useTerms();
 
-  const [selectedClassName, setSelectedClassName] = useState("");
   const [selectedTermId, setSelectedTermId] = useState("");
   const [scoreType, setScoreType] = useState<ScoreType>("eot");
   const [marksTrack, setMarksTrack] = useState<MarksTrack>("circular");
@@ -56,10 +57,21 @@ export default function MarksEntryPage() {
     }
   }, [terms, currentTerm, selectedTermId]);
 
-  const classStudents = useMemo(
-    () => students.filter((s) => s.class === selectedClassName && s.enrollmentId),
-    [students, selectedClassName]
-  );
+  // If user switches to Theology while BOT is selected, switch to MOT since Theology has no BOT
+  useEffect(() => {
+    if (marksTrack === "theology" && scoreType === "bot") {
+      setScoreType("mot");
+    }
+  }, [marksTrack, scoreType]);
+
+  const classStudents = useMemo(() => {
+    return enrollments.map(e => ({
+      id: e.admission_number || e.enrollment_id,
+      enrollmentId: e.enrollment_id,
+      name: e.name,
+      class: e.circular_class
+    }));
+  }, [enrollments]);
 
   const loadMarksGrid = useCallback(async () => {
     if (!selectedTermId || classStudents.length === 0) {
@@ -75,7 +87,7 @@ export default function MarksEntryPage() {
       const responses = await Promise.all(
         classStudents.map((s) =>
           api.get<MarksApiResponse>(ENDPOINTS.marks, {
-            params: { enrollment_id: s.enrollmentId!, term_id: selectedTermId },
+            params: { enrollment_id: s.enrollmentId!, term_id: selectedTermId, score_type: scoreType },
           })
         )
       );
@@ -85,18 +97,18 @@ export default function MarksEntryPage() {
 
       const subjectList =
         marksTrack === "theology"
-          ? (responses[0]?.theology_marks?.map((m) => ({
+          ? (responses[0]?.theology_marks?.map((m: any) => ({
               id: m.subject_id,
               name: m.subject_name_arabic,
             })) ?? [])
-          : (responses[0]?.circular_marks?.map((m) => ({
+          : (responses[0]?.circular_marks?.map((m: any) => ({
               id: m.subject_id,
               name: m.subject_name,
             })) ?? []);
 
       setSubjects(subjectList);
       setActiveSubjectId((prev) => {
-        if (prev && subjectList.some((s) => s.id === prev)) return prev;
+        if (prev && subjectList.some((s: any) => s.id === prev)) return prev;
         return subjectList[0]?.id || "";
       });
 
@@ -108,7 +120,7 @@ export default function MarksEntryPage() {
             ? responses[idx]?.theology_marks ?? []
             : responses[idx]?.circular_marks ?? [];
         for (const subj of markRows) {
-          const val = scoreType === "mot" ? subj.mot_score : subj.eot_score;
+          const val = scoreType === "bot" ? subj.bot_score : scoreType === "mot" ? subj.mot_score : subj.eot_score;
           row[subj.subject_id] = val ?? "";
         }
         nextScores[student.enrollmentId!] = row;
@@ -201,103 +213,107 @@ export default function MarksEntryPage() {
           subtitle="Enter and manage student academic scores for assessments"
         />
         <ScrollReveal delay={0.1}>
-          <div className="flex items-center gap-3">
-            {saving && (
-              <span className="flex items-center gap-1.5" style={{ fontSize: "12px", color: "#6B7280" }}>
-                <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Saving...
-              </span>
-            )}
-            {!saving && lastSaved && (
-              <span className="flex items-center gap-1.5" style={{ fontSize: "12px", color: "#10B981" }}>
-                <Check className="w-3.5 h-3.5" /> Saved
-              </span>
-            )}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex gap-2">
+              <AnimatedButton
+                onClick={() => setMarksTrack("circular")}
+                className="px-5 py-2.5 rounded-xl shadow-sm transition-all"
+                style={{
+                  background: marksTrack === "circular" ? "#0F172A" : "white",
+                  color: marksTrack === "circular" ? "white" : "#64748B",
+                  border: marksTrack === "circular" ? "1px solid #0F172A" : "1px solid #E2E8F0",
+                  fontSize: "13.5px",
+                  fontWeight: marksTrack === "circular" ? 700 : 600,
+                }}
+              >
+                Circular (Standard)
+              </AnimatedButton>
+              {hasTheologyMarks && (
+                <AnimatedButton
+                  onClick={() => setMarksTrack("theology")}
+                  className="px-5 py-2.5 rounded-xl shadow-sm transition-all"
+                  style={{
+                    background: marksTrack === "theology" ? "#4338CA" : "white",
+                    color: marksTrack === "theology" ? "white" : "#64748B",
+                    border: marksTrack === "theology" ? "1px solid #4338CA" : "1px solid #E2E8F0",
+                    fontSize: "13.5px",
+                    fontWeight: marksTrack === "theology" ? 700 : 600,
+                  }}
+                >
+                  Theology (Islamic)
+                </AnimatedButton>
+              )}
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <AnimatePresence>
+                {saving && (
+                  <motion.span initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 rounded-lg text-slate-500 font-semibold text-[12px]">
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Saving...
+                  </motion.span>
+                )}
+                {!saving && lastSaved && (
+                  <motion.span initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 rounded-lg text-emerald-600 font-bold text-[12px] border border-emerald-100">
+                    <Check className="w-3.5 h-3.5" /> Saved
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </ScrollReveal>
 
         <ScrollReveal delay={0.15}>
-          <div className="flex flex-wrap gap-4 mb-6 p-4 rounded-2xl" style={{ background: "white", border: "1px solid rgba(0,0,0,0.07)", boxShadow: "0 1px 8px rgba(0,0,0,0.04)" }}>
-          <div className="flex items-center gap-3">
-            <label style={{ fontSize: "13px", color: "#6B7280", fontWeight: 600 }}>Class:</label>
-            <select value={selectedClassName} onChange={(e) => setSelectedClassName(e.target.value)} className="pl-3 pr-8 py-2 rounded-xl border appearance-none" style={{ border: "1px solid #E5E7EB", background: "white", fontSize: "13px", fontWeight: 600 }}>
-              {classes.map((c) => (
-                <option key={c.id} value={c.name}>{c.name}</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex items-center gap-3">
-            <label style={{ fontSize: "13px", color: "#6B7280", fontWeight: 600 }}>Term:</label>
-            <select value={selectedTermId} onChange={(e) => setSelectedTermId(e.target.value)} className="pl-3 pr-8 py-2 rounded-xl border appearance-none" style={{ border: "1px solid #E5E7EB", background: "white", fontSize: "13px", fontWeight: 600 }}>
-              {terms.map((t) => (
-                <option key={t.id} value={t.id}>{t.label}</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex items-center gap-3">
-            <label style={{ fontSize: "13px", color: "#6B7280", fontWeight: 600 }}>Assessment:</label>
-            <select value={scoreType} onChange={(e) => setScoreType(e.target.value as ScoreType)} className="pl-3 pr-8 py-2 rounded-xl border appearance-none" style={{ border: "1px solid #E5E7EB", background: "white", fontSize: "13px", fontWeight: 600 }}>
-              <option value="mot">Mid of Term (MOT)</option>
-              <option value="eot">End of Term (EOT)</option>
-            </select>
-          </div>
-          <div className="ml-auto flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: "rgba(245,158,11,0.1)" }}>
-            <Info className="w-4 h-4" style={{ color: "#F59E0B" }} />
-            <span style={{ fontSize: "12px", color: "#92400E" }}>Auto-save after 700ms when you edit a score.</span>
-          </div>
-        </div>
-        </ScrollReveal>
-
-        <ScrollReveal delay={0.12}>
-          <div className="flex gap-2 mb-4">
-            <AnimatedButton
-              onClick={() => setMarksTrack("circular")}
-              className="px-4 py-2 rounded-xl"
-              style={{
-                background: marksTrack === "circular" ? "#065F46" : "white",
-                color: marksTrack === "circular" ? "white" : "#6B7280",
-                border: marksTrack === "circular" ? "none" : "1px solid #E5E7EB",
-                fontSize: "13px",
-                fontWeight: 600,
-              }}
-            >
-              Circular Subjects
-            </AnimatedButton>
-            {hasTheologyMarks && (
-              <AnimatedButton
-                onClick={() => setMarksTrack("theology")}
-                className="px-4 py-2 rounded-xl"
-                style={{
-                  background: marksTrack === "theology" ? "#065F46" : "white",
-                  color: marksTrack === "theology" ? "white" : "#6B7280",
-                  border: marksTrack === "theology" ? "none" : "1px solid #E5E7EB",
-                  fontSize: "13px",
-                  fontWeight: 600,
-                }}
-              >
-                Theology Subjects
-              </AnimatedButton>
-            )}
+          <div className="flex flex-wrap gap-4 mb-6 p-4 rounded-2xl bg-white border border-slate-200 shadow-sm">
+            <div className="flex items-center gap-3">
+              <label className="text-[13px] text-slate-500 font-bold">Class:</label>
+              <select value={selectedClassName} onChange={(e) => setSelectedClassName(e.target.value)} className="pl-3 pr-8 py-2 rounded-xl border border-slate-200 bg-slate-50 appearance-none text-[13.5px] font-bold text-slate-700 outline-none focus:ring-2 focus:ring-slate-200 transition-all">
+                {classes.map((c) => (
+                  <option key={c.id} value={c.name}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center gap-3">
+              <label className="text-[13px] text-slate-500 font-bold">Term:</label>
+              <select value={selectedTermId} onChange={(e) => setSelectedTermId(e.target.value)} className="pl-3 pr-8 py-2 rounded-xl border border-slate-200 bg-slate-50 appearance-none text-[13.5px] font-bold text-slate-700 outline-none focus:ring-2 focus:ring-slate-200 transition-all">
+                {terms.map((t) => (
+                  <option key={t.id} value={t.id}>{t.label}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center gap-3">
+              <label className="text-[13px] text-slate-500 font-bold">Assessment:</label>
+              <select value={scoreType} onChange={(e) => setScoreType(e.target.value as ScoreType)} className="pl-3 pr-8 py-2 rounded-xl border border-slate-200 bg-slate-50 appearance-none text-[13.5px] font-bold text-slate-700 outline-none focus:ring-2 focus:ring-slate-200 transition-all">
+                {marksTrack === "circular" && <option value="bot">Beginning of Term (BOT)</option>}
+                <option value="mot">Mid of Term (MOT)</option>
+                <option value="eot">End of Term (EOT)</option>
+              </select>
+            </div>
+            <div className="ml-auto flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-50 border border-amber-100">
+              <Info className="w-4 h-4 text-amber-500" />
+              <span className="text-[12px] font-semibold text-amber-700">Auto-save on edit</span>
+            </div>
           </div>
         </ScrollReveal>
 
         {subjects.length > 0 && (
           <ScrollReveal delay={0.2}>
-            <div className="flex overflow-x-auto gap-2 mb-6 pb-1">
+            <div className="flex overflow-x-auto gap-2 mb-6 pb-2 hide-scrollbar">
               {subjects.map((tab) => (
-                <AnimatedButton
+                <button
                   key={tab.id}
                   onClick={() => setActiveSubjectId(tab.id)}
-                  className="flex-shrink-0 px-4 py-2 rounded-xl transition-all"
+                  className={`flex-shrink-0 px-4 py-2.5 rounded-xl transition-all shadow-sm border ${
+                    activeSubject?.id === tab.id 
+                    ? (marksTrack === "circular" ? "bg-slate-900 text-white border-slate-900" : "bg-indigo-600 text-white border-indigo-600") 
+                    : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50"
+                  }`}
                   style={{
-                    background: activeSubject?.id === tab.id ? "#065F46" : "white",
-                    color: activeSubject?.id === tab.id ? "white" : "#6B7280",
-                    border: activeSubject?.id === tab.id ? "none" : "1px solid #E5E7EB",
                     fontSize: "13px",
-                    fontWeight: activeSubject?.id === tab.id ? 600 : 400,
+                    fontWeight: activeSubject?.id === tab.id ? 700 : 600,
                   }}
                 >
                   {tab.name}
-                </AnimatedButton>
+                </button>
               ))}
             </div>
           </ScrollReveal>
@@ -305,20 +321,22 @@ export default function MarksEntryPage() {
 
         <PageState loading={gridLoading} error={gridError} onRetry={loadMarksGrid}>
           <ScrollReveal delay={0.25}>
-            <div className="rounded-2xl overflow-hidden" style={{ background: "white", border: "1px solid rgba(0,0,0,0.07)", boxShadow: "0 1px 8px rgba(0,0,0,0.04)" }}>
-              <div className="px-6 py-4 border-b" style={{ borderColor: "rgba(0,0,0,0.07)", background: "#FAFAFA" }}>
-                <h3 style={{ fontSize: "15px", fontWeight: 700, color: "#374151" }}>{activeSubject?.name ?? "Subject"}</h3>
-                <p style={{ fontSize: "12px", color: "#9CA3AF" }}>{selectedClassName} · {scoreType.toUpperCase()} · Maximum score: 100</p>
+            <div className="rounded-2xl overflow-hidden bg-white border border-slate-200 shadow-sm">
+              <div className="px-6 py-5 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+                <div>
+                  <h3 className="text-[16px] font-bold text-slate-800">{activeSubject?.name ?? "Subject"}</h3>
+                  <p className="text-[13px] font-semibold text-slate-400 mt-0.5">{selectedClassName} · {scoreType.toUpperCase()} · Max 100</p>
+                </div>
               </div>
 
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr style={{ borderBottom: "1px solid rgba(0,0,0,0.06)", background: "#FAFAFA" }}>
-                      <th className="px-6 py-3 text-left" style={{ fontSize: "12px", color: "#9CA3AF", fontWeight: 600 }}>#</th>
-                      <th className="px-4 py-3 text-left" style={{ fontSize: "12px", color: "#9CA3AF", fontWeight: 600 }}>Student Name</th>
-                      <th className="px-4 py-3 text-center" style={{ fontSize: "12px", color: "#9CA3AF", fontWeight: 600 }}>Score /100</th>
-                      <th className="px-4 py-3 text-center" style={{ fontSize: "12px", color: "#9CA3AF", fontWeight: 600 }}>Grade</th>
+                    <tr className="border-b border-slate-100 bg-slate-50/50">
+                      <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider w-16">#</th>
+                      <th className="px-4 py-3.5 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">Student Name</th>
+                      <th className="px-4 py-3.5 text-center text-[11px] font-bold text-slate-400 uppercase tracking-wider w-40">Score /100</th>
+                      <th className="px-4 py-3.5 text-center text-[11px] font-bold text-slate-400 uppercase tracking-wider w-32">Grade</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -330,26 +348,61 @@ export default function MarksEntryPage() {
                       const hasScore = typeof raw === "number";
                       const { grade, color } = getGrade(hasScore ? score : 0);
                       return (
-                        <tr key={enrollmentId} style={{ borderBottom: "1px solid rgba(0,0,0,0.04)" }}>
-                          <td className="px-6 py-3.5" style={{ fontSize: "13px", color: "#9CA3AF" }}>{idx + 1}</td>
-                          <td className="px-4 py-3.5" style={{ fontSize: "13.5px", fontWeight: 600, color: "#374151" }}>{student.name}</td>
-                          <td className="px-4 py-3.5">
+                        <motion.tr 
+                          key={enrollmentId} 
+                          initial={{ opacity: 0, y: 5 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.2, delay: Math.min(idx * 0.03, 0.3) }}
+                          className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors last:border-0"
+                        >
+                          <td className="px-6 py-4 text-[13px] font-semibold text-slate-400">{idx + 1}</td>
+                          <td className="px-4 py-4 text-[14px] font-bold text-slate-700">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: `hsl(${(student.id.charCodeAt(3) * 37) % 360}, 60%, 90%)` }}>
+                                <span style={{ fontSize: "12px", fontWeight: 700, color: `hsl(${(student.id.charCodeAt(3) * 37) % 360}, 60%, 35%)` }}>
+                                  {student.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+                                </span>
+                              </div>
+                              {student.name}
+                            </div>
+                          </td>
+                          <td className="px-4 py-4">
                             <input
                               type="number"
                               min={0}
                               max={100}
                               value={raw === "" ? "" : raw}
                               onChange={(e) => handleMarkChange(enrollmentId, subjectId, e.target.value)}
-                              className="w-20 text-center py-2 rounded-xl outline-none mx-auto block"
-                              style={{ border: "2px solid rgba(0,0,0,0.1)", fontWeight: 700, color }}
+                              className="w-24 text-center py-2.5 rounded-xl outline-none mx-auto block bg-slate-50 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                              style={{ 
+                                border: hasScore ? `2px solid ${color}40` : "2px solid #E2E8F0", 
+                                fontWeight: 800, 
+                                color: hasScore ? color : "#64748B",
+                                fontSize: "15px"
+                              }}
+                              placeholder="-"
                             />
                           </td>
-                          <td className="px-4 py-3.5 text-center">
-                            <span className="px-3 py-1 rounded-full font-bold" style={{ background: color + "18", color, fontSize: "13px" }}>
-                              {hasScore ? grade : "—"}
-                            </span>
+                          <td className="px-4 py-4 text-center">
+                            <AnimatePresence mode="popLayout">
+                              {hasScore ? (
+                                <motion.span 
+                                  initial={{ scale: 0.8, opacity: 0 }}
+                                  animate={{ scale: 1, opacity: 1 }}
+                                  key="grade"
+                                  className="inline-block px-3 py-1 rounded-lg font-bold shadow-sm" 
+                                  style={{ background: color + "15", color, fontSize: "14px", border: `1px solid ${color}30` }}
+                                >
+                                  {grade}
+                                </motion.span>
+                              ) : (
+                                <motion.span key="empty" className="inline-block text-slate-300 font-bold text-[14px]">
+                                  —
+                                </motion.span>
+                              )}
+                            </AnimatePresence>
                           </td>
-                        </tr>
+                        </motion.tr>
                       );
                     })}
                   </tbody>

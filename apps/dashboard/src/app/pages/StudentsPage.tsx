@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -11,6 +11,10 @@ import {
   Trash2,
   X,
   Users,
+  CheckCircle2,
+  ChevronRight,
+  ChevronLeft,
+  MoonStar
 } from "lucide-react";
 import { useStudents } from "@/hooks/useStudents";
 import { useClasses } from "@/hooks/useClasses";
@@ -19,21 +23,22 @@ import { HeroSection } from "@/components/HeroSection";
 import { api } from "@/services/api/client";
 import { ENDPOINTS } from "@/services/api/endpoints";
 import { toast } from "sonner";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence } from "framer-motion";
 import { studentFormSchema, type StudentForm } from "@/lib/validation";
 
 export default function StudentsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const { students, loading, error, refetch } = useStudents(searchTerm);
   const { classes } = useClasses();
-  const [selectedClass, setSelectedClass] = useState("All Classes");
+  const [selectedClassFilter, setSelectedClassFilter] = useState("All Classes");
   const [selectedStatus, setSelectedStatus] = useState("All");
   const [selected, setSelected] = useState<string[]>([]);
-  const [viewStudent, setViewStudent] = useState<
-    (typeof students)[number] | null
-  >(null);
+  const [viewStudent, setViewStudent] = useState<(typeof students)[number] | null>(null);
+  
+  // Modal & Stepper State
   const [showAddModal, setShowAddModal] = useState(false);
-  const [theologyClasses, setTheologyClasses] = useState<{ id: string; class_name_english: string }[]>([]);
+  const [step, setStep] = useState(1);
+  const [theologyClasses, setTheologyClasses] = useState<{ id: string; class_name_english: string; class_name_arabic: string }[]>([]);
   const [adding, setAdding] = useState(false);
 
   const studentForm = useForm<StudentForm>({
@@ -41,7 +46,9 @@ export default function StudentsPage() {
     mode: "onBlur",
     defaultValues: {
       name: "",
+      arabicName: "",
       admissionNumber: "",
+      isMuslim: true,
       classId: "",
       theologyClassId: undefined,
       academicYear: new Date().getFullYear(),
@@ -54,29 +61,44 @@ export default function StudentsPage() {
     reset,
     watch,
     setValue,
+    trigger,
     formState: { errors },
   } = studentForm;
 
+  const watchedIsMuslim = watch("isMuslim");
   const watchedClassId = watch("classId");
   const selectedClassRow = classes.find((c) => c.id === watchedClassId);
   const isP7 = selectedClassRow?.name === "P.7";
 
   const openAddModal = async () => {
     setShowAddModal(true);
+    setStep(1);
+    
+    // Auto-generate admission number
+    const randomId = Math.floor(Math.random() * 900) + 100;
+    setValue("admissionNumber", `JINPS-2026-${randomId}`);
+    
     if (classes.length && !studentForm.getValues("classId")) {
       setValue("classId", classes[0].id);
     }
     try {
-      const res = await api.get<{ data: { id: string; class_name_english: string }[] }>(ENDPOINTS.theologyClasses);
+      const res = await api.get<{ data: { id: string; class_name_english: string; class_name_arabic: string }[] }>(ENDPOINTS.theologyClasses);
       setTheologyClasses(res.data ?? []);
     } catch {
       setTheologyClasses([]);
     }
   };
 
+  const handleNextStep = async () => {
+    const isValid = await trigger(["name", "admissionNumber", "arabicName"]);
+    if (isValid) {
+      setStep(2);
+    }
+  };
+
   const handleAddStudent = handleSubmit(async (values) => {
-    if (!isP7 && !values.theologyClassId) {
-      toast.error("Theology class is required for non-P.7 students");
+    if (values.isMuslim && !isP7 && !values.theologyClassId) {
+      toast.error("Theology class is required for Muslim non-P.7 students");
       return;
     }
 
@@ -84,14 +106,17 @@ export default function StudentsPage() {
     try {
       await api.post(ENDPOINTS.students, {
         name: values.name.trim(),
+        name_arabic: values.arabicName?.trim(),
         admission_number: values.admissionNumber.trim(),
+        is_muslim: values.isMuslim,
         circular_class_id: values.classId,
-        theology_class_id: isP7 ? null : values.theologyClassId ?? null,
+        theology_class_id: (values.isMuslim && !isP7) ? (values.theologyClassId ?? null) : null,
         academic_year: values.academicYear,
       });
       toast.success("Student added successfully");
       setShowAddModal(false);
       reset();
+      setStep(1);
       await refetch();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to add student");
@@ -101,34 +126,17 @@ export default function StudentsPage() {
   });
 
   const filtered = (students ?? []).filter((s) => {
-    const matchSearch =
-      s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.id.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const matchClass =
-      selectedClass === "All Classes" || s.class === selectedClass;
-
-    const matchStatus =
-      selectedStatus === "All" ||
-      s.status === selectedStatus.toLowerCase();
-
+    const matchSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.id.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchClass = selectedClassFilter === "All Classes" || s.class === selectedClassFilter;
+    const matchStatus = selectedStatus === "All" || s.status === selectedStatus.toLowerCase();
     return matchSearch && matchClass && matchStatus;
   });
 
   const toggleSelect = (id: string) => {
-    setSelected((prev) =>
-      prev.includes(id)
-        ? prev.filter((x) => x !== id)
-        : [...prev, id]
-    );
+    setSelected((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
   };
-
   const toggleAll = () => {
-    setSelected(
-      selected.length === filtered.length
-        ? []
-        : filtered.map((s) => s.id)
-    );
+    setSelected(selected.length === filtered.length ? [] : filtered.map((s) => s.id));
   };
 
   return (
@@ -139,31 +147,18 @@ export default function StudentsPage() {
         actions={
           <>
             <button
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all"
-              style={{
-                border: "1px solid #E5E7EB",
-                color: "#374151",
-                fontSize: "13px",
-                fontWeight: 600,
-                background: "white",
-              }}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all shadow-sm"
+              style={{ border: "1px solid #E5E7EB", color: "#374151", fontSize: "13px", fontWeight: 600, background: "white" }}
               onClick={() => toast.success("Exporting student data...")}
             >
-              <Download className="w-4 h-4" />
-              Export
+              <Download className="w-4 h-4" /> Export
             </button>
             <button
               onClick={() => void openAddModal()}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all"
-              style={{
-                background: "#10B981",
-                color: "white",
-                fontSize: "13px",
-                fontWeight: 600,
-              }}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all shadow-sm shadow-emerald-200"
+              style={{ background: "#10B981", color: "white", fontSize: "13px", fontWeight: 600 }}
             >
-              <Plus className="w-4 h-4" />
-              Add Student
+              <Plus className="w-4 h-4" /> Add Student
             </button>
           </>
         }
@@ -172,857 +167,253 @@ export default function StudentsPage() {
       {/* Filters */}
       <div className="flex flex-wrap gap-3 mb-6">
         <div className="relative flex-1 min-w-64">
-          <Search
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
-            style={{ color: "#9CA3AF" }}
-          />
-
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             placeholder="Search students by name or ID..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl outline-none"
-            style={{
-              border: "1px solid #E5E7EB",
-              background: "white",
-              fontSize: "13.5px",
-              color: "#374151",
-            }}
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl outline-none shadow-sm"
+            style={{ border: "1px solid #E5E7EB", background: "white", fontSize: "13.5px", color: "#374151" }}
           />
         </div>
 
-        <div className="relative">
+        <div className="relative shadow-sm rounded-xl">
           <select
-            value={selectedClass}
-            onChange={(e) => setSelectedClass(e.target.value)}
-            className="pl-3 pr-8 py-2.5 rounded-xl border appearance-none cursor-pointer"
-            style={{
-              border: "1px solid #E5E7EB",
-              background: "white",
-              fontSize: "13.5px",
-              color: "#374151",
-              fontWeight: 500,
-            }}
+            value={selectedClassFilter}
+            onChange={(e) => setSelectedClassFilter(e.target.value)}
+            className="pl-3 pr-8 py-2.5 rounded-xl border appearance-none cursor-pointer outline-none"
+            style={{ border: "1px solid #E5E7EB", background: "white", fontSize: "13.5px", color: "#374151", fontWeight: 500 }}
           >
             <option>All Classes</option>
-
             {classes.map((c) => (
               <option key={c.id}>{c.name}</option>
             ))}
           </select>
-
-          <ChevronDown
-            className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none"
-            style={{ color: "#6B7280" }}
-          />
+          <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none text-slate-500" />
         </div>
-
-        <div className="relative">
-          <select
-            value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value)}
-            className="pl-3 pr-8 py-2.5 rounded-xl border appearance-none cursor-pointer"
-            style={{
-              border: "1px solid #E5E7EB",
-              background: "white",
-              fontSize: "13.5px",
-              color: "#374151",
-              fontWeight: 500,
-            }}
-          >
-            <option>All</option>
-            <option>Active</option>
-            <option>Inactive</option>
-          </select>
-
-          <ChevronDown
-            className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none"
-            style={{ color: "#6B7280" }}
-          />
-        </div>
-
-        {selected.length > 0 && (
-          <div
-            className="flex items-center gap-2 px-3 py-2 rounded-xl"
-            style={{
-              background: "rgba(16,185,129,0.1)",
-              border: "1px solid rgba(16,185,129,0.3)",
-            }}
-          >
-            <span
-              style={{
-                fontSize: "13px",
-                color: "#065F46",
-                fontWeight: 600,
-              }}
-            >
-              {selected.length} selected
-            </span>
-
-            <button
-              className="text-red-500 hover:text-red-600 ml-2"
-              style={{ fontSize: "12px" }}
-              onClick={() =>
-                toast.error("Delete selected?")
-              }
-            >
-              Delete
-            </button>
-
-            <button
-              className="text-blue-500 hover:text-blue-600"
-              style={{ fontSize: "12px" }}
-              onClick={() =>
-                toast.success("Exporting selected...")
-              }
-            >
-              Export
-            </button>
-          </div>
-        )}
       </div>
 
       <PageState loading={loading} error={error} onRetry={refetch} empty={!loading && !error && filtered.length === 0} emptyTitle="No students" emptyMessage="No students match your filters.">
-      <div
-        className="rounded-2xl overflow-hidden"
-        style={{
-          background: "white",
-          border: "1px solid rgba(0,0,0,0.07)",
-          boxShadow: "0 1px 8px rgba(0,0,0,0.04)",
-        }}
-      >
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr
-                style={{
-                  borderBottom: "1px solid rgba(0,0,0,0.07)",
-                  background: "#FAFAFA",
-                }}
-              >
-                <th
-                  className="pl-5 py-3 text-left"
-                  style={{ width: "40px" }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={
-                      selected.length === filtered.length &&
-                      filtered.length > 0
-                    }
-                    onChange={toggleAll}
-                    className="rounded"
-                  />
-                </th>
-
-                {[
-                  "Student",
-                  "Class",
-                  "Guardian",
-                  "Attendance",
-                  "Avg Score",
-                  "Status",
-                  "",
-                ].map((h) => (
-                  <th
-                    key={h}
-                    className="px-4 py-3 text-left"
-                    style={{
-                      fontSize: "12px",
-                      fontWeight: 600,
-                      color: "#9CA3AF",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.05em",
-                    }}
-                  >
-                    {h}
+        <div className="rounded-2xl overflow-hidden bg-white border border-slate-100 shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-slate-100 bg-slate-50/80">
+                  <th className="pl-5 py-3 text-left w-10">
+                    <input type="checkbox" checked={selected.length === filtered.length && filtered.length > 0} onChange={toggleAll} className="rounded border-slate-300 text-emerald-500 focus:ring-emerald-500" />
                   </th>
-                ))}
-              </tr>
-            </thead>
-
-            <tbody>
-              {filtered.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={7}
-                    className="py-16 text-center"
-                  >
-                    <div className="flex flex-col items-center justify-center max-w-sm mx-auto">
-                      <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center mb-4">
-                        <Users className="w-8 h-8 text-emerald-500 opacity-50" />
-                      </div>
-
-                      <h3 className="text-gray-900 font-semibold mb-1">
-                        No students found
-                      </h3>
-
-                      <p className="text-gray-500 text-sm mb-4 text-center">
-                        We couldn't find any students matching
-                        your current search and filter criteria.
-                      </p>
-
-                      <button
-                        onClick={() => {
-                          setSearchTerm("");
-                          setSelectedClass("All Classes");
-                          setSelectedStatus("All");
-                        }}
-                        className="text-emerald-600 font-medium text-sm hover:underline"
-                      >
-                        Clear filters
-                      </button>
-                    </div>
-                  </td>
+                  {["Student", "Class", "Guardian", "Attendance", "Avg Score", "Status", ""].map((h) => (
+                    <th key={h} className="px-4 py-3 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">{h}</th>
+                  ))}
                 </tr>
-              ) : (
-                filtered.map((student, i) => (
+              </thead>
+              <tbody>
+                {filtered.map((student, i) => (
                   <motion.tr
                     key={student.id}
-                    initial={{ opacity: 0, y: 5 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{
-                      duration: 0.2,
-                      delay: Math.min(i * 0.05, 0.5),
-                    }}
-                    style={{
-                      borderBottom:
-                        i < filtered.length - 1
-                          ? "1px solid rgba(0,0,0,0.04)"
-                          : "none",
-                    }}
-                    className="hover:bg-emerald-50/50 transition-colors"
+                    initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, delay: Math.min(i * 0.05, 0.5) }}
+                    className="hover:bg-slate-50/50 transition-colors border-b border-slate-50 last:border-0"
                   >
-                    <td className="pl-5 py-3.5">
-                      <input
-                        type="checkbox"
-                        checked={selected.includes(student.id)}
-                        onChange={() =>
-                          toggleSelect(student.id)
-                        }
-                        className="rounded"
-                      />
-                    </td>
-
+                    <td className="pl-5 py-3.5"><input type="checkbox" checked={selected.includes(student.id)} onChange={() => toggleSelect(student.id)} className="rounded border-slate-300 text-emerald-500 focus:ring-emerald-500" /></td>
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-3">
-                        <div
-                          className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
-                          style={{
-                            background: `hsl(${
-                              (student.id.charCodeAt(3) *
-                                37) %
-                              360
-                            }, 60%, 90%)`,
-                          }}
-                        >
-                          <span
-                            style={{
-                              fontSize: "13px",
-                              fontWeight: 700,
-                              color: `hsl(${
-                                (student.id.charCodeAt(3) *
-                                  37) %
-                                360
-                              }, 60%, 35%)`,
-                            }}
-                          >
-                            {student.name
-                              .split(" ")
-                              .map((n) => n[0])
-                              .join("")
-                              .slice(0, 2)}
+                        <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: `hsl(${(student.id.charCodeAt(3) * 37) % 360}, 60%, 90%)` }}>
+                          <span style={{ fontSize: "13px", fontWeight: 700, color: `hsl(${(student.id.charCodeAt(3) * 37) % 360}, 60%, 35%)` }}>
+                            {student.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
                           </span>
                         </div>
-
                         <div>
-                          <p
-                            style={{
-                              fontSize: "13.5px",
-                              fontWeight: 600,
-                              color: "#374151",
-                            }}
-                          >
-                            {student.name}
-                          </p>
-
-                          <p
-                            style={{
-                              fontSize: "11px",
-                              color: "#9CA3AF",
-                            }}
-                          >
-                            {student.id}
-                          </p>
+                          <p className="text-[13px] font-bold text-slate-800">{student.name}</p>
+                          <p className="text-[11px] text-slate-400">{student.id}</p>
                         </div>
                       </div>
                     </td>
-
                     <td className="px-4 py-3.5">
-                      <span
-                        className="px-2.5 py-1 rounded-lg"
-                        style={{
-                          background:
-                            "rgba(16,185,129,0.08)",
-                          color: "#065F46",
-                          fontSize: "12px",
-                          fontWeight: 600,
-                        }}
-                      >
-                        {student.class}
-                      </span>
+                      <span className="px-2 py-1 rounded-md bg-emerald-50 text-emerald-700 text-[11px] font-bold border border-emerald-100">{student.class}</span>
                     </td>
-
-                    <td
-                      className="px-4 py-3.5 text-sm"
-                      style={{ color: "#6B7280" }}
-                    >
-                      {student.guardian}
-                    </td>
-
+                    <td className="px-4 py-3.5 text-[13px] text-slate-500">{student.guardian}</td>
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-2">
-                        <div
-                          className="w-16 h-1.5 rounded-full overflow-hidden"
-                          style={{ background: "#F3F4F6" }}
-                        >
-                          <div
-                            className="h-full rounded-full"
-                            style={{
-                              width: `${student.attendance ?? 0}%`,
-                              background:
-                                (student.attendance ?? 0) >= 90
-                                  ? "#10B981"
-                                  : (student.attendance ?? 0) >= 75
-                                  ? "#F59E0B"
-                                  : "#EF4444",
-                            }}
-                          />
+                        <div className="w-16 h-1.5 rounded-full overflow-hidden bg-slate-100">
+                          <div className="h-full rounded-full" style={{ width: `${student.attendance ?? 0}%`, background: (student.attendance ?? 0) >= 90 ? "#10B981" : (student.attendance ?? 0) >= 75 ? "#F59E0B" : "#EF4444" }} />
                         </div>
-
-                        <span
-                          style={{
-                            fontSize: "12px",
-                            color: "#6B7280",
-                          }}
-                        >
-                          {student.attendance ?? 0}%
-                        </span>
+                        <span className="text-[11px] font-semibold text-slate-500">{student.attendance ?? 0}%</span>
                       </div>
                     </td>
-
                     <td className="px-4 py-3.5">
-                      <span
-                        style={{
-                          fontSize: "13px",
-                          fontWeight: 700,
-                          color:
-                            (student.avgScore ?? 0) >= 80
-                              ? "#10B981"
-                              : (student.avgScore ?? 0) >= 60
-                              ? "#F59E0B"
-                              : "#EF4444",
-                        }}
-                      >
+                      <span style={{ fontSize: "13px", fontWeight: 700, color: (student.avgScore ?? 0) >= 80 ? "#10B981" : (student.avgScore ?? 0) >= 60 ? "#F59E0B" : "#EF4444" }}>
                         {student.avgScore ?? 0}%
                       </span>
                     </td>
-
                     <td className="px-4 py-3.5">
-                      <span
-                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-full w-fit"
-                        style={{
-                          background:
-                            student.status === "active"
-                              ? "rgba(16,185,129,0.1)"
-                              : "rgba(239,68,68,0.1)",
-                          color:
-                            student.status === "active"
-                              ? "#065F46"
-                              : "#EF4444",
-                          fontSize: "12px",
-                          fontWeight: 600,
-                        }}
-                      >
-                        <span
-                          className="w-1.5 h-1.5 rounded-full"
-                          style={{
-                            background:
-                              student.status === "active"
-                                ? "#10B981"
-                                : "#EF4444",
-                          }}
-                        />
-
-                        {student.status === "active"
-                          ? "Active"
-                          : "Inactive"}
+                      <span className={`flex items-center gap-1.5 px-2 py-1 rounded-md w-fit text-[11px] font-bold border ${student.status === "active" ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-rose-50 text-rose-700 border-rose-100"}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${student.status === "active" ? "bg-emerald-500" : "bg-rose-500"}`} />
+                        {student.status === "active" ? "Active" : "Inactive"}
                       </span>
                     </td>
-
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-2">
-                        <button
-                          onClick={() =>
-                            setViewStudent(student)
-                          }
-                          className="p-1.5 rounded-lg hover:bg-emerald-50"
-                          title="View"
-                        >
-                          <Eye
-                            className="w-4 h-4"
-                            style={{ color: "#10B981" }}
-                          />
-                        </button>
-
-                        <button
-                          className="p-1.5 rounded-lg hover:bg-blue-50"
-                          title="Edit"
-                        >
-                          <Edit
-                            className="w-4 h-4"
-                            style={{ color: "#6366F1" }}
-                          />
-                        </button>
-
-                        <button
-                          className="p-1.5 rounded-lg hover:bg-red-50"
-                          title="Delete"
-                        >
-                          <Trash2
-                            className="w-4 h-4"
-                            style={{ color: "#EF4444" }}
-                          />
-                        </button>
+                        <button onClick={() => setViewStudent(student)} className="p-1.5 rounded-md hover:bg-slate-100 transition-colors" title="View"><Eye className="w-4 h-4 text-slate-500" /></button>
+                        <button className="p-1.5 rounded-md hover:bg-slate-100 transition-colors" title="Edit"><Edit className="w-4 h-4 text-slate-500" /></button>
                       </div>
                     </td>
                   </motion.tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination */}
-        <div
-          className="flex items-center justify-between px-5 py-3"
-          style={{
-            borderTop: "1px solid rgba(0,0,0,0.06)",
-          }}
-        >
-          <p style={{ fontSize: "13px", color: "#6B7280" }}>
-            Showing {filtered.length} of {students.length} students
-          </p>
-
-          <div className="flex items-center gap-2">
-            {[1, 2, 3].map((p) => (
-              <button
-                key={p}
-                className="w-8 h-8 rounded-lg flex items-center justify-center transition-all"
-                style={{
-                  background:
-                    p === 1 ? "#10B981" : "white",
-                  color:
-                    p === 1 ? "white" : "#374151",
-                  fontSize: "13px",
-                  fontWeight: 600,
-                  border:
-                    p !== 1
-                      ? "1px solid #E5E7EB"
-                      : "none",
-                }}
-              >
-                {p}
-              </button>
-            ))}
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
-      </div>
       </PageState>
 
-      {/* Modals */}
+      {/* Add Student Modal (Stepper with Framer Motion) */}
       <AnimatePresence>
-        {/* Student Profile Modal */}
-        {viewStudent && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
-            style={{ background: "rgba(0,0,0,0.4)" }}
-            onClick={() => setViewStudent(null)}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{
-                type: "spring",
-                damping: 25,
-                stiffness: 300,
-              }}
-              className="w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl"
-              style={{ background: "white" }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div
-                className="flex items-center justify-between p-6"
-                style={{
-                  background:
-                    "linear-gradient(135deg, #065F46, #047857)",
-                }}
-              >
-                <div className="flex items-center gap-4">
-                  <div
-                    className="w-16 h-16 rounded-2xl flex items-center justify-center"
-                    style={{
-                      background:
-                        "rgba(255,255,255,0.2)",
-                    }}
-                  >
-                    <span className="text-white text-xl font-bold">
-                      {viewStudent.name
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")
-                        .slice(0, 2)}
-                    </span>
-                  </div>
-
-                  <div>
-                    <h2
-                      className="text-white font-bold"
-                      style={{ fontSize: "18px" }}
-                    >
-                      {viewStudent.name}
-                    </h2>
-
-                    <p
-                      style={{
-                        color:
-                          "rgba(255,255,255,0.7)",
-                        fontSize: "13px",
-                      }}
-                    >
-                      {viewStudent.id} ·{" "}
-                      {viewStudent.class}
-                    </p>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => setViewStudent(null)}
-                  className="w-8 h-8 flex items-center justify-center rounded-full"
-                  style={{
-                    background:
-                      "rgba(255,255,255,0.2)",
-                  }}
-                >
-                  <X className="w-4 h-4 text-white" />
-                </button>
-              </div>
-
-              <div className="p-6 grid grid-cols-2 gap-6">
-                {[
-                  {
-                    label: "Full Name",
-                    value: viewStudent.name,
-                  },
-                  {
-                    label: "Student ID",
-                    value: viewStudent.id,
-                  },
-                  {
-                    label: "Class",
-                    value: viewStudent.class,
-                  },
-                  {
-                    label: "Age",
-                    value: `${viewStudent.age} years`,
-                  },
-                  {
-                    label: "Gender",
-                    value: viewStudent.gender,
-                  },
-                  {
-                    label: "Guardian",
-                    value: viewStudent.guardian,
-                  },
-                  {
-                    label: "Phone",
-                    value: viewStudent.phone,
-                  },
-                  {
-                    label: "Enrolled",
-                    value: viewStudent.enrolled,
-                  },
-                ].map(({ label, value }) => (
-                  <div key={label}>
-                    <p
-                      style={{
-                        fontSize: "11px",
-                        color: "#9CA3AF",
-                        fontWeight: 600,
-                        textTransform: "uppercase",
-                        letterSpacing: "0.05em",
-                      }}
-                    >
-                      {label}
-                    </p>
-
-                    <p
-                      style={{
-                        fontSize: "14px",
-                        color: "#374151",
-                        fontWeight: 500,
-                        marginTop: "2px",
-                      }}
-                    >
-                      {value}
-                    </p>
-                  </div>
-                ))}
-              </div>
-
-              <div className="px-6 pb-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <div
-                    className="rounded-xl p-4"
-                    style={{
-                      background:
-                        "rgba(16,185,129,0.07)",
-                      border:
-                        "1px solid rgba(16,185,129,0.15)",
-                    }}
-                  >
-                    <p
-                      style={{
-                        fontSize: "12px",
-                        color: "#6B7280",
-                      }}
-                    >
-                      Attendance Rate
-                    </p>
-
-                    <p
-                      style={{
-                        fontSize: "24px",
-                        fontWeight: 700,
-                        color: "#10B981",
-                      }}
-                    >
-                      {viewStudent.attendance}%
-                    </p>
-                  </div>
-
-                  <div
-                    className="rounded-xl p-4"
-                    style={{
-                      background:
-                        "rgba(245,158,11,0.07)",
-                      border:
-                        "1px solid rgba(245,158,11,0.15)",
-                    }}
-                  >
-                    <p
-                      style={{
-                        fontSize: "12px",
-                        color: "#6B7280",
-                      }}
-                    >
-                      Average Score
-                    </p>
-
-                    <p
-                      style={{
-                        fontSize: "24px",
-                        fontWeight: 700,
-                        color: "#F59E0B",
-                      }}
-                    >
-                      {viewStudent.avgScore}%
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-3 px-6 pb-6">
-                <button
-                  className="flex-1 py-2.5 rounded-xl font-semibold hover:opacity-90"
-                  style={{
-                    background: "#10B981",
-                    color: "white",
-                    fontSize: "13px",
-                  }}
-                >
-                  Generate Report
-                </button>
-
-                <button
-                  className="flex-1 py-2.5 rounded-xl font-semibold hover:bg-gray-50"
-                  style={{
-                    border: "1px solid #E5E7EB",
-                    color: "#374151",
-                    fontSize: "13px",
-                  }}
-                  onClick={() => setViewStudent(null)}
-                >
-                  Close
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-
-        {/* Add Student Modal */}
         {showAddModal && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            style={{ background: "rgba(0,0,0,0.4)" }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm"
             onClick={() => setShowAddModal(false)}
           >
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-lg rounded-3xl overflow-hidden"
-              style={{ background: "white" }}
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="w-full max-w-xl bg-white rounded-[24px] shadow-2xl overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
-              <div
-                className="flex items-center justify-between p-6 border-b"
-                style={{
-                  borderColor: "rgba(0,0,0,0.07)",
-                }}
-              >
-                <h2
-                  style={{
-                    fontSize: "18px",
-                    fontWeight: 700,
-                    color: "#374151",
-                  }}
-                >
-                  Add New Student
-                </h2>
-
-                <button
-                  onClick={() => {
-                    setShowAddModal(false);
-                    reset();
-                  }}
-                >
-                  <X
-                    className="w-5 h-5"
-                    style={{ color: "#9CA3AF" }}
-                  />
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-bold text-slate-800">Enroll Student</h2>
+                  <p className="text-[13px] font-semibold text-slate-400 mt-0.5">Step {step} of 2</p>
+                </div>
+                <button onClick={() => setShowAddModal(false)} className="p-2 bg-slate-50 hover:bg-slate-100 rounded-full transition-colors">
+                  <X className="w-5 h-5 text-slate-500" />
                 </button>
               </div>
 
-              <motion.div className="p-6 space-y-4">
-                <div>
-                  <label className="block mb-1.5" style={{ fontSize: "13px", color: "#374151", fontWeight: 600 }}>
-                    Full Name
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Student's full name"
-                    {...register("name")}
-                    className="w-full px-4 py-2.5 rounded-xl outline-none"
-                    style={{ border: "1.5px solid #E5E7EB", background: "white", fontSize: "14px" }}
-                  />
-                  {errors.name && (
-                    <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>
-                  )}
-                </div>
-                <div>
-                  <label className="block mb-1.5" style={{ fontSize: "13px", color: "#374151", fontWeight: 600 }}>
-                    Admission Number
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. JIS-2026-001"
-                    {...register("admissionNumber")}
-                    className="w-full px-4 py-2.5 rounded-xl outline-none"
-                    style={{ border: "1.5px solid #E5E7EB", background: "white", fontSize: "14px" }}
-                  />
-                  {errors.admissionNumber && (
-                    <p className="mt-1 text-sm text-red-600">{errors.admissionNumber.message}</p>
-                  )}
-                </div>
-                <div>
-                  <label className="block mb-1.5" style={{ fontSize: "13px", color: "#374151", fontWeight: 600 }}>
-                    Circular Class
-                  </label>
-                  <select
-                    {...register("classId")}
-                    className="w-full px-4 py-2.5 rounded-xl outline-none appearance-none"
-                    style={{ border: "1.5px solid #E5E7EB", background: "white", fontSize: "14px" }}
-                  >
-                    {classes.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.classId && (
-                    <p className="mt-1 text-sm text-red-600">{errors.classId.message}</p>
-                  )}
-                </div>
-                {!isP7 && (
-                  <div>
-                    <label className="block mb-1.5" style={{ fontSize: "13px", color: "#374151", fontWeight: 600 }}>
-                      Theology Class
-                    </label>
-                    <select
-                      {...register("theologyClassId")}
-                      className="w-full px-4 py-2.5 rounded-xl outline-none appearance-none"
-                      style={{ border: "1.5px solid #E5E7EB", background: "white", fontSize: "14px" }}
-                    >
-                      <option value="">Select theology class</option>
-                      {theologyClasses.map((t) => (
-                        <option key={t.id} value={t.id}>
-                          {t.class_name_english}
-                        </option>
-                      ))}
-                    </select>
-                    {errors.theologyClassId && (
-                      <p className="mt-1 text-sm text-red-600">{errors.theologyClassId.message}</p>
+              <div className="p-6 min-h-[300px]">
+                <form id="add-student-form" onSubmit={handleAddStudent} className="space-y-6">
+                  <AnimatePresence mode="wait">
+                    {step === 1 && (
+                      <motion.div key="step1" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }} className="space-y-5">
+                        <div>
+                          <label className="block text-[13px] font-bold text-slate-700 mb-1.5">Student Full Name</label>
+                          <input 
+                            {...register("name", {
+                              onChange: (e) => {
+                                e.target.value = e.target.value.toUpperCase();
+                              }
+                            })} 
+                            className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all text-[14px]" 
+                            placeholder="Enter full name" 
+                          />
+                          {errors.name && <p className="text-rose-500 text-[11px] font-bold mt-1.5">{errors.name.message}</p>}
+                        </div>
+                        <div>
+                          <label className="block text-[13px] font-bold text-slate-700 mb-1.5">Arabic Name (Optional)</label>
+                          <input 
+                            {...register("arabicName")} 
+                            dir="rtl"
+                            className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all text-[14px] text-right font-arabic" 
+                            placeholder="الاسم بالعربية" 
+                          />
+                          {errors.arabicName && <p className="text-rose-500 text-[11px] font-bold mt-1.5">{errors.arabicName.message}</p>}
+                        </div>
+                        <div>
+                          <label className="block text-[13px] font-bold text-slate-700 mb-1.5">Admission Number</label>
+                          <input {...register("admissionNumber")} className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all text-[14px]" placeholder="e.g. JID/2026/001" />
+                          {errors.admissionNumber && <p className="text-rose-500 text-[11px] font-bold mt-1.5">{errors.admissionNumber.message}</p>}
+                        </div>
+                        
+                        <div className="p-4 rounded-2xl border border-slate-200 bg-white shadow-sm flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center">
+                              <MoonStar className="w-5 h-5 text-indigo-500" />
+                            </div>
+                            <div>
+                              <p className="font-bold text-slate-800 text-[14px]">Islamic Theology</p>
+                              <p className="text-[12px] font-medium text-slate-500 mt-0.5">Enable if the student takes Theology</p>
+                            </div>
+                          </div>
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" className="sr-only peer" {...register("isMuslim")} />
+                            <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-500 shadow-inner"></div>
+                          </label>
+                        </div>
+                      </motion.div>
                     )}
-                  </div>
+
+                    {step === 2 && (
+                      <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.2 }} className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                          <div>
+                            <label className="block text-[13px] font-bold text-slate-700 mb-1.5">Circular Class</label>
+                            <select {...register("classId")} className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none text-[14px] transition-all">
+                              {classes.map((c) => (
+                                <option key={c.id} value={c.id}>{c.name}</option>
+                              ))}
+                            </select>
+                            {errors.classId && <p className="text-rose-500 text-[11px] font-bold mt-1.5">{errors.classId.message}</p>}
+                          </div>
+                          
+                          <AnimatePresence mode="popLayout">
+                            {watchedIsMuslim ? (
+                              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.2 }} className="origin-top">
+                                <label className="block text-[13px] font-bold text-indigo-700 mb-1.5">Theology Level</label>
+                                {isP7 ? (
+                                  <div className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-100 text-slate-500 text-[13px] font-semibold flex items-center justify-center">
+                                    Not Applicable for P.7
+                                  </div>
+                                ) : (
+                                  <select {...register("theologyClassId")} className="w-full px-4 py-3 rounded-xl border border-indigo-200 bg-indigo-50 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none text-[14px] text-indigo-900 transition-all">
+                                    <option value="">Select Level</option>
+                                    {theologyClasses.map((c) => (
+                                      <option key={c.id} value={c.id}>{c.class_name_english} ({c.class_name_arabic})</option>
+                                    ))}
+                                  </select>
+                                )}
+                              </motion.div>
+                            ) : (
+                              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.2 }} className="origin-top">
+                                <label className="block text-[13px] font-bold text-slate-400 mb-1.5">Theology Level</label>
+                                <div className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-100/50 text-slate-400 text-[13px] font-semibold flex items-center justify-center">
+                                  Disabled (Non-Muslim)
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                        
+                        <div>
+                          <label className="block text-[13px] font-bold text-slate-700 mb-1.5">Academic Year</label>
+                          <input type="number" {...register("academicYear", { valueAsNumber: true })} className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white outline-none text-[14px]" />
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </form>
+              </div>
+
+              <div className="p-5 border-t border-slate-100 flex justify-between bg-slate-50">
+                {step === 2 ? (
+                  <button type="button" onClick={() => setStep(1)} className="px-5 py-2.5 rounded-xl font-bold text-[13px] text-slate-600 hover:bg-slate-200 transition-colors flex items-center gap-2">
+                    <ChevronLeft className="w-4 h-4" /> Back
+                  </button>
+                ) : (
+                  <div />
                 )}
-              </motion.div>
-
-              <div className="flex gap-3 px-6 pb-6">
-                <button
-                  className="flex-1 py-2.5 rounded-xl font-semibold hover:opacity-90"
-                  style={{
-                    background: "#10B981",
-                    color: "white",
-                    fontSize: "13px",
-                  }}
-                  disabled={adding}
-                  onClick={() => void handleAddStudent()}
-                >
-                  {adding ? "Adding…" : "Add Student"}
-                </button>
-
-                <button
-                  className="flex-1 py-2.5 rounded-xl font-semibold hover:bg-gray-50"
-                  style={{
-                    border: "1px solid #E5E7EB",
-                    color: "#374151",
-                    fontSize: "13px",
-                  }}
-                  onClick={() => {
-                    setShowAddModal(false);
-                    reset();
-                  }}
-                >
-                  Cancel
-                </button>
+                
+                {step === 1 ? (
+                  <button type="button" onClick={handleNextStep} className="px-6 py-2.5 rounded-xl font-bold text-[13px] bg-slate-900 text-white hover:bg-slate-800 transition-colors flex items-center gap-2 shadow-sm">
+                    Next <ChevronRight className="w-4 h-4" />
+                  </button>
+                ) : (
+                  <button type="submit" form="add-student-form" disabled={adding} className="px-6 py-2.5 rounded-xl font-bold text-[13px] bg-emerald-500 text-white hover:bg-emerald-600 transition-colors flex items-center gap-2 shadow-sm shadow-emerald-200 disabled:opacity-50">
+                    {adding ? "Enrolling..." : "Complete Enrollment"} <CheckCircle2 className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             </motion.div>
           </motion.div>

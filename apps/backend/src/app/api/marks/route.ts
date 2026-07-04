@@ -27,8 +27,8 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  if (!['mot', 'eot', 'both'].includes(score_type)) {
-    return withCors(request, NextResponse.json({ error: 'score_type must be mot, eot, or both' }, { status: 400 }))
+  if (!['mot', 'eot', 'both', 'bot'].includes(score_type)) {
+    return withCors(request, NextResponse.json({ error: 'score_type must be bot, mot, eot, or both' }, { status: 400 }))
   }
 
   try {
@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
     // Fetch existing circular marks
     const { data: existingCircularMarks, error: circularMarksError } = await supabase
       .from('circular_marks')
-      .select('subject_id, mot_score, eot_score')
+      .select('subject_id, bot_score, mot_score, eot_score')
       .eq('enrollment_id', enrollment_id)
       .eq('term_id', term_id)
 
@@ -83,6 +83,7 @@ export async function GET(request: NextRequest) {
         subject_id: subject.id,
         subject_name: subject.subject_name,
         is_core: isCoreSubject(subject.subject_name, sectionType),
+        bot_score: existingMark?.bot_score ?? null,
         mot_score: existingMark?.mot_score ?? null,
         eot_score: existingMark?.eot_score ?? null,
       }
@@ -149,16 +150,38 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { enrollment_id, term_id, score_type, circular_marks, theology_marks } = body
 
-    if (!enrollment_id || !term_id || !score_type || !['mot', 'eot'].includes(score_type)) {
-      return withCors(request, NextResponse.json({ error: 'enrollment_id, term_id, and valid score_type (mot|eot) are required' }, { status: 400 }))
+    if (!enrollment_id || !term_id || !score_type || !['bot', 'mot', 'eot'].includes(score_type)) {
+      return withCors(request, NextResponse.json({ error: 'enrollment_id, term_id, and valid score_type (bot|mot|eot) are required' }, { status: 400 }))
     }
 
     const cookieStore = await cookies()
     const supabase = createClient(cookieStore)
 
+    // 1. Fetch enrollment's sections
+    const { data: enrollment, error: enrollmentError } = await supabase
+      .from('enrollments')
+      .select('circular_classes(section, class_name), theology_classes(level)')
+      .eq('id', enrollment_id)
+      .single()
+      
+    if (enrollmentError || !enrollment) {
+      return withCors(request, NextResponse.json({ error: 'Enrollment not found' }, { status: 404 }))
+    }
+
+    const circularClassMeta = Array.isArray(enrollment.circular_classes)
+      ? enrollment.circular_classes[0]
+      : (enrollment.circular_classes as { section?: string; class_name?: string } | null)
+    
+    const theologyClassMeta = Array.isArray(enrollment.theology_classes)
+      ? enrollment.theology_classes[0]
+      : (enrollment.theology_classes as { level?: string } | null)
+      
+    const expectedCircularSection = resolveSectionType(circularClassMeta?.section, circularClassMeta?.class_name)
+    const expectedTheologyLevel = theologyClassMeta?.level
+
     // Upsert circular marks
     if (Array.isArray(circular_marks) && circular_marks.length > 0) {
-      const scoreColumn = score_type === 'mot' ? 'mot_score' : 'eot_score'
+      const scoreColumn = score_type === 'bot' ? 'bot_score' : score_type === 'mot' ? 'mot_score' : 'eot_score'
       const circularUpsert = circular_marks
         .filter((mark: any) => {
           const score = mark.score === '' || mark.score === null ? null : Number(mark.score)
@@ -178,6 +201,22 @@ export async function POST(request: NextRequest) {
         })
 
       if (circularUpsert.length > 0) {
+        // Validation: Ensure all subject_ids match the enrollment's section
+        const subjectIds = circularUpsert.map((u: any) => u.subject_id)
+        const { data: subjects, error: subjErr } = await supabase
+          .from('circular_subjects')
+          .select('id, section')
+          .in('id', subjectIds)
+          
+        if (subjErr) return withCors(request, NextResponse.json({ error: subjErr.message }, { status: 500 }))
+        
+        const invalidSubjects = subjects?.filter((s: any) => s.section !== expectedCircularSection) || []
+        if (invalidSubjects.length > 0) {
+          return withCors(request, NextResponse.json({ 
+            error: `Section mismatch for subjects: ${invalidSubjects.map((s: any) => s.id).join(', ')}` 
+          }, { status: 400 }))
+        }
+
         const { error: circularError } = await supabase
           .from('circular_marks')
           .upsert(circularUpsert, { onConflict: 'enrollment_id,subject_id,term_id' })
@@ -190,7 +229,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Upsert theology marks (per-subject)
-    if (Array.isArray(theology_marks) && theology_marks.length > 0) {
+    if (Array.isArray(theology_marks) && theology_marks.length > 0 && score_type !== 'bot') {
       const scoreColumn = score_type === 'mot' ? 'mot_score' : 'eot_score'
       const theologyUpsert = theology_marks
         .filter((mark: any) => {
@@ -211,6 +250,22 @@ export async function POST(request: NextRequest) {
         })
 
       if (theologyUpsert.length > 0) {
+        // Validation: Ensure all subject_ids match the enrollment's theology level
+        const subjectIds = theologyUpsert.map((u: any) => u.subject_id)
+        const { data: subjects, error: subjErr } = await supabase
+          .from('theology_subjects')
+          .select('id, level')
+          .in('id', subjectIds)
+          
+        if (subjErr) return withCors(request, NextResponse.json({ error: subjErr.message }, { status: 500 }))
+        
+        const invalidSubjects = subjects?.filter((s: any) => s.level !== expectedTheologyLevel) || []
+        if (invalidSubjects.length > 0) {
+          return withCors(request, NextResponse.json({ 
+            error: `Level mismatch for theology subjects: ${invalidSubjects.map((s: any) => s.id).join(', ')}` 
+          }, { status: 400 }))
+        }
+
         const { error: theologyError } = await supabase
           .from('theology_marks')
           .upsert(theologyUpsert, { onConflict: 'enrollment_id,subject_id,term_id' })

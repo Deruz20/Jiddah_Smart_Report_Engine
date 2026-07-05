@@ -11,7 +11,7 @@ import { Label } from "@/app/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/app/components/ui/dialog";
 
-const API_BASE = "http://localhost:3001/api";
+import { api } from "@/services/api/client";
 
 const getSectionColor = (section: string) => {
   const colors: Record<string, string> = {
@@ -67,15 +67,7 @@ export default function SubjectsPage() {
         payload.section = ''; // Theology doesn't strictly require section in the UI if not needed, but we can pass it
       }
       
-      const res = await fetch(`${API_BASE}/subjects`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to create subject");
-      }
+      await api.post("/subjects", payload);
       toast.success("Subject created successfully");
       setIsCreateOpen(false);
       setFormData({ subject_name: "", curriculum: "secular", section: "nursery" });
@@ -91,15 +83,7 @@ export default function SubjectsPage() {
     if (!formData.subject_name.trim()) return toast.error("Subject name is required");
     setIsSubmitting(true);
     try {
-      const res = await fetch(`${API_BASE}/subjects/${selectedSubject.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to update subject");
-      }
+      await api.put(`/subjects/${selectedSubject.id}`, formData);
       toast.success("Subject updated successfully");
       setIsEditOpen(false);
       refetch();
@@ -113,13 +97,7 @@ export default function SubjectsPage() {
   const handleDelete = async () => {
     setIsSubmitting(true);
     try {
-      const res = await fetch(`${API_BASE}/subjects/${selectedSubject.id}?curriculum=${selectedSubject.curriculum}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to delete subject");
-      }
+      await api.delete(`/subjects/${selectedSubject.id}?curriculum=${selectedSubject.curriculum}`);
       toast.success("Subject deleted successfully");
       setIsDeleteOpen(false);
       refetch();

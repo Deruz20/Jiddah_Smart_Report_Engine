@@ -6,19 +6,29 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
   const level = searchParams.get('level')
 
-  if (!level || !['raudha', 'ibtidaai_lower', 'ibtidaai_upper'].includes(level)) {
-    return NextResponse.json({ error: 'Valid level parameter required: raudha, ibtidaai_lower, or ibtidaai_upper' }, { status: 400 })
-  }
-
   try {
     const cookieStore = await cookies()
     const supabase = createClient(cookieStore)
 
-    const { data: subjects, error: subjectsError } = await supabase
+    // Auth Enforcement Check
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    let query = supabase
       .from('theology_subjects')
       .select('id, subject_name_arabic, level, sort_order')
-      .eq('level', level)
       .order('sort_order', { ascending: true })
+
+    if (level) {
+      if (!['raudha', 'ibtidaai_lower', 'ibtidaai_upper'].includes(level)) {
+        return NextResponse.json({ error: 'Invalid level parameter' }, { status: 400 })
+      }
+      query = query.eq('level', level)
+    }
+
+    const { data: subjects, error: subjectsError } = await query
 
     if (subjectsError) {
       console.error('theology_subjects DB error:', subjectsError.message)

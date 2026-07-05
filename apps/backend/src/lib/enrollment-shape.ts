@@ -20,9 +20,11 @@ export function reshapeEnrollmentRow(e: {
   theology_classes?: {
     class_name_arabic?: string | null
     class_name_english?: string | null
+    level?: string | null
   } | {
     class_name_arabic?: string | null
     class_name_english?: string | null
+    level?: string | null
   }[] | null
 }) {
   const student = pickJoinedRow(e.students as StudentRow | StudentRow[] | null | undefined)
@@ -37,8 +39,8 @@ export function reshapeEnrollmentRow(e: {
   )
   const theology = pickJoinedRow(
     e.theology_classes as
-      | { class_name_arabic?: string | null; class_name_english?: string | null }
-      | { class_name_arabic?: string | null; class_name_english?: string | null }[]
+      | { class_name_arabic?: string | null; class_name_english?: string | null; level?: string | null }
+      | { class_name_arabic?: string | null; class_name_english?: string | null; level?: string | null }[]
       | null
       | undefined
   )
@@ -53,6 +55,7 @@ export function reshapeEnrollmentRow(e: {
     section: circular?.section ?? null,
     theology_class_arabic: theology?.class_name_arabic ?? null,
     theology_class_english: theology?.class_name_english ?? null,
+    theology_level: theology?.level ?? null,
     academic_year: e.academic_year,
   }
 }

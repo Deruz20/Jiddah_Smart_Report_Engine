@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
         academic_year,
         is_active,
         circular_classes ( id, class_name, section ),
-        theology_classes ( id, class_name_arabic, class_name_english ),
+        theology_classes ( id, class_name_arabic, class_name_english, level ),
         students ( id, name, admission_number, created_at )
       `)
       .eq('is_active', true)

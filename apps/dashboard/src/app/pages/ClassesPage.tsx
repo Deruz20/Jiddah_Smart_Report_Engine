@@ -11,7 +11,7 @@ import { Label } from "@/app/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/app/components/ui/dialog";
 
-const API_BASE = "http://localhost:3001/api";
+import { api } from "@/services/api/client";
 
 const getSectionColor = (section: string) => {
   const colors: Record<string, string> = {
@@ -54,15 +54,7 @@ export default function ClassesPage() {
     if (!formData.class_name.trim()) return toast.error("Class name is required");
     setIsSubmitting(true);
     try {
-      const res = await fetch(`${API_BASE}/classes`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to create class");
-      }
+      await api.post("/classes", formData);
       toast.success("Class created successfully");
       setIsCreateOpen(false);
       setFormData({ class_name: "", section: "nursery" });
@@ -78,15 +70,7 @@ export default function ClassesPage() {
     if (!formData.class_name.trim()) return toast.error("Class name is required");
     setIsSubmitting(true);
     try {
-      const res = await fetch(`${API_BASE}/classes/${selectedClass.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to update class");
-      }
+      await api.put(`/classes/${selectedClass.id}`, formData);
       toast.success("Class updated successfully");
       setIsEditOpen(false);
       refetch();
@@ -100,13 +84,7 @@ export default function ClassesPage() {
   const handleDelete = async () => {
     setIsSubmitting(true);
     try {
-      const res = await fetch(`${API_BASE}/classes/${selectedClass.id}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to delete class");
-      }
+      await api.delete(`/classes/${selectedClass.id}`);
       toast.success("Class deleted successfully");
       setIsDeleteOpen(false);
       refetch();

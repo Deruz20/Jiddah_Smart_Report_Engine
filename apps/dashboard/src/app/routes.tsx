@@ -17,6 +17,8 @@ import ClassesPage from "./pages/ClassesPage";
 import SubjectsPage from "./pages/SubjectsPage";
 import ActivityPage from "./pages/ActivityPage";
 import TermsPage from "./pages/TermsPage";
+import CircularPage from "./pages/CircularPage";
+import TheologyPage from "./pages/TheologyPage";
 
 export const router = createBrowserRouter([
   {
@@ -37,6 +39,8 @@ export const router = createBrowserRouter([
       { path: "teachers", Component: TeachersPage },
       { path: "classes", Component: ClassesPage },
       { path: "subjects", Component: SubjectsPage },
+      { path: "circular", Component: CircularPage },
+      { path: "theology", Component: TheologyPage },
       { path: "marks", Component: MarksEntryPage },
       { path: "reports", Component: ReportsPage },
       { path: "signatures", Component: SignaturesPage },

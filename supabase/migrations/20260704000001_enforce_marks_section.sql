@@ -1,6 +1,8 @@
 CREATE OR REPLACE FUNCTION enforce_circular_mark_section()
 RETURNS TRIGGER
 LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
 AS $$
 DECLARE
     v_class_section text;
@@ -15,7 +17,15 @@ BEGIN
     FROM circular_subjects cs
     WHERE cs.id = NEW.subject_id;
 
-    IF v_class_section IS NOT NULL AND v_subject_section IS NOT NULL AND v_class_section != v_subject_section THEN
+    IF v_class_section IS NULL THEN
+        RAISE EXCEPTION 'Enrollment % is missing or has no circular class assigned.', NEW.enrollment_id;
+    END IF;
+
+    IF v_subject_section IS NULL THEN
+        RAISE EXCEPTION 'Circular subject % is missing or has no section assigned.', NEW.subject_id;
+    END IF;
+
+    IF v_class_section != v_subject_section THEN
         RAISE EXCEPTION 'Section mismatch: Enrollment % is in section %, but subject % is in section %.', 
             NEW.enrollment_id, v_class_section, NEW.subject_id, v_subject_section;
     END IF;
@@ -33,6 +43,8 @@ EXECUTE FUNCTION enforce_circular_mark_section();
 CREATE OR REPLACE FUNCTION enforce_theology_mark_level()
 RETURNS TRIGGER
 LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
 AS $$
 DECLARE
     v_class_level text;
@@ -47,7 +59,15 @@ BEGIN
     FROM theology_subjects ts
     WHERE ts.id = NEW.subject_id;
 
-    IF v_class_level IS NOT NULL AND v_subject_level IS NOT NULL AND v_class_level != v_subject_level THEN
+    IF v_class_level IS NULL THEN
+        RAISE EXCEPTION 'Enrollment % is missing or has no theology class assigned.', NEW.enrollment_id;
+    END IF;
+
+    IF v_subject_level IS NULL THEN
+        RAISE EXCEPTION 'Theology subject % is missing or has no level assigned.', NEW.subject_id;
+    END IF;
+
+    IF v_class_level != v_subject_level THEN
         RAISE EXCEPTION 'Level mismatch: Enrollment % is in theology level %, but subject % is level %.', 
             NEW.enrollment_id, v_class_level, NEW.subject_id, v_subject_level;
     END IF;

@@ -7,6 +7,38 @@ export async function OPTIONS(request: NextRequest) {
   return apiOptions(request)
 }
 
+export async function GET(request: NextRequest) {
+  const preflight = corsPreflight(request)
+  if (preflight) return preflight
+  
+  try {
+    const cookieStore = await cookies()
+    const supabase = createClient(cookieStore)
+
+    // Auth Enforcement Check
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+    }
+
+    const { data, error } = await supabase
+      .from('terms')
+      .select('*')
+      .eq('is_current', true)
+      .single()
+
+    if (error && error.code !== 'PGRST116') {
+      console.error('settings/terms/active GET error:', error)
+      return withCors(request, NextResponse.json({ error: error.message }, { status: 500 }))
+    }
+
+    return withCors(request, NextResponse.json({ data: data || null }))
+  } catch (err: any) {
+    console.error('settings/terms/active GET error:', err)
+    return withCors(request, NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 }))
+  }
+}
+
 export async function POST(request: NextRequest) {
   const preflight = corsPreflight(request)
   if (preflight) return preflight
@@ -14,6 +46,12 @@ export async function POST(request: NextRequest) {
   try {
     const cookieStore = await cookies()
     const supabase = createClient(cookieStore)
+
+    // Auth Enforcement Check
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+    }
 
     const body = await request.json()
     const { termId } = body

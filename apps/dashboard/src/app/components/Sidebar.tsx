@@ -12,6 +12,8 @@ const navItems = [
   { label: "Teachers & Staff", path: "/teachers", icon: UserCheck },
   { label: "Classes", path: "/classes", icon: BookMarked },
   { label: "Subjects", path: "/subjects", icon: BookOpen },
+  { label: "Circular Hub", path: "/circular", icon: BookOpen },
+  { label: "Theology Hub", path: "/theology", icon: BookOpen },
   { label: "Marks Entry", path: "/marks", icon: BookOpen },
   { label: "Reports", path: "/reports", icon: FileText },
   { label: "Signatures", path: "/signatures", icon: Star },

@@ -1,15 +1,16 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { Bell, Search, ChevronDown, Sun, Moon, Zap, Settings, LogOut, User, Shield } from "lucide-react";
+import { Bell, Search, ChevronDown, Sun, Moon, Zap, Settings, LogOut, User, Shield, Menu } from "lucide-react";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useTerms } from "@/hooks/useTerms";
 import { useAuthContext } from "@/contexts/AuthProvider";
 
 interface TopNavProps {
   sidebarCollapsed: boolean;
+  onMobileMenuClick: () => void;
 }
 
-export function TopNav({ sidebarCollapsed }: TopNavProps) {
+export function TopNav({ sidebarCollapsed, onMobileMenuClick }: TopNavProps) {
   const [profileOpen, setProfileOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
@@ -23,14 +24,19 @@ export function TopNav({ sidebarCollapsed }: TopNavProps) {
 
   return (
     <header
-      className="fixed top-0 right-0 z-30 flex items-center gap-4 px-6 py-3 border-b"
+      className="fixed top-0 right-0 z-30 flex items-center gap-4 px-4 sm:px-6 py-3 border-b bg-white transition-all duration-300 ease-[cubic-bezier(0.25,1,0.5,1)]"
       style={{
-        left: sidebarCollapsed ? "64px" : "256px",
-        background: "#FEFDF8",
+        left: typeof window !== "undefined" && window.innerWidth >= 1024 ? (sidebarCollapsed ? "80px" : "280px") : "0px",
+        height: "72px",
         borderColor: "rgba(0,0,0,0.07)",
-        transition: "left 0.3s ease",
       }}
     >
+      <button 
+        className="lg:hidden p-2 -ml-2 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-colors"
+        onClick={onMobileMenuClick}
+      >
+        <Menu className="w-5 h-5" />
+      </button>
       <div className="flex-1 max-w-md relative">
         <div
           className="flex items-center gap-2 px-4 py-2 rounded-xl cursor-text"

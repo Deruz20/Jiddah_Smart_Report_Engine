@@ -208,7 +208,7 @@ export default function CircularPage() {
           emptyMessage="No marks have been recorded yet."
         >
           <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-            <div className="overflow-x-auto">
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-200 text-gray-600 text-sm font-semibold">
@@ -260,6 +260,59 @@ export default function CircularPage() {
                   </AnimatePresence>
                 </tbody>
               </table>
+            </div>
+            
+            {/* Mobile Stacked Cards */}
+            <div className="md:hidden divide-y divide-gray-100">
+              <AnimatePresence>
+                {filteredMarks.map((m, idx) => (
+                  <motion.div
+                    key={m.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2, delay: Math.min(idx * 0.05, 0.5) }}
+                    className="p-4 hover:bg-gray-50/50 transition-colors"
+                  >
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <div className="font-semibold text-gray-900">{m.enrollments?.students?.name || "Unknown"}</div>
+                        <div className="text-sm text-gray-600 mt-0.5">
+                          {m.enrollments?.circular_classes?.class_name || "—"} ({m.enrollments?.circular_classes?.section || "—"})
+                        </div>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => openEdit(m)} className="h-8 w-8 text-gray-500 hover:text-[#065F46] hover:bg-[#065F46]/10 rounded-lg">
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => openDelete(m)} className="h-8 w-8 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="mb-4">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#065F46]/10 text-[#065F46] font-medium text-sm">
+                        <BookOpen className="w-3.5 h-3.5" />
+                        {m.circular_subjects?.subject_name || m.subject_id}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 border-t border-gray-100 pt-3">
+                      <div>
+                        <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">BOT</div>
+                        <div className="font-mono text-gray-700">{m.bot_score ?? "—"}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">MOT</div>
+                        <div className="font-mono text-gray-700">{m.mot_score ?? "—"}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">EOT</div>
+                        <div className="font-mono text-gray-700">{m.eot_score ?? "—"}</div>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
             </div>
           </div>
         </PageState>

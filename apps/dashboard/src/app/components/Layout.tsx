@@ -5,21 +5,32 @@ import { Toast } from "@/components/Toast";
 import { PageTransition } from "./PageTransition";
 
 export function Layout() {
-  const [collapsed, setCollapsed] = useState(false);
+  const [desktopCollapsed, setDesktopCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="min-h-screen" style={{ background: "#FEFDF8" }}>
-      <Sidebar collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} />
-      <TopNav sidebarCollapsed={collapsed} />
+    <div className="min-h-screen" style={{ background: "#F7F8F7" }}>
+      <Sidebar 
+        desktopCollapsed={desktopCollapsed} 
+        onDesktopToggle={() => setDesktopCollapsed(!desktopCollapsed)}
+        mobileOpen={mobileOpen}
+        onMobileClose={() => setMobileOpen(false)}
+      />
+      <TopNav 
+        sidebarCollapsed={desktopCollapsed} 
+        onMobileMenuClick={() => setMobileOpen(true)}
+      />
       <main
-        className="transition-all duration-300 ease-in-out"
+        className="transition-all duration-300 ease-[cubic-bezier(0.25,1,0.5,1)]"
         style={{
-          marginLeft: collapsed ? "64px" : "256px",
-          paddingTop: "64px",
+          marginLeft: typeof window !== "undefined" && window.innerWidth >= 1024 
+            ? (desktopCollapsed ? "80px" : "280px") 
+            : "0px",
+          paddingTop: "72px",
           minHeight: "100vh",
         }}
       >
-        <div className="p-6">
+        <div className="p-4 sm:p-6 lg:p-8">
           <PageTransition />
         </div>
       </main>

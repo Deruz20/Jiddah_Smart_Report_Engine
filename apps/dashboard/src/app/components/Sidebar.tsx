@@ -39,13 +39,11 @@ export function Sidebar({ desktopCollapsed, onDesktopToggle, mobileOpen, onMobil
   const displayName = user?.name ?? user?.email ?? "Admin";
   const initials = displayName.slice(0, 2).toUpperCase();
 
-  // On mobile, the sidebar is either open (w-72) or closed (translate-x-full).
-  // On desktop, it's either collapsed (w-20) or expanded (w-[280px]).
   const sidebarClasses = `
     fixed top-0 left-0 h-full z-50 flex flex-col
-    bg-white
+    bg-[#123524]
     transition-all duration-300 ease-[cubic-bezier(0.25,1,0.5,1)]
-    border-r border-slate-200 shadow-sm
+    border-r border-[#1F7A4D] shadow-sm
     ${mobileOpen ? "translate-x-0 w-72" : "-translate-x-full lg:translate-x-0"}
     ${desktopCollapsed ? "lg:w-[80px]" : "lg:w-[280px]"}
   `;
@@ -55,29 +53,29 @@ export function Sidebar({ desktopCollapsed, onDesktopToggle, mobileOpen, onMobil
       {/* Mobile Backdrop */}
       {mobileOpen && (
         <div 
-          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 lg:hidden transition-opacity"
+          className="fixed inset-0 bg-[#16221C]/60 backdrop-blur-sm z-40 lg:hidden transition-opacity"
           onClick={onMobileClose}
         />
       )}
 
       <aside className={sidebarClasses}>
         {/* Header / Logo */}
-        <div className="flex items-center justify-between px-5 h-[72px] shrink-0 border-b border-slate-100">
+        <div className="flex items-center justify-between px-5 h-[72px] shrink-0 border-b border-[#1F7A4D]">
           <div className={`flex items-center gap-3 overflow-hidden ${desktopCollapsed ? "lg:justify-center w-full" : ""}`}>
             <img
               src="/school_budge.jpeg"
               alt="Logo"
-              className="w-10 h-10 rounded-xl object-cover shrink-0 mix-blend-multiply"
+              className="w-10 h-10 rounded-xl object-cover shrink-0 mix-blend-multiply bg-white"
             />
             <div className={`flex flex-col transition-opacity duration-300 whitespace-nowrap ${desktopCollapsed ? "lg:opacity-0 lg:w-0 lg:hidden" : "opacity-100"}`}>
-              <h1 className="text-[#065F46] font-bold text-[14px] leading-tight tracking-tight">Jiddah Islamic</h1>
-              <p className="text-slate-500 text-[11px] font-medium tracking-wide uppercase mt-0.5">Report Engine</p>
+              <h1 className="text-white font-bold text-[14px] leading-tight tracking-tight">Jiddah Islamic</h1>
+              <p className="text-[#6B7B73] text-[11px] font-medium tracking-wide uppercase mt-0.5">Report Engine</p>
             </div>
           </div>
           
           {/* Mobile Close Button */}
           <button 
-            className="lg:hidden p-2 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-colors"
+            className="lg:hidden p-2 text-[#6B7B73] hover:text-white hover:bg-[#1F7A4D] rounded-xl transition-colors"
             onClick={onMobileClose}
           >
             <X className="w-5 h-5" />
@@ -85,7 +83,7 @@ export function Sidebar({ desktopCollapsed, onDesktopToggle, mobileOpen, onMobil
         </div>
 
         {/* Navigation List */}
-        <nav className="flex-1 overflow-y-auto overflow-x-hidden py-6 px-3 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
+        <nav className="flex-1 overflow-y-auto overflow-x-hidden py-6 px-3 scrollbar-thin scrollbar-thumb-[#1F7A4D] scrollbar-track-transparent">
           <ul className="space-y-1.5">
             {navItems.map((item) => {
               const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + "/");
@@ -99,18 +97,18 @@ export function Sidebar({ desktopCollapsed, onDesktopToggle, mobileOpen, onMobil
                     className={`
                       relative flex items-center gap-3.5 px-3.5 py-3 rounded-xl transition-all duration-200 group overflow-hidden
                       ${isActive 
-                        ? "bg-[#065F46]/10 text-[#065F46]" 
-                        : "text-slate-500 hover:bg-slate-50 hover:text-[#065F46]"
+                        ? "bg-[#1F7A4D] text-white" 
+                        : "text-[#6B7B73] hover:bg-[#1F7A4D]/50 hover:text-white"
                       }
                       ${desktopCollapsed ? "lg:justify-center" : ""}
                     `}
                   >
                     {/* Active Line Indicator */}
                     {isActive && (
-                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-[#F97316] rounded-r-full" />
+                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-[#C9A227] rounded-r-full" />
                     )}
                     
-                    <Icon className={`w-[22px] h-[22px] shrink-0 transition-colors duration-200 ${isActive ? "text-[#065F46]" : "group-hover:text-[#065F46]"}`} strokeWidth={isActive ? 2.5 : 2} />
+                    <Icon className={`w-[22px] h-[22px] shrink-0 transition-colors duration-200 ${isActive ? "text-white" : "group-hover:text-white"}`} strokeWidth={isActive ? 2.5 : 2} />
                     
                     <span className={`
                       text-[14px] whitespace-nowrap transition-all duration-300
@@ -127,20 +125,20 @@ export function Sidebar({ desktopCollapsed, onDesktopToggle, mobileOpen, onMobil
         </nav>
 
         {/* Footer Profile & Toggle */}
-        <div className="p-4 shrink-0 border-t border-slate-100 bg-slate-50">
+        <div className="p-4 shrink-0 border-t border-[#1F7A4D] bg-[#123524]">
           <div className={`flex items-center gap-3 mb-4 overflow-hidden ${desktopCollapsed ? "lg:justify-center" : ""}`}>
-            <div className="w-10 h-10 rounded-full flex items-center justify-center bg-gradient-to-br from-[#065F46] to-[#047857] shrink-0 shadow-sm">
-              <span className="text-white text-sm font-bold tracking-wider">{initials}</span>
+            <div className="w-10 h-10 rounded-full flex items-center justify-center bg-[#1F7A4D] shrink-0 shadow-sm border border-[#C9A227]">
+              <span className="text-[#C9A227] text-sm font-bold tracking-wider">{initials}</span>
             </div>
             <div className={`flex flex-col whitespace-nowrap transition-all duration-300 ${desktopCollapsed ? "lg:opacity-0 lg:w-0" : "opacity-100"}`}>
-              <p className="text-slate-800 text-sm font-semibold truncate max-w-[160px]">{displayName}</p>
-              <p className="text-slate-500 text-[11px] font-medium uppercase tracking-wider">{user?.role ?? "Staff"}</p>
+              <p className="text-white text-sm font-semibold truncate max-w-[160px]">{displayName}</p>
+              <p className="text-[#6B7B73] text-[11px] font-medium uppercase tracking-wider">{user?.role ?? "Staff"}</p>
             </div>
           </div>
           
           <button
             onClick={onDesktopToggle}
-            className="hidden lg:flex w-full items-center justify-center gap-2 py-2.5 rounded-xl text-slate-400 hover:text-slate-800 hover:bg-slate-200 transition-all duration-200 group"
+            className="hidden lg:flex w-full items-center justify-center gap-2 py-2.5 rounded-xl text-[#6B7B73] hover:text-white hover:bg-[#1F7A4D] transition-all duration-200 group"
           >
             {desktopCollapsed ? (
               <ChevronRight className="w-5 h-5 group-hover:scale-110 transition-transform" />
@@ -156,3 +154,4 @@ export function Sidebar({ desktopCollapsed, onDesktopToggle, mobileOpen, onMobil
     </>
   );
 }
+

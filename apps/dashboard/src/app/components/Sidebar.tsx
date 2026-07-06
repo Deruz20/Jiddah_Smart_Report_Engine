@@ -3,7 +3,8 @@ import { useAuthContext } from "@/contexts/AuthProvider";
 import {
   LayoutDashboard, Users, UserCheck, BookOpen, FileText,
   BarChart3, Upload, Settings, Shield, Bell, Activity,
-  ChevronLeft, ChevronRight, BookMarked, Star, X
+  ChevronLeft, ChevronRight, BookMarked, Star, X,
+  GraduationCap, ScrollText, ClipboardList
 } from "lucide-react";
 
 const navItems = [
@@ -12,9 +13,9 @@ const navItems = [
   { label: "Teachers & Staff", path: "/teachers", icon: UserCheck },
   { label: "Classes", path: "/classes", icon: BookMarked },
   { label: "Subjects", path: "/subjects", icon: BookOpen },
-  { label: "Circular Hub", path: "/circular", icon: BookOpen },
-  { label: "Theology Hub", path: "/theology", icon: BookOpen },
-  { label: "Marks Entry", path: "/marks", icon: BookOpen },
+  { label: "Circular Hub", path: "/circular", icon: GraduationCap },
+  { label: "Theology Hub", path: "/theology", icon: ScrollText },
+  { label: "Marks Entry", path: "/marks", icon: ClipboardList },
   { label: "Reports", path: "/reports", icon: FileText },
   { label: "Signatures", path: "/signatures", icon: Star },
   { label: "Analytics", path: "/analytics", icon: BarChart3 },

@@ -2,10 +2,12 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Marks Entry E2E Tests', () => {
   test.beforeEach(async ({ page }) => {
-    // 1. Log in
+    // 1. Log in using test credentials from environment variables
     await page.goto('/login');
-    await page.fill('input[type="email"]', 'hassanhatima20@gmail.com');
-    await page.fill('input[type="password"]', 'Jiddah');
+    const email = process.env.TEST_USER_EMAIL || 'test@example.com';
+    const password = process.env.TEST_USER_PASSWORD || 'password';
+    await page.fill('input[type="email"]', email);
+    await page.fill('input[type="password"]', password);
     await page.click('button[type="submit"]');
     await page.waitForURL('**/dashboard');
     await expect(page.locator('text=Dashboard').first()).toBeVisible();

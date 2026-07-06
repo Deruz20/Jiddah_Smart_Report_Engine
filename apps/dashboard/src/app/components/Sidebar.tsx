@@ -29,35 +29,24 @@ const navItems = [
 interface SidebarProps {
   desktopCollapsed: boolean;
   onDesktopToggle: () => void;
-  mobileOpen: boolean;
-  onMobileClose: () => void;
 }
 
-export function Sidebar({ desktopCollapsed, onDesktopToggle, mobileOpen, onMobileClose }: SidebarProps) {
+export function Sidebar({ desktopCollapsed, onDesktopToggle }: SidebarProps) {
   const location = useLocation();
   const { user } = useAuthContext();
   const displayName = user?.name ?? user?.email ?? "Admin";
   const initials = displayName.slice(0, 2).toUpperCase();
 
   const sidebarClasses = `
-    fixed top-0 left-0 h-full z-50 flex flex-col
+    fixed top-0 left-0 h-full z-50 hidden lg:flex flex-col
     bg-[#123524]
     transition-all duration-300 ease-[cubic-bezier(0.25,1,0.5,1)]
     border-r border-[#1F7A4D] shadow-sm
-    ${mobileOpen ? "translate-x-0 w-72" : "-translate-x-full lg:translate-x-0"}
     ${desktopCollapsed ? "lg:w-[80px]" : "lg:w-[280px]"}
   `;
 
   return (
     <>
-      {/* Mobile Backdrop */}
-      {mobileOpen && (
-        <div 
-          className="fixed inset-0 bg-[#16221C]/60 backdrop-blur-sm z-40 lg:hidden transition-opacity"
-          onClick={onMobileClose}
-        />
-      )}
-
       <aside className={sidebarClasses}>
         {/* Header / Logo */}
         <div className="flex items-center justify-between px-5 h-[72px] shrink-0 border-b border-[#1F7A4D]">
@@ -72,14 +61,6 @@ export function Sidebar({ desktopCollapsed, onDesktopToggle, mobileOpen, onMobil
               <p className="text-[#6B7B73] text-[11px] font-medium tracking-wide uppercase mt-0.5">Report Engine</p>
             </div>
           </div>
-          
-          {/* Mobile Close Button */}
-          <button 
-            className="lg:hidden p-2 text-[#6B7B73] hover:text-white hover:bg-[#1F7A4D] rounded-xl transition-colors"
-            onClick={onMobileClose}
-          >
-            <X className="w-5 h-5" />
-          </button>
         </div>
 
         {/* Navigation List */}

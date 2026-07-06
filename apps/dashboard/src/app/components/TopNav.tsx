@@ -1,16 +1,15 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { Bell, Search, ChevronDown, Sun, Moon, Zap, Settings, LogOut, User, Shield, Menu } from "lucide-react";
+import { Bell, Search, ChevronDown, Sun, Moon, Zap, Settings, LogOut, User, Shield } from "lucide-react";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useTerms } from "@/hooks/useTerms";
 import { useAuthContext } from "@/contexts/AuthProvider";
 
 interface TopNavProps {
   sidebarCollapsed: boolean;
-  onMobileMenuClick: () => void;
 }
 
-export function TopNav({ sidebarCollapsed, onMobileMenuClick }: TopNavProps) {
+export function TopNav({ sidebarCollapsed }: TopNavProps) {
   const [profileOpen, setProfileOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
@@ -31,12 +30,6 @@ export function TopNav({ sidebarCollapsed, onMobileMenuClick }: TopNavProps) {
         borderColor: "rgba(0,0,0,0.07)",
       }}
     >
-      <button 
-        className="lg:hidden p-2 -ml-2 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-colors"
-        onClick={onMobileMenuClick}
-      >
-        <Menu className="w-5 h-5" />
-      </button>
       <div className="flex-1 max-w-md relative">
         <div
           className="flex items-center gap-2 px-4 py-2 rounded-xl cursor-text"

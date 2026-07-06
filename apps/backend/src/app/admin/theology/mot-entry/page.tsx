@@ -3,39 +3,50 @@ import { cookies } from 'next/headers'
 import Link from 'next/link'
 import TheologyEntryClient from '../TheologyEntryClient'
 
-type StudentData = {
-  id: string
+type TermData = { id: string; term_name: string; is_current: boolean }
+type SubjectData = { id: string; subject_name_arabic: string }
+type EnrollmentData = {
+  enrollment_id: string
   name: string
   class_name: string
 }
 
 export default async function TheologyMOTEntryPage() {
-  let students: StudentData[] = []
+  let enrollments: EnrollmentData[] = []
+  let terms: TermData[] = []
+  let subjects: SubjectData[] = []
   let error: string | null = null
 
   try {
     const cookieStore = await cookies()
     const supabase = createClient(cookieStore)
 
-    // Fetch students
-    const { data: studentData, error: studentError } = await supabase
-      .from('students')
-      .select('id, name, class_name')
-      .order('class_name', { ascending: true })
-      .order('name', { ascending: true })
+    const [enrollmentsRes, termsRes, subjectsRes] = await Promise.all([
+      supabase.from('enrollments').select(`
+        id,
+        students (name),
+        theology_classes (class_name_arabic)
+      `),
+      supabase.from('terms').select('id, term_name, is_current').order('term_name'),
+      supabase.from('theology_subjects').select('id, subject_name_arabic').order('subject_name_arabic')
+    ])
 
-    if (studentError) {
-      console.error('Error fetching students:', studentError)
-      error = 'Failed to load students.'
-    } else {
-      students = studentData || []
-    }
+    if (enrollmentsRes.error) throw new Error('Failed to load enrollments')
+    if (termsRes.error) throw new Error('Failed to load terms')
+    if (subjectsRes.error) throw new Error('Failed to load subjects')
+
+    enrollments = (enrollmentsRes.data || []).map((e: any) => ({
+      enrollment_id: e.id,
+      name: Array.isArray(e.students) ? e.students[0]?.name : (e.students?.name ?? 'Unknown'),
+      class_name: Array.isArray(e.theology_classes) ? e.theology_classes[0]?.class_name_arabic : (e.theology_classes?.class_name_arabic ?? '—')
+    })).sort((a, b) => a.class_name.localeCompare(b.class_name) || a.name.localeCompare(b.name))
+    
+    terms = termsRes.data || []
+    subjects = subjectsRes.data || []
 
   } catch (err) {
-    error = err instanceof Error ? err.message : 'Failed to load students'
+    error = err instanceof Error ? err.message : 'Failed to load data'
   }
-
-  const theologySubjects = ['Quran', 'Fiqh', 'Tarbiya', 'Arabic']
 
   return (
     <div className="container mx-auto p-6">
@@ -56,74 +67,14 @@ export default async function TheologyMOTEntryPage() {
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label htmlFor="theology-mot-term" className="block text-sm font-medium text-gray-700 mb-2">Term</label>
-            <select id="theology-mot-term" className="border rounded px-3 py-2 w-full">
-              <option value="Term 1">Term 1</option>
-              <option value="Term 2">Term 2</option>
-              <option value="Term 3">Term 3</option>
-            </select>
-          </div>
-          <div>
-            <label htmlFor="theology-mot-year" className="block text-sm font-medium text-gray-700 mb-2">Year</label>
-            <input
-              id="theology-mot-year"
-              type="number"
-              defaultValue={2026}
-              min={2000}
-              max={2100}
-              className="border rounded px-3 py-2 w-full"
-            />
-          </div>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full">
-            <thead>
-              <tr className="bg-gray-50">
-                <th className="px-4 py-2 border-b text-left">Student</th>
-                <th className="px-4 py-2 border-b text-left">Class</th>
-                {theologySubjects.map(subject => (
-                  <th key={subject} className="px-4 py-2 border-b text-left">{subject} MOT</th>
-                ))}
-                <th className="px-4 py-2 border-b text-left">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {students.map((student) => (
-                <tr key={student.id} className="border-b">
-                  <td className="px-4 py-2 font-medium">{student.name}</td>
-                  <td className="px-4 py-2">{student.class_name}</td>
-                  {theologySubjects.map(subject => (
-                    <td key={subject} className="px-4 py-2">
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        className="border rounded px-2 py-1 w-20 theology-mot-input"
-                        placeholder="0-100"
-                        data-subject={subject}
-                      />
-                    </td>
-                  ))}
-                  <td className="px-4 py-2">
-                    <button
-                      type="button"
-                      data-action="save-theology-mot"
-                      data-student-id={student.id}
-                      className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
-                    >
-                      Save
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-      <TheologyEntryClient students={students} entryType="MOT" />
+      {!error && (
+        <TheologyEntryClient 
+          enrollments={enrollments} 
+          terms={terms} 
+          subjects={subjects} 
+          entryType="MOT" 
+        />
+      )}
     </div>
   )
 }

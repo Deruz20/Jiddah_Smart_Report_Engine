@@ -2,34 +2,36 @@
 
 import { useEffect, useState, type MouseEvent } from 'react'
 
-type StudentData = {
-  id: string
+type EnrollmentData = {
+  enrollment_id: string
   name: string
   class_name: string
 }
 
+type TermData = { id: string; term_name: string; is_current: boolean }
+type SubjectData = { id: string; subject_name: string }
+
 type EntryType = 'MOT' | 'EOT'
 
 interface CircularEntryClientProps {
-  students: StudentData[]
+  enrollments: EnrollmentData[]
+  terms: TermData[]
+  subjects: SubjectData[]
   entryType: EntryType
 }
 
-const SUBJECT_OPTIONS = ['English', 'Mathematics', 'Science', 'SST', 'Computer']
-
-export default function CircularEntryClient({ students, entryType }: CircularEntryClientProps) {
-  const [term, setTerm] = useState('Term 1')
-  const [year, setYear] = useState(String(new Date().getFullYear()))
+export default function CircularEntryClient({ enrollments, terms, subjects, entryType }: CircularEntryClientProps) {
+  const [termId, setTermId] = useState('')
 
   useEffect(() => {
-    setYear(String(new Date().getFullYear()))
-  }, [])
+    const activeTerm = terms.find(t => t.is_current)
+    if (activeTerm) setTermId(activeTerm.id)
+    else if (terms.length > 0) setTermId(terms[0].id)
+  }, [terms])
 
   const isEOT = entryType === 'EOT'
-  const actionName = isEOT ? 'save-circular-eot' : 'save-circular-mot'
-  const payloadField = isEOT ? 'eot_mark' : 'mot_mark'
 
-  const handleSave = async (studentId: string, event: MouseEvent<HTMLButtonElement>) => {
+  const handleSave = async (enrollmentId: string, event: MouseEvent<HTMLButtonElement>) => {
     const button = event.currentTarget
     const row = button.closest('tr')
     if (!row) {
@@ -38,32 +40,34 @@ export default function CircularEntryClient({ students, entryType }: CircularEnt
     }
 
     const subjectSelect = row.querySelector<HTMLSelectElement>('.subject-select')
+    const botInput = row.querySelector<HTMLInputElement>('.bot-input')
     const scoreInput = row.querySelector<HTMLInputElement>(isEOT ? '.eot-input' : '.mot-input')
-    const teacherInput = isEOT ? row.querySelector<HTMLInputElement>('.teacher-input') : null
-
-    const subject = subjectSelect?.value
+    
+    const subjectId = subjectSelect?.value
     const score = scoreInput?.value
-    const teacher = teacherInput?.value
+    const botScore = botInput?.value
 
-    if (!studentId || !subject || !score || !term || !year) {
-      alert('Please fill student, subject, mark, term, and year.')
+    if (!enrollmentId || !subjectId || !termId) {
+      alert('Please fill student, subject, and term.')
+      return
+    }
+
+    if (!score) {
+      alert(`Please enter a ${entryType} mark.`)
       return
     }
 
     const payload: Record<string, unknown> = {
-      student_id: studentId,
-      subject,
-      [payloadField]: Number(score),
-      term,
-      year: Number(year),
-    }
-
-    if (isEOT) {
-      payload.teacher_initials = teacher || undefined
+      enrollment_id: enrollmentId,
+      subject_id: subjectId,
+      term_id: termId,
+      bot_score: botScore ? Number(botScore) : null,
+      mot_score: !isEOT ? Number(score) : null,
+      eot_score: isEOT ? Number(score) : null,
     }
 
     try {
-      const response = await fetch('/api/circular-results', {
+      const response = await fetch('/api/circular-marks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -86,26 +90,14 @@ export default function CircularEntryClient({ students, entryType }: CircularEnt
           <label htmlFor={`circular-${entryType.toLowerCase()}-term`} className="block text-sm font-medium text-gray-700 mb-2">Term</label>
           <select
             id={`circular-${entryType.toLowerCase()}-term`}
-            value={term}
-            onChange={(event) => setTerm(event.target.value)}
+            value={termId}
+            onChange={(event) => setTermId(event.target.value)}
             className="border rounded px-3 py-2 w-full"
           >
-            <option value="Term 1">Term 1</option>
-            <option value="Term 2">Term 2</option>
-            <option value="Term 3">Term 3</option>
+            {terms.map(t => (
+              <option key={t.id} value={t.id}>{t.term_name} {t.is_current ? '(Active)' : ''}</option>
+            ))}
           </select>
-        </div>
-        <div>
-          <label htmlFor={`circular-${entryType.toLowerCase()}-year`} className="block text-sm font-medium text-gray-700 mb-2">Year</label>
-          <input
-            id={`circular-${entryType.toLowerCase()}-year`}
-            type="number"
-            value={year}
-            min={2000}
-            max={2100}
-            onChange={(event) => setYear(event.target.value)}
-            className="border rounded px-3 py-2 w-full"
-          />
         </div>
       </div>
       <div className="overflow-x-auto">
@@ -115,24 +107,24 @@ export default function CircularEntryClient({ students, entryType }: CircularEnt
               <th className="px-4 py-2 border-b text-left">Student</th>
               <th className="px-4 py-2 border-b text-left">Class</th>
               <th className="px-4 py-2 border-b text-left">Subject</th>
+              <th className="px-4 py-2 border-b text-left">BOT Mark</th>
               <th className="px-4 py-2 border-b text-left">{entryType} Mark</th>
-              {isEOT && <th className="px-4 py-2 border-b text-left">Teacher</th>}
               <th className="px-4 py-2 border-b text-left">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {students.map((student) => (
-              <tr key={student.id} className="border-b">
+            {enrollments.map((student) => (
+              <tr key={student.enrollment_id} className="border-b">
                 <td className="px-4 py-2 font-medium">{student.name}</td>
                 <td className="px-4 py-2">{student.class_name}</td>
                 <td className="px-4 py-2">
                   <select
                     aria-label={`Circular ${entryType} subject`}
                     className="border rounded px-2 py-1 subject-select"
-                    data-student-id={student.id}
+                    data-student-id={student.enrollment_id}
                   >
-                    {SUBJECT_OPTIONS.map((subject) => (
-                      <option key={subject} value={subject}>{subject}</option>
+                    {subjects.map((subject) => (
+                      <option key={subject.id} value={subject.id}>{subject.subject_name}</option>
                     ))}
                   </select>
                 </td>
@@ -141,26 +133,24 @@ export default function CircularEntryClient({ students, entryType }: CircularEnt
                     type="number"
                     min="0"
                     max="100"
-                    className={`border rounded px-2 py-1 w-20 ${isEOT ? 'eot-input' : 'mot-input'}`}
-                    placeholder="0-100"
+                    className="border rounded px-2 py-1 w-20 bot-input"
+                    placeholder="BOT"
                   />
                 </td>
-                {isEOT && (
-                  <td className="px-4 py-2">
-                    <input
-                      type="text"
-                      className="border rounded px-2 py-1 w-24 teacher-input"
-                      placeholder="Initials"
-                    />
-                  </td>
-                )}
+                <td className="px-4 py-2">
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    className={`border rounded px-2 py-1 w-20 ${isEOT ? 'eot-input' : 'mot-input'}`}
+                    placeholder={`${entryType}`}
+                  />
+                </td>
                 <td className="px-4 py-2">
                   <button
                     type="button"
-                    data-action={actionName}
-                    data-student-id={student.id}
                     className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
-                    onClick={(event) => handleSave(student.id, event)}
+                    onClick={(event) => handleSave(student.enrollment_id, event)}
                   >
                     Save
                   </button>

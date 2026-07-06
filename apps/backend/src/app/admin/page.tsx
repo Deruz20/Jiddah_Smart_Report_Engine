@@ -37,37 +37,19 @@ export default function AdminDashboard() {
 
                 <div className="space-y-1">
                   <div className="px-3 py-1 text-sm font-medium text-gray-500 uppercase tracking-wide">
-                    Circular
+                    Academics
                   </div>
                   <Link
-                    href="/admin/circular/mot-entry"
-                    className="block px-6 py-2 rounded-md text-gray-700 hover:bg-gray-100 hover:text-gray-900 text-sm"
+                    href="/admin/marks"
+                    className="block px-6 py-2 rounded-md text-gray-700 hover:bg-gray-100 hover:text-gray-900 text-sm font-medium"
                   >
-                    MOT Entry
+                    Marks Entry
                   </Link>
                   <Link
-                    href="/admin/circular/eot-entry"
-                    className="block px-6 py-2 rounded-md text-gray-700 hover:bg-gray-100 hover:text-gray-900 text-sm"
+                    href="/admin/terms"
+                    className="block px-6 py-2 rounded-md text-gray-700 hover:bg-gray-100 hover:text-gray-900 text-sm font-medium"
                   >
-                    EOT Entry
-                  </Link>
-                </div>
-
-                <div className="space-y-1">
-                  <div className="px-3 py-1 text-sm font-medium text-gray-500 uppercase tracking-wide">
-                    Theology
-                  </div>
-                  <Link
-                    href="/admin/theology/mot-entry"
-                    className="block px-6 py-2 rounded-md text-gray-700 hover:bg-gray-100 hover:text-gray-900 text-sm"
-                  >
-                    MOT Entry
-                  </Link>
-                  <Link
-                    href="/admin/theology/eot-entry"
-                    className="block px-6 py-2 rounded-md text-gray-700 hover:bg-gray-100 hover:text-gray-900 text-sm"
-                  >
-                    EOT Entry
+                    Terms
                   </Link>
                 </div>
 
@@ -76,16 +58,10 @@ export default function AdminDashboard() {
                     Reports
                   </div>
                   <Link
-                    href="/admin/reports/mot"
+                    href="/admin/reports"
                     className="block px-6 py-2 rounded-md text-gray-700 hover:bg-gray-100 hover:text-gray-900 text-sm"
                   >
-                    Generate MOT
-                  </Link>
-                  <Link
-                    href="/admin/reports/eot"
-                    className="block px-6 py-2 rounded-md text-gray-700 hover:bg-gray-100 hover:text-gray-900 text-sm"
-                  >
-                    Generate EOT
+                    Report Generator
                   </Link>
                 </div>
 

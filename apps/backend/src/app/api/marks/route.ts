@@ -181,14 +181,9 @@ export async function POST(request: NextRequest) {
 
     // Upsert circular marks
     if (Array.isArray(circular_marks) && circular_marks.length > 0) {
-      const scoreColumn = score_type === 'bot' ? 'bot_score' : score_type === 'mot' ? 'mot_score' : 'eot_score'
       const circularUpsert = circular_marks
         .filter((mark: any) => {
-          const score = mark.score === '' || mark.score === null ? null : Number(mark.score)
-          if (score === null || score === undefined || mark.score === '') {
-            return false
-          }
-          return true
+          return mark.bot_score !== undefined || mark.mot_score !== undefined || mark.eot_score !== undefined
         })
         .map((mark: any) => {
           const payload: any = {
@@ -196,7 +191,9 @@ export async function POST(request: NextRequest) {
             term_id,
             subject_id: mark.subject_id,
           }
-          payload[scoreColumn] = Number(mark.score)
+          if (mark.bot_score !== undefined) payload.bot_score = mark.bot_score === '' || mark.bot_score === null ? null : Number(mark.bot_score)
+          if (mark.mot_score !== undefined) payload.mot_score = mark.mot_score === '' || mark.mot_score === null ? null : Number(mark.mot_score)
+          if (mark.eot_score !== undefined) payload.eot_score = mark.eot_score === '' || mark.eot_score === null ? null : Number(mark.eot_score)
           return payload
         })
 
@@ -229,15 +226,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Upsert theology marks (per-subject)
-    if (Array.isArray(theology_marks) && theology_marks.length > 0 && score_type !== 'bot') {
-      const scoreColumn = score_type === 'mot' ? 'mot_score' : 'eot_score'
+    if (Array.isArray(theology_marks) && theology_marks.length > 0) {
       const theologyUpsert = theology_marks
         .filter((mark: any) => {
-          const score = mark.score === '' || mark.score === null ? null : Number(mark.score)
-          if (score === null || score === undefined || mark.score === '') {
-            return false
-          }
-          return true
+          return mark.mot_score !== undefined || mark.eot_score !== undefined
         })
         .map((mark: any) => {
           const payload: any = {
@@ -245,7 +237,8 @@ export async function POST(request: NextRequest) {
             term_id,
             subject_id: mark.subject_id,
           }
-          payload[scoreColumn] = Number(mark.score)
+          if (mark.mot_score !== undefined) payload.mot_score = mark.mot_score === '' || mark.mot_score === null ? null : Number(mark.mot_score)
+          if (mark.eot_score !== undefined) payload.eot_score = mark.eot_score === '' || mark.eot_score === null ? null : Number(mark.eot_score)
           return payload
         })
 

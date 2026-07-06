@@ -75,11 +75,8 @@ export default async function TermSettingsPage() {
                   <div className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wider">
                     Reports
                   </div>
-                  <Link href="/admin/reports/mot" className="block px-6 py-2 rounded-md text-gray-700 hover:bg-gray-100 text-sm">
-                    Generate MOT
-                  </Link>
-                  <Link href="/admin/reports/eot" className="block px-6 py-2 rounded-md text-gray-700 hover:bg-gray-100 text-sm">
-                    Generate EOT
+                  <Link href="/admin/reports" className="block px-6 py-2 rounded-md text-gray-700 hover:bg-gray-100 text-sm">
+                    Report Generator
                   </Link>
                 </div>
               </nav>

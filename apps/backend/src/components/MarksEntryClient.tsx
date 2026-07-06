@@ -24,6 +24,7 @@ type CircularMarkRow = {
   subject_id: string
   subject_name: string
   is_core: boolean
+  bot_score: number | null
   mot_score: number | null
   eot_score: number | null
 }
@@ -52,7 +53,6 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
   const [selectedTermId, setSelectedTermId] = useState('')
   const [selectedEnrollmentId, setSelectedEnrollmentId] = useState('')
   const [examType, setExamType] = useState<ExamType>('mot')
-  const [reportType, setReportType] = useState<ReportType>('circular')
   const [circularMarks, setCircularMarks] = useState<CircularMarkRow[]>([])
   const [theologyMarks, setTheologyMarks] = useState<TheologyMarkRow[]>([])
   const [isFetching, setIsFetching] = useState(true)
@@ -123,7 +123,7 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
     loadMarks()
   }, [selectedEnrollmentId, selectedTermId])
 
-  const handleCircularScoreChange = (subject_id: string, value: string) => {
+  const handleCircularScoreChange = (subject_id: string, field: 'bot' | 'mot' | 'eot', value: string) => {
     if (value !== '' && isNaN(Number(value))) return
     if (value !== '') {
       const num = Number(value)
@@ -134,7 +134,10 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
       prev.map((mark) => {
         if (mark.subject_id === subject_id) {
           const score = value === '' ? null : Number(value)
-          return { ...mark, [examType === 'mot' ? 'mot_score' : 'eot_score']: score }
+          return { 
+            ...mark, 
+            ...(field === 'bot' ? { bot_score: score } : field === 'mot' ? { mot_score: score } : { eot_score: score })
+          }
         }
         return mark
       })
@@ -192,12 +195,15 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
     try {
       const circularPayload = circularMarks.map((mark) => ({
         subject_id: mark.subject_id,
-        score: examType === 'mot' ? mark.mot_score : mark.eot_score,
+        bot_score: mark.bot_score,
+        mot_score: mark.mot_score,
+        eot_score: mark.eot_score,
       }))
 
       const theologyPayload = theologyMarks.map((mark) => ({
         subject_id: mark.subject_id,
-        score: examType === 'mot' ? mark.mot_score : mark.eot_score,
+        mot_score: mark.mot_score,
+        eot_score: mark.eot_score,
       }))
 
       const response = await fetch('/api/marks', {
@@ -304,62 +310,59 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
                 </select>
               </div>
 
-              {/* Subject Type Selector */}
+              {/* Circular Marks Table */}
               <div className="space-y-3">
-                <label className="block text-sm font-semibold text-gray-900">Step 4: Select Subject Type</label>
-                <select
-                  value={reportType}
-                  onChange={(e) => setReportType(e.target.value as ReportType)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition bg-white"
-                >
-                  <option value="circular">Circular (Academic Subjects)</option>
-                  <option value="theology">Theology (Islamic Subjects)</option>
-                </select>
+                <h3 className="text-sm font-semibold text-gray-900">Circular Marks</h3>
+                <div className="overflow-x-auto rounded-lg border border-gray-200">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Subject</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Core</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">BOT Score</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
+                          {examType === 'mot' ? 'MOT Score' : 'EOT Score'}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {circularMarks.map((mark) => (
+                        <tr key={mark.subject_id}>
+                          <td className="px-4 py-3 text-sm text-gray-700">{mark.subject_name}</td>
+                          <td className="px-4 py-3 text-sm text-gray-700">
+                            {mark.is_core ? '✓' : '—'}
+                          </td>
+                          <td className="px-4 py-3">
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              value={mark.bot_score ?? ''}
+                              onChange={(e) => handleCircularScoreChange(mark.subject_id, 'bot', e.target.value)}
+                              placeholder="BOT"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
+                            />
+                          </td>
+                          <td className="px-4 py-3">
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              value={examType === 'mot' ? mark.mot_score ?? '' : mark.eot_score ?? ''}
+                              onChange={(e) => handleCircularScoreChange(mark.subject_id, examType, e.target.value)}
+                              placeholder="Score"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
-              {/* Circular Marks Table - only show when reportType is 'circular' */}
-              {reportType === 'circular' && (
-                <div className="space-y-3">
-                  <h3 className="text-sm font-semibold text-gray-900">Circular Marks</h3>
-                  <div className="overflow-x-auto rounded-lg border border-gray-200">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Subject</th>
-                          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Core</th>
-                          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
-                            {examType === 'mot' ? 'MOT Score' : 'EOT Score'}
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {circularMarks.map((mark) => (
-                          <tr key={mark.subject_id}>
-                            <td className="px-4 py-3 text-sm text-gray-700">{mark.subject_name}</td>
-                            <td className="px-4 py-3 text-sm text-gray-700">
-                              {mark.is_core ? '✓' : '—'}
-                            </td>
-                            <td className="px-4 py-3">
-                              <input
-                                type="number"
-                                min="0"
-                                max="100"
-                                value={examType === 'mot' ? mark.mot_score ?? '' : mark.eot_score ?? ''}
-                                onChange={(e) => handleCircularScoreChange(mark.subject_id, e.target.value)}
-                                placeholder="Score"
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
-                              />
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {/* Theology Marks Table - only show when reportType is 'theology' */}
-              {reportType === 'theology' && theologyMarks.length > 0 && (
+              {/* Theology Marks Table */}
+              {theologyMarks.length > 0 && (
                 <div className="space-y-3">
                   <h3 className="text-sm font-semibold text-gray-900" dir="rtl">
                     درجات اللاهوت
@@ -417,7 +420,7 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
                 disabled={isSaving}
                 className="w-full bg-emerald-600 text-white py-3 px-4 rounded-lg hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed font-semibold transition"
               >
-                {isSaving ? 'Saving...' : `Save ${examType.toUpperCase()} ${reportType === 'circular' ? 'Circular' : 'Theology'} Marks`}
+                {isSaving ? 'Saving...' : `Save ${examType.toUpperCase()} Marks`}
               </button>
             </div>
           ) : (

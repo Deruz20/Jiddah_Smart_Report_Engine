@@ -77,6 +77,7 @@ type ReportData = {
     is_term_3: boolean
     promotion_status: string | null
   }
+  debug?: any
 }
 
 interface ReportGeneratorClientProps {

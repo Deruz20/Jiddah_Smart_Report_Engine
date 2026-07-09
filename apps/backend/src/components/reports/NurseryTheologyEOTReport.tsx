@@ -26,6 +26,27 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
     return String(n)
   }
 
+  const getGradeColor = (score: number | null) => {
+    if (score == null) return { bg: '#fff', border: 'var(--nursery-gold)', color: 'var(--nursery-gold)' }
+    if (score >= 90) return { bg: '#dcfce7', border: '#16a34a', color: '#16a34a' } // A - Green
+    if (score >= 80) return { bg: '#dbeafe', border: '#2563eb', color: '#2563eb' } // B - Blue
+    if (score >= 70) return { bg: '#fef3c7', border: '#d97706', color: '#d97706' } // C - Yellow
+    if (score >= 50) return { bg: '#ffedd5', border: '#ea580c', color: '#ea580c' } // D - Orange
+    return { bg: '#fee2e2', border: '#dc2626', color: '#dc2626' } // E - Red
+  }
+
+  const getSubjectIcon = (arabicName: string) => {
+    if (!arabicName) return '☪️'
+    if (arabicName.includes('قرآن')) return '📖'
+    if (arabicName.includes('حديث')) return '💬'
+    if (arabicName.includes('فقه')) return '⚖️'
+    if (arabicName.includes('عقيدة')) return '❤️'
+    if (arabicName.includes('سيرة')) return '🐪'
+    if (arabicName.includes('أدعية') || arabicName.includes('دعاء')) return '🤲'
+    if (arabicName.includes('لغة عربية') || arabicName.includes('عربي')) return '✍️'
+    return '☪️'
+  }
+
   return (
     <ReportContainer reportType="NurseryTheologyEOTReport">
       <style dangerouslySetInnerHTML={{
@@ -41,41 +62,48 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
     --nursery-gold: #d4af37;
     --nursery-text: #2c3e50;
     --primary-green: #0f5b48;
+    --data-navy: #0f172a;
+    --data-indigo: #3730a3;
+    --data-teal: #0f766e;
+    flex: 1 1 auto;
     width: 100%;
     height: 100%;
+    max-height: 100%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
     direction: rtl;
+    padding: 5mm 10mm;
     margin: 0 auto;
     font-family: 'Cairo', sans-serif;
     color: var(--nursery-text);
-    page-break-inside: avoid;
-    page-break-after: avoid;
 }
 
 @media print {
     .nursery-theology-eot-report {
         box-shadow: none;
         margin: 0;
-        overflow: visible !important;
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
     }
     .nursery-theology-eot-report .info-grid {
-        gap: 10px;
+        gap: 8px;
     }
     .nursery-theology-eot-report .subject-row {
-        margin-bottom: 10px;
+        margin-bottom: 8px;
     }
     .nursery-theology-eot-report .remarks-area {
-        margin-top: 20px;
+        margin-top: 15px;
     }
     .nursery-theology-eot-report .remark-box {
-        margin-bottom: 10px;
+        margin-bottom: 8px;
     }
     .nursery-theology-eot-report .signature-row {
-        margin-top: 20px;
+        margin-top: 15px;
     }
     .nursery-theology-eot-report .footer-stamp {
-        margin-top: 28px;
+        margin-top: 20px;
     }
 }
 
@@ -99,10 +127,7 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
 
 .nursery-theology-eot-report .watermark-bg {
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    inset: 0;
     background: url('/school_budge.jpeg') center center no-repeat;
     background-size: contain;
     opacity: 0.04;
@@ -116,10 +141,11 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
 }
 
 .nursery-theology-eot-report .header {
+    flex: 0 0 auto;
     text-align: center;
-    margin-bottom: 20px;
+    margin-bottom: 10px;
     border-bottom: 3px double var(--nursery-mint);
-    padding-bottom: 15px;
+    padding-bottom: 5px;
 }
 
 .nursery-theology-eot-report .basmala {
@@ -150,12 +176,13 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
 }
 
 .nursery-theology-eot-report .info-grid {
+    flex: 0 0 auto;
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 15px;
-    margin: 20px 0;
+    gap: 10px;
+    margin: 10px 0;
     background: var(--nursery-blue);
-    padding: 15px;
+    padding: 10px 15px;
     border-radius: 15px;
 }
 
@@ -168,26 +195,35 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
 }
 
 .nursery-theology-eot-report .dot-line {
-    flex: 0 1 auto;
-    width: auto;
-    border-bottom: 2px dotted #999;
+    flex: 1;
+    min-width: 0;
+    border-bottom: 1.5px dotted #9ca3af;
     height: 24px;
     display: flex;
-    align-items: flex-start;
-    padding: 2px 8px 2px 4px;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px 2px 4px;
+    color: var(--data-navy);
+    font-weight: 900;
+    font-size: 17px;
 }
 
 .nursery-theology-eot-report .subjects-container {
-    margin-top: 25px;
+    flex: 1 1 auto;
+    margin-top: 10px;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
 }
 
 .nursery-theology-eot-report .subject-row {
+    flex: 0 0 auto;
     display: grid;
     grid-template-columns: 1.5fr 1fr 2fr;
     align-items: center;
     background: #fff;
     border: 2px solid var(--nursery-mint);
-    margin-bottom: 12px;
+    margin-bottom: 8px;
     border-radius: 12px;
     overflow: visible;
     color: var(--primary-green);
@@ -197,7 +233,7 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
 .nursery-theology-eot-report .grade-circle-wrap {
     display: flex;
     justify-content: center;
-    padding: 10px;
+    padding: 5px;
 }
 
 .nursery-theology-eot-report .grade-circle {
@@ -216,11 +252,18 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
 .nursery-theology-eot-report .comment-text {
     padding: 10px;
     font-size: 16px;
-    color: #666;
+    color: var(--data-teal);
     font-style: italic;
+    font-weight: 900;
+    text-align: right;
+    direction: rtl;
+    line-height: 1.4;
+    word-break: break-word;
+    white-space: normal;
 }
 
 .nursery-theology-eot-report .table-head {
+    flex: 0 0 auto;
     display: grid;
     grid-template-columns: 1.5fr 1fr 2fr;
     text-align: center;
@@ -231,39 +274,22 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
     direction: rtl;
 }
 
-.nursery-theology-eot-report .subject-row {
-    display: grid;
-    grid-template-columns: 1.5fr 1fr 2fr;
-    text-align: center;
-    align-items: center;
-}
-
-.nursery-theology-eot-report .subject-name,
-.nursery-theology-eot-report .grade-circle-wrap,
-.nursery-theology-eot-report .comment-text {
+.nursery-theology-eot-report .subject-name {
     word-break: break-word;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
     white-space: normal;
-    hyphens: auto;
     padding: 0.5rem;
 }
 
-.nursery-theology-eot-report .comment-text {
-    text-align: right;
-    direction: rtl;
-    line-height: 1.4;
-}
-
 .nursery-theology-eot-report .remarks-area {
-    margin-top: 30px;
+    flex: 0 0 auto;
+    margin-top: 20px;
 }
 
 .nursery-theology-eot-report .remark-box {
     border: 2px dashed var(--nursery-gold);
     border-radius: 15px;
-    padding: 15px;
-    margin-bottom: 15px;
+    padding: 12px;
+    margin-bottom: 12px;
     position: relative;
     background: #fffaf0;
 }
@@ -281,9 +307,10 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
 }
 
 .nursery-theology-eot-report .signature-row {
+    flex: 0 0 auto;
     display: flex;
     justify-content: space-between;
-    margin-top: 30px;
+    margin-top: 20px;
     padding: 0 10px;
 }
 
@@ -299,8 +326,9 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
 }
 
 .nursery-theology-eot-report .footer-stamp {
+    flex: 0 0 auto;
     text-align: center;
-    margin-top: 40px;
+    margin-top: 20px;
     padding: 10px;
     border-radius: 10px;
     background: #fff1f0;
@@ -324,23 +352,23 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
         <div className="info-grid">
           <div className="info-item" style={{ gridColumn: 'span 2' }}>
             <span>اسم الطفل/ة:</span>
-            <div className="dot-line" style={{ paddingRight: '8px', paddingTop: '2px' }}>{reportData?.student?.arabic_name ?? reportData?.student?.name}</div>
+            <div className="dot-line">{reportData?.student?.arabic_name ?? reportData?.student?.name}</div>
           </div>
           <div className="info-item">
             <span>الروضة:</span>
-            <div className="dot-line" style={{ paddingRight: '8px', paddingTop: '2px' }}>{reportData?.student?.theology_class_arabic ?? reportData?.student?.class_name}</div>
+            <div className="dot-line">{reportData?.student?.theology_class_arabic ?? reportData?.student?.class_name}</div>
           </div>
           <div className="info-item">
             <span>الفترة:</span>
-            <div className="dot-line" style={{ paddingRight: '8px', paddingTop: '2px' }}>{toAr(termInArabic(reportData?.term?.term_number))}</div>
+            <div className="dot-line">{toAr(termInArabic(reportData?.term?.term_number))}</div>
           </div>
           <div className="info-item">
             <span>السنة:</span>
-            <div className="dot-line" style={{ paddingRight: '8px', paddingTop: '2px' }}>{toAr(reportData?.term?.academic_year)}</div>
+            <div className="dot-line">{toAr(reportData?.term?.academic_year)}</div>
           </div>
           <div className="info-item">
             <span>عدد الأطفال:</span>
-            <div className="dot-line" style={{ paddingRight: '8px', paddingTop: '2px' }}>{toAr(reportData?.circular?.total_students)}</div>
+            <div className="dot-line">{toAr(reportData?.circular?.total_students)}</div>
           </div>
         </div>
 
@@ -351,30 +379,38 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
             <div>التعليق</div>
           </div>
 
-          {reportData?.theology?.subjects?.map((subject: any) => (
-            <div key={subject.subject_name_arabic} className="subject-row">
-              <div className="subject-name">{subject.subject_name_arabic}</div>
-              <div className="grade-circle-wrap">
-                <div className="grade-circle">{toAr(subject.score)}</div>
+          {reportData?.theology?.subjects?.map((subject: any) => {
+            const colors = getGradeColor(subject.score)
+            return (
+              <div key={subject.subject_name_arabic} className="subject-row">
+                <div className="subject-name">
+                  <span style={{ fontSize: '18px', marginLeft: '8px' }}>{getSubjectIcon(subject.subject_name_arabic)}</span>
+                  {subject.subject_name_arabic}
+                </div>
+                <div className="grade-circle-wrap">
+                  <div className="grade-circle" style={{ background: colors.bg, borderColor: colors.border, color: colors.color, boxShadow: `0 0 10px ${colors.bg}` }}>
+                    {toAr(subject.score)}
+                  </div>
+                </div>
+                <div className="comment-text">
+                  {subject.theology_remark ?? ''}
+                </div>
               </div>
-              <div className="comment-text">
-                {subject.theology_remark ?? ''}
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
 
         <div className="remarks-area">
           <div className="remark-box">
             <span className="remark-label">ملاحظات مرب الفصل</span>
             <div style={{ height: '40px' }}>
-              <span style={{ color: '#444', fontStyle: 'italic', direction: 'rtl' }}>{getTheologyComment(reportData?.theology?.total ?? null)}</span>
+              <span style={{ color: 'var(--data-teal)', fontStyle: 'italic', fontWeight: 900, fontSize: '16px', direction: 'rtl' }}>{getTheologyComment(reportData?.theology?.total ?? null)}</span>
             </div>
           </div>
           <div className="remark-box">
             <span className="remark-label">ملاحظات مدير المدرسة</span>
             <div style={{ height: '40px' }}>
-              <span style={{ color: '#444', fontStyle: 'italic', direction: 'rtl' }}>{getTheologyComment(reportData?.theology?.total ?? null)}</span>
+              <span style={{ color: 'var(--data-teal)', fontStyle: 'italic', fontWeight: 900, fontSize: '16px', direction: 'rtl' }}>{getTheologyComment(reportData?.theology?.total ?? null)}</span>
             </div>
           </div>
         </div>

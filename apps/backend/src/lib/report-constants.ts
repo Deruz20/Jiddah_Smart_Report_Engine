@@ -14,6 +14,7 @@ export const REPORT_DIMENSIONS = {
     width: 794,
     height: 1123,
     orientation: 'portrait',
+    pageOrientation: 'portrait',
   },
 
   // A4 Landscape
@@ -21,6 +22,7 @@ export const REPORT_DIMENSIONS = {
     width: 1123,
     height: 794,
     orientation: 'landscape',
+    pageOrientation: 'landscape',
   },
 
   // A5 Portrait
@@ -28,6 +30,15 @@ export const REPORT_DIMENSIONS = {
     width: 559,
     height: 794,
     orientation: 'portrait',
+    pageOrientation: 'portrait',
+  },
+
+  // A5 Landscape
+  A5_LANDSCAPE: {
+    width: 794,
+    height: 559,
+    orientation: 'landscape',
+    pageOrientation: 'portrait', // Prints 2-up on A4 Portrait
   },
 } as const;
 
@@ -35,14 +46,15 @@ export const REPORT_DIMENSIONS = {
  * STABILIZED REPORTS — Reports included in the print engine stabilization
  * 
  * All reports now use ReportContainer with standardized A4 dimensions,
- * except TheologyMOTReport which uses A5 portrait.
+ * except TheologyMOTReport which uses A5 landscape.
  */
 export const STABILIZED_REPORT_ORIENTATIONS = {
+  PrimaryBOTReport: REPORT_DIMENSIONS.A4_PORTRAIT,
   PrimaryMOTReport: REPORT_DIMENSIONS.A4_PORTRAIT,
   NurseryMOTReport: REPORT_DIMENSIONS.A4_PORTRAIT,
   NurseryEOTReport: REPORT_DIMENSIONS.A4_PORTRAIT,
   NurseryTheologyEOTReport: REPORT_DIMENSIONS.A4_PORTRAIT,
-  PrimaryEOTReport: REPORT_DIMENSIONS.A4_PORTRAIT,
+  PrimaryEOTReport: REPORT_DIMENSIONS.A4_LANDSCAPE,
   P7EOTReport: REPORT_DIMENSIONS.A4_LANDSCAPE,
-  TheologyMOTReport: REPORT_DIMENSIONS.A5_PORTRAIT,
+  TheologyMOTReport: REPORT_DIMENSIONS.A5_LANDSCAPE,
 } as const;

@@ -45,7 +45,7 @@ interface MarksEntryClientProps {
   terms: TermData[]
 }
 
-type ExamType = 'mot' | 'eot'
+type ExamType = 'bot' | 'mot' | 'eot' | 'all'
 type ReportType = 'circular' | 'theology'
 
 export function MarksEntryClient({ terms }: MarksEntryClientProps) {
@@ -144,7 +144,7 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
     )
   }
 
-  const handleTheologyScoreChange = (subject_id: string, value: string) => {
+  const handleTheologyScoreChange = (subject_id: string, field: 'mot' | 'eot', value: string) => {
     if (value !== '' && isNaN(Number(value))) return
     if (value !== '') {
       const num = Number(value)
@@ -155,7 +155,7 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
       prev.map((mark) => {
         if (mark.subject_id === subject_id) {
           const score = value === '' ? null : Number(value)
-          return { ...mark, [examType === 'mot' ? 'mot_score' : 'eot_score']: score }
+          return { ...mark, [field === 'mot' ? 'mot_score' : 'eot_score']: score }
         }
         return mark
       })
@@ -174,8 +174,15 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
 
     // Validate circular marks
     for (const mark of circularMarks) {
-      const score = examType === 'mot' ? mark.mot_score : mark.eot_score
-      if (score !== null && (score < 0 || score > 100)) {
+      if (['bot', 'all'].includes(examType) && mark.bot_score !== null && (mark.bot_score < 0 || mark.bot_score > 100)) {
+        setError('All circular scores must be between 0 and 100.')
+        return
+      }
+      if (['mot', 'all'].includes(examType) && mark.mot_score !== null && (mark.mot_score < 0 || mark.mot_score > 100)) {
+        setError('All circular scores must be between 0 and 100.')
+        return
+      }
+      if (['eot', 'all'].includes(examType) && mark.eot_score !== null && (mark.eot_score < 0 || mark.eot_score > 100)) {
         setError('All circular scores must be between 0 and 100.')
         return
       }
@@ -183,8 +190,11 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
 
     // Validate theology marks
     for (const mark of theologyMarks) {
-      const score = examType === 'mot' ? mark.mot_score : mark.eot_score
-      if (score !== null && (score < 0 || score > 100)) {
+      if (['mot', 'all'].includes(examType) && mark.mot_score !== null && (mark.mot_score < 0 || mark.mot_score > 100)) {
+        setError('All theology scores must be between 0 and 100.')
+        return
+      }
+      if (['eot', 'all'].includes(examType) && mark.eot_score !== null && (mark.eot_score < 0 || mark.eot_score > 100)) {
         setError('All theology scores must be between 0 and 100.')
         return
       }
@@ -305,8 +315,10 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
                   onChange={(e) => setExamType(e.target.value as ExamType)}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition bg-white"
                 >
+                  <option value="bot">BOT (Beginning of Term)</option>
                   <option value="mot">MOT (Mid Term)</option>
                   <option value="eot">EOT (End of Term)</option>
+                  <option value="all">ALL (Combined Entry)</option>
                 </select>
               </div>
 
@@ -319,41 +331,55 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
                       <tr>
                         <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Subject</th>
                         <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Core</th>
-                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">BOT Score</th>
-                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
-                          {examType === 'mot' ? 'MOT Score' : 'EOT Score'}
-                        </th>
+                        {['bot', 'all'].includes(examType) && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">BOT Score</th>}
+                        {['mot', 'all'].includes(examType) && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">MOT Score</th>}
+                        {['eot', 'all'].includes(examType) && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">EOT Score</th>}
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {circularMarks.map((mark) => (
                         <tr key={mark.subject_id}>
                           <td className="px-4 py-3 text-sm text-gray-700">{mark.subject_name}</td>
-                          <td className="px-4 py-3 text-sm text-gray-700">
-                            {mark.is_core ? '✓' : '—'}
-                          </td>
-                          <td className="px-4 py-3">
-                            <input
-                              type="number"
-                              min="0"
-                              max="100"
-                              value={mark.bot_score ?? ''}
-                              onChange={(e) => handleCircularScoreChange(mark.subject_id, 'bot', e.target.value)}
-                              placeholder="BOT"
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
-                            />
-                          </td>
-                          <td className="px-4 py-3">
-                            <input
-                              type="number"
-                              min="0"
-                              max="100"
-                              value={examType === 'mot' ? mark.mot_score ?? '' : mark.eot_score ?? ''}
-                              onChange={(e) => handleCircularScoreChange(mark.subject_id, examType, e.target.value)}
-                              placeholder="Score"
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
-                            />
-                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-700">{mark.is_core ? '✓' : '—'}</td>
+                          {['bot', 'all'].includes(examType) && (
+                            <td className="px-4 py-3">
+                              <input
+                                type="number"
+                                min="0"
+                                max="100"
+                                value={mark.bot_score ?? ''}
+                                onChange={(e) => handleCircularScoreChange(mark.subject_id, 'bot', e.target.value)}
+                                placeholder="BOT"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
+                              />
+                            </td>
+                          )}
+                          {['mot', 'all'].includes(examType) && (
+                            <td className="px-4 py-3">
+                              <input
+                                type="number"
+                                min="0"
+                                max="100"
+                                value={mark.mot_score ?? ''}
+                                onChange={(e) => handleCircularScoreChange(mark.subject_id, 'mot', e.target.value)}
+                                placeholder="MOT"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
+                              />
+                            </td>
+                          )}
+                          {['eot', 'all'].includes(examType) && (
+                            <td className="px-4 py-3">
+                              <input
+                                type="number"
+                                min="0"
+                                max="100"
+                                value={mark.eot_score ?? ''}
+                                onChange={(e) => handleCircularScoreChange(mark.subject_id, 'eot', e.target.value)}
+                                placeholder="EOT"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
+                              />
+                            </td>
+                          )}
                         </tr>
                       ))}
                     </tbody>
@@ -362,7 +388,7 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
               </div>
 
               {/* Theology Marks Table */}
-              {theologyMarks.length > 0 && (
+              {theologyMarks.length > 0 && examType !== 'bot' && (
                 <div className="space-y-3">
                   <h3 className="text-sm font-semibold text-gray-900" dir="rtl">
                     درجات اللاهوت
@@ -374,9 +400,8 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
                           <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900" dir="rtl">
                             المادة
                           </th>
-                          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
-                            {examType === 'mot' ? 'MOT Score' : 'EOT Score'}
-                          </th>
+                          {['mot', 'all'].includes(examType) && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">MOT Score</th>}
+                          {['eot', 'all'].includes(examType) && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">EOT Score</th>}
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
@@ -385,17 +410,32 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
                             <td className="px-4 py-3 text-sm text-gray-700" dir="rtl">
                               {mark.subject_name_arabic}
                             </td>
-                            <td className="px-4 py-3">
-                              <input
-                                type="number"
-                                min="0"
-                                max="100"
-                                value={examType === 'mot' ? mark.mot_score ?? '' : mark.eot_score ?? ''}
-                                onChange={(e) => handleTheologyScoreChange(mark.subject_id, e.target.value)}
-                                placeholder="Score"
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
-                              />
-                            </td>
+                            {['mot', 'all'].includes(examType) && (
+                              <td className="px-4 py-3">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  value={mark.mot_score ?? ''}
+                                  onChange={(e) => handleTheologyScoreChange(mark.subject_id, 'mot', e.target.value)}
+                                  placeholder="MOT"
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
+                                />
+                              </td>
+                            )}
+                            {['eot', 'all'].includes(examType) && (
+                              <td className="px-4 py-3">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  value={mark.eot_score ?? ''}
+                                  onChange={(e) => handleTheologyScoreChange(mark.subject_id, 'eot', e.target.value)}
+                                  placeholder="EOT"
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
+                                />
+                              </td>
+                            )}
                           </tr>
                         ))}
                       </tbody>

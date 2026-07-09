@@ -3,7 +3,20 @@ import { ReportContainer } from '@/components/reports/shared/ReportContainer'
 
 export default function NurseryMOTReport({ reportData }: any) {
   const grades = reportData?.circular?.subjects
-    ?.map((s: any) => s.score != null ? getNurseryGrade(s.score).grade : 'C') || []
+    ?.map((s: any) => s.score != null ? getNurseryGrade(s.score).grade : null)
+    .filter(Boolean) || []
+
+  const getSubjectIcon = (name: string) => {
+    const lower = name.toLowerCase()
+    if (lower.includes('number')) return '🔢'
+    if (lower.includes('english') || lower.includes('reading')) return '📚'
+    if (lower.includes('writing') || lower.includes('drawing')) return '🎨'
+    if (lower.includes('social')) return '🌍'
+    if (lower.includes('health')) return '🍎'
+    if (lower.includes('literacy')) return '📖'
+    if (lower.includes('islamic') || lower.includes('quran') || lower.includes('religion')) return '☪️'
+    return '✏️'
+  }
   return (
     <ReportContainer reportType="NurseryMOTReport">
       <style dangerouslySetInnerHTML={{
@@ -19,25 +32,26 @@ export default function NurseryMOTReport({ reportData }: any) {
     --surprise-gold: #b45309;
     --light-gold: #fef3c7;
     --ink-color: #c2410c;
+    --data-navy: #0f172a;
+    --data-indigo: #3730a3;
+    --data-teal: #0f766e;
+    flex: 1 1 auto;
     width: 100%;
     height: 100%;
-    padding: 10mm 12mm;
+    max-height: 100%;
+    overflow: hidden;
+    padding: 5mm 10mm;
     background: white;
-    border: 8px double var(--theme-blue);
+    border: 6px double var(--theme-blue);
     position: relative;
-    overflow: visible;
     display: flex;
     flex-direction: column;
-    flex-shrink: 0;
-    flex-grow: 0;
-    box-sizing: border-box;
+    justify-content: space-between;
     box-shadow: 0 0 30px rgba(0,0,0,0.5);
     background: linear-gradient(180deg, #f0f9ff 0%, #ffffff 25%);
     margin: auto;
     font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
     line-height: 1.2;
-    page-break-inside: avoid;
-    page-break-after: avoid;
 }
 
 @media print {
@@ -52,7 +66,7 @@ export default function NurseryMOTReport({ reportData }: any) {
 .nursery-mot-report::after {
     content: "";
     position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
+    inset: 0;
     background: url('/school_budge.jpeg') center center no-repeat;
     background-size: 400px;
     opacity: 0.05;
@@ -63,34 +77,35 @@ export default function NurseryMOTReport({ reportData }: any) {
 .nursery-mot-report::before {
     content: "";
     position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
+    inset: 0;
     opacity: 0.08;
     pointer-events: none;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 60 60'%3E%3Cpath d='M30 0l3.82 10.38L45 15l-10.38 3.82L30 30l-3.82-10.38L15 15l10.38-3.82z' fill='%231e40af'/%3E%3C/svg%3E");
     background-size: 50px 50px;
 }
 
-.nursery-mot-report .header {
+.nursery-mot-report > * {
+    z-index: 2;
     position: relative;
+}
+
+.nursery-mot-report .header {
+    flex: 0 0 auto;
     text-align: center;
     padding: 0 95px;
-    margin-bottom: 5px;
-    z-index: 2;
+    margin-bottom: 2px;
 }
 
 .nursery-mot-report .logo-box {
     position: absolute;
     top: 0;
-    width: 72px;
-    height: 88px;
+    width: 60px;
+    height: 75px;
     border: 3px solid var(--school-green);
-    border-radius: 10px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 11px;
-    font-weight: 900;
-    color: var(--school-green);
     background: white;
     box-shadow: 3px 3px 0px var(--surprise-gold);
     overflow: hidden;
@@ -100,7 +115,7 @@ export default function NurseryMOTReport({ reportData }: any) {
 
 .nursery-mot-report .school-name {
     font-family: 'Times New Roman', serif;
-    font-size: 26px;
+    font-size: 22px;
     font-weight: 950;
     color: var(--school-green);
     text-transform: uppercase;
@@ -109,59 +124,66 @@ export default function NurseryMOTReport({ reportData }: any) {
 }
 
 .nursery-mot-report .contact-info {
-    font-size: 11px;
+    font-size: 10px;
     color: #334155;
     font-weight: 700;
-    margin-top: 4px;
+    margin-top: 2px;
 }
 
 .nursery-mot-report .title-area {
+    flex: 0 0 auto;
     text-align: center;
-    margin: 10px 0;
-    z-index: 2;
+    margin: 8px 0;
 }
 
 .nursery-mot-report .nursery-label {
-    font-size: 30px;
+    font-size: 24px;
     font-weight: 900;
     color: var(--theme-blue);
-    letter-spacing: 10px;
+    letter-spacing: 8px;
     text-shadow: 2px 2px 0px #dbeafe;
-    margin-bottom: -4px;
+    margin-bottom: -2px;
 }
 
 .nursery-mot-report .badge {
     display: inline-block;
-    padding: 5px 45px;
+    padding: 3px 35px;
     background: var(--surprise-gold);
     color: white;
     font-weight: 900;
     border-radius: 50px;
-    font-size: 14px;
+    font-size: 12px;
     box-shadow: 0 4px 10px rgba(180, 83, 9, 0.3);
 }
 
 .nursery-mot-report .term-year {
-    margin-top: 8px;
-    font-size: 14px;
+    margin-top: 4px;
+    font-size: 12px;
     font-weight: 900;
     color: var(--theme-blue);
+}
+
+.nursery-mot-report .tables-container {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 0;
 }
 
 .nursery-mot-report table {
     width: 100%;
     border-collapse: collapse;
-    margin-top: 10px;
+    margin-top: 4px;
     font-size: 13px;
-    z-index: 2;
-    background: rgba(255, 255, 255, 0.8);
+    background: rgba(255, 255, 255, 0.85);
     border: 2px solid var(--theme-blue);
 }
 
 .nursery-mot-report th,
 .nursery-mot-report td {
     border: 1px solid var(--theme-blue);
-    padding: 7px 10px;
+    padding: 5px 8px;
     color: var(--theme-blue);
 }
 
@@ -172,9 +194,17 @@ export default function NurseryMOTReport({ reportData }: any) {
 }
 
 .nursery-mot-report .data-cell {
-    color: var(--ink-color);
+    color: var(--data-indigo);
     font-weight: 900;
+    font-size: 15px;
     text-align: center;
+}
+
+.nursery-mot-report .user-data {
+    color: var(--data-navy);
+    font-weight: 900;
+    font-size: 16px;
+    text-transform: uppercase;
 }
 
 .nursery-mot-report .main-th {
@@ -187,9 +217,9 @@ export default function NurseryMOTReport({ reportData }: any) {
 .nursery-mot-report .zebra:nth-child(even) { background: rgba(241, 245, 249, 0.4); }
 
 .nursery-mot-report .section-pill {
+    flex: 0 0 auto;
     text-align: center;
-    margin-top: 12px;
-    z-index: 2;
+    margin-top: 8px;
 }
 
 .nursery-mot-report .section-pill h2 {
@@ -197,59 +227,59 @@ export default function NurseryMOTReport({ reportData }: any) {
     background: var(--school-green);
     color: white;
     display: inline-block;
-    padding: 3px 25px;
+    padding: 2px 20px;
     border-radius: 20px;
-    font-size: 15px;
+    font-size: 13px;
     text-transform: uppercase;
 }
 
 .nursery-mot-report .comments-container {
+    flex: 0 0 auto;
     margin-top: 12px;
     padding: 10px;
-    border: 2px dashed var(--surprise-gold);
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.5);
-    z-index: 2;
+    border: 1.5px dashed var(--surprise-gold);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.7);
 }
 
 .nursery-mot-report .comment-row {
     display: flex;
-    align-items: flex-end;
+    align-items: center;
     margin-bottom: 8px;
     font-size: 13px;
     font-weight: 700;
 }
 
 .nursery-mot-report .line-dots {
-    flex-grow: 0;
-    flex-basis: auto;
-    width: auto;
-    border-bottom: 2px dotted var(--theme-blue);
+    flex: 1;
+    min-width: 0;
+    border-bottom: 1.5px dotted #9ca3af;
     margin-left: 8px;
-    height: 20px;
+    height: 18px;
     display: flex;
-    align-items: flex-start;
+    align-items: center;
+    justify-content: center;
     padding: 0 4px 2px 4px;
 }
 
 .nursery-mot-report .line-text {
     font-style: italic;
-    color: #444;
-    line-height: 1.2;
-    background: white;
+    color: var(--data-teal);
+    font-weight: 900;
+    font-size: 15px;
+    line-height: 1.1;
+    background: transparent;
     padding-right: 4px;
 }
 
 .nursery-mot-report .footer {
-    margin-top: 12px;
+    flex: 0 0 auto;
+    margin-top: 8px;
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
     border-top: 2px solid var(--surprise-gold);
-    padding-top: 10px;
-    z-index: 2;
-    height: 110px;
-    flex-shrink: 0;
+    padding-top: 6px;
 }
 
 .nursery-mot-report .stamp-box {
@@ -303,19 +333,19 @@ export default function NurseryMOTReport({ reportData }: any) {
           <tbody>
             <tr>
               <td className="info-label">Pupil's Name:</td>
-              <td style={{ width: '32%' }}>{reportData?.student?.name}</td>
+              <td className="user-data" style={{ width: '32%' }}>{reportData?.student?.name}</td>
               <td className="info-label">Class:</td>
-              <td>{reportData?.student?.class_name}</td>
+              <td className="user-data">{reportData?.student?.class_name}</td>
             </tr>
             <tr>
               <td className="info-label">Student ID:</td>
-              <td>{reportData?.student?.admission_number}</td>
+              <td className="user-data">{reportData?.student?.admission_number}</td>
               <td className="info-label">Date:</td>
-              <td>{'--'}</td>
+              <td className="user-data">{'--'}</td>
             </tr>
             <tr>
               <td className="info-label">School Pay Code:</td>
-              <td colSpan={3}>{'--'}</td>
+              <td colSpan={3} className="user-data">{'--'}</td>
             </tr>
           </tbody>
         </table>
@@ -334,7 +364,7 @@ export default function NurseryMOTReport({ reportData }: any) {
               const g = subject.score != null ? getNurseryGrade(subject.score) : null
               return (
                 <tr key={subject.subject_name} className="zebra">
-                  <td>{subject.subject_name}</td>
+                  <td><span style={{marginRight: '8px', fontSize: '14px'}}>{getSubjectIcon(subject.subject_name)}</span>{subject.subject_name}</td>
                   <td className="data-cell">{g?.grade ?? '--'}</td>
                   <td className="data-cell">{g?.remark ?? '--'}</td>
                   <td className="data-cell"></td>
@@ -361,12 +391,12 @@ export default function NurseryMOTReport({ reportData }: any) {
         <div className="comments-container">
           <div className="comment-row">Conduct: <div className="line-dots"><span className="line-text">{reportData?.circular?.conduct_remark ?? getConductRemark(null)}</span></div></div>
           <div style={{ display: 'flex', gap: '20px' }}>
-            <div className="comment-row" style={{ width: '70%', flexShrink: 0 }}>Class Teacher's Comment: <div className="line-dots"><span className="line-text">{getNurseryTeacherComment(grades)}</span></div></div>
-            <div className="comment-row" style={{ width: '30%', flexShrink: 0 }}>Signature: <div className="line-dots"></div></div>
+            <div className="comment-row" style={{ flex: 7 }}>Class Teacher's Comment: <div className="line-dots"><span className="line-text">{getNurseryTeacherComment(grades)}</span></div></div>
+            <div className="comment-row" style={{ flex: 3 }}>Signature: <div className="line-dots"></div></div>
           </div>
           <div style={{ display: 'flex', gap: '20px' }}>
-            <div className="comment-row" style={{ width: '70%', flexShrink: 0 }}>Head Teacher's Comment: <div className="line-dots"><span className="line-text">{getNurseryTeacherComment(grades)}</span></div></div>
-            <div className="comment-row" style={{ width: '30%', flexShrink: 0 }}>Signature: <div className="line-dots"></div></div>
+            <div className="comment-row" style={{ flex: 7 }}>Head Teacher's Comment: <div className="line-dots"><span className="line-text">{getNurseryTeacherComment(grades)}</span></div></div>
+            <div className="comment-row" style={{ flex: 3 }}>Signature: <div className="line-dots"></div></div>
           </div>
         </div>
 

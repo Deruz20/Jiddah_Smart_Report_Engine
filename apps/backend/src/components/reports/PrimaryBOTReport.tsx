@@ -3,7 +3,7 @@
 import { getClassTeacherComment, getHeadTeacherComment, getConductRemark } from '@/lib/grading'
 import { ReportContainer } from '@/components/reports/shared/ReportContainer'
 
-export default function PrimaryMOTReport({ reportData }: any) {
+export default function PrimaryBOTReport({ reportData }: { reportData: any }) {
   const className = reportData?.class_name || reportData?.class || '';
   const lowerClasses = ['baby', 'middle', 'top', 'p.1', 'p.2', 'p.3'];
   const isLower = lowerClasses.some(c => className.toLowerCase().includes(c)) || reportData?.section_type === 'lower_primary';
@@ -12,15 +12,14 @@ export default function PrimaryMOTReport({ reportData }: any) {
     <ReportContainer reportType="PrimaryMOTReport">
       <style dangerouslySetInnerHTML={{
         __html: `
-    .primary-mot-report,
-    .primary-mot-report * {
+    .primary-bot-report,
+    .primary-bot-report * {
         margin: 0;
         padding: 0;
         box-sizing: border-box;
     }
 
-
-    .primary-mot-report {
+    .primary-bot-report {
         --data-navy: #0f172a;
         --data-indigo: #3730a3;
         --data-teal: #0f766e;
@@ -29,7 +28,7 @@ export default function PrimaryMOTReport({ reportData }: any) {
         background: #fffef8;
         border: 4px solid #163f2d;
         position: relative;
-        overflow: hidden;
+        overflow: visible;
         padding: 12px;
         color: #1a1a1a;
         page-break-inside: avoid;
@@ -46,7 +45,7 @@ export default function PrimaryMOTReport({ reportData }: any) {
     }
 
     /* Decorative Watermark */
-    .primary-mot-report .watermark-bg {
+    .primary-bot-report .watermark-bg {
         position: absolute;
         top: 0; left: 0; right: 0; bottom: 0;
         background: url('/school_budge.jpeg') center center no-repeat;
@@ -55,13 +54,13 @@ export default function PrimaryMOTReport({ reportData }: any) {
         pointer-events: none;
         z-index: 0;
     }
-    .primary-mot-report > *:not(.watermark-bg):not(.final-footer) {
+    .primary-bot-report > *:not(.watermark-bg):not(.final-footer) {
         position: relative;
         z-index: 1;
     }
 
     /* Decorative Border */
-    .primary-mot-report::before {
+    .primary-bot-report::before {
         content: "✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦";
         position: absolute;
         top: 6px;
@@ -73,7 +72,7 @@ export default function PrimaryMOTReport({ reportData }: any) {
         font-size: 14px;
     }
 
-    .primary-mot-report::after {
+    .primary-bot-report::after {
         content: "✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦";
         position: absolute;
         bottom: 6px;
@@ -86,7 +85,7 @@ export default function PrimaryMOTReport({ reportData }: any) {
     }
 
     /* Header */
-    .primary-mot-report .top-arabic {
+    .primary-bot-report .top-arabic {
         text-align: center;
         font-family: 'Cairo', sans-serif;
         font-size: 24px;
@@ -95,7 +94,7 @@ export default function PrimaryMOTReport({ reportData }: any) {
         margin-top: 5px;
     }
 
-    .primary-mot-report .header {
+    .primary-bot-report .header {
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -104,22 +103,22 @@ export default function PrimaryMOTReport({ reportData }: any) {
         gap: 12px;
     }
 
-    .primary-mot-report .school-left { flex: 1; }
-    .primary-mot-report .school-left h1 {
+    .primary-bot-report .school-left { flex: 1; }
+    .primary-bot-report .school-left h1 {
         color: #7a1408;
         font-size: 18px;
         line-height: 1.2;
         font-weight: 700;
     }
 
-    .primary-mot-report .school-left p {
+    .primary-bot-report .school-left p {
         margin-top: 5px;
         font-size: 11px;
         line-height: 1.3;
         color: #444;
     }
 
-    .primary-mot-report .logo {
+    .primary-bot-report .logo {
         width: 85px;
         height: auto;
         display: flex;
@@ -127,11 +126,11 @@ export default function PrimaryMOTReport({ reportData }: any) {
         align-items: center;
     }
 
-    .primary-mot-report .school-right { flex: 1; text-align: right; font-family: 'Cairo', sans-serif; direction: rtl; }
-    .primary-mot-report .school-right h2 { color: #7a1408; font-size: 21px; line-height: 1.4; font-weight: 700; }
+    .primary-bot-report .school-right { flex: 1; text-align: right; font-family: 'Cairo', sans-serif; direction: rtl; }
+    .primary-bot-report .school-right h2 { color: #7a1408; font-size: 21px; line-height: 1.4; font-weight: 700; }
 
     /* Ribbon */
-    .primary-mot-report .ribbon {
+    .primary-bot-report .ribbon {
         width: 100%;
         margin: 12px auto;
         background: linear-gradient(to right, #0d5c3f, #15734f);
@@ -146,21 +145,21 @@ export default function PrimaryMOTReport({ reportData }: any) {
     }
 
     /* Info Section */
-    .primary-mot-report .info {
+    .primary-bot-report .info {
         margin-top: 10px;
         border: 2px solid #d6b14c;
         border-radius: 12px;
         padding: 10px 15px;
     }
 
-    .primary-mot-report .info-row {
+    .primary-bot-report .info-row {
         display: flex;
         justify-content: space-between;
         margin-bottom: 8px;
     }
 
-    .primary-mot-report .field { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }
-    .primary-mot-report .line { 
+    .primary-bot-report .field { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }
+    .primary-bot-report .line { 
         border-bottom: 1.5px dotted #9ca3af; 
         flex: 1;
         min-width: 0;
@@ -174,13 +173,13 @@ export default function PrimaryMOTReport({ reportData }: any) {
     }
 
     /* Main Table */
-    .primary-mot-report .main-table {
+    .primary-bot-report .main-table {
         width: 100%;
         border-collapse: collapse;
         margin-top: 15px;
     }
 
-    .primary-mot-report .main-table th {
+    .primary-bot-report .main-table th {
         background: #0d5c3f;
         color: #fff;
         padding: 4px 2px;
@@ -188,7 +187,7 @@ export default function PrimaryMOTReport({ reportData }: any) {
         font-size: 11px;
     }
 
-    .primary-mot-report .main-table td {
+    .primary-bot-report .main-table td {
         border: 1px solid #d6b14c;
         padding: 10px 8px;
         height: 32px;
@@ -197,17 +196,17 @@ export default function PrimaryMOTReport({ reportData }: any) {
         font-weight: 600;
     }
 
-    .primary-mot-report .main-table .subhead { background: #e8f3ec; color: #0d5c3f; font-weight: 700; }
-    .primary-mot-report .subject { font-weight: 700; text-align: left !important; }
-    
-    .primary-mot-report .data-cell {
+    .primary-bot-report .main-table .subhead { background: #e8f3ec; color: #0d5c3f; font-weight: 700; }
+    .primary-bot-report .subject { font-weight: 700; text-align: left !important; }
+
+    .primary-bot-report .data-cell {
         color: var(--data-indigo);
         font-weight: 900;
         font-size: 14px;
         text-align: center;
     }
     
-    .primary-mot-report .remarks-cell {
+    .primary-bot-report .remarks-cell {
         color: var(--data-teal);
         font-weight: 800;
         font-style: italic;
@@ -216,31 +215,31 @@ export default function PrimaryMOTReport({ reportData }: any) {
     }
 
     /* Grading */
-    .primary-mot-report .grading { margin-top: 10px; }
-    .primary-mot-report .grade-title { font-size: 13px; font-weight: 700; color: #7a1408; margin-bottom: 4px; }
-    .primary-mot-report .grade-table { width: 100%; border-collapse: collapse; }
-    .primary-mot-report .grade-table th { background: #d6b14c; color: #000; padding: 6px; border: 1px solid #333; font-size: 10px; }
-    .primary-mot-report .grade-table td { border: 1px solid #333; text-align: center; padding: 6px; font-size: 11px; }
+    .primary-bot-report .grading { margin-top: 10px; }
+    .primary-bot-report .grade-title { font-size: 13px; font-weight: 700; color: #7a1408; margin-bottom: 4px; }
+    .primary-bot-report .grade-table { width: 100%; border-collapse: collapse; }
+    .primary-bot-report .grade-table th { background: #d6b14c; color: #000; padding: 6px; border: 1px solid #333; font-size: 10px; }
+    .primary-bot-report .grade-table td { border: 1px solid #333; text-align: center; padding: 6px; font-size: 11px; }
 
     /* Bottom Section */
-    .primary-mot-report .bottom { margin-top: 10px; padding-bottom: 0.5rem; }
-    .primary-mot-report .comment-box { margin-bottom: 12px; }
-    .primary-mot-report .comment-label { font-weight: 700; font-size: 13px; margin-bottom: 5px; color: #111; }
-    .primary-mot-report .comment-line { border-bottom: 2px dotted #444; height: 22px; margin-bottom: 5px; }
+    .primary-bot-report .bottom { margin-top: 10px; padding-bottom: 0.5rem; }
+    .primary-bot-report .comment-box { margin-bottom: 12px; }
+    .primary-bot-report .comment-label { font-weight: 700; font-size: 13px; margin-bottom: 5px; color: #111; }
+    .primary-bot-report .comment-line { border-bottom: 2px dotted #444; height: 22px; margin-bottom: 5px; }
     
-    .primary-mot-report .comment-field {
+    .primary-bot-report .comment-field {
       display: flex;
       flex-direction: column;
       gap: 3px;
       margin-bottom: 12px;
       flex: 0 0 auto;
     }
-    .primary-mot-report .comment-field > span:first-child {
+    .primary-bot-report .comment-field > span:first-child {
       font-weight: 700;
       font-size: 13px;
       color: #111;
     }
-    .primary-mot-report .filled-line {
+    .primary-bot-report .filled-line {
       width: 100%;
       border-bottom: 1.5px dotted #9ca3af;
       min-height: 22px;
@@ -250,7 +249,7 @@ export default function PrimaryMOTReport({ reportData }: any) {
       padding: 0 4px 2px 4px;
     }
 
-    .primary-mot-report .line-text {
+    .primary-bot-report .line-text {
       font-style: italic;
       color: var(--data-teal);
       font-weight: 900; font-size: 15px;
@@ -259,17 +258,17 @@ export default function PrimaryMOTReport({ reportData }: any) {
       padding-right: 4px;
     }
 
-    .primary-mot-report .footer-row {
+    .primary-bot-report .footer-row {
         display: flex;
         justify-content: space-between;
         align-items: flex-end;
         margin-top: 10px;
     }
 
-    .primary-mot-report .signature { width: 200px; }
-    .primary-mot-report .signature .line { width: 100%; }
+    .primary-bot-report .signature { width: 200px; }
+    .primary-bot-report .signature .line { width: 100%; }
 
-    .primary-mot-report .stamp {
+    .primary-bot-report .stamp {
         width: 120px;
         height: 120px;
         display: flex;
@@ -285,7 +284,7 @@ export default function PrimaryMOTReport({ reportData }: any) {
         box-shadow: none;
     }
 
-    .primary-mot-report .final-footer {
+    .primary-bot-report .final-footer {
         flex: 0 0 auto;
         margin-top: 10px;
         width: 100%;
@@ -301,7 +300,7 @@ export default function PrimaryMOTReport({ reportData }: any) {
         `
       }} />
 
-      <div className="primary-mot-report font-poppins">
+      <div className="primary-bot-report font-poppins">
         <div className="watermark-bg"></div>
         <div className="top-arabic" style={{ visibility: 'hidden' }}>.</div>
 
@@ -324,7 +323,7 @@ export default function PrimaryMOTReport({ reportData }: any) {
           </div>
         </div>
 
-        <div className="ribbon">{reportData?.section_type === 'upper_primary' ? 'UPPER' : 'LOWER'} REPORT FORM - MID TERM</div>
+        <div className="ribbon">{reportData?.section_type === 'upper_primary' ? 'UPPER' : 'LOWER'} REPORT FORM - BEGINNING OF TERM</div>
 
         <div className="info">
           <div className="info-row">
@@ -347,24 +346,19 @@ export default function PrimaryMOTReport({ reportData }: any) {
         <table className="main-table">
           <tbody>
             <tr className="subhead">
-              <th rowSpan={2} style={{ width: '20%' }}>SUBJECTS</th>
-              <th colSpan={2} style={{ width: '22%' }}>BEGINNING OF TERM</th>
-              <th colSpan={2} style={{ width: '22%' }}>MID TERM</th>
-              <th rowSpan={2} style={{ width: '36%' }}>SUBJECT TEACHER’S COMMENT</th>
+              <th rowSpan={2} style={{ width: '25%' }}>SUBJECTS</th>
+              <th colSpan={2} style={{ width: '30%' }}>BEGINNING OF TERM</th>
+              <th rowSpan={2} style={{ width: '45%' }}>SUBJECT TEACHER’S COMMENT</th>
             </tr>
             <tr className="subhead">
-              <th style={{ width: '11%' }}>MARK</th>
-              <th style={{ width: '11%' }}>AGG</th>
-              <th style={{ width: '11%' }}>MARK</th>
-              <th style={{ width: '11%' }}>AGG</th>
+              <th style={{ width: '15%' }}>MARK</th>
+              <th style={{ width: '15%' }}>AGG</th>
             </tr>
             {reportData?.circular?.subjects?.map((subject: any) => (
               <tr key={subject.subject_name}>
                 <td className="subject">{subject.subject_name}</td>
                 <td className="data-cell">{subject.bot_score ?? '--'}</td>
                 <td className="data-cell">{subject.bot_grade_display ?? '--'}</td>
-                <td className="data-cell">{subject.mot_score ?? '--'}</td>
-                <td className="data-cell">{subject.mot_grade_display ?? '--'}</td>
                 <td className="remarks-cell">{subject.remark ?? ''}</td>
               </tr>
             ))}
@@ -372,8 +366,6 @@ export default function PrimaryMOTReport({ reportData }: any) {
               <td><b>TOTAL</b></td>
               <td className="data-cell">{reportData?.circular?.bot_total ?? '--'}</td>
               <td className="data-cell">{reportData?.circular?.bot_aggregate ?? '--'}</td>
-              <td className="data-cell">{reportData?.circular?.mot_total ?? reportData?.circular?.total ?? '--'}</td>
-              <td className="data-cell">{reportData?.circular?.mot_aggregate ?? '--'}</td>
               <td></td>
             </tr>
           </tbody>

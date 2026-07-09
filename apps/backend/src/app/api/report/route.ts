@@ -52,8 +52,8 @@ export async function GET(request: NextRequest) {
     return withCors(request, NextResponse.json({ error: 'enrollmentId and termId are required' }, { status: 400 }))
   }
 
-  if (!['mot', 'eot'].includes(score_type)) {
-    return withCors(request, NextResponse.json({ error: 'score_type must be mot or eot' }, { status: 400 }))
+  if (!['bot', 'mot', 'eot'].includes(score_type)) {
+    return withCors(request, NextResponse.json({ error: 'score_type must be bot, mot, or eot' }, { status: 400 }))
   }
 
   try {
@@ -149,8 +149,10 @@ export async function GET(request: NextRequest) {
 
       return {
         subject_name: subject.subject_name,
+        bot_score: existing?.bot_score ?? null,
         mot_score: existing?.mot_score ?? null,
         eot_score: existing?.eot_score ?? null,
+        bot_grade_display: existing?.bot_score != null ? (sectionType === 'nursery' ? getNurseryGrade(existing.bot_score).grade : getGradeDisplay(getSubjectGradeNumber(existing.bot_score))) : null,
         mot_grade_display: motGradeInfo.grade,
         eot_grade_display: eotGradeInfo.grade,
         score: numericScore,
@@ -189,15 +191,24 @@ export async function GET(request: NextRequest) {
       .filter((row) => typeof row.mot_score === 'number')
       .map((row) => ({ subject_name: row.subject_name, score: row.mot_score as number }))
 
+    const botAggregateMarks = sortedCircularSubjects
+      .filter((row) => typeof row.bot_score === 'number')
+      .map((row) => ({ subject_name: row.subject_name, score: row.bot_score as number }))
+
     const aggregate = sectionType === 'nursery' ? null : calculateAggregate(aggregateMarks, sectionType)
     const mot_aggregate = sectionType === 'nursery' ? null : calculateAggregate(motAggregateMarks, sectionType)
-    const reportAggregate = scoreType === 'mot' ? mot_aggregate : aggregate
+    const bot_aggregate = sectionType === 'nursery' ? null : calculateAggregate(botAggregateMarks, sectionType)
+    const reportAggregate = scoreType === 'mot' ? mot_aggregate : (scoreType === 'bot' ? bot_aggregate : aggregate)
     const division = reportAggregate !== null ? getDivision(reportAggregate) : null
     const isTerm3 = term.term_number === 3
     const promotion_status = isTerm3 && division ? getPromotionStatus(division) : null
 
     const circularTotal = sortedCircularSubjects.reduce(
       (sum, row) => sum + (typeof row.score === 'number' ? row.score : 0),
+      0
+    )
+    const bot_total = sortedCircularSubjects.reduce(
+      (sum, row) => sum + (typeof row.bot_score === 'number' ? row.bot_score : 0),
       0
     )
     const mot_total = sortedCircularSubjects.reduce(
@@ -208,9 +219,9 @@ export async function GET(request: NextRequest) {
       (sum, row) => sum + (typeof row.eot_score === 'number' ? row.eot_score : 0),
       0
     )
-    const targetTotal = scoreType === 'mot' ? mot_total : eot_total
+    const targetTotal = scoreType === 'mot' ? mot_total : (scoreType === 'bot' ? bot_total : eot_total)
     const hasAnyRelevantMark = sortedCircularSubjects.some((row) =>
-      typeof (scoreType === 'mot' ? row.mot_score : row.eot_score) === 'number'
+      typeof (scoreType === 'mot' ? row.mot_score : (scoreType === 'bot' ? row.bot_score : row.eot_score)) === 'number'
     )
 
     let position: number | null = null
@@ -228,7 +239,7 @@ export async function GET(request: NextRequest) {
 
         const { data: classMarks } = await supabase
           .from('circular_marks')
-          .select('enrollment_id, subject_id, mot_score, eot_score')
+          .select('enrollment_id, subject_id, bot_score, mot_score, eot_score')
           .eq('term_id', termId)
           .in('enrollment_id', enrollmentIds)
 
@@ -241,7 +252,7 @@ export async function GET(request: NextRequest) {
               const existing = eMarks.find((m) => m.subject_id === subject.id)
               const score = scoreType === 'mot'
                 ? existing?.mot_score ?? null
-                : existing?.eot_score ?? null
+                : scoreType === 'bot' ? existing?.bot_score ?? null : existing?.eot_score ?? null
               return { subject_name: subject.subject_name, score: typeof score === 'number' ? score : null }
             })
 
@@ -394,9 +405,11 @@ export async function GET(request: NextRequest) {
       section_type: sectionType,
       circular: {
         subjects: sortedCircularSubjects,
-        total: circularTotal,
-        mot_total,
+        total: targetTotal,
+        bot_aggregate,
         mot_aggregate,
+        bot_total,
+        mot_total,
         eot_total,
         aggregate,
         division,

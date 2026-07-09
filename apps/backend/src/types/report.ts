@@ -14,6 +14,7 @@ export interface ReportDimensions {
  * STABILIZED REPORTS — Reports included in the print engine stabilization
  */
 export type StabilizedReportType =
+  | 'PrimaryBOTReport'
   | 'PrimaryMOTReport'
   | 'NurseryMOTReport'
   | 'NurseryEOTReport'

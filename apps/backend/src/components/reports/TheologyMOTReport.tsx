@@ -13,7 +13,7 @@ export default function TheologyMOTReport({ reportData }: any) {
 
   const toAr = (val: number | string | null | undefined): string => {
     if (val == null) return '--'
-    return String(val).replace(/[0-9]/g, d => '٠١٢٣٤٥٦٧٨٩'[+d])
+    return String(val).replace(/[0-9]/g, (d) => '٠١٢٣٤٥٦٧٨٩'[+d])
   }
 
   const toHijri = (gregorianYear: number): number =>
@@ -29,45 +29,181 @@ export default function TheologyMOTReport({ reportData }: any) {
   const subjects = reportData?.theology?.subjects ?? []
   const s = (i: number) => toAr(subjects[i]?.mot_score)
   const sg = (i: number) => subjects[i]?.mot_grade_display ?? '--'
+
+  const renderCard = () => (
+    <div className="theology-mot-report font-cairo">
+      <div className="corner top-right"></div>
+      <div className="corner top-left"></div>
+      <div className="corner bottom-right"></div>
+      <div className="corner bottom-left"></div>
+
+      <div className="inner">
+        <div className="header">
+          <div className="basmala">بسم الله الرحمن الرحيم</div>
+          <div className="school">
+            مدرسة جدة الإسلامية للروضة والابتدائية _ نساغو واكيسو
+          </div>
+          <div className="title">كشف الدرجات لمنتصف الفترة</div>
+        </div>
+
+        <div className="info">
+          <div className="row">
+            <span>اسم الطالب/ة :</span>
+            <div className="line-dots">
+              <span className="line-text">
+                {reportData?.student?.arabic_name ?? reportData?.student?.name}
+              </span>
+            </div>
+          </div>
+
+          <div className="row">
+            <span>الفترة:</span>
+            <div className="line-dots short">
+              <span className="line-text">
+                {toAr(termInArabic(reportData?.term?.term_number))}
+              </span>
+            </div>
+
+            <span>الفصل:</span>
+            <div className="line-dots short">
+              <span className="line-text">
+                {reportData?.student?.theology_class_arabic ?? '--'}
+              </span>
+            </div>
+
+            <span>السنة :</span>
+            <div className="line-dots medium">
+              <span className="line-text">
+                {toAr(toHijri(Number(reportData?.term?.academic_year)))}
+              </span>
+            </div>
+            <span>ه‍</span>
+            <div className="line-dots medium">
+              <span className="line-text">
+                {toAr(reportData?.term?.academic_year)}
+              </span>
+            </div>
+            <span>م</span>
+          </div>
+        </div>
+
+        <div className="table-wrap">
+          <table className="table">
+            <tbody>
+              <tr>
+                <th>القرآن</th>
+                <th>اللغة العربية</th>
+                <th>الفقه</th>
+                <th>التربية</th>
+                <th>المجموع</th>
+                <th className="red">الدرجة</th>
+              </tr>
+              <tr>
+                <td>{s(0)}</td>
+                <td>{s(1)}</td>
+                <td>{s(2)}</td>
+                <td>{s(3)}</td>
+                <td>{toAr(reportData?.theology?.mot_total)}</td>
+                <td className="red">
+                  {reportData?.theology?.division ?? '--'}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div className="students">
+          <span>عدد الطلبة :</span>
+          <div className="line-dots">
+            <span className="line-text">
+              {toAr(reportData?.circular?.total_students)}
+            </span>
+          </div>
+          <span className="rank">الترتيب :</span>
+          <div className="line-dots">
+            <span className="line-text">
+              {toAr(reportData?.circular?.position)}
+            </span>
+          </div>
+        </div>
+
+        <div className="comment">
+          <span>تقرير مرب الفصل :</span>
+          <div className="line-dots">
+            <span className="line-text"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+
   return (
     <ReportContainer reportType="TheologyMOTReport">
-      <style dangerouslySetInnerHTML={{
-        __html: `
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
 @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap');
 
-.theology-mot-report,
-.theology-mot-report * {
+.theology-mot-report-page {
+    --data-navy: #0f172a;
+    --data-indigo: #3730a3;
+    --data-teal: #0f766e;
+    
+    flex: 1 1 auto;
+    width: 100%;
+    height: 100%;
+    max-height: 100%;
+    display: flex;
+    flex-direction: column;
     box-sizing: border-box;
+    background: #fcf4db; /* matching the user's PDF yellow background */
+}
+
+.cut-line {
+    height: 0;
+    border-top: 1.5px dashed #b5a371;
+    position: relative;
+    z-index: 10;
+}
+
+.cut-line::after {
+    content: '✂ Cut Here';
+    position: absolute;
+    top: -9px;
+    left: 40px;
+    background: #fcf4db;
+    padding: 0 10px;
+    color: #888;
+    font-size: 11px;
+    font-family: sans-serif;
+    font-weight: 600;
 }
 
 /* MAIN CARD */
 .theology-mot-report {
+    flex: 1;
     width: 100%;
-    height: 100%;
-    background: linear-gradient(135deg, #f7f2e4 0%, #efe4c7 50%, #f8f4ea 100%);
-    border: 3px solid #0d5c46;
+    background: transparent;
     position: relative;
-    overflow: visible;
-    page-break-inside: avoid;
-    page-break-after: avoid;
-    box-shadow: 0 10px 30px rgba(0,0,0,.15), inset 0 0 0 8px rgba(255,255,255,.35);
-    border-radius: 6px;
+    overflow: hidden;
     direction: rtl;
     color: #111;
     font-family: 'Cairo', sans-serif;
-    flex-shrink: 0;
-    flex-grow: 0;
     box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 
-/* GOLD DECOR */
+/* INNER BORDER DECOR */
 .theology-mot-report::after {
     content: '';
     position: absolute;
-    inset: 10px;
-    border: 1.5px solid rgba(212,170,55,.65);
+    inset: 15px;
+    border: 2px solid #000;
     pointer-events: none;
+    border-radius: 2px;
 }
 
 /* WATERMARK */
@@ -96,24 +232,24 @@ export default function TheologyMOTReport({ reportData }: any) {
 
 .theology-mot-report .basmala {
     font-family: 'Amiri', serif;
-    font-size: 28px;
+    font-size: 24px;
     font-weight: 700;
     color: #0d5c46;
-    margin-bottom: 6px;
+    margin-bottom: 4px;
     letter-spacing: .5px;
 }
 
 .theology-mot-report .school {
-    font-size: 26px;
+    font-size: 22px;
     font-weight: 800;
     color: #b71c1c;
-    text-shadow: 1px 1px 0 #ffffff, 3px 3px 0 rgba(13,92,70,.25);
+    text-shadow: 1px 1px 0 #ffffff, 2px 2px 0 rgba(13,92,70,.15);
     line-height: 1.3;
 }
 
 .theology-mot-report .title {
-    margin-top: 10px;
-    font-size: 22px;
+    margin-top: 6px;
+    font-size: 18px;
     font-weight: 900;
     color: #111;
     display: inline-block;
@@ -123,8 +259,8 @@ export default function TheologyMOTReport({ reportData }: any) {
 
 /* INFO AREA */
 .theology-mot-report .info {
-    margin-top: 24px;
-    font-size: 16px;
+    margin-top: 16px;
+    font-size: 15px;
     font-weight: 700;
     color: #111;
     line-height: 1.5;
@@ -134,7 +270,7 @@ export default function TheologyMOTReport({ reportData }: any) {
     display: flex;
     align-items: center;
     gap: 12px;
-    margin-bottom: 14px;
+    margin-bottom: 12px;
     border-bottom: 1px dashed rgba(13,92,70,0.35);
     padding-bottom: 8px;
 }
@@ -143,35 +279,41 @@ export default function TheologyMOTReport({ reportData }: any) {
 .theology-mot-report .medium { width: 150px; }
 
 .theology-mot-report .comment {
-    margin-top: 18px;
+    margin-top: 14px;
     display: flex;
     align-items: flex-start;
     gap: 10px;
-    font-size: 17px;
+    font-size: 15px;
     font-weight: 700;
     line-height: 1.4;
 }
 
 .theology-mot-report .line-dots {
-    flex-grow: 0;
-    flex-basis: auto;
-    width: auto;
-    border-bottom: 2px dotted #999;
-    height: 20px;
+    flex: 1;
+    min-width: 0;
+    border-bottom: 1.5px dotted #9ca3af;
+    height: 18px;
     display: flex;
-    align-items: flex-start;
+    align-items: center;
+    justify-content: center;
     padding: 0 4px 2px 4px;
+    color: var(--data-navy);
+    font-weight: 900;
+    font-size: 16px;
 }
 
 .theology-mot-report .line-text {
-    background: white;
-    line-height: 1.2;
+    line-height: 1.1;
     padding-right: 4px;
+    color: var(--data-teal);
+    font-style: italic;
+    font-weight: 900;
+    font-size: 16px;
 }
 
 /* TABLE */
 .theology-mot-report .table-wrap {
-    margin-top: 18px;
+    margin-top: 14px;
     display: flex;
     justify-content: center;
 }
@@ -180,28 +322,31 @@ export default function TheologyMOTReport({ reportData }: any) {
     width: 95%;
     border-collapse: collapse;
     table-layout: fixed;
-    font-size: 17px;
+    font-size: 15px;
     background: rgba(255,255,255,.22);
 }
 
 .theology-mot-report .table th,
 .theology-mot-report .table td {
-    border: 1.8px solid #0d5c46;
+    border: 1.5px solid #0d5c46;
     text-align: center;
 }
 
 .theology-mot-report .table th {
-    padding: 8px 4px;
+    padding: 6px 4px;
     background: linear-gradient(180deg, #f6e6b4 0%, #e3c25a 100%);
     color: #111;
     font-weight: 900;
 }
 
 .theology-mot-report .table td {
-    height: 32px;
+    height: 28px;
     background: rgba(255,255,255,.35);
     vertical-align: middle;
-    padding: 4px 2px;
+    padding: 2px;
+    color: var(--data-indigo);
+    font-weight: 900;
+    font-size: 16px;
 }
 
 .theology-mot-report .red {
@@ -211,17 +356,17 @@ export default function TheologyMOTReport({ reportData }: any) {
 
 /* STUDENTS ROW */
 .theology-mot-report .students {
-    margin-top: 12px;
+    margin-top: 10px;
     display: flex;
     justify-content: flex-end;
     align-items: center;
     gap: 10px;
-    font-size: 17px;
+    font-size: 15px;
     font-weight: 700;
 }
 
 .theology-mot-report .students .line-dots {
-    width: 160px;
+    width: 140px;
     flex: none;
 }
 
@@ -230,31 +375,11 @@ export default function TheologyMOTReport({ reportData }: any) {
     font-weight: 900;
 }
 
-/* COMMENT */
-.theology-mot-report .comment {
-    margin-top: 14px;
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    font-size: 17px;
-    font-weight: 700;
-}
-
-.theology-mot-report .comment .line-dots {
-    flex: 1;
-    border-bottom: 2px dotted #999;
-    min-height: 18px;
-    display: flex;
-    align-items: flex-start;
-    padding: 2px 8px 2px 4px;
-}
-
-
 /* PREMIUM CORNER ORNAMENTS */
 .theology-mot-report .corner {
     position: absolute;
-    width: 35px;
-    height: 35px;
+    width: 30px;
+    height: 30px;
     border-color: #0d5c46;
     z-index: 3;
 }
@@ -265,90 +390,21 @@ export default function TheologyMOTReport({ reportData }: any) {
 .theology-mot-report .bottom-left { bottom: 12px; left: 12px; border-bottom: 3px solid; border-left: 3px solid; }
 
 @media print {
-    .theology-mot-report {
-        box-shadow: none;
-        border: 2px solid #0d5c46;
+    .theology-mot-report-page {
         margin: 0;
-        overflow: visible !important;
-        height: auto !important;
+        border: none;
+        box-shadow: none;
+        padding: 10px;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
     }
 }
         `
-      }} />
+        }}
+      />
 
-      <div className="theology-mot-report font-cairo">
-        <div className="corner top-right"></div>
-        <div className="corner top-left"></div>
-        <div className="corner bottom-right"></div>
-        <div className="corner bottom-left"></div>
-
-        <div className="inner">
-
-          <div className="header">
-            <div className="basmala">بسم الله الرحمن الرحيم</div>
-            <div className="school">مدرسة جدة الإسلامية للروضة والابتدائية _ نساغو واكيسو</div>
-            <div className="title">كشف الدرجات لمنتصف الفترة</div>
-          </div>
-
-          <div className="info">
-            <div className="row">
-              <span>اسم الطالب/ة :</span>
-              <div className="line-dots"><span className="line-text">{reportData?.student?.arabic_name ?? reportData?.student?.name}</span></div>
-            </div>
-
-            <div className="row">
-              <span>الفترة:</span>
-              <div className="line-dots short"><span className="line-text">{toAr(termInArabic(reportData?.term?.term_number))}</span></div>
-
-              <span>الفصل:</span>
-              <div className="line-dots short"><span className="line-text">{reportData?.student?.theology_class_arabic ?? '--'}</span></div>
-
-              <span>السنة :</span>
-              <div className="line-dots medium"><span className="line-text">{toAr(toHijri(Number(reportData?.term?.academic_year)))}</span></div>
-              <span>ه‍</span>
-              <div className="line-dots medium"><span className="line-text">{toAr(reportData?.term?.academic_year)}</span></div>
-              <span>م</span>
-            </div>
-          </div>
-
-          <div className="table-wrap">
-            <table className="table">
-              <tbody>
-                <tr>
-                  <th>القرآن</th>
-                  <th>اللغة العربية</th>
-                  <th>الفقه</th>
-                  <th>التربية</th>
-                  <th>المجموع</th>
-                  <th className="red">الدرجة</th>
-                </tr>
-                <tr>
-                  <td>{s(0)}</td>
-                  <td>{s(1)}</td>
-                  <td>{s(2)}</td>
-                  <td>{s(3)}</td>
-                  <td>{toAr(reportData?.theology?.mot_total)}</td>
-                  <td className="red">{reportData?.theology?.division ?? '--'}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <div className="students">
-            <span>عدد الطلبة :</span>
-            <div className="line-dots"><span className="line-text">{toAr(reportData?.circular?.total_students)}</span></div>
-            <span className="rank">الترتيب :</span>
-            <div className="line-dots"><span className="line-text">{toAr(reportData?.circular?.position)}</span></div>
-          </div>
-
-          <div className="comment">
-            <span>تقرير مرب الفصل :</span>
-            <div className="line-dots"><span className="line-text"></span></div>
-          </div>
-
-        </div>
+      <div className="theology-mot-report-page">
+        {renderCard()}
       </div>
     </ReportContainer>
   )

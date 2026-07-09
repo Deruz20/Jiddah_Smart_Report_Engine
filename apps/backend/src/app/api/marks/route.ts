@@ -27,8 +27,8 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  if (!['mot', 'eot', 'both', 'bot'].includes(score_type)) {
-    return withCors(request, NextResponse.json({ error: 'score_type must be bot, mot, eot, or both' }, { status: 400 }))
+  if (!['mot', 'eot', 'both', 'bot', 'all'].includes(score_type)) {
+    return withCors(request, NextResponse.json({ error: 'score_type must be bot, mot, eot, both, or all' }, { status: 400 }))
   }
 
   try {
@@ -150,8 +150,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { enrollment_id, term_id, score_type, circular_marks, theology_marks } = body
 
-    if (!enrollment_id || !term_id || !score_type || !['bot', 'mot', 'eot'].includes(score_type)) {
-      return withCors(request, NextResponse.json({ error: 'enrollment_id, term_id, and valid score_type (bot|mot|eot) are required' }, { status: 400 }))
+    if (!enrollment_id || !term_id || !score_type || !['bot', 'mot', 'eot', 'all'].includes(score_type)) {
+      return withCors(request, NextResponse.json({ error: 'enrollment_id, term_id, and valid score_type (bot|mot|eot|all) are required' }, { status: 400 }))
     }
 
     const cookieStore = await cookies()

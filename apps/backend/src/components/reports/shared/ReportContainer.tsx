@@ -49,7 +49,7 @@ export const ReportContainer: React.FC<ReportContainerProps> = ({
   // Using minHeight instead of height to allow content expansion while maintaining A4 baseline
   const containerStyle: React.CSSProperties = {
     width: `${dimensions.width}px`,
-    minHeight: `${dimensions.height}px`,
+    height: `${dimensions.height}px`,
     position: 'relative',
     boxSizing: 'border-box',
     margin: 0,
@@ -68,7 +68,7 @@ export const ReportContainer: React.FC<ReportContainerProps> = ({
       data-report-type={reportType}
       data-report-orientation={orientation}
       style={containerStyle}
-      className={className}
+      className={`report-container ${className}`}
     >
       {children}
     </div>

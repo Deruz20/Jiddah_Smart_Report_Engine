@@ -16,26 +16,20 @@ export default function P7EOTReport({ reportData }: any) {
 
   const renderSubjectRow = (subject: any) => (
     <tr key={subject.subject_name}>
-      <td style={{ textAlign: 'left', paddingLeft: '12px' }}>
+      <td style={{ textAlign: 'left', paddingLeft: '8px' }}>
         {subject.subject_name}
       </td>
 
-      <td>{subject.mot_score ?? '--'}</td>
-      <td>{subject.mot_grade_display ?? '--'}</td>
+      <td className="data-cell">{subject.bot_score ?? '--'}</td>
+      <td className="data-cell">{subject.bot_grade_display ?? '--'}</td>
 
-      <td>{subject.eot_score ?? '--'}</td>
-      <td>{subject.eot_grade_display ?? '--'}</td>
+      <td className="data-cell">{subject.mot_score ?? '--'}</td>
+      <td className="data-cell">{subject.mot_grade_display ?? '--'}</td>
 
-      <td
-        style={{
-          fontStyle: 'italic',
-          color: '#444',
-          fontSize: '11px',
-          padding: '6px 8px',
-          whiteSpace: 'normal',
-          lineHeight: 1.3,
-        }}
-      >
+      <td className="data-cell">{subject.eot_score ?? '--'}</td>
+      <td className="data-cell">{subject.eot_grade_display ?? '--'}</td>
+
+      <td className="remarks-cell">
         {subject.remark ?? ''}
       </td>
     </tr>
@@ -59,25 +53,26 @@ export default function P7EOTReport({ reportData }: any) {
   --deep-maroon: #7d140c;
   --bg-cream: #fdfaf2;
   --border-light: #d8c68a;
-
-  width: 1123px;
-  min-height: 794px;
+  --data-navy: #0f172a;
+  --data-indigo: #3730a3;
+  --data-teal: #0f766e;
+  
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
 
   margin: 0 auto;
   background: var(--bg-cream);
   border: 4px double var(--primary-green);
-
-  padding: 20px 30px;
-
+  padding: 12px 24px;
   position: relative;
-
   display: flex;
   flex-direction: column;
-
+  justify-content: space-between;
   font-family: 'Poppins', sans-serif;
-
   color: #1a1a1a;
-
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
 }
@@ -86,13 +81,11 @@ export default function P7EOTReport({ reportData }: any) {
   content: "";
   position: absolute;
   inset: 0;
-
   background: url('/school_budge.jpeg') center center no-repeat;
-  background-size: 400px;
-
+  background-size: 350px;
   opacity: 0.04;
-
   pointer-events: none;
+  z-index: 0;
 }
 
 .p7-eot-report > * {
@@ -101,13 +94,12 @@ export default function P7EOTReport({ reportData }: any) {
 }
 
 /* ================= HEADER ================= */
-
 .p7-eot-report .header {
+  flex: 0 0 auto;
   display: flex;
   justify-content: space-between;
   align-items: center;
-
-  margin-bottom: 14px;
+  margin-bottom: 8px;
 }
 
 .p7-eot-report .school-left {
@@ -116,7 +108,7 @@ export default function P7EOTReport({ reportData }: any) {
 
 .p7-eot-report .school-left h1 {
   margin: 0;
-  font-size: 19px;
+  font-size: 16px;
   line-height: 1.15;
   color: var(--deep-maroon);
   font-weight: 800;
@@ -124,26 +116,29 @@ export default function P7EOTReport({ reportData }: any) {
 
 .p7-eot-report .school-left p {
   margin: 2px 0;
-  font-size: 11px;
+  font-size: 10px;
   color: #444;
 }
 
 .p7-eot-report .header-center {
   width: 36%;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .p7-eot-report .bismillah {
   font-family: 'Amiri', serif;
-  font-size: 30px;
+  font-size: 22px;
   color: var(--primary-green);
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .p7-eot-report .logo {
-  width: 65px;
-  height: 65px;
-  margin: 0 auto 8px;
+  width: 50px;
+  height: 50px;
+  margin: 0 auto 6px;
 }
 
 .p7-eot-report .logo img {
@@ -154,58 +149,44 @@ export default function P7EOTReport({ reportData }: any) {
 
 .p7-eot-report .report-badge {
   display: inline-block;
-
   background: var(--primary-green);
   color: white;
-
-  padding: 6px 24px;
-
+  padding: 4px 16px;
   border-radius: 999px;
-
-  font-size: 17px;
+  font-size: 14px;
   font-weight: 700;
 }
 
 .p7-eot-report .header-right {
   width: 32%;
-
   direction: rtl;
   text-align: right;
-
   font-family: 'Cairo', sans-serif;
 }
 
 .p7-eot-report .header-right h2 {
   margin: 0;
-  font-size: 26px;
+  font-size: 20px;
   line-height: 1.2;
   color: var(--deep-maroon);
 }
 
 /* ================= INFO ================= */
-
-.p7-eot-report .info-container {
-  margin-bottom: 14px;
-}
-
 .p7-eot-report .info-box {
+  flex: 0 0 auto;
   background: white;
-
   border: 1px solid var(--border-light);
-
-  border-radius: 10px;
-
-  padding: 12px 18px;
+  border-radius: 8px;
+  padding: 6px 14px;
+  margin-bottom: 6px;
 }
 
 .p7-eot-report .info-row {
   display: flex;
   align-items: center;
   gap: 8px;
-
-  margin-bottom: 8px;
-
-  font-size: 13px;
+  margin-bottom: 4px;
+  font-size: 12px;
 }
 
 .p7-eot-report .info-row:last-child {
@@ -219,119 +200,116 @@ export default function P7EOTReport({ reportData }: any) {
 
 .p7-eot-report .line {
   flex: 1;
-
   min-width: 0;
-
-  border-bottom: 1.5px dotted #aaa;
-
-  padding: 0 0 2px 6px;
-
+  border-bottom: 1.5px dotted #9ca3af;
+  padding: 0 0 2px 0;
   display: flex;
-  align-items: flex-end;
-
-  font-weight: 500;
+  align-items: center;
+  justify-content: center;
+  color: var(--data-navy);
+  font-weight: 900;
+  font-size: 15px;
 }
 
 /* ================= TABLE ================= */
-
 .p7-eot-report .tables-container {
-  flex: 1;
-
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
+  min-height: 0; /* Important for flexing down */
 }
 
 .p7-eot-report table {
   width: 100%;
-
   border-collapse: collapse;
-
   background: white;
-
   border: 1px solid var(--border-light);
 }
 
 .p7-eot-report th {
   background: var(--primary-green);
   color: white;
-
   border: 1px solid rgba(255,255,255,0.2);
-
-  padding: 8px 6px;
-
-  font-size: 12px;
+  padding: 5px 4px;
+  font-size: 11px;
 }
 
 .p7-eot-report .table-banner {
   background: var(--accent-gold);
   color: white;
-
-  font-size: 14px;
+  font-size: 13px;
   letter-spacing: 1px;
-
-  padding: 6px;
+  padding: 4px;
 }
 
 .p7-eot-report td {
   border: 1px solid #ddd;
-
-  padding: 6px;
-
+  padding: 5px 4px;
   text-align: center;
-
-  font-size: 12px;
-
+  font-size: 11px;
+  font-weight: 600;
   vertical-align: middle;
 }
 
-/* ================= GRADING ================= */
+.p7-eot-report .data-cell {
+  color: var(--data-indigo);
+  font-weight: 900;
+  font-size: 14px;
+  text-align: center;
+}
 
+.p7-eot-report .remarks-cell {
+  color: var(--data-teal);
+  font-weight: 800;
+  font-style: italic;
+  font-size: 11px;
+  text-align: left;
+}
+
+/* ================= GRADING ================= */
 .p7-eot-report .grading-key {
-  margin-top: 12px;
+  margin-top: 6px;
+  flex: 0 0 auto;
 }
 
 .p7-eot-report .grading-key th {
   background: #555;
-  font-size: 11px;
-  padding: 4px;
+  font-size: 10px;
+  padding: 6px;
 }
 
 .p7-eot-report .grading-key td {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   padding: 4px;
 }
 
 /* ================= FOOTER ================= */
-
 .p7-eot-report .premium-footer {
+  flex: 0 0 auto;
   display: flex;
-  gap: 20px;
-
+  gap: 16px;
   align-items: flex-end;
-
-  margin-top: 16px;
+  margin-top: 6px;
 }
 
 .p7-eot-report .footer-left {
   flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .p7-eot-report .comment-card {
-  border: 2px dashed var(--primary-green);
-
-  border-radius: 12px;
-
-  padding: 12px 18px;
-
+  border: 1.5px dashed var(--primary-green);
+  border-radius: 8px;
+  padding: 8px 14px;
   background: rgba(255,255,255,0.85);
 }
 
 .p7-eot-report .comment-row {
   display: flex;
-  gap: 18px;
-
-  margin-bottom: 10px;
+  gap: 14px;
+  margin-bottom: 6px;
 }
 
 .p7-eot-report .comment-row:last-child {
@@ -341,53 +319,51 @@ export default function P7EOTReport({ reportData }: any) {
 .p7-eot-report .c-field {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  min-width: 0;
 }
 
 .p7-eot-report .c-field span {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
 }
 
 .p7-eot-report .w-line {
   flex: 1;
-
-  border-bottom: 1.5px dotted #666;
-
+  border-bottom: 1.5px dotted #9ca3af;
   padding-bottom: 2px;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .p7-eot-report .line-text {
   font-size: 12px;
-  line-height: 1.3;
-
+  line-height: 1.2;
   white-space: normal;
+  color: var(--data-teal);
+  font-style: italic;
+  font-weight: 900; font-size: 15px;
 }
 
 .p7-eot-report .term-dates-bar {
   display: flex;
-  gap: 14px;
-
-  margin-top: 14px;
+  gap: 12px;
+  margin-top: 6px;
 }
 
 .p7-eot-report .date-item {
   flex: 1;
-
-  padding: 8px 16px;
-
-  border-radius: 8px;
-
+  padding: 6px 12px;
+  border-radius: 6px;
   border: 1px solid #ddd;
-
   display: flex;
   align-items: center;
   justify-content: center;
-
-  gap: 10px;
-
-  font-size: 13px;
+  gap: 8px;
+  font-size: 12px;
   font-weight: 700;
 }
 
@@ -404,58 +380,33 @@ export default function P7EOTReport({ reportData }: any) {
 }
 
 .p7-eot-report .validity-strip {
-  margin-top: 12px;
-
+  margin-top: 10px;
   background: var(--deep-maroon);
   color: white;
-
-  border-radius: 6px;
-
+  border-radius: 4px;
   text-align: center;
-
-  padding: 8px;
-
-  font-size: 11px;
+  padding: 6px;
+  font-size: 10px;
   font-weight: 800;
 }
 
 .p7-eot-report .stamp-box {
-  width: 145px;
-  height: 145px;
-
+  width: 130px;
+  height: 130px;
   border-radius: 50%;
-  border: 3px dashed #9aa8bd;
-
+  border: 2px dashed #9aa8bd;
   background: white;
-
   display: flex;
   align-items: center;
   justify-content: center;
-
   text-align: center;
-
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 800;
-
   color: #7584a0;
-
   flex-shrink: 0;
+  align-self: flex-end;
 }
-
-@media print {
-  @page {
-    size: A4 landscape;
-    margin: 0;
-  }
-
-  .p7-eot-report {
-    width: 1123px;
-    min-height: 794px;
-
-    box-shadow: none;
-  }
-}
-          `,
+          `
         }}
       />
 
@@ -467,10 +418,8 @@ export default function P7EOTReport({ reportData }: any) {
               <br />
               AND PRIMARY SCHOOL - Nsaggu
             </h1>
-
             <p>P.O.Box 34008 Kampala (U)</p>
             <p>Tel: +256 744950042 / 0705316961</p>
-
             <p style={{ fontSize: '9px', opacity: 0.8 }}>
               jiddahislamicnurseryandpri@gmail.com
             </p>
@@ -480,11 +429,9 @@ export default function P7EOTReport({ reportData }: any) {
             <div className="bismillah">
               بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْم
             </div>
-
             <div className="logo">
               <img src="/school_budge.jpeg" alt="School Badge" />
             </div>
-
             <div className="report-badge">
               P.7 REPORT FORM - END OF TERM
             </div>
@@ -495,44 +442,37 @@ export default function P7EOTReport({ reportData }: any) {
           </div>
         </header>
 
-        <section className="info-container">
-          <div className="info-box">
-            <div className="info-row">
-              <span className="label">Pupil's Name:</span>
-              <div className="line">{reportData?.student?.name}</div>
+        <section className="info-box">
+          <div className="info-row">
+            <span className="label">Pupil's Name:</span>
+            <div className="line">{reportData?.student?.name}</div>
+          </div>
+
+          <div className="info-row">
+            <span className="label">Class:</span>
+            <div className="line">{reportData?.student?.class_name}</div>
+            <span className="label">Term:</span>
+            <div className="line">{reportData?.term?.label}</div>
+            <span className="label">Year:</span>
+            <div className="line" style={{ flex: 0.5 }}>
+              {reportData?.term?.academic_year}
             </div>
+          </div>
 
-            <div className="info-row">
-              <span className="label">Class:</span>
-              <div className="line">{reportData?.student?.class_name}</div>
-
-              <span className="label">Term:</span>
-              <div className="line">{reportData?.term?.label}</div>
-
-              <span className="label">Year:</span>
-              <div className="line" style={{ flex: 0.5 }}>
-                {reportData?.term?.academic_year}
-              </div>
+          <div className="info-row">
+            <span className="label">Position:</span>
+            <div className="line">
+              {reportData?.circular?.position ?? '--'}
             </div>
-
-            <div className="info-row">
-              <span className="label">Position:</span>
-              <div className="line">
-                {reportData?.circular?.position ?? '--'}
-              </div>
-
-              <span className="label">Out Of:</span>
-              <div className="line">
-                {reportData?.circular?.total_students ??
-                  reportData?.circular?.total ??
-                  '--'}
-              </div>
-
-              <span className="label">Division:</span>
-
-              <div className="line" style={{ flex: 0.3 }}>
-                {reportData?.circular?.division ?? '--'}
-              </div>
+            <span className="label">Out Of:</span>
+            <div className="line">
+              {reportData?.circular?.total_students ??
+                reportData?.circular?.total ??
+                '--'}
+            </div>
+            <span className="label">Division:</span>
+            <div className="line" style={{ flex: 0.3 }}>
+              {reportData?.circular?.division ?? '--'}
             </div>
           </div>
         </section>
@@ -541,23 +481,26 @@ export default function P7EOTReport({ reportData }: any) {
           <table>
             <tbody>
               <tr>
-                <th colSpan={6} className="table-banner">
+                <th colSpan={8} className="table-banner">
                   COMPARATIVE PERFORMANCE
                 </th>
               </tr>
 
               <tr>
-                <th rowSpan={2}>SUBJECTS</th>
-                <th colSpan={2}>MIDTERM</th>
-                <th colSpan={2}>END OF TERM</th>
-                <th rowSpan={2}>COMMENT</th>
+                <th rowSpan={2} style={{ width: '18%' }}>SUBJECTS</th>
+                <th colSpan={2} style={{ width: '18%' }}>BEGINNING OF TERM</th>
+                <th colSpan={2} style={{ width: '18%' }}>MIDTERM</th>
+                <th colSpan={2} style={{ width: '18%' }}>END OF TERM</th>
+                <th rowSpan={2} style={{ width: '28%' }}>COMMENT</th>
               </tr>
 
               <tr>
-                <th>MARK</th>
-                <th>AGG</th>
-                <th>MARK</th>
-                <th>AGG</th>
+                <th style={{ width: '9%' }}>MARK</th>
+                <th style={{ width: '9%' }}>AGG</th>
+                <th style={{ width: '9%' }}>MARK</th>
+                <th style={{ width: '9%' }}>AGG</th>
+                <th style={{ width: '9%' }}>MARK</th>
+                <th style={{ width: '9%' }}>AGG</th>
               </tr>
 
               {reportData?.circular?.subjects?.map(renderSubjectRow)}
@@ -568,18 +511,15 @@ export default function P7EOTReport({ reportData }: any) {
                   fontWeight: 800,
                 }}
               >
-                <td style={{ textAlign: 'left', paddingLeft: '12px' }}>
+                <td style={{ textAlign: 'left', paddingLeft: '8px' }}>
                   TOTAL
                 </td>
-
-                <td>{reportData?.circular?.mot_total ?? '--'}</td>
-
-                <td>{reportData?.circular?.mot_aggregate ?? '--'}</td>
-
-                <td>{reportData?.circular?.eot_total ?? '--'}</td>
-
-                <td>{reportData?.circular?.aggregate ?? '--'}</td>
-
+                <td className="data-cell">{reportData?.circular?.bot_total ?? '--'}</td>
+                <td className="data-cell">{reportData?.circular?.bot_aggregate ?? '--'}</td>
+                <td className="data-cell">{reportData?.circular?.mot_total ?? '--'}</td>
+                <td className="data-cell">{reportData?.circular?.mot_aggregate ?? '--'}</td>
+                <td className="data-cell">{reportData?.circular?.eot_total ?? '--'}</td>
+                <td className="data-cell">{reportData?.circular?.aggregate ?? '--'}</td>
                 <td></td>
               </tr>
             </tbody>
@@ -589,7 +529,6 @@ export default function P7EOTReport({ reportData }: any) {
             <tbody>
               <tr>
                 <th>Grade</th>
-
                 <td>D1</td>
                 <td>D2</td>
                 <td>C3</td>
@@ -600,12 +539,10 @@ export default function P7EOTReport({ reportData }: any) {
                 <td>P8</td>
                 <td>F9</td>
               </tr>
-
               <tr>
                 <td>
                   <b>Marks</b>
                 </td>
-
                 <td>85-100</td>
                 <td>75-84</td>
                 <td>70-74</td>
@@ -626,7 +563,6 @@ export default function P7EOTReport({ reportData }: any) {
               <div className="comment-row">
                 <div className="c-field" style={{ flex: 1 }}>
                   <span>Conduct:</span>
-
                   <div className="w-line">
                     <span className="line-text">{conductRemark}</span>
                   </div>
@@ -636,15 +572,12 @@ export default function P7EOTReport({ reportData }: any) {
               <div className="comment-row">
                 <div className="c-field" style={{ flex: 1 }}>
                   <span>Class Teacher's Comment:</span>
-
                   <div className="w-line">
                     <span className="line-text">{teacherComment}</span>
                   </div>
                 </div>
-
-                <div className="c-field" style={{ width: '220px' }}>
+                <div className="c-field" style={{ width: '180px' }}>
                   <span>Signature:</span>
-
                   <div className="w-line"></div>
                 </div>
               </div>
@@ -652,15 +585,12 @@ export default function P7EOTReport({ reportData }: any) {
               <div className="comment-row">
                 <div className="c-field" style={{ flex: 1 }}>
                   <span>Head Teacher's Comment:</span>
-
                   <div className="w-line">
                     <span className="line-text">{headComment}</span>
                   </div>
                 </div>
-
-                <div className="c-field" style={{ width: '220px' }}>
+                <div className="c-field" style={{ width: '180px' }}>
                   <span>Signature:</span>
-
                   <div className="w-line"></div>
                 </div>
               </div>
@@ -669,7 +599,6 @@ export default function P7EOTReport({ reportData }: any) {
             <div className="term-dates-bar">
               <div className="date-item red-date">
                 <span>This Term Ends On:</span>
-
                 <span>
                   {reportData?.term?.end_date
                     ? new Date(reportData.term.end_date).toLocaleDateString(
@@ -686,7 +615,6 @@ export default function P7EOTReport({ reportData }: any) {
 
               <div className="date-item blue-date">
                 <span>Next Term Begins On:</span>
-
                 <span>
                   {reportData?.term?.next_term_start
                     ? new Date(

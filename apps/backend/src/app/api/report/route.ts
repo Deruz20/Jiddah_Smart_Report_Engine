@@ -18,6 +18,9 @@ import {
 import { resolveSectionType } from '@/lib/section-type'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 type GradeRow = {
   subject_name: string
   score: number | null

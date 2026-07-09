@@ -121,6 +121,12 @@ export async function GET(request: NextRequest) {
       .eq('enrollment_id', enrollmentId)
       .eq('term_id', termId);
 
+    const debugInfo = {
+      enrollmentId,
+      termId,
+      circularMarksCount: circularMarks?.length || 0,
+      supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    }
 
     if (circularError) {
       console.error('CIRCULAR MARKS ERROR:', JSON.stringify(circularError, null, 2));
@@ -427,6 +433,7 @@ export async function GET(request: NextRequest) {
         is_term_3: isTerm3,
         promotion_status,
       },
+      debug: debugInfo,
     }
 
     return withCors(request, NextResponse.json(reportData))

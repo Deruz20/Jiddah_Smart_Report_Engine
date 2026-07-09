@@ -592,6 +592,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
             </div>
 
             {/* Document Selector */}
+            {reportData && <div className="text-xs font-mono text-red-500 break-words mb-4">DEBUG: {JSON.stringify(reportData.debug)}</div>}
             {reportData && (validReports.circular || validReports.theology) && !validReports.combined && (
               <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
                 <h3 className="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">

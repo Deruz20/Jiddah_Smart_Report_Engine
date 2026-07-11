@@ -295,8 +295,8 @@ export default function TheologyMOTReport({ reportData }: any) {
     height: 18px;
     display: flex;
     align-items: center;
-    justify-content: center;
-    padding: 0 4px 2px 4px;
+    justify-content: flex-start;
+    padding: 0 8px 2px 8px;
     color: var(--data-navy);
     font-weight: 900;
     font-size: 16px;
@@ -330,6 +330,8 @@ export default function TheologyMOTReport({ reportData }: any) {
 .theology-mot-report .table td {
     border: 1.5px solid #0d5c46;
     text-align: center;
+    white-space: normal;
+    word-break: break-word;
 }
 
 .theology-mot-report .table th {

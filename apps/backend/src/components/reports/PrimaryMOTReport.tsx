@@ -166,11 +166,12 @@ export default function PrimaryMOTReport({ reportData }: any) {
         min-width: 0;
         display: flex;
         align-items: center;
-        justify-content: center;
+        justify-content: flex-start;
         color: var(--data-navy);
         font-weight: 900;
         font-size: 15px;
         padding-bottom: 2px;
+        padding-left: 8px;
     }
 
     /* Main Table */
@@ -246,8 +247,8 @@ export default function PrimaryMOTReport({ reportData }: any) {
       min-height: 22px;
       display: flex;
       align-items: center;
-      justify-content: center;
-      padding: 0 4px 2px 4px;
+      justify-content: flex-start;
+      padding: 0 4px 2px 8px;
     }
 
     .primary-mot-report .line-text {

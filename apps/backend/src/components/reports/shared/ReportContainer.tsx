@@ -43,7 +43,7 @@ export const ReportContainer: React.FC<ReportContainerProps> = ({
   // Derive dimensions ONLY from canonical mapping
   // This is the single source of truth for each report's dimensions
   const dimensions = STABILIZED_REPORT_ORIENTATIONS[reportType]
-  const orientation = dimensions.orientation
+  const pageOrientation = dimensions.pageOrientation
 
   // Inline styles with exact dimensions from constants
   // Using minHeight instead of height to allow content expansion while maintaining A4 baseline
@@ -66,7 +66,7 @@ export const ReportContainer: React.FC<ReportContainerProps> = ({
     <div
       role="report"
       data-report-type={reportType}
-      data-report-orientation={orientation}
+      data-report-orientation={pageOrientation}
       style={containerStyle}
       className={`report-container ${className}`}
     >

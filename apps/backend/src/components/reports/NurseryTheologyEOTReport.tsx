@@ -201,8 +201,8 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
     height: 24px;
     display: flex;
     align-items: center;
-    justify-content: center;
-    padding: 0 4px 2px 4px;
+    justify-content: flex-start;
+    padding: 0 8px 2px 8px;
     color: var(--data-navy);
     font-weight: 900;
     font-size: 17px;
@@ -384,7 +384,7 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
             return (
               <div key={subject.subject_name_arabic} className="subject-row">
                 <div className="subject-name">
-                  <span style={{ fontSize: '18px', marginLeft: '8px' }}>{getSubjectIcon(subject.subject_name_arabic)}</span>
+                  <span className="print:hidden" style={{ fontSize: '18px', marginLeft: '8px' }}>{getSubjectIcon(subject.subject_name_arabic)}</span>
                   {subject.subject_name_arabic}
                 </div>
                 <div className="grade-circle-wrap">

@@ -202,10 +202,10 @@ export default function P7EOTReport({ reportData }: any) {
   flex: 1;
   min-width: 0;
   border-bottom: 1.5px dotted #9ca3af;
-  padding: 0 0 2px 0;
+  padding: 0 0 2px 8px;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   color: var(--data-navy);
   font-weight: 900;
   font-size: 15px;
@@ -230,7 +230,7 @@ export default function P7EOTReport({ reportData }: any) {
   background: var(--primary-green);
   color: white;
   border: 1px solid rgba(255,255,255,0.2);
-  padding: 5px 4px;
+  padding: 3px 4px;
   font-size: 11px;
 }
 
@@ -239,12 +239,12 @@ export default function P7EOTReport({ reportData }: any) {
   color: white;
   font-size: 13px;
   letter-spacing: 1px;
-  padding: 4px;
+  padding: 2px;
 }
 
 .p7-eot-report td {
   border: 1px solid #ddd;
-  padding: 5px 4px;
+  padding: 2px 4px;
   text-align: center;
   font-size: 11px;
   font-weight: 600;
@@ -302,7 +302,7 @@ export default function P7EOTReport({ reportData }: any) {
 .p7-eot-report .comment-card {
   border: 1.5px dashed var(--primary-green);
   border-radius: 8px;
-  padding: 8px 14px;
+  padding: 4px 8px;
   background: rgba(255,255,255,0.85);
 }
 
@@ -332,11 +332,11 @@ export default function P7EOTReport({ reportData }: any) {
 .p7-eot-report .w-line {
   flex: 1;
   border-bottom: 1.5px dotted #9ca3af;
-  padding-bottom: 2px;
+  padding: 0 0 2px 8px;
   min-width: 0;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
 }
 
 .p7-eot-report .line-text {

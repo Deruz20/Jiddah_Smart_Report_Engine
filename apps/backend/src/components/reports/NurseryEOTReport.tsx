@@ -17,414 +17,400 @@ export default function NurseryEOTReport({ reportData }: any) {
     if (lower.includes('islamic') || lower.includes('quran') || lower.includes('religion')) return '☪️'
     return '✏️'
   }
+
   return (
     <ReportContainer reportType="NurseryEOTReport">
       <style dangerouslySetInnerHTML={{
         __html: `
-.nursery-eot-report,
-.nursery-eot-report * {
-    box-sizing: border-box;
-}
-
-.nursery-eot-report {
-    --school-green: #2e7d32;
-    --nursery-blue: #1e40af;
-    --light-blue: #eff6ff;
-    --accent-orange: #f59e0b;
-    --ink-color: #c2410c;
-    --data-navy: #0f172a;
-    --data-indigo: #3730a3;
-    --data-teal: #0f766e;
-    flex: 1 1 auto;
-    width: 100%;
-    height: 100%;
-    max-height: 100%;
-    overflow: hidden;
-    padding: 5mm 10mm;
-    background: white;
-    border: 6px double var(--nursery-blue);
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-}
-
-@media print {
     .nursery-eot-report {
+        --primary-green: #059669;
+        --dark-green: #064e3b;
+        --accent-gold: #fbbf24;
+        --border-light: #e2e8f0;
+        --data-indigo: #4338ca;
+        --bg-stripes: #f8fafc;
+        
+        flex: 1 1 auto;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        background: transparent;
+        font-family: 'Inter', system-ui, sans-serif;
+        position: relative;
+        overflow: hidden;
+        border: none;
+        border-radius: 0;
         box-shadow: none;
-        margin: 0;
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
     }
-}
 
-.nursery-eot-report::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    opacity: 0.12;
-    pointer-events: none;
-    background-image: url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M10 20 Q 15 15 20 20 T 30 20 Q 35 25 30 30 H 10 Q 5 25 10 20' fill='%231e40af'/%3E%3Cpath d='M60 10 L 62 14 L 66 14 L 63 17 L 64 21 L 60 18 L 56 21 L 57 17 L 54 14 L 58 14 Z' fill='%23f59e0b'/%3E%3C/svg%3E");
-    background-size: 100px 100px;
-}
+    @media print {
+        .nursery-eot-report {
+            border: none;
+            border-radius: 0;
+            box-shadow: none;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+    }
 
-.nursery-eot-report > * {
-    z-index: 2;
-    position: relative;
-}
+    .nursery-eot-report > * { z-index: 2; position: relative; }
 
-.nursery-eot-report .header {
-    flex: 0 0 auto;
-    text-align: center;
-    padding: 0 95px;
-    margin-bottom: 2px;
-}
+    /* HEADER */
+    .nursery-eot-report .header-banner {
+        background: linear-gradient(to right, #2563eb, #1e40af);
+        padding: 16px 24px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 4px solid var(--accent-gold);
+        color: white;
+        flex-shrink: 0;
+    }
 
-.nursery-eot-report .logo-box {
-    position: absolute;
-    top: 0;
-    width: 60px;
-    height: 75px;
-    border: 3px solid var(--school-green);
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: white;
-    box-shadow: 3px 3px 0px var(--nursery-blue);
-    overflow: hidden;
-}
-.nursery-eot-report .logo-left { left: 0; }
-.nursery-eot-report .logo-right { right: 0; }
+    .nursery-eot-report .school-left { width: 32%; }
+    .nursery-eot-report .school-left h1 {
+        margin: 0;
+        font-size: 18px;
+        color: white;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        line-height: 1.15;
+    }
+    .nursery-eot-report .school-left p { margin: 4px 0 0; font-size: 11px; font-weight: 500; color: #93c5fd; }
 
-.nursery-eot-report .school-name {
-    font-family: 'Times New Roman', serif;
-    font-size: 22px;
-    font-weight: 950;
-    color: var(--school-green);
-    text-transform: uppercase;
-    margin: 0;
-    line-height: 1.1;
-}
+    .nursery-eot-report .header-center { width: 36%; text-align: center; display: flex; flex-direction: column; align-items: center; }
+    
+    .nursery-eot-report .logo {
+        width: 54px;
+        height: 54px;
+        margin: 0 auto 6px;
+        background: white;
+        border-radius: 12px;
+        padding: 4px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .nursery-eot-report .logo img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+    }
 
-.nursery-eot-report .contact-info {
-    font-size: 10px;
-    color: #334155;
-    font-weight: 700;
-    margin-top: 2px;
-}
+    .nursery-eot-report .report-badge {
+        display: inline-block;
+        background: rgba(255,255,255,0.2);
+        color: white;
+        padding: 4px 16px;
+        border-radius: 999px;
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        border: 1px solid rgba(255,255,255,0.3);
+    }
 
-.nursery-eot-report .title-area {
-    flex: 0 0 auto;
-    text-align: center;
-    margin: 8px 0;
-}
+    .nursery-eot-report .header-right { width: 32%; text-align: right; }
+    .nursery-eot-report .header-right h2 {
+        margin: 0;
+        font-size: 20px;
+        color: white;
+        line-height: 1.2;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+    }
 
-.nursery-eot-report .nursery-label {
-    font-size: 24px;
-    font-weight: 900;
-    color: var(--nursery-blue);
-    letter-spacing: 8px;
-    text-shadow: 2px 2px 0px #dbeafe;
-    margin-bottom: -2px;
-}
+    /* BODY PADDING */
+    .nursery-eot-report .report-body {
+        padding: 20px 24px;
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 auto;
+        min-height: 0;
+    }
 
-.nursery-eot-report .badge {
-    display: inline-block;
-    padding: 3px 35px;
-    background: var(--nursery-blue);
-    color: white;
-    font-weight: 900;
-    border-radius: 50px;
-    font-size: 12px;
-    box-shadow: 0 4px 10px rgba(30, 64, 175, 0.3);
-}
+    /* INFO BOXES */
+    .nursery-eot-report .info-container {
+        flex: 0 0 auto;
+        display: flex;
+        gap: 16px;
+        margin-bottom: 16px;
+    }
+    .nursery-eot-report .info-box {
+        flex: 1;
+        background: #f8fafc;
+        border: 1px solid var(--border-light);
+        border-radius: 12px;
+        padding: 12px 16px;
+        box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+    }
+    .nursery-eot-report .info-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 6px;
+        font-size: 12px;
+    }
+    .nursery-eot-report .info-row:last-child { margin-bottom: 0; }
+    .nursery-eot-report .label { font-weight: 700; color: #64748b; white-space: nowrap; text-transform: uppercase; font-size: 10px; letter-spacing: 0.05em; }
+    .nursery-eot-report .line { 
+        flex: 1; 
+        min-width: 0;
+        border-bottom: 1.5px dotted #cbd5e1; 
+        display: flex;
+        align-items: flex-end;
+        padding: 0 0 2px 4px;
+        color: #1e40af;
+        font-weight: 700;
+        font-size: 14px;
+    }
 
-.nursery-eot-report .term-year {
-    margin-top: 4px;
-    font-size: 12px;
-    font-weight: 900;
-    color: var(--nursery-blue);
-}
+    /* TABLES */
+    .nursery-eot-report .tables-container {
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        min-height: 0;
+    }
+    
+    .nursery-eot-report table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        border: 1px solid var(--border-light);
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    .nursery-eot-report th {
+        background: #1e40af;
+        color: white;
+        font-size: 11px;
+        padding: 8px 6px;
+        text-transform: uppercase;
+        border-bottom: 2px solid #1e3a8a;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        border-right: 1px solid rgba(255,255,255,0.2);
+    }
+    .nursery-eot-report th:last-child { border-right: none; }
+    
+    .nursery-eot-report td {
+        border-bottom: 1px solid var(--border-light);
+        border-right: 1px solid var(--border-light);
+        padding: 7px 6px;
+        font-size: 12px;
+        color: #334155;
+    }
+    .nursery-eot-report td:last-child { border-right: none; }
+    .nursery-eot-report tbody tr:last-child td { border-bottom: none; }
+    .nursery-eot-report tbody tr:nth-child(even) { background: var(--bg-stripes); }
 
-.nursery-eot-report .tables-container {
-    flex: 1 1 auto;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-}
+    .nursery-eot-report .data-cell {
+        text-align: center;
+        font-weight: 700;
+        color: #1e40af;
+        font-size: 13px;
+    }
+    
+    .nursery-eot-report .subject-cell {
+        font-weight: 600;
+        color: #0f172a;
+    }
 
-.nursery-eot-report table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 4px;
-    font-size: 13px;
-    background: rgba(255, 255, 255, 0.85);
-    border: 2px solid var(--nursery-blue);
-}
+    .nursery-eot-report .table-banner {
+        background: #eff6ff;
+        color: #1e40af;
+        font-size: 12px;
+        font-weight: 800;
+        text-align: center;
+        padding: 6px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        border-bottom: 1px solid var(--border-light);
+    }
 
-.nursery-eot-report th,
-.nursery-eot-report td {
-    border: 1px solid var(--nursery-blue);
-    padding: 5px 8px;
-    color: var(--nursery-blue);
-}
-
-.nursery-eot-report .info-label {
-    background: var(--light-blue);
-    font-weight: 800;
-    width: 18%;
-}
-
-.nursery-eot-report .data-cell {
-    color: var(--data-indigo);
-    font-weight: 900;
-    font-size: 15px;
-    text-align: center;
-}
-
-.nursery-eot-report .user-data {
-    color: var(--data-navy);
-    font-weight: 900;
-    font-size: 16px;
-    text-transform: uppercase;
-}
-
-.nursery-eot-report .main-th {
-    background: var(--nursery-blue);
-    color: white;
-    font-weight: 900;
-    text-transform: uppercase;
-}
-
-.nursery-eot-report .zebra:nth-child(even) { background: rgba(241, 245, 249, 0.4); }
-
-.nursery-eot-report .section-pill {
-    flex: 0 0 auto;
-    text-align: center;
-    margin-top: 8px;
-}
-
-.nursery-eot-report .section-pill h2 {
-    margin: 0;
-    background: var(--school-green);
-    color: white;
-    display: inline-block;
-    padding: 2px 20px;
-    border-radius: 20px;
-    font-size: 13px;
-    text-transform: uppercase;
-}
-
-.nursery-eot-report .comments-container {
-    flex: 0 0 auto;
-    margin-top: 12px;
-    padding: 10px;
-    border: 1.5px dashed var(--nursery-blue);
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.7);
-}
-
-.nursery-eot-report .comment-row {
-    display: flex;
-    align-items: center;
-    margin-bottom: 8px;
-    font-size: 13px;
-    font-weight: 700;
-}
-
-.nursery-eot-report .line-dots {
-    flex: 1;
-    min-width: 0;
-    border-bottom: 1.5px dotted #9ca3af;
-    margin-left: 8px;
-    height: 18px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0 4px 2px 4px;
-}
-
-.nursery-eot-report .line-text {
-    font-style: italic;
-    color: var(--data-teal);
-    font-weight: 900;
-    font-size: 16px;
-    line-height: 1.1;
-    background: transparent;
-    padding-right: 4px;
-}
-
-.nursery-eot-report .footer {
-    flex: 0 0 auto;
-    margin-top: 8px;
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    border-top: 2px solid var(--surprise-gold);
-    padding-top: 6px;
-}
-
-.nursery-eot-report .stamp-box {
-    width: 110px;
-    height: 75px;
-    border: 2px solid #cbd5e1;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    font-size: 10px;
-    color: #94a3b8;
-    font-weight: 900;
-    background: white;
-}
-
-.nursery-eot-report .valid-warning {
-    text-align: center;
-    color: #b91c1c;
-    font-weight: 900;
-    font-size: 10px;
-    margin-top: 6px;
-    padding: 4px;
-    background: #fee2e2;
-    border-radius: 6px;
-}
+    /* FOOTER */
+    .nursery-eot-report .report-footer {
+        flex: 0 0 auto;
+        margin-top: 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+    }
+    .nursery-eot-report .remarks-box {
+        flex: 1;
+        margin-right: 20px;
+        background: #f8fafc;
+        border-radius: 12px;
+        padding: 12px 16px;
+        border: 1px solid var(--border-light);
+    }
+    .nursery-eot-report .stamp-box {
+        width: 120px;
+        height: 120px;
+        border: 2px dashed #94a3b8;
+        border-radius: 16px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        font-size: 11px;
+        color: #94a3b8;
+        font-weight: 700;
+        background: white;
+        flex-shrink: 0;
+    }
         `
       }} />
 
       <div className="nursery-eot-report">
-        <div className="header">
-          <div className="logo-box logo-left">
-            <img src="/school_budge.jpeg" alt="School Badge" style={{ width: '100%', height: 'auto', border: 'none' }} />
+        <div className="header-banner">
+          <div className="school-left">
+            <h1>JIDDAH ISLAMIC</h1>
+            <h1 style={{ fontSize: '14px', marginTop: '2px', color: '#bfdbfe' }}>NURSERY AND PRIMARY SCHOOL</h1>
+            <p>P.O. BOX 34008 Kampala (U)</p>
+            <p>Tel: +256 744950042 / 787779909</p>
           </div>
-          <div className="logo-box logo-right">
-            <img src="/school_budge.jpeg" alt="School Badge" style={{ width: '100%', height: 'auto', border: 'none' }} />
-          </div>
-          <h1 className="school-name">JIDDAH ISLAMIC NURSERY AND PRIMARY SCHOOL</h1>
-          <div className="contact-info">
-            P.O. BOX 34008 Kampala (U) | Tel: +256 744950042 / 787779909<br />
-            Email: jiddahislamicnurseryandpri@gmail.com
-          </div>
-        </div>
-
-        <div className="title-area">
-          <div className="nursery-label">NURSERY</div>
-          <div className="badge">END OF TERM REPORT FORM</div>
-          <div className="term-year">
-            TERM: {reportData?.term?.term_number === 1 ? 'ONE' : reportData?.term?.term_number === 2 ? 'TWO' : 'THREE'} &nbsp;&nbsp;&nbsp;&nbsp; YEAR: {reportData?.term?.academic_year}
-          </div>
-        </div>
-
-        <table>
-          <tbody>
-            <tr>
-              <td className="info-label">Pupil's Name:</td>
-              <td className="user-data" style={{ width: '32%' }}>{reportData?.student?.name}</td>
-              <td className="info-label">Class:</td>
-              <td className="user-data">{reportData?.student?.class_name}</td>
-            </tr>
-            <tr>
-              <td className="info-label">Student ID:</td>
-              <td className="user-data">{reportData?.student?.admission_number}</td>
-              <td className="info-label">Date:</td>
-              <td className="user-data">{'--'}</td>
-            </tr>
-            <tr>
-              <td className="info-label">School Pay Code:</td>
-              <td colSpan={3} className="user-data">{'--'}</td>
-            </tr>
-          </tbody>
-        </table>
-
-        <table>
-          <thead>
-            <tr>
-              <th className="main-th" style={{ textAlign: 'left' }}>Learning Area</th>
-              <th className="main-th" style={{ width: '75px' }}>Grade</th>
-              <th className="main-th">Remark</th>
-              <th className="main-th" style={{ width: '75px' }}>Initial</th>
-            </tr>
-          </thead>
-          <tbody>
-            {reportData?.circular?.subjects?.map((subject: any) => {
-              const eotGrade = subject.eot_score != null ? getNurseryGrade(subject.eot_score) : null
-              return (
-                <tr key={subject.subject_name} className="zebra">
-                  <td><span style={{marginRight: '8px', fontSize: '14px'}}>{getSubjectIcon(subject.subject_name)}</span>{subject.subject_name}</td>
-                  <td className="data-cell">{eotGrade?.grade ?? '--'}</td>
-                  <td className="data-cell">{eotGrade?.remark ?? '--'}</td>
-                  <td className="data-cell"></td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-
-        <div className="section-pill"><h2>Learner's Competence</h2></div>
-        <table>
-          <tbody>
-            <tr>
-              <th style={{ background: 'var(--school-green)', color: 'white', textAlign: 'left' }}>Progressive Records</th>
-              <th className="main-th">LA1</th>
-              <th className="main-th">LA2</th>
-              <th className="main-th">LA3</th>
-              <th className="main-th">LA4</th>
-              <th className="main-th">LA5</th>
-              <th className="main-th">Writing</th>
-            </tr>
-            <tr>
-              <td style={{ fontWeight: 800 }}>Mid-Term Assessment</td>
-              {reportData?.circular?.subjects?.slice(0, 6).map((subject: any, index: number) => (
-                <td key={index} className="data-cell">
-                  {subject.mot_score != null 
-                    ? getNurseryGrade(subject.mot_score).grade 
-                    : '--'}
-                </td>
-              ))}
-            </tr>
-          </tbody>
-        </table>
-
-        <div className="section-pill"><h2>Official Grading Scale</h2></div>
-        <table style={{ textAlign: 'center' }}>
-          <tbody>
-            <tr style={{ fontWeight: 800, background: '#f1f5f9' }}>
-              <td style={{ background: 'var(--light-blue)', width: '20%', color: 'var(--nursery-blue)' }}>Score Range</td>
-              <td className="data-cell">0 - 49</td><td className="data-cell">50 - 69</td><td className="data-cell">70 - 79</td><td className="data-cell">80 - 89</td><td className="data-cell">90 - 100</td>
-            </tr>
-            <tr style={{ fontWeight: 900, fontSize: '15px' }}>
-              <td style={{ background: 'var(--light-blue)', color: 'var(--nursery-blue)' }}>Grade</td>
-              <td className="data-cell">E</td><td className="data-cell">D</td><td className="data-cell">C</td><td className="data-cell">B</td><td className="data-cell">A</td>
-            </tr>
-          </tbody>
-        </table>
-
-        <div className="comments-container">
-          <div className="comment-row">Conduct: <div className="line-dots"><span className="line-text">{reportData?.circular?.conduct_remark ?? getConductRemark(null)}</span></div></div>
-          <div style={{ display: 'flex', gap: '20px' }}>
-            <div className="comment-row" style={{ flex: 7 }}>Class Teacher: <div className="line-dots"><span className="line-text">{getNurseryTeacherComment(grades)}</span></div></div>
-            <div className="comment-row" style={{ flex: 3 }}>Signature: <div className="line-dots"></div></div>
-          </div>
-          <div style={{ display: 'flex', gap: '20px' }}>
-            <div className="comment-row" style={{ flex: 7 }}>Head Teacher: <div className="line-dots"><span className="line-text">{getNurseryTeacherComment(grades)}</span></div></div>
-            <div className="comment-row" style={{ flex: 3 }}>Signature: <div className="line-dots"></div></div>
-          </div>
-        </div>
-
-        <div className="footer">
-          <div>
-            <div style={{ fontWeight: 900, color: 'var(--nursery-blue)', fontSize: '15px', marginBottom: '10px' }}>
-              Next Term Begins On: {reportData?.term?.next_term_start
-                ? new Date(reportData.term.next_term_start).toLocaleDateString('en-UG',
-                    {weekday:'long', day:'numeric', month:'long', year:'numeric'})
-                : '____________________'}
+          <div className="header-center">
+            <div className="logo">
+              <img src="/school_budge.jpeg" alt="Badge" />
             </div>
-            <div className="valid-warning">NOT VALID WITHOUT THE OFFICIAL SCHOOL STAMP</div>
+            <div className="report-badge">END OF TERM REPORT</div>
           </div>
-          <div className="stamp-box">OFFICIAL SCHOOL STAMP</div>
+          <div className="header-right">
+            <h2>NURSERY</h2>
+            <div style={{ marginTop: '8px', fontSize: '11px', color: '#93c5fd', fontWeight: 600 }}>
+              TERM {reportData?.term?.term_number} • {reportData?.term?.academic_year}
+            </div>
+          </div>
         </div>
 
+        <div className="report-body">
+          {/* INFO BOXES */}
+          <div className="info-container">
+            <div className="info-box">
+              <div className="info-row"><span className="label">Student Name</span><div className="line">{reportData?.student?.name}</div></div>
+              <div className="info-row"><span className="label">Student ID</span><div className="line">{reportData?.student?.admission_number}</div></div>
+              <div className="info-row"><span className="label">Pay Code</span><div className="line">--</div></div>
+            </div>
+            <div className="info-box">
+              <div className="info-row"><span className="label">Class</span><div className="line">{reportData?.student?.class_name}</div></div>
+              <div className="info-row"><span className="label">Date</span><div className="line">{new Date().toLocaleDateString('en-GB')}</div></div>
+            </div>
+          </div>
+
+          {/* TABLES */}
+          <div className="tables-container">
+            
+            <table>
+              <thead>
+                <tr>
+                  <th style={{ textAlign: 'left', width: '40%' }}>Learning Area</th>
+                  <th style={{ width: '15%' }}>Grade</th>
+                  <th style={{ width: '25%' }}>Remark</th>
+                  <th style={{ width: '20%' }}>Initials</th>
+                </tr>
+              </thead>
+              <tbody>
+                {reportData?.circular?.subjects?.map((subject: any) => {
+                  const eotGrade = subject.eot_score != null ? getNurseryGrade(subject.eot_score) : null
+                  return (
+                    <tr key={subject.subject_name}>
+                      <td className="subject-cell">
+                        <span style={{marginRight: '8px', fontSize: '14px'}}>{getSubjectIcon(subject.subject_name)}</span>
+                        {subject.subject_name}
+                      </td>
+                      <td className="data-cell">{eotGrade?.grade ?? '--'}</td>
+                      <td className="data-cell">{eotGrade?.remark ?? '--'}</td>
+                      <td className="data-cell"></td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+
+            <table>
+              <thead>
+                <tr>
+                  <th colSpan={7} style={{ background: '#0f172a', textAlign: 'left', letterSpacing: '0.1em' }}>Learner's Competence (Progressive Records)</th>
+                </tr>
+                <tr>
+                  <th style={{ background: '#f8fafc', color: '#1e40af', borderBottom: '1px solid #e2e8f0' }}>Assessment</th>
+                  <th style={{ background: '#f8fafc', color: '#1e40af', borderBottom: '1px solid #e2e8f0' }}>LA1</th>
+                  <th style={{ background: '#f8fafc', color: '#1e40af', borderBottom: '1px solid #e2e8f0' }}>LA2</th>
+                  <th style={{ background: '#f8fafc', color: '#1e40af', borderBottom: '1px solid #e2e8f0' }}>LA3</th>
+                  <th style={{ background: '#f8fafc', color: '#1e40af', borderBottom: '1px solid #e2e8f0' }}>LA4</th>
+                  <th style={{ background: '#f8fafc', color: '#1e40af', borderBottom: '1px solid #e2e8f0' }}>LA5</th>
+                  <th style={{ background: '#f8fafc', color: '#1e40af', borderBottom: '1px solid #e2e8f0' }}>Writing</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td className="subject-cell">Mid-Term Assessment</td>
+                  {reportData?.circular?.subjects?.slice(0, 6).map((subject: any, index: number) => (
+                    <td key={index} className="data-cell">
+                      {subject.mot_score != null 
+                        ? getNurseryGrade(subject.mot_score).grade 
+                        : '--'}
+                    </td>
+                  ))}
+                  {/* Fill empty cells if fewer than 6 subjects */}
+                  {Array.from({ length: Math.max(0, 6 - (reportData?.circular?.subjects?.slice(0, 6).length || 0)) }).map((_, i) => (
+                    <td key={'empty-'+i} className="data-cell">--</td>
+                  ))}
+                </tr>
+              </tbody>
+            </table>
+
+            <table style={{ marginTop: 'auto' }}>
+              <thead>
+                <tr>
+                  <th colSpan={6} style={{ background: '#1e40af', textAlign: 'center' }}>OFFICIAL GRADING SCALE</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td className="subject-cell" style={{ background: '#f8fafc' }}>Score Range</td>
+                  <td className="data-cell">0 - 49</td><td className="data-cell">50 - 69</td><td className="data-cell">70 - 79</td><td className="data-cell">80 - 89</td><td className="data-cell">90 - 100</td>
+                </tr>
+                <tr>
+                  <td className="subject-cell" style={{ background: '#f8fafc' }}>Grade</td>
+                  <td className="data-cell" style={{ color: '#ef4444' }}>E</td><td className="data-cell" style={{ color: '#f59e0b' }}>D</td><td className="data-cell">C</td><td className="data-cell" style={{ color: '#10b981' }}>B</td><td className="data-cell" style={{ color: '#059669' }}>A</td>
+                </tr>
+              </tbody>
+            </table>
+
+          </div>
+
+          {/* FOOTER */}
+          <div className="report-footer">
+            <div className="remarks-box">
+              <div className="info-row"><span className="label" style={{ minWidth: '100px' }}>Conduct</span><div className="line">{reportData?.circular?.conduct_remark ?? getConductRemark(null)}</div></div>
+              <div className="info-row" style={{ marginTop: '12px' }}><span className="label" style={{ minWidth: '100px' }}>Class Teacher</span><div className="line">{getNurseryTeacherComment(grades)}</div></div>
+              <div className="info-row" style={{ marginTop: '12px' }}><span className="label" style={{ minWidth: '100px' }}>Head Teacher</span><div className="line">{getNurseryTeacherComment(grades)}</div></div>
+              
+              <div style={{ marginTop: '16px', display: 'flex', gap: '16px' }}>
+                <div className="info-row" style={{ flex: 1 }}><span className="label">Next Term Begins</span><div className="line" style={{ fontSize: '11px', color: '#64748b' }}>
+                  {reportData?.term?.next_term_start
+                    ? new Date(reportData.term.next_term_start).toLocaleDateString('en-UG', {weekday:'long', day:'numeric', month:'long', year:'numeric'})
+                    : '____________________'}
+                </div></div>
+              </div>
+            </div>
+
+            <div className="stamp-box">
+              <div>OFFICIAL</div>
+              <div>STAMP</div>
+            </div>
+          </div>
+          
+          <div style={{ textAlign: 'center', marginTop: '12px', fontSize: '9px', color: '#94a3b8', fontWeight: 600, letterSpacing: '0.05em' }}>
+            NOT VALID WITHOUT OFFICIAL SCHOOL STAMP AND SIGNATURE
+          </div>
+
+        </div>
       </div>
     </ReportContainer>
   )

@@ -31,6 +31,7 @@ export async function GET(request: NextRequest) {
       .select(`
         id, 
         name,
+        arabic_name,
         class_name,
         classes (
           id,

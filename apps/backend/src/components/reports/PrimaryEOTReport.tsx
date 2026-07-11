@@ -242,7 +242,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
         background: var(--primary-green);
         color: white;
         font-size: 11px;
-        padding: 5px 4px;
+        padding: 3px 4px;
         text-transform: uppercase;
         border: 1px solid rgba(255,255,255,0.2);
     }
@@ -251,12 +251,12 @@ export default function PrimaryEOTReport({ reportData }: any) {
         color: white;
         font-size: 13px;
         letter-spacing: 1px;
-        padding: 4px;
+        padding: 2px;
         text-align: center;
     }
     .primary-eot-report td {
         border: 1px solid #ddd;
-        padding: 5px 4px;
+        padding: 2px 4px;
         text-align: center;
         font-size: 11px;
         vertical-align: middle;
@@ -333,10 +333,10 @@ export default function PrimaryEOTReport({ reportData }: any) {
     .primary-eot-report .comment-card {
         border: 1.5px dashed var(--primary-green);
         border-radius: 8px;
-        padding: 8px 12px;
+        padding: 4px 8px;
         background: rgba(255,255,255,0.85);
     }
-    .primary-eot-report .comment-row { display: flex; gap: 14px; margin-bottom: 6px; }
+    .primary-eot-report .comment-row { display: flex; gap: 14px; margin-bottom: 4px; }
     .primary-eot-report .comment-row:last-child { margin-bottom: 0; }
     .primary-eot-report .c-field { display: flex; align-items: center; gap: 8px; min-width: 0; }
     .primary-eot-report .c-field span { font-size: 12px; font-weight: 700; white-space: nowrap; }
@@ -672,7 +672,8 @@ export default function PrimaryEOTReport({ reportData }: any) {
                   className="t-comment"
                   style={{ justifyContent: 'flex-start' }}
                 >
-                  التوقيع والختم:{' '}
+                  <span style={{ whiteSpace: 'nowrap' }}>التوقيع والختم:</span>
+                  <div className="w-line" style={{ margin: '0 8px 0 0', flex: 1, minWidth: '150px' }}></div>
                 </div>
               </div>
             </div>

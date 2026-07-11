@@ -16,16 +16,7 @@
    ============================================================================ */
 
 @media print {
-  /* Hide everything by default */
-  body * {
-    visibility: hidden;
-  }
 
-  /* Show only print root */
-  .print-root,
-  .print-root * {
-    visibility: visible;
-  }
 
   .print-root {
     position: absolute;

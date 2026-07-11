@@ -22,3 +22,10 @@ div[data-report-orientation="portrait"] {
 div[data-report-orientation="landscape"] {
   page: landscape-page;
 }
+
+@media print { 
+  html, body { 
+    height: auto !important; 
+    overflow: visible !important; 
+  } 
+}

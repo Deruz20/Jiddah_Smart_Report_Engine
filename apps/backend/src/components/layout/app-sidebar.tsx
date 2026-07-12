@@ -149,7 +149,7 @@ export function AppSidebar() {
   return (
     <Sidebar
       collapsible="icon"
-      className="border-r-0"
+      className="border-r-0 print:hidden"
       style={{ "--sidebar-width": "15rem" } as React.CSSProperties}
     >
       <div

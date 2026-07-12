@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Search,
@@ -400,18 +401,32 @@ interface AppTopbarProps {
 export function AppTopbar({ breadcrumbs = ["Admin", "Dashboard"], currentPage = "Dashboard" }: AppTopbarProps) {
   const { toggleSidebar } = useSidebar();
   const [searchOpen, setSearchOpen] = React.useState(false);
+  const pathname = usePathname();
+  const isReportsPage = pathname === "/admin/reports";
+  const [isTopbarHidden, setIsTopbarHidden] = React.useState(isReportsPage);
+
+  // Auto-hide topbar when navigating to reports page
+  React.useEffect(() => {
+    setIsTopbarHidden(pathname === "/admin/reports");
+  }, [pathname]);
 
   return (
     <>
-      <header
-        className="sticky top-0 z-30 border-b"
-        style={{
-          background: "rgba(255,255,255,0.92)",
-          backdropFilter: "blur(16px)",
-          WebkitBackdropFilter: "blur(16px)",
-          borderColor: "rgba(0,0,0,0.06)",
-        }}
-      >
+      <AnimatePresence>
+        {!isTopbarHidden && (
+          <motion.header
+            initial={{ y: -60, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -60, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="sticky top-0 z-30 border-b print:hidden"
+            style={{
+              background: "rgba(255,255,255,0.92)",
+              backdropFilter: "blur(16px)",
+              WebkitBackdropFilter: "blur(16px)",
+              borderColor: "rgba(0,0,0,0.06)",
+            }}
+          >
         {/* ── Mobile layout ── */}
         <div className="md:hidden flex items-center h-14 px-2">
           {/* Left: hamburger */}
@@ -469,7 +484,38 @@ export function AppTopbar({ breadcrumbs = ["Admin", "Dashboard"], currentPage = 
             <UserProfileDropdown />
           </div>
         </div>
-      </header>
+      </motion.header>
+        )}
+      </AnimatePresence>
+
+      {/* Floating Toggle Button (Visible only on Reports page or when Topbar is hidden) */}
+      <AnimatePresence>
+        {isTopbarHidden && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            onClick={() => setIsTopbarHidden(false)}
+            className="fixed top-4 right-4 z-40 flex items-center justify-center size-10 rounded-full bg-white text-slate-500 shadow-md border border-slate-200/60 hover:text-slate-800 transition-colors print:hidden"
+            style={{ WebkitTapHighlightColor: "transparent" }}
+            title="Show Topbar"
+          >
+            <ChevronDown className="size-5" />
+          </motion.button>
+        )}
+      </AnimatePresence>
+
+      {/* Hide Toggle Button (Inside Topbar, only on Reports page) */}
+      {isReportsPage && !isTopbarHidden && (
+          <button
+            onClick={() => setIsTopbarHidden(true)}
+            className="absolute -bottom-4 right-6 z-40 flex items-center justify-center h-5 px-3 rounded-b-lg bg-white text-slate-400 shadow-sm border-x border-b border-slate-200/60 hover:text-slate-700 transition-colors print:hidden"
+            style={{ fontSize: "0.65rem", fontWeight: 600 }}
+            title="Hide Topbar"
+          >
+            Hide Topbar
+          </button>
+      )}
 
       <MobileSearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
     </>

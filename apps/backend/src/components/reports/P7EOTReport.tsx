@@ -60,8 +60,8 @@ export default function P7EOTReport({ reportData }: any) {
   flex: 1 1 auto;
   width: 100%;
   height: 100%;
-  max-height: 100%;
-  overflow: hidden;
+  min-height: 100%;
+
 
   margin: 0 auto;
   background: var(--bg-cream);

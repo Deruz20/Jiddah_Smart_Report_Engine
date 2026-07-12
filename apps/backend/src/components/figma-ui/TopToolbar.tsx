@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Download, Printer, Share2, MessageSquare, Search, X, LayoutGrid, List } from 'lucide-react';
+import { Download, Printer, Share2, MessageSquare, Search, X, LayoutGrid, List, PanelTop } from 'lucide-react';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import * as Popover from '@radix-ui/react-popover';
 import * as Dialog from '@radix-ui/react-dialog';
@@ -144,6 +144,13 @@ export function TopToolbar({
           tooltip="Share link"
           onClick={onShare}
           disabled={reportCount === 0}
+        />
+
+        {/* ── Toggle App Header ─────────── */}
+        <IconBtn
+          icon={<PanelTop size={16} />}
+          tooltip="Toggle App Header"
+          onClick={() => window.dispatchEvent(new CustomEvent('toggle-topbar'))}
         />
 
         {/* ── Emoji reaction ────────────── */}

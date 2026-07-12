@@ -411,6 +411,13 @@ export function AppTopbar({ breadcrumbs = ["Admin", "Dashboard"], currentPage = 
     setIsTopbarHidden(pathname === "/admin/reports");
   }, [pathname]);
 
+  // Listen for global toggle events from other components (like TopToolbar)
+  React.useEffect(() => {
+    const handleToggle = () => setIsTopbarHidden(prev => !prev);
+    window.addEventListener("toggle-topbar", handleToggle);
+    return () => window.removeEventListener("toggle-topbar", handleToggle);
+  }, []);
+
   return (
     <>
       <AnimatePresence>
@@ -483,38 +490,9 @@ export function AppTopbar({ breadcrumbs = ["Admin", "Dashboard"], currentPage = 
             <NotificationBell />
             <div className="w-px h-5 bg-slate-200 mx-0.5" />
             <UserProfileDropdown />
-            {isReportsPage && !isTopbarHidden && (
-               <button
-                 onClick={() => setIsTopbarHidden(true)}
-                 className="flex items-center gap-1.5 ml-2 px-2.5 py-1.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors print:hidden"
-                 style={{ fontSize: "0.75rem", fontWeight: 500 }}
-                 title="Hide Topbar"
-               >
-                 <span>Hide</span>
-                 <ChevronUp className="size-3.5" />
-               </button>
-            )}
           </div>
         </div>
       </motion.header>
-        )}
-      </AnimatePresence>
-
-      {/* Floating Toggle Button (Visible only on Reports page or when Topbar is hidden) */}
-      <AnimatePresence>
-        {isTopbarHidden && (
-          <motion.button
-            initial={{ opacity: 0, scale: 0.8, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.8, y: 20 }}
-            onClick={() => setIsTopbarHidden(false)}
-            className="fixed bottom-6 right-6 z-40 flex items-center gap-2 px-4 h-10 rounded-full bg-slate-800 text-white shadow-xl hover:bg-slate-700 transition-colors print:hidden"
-            style={{ WebkitTapHighlightColor: "transparent", fontSize: "0.8rem", fontWeight: 500 }}
-            title="Show Topbar"
-          >
-            <span>Show Topbar</span>
-            <ChevronDown className="size-4" />
-          </motion.button>
         )}
       </AnimatePresence>
 

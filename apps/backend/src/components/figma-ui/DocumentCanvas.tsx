@@ -72,7 +72,6 @@ export function DocumentCanvas({
               gap: 32,
               padding: 48,
               justifyContent: 'center',
-              zoom: zoom,
             }}
           >
             <AnimatePresence>
@@ -93,6 +92,7 @@ export function DocumentCanvas({
                       : '3px solid transparent',
                     outlineOffset: 4,
                     transition: 'outline-color 0.15s',
+                    zoom: zoom,
                   }}
                 >
                   {renderReport(report, report.id === activeReportId)}

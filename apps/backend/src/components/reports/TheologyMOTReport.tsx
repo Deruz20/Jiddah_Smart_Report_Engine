@@ -1,5 +1,6 @@
 import { getTheologyComment } from '@/lib/grading'
 import { ReportContainer } from '@/components/reports/shared/ReportContainer'
+import { transliterateEnglishToArabic } from '@/lib/transliterate'
 
 export default function TheologyMOTReport({ reportData }: any) {
   const getTheologyRemark = (score: number | null): string => {
@@ -51,7 +52,7 @@ export default function TheologyMOTReport({ reportData }: any) {
             <span>اسم الطالب/ة :</span>
             <div className="line-dots">
               <span className="line-text">
-                {reportData?.student?.arabic_name ?? reportData?.student?.name}
+                {reportData?.student?.arabic_name || transliterateEnglishToArabic(reportData?.student?.name || '')}
               </span>
             </div>
           </div>

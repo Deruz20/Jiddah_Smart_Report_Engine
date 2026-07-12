@@ -68,7 +68,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
   const [rawReports, setRawReports] = useState<ReportData[]>([])
   
   const [activeReportId, setActiveReportId] = useState<string | null>(null)
-  const [zoom, setZoom] = useState(1)
+  const [zoom, setZoom] = useState(0.75)
   const [printScope, setPrintScope] = useState<'current' | 'all'>('current')
   const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false)
   const [sidePanelOpen, setSidePanelOpen] = useState(true)
@@ -429,7 +429,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
         )}
       </AnimatePresence>
 
-      <div className="flex flex-1 overflow-hidden print:overflow-visible print:block">
+      <div className="flex flex-1 overflow-hidden print:overflow-visible print:block print-reset-layout">
         <DocumentCanvas
           reports={rawReports}
           activeReportId={activeReportId}

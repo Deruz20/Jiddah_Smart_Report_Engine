@@ -5,6 +5,7 @@ import {
   getTheologyComment,
 } from '@/lib/grading'
 import { ReportContainer } from '@/components/reports/shared/ReportContainer'
+import { transliterateEnglishToArabic } from '@/lib/transliterate'
 
 export default function PrimaryEOTReport({ reportData }: any) {
   const className =
@@ -478,8 +479,8 @@ export default function PrimaryEOTReport({ reportData }: any) {
               <div className="info-row">
                 <span className="label">اسم التلميذ/ة :</span>
                 <div className="line">
-                  {reportData?.student?.arabic_name ??
-                    reportData?.student?.name}
+                  {reportData?.student?.arabic_name || 
+                    transliterateEnglishToArabic(reportData?.student?.name || '')}
                 </div>
               </div>
               <div className="info-row">

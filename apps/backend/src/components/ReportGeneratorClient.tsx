@@ -210,6 +210,37 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
         return
       }
 
+      // Add Smart Transliteration step
+      const namesToTransliterate = generatedReportsData
+        .filter(r => !r.student.arabic_name)
+        .map(r => r.student.name);
+
+      if (namesToTransliterate.length > 0) {
+        toast.loading('Transliterating names...', { id: 'transliterate-toast' });
+        try {
+          const transRes = await fetch('/api/transliterate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ names: namesToTransliterate })
+          });
+          if (transRes.ok) {
+            const transData = await transRes.json();
+            if (transData.transliterated && transData.transliterated.length === namesToTransliterate.length) {
+              let i = 0;
+              generatedReportsData.forEach(r => {
+                if (!r.student.arabic_name) {
+                  r.student.arabic_name = transData.transliterated[i++];
+                }
+              });
+            }
+          }
+        } catch (e) {
+          console.error('Transliteration failed', e);
+        } finally {
+          toast.dismiss('transliterate-toast');
+        }
+      }
+
       setRawReports(generatedReportsData)
       setActiveReportId(generatedReportsData[0].id)
 

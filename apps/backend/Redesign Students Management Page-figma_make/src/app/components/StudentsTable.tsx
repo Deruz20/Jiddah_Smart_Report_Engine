@@ -1,8 +1,6 @@
-'use client';
-
 import React, { useState, useMemo } from 'react';
 import { Search, Filter, MoreHorizontal, Download, ChevronDown, ChevronUp, ChevronsUpDown, UserX } from 'lucide-react';
-import { Badge } from './figma-ui/Badge';
+import { Badge } from './Badge';
 
 export type Student = {
   id: string;
@@ -49,7 +47,7 @@ interface StudentsTableProps {
   students: Student[];
 }
 
-export function StudentsListClient({ students }: StudentsTableProps) {
+export function StudentsTable({ students }: StudentsTableProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<FilterTab>('All');
   const [sortKey, setSortKey] = useState<SortKey>('created_at');

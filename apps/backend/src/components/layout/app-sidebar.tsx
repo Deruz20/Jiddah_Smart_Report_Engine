@@ -15,6 +15,8 @@ import {
   LogOut,
   ChevronsLeft,
   Sparkles,
+  Search,
+  Bell,
 } from "lucide-react";
 import {
   Sidebar,
@@ -278,6 +280,21 @@ export function AppSidebar() {
         {/* Footer - User profile */}
         <SidebarFooter className="p-3">
           <SidebarSeparator className="mb-2 bg-white/5" />
+          
+          {/* Utilities Row */}
+          <div className={cn("flex items-center mb-2", collapsed ? "flex-col gap-2" : "justify-around px-1")}>
+            <button className="p-2 rounded-lg text-slate-400 hover:text-emerald-400 hover:bg-emerald-400/10 transition-colors" title="Search">
+              <Search className="size-4" />
+            </button>
+            <button className="p-2 rounded-lg text-slate-400 hover:text-emerald-400 hover:bg-emerald-400/10 transition-colors relative" title="Notifications">
+              <Bell className="size-4" />
+              <span className="absolute top-1.5 right-1.5 size-1.5 bg-red-500 rounded-full" />
+            </button>
+            <button className="p-2 rounded-lg text-slate-400 hover:text-emerald-400 hover:bg-emerald-400/10 transition-colors" title="Settings">
+              <Settings className="size-4" />
+            </button>
+          </div>
+
           <div
             className={cn(
               "flex items-center gap-2.5 p-2 rounded-xl cursor-pointer transition-all duration-200 group/profile",

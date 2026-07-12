@@ -427,7 +427,7 @@ export function AppTopbar({ breadcrumbs = ["Admin", "Dashboard"], currentPage = 
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: -60, opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="sticky top-0 z-30 border-b print:hidden"
+            className="sticky top-0 z-30 border-b print:hidden lg:hidden"
             style={{
               background: "rgba(255,255,255,0.92)",
               backdropFilter: "blur(16px)",

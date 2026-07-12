@@ -30,5 +30,5 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "Design Report Center Interface_latest_update", "Design_Master_Navigation_Layout_figma"]
+  "exclude": ["node_modules", "Design Report Center Interface_latest_update", "Design_Master_Navigation_Layout_figma", "Redesign Students Management Page-figma_make"]
 }

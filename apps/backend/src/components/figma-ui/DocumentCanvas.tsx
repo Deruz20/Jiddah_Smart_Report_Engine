@@ -65,7 +65,7 @@ export function DocumentCanvas({
           </div>
         ) : layout === 'grid' ? (
           <div
-            className="print-reset-layout print-reset-zoom"
+            className="print-reset-layout print-reset-zoom print:!block print:!p-0 print:!m-0"
             style={{
               display: 'flex',
               flexWrap: 'wrap' as const,
@@ -92,10 +92,11 @@ export function DocumentCanvas({
                       : '3px solid transparent',
                     outlineOffset: 4,
                     transition: 'outline-color 0.15s',
-                    zoom: zoom,
                   }}
                 >
-                  {renderReport(report, report.id === activeReportId)}
+                  <div style={{ zoom: zoom }} className="print-reset-zoom">
+                    {renderReport(report, report.id === activeReportId)}
+                  </div>
                 </motion.div>
               ))}
             </AnimatePresence>
@@ -123,7 +124,6 @@ export function DocumentCanvas({
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.07, type: 'spring', stiffness: 250, damping: 26 }}
                   style={{
-                    zoom: zoom,
                     cursor: 'pointer',
                     borderRadius: 6,
                     outline: report.id === activeReportId
@@ -136,7 +136,9 @@ export function DocumentCanvas({
                       : '0 8px 40px rgba(0,0,0,0.16)',
                   }}
                 >
-                  {renderReport(report, report.id === activeReportId)}
+                  <div style={{ zoom: zoom }} className="print-reset-zoom">
+                    {renderReport(report, report.id === activeReportId)}
+                  </div>
                 </motion.div>
               ))}
             </AnimatePresence>

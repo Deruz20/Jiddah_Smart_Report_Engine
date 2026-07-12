@@ -23,9 +23,8 @@ export function TopNav({ sidebarCollapsed }: TopNavProps) {
 
   return (
     <header
-      className="fixed top-0 right-0 z-30 flex items-center gap-4 px-4 sm:px-6 py-3 border-b bg-white transition-all duration-300 ease-[cubic-bezier(0.25,1,0.5,1)]"
+      className="fixed top-0 right-0 left-0 z-30 flex lg:hidden items-center justify-between px-4 sm:px-6 py-3 border-b bg-white transition-all duration-300"
       style={{
-        left: typeof window !== "undefined" && window.innerWidth >= 1024 ? (sidebarCollapsed ? "80px" : "280px") : "0px",
         height: "72px",
         borderColor: "rgba(0,0,0,0.07)",
       }}

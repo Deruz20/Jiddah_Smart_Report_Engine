@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Users, UserCheck, BookOpen, FileText,
   BarChart3, Upload, Settings, Shield, Bell, Activity,
   ChevronLeft, ChevronRight, BookMarked, Star, X,
-  GraduationCap, ScrollText, ClipboardList
+  GraduationCap, ScrollText, ClipboardList, Search, Sun, Moon
 } from "lucide-react";
 
 const navItems = [
@@ -43,7 +43,7 @@ export function Sidebar({ desktopCollapsed, onDesktopToggle }: SidebarProps) {
     bg-[#123524]
     transition-all duration-300 ease-[cubic-bezier(0.25,1,0.5,1)]
     border-r border-[#1F7A4D] shadow-sm
-    ${desktopCollapsed ? "lg:w-[80px]" : "lg:w-[280px]"}
+    ${desktopCollapsed ? "lg:w-16" : "lg:w-64"}
   `;
 
   return (
@@ -62,6 +62,22 @@ export function Sidebar({ desktopCollapsed, onDesktopToggle }: SidebarProps) {
               <p className="text-[#6B7B73] text-[11px] font-medium tracking-wide uppercase mt-0.5">Report Engine</p>
             </div>
           </div>
+        </div>
+
+        {/* Global Search Icon (CMD+K) */}
+        <div className="px-3 py-3 border-b border-[#1F7A4D]/50 flex justify-center">
+          <button 
+            className={`flex items-center w-full rounded-xl hover:bg-[#1F7A4D]/30 transition-all text-[#6B7B73] hover:text-white ${desktopCollapsed ? "justify-center p-2.5" : "px-3 py-2.5 gap-3"}`}
+            title="Search (CMD+K)"
+          >
+            <Search className="w-5 h-5 shrink-0" />
+            {!desktopCollapsed && (
+              <span className="text-[13px] font-medium flex-1 text-left flex justify-between items-center">
+                <span>Search</span>
+                <span className="text-[10px] bg-[#1F7A4D]/50 px-1.5 py-0.5 rounded text-white/70">âŒ˜K</span>
+              </span>
+            )}
+          </button>
         </div>
 
         {/* Navigation List */}
@@ -116,6 +132,16 @@ export function Sidebar({ desktopCollapsed, onDesktopToggle }: SidebarProps) {
               <p className="text-white text-sm font-semibold truncate max-w-[160px]">{displayName}</p>
               <p className="text-[#6B7B73] text-[11px] font-medium uppercase tracking-wider">{user?.role ?? "Staff"}</p>
             </div>
+          </div>
+          
+          <div className={`flex items-center gap-2 mb-3 ${desktopCollapsed ? "flex-col" : "justify-between px-1"}`}>
+            <button className="p-2 rounded-lg text-[#6B7B73] hover:text-white hover:bg-[#1F7A4D]/50 transition-colors relative" title="Notifications">
+              <Bell className="w-[18px] h-[18px]" />
+              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-red-500 rounded-full" />
+            </button>
+            <button className="p-2 rounded-lg text-[#6B7B73] hover:text-white hover:bg-[#1F7A4D]/50 transition-colors" title="Toggle Theme">
+              <Sun className="w-[18px] h-[18px]" />
+            </button>
           </div>
           
           <button

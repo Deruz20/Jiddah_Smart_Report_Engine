@@ -442,7 +442,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
         <section className="info-container">
           <div
             className="info-box"
-            style={{ width: showTheologyPanel ? '50%' : '100%' }}
+            style={{ width: showTheologyPanel ? '70%' : '100%' }}
           >
             <div className="info-row">
               <span className="label">Pupil's Name:</span>
@@ -475,7 +475,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
           </div>
 
           {showTheologyPanel && (
-            <div className="info-box" dir="rtl">
+            <div className="info-box" dir="rtl" style={{ width: '30%' }}>
               <div className="info-row">
                 <span className="label">اسم التلميذ/ة :</span>
                 <div className="line">
@@ -520,7 +520,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
           {/* ACADEMIC TABLE */}
           <div
             className="academic-side"
-            style={{ width: showTheologyPanel ? '50%' : '100%' }}
+            style={{ width: showTheologyPanel ? '70%' : '100%' }}
           >
             <table>
               <tbody>
@@ -596,7 +596,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
 
           {/* THEOLOGY TABLE */}
           {showTheologyPanel && (
-            <div className="theology-side">
+            <div className="theology-side" style={{ width: '30%' }}>
               <table className="theology-table">
                 <tbody>
                   <tr>

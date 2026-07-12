@@ -18,16 +18,11 @@ export function Layout() {
         sidebarCollapsed={desktopCollapsed} 
       />
       <main
-        className="transition-all duration-300 ease-[cubic-bezier(0.25,1,0.5,1)] pb-16 lg:pb-0"
-        style={{
-          marginLeft: typeof window !== "undefined" && window.innerWidth >= 1024 
-            ? (desktopCollapsed ? "80px" : "280px") 
-            : "0px",
-          paddingTop: "72px",
-          minHeight: "100vh",
-        }}
+        className={`transition-all duration-300 ease-[cubic-bezier(0.25,1,0.5,1)] pb-16 lg:pb-0 pt-[72px] lg:pt-0 min-h-screen ${
+          desktopCollapsed ? "lg:ml-16" : "lg:ml-64"
+        }`}
       >
-        <div className="p-4 sm:p-6 lg:p-8">
+        <div className="p-6">
           <PageTransition />
         </div>
       </main>

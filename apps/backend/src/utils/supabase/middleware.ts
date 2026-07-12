@@ -6,13 +6,10 @@ import { getSupabaseAnonKey } from "@/lib/supabase-env";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = getSupabaseAnonKey();
 
-export const createClient = (request: NextRequest) => {
-  // Create an unmodified response
+export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
-  });
+    request,
+  })
 
   const supabase = createServerClient(
     supabaseUrl!,
@@ -32,8 +29,25 @@ export const createClient = (request: NextRequest) => {
           )
         },
       },
-    },
-  );
+    }
+  )
+
+  // This will refresh session if expired - required for Server Components
+  // https://supabase.com/docs/guides/auth/server-side/nextjs
+  const { data: { user } } = await supabase.auth.getUser()
+
+  // protected routes
+  if (request.nextUrl.pathname.startsWith('/admin') && !user) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/login'
+    return NextResponse.redirect(url)
+  }
+  
+  if (request.nextUrl.pathname.startsWith('/login') && user) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/admin'
+    return NextResponse.redirect(url)
+  }
 
   return supabaseResponse
-};
+}

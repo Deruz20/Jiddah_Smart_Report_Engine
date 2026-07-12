@@ -17,6 +17,14 @@ import {
   Sparkles,
   Search,
   Bell,
+  UserCheck,
+  BookMarked,
+  BookOpen,
+  ScrollText,
+  FileText,
+  Upload,
+  Shield,
+  Activity,
 } from "lucide-react";
 import {
   Sidebar,
@@ -36,9 +44,18 @@ import { cn } from "../figma-ui/ui/utils";
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", id: "dashboard", href: "/admin" },
   { icon: Users, label: "Students", id: "students", href: "/admin/students" },
+  { icon: UserCheck, label: "Teachers & Staff", id: "teachers", href: "/admin/teachers" },
+  { icon: BookMarked, label: "Classes", id: "classes", href: "/admin/classes" },
+  { icon: BookOpen, label: "Subjects", id: "subjects", href: "/admin/subjects" },
+  { icon: BookOpen, label: "Terms", id: "terms", href: "/admin/terms" },
+  { icon: GraduationCap, label: "Circular Hub", id: "circular", href: "/admin/circular" },
+  { icon: ScrollText, label: "Theology Hub", id: "theology", href: "/admin/theology" },
   { icon: ClipboardEdit, label: "Marks Entry", id: "marks", href: "/admin/marks" },
-  { icon: Printer, label: "Report Center", id: "reports", href: "/admin/reports" },
+  { icon: FileText, label: "Report Center", id: "reports", href: "/admin/reports" },
+  { icon: Sparkles, label: "Signatures", id: "signatures", href: "/admin/signatures" },
+  { icon: Upload, label: "Upload Center", id: "upload", href: "/admin/upload" },
   { icon: Settings, label: "Settings", id: "settings", href: "/admin/settings" },
+  { icon: Shield, label: "Account & Security", id: "account", href: "/admin/account" },
 ];
 
 function NavItem({
@@ -255,10 +272,12 @@ export function AppSidebar() {
             <button className="p-2 rounded-lg text-slate-400 hover:text-emerald-400 hover:bg-emerald-400/10 transition-colors" title="Search">
               <Search className="size-4" />
             </button>
-            <button className="p-2 rounded-lg text-slate-400 hover:text-emerald-400 hover:bg-emerald-400/10 transition-colors relative" title="Notifications">
-              <Bell className="size-4" />
-              <span className="absolute top-1.5 right-1.5 size-1.5 bg-red-500 rounded-full" />
-            </button>
+            <Link href="/admin/notifications">
+              <button className="p-2 rounded-lg text-slate-400 hover:text-emerald-400 hover:bg-emerald-400/10 transition-colors relative" title="Notifications">
+                <Bell className="size-4" />
+                <span className="absolute top-1.5 right-1.5 size-1.5 bg-red-500 rounded-full" />
+              </button>
+            </Link>
           </div>
 
           <div

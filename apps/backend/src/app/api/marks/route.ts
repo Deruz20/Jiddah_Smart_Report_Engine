@@ -35,6 +35,11 @@ export async function GET(request: NextRequest) {
     const cookieStore = await cookies()
     const supabase = createClient(cookieStore)
 
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return withCors(request, NextResponse.json({ error: 'Authentication required. Please log in.' }, { status: 401 }))
+    }
+
     const { data: enrollment, error: enrollmentError } = await supabase
       .from('enrollments')
       .select('id, circular_class_id, theology_class_id, circular_classes(section, class_name), theology_classes(level)')
@@ -156,6 +161,11 @@ export async function POST(request: NextRequest) {
 
     const cookieStore = await cookies()
     const supabase = createClient(cookieStore)
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return withCors(request, NextResponse.json({ error: 'Authentication required. Please log in.' }, { status: 401 }))
+    }
 
     // 1. Fetch enrollment's sections
     const { data: enrollment, error: enrollmentError } = await supabase

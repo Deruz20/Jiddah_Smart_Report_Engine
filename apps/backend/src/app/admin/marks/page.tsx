@@ -42,16 +42,9 @@ export default async function MarksEntryPage() {
     <div className="min-h-screen bg-gray-50 pb-12">
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-6 py-6">
-          <div className="flex items-center gap-4 mb-4">
-            <Link
-              href="/admin"
-              className="flex items-center gap-2 text-emerald-600 hover:text-emerald-700 font-medium transition"
-            >
-              ← Back to Dashboard
-            </Link>
-          </div>
+
           <h1 className="text-3xl font-bold text-gray-900">Enter Marks</h1>
-          <p className="text-gray-600 mt-1">Choose term and student, then enter circular and theology scores.</p>
+          <p className="text-gray-600 mt-1">Choose term and student, then enter secular and theology scores.</p>
         </div>
       </div>
 

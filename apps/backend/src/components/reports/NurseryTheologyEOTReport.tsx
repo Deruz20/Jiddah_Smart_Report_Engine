@@ -365,7 +365,10 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
           </div>
           <div className="info-item">
             <span>السنة:</span>
-            <div className="dot-line">{toAr(reportData?.term?.academic_year)}</div>
+            <div className="dot-line medium">{toAr(toHijri(Number(reportData?.term?.academic_year)))}</div>
+            <span>هـ</span>
+            <div className="dot-line medium">{toAr(reportData?.term?.academic_year)}</div>
+            <span>م</span>
           </div>
           <div className="info-item">
             <span>عدد الأطفال:</span>

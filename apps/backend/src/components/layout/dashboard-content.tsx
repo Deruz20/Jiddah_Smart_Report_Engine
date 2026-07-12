@@ -289,7 +289,7 @@ export function DashboardContent({ data }: { data: DashboardData }) {
           <div className="divide-y divide-slate-50">
             {recentActivity.map((row, i) => (
               <motion.div
-                key={row.name}
+                key={`${row.name}-${i}`}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.2, delay: 0.4 + i * 0.05 }}

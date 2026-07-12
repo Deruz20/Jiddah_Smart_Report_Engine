@@ -15,6 +15,11 @@ export async function GET(request: NextRequest) {
     const cookieStore = await cookies()
     const supabase = createClient(cookieStore)
 
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return withCors(request, NextResponse.json({ error: 'Authentication required. Please log in.' }, { status: 401 }))
+    }
+
     const { data, error } = await supabase
       .from('enrollments')
       .select(`

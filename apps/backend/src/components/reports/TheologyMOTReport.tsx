@@ -78,7 +78,7 @@ export default function TheologyMOTReport({ reportData }: any) {
                 {toAr(toHijri(Number(reportData?.term?.academic_year)))}
               </span>
             </div>
-            <span>ه‍</span>
+            <span>هـ</span>
             <div className="line-dots medium">
               <span className="line-text">
                 {toAr(reportData?.term?.academic_year)}
@@ -131,7 +131,9 @@ export default function TheologyMOTReport({ reportData }: any) {
         <div className="comment">
           <span>تقرير مرب الفصل :</span>
           <div className="line-dots">
-            <span className="line-text"></span>
+            <span className="line-text">
+              {getTheologyComment(reportData?.theology?.mot_total ?? 0)}
+            </span>
           </div>
         </div>
       </div>

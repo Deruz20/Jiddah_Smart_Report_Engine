@@ -205,38 +205,7 @@ export function AppSidebar() {
             </div>
           )}
 
-          {/* New Dashboard pill button */}
-          <AnimatePresence>
-            {!collapsed && (
-              <motion.button
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -4 }}
-                transition={{ duration: 0.15, delay: 0.05 }}
-                className={cn(
-                  "flex items-center gap-2 w-full px-3 py-2 mt-1 rounded-xl",
-                  "text-white text-sm transition-all duration-200 group/new",
-                )}
-                style={{
-                  background: "linear-gradient(135deg, rgba(249,115,22,0.15) 0%, rgba(234,88,12,0.1) 100%)",
-                  border: "1px solid rgba(249,115,22,0.25)",
-                  boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "linear-gradient(135deg, rgba(249,115,22,0.25) 0%, rgba(234,88,12,0.18) 100%)";
-                  e.currentTarget.style.borderColor = "rgba(249,115,22,0.4)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "linear-gradient(135deg, rgba(249,115,22,0.15) 0%, rgba(234,88,12,0.1) 100%)";
-                  e.currentTarget.style.borderColor = "rgba(249,115,22,0.25)";
-                }}
-              >
-                <Sparkles className="size-3.5 text-orange-400 shrink-0" strokeWidth={2} />
-                <span className="text-slate-200 truncate" style={{ fontSize: "0.8rem" }}>Go to Dashboard</span>
-                <ChevronRight className="size-3 text-orange-400/60 ml-auto shrink-0" strokeWidth={2.5} />
-              </motion.button>
-            )}
-          </AnimatePresence>
+
         </SidebarHeader>
 
         <SidebarSeparator className="mx-3 mb-1 bg-white/5" />
@@ -289,9 +258,6 @@ export function AppSidebar() {
             <button className="p-2 rounded-lg text-slate-400 hover:text-emerald-400 hover:bg-emerald-400/10 transition-colors relative" title="Notifications">
               <Bell className="size-4" />
               <span className="absolute top-1.5 right-1.5 size-1.5 bg-red-500 rounded-full" />
-            </button>
-            <button className="p-2 rounded-lg text-slate-400 hover:text-emerald-400 hover:bg-emerald-400/10 transition-colors" title="Settings">
-              <Settings className="size-4" />
             </button>
           </div>
 

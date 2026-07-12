@@ -8,6 +8,7 @@ import {
   Bell,
   ChevronRight,
   ChevronDown,
+  ChevronUp,
   Home,
   LogOut,
   User,
@@ -482,6 +483,17 @@ export function AppTopbar({ breadcrumbs = ["Admin", "Dashboard"], currentPage = 
             <NotificationBell />
             <div className="w-px h-5 bg-slate-200 mx-0.5" />
             <UserProfileDropdown />
+            {isReportsPage && !isTopbarHidden && (
+               <button
+                 onClick={() => setIsTopbarHidden(true)}
+                 className="flex items-center gap-1.5 ml-2 px-2.5 py-1.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors print:hidden"
+                 style={{ fontSize: "0.75rem", fontWeight: 500 }}
+                 title="Hide Topbar"
+               >
+                 <span>Hide</span>
+                 <ChevronUp className="size-3.5" />
+               </button>
+            )}
           </div>
         </div>
       </motion.header>
@@ -492,30 +504,19 @@ export function AppTopbar({ breadcrumbs = ["Admin", "Dashboard"], currentPage = 
       <AnimatePresence>
         {isTopbarHidden && (
           <motion.button
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
+            initial={{ opacity: 0, scale: 0.8, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 20 }}
             onClick={() => setIsTopbarHidden(false)}
-            className="fixed top-4 right-4 z-40 flex items-center justify-center size-10 rounded-full bg-white text-slate-500 shadow-md border border-slate-200/60 hover:text-slate-800 transition-colors print:hidden"
-            style={{ WebkitTapHighlightColor: "transparent" }}
+            className="fixed bottom-6 right-6 z-40 flex items-center gap-2 px-4 h-10 rounded-full bg-slate-800 text-white shadow-xl hover:bg-slate-700 transition-colors print:hidden"
+            style={{ WebkitTapHighlightColor: "transparent", fontSize: "0.8rem", fontWeight: 500 }}
             title="Show Topbar"
           >
-            <ChevronDown className="size-5" />
+            <span>Show Topbar</span>
+            <ChevronDown className="size-4" />
           </motion.button>
         )}
       </AnimatePresence>
-
-      {/* Hide Toggle Button (Inside Topbar, only on Reports page) */}
-      {isReportsPage && !isTopbarHidden && (
-          <button
-            onClick={() => setIsTopbarHidden(true)}
-            className="absolute -bottom-4 right-6 z-40 flex items-center justify-center h-5 px-3 rounded-b-lg bg-white text-slate-400 shadow-sm border-x border-b border-slate-200/60 hover:text-slate-700 transition-colors print:hidden"
-            style={{ fontSize: "0.65rem", fontWeight: 600 }}
-            title="Hide Topbar"
-          >
-            Hide Topbar
-          </button>
-      )}
 
       <MobileSearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
     </>

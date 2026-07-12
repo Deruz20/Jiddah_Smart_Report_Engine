@@ -1,127 +1,106 @@
-import Link from 'next/link'
+import React from "react";
+import { cookies } from "next/headers";
+import { createClient } from "@/utils/supabase/server";
+import { DashboardContent, DashboardData } from "@/components/layout/dashboard-content";
 
-export default function AdminDashboard() {
+export const dynamic = "force-dynamic";
+
+function timeAgo(dateString: string) {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+  
+  if (diffInSeconds < 60) return "Just now";
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours < 24) return `${diffInHours}h ago`;
+  const diffInDays = Math.floor(diffInHours / 24);
+  return `${diffInDays}d ago`;
+}
+
+export default async function AdminDashboard() {
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
+
+  const [
+    { count: studentCount },
+    { count: teacherCount },
+    { data: classes },
+    { count: reportCount },
+    { data: recentMarks }
+  ] = await Promise.all([
+    supabase.from('enrollments').select('*', { count: 'exact', head: true }).eq('is_active', true),
+    supabase.from('teachers').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+    supabase.from('circular_classes').select('id, class_name, section'),
+    supabase.from('activity_logs').select('*', { count: 'exact', head: true }).ilike('action', '%report%'),
+    supabase.from('circular_marks').select(`
+      id,
+      eot_score,
+      created_at,
+      enrollments (
+        students ( name ),
+        circular_classes ( class_name )
+      ),
+      circular_subjects ( subject_name )
+    `).order('created_at', { ascending: false }).limit(5)
+  ]);
+
+  const recentActivity = recentMarks?.map((mark: any) => ({
+    name: mark.enrollments?.students?.name || "Unknown Student",
+    grade: mark.enrollments?.circular_classes?.class_name || "N/A",
+    score: mark.eot_score || 0,
+    subject: mark.circular_subjects?.subject_name || "N/A",
+    time: mark.created_at ? timeAgo(mark.created_at) : "Recently"
+  })) || [];
+
+  const classPerformance = classes?.map((c) => ({
+    name: c.class_name,
+    students: Math.floor(Math.random() * 20) + 10, // Placeholder until full enrollment counts per class are added
+    completion: Math.floor(Math.random() * 30) + 70, // Placeholder
+    teacher: "Assigned Teacher"
+  })) || [];
+
+  const data: DashboardData = {
+    kpis: {
+      totalStudents: studentCount ?? 0,
+      avgScore: 78, // Placeholder
+      reports: reportCount ?? 0,
+      topPerformers: teacherCount ?? 0,
+    },
+    recentActivity,
+    classes: classPerformance,
+    chartData: {
+      overview: [
+        { name: "Week 1", score: 65, avg: 60 },
+        { name: "Week 2", score: 72, avg: 62 },
+        { name: "Week 3", score: 78, avg: 65 },
+        { name: "Week 4", score: 75, avg: 66 },
+        { name: "Week 5", score: 82, avg: 68 },
+        { name: "Week 6", score: 85, avg: 70 },
+        { name: "Week 7", score: 80, avg: 71 },
+        { name: "Week 8", score: 88, avg: 73 },
+      ],
+      gender: [
+        { subject: "Math", Boys: 76, Girls: 82 },
+        { subject: "Science", Boys: 80, Girls: 79 },
+        { subject: "English", Boys: 72, Girls: 85 },
+        { subject: "Arabic", Boys: 88, Girls: 91 },
+        { subject: "Theology", Boys: 85, Girls: 88 },
+      ],
+      performance: [
+        { subject: "Participation", circular: 80, theology: 85, fullMark: 100 },
+        { subject: "Assignments", circular: 85, theology: 90, fullMark: 100 },
+        { subject: "Tests", circular: 75, theology: 88, fullMark: 100 },
+        { subject: "Attendance", circular: 95, theology: 96, fullMark: 100 },
+        { subject: "Behavior", circular: 82, theology: 94, fullMark: 100 },
+      ]
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-6 py-8">
-          <h1 className="text-3xl font-bold text-emerald-900">
-            Jiddah Smart Report - Mission Control
-          </h1>
-          <p className="text-gray-600 mt-1">School Management & Academic Reporting System</p>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Sidebar */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
-              <h2 className="text-lg font-semibold mb-4">Navigation</h2>
-              <nav className="space-y-2">
-                <Link
-                  href="/admin"
-                  className="block px-3 py-2 rounded-md text-gray-700 hover:bg-gray-100 hover:text-gray-900"
-                >
-                  Dashboard
-                </Link>
-
-                <Link
-                  href="/admin/students"
-                  className="block px-3 py-2 rounded-md text-gray-700 hover:bg-gray-100 hover:text-gray-900"
-                >
-                  Students
-                </Link>
-
-                <div className="space-y-1">
-                  <div className="px-3 py-1 text-sm font-medium text-gray-500 uppercase tracking-wide">
-                    Academics
-                  </div>
-                  <Link
-                    href="/admin/marks"
-                    className="block px-6 py-2 rounded-md text-gray-700 hover:bg-gray-100 hover:text-gray-900 text-sm font-medium"
-                  >
-                    Marks Entry
-                  </Link>
-                  <Link
-                    href="/admin/terms"
-                    className="block px-6 py-2 rounded-md text-gray-700 hover:bg-gray-100 hover:text-gray-900 text-sm font-medium"
-                  >
-                    Terms
-                  </Link>
-                </div>
-
-                <div className="space-y-1">
-                  <div className="px-3 py-1 text-sm font-medium text-gray-500 uppercase tracking-wide">
-                    Reports
-                  </div>
-                  <Link
-                    href="/admin/reports"
-                    className="block px-6 py-2 rounded-md text-gray-700 hover:bg-gray-100 hover:text-gray-900 text-sm"
-                  >
-                    Report Generator
-                  </Link>
-                </div>
-
-                <div className="border-t border-gray-100 pt-2 mt-2">
-                  <div className="px-3 py-1 text-sm font-medium text-gray-500 uppercase tracking-wide">
-                    Settings
-                  </div>
-                  <Link
-                    href="/admin/settings"
-                    className="block px-6 py-2 rounded-md text-gray-700 hover:bg-gray-100 hover:text-gray-900 text-sm"
-                  >
-                    ⚙ Term Dates
-                  </Link>
-                </div>
-              </nav>
-            </div>
-          </div>
-
-          {/* Main Dashboard Content */}
-          <div className="lg:col-span-3">
-            <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
-              <h2 className="text-xl font-semibold mb-4">Dashboard</h2>
-              <p className="text-gray-600">
-                Welcome to the School Report System. Use the navigation sidebar to manage students,
-                enter marks for Circular and Theology subjects, and generate reports.
-              </p>
-
-              <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <h3 className="font-medium text-blue-900">Circular Department</h3>
-                  <p className="text-sm text-blue-700 mt-1">
-                    English subjects with A-E grading system
-                  </p>
-                </div>
-
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <h3 className="font-medium text-green-900">Theology Department</h3>
-                  <p className="text-sm text-green-700 mt-1">
-                    Arabic subjects with Islamic grading system
-                  </p>
-                </div>
-
-                <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
-                  <h3 className="font-medium text-emerald-900">Generate Reports</h3>
-                  <p className="text-sm text-emerald-700 mt-1">
-                    Create printable report cards for selected students and terms.</p>
-                  <div className="mt-4">
-                    <Link
-                      href="/admin/reports"
-                      className="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition"
-                    >
-                      Open Report Generator
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div className="w-full h-full bg-slate-50 dark:bg-[#0f172a]">
+      <DashboardContent data={data} />
     </div>
-  )
+  );
 }

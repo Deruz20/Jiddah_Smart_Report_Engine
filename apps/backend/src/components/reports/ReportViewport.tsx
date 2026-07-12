@@ -24,7 +24,7 @@ export function ReportViewport({ children, reportType }: ReportViewportProps) {
   return (
     <>
       <div 
-        className="report-viewport relative mx-auto print:!m-0 print:!shadow-none print:!border-0 print:!rounded-none overflow-visible print:!overflow-hidden"
+        className="report-viewport relative mx-auto print:!m-0 print:!shadow-none print:!border-0 print:!rounded-none overflow-visible print:!overflow-visible"
         data-report-orientation={orientation}
         style={{
           width: `${dimensions.width}px`,

@@ -65,7 +65,7 @@ export function DocumentCanvas({
           </div>
         ) : layout === 'grid' ? (
           <div
-            className="print:!zoom-[1] print:!block print:!p-0"
+            className="print-reset-layout print-reset-zoom"
             style={{
               display: 'flex',
               flexWrap: 'wrap' as const,
@@ -80,7 +80,7 @@ export function DocumentCanvas({
                 <motion.div
                   key={report.id}
                   data-report-id={report.id}
-                  className={`${printScope === 'current' && report.id !== activeReportId ? 'print:hidden' : ''} print:!outline-none print:!shadow-none`}
+                  className={`${printScope === 'current' && report.id !== activeReportId ? 'print:hidden' : ''} print-reset-zoom print:!outline-none print:!shadow-none`}
                   onClick={() => onSelectReport(report.id)}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -103,7 +103,7 @@ export function DocumentCanvas({
         ) : (
           /* Single scroll layout */
           <div
-            className="print:!block print:!p-0"
+            className="print-reset-layout print-reset-zoom"
             style={{
               display: 'flex',
               flexDirection: 'column' as const,
@@ -117,7 +117,7 @@ export function DocumentCanvas({
                 <motion.div
                   key={report.id}
                   data-report-id={report.id}
-                  className={`${printScope === 'current' && report.id !== activeReportId ? 'print:hidden' : ''} print:!zoom-[1] print:!outline-none print:!shadow-none`}
+                  className={`${printScope === 'current' && report.id !== activeReportId ? 'print:hidden' : ''} print-reset-zoom print:!outline-none print:!shadow-none`}
                   onClick={() => onSelectReport(report.id)}
                   initial={{ opacity: 0, y: 24 }}
                   animate={{ opacity: 1, y: 0 }}

@@ -40,9 +40,10 @@ export default function CircularClient({
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const supabase = createClient();
+
 
   const refetch = async () => {
+    const supabase = createClient();
     const { data } = await supabase
       .from('circular_marks')
       .select(`
@@ -97,6 +98,7 @@ export default function CircularClient({
   const handleSaveBatch = async () => {
     if (!selectedEnrollmentId) return alert("Student is required");
     setIsSubmitting(true);
+    const supabase = createClient();
     try {
       const student = enrollments.find(e => e.id === selectedEnrollmentId);
       const studentSubjects = subjects.filter(s => s.section === student?.circular_classes?.section);
@@ -138,6 +140,7 @@ export default function CircularClient({
 
   const handleEdit = async () => {
     setIsSubmitting(true);
+    const supabase = createClient();
     try {
       const payload = {
         bot_score: formData.bot_score === "" ? null : parseFloat(formData.bot_score),
@@ -159,6 +162,7 @@ export default function CircularClient({
 
   const handleDelete = async () => {
     setIsSubmitting(true);
+    const supabase = createClient();
     try {
       const { error } = await supabase.from('circular_marks').delete().eq('id', selectedMark.id);
       if (error) throw error;

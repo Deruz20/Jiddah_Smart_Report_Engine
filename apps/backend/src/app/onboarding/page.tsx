@@ -12,9 +12,9 @@ export default function OnboardingPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
-  const supabase = createClient();
 
   useEffect(() => {
+    const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) {
         router.replace("/login");
@@ -24,10 +24,11 @@ export default function OnboardingPage() {
         setFullName(user.user_metadata?.full_name || "");
       }
     });
-  }, [router, supabase]);
+  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const supabase = createClient();
     setError(null);
     setLoading(true);
 

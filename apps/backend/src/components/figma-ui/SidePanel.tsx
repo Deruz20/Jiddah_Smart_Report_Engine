@@ -103,10 +103,10 @@ export function SidePanel({ open, onToggle, reports, activeReport }: SidePanelPr
                     {isBatch ? <Users size={14} /> : <User size={14} />}
                   </div>
                   <div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: NAVY }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: NAVY }}>
                       {isBatch ? 'Batch Summary' : 'Student Details'}
                     </div>
-                    <div style={{ fontSize: 10, color: '#94a3b8' }}>
+                    <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
                       {reports.length} report{reports.length !== 1 ? 's' : ''} loaded
                     </div>
                   </div>
@@ -194,11 +194,11 @@ function BatchView({
         {reports.map((r) => (
           <div key={r.id} style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '7px 0', borderBottom: '1px solid rgba(0,0,0,0.05)',
+            padding: '10px 0', borderBottom: '1px solid rgba(0,0,0,0.05)',
           }}>
             <div>
-              <div style={{ fontSize: 12, fontWeight: 600, color: NAVY }}>{r.student.name}</div>
-              <div style={{ fontSize: 10, color: '#94a3b8' }}>{r.student.class_name}</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{r.student.name}</div>
+              <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>{r.student.class_name}</div>
             </div>
             <div style={{ display: 'flex', gap: 4 }}>
               {r.circular.position && (
@@ -293,8 +293,8 @@ function IndividualView({ report }: { report: ReportData }) {
           )}
         </div>
         {circular.conduct_remark && (
-          <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 10, color: '#94a3b8', fontWeight: 600 }}>Conduct:</span>
+          <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>Conduct:</span>
             <Chip label={circular.conduct_remark} bg="#f0fdf4" border="#bbf7d0" color={EMERALD} />
           </div>
         )}
@@ -326,7 +326,7 @@ function IndividualView({ report }: { report: ReportData }) {
               </span>
               <div style={{ display: 'flex', gap: 4 }}>
                 {s.theology_remark && (
-                  <span style={{ fontSize: 10, color: TEAL, fontStyle: 'italic' }}>
+                  <span style={{ fontSize: 12, color: TEAL, fontStyle: 'italic' }}>
                     {s.theology_remark}
                   </span>
                 )}
@@ -339,11 +339,11 @@ function IndividualView({ report }: { report: ReportData }) {
       {/* Teacher comment */}
       {circular.class_teacher_comment && (
         <div>
-          <div style={{ fontSize: 10, fontWeight: 700, color: EMERALD, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: EMERALD, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
             Teacher's Comment
           </div>
           <div style={{
-            fontSize: 12, color: TEAL, fontStyle: 'italic',
+            fontSize: 13, color: TEAL, fontStyle: 'italic',
             background: `${EMERALD}06`, padding: '10px 12px',
             borderRadius: 8, border: `1px solid ${EMERALD}15`, lineHeight: 1.5,
           }}>
@@ -361,21 +361,21 @@ function StatCard({ label, value, color }: { label: string; value: string | numb
   return (
     <div style={{
       background: `${color}08`, border: `1px solid ${color}22`,
-      borderRadius: 8, padding: '8px 10px', textAlign: 'center',
+      borderRadius: 10, padding: '10px 12px', textAlign: 'center',
     }}>
-      <div style={{ fontSize: 9, color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', marginBottom: 3 }}>
+      <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>
         {label}
       </div>
-      <div style={{ fontSize: 17, fontWeight: 800, color }}>{value}</div>
+      <div style={{ fontSize: 18, fontWeight: 800, color }}>{value}</div>
     </div>
   );
 }
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
-    <div style={{ background: '#f8fafc', borderRadius: 8, padding: '8px 10px' }}>
-      <div style={{ fontSize: 9, color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', marginBottom: 2 }}>{label}</div>
-      <div style={{ fontSize: 12, fontWeight: 600, color: NAVY }}>{value}</div>
+    <div style={{ background: '#f8fafc', borderRadius: 10, padding: '10px 12px' }}>
+      <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{value}</div>
     </div>
   );
 }
@@ -383,7 +383,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 function Section({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
         {label}
       </div>
       {children}
@@ -393,10 +393,10 @@ function Section({ label, children }: { label: string; children: React.ReactNode
 
 function SectionRow({ icon, label, count }: { icon: string; label: string; count: number }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
-      <span style={{ fontSize: 14 }}>{icon}</span>
-      <span style={{ flex: 1, fontSize: 12, color: NAVY, fontWeight: 500 }}>{label}</span>
-      <span style={{ fontSize: 11, fontWeight: 700, color: EMERALD }}>{count}</span>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
+      <span style={{ fontSize: 16 }}>{icon}</span>
+      <span style={{ flex: 1, fontSize: 13, color: NAVY, fontWeight: 500 }}>{label}</span>
+      <span style={{ fontSize: 13, fontWeight: 700, color: EMERALD }}>{count}</span>
     </div>
   );
 }
@@ -409,7 +409,7 @@ function Chip({
   return (
     <span style={{
       background: bg, border: `1px solid ${border}`,
-      color, borderRadius: 20, padding: '2px 10px', fontSize: 11, fontWeight: 700,
+      color, borderRadius: 20, padding: '4px 12px', fontSize: 12, fontWeight: 700,
       fontFamily: arabic ? "'Cairo', sans-serif" : undefined,
       direction: arabic ? 'rtl' : undefined,
     }}>

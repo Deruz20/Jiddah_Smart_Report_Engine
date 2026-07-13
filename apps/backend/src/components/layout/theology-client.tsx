@@ -39,9 +39,10 @@ export default function TheologyClient({
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const supabase = createClient();
+
 
   const refetch = async () => {
+    const supabase = createClient();
     const { data } = await supabase
       .from('theology_marks')
       .select(`
@@ -94,6 +95,7 @@ export default function TheologyClient({
   const handleSaveBatch = async () => {
     if (!selectedEnrollmentId) return alert("Student is required");
     setIsSubmitting(true);
+    const supabase = createClient();
     try {
       const student = enrollments.find(e => e.id === selectedEnrollmentId);
       const studentSubjects = subjects.filter(s => s.level === student?.theology_classes?.level);
@@ -134,6 +136,7 @@ export default function TheologyClient({
 
   const handleEdit = async () => {
     setIsSubmitting(true);
+    const supabase = createClient();
     try {
       const payload = {
         mot_score: formData.mot_score === "" ? null : parseFloat(formData.mot_score),
@@ -154,6 +157,7 @@ export default function TheologyClient({
 
   const handleDelete = async () => {
     setIsSubmitting(true);
+    const supabase = createClient();
     try {
       const { error } = await supabase.from('theology_marks').delete().eq('id', selectedMark.id);
       if (error) throw error;

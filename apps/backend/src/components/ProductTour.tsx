@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronRight, ChevronLeft, X, Play, BookOpen, CheckCircle2 } from "lucide-react";
-import { createClient } from "@/utils/supabase/client";
+
 
 interface ProductTourProps {
   isOpen: boolean;

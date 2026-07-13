@@ -59,7 +59,7 @@ export default function AccountClient({ initialProfile, userEmail }: { initialPr
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [dangerLoading, setDangerLoading] = useState(false);
 
-  const supabase = createClient();
+
 
   const profileForm = useForm<AccountProfileForm>({
     resolver: zodResolver(accountProfileSchema),
@@ -97,6 +97,7 @@ export default function AccountClient({ initialProfile, userEmail }: { initialPr
   };
 
   const handleUploadAvatar = async () => {
+    const supabase = createClient();
     if (!avatarFile || !profile) return;
     setAvatarUploading(true);
     try {
@@ -125,6 +126,7 @@ export default function AccountClient({ initialProfile, userEmail }: { initialPr
   const handleProfileSave = handleSubmit(async (values) => {
     if (!profile) return;
     setProfileSaving(true);
+    const supabase = createClient();
     try {
       const { error } = await supabase.from('profiles').update({
         full_name: values.full_name,
@@ -157,6 +159,7 @@ export default function AccountClient({ initialProfile, userEmail }: { initialPr
 
   const handlePasswordSave = handleSubmitPassword(async (values) => {
     setPasswordSaving(true);
+    const supabase = createClient();
     try {
       const { error } = await supabase.auth.updateUser({ password: values.newPassword });
       if (error) throw error;
@@ -171,6 +174,7 @@ export default function AccountClient({ initialProfile, userEmail }: { initialPr
 
   const handleSignOutAll = async () => {
     setDangerLoading(true);
+    const supabase = createClient();
     try {
       await supabase.auth.signOut();
       window.location.href = '/login';

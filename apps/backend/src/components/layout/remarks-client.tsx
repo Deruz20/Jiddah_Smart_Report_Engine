@@ -18,7 +18,7 @@ export function RemarksClient() {
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState<string | null>(null);
   const [formValues, setFormValues] = useState<Partial<GradingRemark>>({});
-  const supabase = createClient();
+
 
   useEffect(() => {
     fetchRemarks();
@@ -26,6 +26,7 @@ export function RemarksClient() {
 
   const fetchRemarks = async () => {
     try {
+      const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       
@@ -52,6 +53,7 @@ export function RemarksClient() {
     }
 
     try {
+      const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
@@ -82,6 +84,7 @@ export function RemarksClient() {
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this remark?")) return;
     try {
+      const supabase = createClient();
       const { error } = await supabase.from("grading_remarks").delete().eq("id", id);
       if (error) throw error;
       fetchRemarks();

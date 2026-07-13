@@ -58,7 +58,7 @@ export default function SubjectsClient({ initialSubjects }: { initialSubjects: S
   const [formData, setFormData] = useState({ subject_name: "", curriculum: "secular", section: "nursery" });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const supabase = createClient();
+
 
   const filteredSubjects = subjects.filter(s => 
     s.subject_name.toLowerCase().includes(search.toLowerCase()) || 
@@ -67,6 +67,7 @@ export default function SubjectsClient({ initialSubjects }: { initialSubjects: S
 
   const refetch = async () => {
     // We fetch both circular and theology subjects and combine them since the UI manages both
+    const supabase = createClient();
     const { data: circular } = await supabase.from('circular_subjects').select('id, subject_name, section');
     const { data: theology } = await supabase.from('theology_subjects').select('id, subject_name, section');
     
@@ -80,6 +81,7 @@ export default function SubjectsClient({ initialSubjects }: { initialSubjects: S
   const handleCreate = async () => {
     if (!formData.subject_name.trim()) return alert("Subject name is required");
     setIsSubmitting(true);
+    const supabase = createClient();
     try {
       const table = formData.curriculum === 'theology' ? 'theology_subjects' : 'circular_subjects';
       const payload = {
@@ -103,6 +105,7 @@ export default function SubjectsClient({ initialSubjects }: { initialSubjects: S
   const handleEdit = async () => {
     if (!formData.subject_name.trim() || !selectedSubject) return alert("Subject name is required");
     setIsSubmitting(true);
+    const supabase = createClient();
     try {
       const table = formData.curriculum === 'theology' ? 'theology_subjects' : 'circular_subjects';
       
@@ -132,6 +135,7 @@ export default function SubjectsClient({ initialSubjects }: { initialSubjects: S
   const handleDelete = async () => {
     if (!selectedSubject) return;
     setIsSubmitting(true);
+    const supabase = createClient();
     try {
       const table = selectedSubject.curriculum === 'theology' ? 'theology_subjects' : 'circular_subjects';
       const { error } = await supabase.from(table).delete().eq('id', selectedSubject.id);
@@ -210,12 +214,12 @@ export default function SubjectsClient({ initialSubjects }: { initialSubjects: S
                   <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-[#065F46] to-[#F97316] opacity-0 group-hover:opacity-100 transition-opacity" />
                   
                   <div className="flex flex-col gap-2 mb-4">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center text-[#F97316]">
+                    <div className="flex items-center gap-3 mb-2 min-w-0 flex-1">
+                      <div className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center text-[#F97316] shrink-0">
                         <BookOpen className="w-5 h-5" />
                       </div>
-                      <div>
-                        <h3 className="font-bold text-gray-900 text-lg leading-tight">{sub.subject_name}</h3>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-bold text-gray-900 text-lg leading-tight truncate">{sub.subject_name}</h3>
                       </div>
                     </div>
                     

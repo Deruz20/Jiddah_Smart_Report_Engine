@@ -25,9 +25,10 @@ export default function TermsClient({ initialTerms }: { initialTerms: AcademicTe
     end_date: '',
   });
 
-  const supabase = createClient();
+
 
   const refetch = async () => {
+    const supabase = createClient();
     const { data } = await supabase.from('academic_terms').select('*').order('year', { ascending: false }).order('created_at', { ascending: false });
     if (data) setTerms(data);
   };
@@ -43,6 +44,7 @@ export default function TermsClient({ initialTerms }: { initialTerms: AcademicTe
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    const supabase = createClient();
     try {
       const payload: any = {
         year: formData.year,

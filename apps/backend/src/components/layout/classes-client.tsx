@@ -49,7 +49,7 @@ export default function ClassesClient({ initialClasses }: { initialClasses: Clas
   const [formData, setFormData] = useState({ class_name: "", section: "nursery" });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const supabase = createClient();
+
 
   const filteredClasses = classes.filter(c => 
     c.class_name.toLowerCase().includes(search.toLowerCase()) || 
@@ -57,6 +57,7 @@ export default function ClassesClient({ initialClasses }: { initialClasses: Clas
   );
 
   const refetch = async () => {
+    const supabase = createClient();
     const { data } = await supabase.from('circular_classes').select('*').order('section').order('class_name');
     if (data) setClasses(data);
   };
@@ -64,6 +65,7 @@ export default function ClassesClient({ initialClasses }: { initialClasses: Clas
   const handleCreate = async () => {
     if (!formData.class_name.trim()) return alert("Class name is required");
     setIsSubmitting(true);
+    const supabase = createClient();
     try {
       const { error } = await supabase.from('circular_classes').insert([formData]);
       if (error) throw error;
@@ -80,6 +82,7 @@ export default function ClassesClient({ initialClasses }: { initialClasses: Clas
   const handleEdit = async () => {
     if (!formData.class_name.trim() || !selectedClass) return alert("Class name is required");
     setIsSubmitting(true);
+    const supabase = createClient();
     try {
       const { error } = await supabase.from('circular_classes').update(formData).eq('id', selectedClass.id);
       if (error) throw error;
@@ -95,6 +98,7 @@ export default function ClassesClient({ initialClasses }: { initialClasses: Clas
   const handleDelete = async () => {
     if (!selectedClass) return;
     setIsSubmitting(true);
+    const supabase = createClient();
     try {
       const { error } = await supabase.from('circular_classes').delete().eq('id', selectedClass.id);
       if (error) throw error;
@@ -172,13 +176,13 @@ export default function ClassesClient({ initialClasses }: { initialClasses: Clas
                   <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-[#065F46] to-[#F97316] opacity-0 group-hover:opacity-100 transition-opacity" />
                   
                   <div className="flex justify-between items-start mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center text-[#065F46]">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center text-[#065F46] shrink-0">
                         <BookMarked className="w-5 h-5" />
                       </div>
-                      <div>
-                        <h3 className="font-bold text-gray-900 text-lg leading-tight">{cls.class_name}</h3>
-                        <span className={`inline-block mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase border ${getSectionColor(cls.section || "")}`}>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-bold text-gray-900 text-lg leading-tight truncate">{cls.class_name}</h3>
+                        <span className={`inline-block mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase border truncate max-w-full ${getSectionColor(cls.section || "")}`}>
                           {getSectionLabel(cls.section || "")}
                         </span>
                       </div>

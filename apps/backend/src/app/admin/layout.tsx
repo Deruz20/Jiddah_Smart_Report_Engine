@@ -20,9 +20,9 @@ export default function AdminLayout({
   const [role, setRole] = useState("teacher");
   const pathname = usePathname();
   const isReportsPage = pathname === "/admin/reports";
-  const supabase = createClient();
 
   useEffect(() => {
+    const supabase = createClient();
     supabase.auth.getUser().then(({ data }) => {
       if (data?.user?.user_metadata) {
         setRole(data.user.user_metadata.role || 'teacher');
@@ -31,10 +31,11 @@ export default function AdminLayout({
         }
       }
     });
-  }, [supabase]);
+  }, []);
 
   const handleCloseTour = async () => {
     setShowTour(false);
+    const supabase = createClient();
     await supabase.auth.updateUser({
       data: { tour_completed: true }
     });

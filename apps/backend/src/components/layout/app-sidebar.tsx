@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import {
   LayoutDashboard,
@@ -83,63 +83,55 @@ function NavItem({
 }) {
   return (
     <SidebarMenuItem>
-      <SidebarMenuButton
-        asChild
-        isActive={active}
-        tooltip={label}
+      <Link 
+        href={href} 
         className={cn(
-          "group/nav-item relative h-11 rounded-xl transition-all duration-300",
-          "text-slate-400 hover:text-white hover:bg-white/5",
-          active && "bg-gradient-to-r from-emerald-500/15 to-orange-500/5 text-emerald-400 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]",
+          "group/nav-item relative flex items-center h-11 w-full rounded-xl transition-all duration-200 ease-in-out outline-none border-none",
+          active 
+            ? "bg-emerald-500/10 text-emerald-400 font-medium" 
+            : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
         )}
-        style={{ WebkitTapHighlightColor: "transparent" }}
       >
-        <Link href={href}>
-        <motion.div
-          whileHover={{ scale: 1.15, rotate: [-5, 5, -5, 0] }}
-          transition={{ duration: 0.3 }}
-          className={cn(
-            "relative flex shrink-0 items-center justify-center size-5",
-          )}
-        >
+        {active && (
+          <motion.div
+            layoutId="activeNavIndicator"
+            className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-emerald-500 rounded-r-full"
+          />
+        )}
+
+        <div className="flex items-center justify-center w-9 h-9 shrink-0 rounded-lg">
           <Icon
             className={cn(
               "size-5 transition-colors duration-200",
-              active ? "text-emerald-400" : "text-slate-400 group-hover/nav-item:text-slate-200",
+              active ? "text-emerald-400" : "text-slate-400 group-hover/nav-item:text-slate-200"
             )}
             strokeWidth={1.8}
           />
-          {active && (
-            <motion.div
-              layoutId="nav-active-glow"
-              className="absolute inset-0 rounded-full bg-emerald-400/20 blur-sm"
-            />
-          )}
-        </motion.div>
+        </div>
+
         <AnimatePresence>
           {!collapsed && (
             <motion.span
-              initial={{ opacity: 0, x: -4 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -4 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
               className={cn(
-                "truncate text-sm font-medium",
-                active ? "text-emerald-400" : "text-slate-400 group-hover/nav-item:text-slate-200",
+                "truncate text-sm ml-1",
+                active ? "text-emerald-400" : "text-slate-400 group-hover/nav-item:text-slate-200"
               )}
             >
               {label}
             </motion.span>
           )}
         </AnimatePresence>
-        {active && (
-          <motion.div
-            layoutId="nav-active-indicator"
-            className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-6 bg-gradient-to-b from-emerald-400 to-orange-400 rounded-r-full shadow-[0_0_6px_2px_rgba(52,211,153,0.3)]"
-          />
+
+        {collapsed && (
+          <div className="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-md shadow-xl whitespace-nowrap opacity-0 group-hover/nav-item:opacity-100 pointer-events-none z-50">
+            {label}
+          </div>
         )}
-        </Link>
-      </SidebarMenuButton>
+      </Link>
     </SidebarMenuItem>
   );
 }
@@ -173,22 +165,22 @@ function SidebarToggleButton() {
 export function AppSidebar() {
   const { state } = useSidebar();
   const pathname = usePathname();
+  const router = useRouter();
   const collapsed = state === "collapsed";
   const [role, setRole] = React.useState<string>("admin");
   const [userName, setUserName] = React.useState<string>("");
-  const supabase = createClient();
-  const router = require("next/navigation").useRouter();
-
   React.useEffect(() => {
+    const supabase = createClient();
     supabase.auth.getUser().then(({ data }) => {
       if (data?.user?.user_metadata) {
         setRole(data.user.user_metadata.role || 'teacher');
         setUserName(data.user.user_metadata.full_name || data.user.email?.split('@')[0] || 'User');
       }
     });
-  }, [supabase]);
+  }, []);
 
   const handleLogout = async () => {
+    const supabase = createClient();
     await supabase.auth.signOut();
     router.replace("/login");
   };
@@ -199,13 +191,7 @@ export function AppSidebar() {
       className="border-r-0 print:hidden"
       style={{ "--sidebar-width": "15rem" } as React.CSSProperties}
     >
-      <div
-        className="flex flex-col h-full"
-        style={{
-          background: "linear-gradient(180deg, #0f172a 0%, #111827 50%, #0f172a 100%)",
-          borderRight: "1px solid rgba(255,255,255,0.06)",
-        }}
-      >
+      <div className="flex flex-col h-full bg-[#0f172a] border-r border-slate-800">
         {/* Header */}
         <SidebarHeader className="px-3 pt-4 pb-3">
           <div className={cn("flex items-center", collapsed ? "justify-center" : "justify-between")}>
@@ -363,6 +349,7 @@ export function AppSidebar() {
               </DropdownMenuLabel>
               <DropdownMenuSeparator className="bg-white/10" />
               <DropdownMenuItem onClick={async () => {
+                const supabase = createClient();
                 await supabase.auth.updateUser({ data: { tour_completed: false } });
                 window.location.reload();
               }} className="cursor-pointer">

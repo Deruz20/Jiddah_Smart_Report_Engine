@@ -54,8 +54,6 @@ function LoginContent() {
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [currentEmail, setCurrentEmail] = useState("");
   const [loading, setLoading] = useState(false);
-  // Stats are hardcoded for marketing and security reasons
-  const [stats, setStats] = useState({ students: "240+", teachers: "22", classes: "8" });
   
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -64,6 +62,7 @@ function LoginContent() {
 
 
   useEffect(() => {
+    const supabase = createClient();
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         if (
@@ -104,6 +103,7 @@ function LoginContent() {
 
   const handleLogin = async (values: LoginForm) => {
     setLoading(true);
+    const supabase = createClient();
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email: values.email,
@@ -166,6 +166,7 @@ function LoginContent() {
 
   const handleForgot = async (values: ForgotPasswordForm) => {
     setLoading(true);
+    const supabase = createClient();
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(values.email);
       if (error) throw error;
@@ -195,6 +196,7 @@ function LoginContent() {
 
   const handleReset = async (values: ResetPasswordForm) => {
     setLoading(true);
+    const supabase = createClient();
     try {
       const { error } = await supabase.auth.updateUser({
         password: values.password
@@ -283,10 +285,10 @@ function LoginContent() {
 
           <div className="grid grid-cols-3 gap-4">
             {[
-              [stats.students, "Students"], 
-              [stats.teachers, "Teachers"], 
-              [stats.classes, "Classes"]
-            ].map(([num, label], i) => (
+              ["100%", "Secure"], 
+              ["Smart", "Analytics"], 
+              ["Auto", "Reports"]
+            ].map(([val, label], i) => (
               <motion.div 
                 key={label as string}
                 initial={{ opacity: 0, y: 20 }}
@@ -294,8 +296,8 @@ function LoginContent() {
                 transition={{ duration: 0.5, delay: 0.4 + (i * 0.1) }}
                 className="bg-[#0f172a]/40 backdrop-blur-md border border-white/5 rounded-2xl p-5 shadow-lg transition-all hover:bg-[#0f172a]/60"
               >
-                <p className="text-2xl font-bold text-slate-100 mb-1">{num}</p>
-                <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">{label}</p>
+                <p className="text-xl sm:text-2xl font-bold text-slate-100 mb-1">{val}</p>
+                <p className="text-[10px] sm:text-xs text-slate-400 font-semibold uppercase tracking-wider">{label}</p>
               </motion.div>
             ))}
           </div>
@@ -307,12 +309,12 @@ function LoginContent() {
       </div>
 
       {/* Right Panel - Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12 relative z-10">
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-12 relative z-10">
         <motion.div 
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.6, ease: [0.25, 1, 0.5, 1] }}
-          className="w-full max-w-[440px] bg-white/5 backdrop-blur-2xl border border-white/10 p-8 sm:p-10 rounded-[2rem] shadow-[0_0_40px_rgba(0,0,0,0.3)] relative overflow-hidden"
+          className="w-full max-w-[440px] bg-white/5 backdrop-blur-2xl border border-white/10 p-6 sm:p-10 rounded-[2rem] shadow-[0_0_40px_rgba(0,0,0,0.3)] relative overflow-hidden"
         >
           {/* Mobile Logo */}
           <div className="lg:hidden flex items-center justify-center gap-4 mb-8">

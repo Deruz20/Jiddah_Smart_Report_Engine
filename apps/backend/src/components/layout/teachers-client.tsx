@@ -84,7 +84,7 @@ export default function TeachersClient({ initialTeachers }: { initialTeachers: D
   const [showFormModal, setShowFormModal] = useState(false);
   const [selectedTeacher, setSelectedTeacher] = useState<DashboardTeacher | null>(null);
 
-  const supabase = createClient();
+
 
   const addTeacherForm = useForm<TeacherForm>({
     resolver: zodResolver(teacherFormSchema),
@@ -107,6 +107,7 @@ export default function TeachersClient({ initialTeachers }: { initialTeachers: D
   }, [teachers, roleFilter, searchQuery]);
 
   const refetch = async () => {
+    const supabase = createClient();
     const { data } = await supabase.from('teachers').select('*').order('name');
     if (data) {
       const formatted = data.map((t: any) => ({
@@ -151,6 +152,7 @@ export default function TeachersClient({ initialTeachers }: { initialTeachers: D
 
   const handleSaveTeacher = async (values: TeacherForm) => {
     try {
+      const supabase = createClient();
       const payload = {
         name: values.full_name,
         role: values.role,
@@ -181,6 +183,7 @@ export default function TeachersClient({ initialTeachers }: { initialTeachers: D
     if (!confirmed) return;
 
     try {
+      const supabase = createClient();
       const { error } = await supabase.from('teachers').delete().eq('id', teacher.id);
       if (error) throw error;
       await refetch();
@@ -244,8 +247,8 @@ export default function TeachersClient({ initialTeachers }: { initialTeachers: D
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
             {filteredTeachers.map((teacher) => (
               <div key={teacher.id} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
-                <div className="mb-4 flex items-start justify-between gap-4">
-                  <div className="flex items-center gap-3">
+                <div className="mb-4 flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
                     <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 shrink-0">
                       <span className="text-base font-bold">
                         {teacher.name
@@ -256,13 +259,13 @@ export default function TeachersClient({ initialTeachers }: { initialTeachers: D
                           .slice(0, 2)}
                       </span>
                     </div>
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold text-slate-900 truncate">{escapeHtml(teacher.name)}</p>
                       <p className="mt-1 text-xs text-slate-500 truncate">{escapeHtml(teacher.subject) || 'No subject'}</p>
                     </div>
                   </div>
                   <span
-                    className="rounded-full px-3 py-1 text-[11px] font-semibold shrink-0"
+                    className="rounded-full px-2.5 py-1 text-[11px] font-semibold shrink-0 whitespace-nowrap"
                     style={roleBadgeStyle(teacher.role)}
                   >
                     {escapeHtml(teacher.role)}

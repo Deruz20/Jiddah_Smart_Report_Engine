@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Search,
@@ -310,10 +310,9 @@ function NotificationBell({ size = "default" }: { size?: "default" | "mobile" })
 function UserProfileDropdown() {
   const [open, setOpen] = React.useState(false);
   const ref = React.useRef<HTMLDivElement>(null);
-  const router = require("next/navigation").useRouter();
-  const supabase = createClient();
-
+  const router = useRouter();
   const handleLogout = async () => {
+    const supabase = createClient();
     await supabase.auth.signOut();
     router.replace("/login");
   };
@@ -331,16 +330,16 @@ function UserProfileDropdown() {
       <button
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "flex items-center gap-2 px-2 py-1.5 rounded-xl transition-all duration-200",
+          "flex items-center gap-2.5 p-2 md:px-3 md:py-2 rounded-xl transition-all duration-200 active:scale-95",
           open ? "bg-slate-100 shadow-sm" : "hover:bg-slate-100",
         )}
         style={{ WebkitTapHighlightColor: "transparent" }}
       >
         <div
-          className="flex items-center justify-center size-7 rounded-lg text-white font-semibold shrink-0"
+          className="flex items-center justify-center size-9 rounded-xl text-white font-semibold shrink-0"
           style={{
             background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
-            fontSize: "0.65rem",
+            fontSize: "0.8rem",
             boxShadow: "0 2px 6px rgba(16,185,129,0.3)",
           }}
         >
@@ -363,32 +362,32 @@ function UserProfileDropdown() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.97 }}
             transition={{ duration: 0.15, ease: "easeOut" }}
-            className="absolute right-0 top-full mt-1.5 w-52 rounded-2xl bg-white border border-slate-200/60 overflow-hidden z-50"
-            style={{ boxShadow: "0 8px 32px rgba(0,0,0,0.12)" }}
+            className="absolute right-0 top-full mt-2 w-64 rounded-2xl bg-white border border-slate-200/60 overflow-hidden z-50 origin-top-right"
+            style={{ boxShadow: "0 12px 40px rgba(0,0,0,0.15)" }}
           >
-            <div className="p-3 border-b border-slate-100">
-              <div className="flex items-center gap-2.5">
+            <div className="p-4 border-b border-slate-100">
+              <div className="flex items-center gap-3">
                 <div
-                  className="flex items-center justify-center size-9 rounded-xl text-white font-semibold shrink-0"
+                  className="flex items-center justify-center size-10 rounded-xl text-white font-semibold shrink-0"
                   style={{ background: "linear-gradient(135deg, #10b981 0%, #059669 100%)", fontSize: "0.8rem", boxShadow: "0 2px 8px rgba(16,185,129,0.3)" }}
                 >AH</div>
                 <div>
-                  <p className="text-slate-800 font-semibold" style={{ fontSize: "0.82rem" }}>Admin Hassan</p>
-                  <p className="text-slate-400" style={{ fontSize: "0.72rem" }}>admin@jsre.edu.sa</p>
+                  <p className="text-slate-800 font-semibold" style={{ fontSize: "0.9rem" }}>Admin Hassan</p>
+                  <p className="text-slate-500" style={{ fontSize: "0.8rem" }}>admin@jsre.edu.sa</p>
                 </div>
               </div>
             </div>
             <div className="p-1.5">
               {[{ icon: User, label: "My Profile" }, { icon: Settings, label: "Settings" }].map(({ icon: Icon, label }) => (
-                <button key={label} className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-all duration-150" style={{ fontSize: "0.8rem" }}>
-                  <Icon className="size-3.5 text-slate-400" strokeWidth={1.8} />
+                <button key={label} className="flex items-center gap-3 w-full px-3 py-3 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-50 active:scale-[0.98] transition-all duration-150" style={{ fontSize: "0.85rem", fontWeight: 500 }}>
+                  <Icon className="size-4 text-slate-400" strokeWidth={1.8} />
                   {label}
                 </button>
               ))}
             </div>
-            <div className="p-1.5 border-t border-slate-100">
-              <button onClick={handleLogout} className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-red-500 hover:bg-red-50 transition-all duration-150" style={{ fontSize: "0.8rem" }}>
-                <LogOut className="size-3.5" strokeWidth={1.8} />
+            <div className="p-1.5 border-t border-slate-100 mt-1">
+              <button onClick={handleLogout} className="flex items-center gap-3 w-full px-3 py-3 rounded-xl text-red-500 hover:bg-red-50 active:scale-[0.98] transition-all duration-150" style={{ fontSize: "0.85rem", fontWeight: 500 }}>
+                <LogOut className="size-4" strokeWidth={1.8} />
                 Sign out
               </button>
             </div>
@@ -475,7 +474,7 @@ export function AppTopbar({ breadcrumbs = ["Admin", "Dashboard"], currentPage = 
           <div className="flex items-center gap-1 pr-1">
             <button
               onClick={() => setSearchOpen(true)}
-              className="flex items-center justify-center size-10 rounded-xl text-slate-500 active:bg-slate-100 transition-colors"
+              className="flex items-center justify-center size-11 rounded-xl text-slate-500 active:bg-slate-100 active:scale-95 transition-all"
               style={{ WebkitTapHighlightColor: "transparent" }}
             >
               <Search className="size-5" strokeWidth={1.8} />

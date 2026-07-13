@@ -30,7 +30,7 @@ export function PerformanceComparisonChart({ data }: { data: { subject: string; 
           />
           <Legend wrapperStyle={{ paddingTop: "20px" }} />
           <Radar
-            name="Circular"
+            name="Secular"
             dataKey="circular"
             stroke="#10b981"
             fill="#10b981"

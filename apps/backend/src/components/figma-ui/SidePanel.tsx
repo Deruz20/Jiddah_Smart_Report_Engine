@@ -185,7 +185,7 @@ function BatchView({
           background: '#f5f3ff', border: '1px solid #ddd6fe',
           borderRadius: 10, padding: '10px 12px', fontSize: 12, color: '#5b21b6',
         }}>
-          ✦ Dual-curriculum reports detected (Circular + Theology).
+          ✦ Dual-curriculum reports detected (Secular + Theology).
         </div>
       )}
 
@@ -277,7 +277,7 @@ function IndividualView({ report }: { report: ReportData }) {
       </div>
 
       {/* Circular performance */}
-      <Section label="Circular Performance">
+      <Section label="Secular Performance">
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
           {circular.position && (
             <StatCard label="Position" value={ordinal(circular.position)} color={ORANGE} />

@@ -49,7 +49,7 @@ export default function CircularTable({ examType, scores, onChange }: Props) {
             fontSize: 18,
           }}>📚</div>
           <div>
-            <div style={{ color: '#111827', fontSize: 15, fontWeight: 700, lineHeight: 1.2 }}>Circular Marks</div>
+            <div style={{ color: '#111827', fontSize: 15, fontWeight: 700, lineHeight: 1.2 }}>Secular Marks</div>
             <div style={{ color: '#9ca3af', fontSize: 12 }}>General subjects · {scores.length} total</div>
           </div>
         </div>

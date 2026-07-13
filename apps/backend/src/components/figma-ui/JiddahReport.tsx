@@ -197,7 +197,7 @@ export function JiddahReport({ data }: JiddahReportProps) {
         <div style={{ flex: isCombined && !isNursery ? '0 0 390px' : 1, minWidth: 0 }}>
           <SectionHeading
             icon="📘"
-            title={isNursery ? 'Progress Report' : 'Circular Curriculum'}
+            title={isNursery ? 'Progress Report' : 'Secular Curriculum'}
             color={EMERALD}
           />
 

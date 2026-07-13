@@ -244,7 +244,7 @@ function Step3({ form, setField, classes }: { form: FormData; setField: (k: keyo
   return (
     <div className="space-y-4">
       <div>
-        <label className={labelClass}>Step 3: Select Circular Class</label>
+        <label className={labelClass}>Step 3: Select Secular Class</label>
         {options.length > 0 ? (
           <select
             className={inputClass}

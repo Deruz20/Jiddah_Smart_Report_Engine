@@ -47,6 +47,12 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "../figma-ui/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "../figma-ui/ui/tooltip";
 import { cn } from "../figma-ui/ui/utils";
 import { createClient } from "@/utils/supabase/client";
 import Image from "next/image";
@@ -57,15 +63,16 @@ const navItems = [
   { icon: UserCheck, label: "Teachers & Staff", id: "teachers", href: "/admin/teachers", roles: ["admin", "Admin", "Secular DOS", "Theology DOS"] },
   { icon: BookMarked, label: "Classes", id: "classes", href: "/admin/classes", roles: ["admin", "Admin", "Secular DOS", "Theology DOS"] },
   { icon: BookOpen, label: "Subjects", id: "subjects", href: "/admin/subjects", roles: ["admin", "Admin", "Secular DOS", "Theology DOS"] },
-  { icon: BookOpen, label: "Terms", id: "terms", href: "/admin/terms", roles: ["admin", "Admin", "Secular DOS", "Theology DOS"] },
-  { icon: GraduationCap, label: "Circular Hub", id: "circular", href: "/admin/circular", roles: ["admin", "Admin", "Secular DOS", "teacher", "Class Teacher"] },
-  { icon: ScrollText, label: "Theology Hub", id: "theology", href: "/admin/theology", roles: ["admin", "Admin", "Theology DOS", "teacher", "Theology Instructor"] },
-  { icon: ClipboardEdit, label: "Marks Entry", id: "marks", href: "/admin/marks", roles: ["admin", "Admin", "Secular DOS", "Theology DOS", "teacher", "Class Teacher", "Theology Instructor"] },
-  { icon: FileText, label: "Report Center", id: "reports", href: "/admin/reports", roles: ["admin", "Admin", "Secular DOS", "Theology DOS", "teacher", "Class Teacher", "Theology Instructor"] },
+  { icon: BookOpen, label: "Terms", id: "terms", href: "/admin/terms", roles: ["admin", "Admin", "DOS Secular", "DOS Theology", "Secular DOS", "Theology DOS"] },
+  { icon: GraduationCap, label: "Secular Hub", id: "secular", href: "/admin/circular", roles: ["admin", "Admin", "DOS Secular", "Secular DOS", "teacher", "Class Teacher"] },
+  { icon: ScrollText, label: "Theology Hub", id: "theology", href: "/admin/theology", roles: ["admin", "Admin", "DOS Theology", "Theology DOS", "teacher", "Theology Instructor"] },
+  { icon: ClipboardEdit, label: "Marks Entry", id: "marks", href: "/admin/marks", roles: ["admin", "Admin", "DOS Secular", "DOS Theology", "Secular DOS", "Theology DOS", "teacher", "Class Teacher", "Theology Instructor"] },
+  { icon: FileText, label: "Report Center", id: "reports", href: "/admin/reports", roles: ["admin", "Admin", "DOS Secular", "DOS Theology", "Secular DOS", "Theology DOS", "teacher", "Class Teacher", "Theology Instructor"] },
+  { icon: Bell, label: "Notifications", id: "notifications", href: "/admin/notifications", roles: ["admin", "Admin", "DOS Secular", "DOS Theology", "Secular DOS", "Theology DOS", "teacher", "Class Teacher", "Theology Instructor"] },
   { icon: Sparkles, label: "Signatures", id: "signatures", href: "/admin/signatures", roles: ["admin", "Admin"] },
   { icon: Upload, label: "Upload Center", id: "upload", href: "/admin/upload", roles: ["admin", "Admin"] },
-  { icon: Settings, label: "Settings", id: "settings", href: "/admin/settings", roles: ["admin", "Admin", "Secular DOS", "Theology DOS", "teacher", "Class Teacher", "Theology Instructor"] },
-  { icon: Shield, label: "Account & Security", id: "account", href: "/admin/account", roles: ["admin", "Admin", "Secular DOS", "Theology DOS", "teacher", "Class Teacher", "Theology Instructor"] },
+  { icon: Settings, label: "Settings", id: "settings", href: "/admin/settings", roles: ["admin", "Admin", "DOS Secular", "DOS Theology", "Secular DOS", "Theology DOS", "teacher", "Class Teacher", "Theology Instructor"] },
+  { icon: Shield, label: "Account & Security", id: "account", href: "/admin/account", roles: ["admin", "Admin", "DOS Secular", "DOS Theology", "Secular DOS", "Theology DOS", "teacher", "Class Teacher", "Theology Instructor"] },
 ];
 
 function NavItem({
@@ -81,57 +88,67 @@ function NavItem({
   active?: boolean;
   collapsed: boolean;
 }) {
+  const { isMobile, setOpenMobile } = useSidebar();
   return (
     <SidebarMenuItem>
-      <Link 
-        href={href} 
-        className={cn(
-          "group/nav-item relative flex items-center h-11 w-full rounded-xl transition-all duration-200 ease-in-out outline-none border-none",
-          active 
-            ? "bg-emerald-500/10 text-emerald-400 font-medium" 
-            : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
-        )}
-      >
-        {active && (
-          <motion.div
-            layoutId="activeNavIndicator"
-            className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-emerald-500 rounded-r-full"
-          />
-        )}
-
-        <div className="flex items-center justify-center w-9 h-9 shrink-0 rounded-lg">
-          <Icon
-            className={cn(
-              "size-5 transition-colors duration-200",
-              active ? "text-emerald-400" : "text-slate-400 group-hover/nav-item:text-slate-200"
-            )}
-            strokeWidth={1.8}
-          />
-        </div>
-
-        <AnimatePresence>
-          {!collapsed && (
-            <motion.span
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
+      <TooltipProvider>
+        <Tooltip delayDuration={0}>
+          <TooltipTrigger asChild>
+            <Link 
+              href={href} 
+              onClick={() => {
+                if (isMobile) setOpenMobile(false);
+              }}
               className={cn(
-                "truncate text-sm ml-1",
-                active ? "text-emerald-400" : "text-slate-400 group-hover/nav-item:text-slate-200"
+                "group/nav-item relative flex items-center h-11 w-full rounded-xl transition-all duration-200 ease-in-out outline-none border-none",
+                collapsed ? "justify-center" : "px-3",
+                active 
+                  ? "bg-emerald-500/10 text-emerald-400 font-medium" 
+                  : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
               )}
             >
-              {label}
-            </motion.span>
-          )}
-        </AnimatePresence>
+              {active && (
+                <motion.div
+                  layoutId="activeNavIndicator"
+                  className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-emerald-500 rounded-r-full"
+                />
+              )}
 
-        {collapsed && (
-          <div className="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-md shadow-xl whitespace-nowrap opacity-0 group-hover/nav-item:opacity-100 pointer-events-none z-50">
-            {label}
-          </div>
-        )}
-      </Link>
+              <div className={cn("flex items-center justify-center w-9 h-9 shrink-0 rounded-lg", collapsed && "ml-1")}>
+                <Icon
+                  className={cn(
+                    "size-5 transition-colors duration-200",
+                    active ? "text-emerald-400" : "text-slate-400 group-hover/nav-item:text-slate-200"
+                  )}
+                  strokeWidth={1.8}
+                />
+              </div>
+
+              <AnimatePresence>
+                {!collapsed && (
+                  <motion.span
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.15 }}
+                    className={cn(
+                      "truncate text-sm ml-2",
+                      active ? "text-emerald-400" : "text-slate-400 group-hover/nav-item:text-slate-200"
+                    )}
+                  >
+                    {label}
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </Link>
+          </TooltipTrigger>
+          {collapsed && (
+            <TooltipContent side="right" className="bg-slate-950 border-slate-800 text-slate-200 text-xs shadow-xl ml-2 z-50">
+              {label}
+            </TooltipContent>
+          )}
+        </Tooltip>
+      </TooltipProvider>
     </SidebarMenuItem>
   );
 }
@@ -163,7 +180,7 @@ function SidebarToggleButton() {
 }
 
 export function AppSidebar() {
-  const { state } = useSidebar();
+  const { state, toggleSidebar } = useSidebar();
   const pathname = usePathname();
   const router = useRouter();
   const collapsed = state === "collapsed";
@@ -171,10 +188,11 @@ export function AppSidebar() {
   const [userName, setUserName] = React.useState<string>("");
   React.useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getUser().then(({ data }) => {
-      if (data?.user?.user_metadata) {
-        setRole(data.user.user_metadata.role || 'teacher');
-        setUserName(data.user.user_metadata.full_name || data.user.email?.split('@')[0] || 'User');
+    supabase.auth.getSession().then(({ data }) => {
+      const user = data.session?.user;
+      if (user?.user_metadata) {
+        setRole(user.user_metadata.role || 'teacher');
+        setUserName(user.user_metadata.full_name || user.email?.split('@')[0] || 'User');
       }
     });
   }, []);
@@ -194,16 +212,20 @@ export function AppSidebar() {
       <div className="flex flex-col h-full bg-[#0f172a] border-r border-slate-800">
         {/* Header */}
         <SidebarHeader className="px-3 pt-4 pb-3">
-          <div className={cn("flex items-center", collapsed ? "justify-center" : "justify-between")}>
-            <div className="flex items-center gap-2.5 min-w-0">
+          <div className={cn("flex items-center gap-3", collapsed ? "justify-center flex-col" : "justify-between")}>
+            <div 
+              className={cn("flex items-center gap-2.5 min-w-0 cursor-pointer", collapsed && "flex-col")}
+              onClick={toggleSidebar}
+              title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
               <div className="relative shrink-0">
                 <div
-                  className="flex items-center justify-center size-8 rounded-xl overflow-hidden"
+                  className="flex items-center justify-center size-8 rounded-xl overflow-hidden hover:scale-105 transition-transform"
                   style={{
                     boxShadow: "0 4px 12px rgba(249,115,22,0.4)",
                   }}
                 >
-                  <Image src="/images/jiddah_islamic_school.jpg" alt="Logo" width={32} height={32} className="object-cover" />
+                  <Image src="/images/jiddah_islamic_school.jpg" alt="Logo" width={32} height={32} className="object-cover" style={{ width: "auto", height: "auto" }} />
                 </div>
                 <div className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full bg-emerald-400 border-2 border-[#0f172a] shadow-[0_0_6px_rgba(52,211,153,0.6)]" />
               </div>
@@ -216,7 +238,7 @@ export function AppSidebar() {
                     transition={{ duration: 0.2 }}
                     className="overflow-hidden"
                   >
-                    <p className="text-white font-semibold truncate" style={{ fontSize: "0.8rem", lineHeight: 1.2 }}>
+                    <p className="text-white font-semibold truncate hover:text-emerald-400 transition-colors" style={{ fontSize: "0.8rem", lineHeight: 1.2 }}>
                       Jiddah Smart
                     </p>
                     <p className="text-slate-400 truncate" style={{ fontSize: "0.65rem", lineHeight: 1.2 }}>
@@ -226,16 +248,12 @@ export function AppSidebar() {
                 )}
               </AnimatePresence>
             </div>
-            {!collapsed && <SidebarToggleButton />}
+            
+            {/* Search moved to top header */}
+            <button className="p-2 rounded-lg text-slate-400 hover:text-emerald-400 hover:bg-emerald-400/10 transition-colors mt-2" title="Search">
+              <Search className="size-4" />
+            </button>
           </div>
-
-          {collapsed && (
-            <div className="flex justify-center mt-1">
-              <SidebarToggleButton />
-            </div>
-          )}
-
-
         </SidebarHeader>
 
         <SidebarSeparator className="mx-3 mb-1 bg-white/5" />
@@ -259,7 +277,9 @@ export function AppSidebar() {
             <SidebarGroupContent className="px-3 pt-4">
               <SidebarMenu className="gap-1.5">
                 {navItems.filter(item => item.roles.includes(role)).map((item) => {
-                  const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                  const active = item.href === '/admin' 
+                    ? pathname === '/admin' 
+                    : (pathname === item.href || pathname.startsWith(`${item.href}/`));
                   return (
                     <NavItem
                       key={item.id}
@@ -281,17 +301,7 @@ export function AppSidebar() {
           <SidebarSeparator className="mb-2 bg-white/5" />
           
           {/* Utilities Row */}
-          <div className={cn("flex items-center mb-2", collapsed ? "flex-col gap-2" : "justify-around px-1")}>
-            <button className="p-2 rounded-lg text-slate-400 hover:text-emerald-400 hover:bg-emerald-400/10 transition-colors" title="Search">
-              <Search className="size-4" />
-            </button>
-            <Link href="/admin/notifications">
-              <button className="p-2 rounded-lg text-slate-400 hover:text-emerald-400 hover:bg-emerald-400/10 transition-colors relative" title="Notifications">
-                <Bell className="size-4" />
-                <span className="absolute top-1.5 right-1.5 size-1.5 bg-red-500 rounded-full" />
-              </button>
-            </Link>
-          </div>
+          <div className={cn("flex items-center justify-center mb-2 px-1")} />
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

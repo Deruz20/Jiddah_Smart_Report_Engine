@@ -203,7 +203,7 @@ export default function CircularClient({
   return (
     <div className="pb-12 w-full">
       <HeroSection
-        title="Circular Hub"
+        title="Secular Hub"
         subtitle={`Manage BOT, MOT, and EOT marks for ${activeTerm?.term || "the active term"}`}
         actions={
           <Button
@@ -288,7 +288,7 @@ export default function CircularClient({
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
         <DialogContent className="sm:max-w-[600px] rounded-2xl">
           <DialogHeader>
-            <DialogTitle>Add Circular Marks</DialogTitle>
+            <DialogTitle>Add Secular Marks</DialogTitle>
             <DialogDescription>Select student to record scores for all class subjects.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">

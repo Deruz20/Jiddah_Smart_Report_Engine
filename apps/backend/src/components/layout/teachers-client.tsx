@@ -58,6 +58,8 @@ const roleBadgeStyle = (role: string) => {
     case 'Head Teacher':
     case 'Class Teacher':
     case 'Theology Instructor':
+    case 'DOS Secular':
+    case 'DOS Theology':
       return { background: 'rgba(16,185,129,0.12)', color: '#065F46' }
     case 'Deputy Head Teacher':
     case 'Support Staff':
@@ -227,6 +229,8 @@ export default function TeachersClient({ initialTeachers }: { initialTeachers: D
             >
               <option>All Roles</option>
               <option>Head Teacher</option>
+              <option>DOS Secular</option>
+              <option>DOS Theology</option>
               <option>Class Teacher</option>
               <option>Theology Instructor</option>
               <option>Deputy Head Teacher</option>
@@ -322,9 +326,9 @@ export default function TeachersClient({ initialTeachers }: { initialTeachers: D
       </div>
 
       {showFormModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-2xl overflow-hidden rounded-3xl bg-white shadow-xl">
-            <div className="flex items-center justify-between border-b border-slate-200 p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm overflow-y-auto">
+          <div className="w-full max-w-2xl rounded-3xl bg-white shadow-xl max-h-[90vh] flex flex-col my-auto">
+            <div className="flex items-center justify-between border-b border-slate-200 p-6 shrink-0">
               <div>
                 <p className="text-sm font-semibold text-slate-500">{selectedTeacher ? 'Edit teacher details' : 'Add a new teacher'}</p>
                 <h2 className="mt-1 text-2xl font-bold text-slate-900">
@@ -339,8 +343,9 @@ export default function TeachersClient({ initialTeachers }: { initialTeachers: D
                 ×
               </button>
             </div>
-            <form noValidate onSubmit={handleSubmit(handleSaveTeacher)} className="space-y-4 p-6">
-              <div className="grid gap-4 md:grid-cols-2">
+            <div className="overflow-y-auto p-6">
+              <form noValidate onSubmit={handleSubmit(handleSaveTeacher)} className="space-y-4">
+                <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <label className="mb-2 block text-sm font-semibold text-slate-700">Full Name</label>
                   <input
@@ -357,6 +362,8 @@ export default function TeachersClient({ initialTeachers }: { initialTeachers: D
                     className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-[#10B981]"
                   >
                     <option>Head Teacher</option>
+                    <option>DOS Secular</option>
+                    <option>DOS Theology</option>
                     <option>Class Teacher</option>
                     <option>Theology Instructor</option>
                     <option>Deputy Head Teacher</option>
@@ -410,23 +417,24 @@ export default function TeachersClient({ initialTeachers }: { initialTeachers: D
                 </div>
               </div>
 
-              <div className="flex flex-col gap-3 pt-4 sm:flex-row border-t border-slate-100">
-                <AnimatedButton
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="flex-1 rounded-2xl bg-[#10B981] px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {isSubmitting ? 'Saving...' : selectedTeacher ? 'Update Teacher' : 'Add Teacher'}
-                </AnimatedButton>
-                <AnimatedButton
-                  type="button"
-                  onClick={closeModal}
-                  className="flex-1 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                >
-                  Cancel
-                </AnimatedButton>
-              </div>
-            </form>
+                <div className="flex flex-col gap-3 pt-4 sm:flex-row border-t border-slate-100 mt-4">
+                  <AnimatedButton
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="flex-1 rounded-2xl bg-[#10B981] px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isSubmitting ? 'Saving...' : selectedTeacher ? 'Update Teacher' : 'Add Teacher'}
+                  </AnimatedButton>
+                  <AnimatedButton
+                    type="button"
+                    onClick={closeModal}
+                    className="flex-1 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                  >
+                    Cancel
+                  </AnimatedButton>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}

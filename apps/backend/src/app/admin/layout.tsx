@@ -23,10 +23,11 @@ export default function AdminLayout({
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getUser().then(({ data }) => {
-      if (data?.user?.user_metadata) {
-        setRole(data.user.user_metadata.role || 'teacher');
-        if (!data.user.user_metadata.tour_completed) {
+    supabase.auth.getSession().then(({ data }) => {
+      const user = data.session?.user;
+      if (user?.user_metadata) {
+        setRole(user.user_metadata.role || 'teacher');
+        if (!user.user_metadata.tour_completed) {
           setShowTour(true);
         }
       }

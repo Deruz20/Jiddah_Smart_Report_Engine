@@ -14,12 +14,20 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json()
-    const { email, password, name } = body
+    const { email, password, name, role } = body
 
-    if (!email || !password) {
+    if (!email || !password || !role) {
       return withCors(
         request,
-        NextResponse.json({ error: 'Email and password are required' }, { status: 400 })
+        NextResponse.json({ error: 'Email, password, and role are required' }, { status: 400 })
+      )
+    }
+
+    const validRoles = ['Admin', 'Secular DOS', 'Theology DOS']
+    if (!validRoles.includes(role)) {
+      return withCors(
+        request,
+        NextResponse.json({ error: 'Invalid role selected' }, { status: 400 })
       )
     }
 
@@ -39,7 +47,7 @@ export async function POST(request: NextRequest) {
       options: {
         data: {
           full_name: name ? String(name).trim() : undefined,
-          role: 'admin',
+          role: role,
         },
         emailRedirectTo: undefined,
       },

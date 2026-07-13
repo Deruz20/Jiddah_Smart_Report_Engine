@@ -35,6 +35,7 @@ export const signUpFormSchema = z.object({
   email: z.string().trim().email('Enter a valid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   confirmPassword: z.string().min(6, 'Confirm your password'),
+  role: z.enum(['Admin', 'Secular DOS', 'Theology DOS']),
 }).superRefine(({ password, confirmPassword }, ctx) => {
   if (password !== confirmPassword) {
     ctx.addIssue({

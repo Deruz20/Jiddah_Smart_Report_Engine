@@ -39,25 +39,33 @@ import {
   SidebarSeparator,
   useSidebar,
 } from "../figma-ui/ui/sidebar";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "../figma-ui/ui/dropdown-menu";
 import { cn } from "../figma-ui/ui/utils";
 import { createClient } from "@/utils/supabase/client";
 import Image from "next/image";
 
 const navItems = [
-  { icon: LayoutDashboard, label: "Dashboard", id: "dashboard", href: "/admin", roles: ["admin", "teacher"] },
-  { icon: Users, label: "Students", id: "students", href: "/admin/students", roles: ["admin", "teacher"] },
-  { icon: UserCheck, label: "Teachers & Staff", id: "teachers", href: "/admin/teachers", roles: ["admin"] },
-  { icon: BookMarked, label: "Classes", id: "classes", href: "/admin/classes", roles: ["admin"] },
-  { icon: BookOpen, label: "Subjects", id: "subjects", href: "/admin/subjects", roles: ["admin"] },
-  { icon: BookOpen, label: "Terms", id: "terms", href: "/admin/terms", roles: ["admin"] },
-  { icon: GraduationCap, label: "Circular Hub", id: "circular", href: "/admin/circular", roles: ["admin", "teacher"] },
-  { icon: ScrollText, label: "Theology Hub", id: "theology", href: "/admin/theology", roles: ["admin", "teacher"] },
-  { icon: ClipboardEdit, label: "Marks Entry", id: "marks", href: "/admin/marks", roles: ["admin", "teacher"] },
-  { icon: FileText, label: "Report Center", id: "reports", href: "/admin/reports", roles: ["admin", "teacher"] },
-  { icon: Sparkles, label: "Signatures", id: "signatures", href: "/admin/signatures", roles: ["admin"] },
-  { icon: Upload, label: "Upload Center", id: "upload", href: "/admin/upload", roles: ["admin"] },
-  { icon: Settings, label: "Settings", id: "settings", href: "/admin/settings", roles: ["admin", "teacher"] },
-  { icon: Shield, label: "Account & Security", id: "account", href: "/admin/account", roles: ["admin", "teacher"] },
+  { icon: LayoutDashboard, label: "Dashboard", id: "dashboard", href: "/admin", roles: ["admin", "Admin", "Secular DOS", "Theology DOS", "teacher", "Class Teacher", "Theology Instructor"] },
+  { icon: Users, label: "Students", id: "students", href: "/admin/students", roles: ["admin", "Admin", "Secular DOS", "Theology DOS", "teacher", "Class Teacher", "Theology Instructor"] },
+  { icon: UserCheck, label: "Teachers & Staff", id: "teachers", href: "/admin/teachers", roles: ["admin", "Admin", "Secular DOS", "Theology DOS"] },
+  { icon: BookMarked, label: "Classes", id: "classes", href: "/admin/classes", roles: ["admin", "Admin", "Secular DOS", "Theology DOS"] },
+  { icon: BookOpen, label: "Subjects", id: "subjects", href: "/admin/subjects", roles: ["admin", "Admin", "Secular DOS", "Theology DOS"] },
+  { icon: BookOpen, label: "Terms", id: "terms", href: "/admin/terms", roles: ["admin", "Admin", "Secular DOS", "Theology DOS"] },
+  { icon: GraduationCap, label: "Circular Hub", id: "circular", href: "/admin/circular", roles: ["admin", "Admin", "Secular DOS", "teacher", "Class Teacher"] },
+  { icon: ScrollText, label: "Theology Hub", id: "theology", href: "/admin/theology", roles: ["admin", "Admin", "Theology DOS", "teacher", "Theology Instructor"] },
+  { icon: ClipboardEdit, label: "Marks Entry", id: "marks", href: "/admin/marks", roles: ["admin", "Admin", "Secular DOS", "Theology DOS", "teacher", "Class Teacher", "Theology Instructor"] },
+  { icon: FileText, label: "Report Center", id: "reports", href: "/admin/reports", roles: ["admin", "Admin", "Secular DOS", "Theology DOS", "teacher", "Class Teacher", "Theology Instructor"] },
+  { icon: Sparkles, label: "Signatures", id: "signatures", href: "/admin/signatures", roles: ["admin", "Admin"] },
+  { icon: Upload, label: "Upload Center", id: "upload", href: "/admin/upload", roles: ["admin", "Admin"] },
+  { icon: Settings, label: "Settings", id: "settings", href: "/admin/settings", roles: ["admin", "Admin", "Secular DOS", "Theology DOS", "teacher", "Class Teacher", "Theology Instructor"] },
+  { icon: Shield, label: "Account & Security", id: "account", href: "/admin/account", roles: ["admin", "Admin", "Secular DOS", "Theology DOS", "teacher", "Class Teacher", "Theology Instructor"] },
 ];
 
 function NavItem({
@@ -167,20 +175,23 @@ export function AppSidebar() {
   const pathname = usePathname();
   const collapsed = state === "collapsed";
   const [role, setRole] = React.useState<string>("admin");
+  const [userName, setUserName] = React.useState<string>("");
   const supabase = createClient();
+  const router = require("next/navigation").useRouter();
 
   React.useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
-      if (data?.user?.user_metadata?.role) {
-        let r = data.user.user_metadata.role.toLowerCase();
-        if (r.includes('admin') || r.includes('head')) {
-          setRole('admin');
-        } else {
-          setRole('teacher');
-        }
+      if (data?.user?.user_metadata) {
+        setRole(data.user.user_metadata.role || 'teacher');
+        setUserName(data.user.user_metadata.full_name || data.user.email?.split('@')[0] || 'User');
       }
     });
   }, [supabase]);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.replace("/login");
+  };
 
   return (
     <Sidebar
@@ -296,58 +307,87 @@ export function AppSidebar() {
             </Link>
           </div>
 
-          <div
-            className={cn(
-              "flex items-center gap-2.5 p-2 rounded-xl cursor-pointer transition-all duration-200 group/profile",
-              "hover:bg-white/5",
-              collapsed && "justify-center",
-            )}
-          >
-            <div className="relative shrink-0">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
               <div
-                className="flex items-center justify-center size-8 rounded-lg text-white font-semibold"
-                style={{
-                  background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
-                  fontSize: "0.75rem",
-                  boxShadow: "0 2px 8px rgba(16,185,129,0.4)",
-                }}
+                className={cn(
+                  "flex items-center gap-2.5 p-2 rounded-xl cursor-pointer transition-all duration-200 group/profile",
+                  "hover:bg-white/5",
+                  collapsed && "justify-center",
+                )}
               >
-                AH
+                <div className="relative shrink-0">
+                  <div
+                    className="flex items-center justify-center size-8 rounded-lg text-white font-semibold"
+                    style={{
+                      background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                      fontSize: "0.75rem",
+                      boxShadow: "0 2px 8px rgba(16,185,129,0.4)",
+                    }}
+                  >
+                    {userName.slice(0, 2).toUpperCase()}
+                  </div>
+                  <div className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full bg-emerald-400 border-2 border-[#0f172a]" />
+                </div>
+                <AnimatePresence>
+                  {!collapsed && (
+                    <motion.div
+                      initial={{ opacity: 0, x: -4 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -4 }}
+                      transition={{ duration: 0.15 }}
+                      className="flex-1 min-w-0 text-left"
+                    >
+                      <p className="text-white truncate" style={{ fontSize: "0.8rem", lineHeight: 1.3 }}>
+                        {userName}
+                      </p>
+                      <p className="text-slate-500 truncate" style={{ fontSize: "0.7rem", lineHeight: 1.3 }}>
+                        {role}
+                      </p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
-              <div className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full bg-emerald-400 border-2 border-[#0f172a]" />
-            </div>
-            <AnimatePresence>
-              {!collapsed && (
-                <motion.div
-                  initial={{ opacity: 0, x: -4 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -4 }}
-                  transition={{ duration: 0.15 }}
-                  className="flex-1 min-w-0"
-                >
-                  <p className="text-white truncate" style={{ fontSize: "0.8rem", lineHeight: 1.3 }}>
-                    Admin Hassan
-                  </p>
-                  <p className="text-slate-500 truncate" style={{ fontSize: "0.7rem", lineHeight: 1.3 }}>
-                    Head Teacher
-                  </p>
-                </motion.div>
-              )}
-            </AnimatePresence>
-            <AnimatePresence>
-              {!collapsed && (
-                <motion.button
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-400/10 transition-all duration-200 opacity-0 group-hover/profile:opacity-100"
-                  title="Logout"
-                >
-                  <LogOut className="size-3.5" strokeWidth={2} />
-                </motion.button>
-              )}
-            </AnimatePresence>
-          </div>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              side="right"
+              align="end"
+              sideOffset={4}
+              className="w-56 bg-[#111827] border-white/10 text-slate-300"
+            >
+              <DropdownMenuLabel className="font-normal">
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-medium leading-none text-white">{userName}</p>
+                  <p className="text-xs leading-none text-slate-500">{role}</p>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator className="bg-white/10" />
+              <DropdownMenuItem onClick={async () => {
+                await supabase.auth.updateUser({ data: { tour_completed: false } });
+                window.location.reload();
+              }} className="cursor-pointer">
+                <BookOpen className="mr-2 h-4 w-4" />
+                <span>Replay Product Tour</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/admin/account" className="cursor-pointer">
+                  <Shield className="mr-2 h-4 w-4" />
+                  <span>Account & Security</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/admin/settings" className="cursor-pointer">
+                  <Settings className="mr-2 h-4 w-4" />
+                  <span>Settings</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="bg-white/10" />
+              <DropdownMenuItem onClick={handleLogout} className="text-red-400 focus:text-red-300 focus:bg-red-400/10 cursor-pointer">
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Log out</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </SidebarFooter>
       </div>
     </Sidebar>

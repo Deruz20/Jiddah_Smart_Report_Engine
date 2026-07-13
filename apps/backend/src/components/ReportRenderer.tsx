@@ -48,7 +48,7 @@ export function ReportRenderer({ data, examMode }: ReportRendererProps) {
           scoreType === 'mot' ? (
             <PrimaryMOTReport reportData={data} />
           ) : (
-            data.student.class_name?.toLowerCase() === 'p.7' ? (
+            data.student.class_name?.toLowerCase() === 'p.7' || data.student.religion === 'Non-Muslim' ? (
               <P7EOTReport reportData={data} />
             ) : (
               <PrimaryEOTReport reportData={data} />

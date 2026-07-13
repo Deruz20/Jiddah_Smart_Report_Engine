@@ -34,6 +34,7 @@ interface FormData {
   theology_section: TheologySectionType;
   theology_class_id: string;
   academic_year: string;
+  religion: 'Muslim' | 'Non-Muslim' | '';
 }
 
 const initialForm: FormData = {
@@ -46,6 +47,7 @@ const initialForm: FormData = {
   theology_section: '',
   theology_class_id: '',
   academic_year: new Date().getFullYear().toString(),
+  religion: 'Muslim',
 };
 
 // ─── Static Data ────────────────────────────────────────────────────────────
@@ -140,6 +142,30 @@ function Step1({ form, setField }: { form: FormData; setField: (k: keyof FormDat
               {g}
             </button>
           ))}
+        </div>
+      </div>
+
+      {/* Religion Selection */}
+      <div>
+        <label className={labelClass}>Religion</label>
+        <div className="grid grid-cols-2 gap-3">
+          <SelectionCard
+            selected={form.religion === 'Muslim'}
+            onClick={() => setField('religion', 'Muslim')}
+          >
+            Muslim
+          </SelectionCard>
+          <SelectionCard
+            selected={form.religion === 'Non-Muslim'}
+            onClick={() => {
+               setField('religion', 'Non-Muslim');
+               // Auto clear theology selections if non-muslim
+               setField('theology_class_id', '');
+               setField('theology_section', '');
+            }}
+          >
+            Non-Muslim
+          </SelectionCard>
         </div>
       </div>
 
@@ -272,10 +298,11 @@ function Step4({ form, setField, theologyClasses }: { form: FormData; setField: 
 
   return (
     <div className="space-y-5">
-      {/* 4A — Theology Section */}
-      <div className="space-y-2">
-        <p className={labelClass}>Step 4A: Select Theology Section</p>
-        <div className="grid grid-cols-3 gap-2">
+      {/* 4A — Theology Section (Muslim Only) */}
+      {form.religion === 'Muslim' && (
+        <div className="space-y-2">
+          <p className={labelClass}>Step 4A: Select Theology Section</p>
+          <div className="grid grid-cols-3 gap-2">
           {theologySections.map((ts) => (
             <SelectionCard
               key={ts.value}
@@ -293,35 +320,38 @@ function Step4({ form, setField, theologyClasses }: { form: FormData; setField: 
               </p>
             </SelectionCard>
           ))}
-        </div>
-      </div>
-
-      {/* 4B — Theology Class */}
-      <div>
-        <label className={cn(labelClass, 'flex items-center justify-between')}>
-          <span>Step 4B: Select Theology Class</span>
-        </label>
-        {form.theology_section ? (
-          <select
-            dir="rtl"
-            className={cn(inputClass, 'text-right')}
-            value={form.theology_class_id}
-            onChange={(e) => setField('theology_class_id', e.target.value)}
-          >
-            <option value="">— اختر الصف —</option>
-            {theologyOptions.map((opt) => (
-              <option key={opt.id} value={opt.id}>{opt.class_name_arabic}</option>
-            ))}
-          </select>
-        ) : (
-          <div className="px-4 py-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-400 text-center">
-            اختر القسم أولاً
           </div>
-        )}
-        <p className={noteClass}>
-          ℹ Theology class level is independent of circular class level
-        </p>
-      </div>
+        </div>
+      )}
+
+      {/* 4B — Theology Class (Muslim Only) */}
+      {form.religion === 'Muslim' && (
+        <div>
+          <label className={cn(labelClass, 'flex items-center justify-between')}>
+            <span>Step 4B: Select Theology Class</span>
+          </label>
+          {form.theology_section ? (
+            <select
+              dir="rtl"
+              className={cn(inputClass, 'text-right')}
+              value={form.theology_class_id}
+              onChange={(e) => setField('theology_class_id', e.target.value)}
+            >
+              <option value="">— اختر الصف —</option>
+              {theologyOptions.map((opt) => (
+                <option key={opt.id} value={opt.id}>{opt.class_name_arabic}</option>
+              ))}
+            </select>
+          ) : (
+            <div className="px-4 py-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-400 text-center">
+              اختر القسم أولاً
+            </div>
+          )}
+          <p className={noteClass}>
+            ℹ Theology class level is independent of circular class level
+          </p>
+        </div>
+      )}
 
       {/* Academic Year */}
       <div>
@@ -451,7 +481,8 @@ export function CreateStudentWizard() {
           admission_number: form.admission_number,
           circular_class_id: form.circular_class_id,
           theology_class_id: form.theology_class_id || null,
-          academic_year: parseInt(form.academic_year, 10) || new Date().getFullYear(),
+          academic_year: parseInt(form.academic_year, 10),
+          religion: form.religion,
         }),
       });
 

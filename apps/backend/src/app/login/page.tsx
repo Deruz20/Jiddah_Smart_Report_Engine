@@ -62,7 +62,14 @@ function LoginContent() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        router.replace(redirectTo);
+        if (
+          session.user.user_metadata?.role?.toLowerCase().includes("teacher") &&
+          !session.user.user_metadata?.onboarding_completed
+        ) {
+          router.replace("/onboarding");
+        } else {
+          router.replace(redirectTo);
+        }
       }
     });
   }, [router, redirectTo, supabase]);
@@ -76,7 +83,7 @@ function LoginContent() {
   const signUpForm = useForm<SignUpForm>({
     resolver: zodResolver(signUpFormSchema),
     ...authFormOptions,
-    defaultValues: { fullName: "", email: "", password: "", confirmPassword: "" },
+    defaultValues: { fullName: "", email: "", password: "", confirmPassword: "", role: "Admin" },
   });
 
   const forgotForm = useForm<ForgotPasswordForm>({
@@ -94,12 +101,20 @@ function LoginContent() {
   const handleLogin = async (values: LoginForm) => {
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: values.email,
         password: values.password,
       });
       if (error) throw error;
-      router.replace(redirectTo);
+      
+      if (
+        data.user?.user_metadata?.role?.toLowerCase().includes("teacher") &&
+        !data.user?.user_metadata?.onboarding_completed
+      ) {
+        router.replace("/onboarding");
+      } else {
+        router.replace(redirectTo);
+      }
     } catch (error: any) {
       alert(error.message || "Unable to sign in");
     } finally {
@@ -120,24 +135,26 @@ function LoginContent() {
   const handleSignUp = async (values: SignUpForm) => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email: values.email,
-        password: values.password,
-        options: {
-          data: {
-            full_name: values.fullName,
-          }
-        }
+      const response = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: values.fullName,
+          email: values.email,
+          password: values.password,
+          role: values.role,
+        })
       });
-      if (error) throw error;
-      if (data.session) {
-        router.replace(redirectTo);
-      } else {
-        alert("Account created! Please check your email to verify your account.");
-        setScreen("login");
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create account');
       }
+
+      alert("Account created! Please check your email to verify your account or sign in.");
+      setScreen("login");
     } catch (error: any) {
-      alert(error.message || "Unable to create account");
+      alert(error.message || "Error creating account");
     } finally {
       setLoading(false);
     }
@@ -403,6 +420,21 @@ function LoginContent() {
                   />
                   {visibleFieldError(signUpForm, "confirmPassword") && (
                     <p className="mt-2 text-sm text-red-600">{visibleFieldError(signUpForm, "confirmPassword")}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="block mb-1.5" style={{ fontSize: "13px", color: "#374151", fontWeight: 600 }}>Account Role</label>
+                  <select
+                    {...signUpForm.register("role")}
+                    className="w-full px-4 py-3 rounded-xl outline-none"
+                    style={{ border: "1.5px solid #E5E7EB", background: "white", fontSize: "14px" }}
+                  >
+                    <option value="Admin">Admin</option>
+                    <option value="Secular DOS">Secular DOS</option>
+                    <option value="Theology DOS">Theology DOS</option>
+                  </select>
+                  {visibleFieldError(signUpForm, "role") && (
+                    <p className="mt-2 text-sm text-red-600">{visibleFieldError(signUpForm, "role")}</p>
                   )}
                 </div>
                 <button

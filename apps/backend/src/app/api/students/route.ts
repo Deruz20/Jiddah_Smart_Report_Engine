@@ -15,6 +15,11 @@ export async function GET(request: NextRequest) {
     const cookieStore = await cookies()
     const supabase = createClient(cookieStore)
 
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+    }
+
     const { data, error } = await supabase
       .from('enrollments')
       .select(`
@@ -64,6 +69,11 @@ export async function POST(request: NextRequest) {
     const cookieStore = await cookies()
     const supabase = createClient(cookieStore)
 
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+    }
+
     // Check if admission number already exists
     const { data: existingStudent } = await supabase
       .from('students')
@@ -103,12 +113,24 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Rule: if circular class is NOT P.7, theology_class_id is required
-    if (circularClassData.class_name !== 'P.7' && !body.theology_class_id) {
+    // Rule: if circular class is NOT P.7 and religion is Muslim, theology_class_id is required
+    const isMuslim = body.religion !== 'Non-Muslim';
+    if (circularClassData.class_name !== 'P.7' && isMuslim && !body.theology_class_id) {
       return withCors(
         request,
         NextResponse.json(
-          { error: 'theology_class_id is required for non-P.7 classes' },
+          { error: 'theology_class_id is required for Muslim non-P.7 students' },
+          { status: 400 }
+        )
+      )
+    }
+
+    // Rule: if religion is Non-Muslim, theology_class_id should be null
+    if (!isMuslim && body.theology_class_id) {
+      return withCors(
+        request,
+        NextResponse.json(
+          { error: 'Non-Muslim students cannot have a theology class' },
           { status: 400 }
         )
       )
@@ -121,6 +143,7 @@ export async function POST(request: NextRequest) {
         name: body.name.trim(),
         gender: body.gender || null,
         admission_number: body.admission_number.trim(),
+        religion: body.religion || 'Muslim',
       }])
       .select('id, name, created_at')
 

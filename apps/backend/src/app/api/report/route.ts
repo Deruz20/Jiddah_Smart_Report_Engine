@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
         circular_classes ( id, class_name, section ),
         theology_class_id,
         theology_classes ( id, class_name_arabic, class_name_english, level ),
-        students ( id, name, admission_number, arabic_name )
+        students ( id, name, arabic_name, admission_number, religion )
       `)
       .eq('id', enrollmentId)
       .single()
@@ -386,17 +386,19 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const theologyClassArabic = Array.isArray(enrollment.theology_classes) ? enrollment.theology_classes[0]?.class_name_arabic : (enrollment.theology_classes as any)?.class_name_arabic
-    const theologyClassEnglish = Array.isArray(enrollment.theology_classes) ? enrollment.theology_classes[0]?.class_name_english : (enrollment.theology_classes as any)?.class_name_english
+    const studentData = Array.isArray(enrollment.students) ? enrollment.students[0] : enrollment.students
+    const circularClass = Array.isArray(enrollment.circular_classes) ? enrollment.circular_classes[0] : enrollment.circular_classes
+    const theologyClass = Array.isArray(enrollment.theology_classes) ? enrollment.theology_classes[0] : enrollment.theology_classes
+    const theologyClassArabic = theologyClass?.class_name_arabic
+    const theologyClassEnglish = theologyClass?.class_name_english
 
     const reportData = {
       student: {
-        name: (Array.isArray(enrollment.students) ? enrollment.students[0] : enrollment.students)?.name ?? '—',
-        admission_number: (Array.isArray(enrollment.students) ? enrollment.students[0] : enrollment.students)?.admission_number ?? '—',
-        arabic_name: (Array.isArray(enrollment.students) ? enrollment.students[0] : enrollment.students)?.arabic_name ?? null,
-        class_name: Array.isArray(enrollment.circular_classes)
-          ? enrollment.circular_classes[0]?.class_name ?? '—'
-          : (enrollment.circular_classes as any)?.class_name ?? '—',
+        name: studentData?.name ?? '—',
+        admission_number: studentData?.admission_number ?? '—',
+        arabic_name: studentData?.arabic_name ?? null,
+        religion: studentData?.religion ?? 'Muslim',
+        class_name: (circularClass as any)?.class_name ?? '—',
         theology_class_arabic: theologyClassArabic ?? null,
         theology_class_english: theologyClassEnglish ?? null,
         section,

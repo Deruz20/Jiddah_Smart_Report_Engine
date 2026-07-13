@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useTransition } from 'react'
 import { transliterateEnglishToArabic } from '@/lib/transliterate'
 
 type TermData = {
@@ -55,6 +55,7 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [isPending, startTransition] = useTransition()
 
   const selectedEnrollment = enrollments.find((e) => e.id === selectedEnrollmentId) || null
 
@@ -206,46 +207,48 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
 
     setIsSaving(true)
 
-    try {
-      const circularPayload = circularMarks.map((mark) => {
-        const payload: any = { subject_id: mark.subject_id }
-        if (['bot', 'all'].includes(examType)) payload.bot_score = mark.bot_score
-        if (['mot', 'all'].includes(examType)) payload.mot_score = mark.mot_score
-        if (['eot', 'all'].includes(examType)) payload.eot_score = mark.eot_score
-        return payload
-      })
+    startTransition(async () => {
+      try {
+        const circularPayload = circularMarks.map((mark) => {
+          const payload: any = { subject_id: mark.subject_id }
+          if (['bot', 'all'].includes(examType)) payload.bot_score = mark.bot_score
+          if (['mot', 'all'].includes(examType)) payload.mot_score = mark.mot_score
+          if (['eot', 'all'].includes(examType)) payload.eot_score = mark.eot_score
+          return payload
+        })
 
-      const theologyPayload = theologyMarks.map((mark) => {
-        const payload: any = { subject_id: mark.subject_id }
-        if (['mot', 'all'].includes(examType)) payload.mot_score = mark.mot_score
-        if (['eot', 'all'].includes(examType)) payload.eot_score = mark.eot_score
-        return payload
-      })
+        const theologyPayload = theologyMarks.map((mark) => {
+          const payload: any = { subject_id: mark.subject_id }
+          if (['mot', 'all'].includes(examType)) payload.mot_score = mark.mot_score
+          if (['eot', 'all'].includes(examType)) payload.eot_score = mark.eot_score
+          return payload
+        })
 
-      const response = await fetch('/api/marks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          enrollment_id: selectedEnrollmentId,
-          term_id: selectedTermId,
-          score_type: examType,
-          circular_marks: circularPayload,
-          theology_marks: theologyPayload.length > 0 ? theologyPayload : null,
-        }),
-      })
+        const response = await fetch('/api/marks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            enrollment_id: selectedEnrollmentId,
+            term_id: selectedTermId,
+            score_type: examType,
+            circular_marks: circularPayload,
+            theology_marks: theologyPayload.length > 0 ? theologyPayload : null,
+          }),
+        })
 
-      const payload = await response.json()
-      if (!response.ok) {
-        throw new Error(payload.error || 'Failed to save marks')
+        const payload = await response.json()
+        if (!response.ok) {
+          throw new Error(payload.error || 'Failed to save marks')
+        }
+
+        setSuccess(true)
+        setTimeout(() => setSuccess(false), 3500)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An unexpected error occurred')
+      } finally {
+        setIsSaving(false)
       }
-
-      setSuccess(true)
-      setTimeout(() => setSuccess(false), 3500)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An unexpected error occurred')
-    } finally {
-      setIsSaving(false)
-    }
+    })
   }
 
   const renderScoreInput = (value: number | null, onChange: (val: string) => void, placeholder: string, disabled: boolean = false) => {
@@ -509,9 +512,9 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
               <button
                 type="submit"
                 className="save-btn w-full shadow-lg"
-                disabled={isSaving}
+                disabled={isSaving || isPending}
               >
-                {isSaving ? (
+                {isSaving || isPending ? (
                   <>
                     <svg className="spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />

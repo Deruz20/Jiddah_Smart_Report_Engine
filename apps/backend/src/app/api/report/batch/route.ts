@@ -64,11 +64,12 @@ export async function POST(request: NextRequest) {
       `
         id,
         academic_year,
+        is_active,
         circular_class_id,
-        circular_classes ( id, class_name, section ),
         theology_class_id,
+        circular_classes ( id, class_name, section ),
         theology_classes ( id, class_name_arabic, class_name_english, level ),
-        students ( id, name, admission_number, arabic_name )
+        students ( id, name, arabic_name, admission_number, created_at, religion )
       `,
       'id',
       enrollment_ids
@@ -310,6 +311,7 @@ export async function POST(request: NextRequest) {
           name: (Array.isArray(enrollment.students) ? enrollment.students[0] : enrollment.students)?.name ?? '—',
           admission_number: (Array.isArray(enrollment.students) ? enrollment.students[0] : enrollment.students)?.admission_number ?? '—',
           arabic_name: (Array.isArray(enrollment.students) ? enrollment.students[0] : enrollment.students)?.arabic_name ?? null,
+          religion: (Array.isArray(enrollment.students) ? enrollment.students[0] : enrollment.students)?.religion ?? 'Muslim',
           class_name: className ?? '—',
           theology_class_arabic: theologyClassArabic ?? null,
           theology_class_english: theologyClassEnglish ?? null,

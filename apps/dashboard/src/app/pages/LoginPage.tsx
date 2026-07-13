@@ -244,7 +244,7 @@ export default function LoginPage() {
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "#9CA3AF" }} />
                     <input
                       type="email"
-                      placeholder="you@jiddahschool.edu.ng"
+                      placeholder="you@jiddahschool.edu.ug"
                       {...loginForm.register("email")}
                       aria-invalid={!!visibleFieldError(loginForm, "email")}
                       className="w-full pl-10 pr-4 py-3 rounded-xl outline-none transition-all"
@@ -333,7 +333,7 @@ export default function LoginPage() {
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "#9CA3AF" }} />
                     <input
                       type="email"
-                      placeholder="you@jiddahschool.edu.ng"
+                      placeholder="you@jiddahschool.edu.ug"
                       {...signUpForm.register("email")}
                       aria-invalid={!!visibleFieldError(signUpForm, "email")}
                       className="w-full pl-10 pr-4 py-3 rounded-xl outline-none"
@@ -406,7 +406,7 @@ export default function LoginPage() {
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "#9CA3AF" }} />
                   <input
                     type="email"
-                    placeholder="you@jiddahschool.edu.ng"
+                    placeholder="you@jiddahschool.edu.ug"
                     {...forgotForm.register("email")}
                     aria-invalid={!!visibleFieldError(forgotForm, "email")}
                     className="w-full pl-10 pr-4 py-3 rounded-xl outline-none"

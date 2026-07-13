@@ -17,6 +17,14 @@ import {
 } from '@/lib/grading'
 import { resolveSectionType } from '@/lib/section-type'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
+import { applyRateLimit, rateLimitResponse } from '@/utils/rate-limit'
+import { z } from 'zod'
+
+const batchReportSchema = z.object({
+  enrollment_ids: z.array(z.string().uuid()).min(1, 'At least one student is required'),
+  term_id: z.string().uuid('Invalid term ID'),
+  score_type: z.enum(['bot', 'mot', 'eot']).default('mot')
+})
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -29,16 +37,23 @@ export async function POST(request: NextRequest) {
   const preflight = corsPreflight(request)
   if (preflight) return preflight
 
-  try {
-    const body = await request.json()
-    const { enrollment_ids, term_id, score_type = 'mot' } = body
+  // IP-based Rate Limiting (10 requests per minute for this heavy route)
+  const ip = request.headers.get('x-forwarded-for') ?? 'anonymous'
+  const { success } = applyRateLimit(ip, { windowMs: 60000, maxRequests: 10 })
+  if (!success) {
+    return withCors(request, rateLimitResponse())
+  }
 
-    if (!Array.isArray(enrollment_ids) || enrollment_ids.length === 0 || !term_id) {
-      return withCors(request, NextResponse.json({ error: 'enrollment_ids (array) and term_id are required' }, { status: 400 }))
+  try {
+    const rawBody = await request.json()
+    
+    // Strict Zod Validation
+    const parsed = batchReportSchema.safeParse(rawBody)
+    if (!parsed.success) {
+      return withCors(request, NextResponse.json({ error: 'Invalid payload', details: parsed.error.format() }, { status: 400 }))
     }
-    if (!['bot', 'mot', 'eot'].includes(score_type)) {
-      return withCors(request, NextResponse.json({ error: 'score_type must be bot, mot, or eot' }, { status: 400 }))
-    }
+
+    const { enrollment_ids, term_id, score_type } = parsed.data
 
     const cookieStore = await cookies()
     const supabase = createClient(cookieStore)

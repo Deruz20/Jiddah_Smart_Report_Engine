@@ -259,7 +259,6 @@ export function AppSidebar() {
                 </motion.p>
               )}
             </AnimatePresence>
-            <SidebarGroup>
             <SidebarGroupContent className="px-3 pt-4">
               <SidebarMenu className="gap-1.5">
                 {navItems.filter(item => item.roles.includes(role)).map((item) => {

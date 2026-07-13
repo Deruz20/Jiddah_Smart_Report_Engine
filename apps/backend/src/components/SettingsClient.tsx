@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import {
   School, BookOpen, Star, Printer, Palette, Users, Shield, Bell,
-  Database, Globe, Save, RefreshCw, Upload, Check, ChevronRight
+  Database, Globe, Save, RefreshCw, Upload, Check, ChevronRight, Edit, ArrowRight
 } from "lucide-react"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
@@ -389,34 +389,23 @@ export default function SettingsClient({ terms }: { terms: Term[] }) {
           <div className="space-y-5">
             <div>
               <h2 style={{ fontSize: "18px", fontWeight: 700, color: "#374151" }}>Grading Defaults</h2>
-              <p style={{ fontSize: "13px", color: "#9CA3AF" }}>Configure your grading scale and default remarks</p>
+              <p style={{ fontSize: "13px", color: "#9CA3AF" }}>Configure your grading scale and default remarks.</p>
             </div>
-            <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(0,0,0,0.07)" }}>
-              <table className="w-full">
-                <thead>
-                  <tr style={{ background: "#F9FAFB", borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
-                    {["Grade", "Min Score", "Max Score", "Default Remark"].map(h => (
-                      <th key={h} className="px-4 py-3 text-left" style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 600, textTransform: "uppercase" }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {gradingScale.map((row, i) => (
-                    <tr key={row.grade} style={{ borderBottom: i < gradingScale.length - 1 ? "1px solid rgba(0,0,0,0.04)" : "none" }}>
-                      <td className="px-4 py-3">
-                        <span className="px-3 py-1 rounded-lg font-bold" style={{
-                          background: row.grade === "A+" || row.grade === "A" ? "rgba(16,185,129,0.1)" : row.grade === "B" ? "rgba(245,158,11,0.1)" : "rgba(239,68,68,0.1)",
-                          color: row.grade === "A+" || row.grade === "A" ? "#065F46" : row.grade === "B" ? "#92400E" : "#EF4444",
-                          fontSize: "14px"
-                        }}>{row.grade}</span>
-                      </td>
-                      <td className="px-4 py-3"><input type="number" defaultValue={row.min} className="w-20 px-3 py-1.5 rounded-lg" style={{ border: "1px solid #E5E7EB", fontSize: "13px" }} /></td>
-                      <td className="px-4 py-3"><input type="number" defaultValue={row.max} className="w-20 px-3 py-1.5 rounded-lg" style={{ border: "1px solid #E5E7EB", fontSize: "13px" }} /></td>
-                      <td className="px-4 py-3"><input defaultValue={row.remark} className="w-full px-3 py-1.5 rounded-lg" style={{ border: "1px solid #E5E7EB", fontSize: "13px" }} /></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            
+            <div className="rounded-2xl overflow-hidden p-8 text-center" style={{ border: "1px solid rgba(0,0,0,0.07)", background: "white" }}>
+               <div className="w-16 h-16 mx-auto bg-emerald-50 rounded-full flex items-center justify-center mb-4">
+                 <Star className="w-8 h-8 text-emerald-500" />
+               </div>
+               <h3 className="text-lg font-bold text-slate-800 mb-2">Smart Grading Remarks</h3>
+               <p className="text-slate-500 mb-6 max-w-md mx-auto text-sm">
+                 The grading system has been upgraded to support smart, self-learning remarks that automatically adapt based on student scores.
+               </p>
+               <button
+                 onClick={() => router.push('/admin/settings/remarks')}
+                 className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold transition-colors shadow-sm inline-flex items-center gap-2"
+               >
+                 Open Remarks Configurator <ArrowRight className="w-4 h-4" />
+               </button>
             </div>
           </div>
         )

@@ -40,22 +40,24 @@ import {
   useSidebar,
 } from "../figma-ui/ui/sidebar";
 import { cn } from "../figma-ui/ui/utils";
+import { createClient } from "@/utils/supabase/client";
+import Image from "next/image";
 
 const navItems = [
-  { icon: LayoutDashboard, label: "Dashboard", id: "dashboard", href: "/admin" },
-  { icon: Users, label: "Students", id: "students", href: "/admin/students" },
-  { icon: UserCheck, label: "Teachers & Staff", id: "teachers", href: "/admin/teachers" },
-  { icon: BookMarked, label: "Classes", id: "classes", href: "/admin/classes" },
-  { icon: BookOpen, label: "Subjects", id: "subjects", href: "/admin/subjects" },
-  { icon: BookOpen, label: "Terms", id: "terms", href: "/admin/terms" },
-  { icon: GraduationCap, label: "Circular Hub", id: "circular", href: "/admin/circular" },
-  { icon: ScrollText, label: "Theology Hub", id: "theology", href: "/admin/theology" },
-  { icon: ClipboardEdit, label: "Marks Entry", id: "marks", href: "/admin/marks" },
-  { icon: FileText, label: "Report Center", id: "reports", href: "/admin/reports" },
-  { icon: Sparkles, label: "Signatures", id: "signatures", href: "/admin/signatures" },
-  { icon: Upload, label: "Upload Center", id: "upload", href: "/admin/upload" },
-  { icon: Settings, label: "Settings", id: "settings", href: "/admin/settings" },
-  { icon: Shield, label: "Account & Security", id: "account", href: "/admin/account" },
+  { icon: LayoutDashboard, label: "Dashboard", id: "dashboard", href: "/admin", roles: ["admin", "teacher"] },
+  { icon: Users, label: "Students", id: "students", href: "/admin/students", roles: ["admin", "teacher"] },
+  { icon: UserCheck, label: "Teachers & Staff", id: "teachers", href: "/admin/teachers", roles: ["admin"] },
+  { icon: BookMarked, label: "Classes", id: "classes", href: "/admin/classes", roles: ["admin"] },
+  { icon: BookOpen, label: "Subjects", id: "subjects", href: "/admin/subjects", roles: ["admin"] },
+  { icon: BookOpen, label: "Terms", id: "terms", href: "/admin/terms", roles: ["admin"] },
+  { icon: GraduationCap, label: "Circular Hub", id: "circular", href: "/admin/circular", roles: ["admin", "teacher"] },
+  { icon: ScrollText, label: "Theology Hub", id: "theology", href: "/admin/theology", roles: ["admin", "teacher"] },
+  { icon: ClipboardEdit, label: "Marks Entry", id: "marks", href: "/admin/marks", roles: ["admin", "teacher"] },
+  { icon: FileText, label: "Report Center", id: "reports", href: "/admin/reports", roles: ["admin", "teacher"] },
+  { icon: Sparkles, label: "Signatures", id: "signatures", href: "/admin/signatures", roles: ["admin"] },
+  { icon: Upload, label: "Upload Center", id: "upload", href: "/admin/upload", roles: ["admin"] },
+  { icon: Settings, label: "Settings", id: "settings", href: "/admin/settings", roles: ["admin", "teacher"] },
+  { icon: Shield, label: "Account & Security", id: "account", href: "/admin/account", roles: ["admin", "teacher"] },
 ];
 
 function NavItem({
@@ -164,6 +166,21 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const pathname = usePathname();
   const collapsed = state === "collapsed";
+  const [role, setRole] = React.useState<string>("admin");
+  const supabase = createClient();
+
+  React.useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (data?.user?.user_metadata?.role) {
+        let r = data.user.user_metadata.role.toLowerCase();
+        if (r.includes('admin') || r.includes('head')) {
+          setRole('admin');
+        } else {
+          setRole('teacher');
+        }
+      }
+    });
+  }, [supabase]);
 
   return (
     <Sidebar
@@ -184,13 +201,12 @@ export function AppSidebar() {
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="relative shrink-0">
                 <div
-                  className="flex items-center justify-center size-8 rounded-xl"
+                  className="flex items-center justify-center size-8 rounded-xl overflow-hidden"
                   style={{
-                    background: "linear-gradient(135deg, #f97316 0%, #ea580c 100%)",
                     boxShadow: "0 4px 12px rgba(249,115,22,0.4)",
                   }}
                 >
-                  <GraduationCap className="size-4 text-white" strokeWidth={2} />
+                  <Image src="/images/jiddah_islamic_school.jpg" alt="Logo" width={32} height={32} className="object-cover" />
                 </div>
                 <div className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full bg-emerald-400 border-2 border-[#0f172a] shadow-[0_0_6px_rgba(52,211,153,0.6)]" />
               </div>
@@ -243,17 +259,18 @@ export function AppSidebar() {
                 </motion.p>
               )}
             </AnimatePresence>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {navItems.map((item) => {
-                  const isActive = pathname === item.href || (item.href !== "/admin" && pathname?.startsWith(item.href));
+            <SidebarGroup>
+            <SidebarGroupContent className="px-3 pt-4">
+              <SidebarMenu className="gap-1.5">
+                {navItems.filter(item => item.roles.includes(role)).map((item) => {
+                  const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
                   return (
                     <NavItem
                       key={item.id}
                       icon={item.icon}
                       label={item.label}
                       href={item.href}
-                      active={isActive}
+                      active={active}
                       collapsed={collapsed}
                     />
                   );

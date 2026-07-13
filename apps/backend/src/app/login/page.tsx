@@ -8,6 +8,7 @@ import { Eye, EyeOff, GraduationCap, ArrowRight, RefreshCw, Lock, Mail, ChevronL
 // We'll use window.alert for toast for simplicity unless sonner is fully configured
 // import { toast } from "sonner";
 import { createClient } from "@/utils/supabase/client";
+import Image from "next/image";
 
 import {
   forgotPasswordSchema,
@@ -213,8 +214,15 @@ function LoginContent() {
   return (
     <div className="min-h-screen flex" style={{ background: "#FEFDF8" }}>
       {/* Left panel */}
-      <div className="hidden lg:flex lg:w-1/2 relative flex-col items-center justify-center p-12 overflow-hidden"
-        style={{ background: "linear-gradient(160deg, #065F46 0%, #047857 40%, #10B981 100%)" }}>
+      <div className="hidden lg:flex lg:w-1/2 relative flex-col items-center justify-center p-12 overflow-hidden">
+        <Image
+          src="/images/jiddah_islamic_school.jpg"
+          alt="Jiddah Islamic School Background"
+          fill
+          className="object-cover absolute inset-0 z-0 opacity-40 mix-blend-overlay"
+          priority
+        />
+        <div className="absolute inset-0 z-0" style={{ background: "linear-gradient(160deg, #065F46 0%, #047857 40%, #10B981 100%)", mixBlendMode: 'multiply' }} />
         <IslamicPattern />
         <div className="relative z-10 text-center max-w-md">
           <img

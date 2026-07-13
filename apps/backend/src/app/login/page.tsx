@@ -9,6 +9,7 @@ import { Eye, EyeOff, GraduationCap, ArrowRight, RefreshCw, Lock, Mail, ChevronL
 // import { toast } from "sonner";
 import { createClient } from "@/utils/supabase/client";
 import Image from "next/image";
+import { motion, AnimatePresence } from "framer-motion";
 
 import {
   forgotPasswordSchema,
@@ -53,11 +54,27 @@ function LoginContent() {
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [currentEmail, setCurrentEmail] = useState("");
   const [loading, setLoading] = useState(false);
+  const [stats, setStats] = useState({ students: "240+", teachers: "22", classes: "8" });
   
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("from") ?? "/admin";
   const supabase = createClient();
+
+  useEffect(() => {
+    fetch('/api/public-stats')
+      .then(res => res.json())
+      .then(data => {
+        if (data && typeof data.students === 'number') {
+          setStats({
+            students: data.students.toString(),
+            teachers: data.teachers.toString(),
+            classes: data.classes.toString()
+          });
+        }
+      })
+      .catch(console.error);
+  }, []);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -229,368 +246,331 @@ function LoginContent() {
   );
 
   return (
-    <div className="min-h-screen flex" style={{ background: "#FEFDF8" }}>
-      {/* Left panel */}
-      <div className="hidden lg:flex lg:w-1/2 relative flex-col items-center justify-center p-12 overflow-hidden">
+    <div className="min-h-screen flex bg-[#0B1120] text-slate-200 overflow-hidden relative font-sans">
+      {/* Dynamic Background */}
+      <div className="absolute inset-0 z-0 pointer-events-none">
         <Image
           src="/images/jiddah_islamic_school.jpg"
-          alt="Jiddah Islamic School Background"
+          alt="School Background"
           fill
-          className="object-cover absolute inset-0 z-0 opacity-40 mix-blend-overlay"
+          className="object-cover opacity-[0.08] mix-blend-screen grayscale"
           priority
         />
-        <div className="absolute inset-0 z-0" style={{ background: "linear-gradient(160deg, #065F46 0%, #047857 40%, #10B981 100%)", mixBlendMode: 'multiply' }} />
-        <IslamicPattern />
-        <div className="relative z-10 text-center max-w-md">
-          <img
-            src="/school_budge.jpeg"
-            alt="Jiddah Islamic School"
-            className="w-24 h-24 rounded-3xl object-cover mx-auto mb-8"
-            style={{ border: "2px solid rgba(245,158,11,0.4)" }}
-          />
-          <h1 className="text-white mb-3" style={{ fontSize: "32px", fontWeight: 700, fontFamily: "'Playfair Display', serif" }}>
-            Jiddah Islamic Nursery & Primary School
-          </h1>
-          <p className="mb-8" style={{ color: "rgba(255,255,255,0.75)", fontSize: "16px", lineHeight: "1.7" }}>
-            Smart Report Engine — Enterprise Academic Management Platform
-          </p>
-          <div className="grid grid-cols-3 gap-4 mt-8">
-            {[["240+", "Students"], ["22", "Teachers"], ["8", "Classes"]].map(([num, label]) => (
-              <div key={label} className="rounded-2xl p-4" style={{ background: "rgba(255,255,255,0.12)", backdropFilter: "blur(8px)" }}>
-                <p className="text-white text-2xl font-bold">{num}</p>
-                <p style={{ color: "rgba(255,255,255,0.7)", fontSize: "12px" }}>{label}</p>
-              </div>
-            ))}
-          </div>
-          <p className="mt-12" style={{ color: "rgba(255,255,255,0.5)", fontSize: "13px" }}>
-            بسم الله الرحمن الرحيم
-          </p>
-        </div>
+        <div className="absolute top-0 left-0 w-full h-full bg-[#0B1120]/80" />
+        <motion.div 
+          animate={{ scale: [1, 1.05, 1], opacity: [0.08, 0.12, 0.08] }} 
+          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+          className="hidden lg:block absolute -top-[10%] -left-[5%] w-[40%] h-[40%] bg-emerald-700/20 rounded-full blur-[100px] will-change-transform" 
+        />
+        <motion.div 
+          animate={{ scale: [1, 1.1, 1], opacity: [0.05, 0.08, 0.05] }} 
+          transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
+          className="hidden lg:block absolute -bottom-[10%] -right-[5%] w-[40%] h-[40%] bg-emerald-900/20 rounded-full blur-[100px] will-change-transform" 
+        />
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)]" />
       </div>
 
-      {/* Right panel */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12">
-        <div className="w-full max-w-md">
+      {/* Left Panel - Branding */}
+      <div className="hidden lg:flex lg:w-1/2 relative z-10 flex-col items-center justify-center p-12">
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, ease: [0.25, 1, 0.5, 1] }}
+          className="text-center max-w-lg"
+        >
+          <div className="relative inline-block mb-10">
+            <div className="absolute inset-0 bg-emerald-500/30 blur-2xl rounded-full" />
+            <img
+              src="/school_budge.jpeg"
+              alt="Jiddah Islamic School"
+              className="relative w-32 h-32 rounded-[2rem] object-cover border border-white/10 shadow-2xl"
+            />
+          </div>
+          
+          <h1 className="text-4xl lg:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-br from-white via-slate-200 to-slate-400 mb-6 tracking-tight leading-tight">
+            Jiddah Islamic <br /> Nursery & Primary
+          </h1>
+          <p className="text-lg text-slate-400 font-medium leading-relaxed mb-12">
+            Smart Report Engine — Enterprise Academic Management Platform
+          </p>
 
-          {/* Mobile logo */}
-          <div className="lg:hidden flex items-center gap-3 mb-8">
-            <img src="/school_budge.jpeg" alt="Jiddah Islamic School" className="w-10 h-10 rounded-xl object-cover" />
-            <div>
-              <p className="font-bold" style={{ color: "#065F46", fontSize: "14px" }}>Jiddah Islamic School</p>
-              <p style={{ color: "#6B7280", fontSize: "12px" }}>Smart Report Engine</p>
+          <div className="grid grid-cols-3 gap-4">
+            {[
+              [stats.students, "Students"], 
+              [stats.teachers, "Teachers"], 
+              [stats.classes, "Classes"]
+            ].map(([num, label], i) => (
+              <motion.div 
+                key={label as string}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.4 + (i * 0.1) }}
+                className="bg-[#0f172a]/40 backdrop-blur-md border border-white/5 rounded-2xl p-5 shadow-lg transition-all hover:bg-[#0f172a]/60"
+              >
+                <p className="text-2xl font-bold text-slate-100 mb-1">{num}</p>
+                <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">{label}</p>
+              </motion.div>
+            ))}
+          </div>
+
+          <p className="mt-16 text-sm text-slate-500 font-arabic tracking-wider" dir="rtl">
+            بسم الله الرحمن الرحيم
+          </p>
+        </motion.div>
+      </div>
+
+      {/* Right Panel - Form */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12 relative z-10">
+        <motion.div 
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.6, ease: [0.25, 1, 0.5, 1] }}
+          className="w-full max-w-[440px] bg-white/5 backdrop-blur-2xl border border-white/10 p-8 sm:p-10 rounded-[2rem] shadow-[0_0_40px_rgba(0,0,0,0.3)] relative overflow-hidden"
+        >
+          {/* Mobile Logo */}
+          <div className="lg:hidden flex items-center justify-center gap-4 mb-8">
+            <img src="/school_budge.jpeg" alt="Logo" className="w-12 h-12 rounded-xl object-cover border border-white/10 shadow-lg" />
+            <div className="text-left">
+              <p className="font-bold text-white text-lg leading-tight">Jiddah Islamic</p>
+              <p className="text-emerald-400 text-xs font-semibold uppercase tracking-wider mt-0.5">Smart Report Engine</p>
             </div>
           </div>
 
-          {/* LOGIN */}
-          {screen === "login" && (
-            <form noValidate onSubmit={loginForm.handleSubmit(handleLogin, handleLoginInvalid)}>
-              <h2 className="mb-1" style={{ color: "#065F46", fontFamily: "'Playfair Display', serif", fontSize: "28px", fontWeight: 700 }}>Welcome Back</h2>
-              <p className="mb-8" style={{ color: "#6B7280", fontSize: "14px" }}>Sign in to your account to continue</p>
-
-              <div className="space-y-5">
-                <div>
-                  <label className="block mb-1.5" style={{ fontSize: "13px", color: "#374151", fontWeight: 600 }}>Email Address</label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "#9CA3AF" }} />
-                    <input
-                      type="email"
-                      placeholder="you@jiddahschool.edu.ng"
-                      {...loginForm.register("email")}
-                      aria-invalid={!!visibleFieldError(loginForm, "email")}
-                      className="w-full pl-10 pr-4 py-3 rounded-xl outline-none transition-all"
-                      style={{ border: "1.5px solid #E5E7EB", background: "white", fontSize: "14px", color: "#374151" }}
-                    />
-                  </div>
-                  {visibleFieldError(loginForm, "email") && (
-                    <p className="mt-2 text-sm text-red-600">{visibleFieldError(loginForm, "email")}</p>
-                  )}
+          <AnimatePresence mode="wait">
+            {/* LOGIN */}
+            {screen === "login" && (
+              <motion.form 
+                key="login"
+                initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} transition={{ duration: 0.2 }}
+                noValidate onSubmit={loginForm.handleSubmit(handleLogin, handleLoginInvalid)}
+              >
+                <div className="mb-8">
+                  <h2 className="text-3xl font-bold text-white tracking-tight mb-2">Welcome Back</h2>
+                  <p className="text-sm text-slate-400">Sign in to your account to continue</p>
                 </div>
 
-                <div>
-                  <label className="block mb-1.5" style={{ fontSize: "13px", color: "#374151", fontWeight: 600 }}>Password</label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "#9CA3AF" }} />
-                    <input
-                      type={showPass ? "text" : "password"}
-                      placeholder="Enter your password"
-                      {...loginForm.register("password")}
-                      aria-invalid={!!visibleFieldError(loginForm, "password")}
-                      className="w-full pl-10 pr-10 py-3 rounded-xl outline-none transition-all"
-                      style={{ border: "1.5px solid #E5E7EB", background: "white", fontSize: "14px", color: "#374151" }}
-                    />
-                    <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2">
-                      {showPass ? <EyeOff className="w-4 h-4" style={{ color: "#9CA3AF" }} /> : <Eye className="w-4 h-4" style={{ color: "#9CA3AF" }} />}
+                <div className="space-y-5">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-300 mb-2">Email Address</label>
+                    <div className="relative group">
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 group-focus-within:text-emerald-400 transition-colors" />
+                      <input
+                        type="email"
+                        placeholder="you@jiddahschool.edu.ug"
+                        {...loginForm.register("email")}
+                        className="w-full pl-12 pr-4 py-3.5 rounded-xl outline-none transition-all bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:bg-white/10 focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20"
+                      />
+                    </div>
+                    {visibleFieldError(loginForm, "email") && (
+                      <p className="mt-2 text-sm text-red-400 flex items-center gap-1"><span className="w-1 h-1 rounded-full bg-red-400" />{visibleFieldError(loginForm, "email")}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-300 mb-2">Password</label>
+                    <div className="relative group">
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 group-focus-within:text-emerald-400 transition-colors" />
+                      <input
+                        type={showPass ? "text" : "password"}
+                        placeholder="Enter your password"
+                        {...loginForm.register("password")}
+                        className="w-full pl-12 pr-12 py-3.5 rounded-xl outline-none transition-all bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:bg-white/10 focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20"
+                      />
+                      <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors">
+                        {showPass ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
+                    </div>
+                    {visibleFieldError(loginForm, "password") && (
+                      <p className="mt-2 text-sm text-red-400 flex items-center gap-1"><span className="w-1 h-1 rounded-full bg-red-400" />{visibleFieldError(loginForm, "password")}</p>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2">
+                    <label className="flex items-center gap-2 cursor-pointer group">
+                      <div className="relative flex items-center justify-center">
+                        <input type="checkbox" className="peer appearance-none w-4 h-4 rounded border border-slate-600 bg-white/5 checked:bg-emerald-500 checked:border-emerald-500 transition-all cursor-pointer" />
+                        <svg className="absolute w-3 h-3 text-white pointer-events-none opacity-0 peer-checked:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                      <span className="text-sm text-slate-400 group-hover:text-slate-300 transition-colors">Remember me</span>
+                    </label>
+                    <button type="button" onClick={() => setScreen("forgot")} className="text-sm text-emerald-400 font-medium hover:text-emerald-300 transition-colors">
+                      Forgot password?
                     </button>
                   </div>
-                  {visibleFieldError(loginForm, "password") && (
-                    <p className="mt-2 text-sm text-red-600">{visibleFieldError(loginForm, "password")}</p>
-                  )}
-                </div>
 
-                <div className="flex items-center justify-between">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" className="rounded" />
-                    <span style={{ fontSize: "13px", color: "#6B7280" }}>Remember me</span>
-                  </label>
-                  <button type="button" onClick={() => setScreen("forgot")} style={{ fontSize: "13px", color: "#10B981", fontWeight: 600 }}>
-                    Forgot password?
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="relative w-full flex items-center justify-center py-3.5 rounded-xl font-bold text-white overflow-hidden group disabled:opacity-70 transition-all hover:scale-[1.02] active:scale-[0.98] mt-2 shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-emerald-600 to-emerald-500 transition-transform group-hover:scale-105" />
+                    <div className="relative flex items-center gap-2">
+                      {loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <><span>Sign In</span><ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" /></>}
+                    </div>
                   </button>
                 </div>
+              </motion.form>
+            )}
 
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold transition-all hover:opacity-90 disabled:opacity-60"
-                  style={{ background: "linear-gradient(135deg, #10B981, #065F46)", color: "white", fontSize: "15px" }}
-                >
-                  {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <><span>Sign In</span><ArrowRight className="w-4 h-4" /></>}
+
+
+            {/* FORGOT PASSWORD */}
+            {screen === "forgot" && (
+              <motion.form 
+                key="forgot"
+                initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} transition={{ duration: 0.2 }}
+                noValidate onSubmit={forgotForm.handleSubmit(handleForgot)}
+              >
+                <button type="button" onClick={() => setScreen("login")} className="flex items-center gap-1.5 mb-6 text-sm text-slate-400 hover:text-white transition-colors group">
+                  <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+                  <span>Back to login</span>
                 </button>
-              </div>
-
-              <p className="mt-6 text-center" style={{ fontSize: "13px", color: "#6B7280" }}>
-                No account?{" "}
-                <button type="button" onClick={() => setScreen("signup")} style={{ color: "#10B981", fontWeight: 600 }}>
-                  Create one
-                </button>
-              </p>
-            </form>
-          )}
-
-          {/* SIGN UP */}
-          {screen === "signup" && (
-            <form noValidate onSubmit={signUpForm.handleSubmit(handleSignUp, handleSignUpInvalid)}>
-              <h2 className="mb-1" style={{ color: "#065F46", fontFamily: "'Playfair Display', serif", fontSize: "28px", fontWeight: 700 }}>Create Account</h2>
-              <p className="mb-8" style={{ color: "#6B7280", fontSize: "14px" }}>Register to access the admin dashboard</p>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block mb-1.5" style={{ fontSize: "13px", color: "#374151", fontWeight: 600 }}>Full Name</label>
-                  <input
-                    type="text"
-                    placeholder="Your name"
-                    {...signUpForm.register("fullName")}
-                    aria-invalid={!!visibleFieldError(signUpForm, "fullName")}
-                    className="w-full px-4 py-3 rounded-xl outline-none"
-                    style={{ border: "1.5px solid #E5E7EB", background: "white", fontSize: "14px" }}
-                  />
-                  {visibleFieldError(signUpForm, "fullName") && (
-                    <p className="mt-2 text-sm text-red-600">{visibleFieldError(signUpForm, "fullName")}</p>
-                  )}
+                <div className="mb-8">
+                  <h2 className="text-3xl font-bold text-white tracking-tight mb-2">Forgot Password</h2>
+                  <p className="text-sm text-slate-400">Enter your email to receive a reset code</p>
                 </div>
                 <div>
-                  <label className="block mb-1.5" style={{ fontSize: "13px", color: "#374151", fontWeight: 600 }}>Email Address</label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "#9CA3AF" }} />
+                  <label className="block text-sm font-semibold text-slate-300 mb-2">Email Address</label>
+                  <div className="relative mb-6 group">
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 group-focus-within:text-emerald-400 transition-colors" />
                     <input
                       type="email"
-                      placeholder="you@jiddahschool.edu.ng"
-                      {...signUpForm.register("email")}
-                      aria-invalid={!!visibleFieldError(signUpForm, "email")}
-                      className="w-full pl-10 pr-4 py-3 rounded-xl outline-none"
-                      style={{ border: "1.5px solid #E5E7EB", background: "white", fontSize: "14px" }}
+                      placeholder="you@jiddahschool.edu.ug"
+                      {...forgotForm.register("email")}
+                      className="w-full pl-12 pr-4 py-3.5 rounded-xl outline-none transition-all bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:bg-white/10 focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20"
                     />
                   </div>
-                  {visibleFieldError(signUpForm, "email") && (
-                    <p className="mt-2 text-sm text-red-600">{visibleFieldError(signUpForm, "email")}</p>
+                  {visibleFieldError(forgotForm, "email") && (
+                    <p className="mt-2 text-sm text-red-400">{visibleFieldError(forgotForm, "email")}</p>
                   )}
-                </div>
-                <div>
-                  <label className="block mb-1.5" style={{ fontSize: "13px", color: "#374151", fontWeight: 600 }}>Password</label>
-                  <input
-                    type="password"
-                    placeholder="At least 6 characters"
-                    {...signUpForm.register("password")}
-                    aria-invalid={!!visibleFieldError(signUpForm, "password")}
-                    className="w-full px-4 py-3 rounded-xl outline-none"
-                    style={{ border: "1.5px solid #E5E7EB", background: "white", fontSize: "14px" }}
-                  />
-                  {visibleFieldError(signUpForm, "password") && (
-                    <p className="mt-2 text-sm text-red-600">{visibleFieldError(signUpForm, "password")}</p>
-                  )}
-                </div>
-                <div>
-                  <label className="block mb-1.5" style={{ fontSize: "13px", color: "#374151", fontWeight: 600 }}>Confirm Password</label>
-                  <input
-                    type="password"
-                    placeholder="Repeat password"
-                    {...signUpForm.register("confirmPassword")}
-                    aria-invalid={!!visibleFieldError(signUpForm, "confirmPassword")}
-                    className="w-full px-4 py-3 rounded-xl outline-none"
-                    style={{ border: "1.5px solid #E5E7EB", background: "white", fontSize: "14px" }}
-                  />
-                  {visibleFieldError(signUpForm, "confirmPassword") && (
-                    <p className="mt-2 text-sm text-red-600">{visibleFieldError(signUpForm, "confirmPassword")}</p>
-                  )}
-                </div>
-                <div>
-                  <label className="block mb-1.5" style={{ fontSize: "13px", color: "#374151", fontWeight: 600 }}>Account Role</label>
-                  <select
-                    {...signUpForm.register("role")}
-                    className="w-full px-4 py-3 rounded-xl outline-none"
-                    style={{ border: "1.5px solid #E5E7EB", background: "white", fontSize: "14px" }}
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="relative w-full flex items-center justify-center py-3.5 rounded-xl font-bold text-white overflow-hidden group disabled:opacity-70 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-[0_0_20px_rgba(16,185,129,0.3)]"
                   >
-                    <option value="Admin">Admin</option>
-                    <option value="Secular DOS">Secular DOS</option>
-                    <option value="Theology DOS">Theology DOS</option>
-                  </select>
-                  {visibleFieldError(signUpForm, "role") && (
-                    <p className="mt-2 text-sm text-red-600">{visibleFieldError(signUpForm, "role")}</p>
-                  )}
+                    <div className="absolute inset-0 bg-gradient-to-r from-emerald-600 to-emerald-500 transition-transform group-hover:scale-105" />
+                    <div className="relative flex items-center gap-2">
+                      {loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : "Send Reset Code"}
+                    </div>
+                  </button>
                 </div>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold transition-all hover:opacity-90 disabled:opacity-60"
-                  style={{ background: "linear-gradient(135deg, #10B981, #065F46)", color: "white", fontSize: "15px" }}
-                >
-                  {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : "Create Account"}
-                </button>
-              </div>
+              </motion.form>
+            )}
 
-              <p className="mt-6 text-center" style={{ fontSize: "13px", color: "#6B7280" }}>
-                Already have an account?{" "}
-                <button type="button" onClick={() => setScreen("login")} style={{ color: "#10B981", fontWeight: 600 }}>
-                  Sign in
-                </button>
-              </p>
-            </form>
-          )}
-
-          {/* FORGOT PASSWORD */}
-          {screen === "forgot" && (
-            <form noValidate onSubmit={forgotForm.handleSubmit(handleForgot)}>
-              <button type="button" onClick={() => setScreen("login")} className="flex items-center gap-1 mb-6 hover:opacity-70 transition-all">
-                <ChevronLeft className="w-4 h-4" style={{ color: "#6B7280" }} />
-                <span style={{ fontSize: "13px", color: "#6B7280" }}>Back to login</span>
-              </button>
-              <h2 className="mb-1" style={{ color: "#065F46", fontFamily: "'Playfair Display', serif", fontSize: "28px", fontWeight: 700 }}>Forgot Password</h2>
-              <p className="mb-8" style={{ color: "#6B7280", fontSize: "14px" }}>Enter your email to receive an OTP reset code</p>
-              <div>
-                <label className="block mb-1.5" style={{ fontSize: "13px", color: "#374151", fontWeight: 600 }}>Email Address</label>
-                <div className="relative mb-5">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "#9CA3AF" }} />
-                  <input
-                    type="email"
-                    placeholder="you@jiddahschool.edu.ng"
-                    {...forgotForm.register("email")}
-                    aria-invalid={!!visibleFieldError(forgotForm, "email")}
-                    className="w-full pl-10 pr-4 py-3 rounded-xl outline-none"
-                    style={{ border: "1.5px solid #E5E7EB", background: "white", fontSize: "14px", color: "#374151" }}
-                  />
-                </div>
-                {visibleFieldError(forgotForm, "email") && (
-                  <p className="mt-2 text-sm text-red-600">{visibleFieldError(forgotForm, "email")}</p>
-                )}
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold transition-all hover:opacity-90"
-                  style={{ background: "linear-gradient(135deg, #10B981, #065F46)", color: "white", fontSize: "15px" }}
-                >
-                  {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : "Send Reset Code"}
-                </button>
-              </div>
-            </form>
-          )}
-
-          {/* OTP */}
-          {screen === "otp" && (
-            <div>
-              <button onClick={() => setScreen("forgot")} className="flex items-center gap-1 mb-6 hover:opacity-70">
-                <ChevronLeft className="w-4 h-4" style={{ color: "#6B7280" }} />
-                <span style={{ fontSize: "13px", color: "#6B7280" }}>Back</span>
-              </button>
-              <h2 className="mb-1" style={{ color: "#065F46", fontFamily: "'Playfair Display', serif", fontSize: "28px", fontWeight: 700 }}>Enter OTP</h2>
-              <p className="mb-8" style={{ color: "#6B7280", fontSize: "14px" }}>We sent a 6-digit code to <strong>{currentEmail || 'your email'}</strong></p>
-              <div className="flex gap-3 mb-6">
-                {otp.map((v, i) => (
-                  <input
-                    key={i}
-                    id={`otp-${i}`}
-                    type="text"
-                    maxLength={1}
-                    value={v}
-                    onChange={e => handleOtpChange(i, e.target.value)}
-                    className="w-12 h-14 text-center rounded-xl outline-none text-xl font-bold"
-                    style={{ border: v ? "2px solid #10B981" : "1.5px solid #E5E7EB", background: v ? "rgba(16,185,129,0.05)" : "white", color: "#374151" }}
-                  />
-                ))}
-              </div>
-              <button
-                onClick={handleOtp}
-                disabled={loading}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold hover:opacity-90"
-                style={{ background: "linear-gradient(135deg, #10B981, #065F46)", color: "white", fontSize: "15px" }}
+            {/* OTP */}
+            {screen === "otp" && (
+              <motion.div 
+                key="otp"
+                initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} transition={{ duration: 0.2 }}
               >
-                {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : "Verify Code"}
-              </button>
-              <button onClick={forgotForm.handleSubmit(handleForgot)} className="w-full mt-3 py-2 text-center" style={{ fontSize: "13px", color: "#10B981" }}>
-                Resend code
-              </button>
-            </div>
-          )}
-
-          {/* RESET PASSWORD */}
-          {screen === "reset" && (
-            <form noValidate onSubmit={resetForm.handleSubmit(handleReset)}>
-              <h2 className="mb-1" style={{ color: "#065F46", fontFamily: "'Playfair Display', serif", fontSize: "28px", fontWeight: 700 }}>New Password</h2>
-              <p className="mb-8" style={{ color: "#6B7280", fontSize: "14px" }}>Choose a strong new password for your account</p>
-              <div className="space-y-4">
-                <div>
-                  <label className="block mb-1.5" style={{ fontSize: "13px", color: "#374151", fontWeight: 600 }}>New Password</label>
-                  <input
-                    type="password"
-                    placeholder="Minimum 6 characters"
-                    {...resetForm.register("password")}
-                    aria-invalid={!!visibleFieldError(resetForm, "password")}
-                    className="w-full px-4 py-3 rounded-xl outline-none"
-                    style={{ border: "1.5px solid #E5E7EB", background: "white", fontSize: "14px", color: "#374151" }}
-                  />
-                  {visibleFieldError(resetForm, "password") && (
-                    <p className="mt-2 text-sm text-red-600">{visibleFieldError(resetForm, "password")}</p>
-                  )}
+                <button onClick={() => setScreen("forgot")} className="flex items-center gap-1.5 mb-6 text-sm text-slate-400 hover:text-white transition-colors group">
+                  <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+                  <span>Back</span>
+                </button>
+                <div className="mb-8">
+                  <h2 className="text-3xl font-bold text-white tracking-tight mb-2">Enter OTP</h2>
+                  <p className="text-sm text-slate-400">We sent a 6-digit code to <strong className="text-white">{currentEmail || 'your email'}</strong></p>
+                </div>
+                <div className="flex gap-3 mb-8 justify-center">
+                  {otp.map((v, i) => (
+                    <input
+                      key={i}
+                      id={`otp-${i}`}
+                      type="text"
+                      maxLength={1}
+                      value={v}
+                      onChange={e => handleOtpChange(i, e.target.value)}
+                      className="w-12 h-14 text-center rounded-xl outline-none text-xl font-bold transition-all bg-white/5 text-white"
+                      style={{ 
+                        border: v ? "2px solid #10B981" : "1.5px solid rgba(255,255,255,0.1)",
+                        boxShadow: v ? "0 0 10px rgba(16,185,129,0.2)" : "none" 
+                      }}
+                    />
+                  ))}
                 </div>
                 <button
-                  type="submit"
+                  onClick={handleOtp}
                   disabled={loading}
-                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold hover:opacity-90"
-                  style={{ background: "linear-gradient(135deg, #10B981, #065F46)", color: "white", fontSize: "15px" }}
+                  className="relative w-full flex items-center justify-center py-3.5 rounded-xl font-bold text-white overflow-hidden group disabled:opacity-70 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-[0_0_20px_rgba(16,185,129,0.3)]"
                 >
-                  {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : "Reset Password"}
+                  <div className="absolute inset-0 bg-gradient-to-r from-emerald-600 to-emerald-500 transition-transform group-hover:scale-105" />
+                  <div className="relative flex items-center gap-2">
+                    {loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : "Verify Code"}
+                  </div>
                 </button>
-              </div>
-            </form>
-          )}
+                <button onClick={forgotForm.handleSubmit(handleForgot)} className="w-full mt-4 text-sm font-semibold text-emerald-400 hover:text-emerald-300 transition-colors">
+                  Resend code
+                </button>
+              </motion.div>
+            )}
 
-          {/* WELCOME */}
-          {screen === "welcome" && (
-            <div className="text-center">
-              <div className="w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6" style={{ background: "rgba(16,185,129,0.1)" }}>
-                <GraduationCap className="w-14 h-14" style={{ color: "#10B981" }} />
-              </div>
-              <h2 className="mb-2" style={{ color: "#065F46", fontFamily: "'Playfair Display', serif", fontSize: "28px", fontWeight: 700 }}>
-                Assalamu Alaikum
-              </h2>
-              <p className="mb-2" style={{ color: "#374151", fontSize: "16px" }}>Welcome back, Ustazah Maryam Aliyu</p>
-              <p className="mb-8" style={{ color: "#6B7280", fontSize: "14px" }}>Head Teacher · Jiddah Islamic Nursery & Primary School</p>
-              <div className="rounded-2xl p-4 mb-8 text-left" style={{ background: "rgba(16,185,129,0.07)", border: "1px solid rgba(16,185,129,0.2)" }}>
-                <p style={{ fontSize: "13px", color: "#374151", fontWeight: 600 }}>📋 Today's Summary</p>
-                <ul className="mt-2 space-y-1" style={{ fontSize: "13px", color: "#6B7280" }}>
-                  <li>• 3 teachers have pending marks to submit</li>
-                  <li>• Term 3 deadline is Friday, May 16th</li>
-                  <li>• 22 Primary 6 reports are ready for download</li>
-                </ul>
-              </div>
-              <button
-                onClick={() => router.push("/admin")}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold hover:opacity-90"
-                style={{ background: "linear-gradient(135deg, #10B981, #065F46)", color: "white", fontSize: "15px" }}
+            {/* RESET PASSWORD */}
+            {screen === "reset" && (
+              <motion.form 
+                key="reset"
+                initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} transition={{ duration: 0.2 }}
+                noValidate onSubmit={resetForm.handleSubmit(handleReset)}
               >
-                Go to Dashboard <ArrowRight className="w-4 h-4" />
-              </button>
-            </div>
-          )}
-        </div>
+                <div className="mb-8">
+                  <h2 className="text-3xl font-bold text-white tracking-tight mb-2">New Password</h2>
+                  <p className="text-sm text-slate-400">Choose a strong new password for your account</p>
+                </div>
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-300 mb-2">New Password</label>
+                    <input
+                      type="password"
+                      placeholder="Minimum 6 characters"
+                      {...resetForm.register("password")}
+                      className="w-full px-4 py-3.5 rounded-xl outline-none transition-all bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:bg-white/10 focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20"
+                    />
+                    {visibleFieldError(resetForm, "password") && (
+                      <p className="mt-2 text-sm text-red-400">{visibleFieldError(resetForm, "password")}</p>
+                    )}
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="relative w-full flex items-center justify-center py-3.5 rounded-xl font-bold text-white overflow-hidden group disabled:opacity-70 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-emerald-600 to-emerald-500 transition-transform group-hover:scale-105" />
+                    <div className="relative flex items-center gap-2">
+                      {loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : "Reset Password"}
+                    </div>
+                  </button>
+                </div>
+              </motion.form>
+            )}
+
+            {/* WELCOME */}
+            {screen === "welcome" && (
+              <motion.div 
+                key="welcome"
+                initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.3 }}
+                className="text-center"
+              >
+                <div className="w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6 bg-emerald-500/10 border border-emerald-500/20 shadow-[0_0_30px_rgba(16,185,129,0.2)]">
+                  <GraduationCap className="w-12 h-12 text-emerald-400" />
+                </div>
+                <h2 className="text-3xl font-bold text-white tracking-tight mb-2">Assalamu Alaikum</h2>
+                <p className="text-lg text-slate-200 mb-1">Welcome back, verified user</p>
+                <p className="text-sm text-slate-400 mb-8">Jiddah Islamic Nursery & Primary School</p>
+                
+                <button
+                  onClick={() => router.push("/admin")}
+                  className="relative w-full flex items-center justify-center py-3.5 rounded-xl font-bold text-white overflow-hidden group transition-all hover:scale-[1.02] active:scale-[0.98] shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-emerald-600 to-emerald-500 transition-transform group-hover:scale-105" />
+                  <div className="relative flex items-center gap-2">
+                    <span>Go to Dashboard</span><ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
       </div>
     </div>
   );

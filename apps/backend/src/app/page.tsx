@@ -2,7 +2,7 @@
 
 import { motion } from "motion/react";
 import { useRouter } from "next/navigation";
-import { ShieldCheck, BookOpen, ArrowRight } from "lucide-react";
+import { ShieldCheck, BookOpen, ArrowRight, GraduationCap } from "lucide-react";
 import Image from "next/image";
 import type { ReactNode } from "react";
 
@@ -19,9 +19,10 @@ function RoleCard({
   icon: React.ElementType;
   onClick: () => void;
   delay: number;
-  accent: "emerald" | "orange";
+  accent: "emerald" | "orange" | "blue";
 }) {
   const isEmerald = accent === "emerald";
+  const isBlue = accent === "blue";
   
   return (
     <motion.button
@@ -35,13 +36,13 @@ function RoleCard({
     >
       <div
         className={`absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl -z-10 ${
-          isEmerald ? "bg-emerald-500/20" : "bg-orange-500/20"
+          isEmerald ? "bg-emerald-500/20" : isBlue ? "bg-blue-500/20" : "bg-orange-500/20"
         }`}
       />
       
       <div>
         <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-5 ${
-          isEmerald ? "bg-emerald-500/20 text-emerald-300" : "bg-orange-500/20 text-orange-300"
+          isEmerald ? "bg-emerald-500/20 text-emerald-300" : isBlue ? "bg-blue-500/20 text-blue-300" : "bg-orange-500/20 text-orange-300"
         }`}>
           <Icon className="w-7 h-7" strokeWidth={2} />
         </div>
@@ -114,7 +115,7 @@ export default function Home() {
         </div>
 
         {/* Roles Grid */}
-        <div className="w-full max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-6 relative">
+        <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-3 gap-6 relative">
           <RoleCard
             title="Administrator"
             description="Complete access to system settings, student records, staff management, and comprehensive analytics."
@@ -124,11 +125,19 @@ export default function Home() {
             onClick={() => router.push("/login?role=admin")}
           />
           <RoleCard
+            title="Director of Studies"
+            description="Manage academic term structures, curriculum, overall grading, and generate official performance reports."
+            icon={GraduationCap}
+            accent="blue"
+            delay={0.4}
+            onClick={() => router.push("/login?role=admin")}
+          />
+          <RoleCard
             title="Teacher / Staff"
             description="Manage your assigned classes, input academic marks, handle reports, and track student attendance."
             icon={BookOpen}
             accent="orange"
-            delay={0.4}
+            delay={0.5}
             onClick={() => router.push("/login?role=teacher")}
           />
         </div>

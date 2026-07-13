@@ -54,6 +54,7 @@ function LoginContent() {
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [currentEmail, setCurrentEmail] = useState("");
   const [loading, setLoading] = useState(false);
+  // Stats are hardcoded for marketing and security reasons
   const [stats, setStats] = useState({ students: "240+", teachers: "22", classes: "8" });
   
   const router = useRouter();
@@ -61,20 +62,6 @@ function LoginContent() {
   const redirectTo = searchParams.get("from") ?? "/admin";
   const supabase = createClient();
 
-  useEffect(() => {
-    fetch('/api/public-stats')
-      .then(res => res.json())
-      .then(data => {
-        if (data && typeof data.students === 'number') {
-          setStats({
-            students: data.students.toString(),
-            teachers: data.teachers.toString(),
-            classes: data.classes.toString()
-          });
-        }
-      })
-      .catch(console.error);
-  }, []);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {

@@ -350,9 +350,9 @@ export function AppSidebar() {
               </div>
             </DropdownMenuTrigger>
             <DropdownMenuContent
-              side="right"
-              align="end"
-              sideOffset={4}
+              side="top"
+              align="center"
+              sideOffset={10}
               className="w-56 bg-[#111827] border-white/10 text-slate-300"
             >
               <DropdownMenuLabel className="font-normal">

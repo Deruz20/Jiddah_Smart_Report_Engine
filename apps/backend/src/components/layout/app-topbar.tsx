@@ -310,6 +310,13 @@ function NotificationBell({ size = "default" }: { size?: "default" | "mobile" })
 function UserProfileDropdown() {
   const [open, setOpen] = React.useState(false);
   const ref = React.useRef<HTMLDivElement>(null);
+  const router = require("next/navigation").useRouter();
+  const supabase = createClient();
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.replace("/login");
+  };
 
   React.useEffect(() => {
     function handler(e: MouseEvent) {
@@ -380,7 +387,7 @@ function UserProfileDropdown() {
               ))}
             </div>
             <div className="p-1.5 border-t border-slate-100">
-              <button className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-red-500 hover:bg-red-50 transition-all duration-150" style={{ fontSize: "0.8rem" }}>
+              <button onClick={handleLogout} className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-red-500 hover:bg-red-50 transition-all duration-150" style={{ fontSize: "0.8rem" }}>
                 <LogOut className="size-3.5" strokeWidth={1.8} />
                 Sign out
               </button>
@@ -464,16 +471,17 @@ export function AppTopbar({ breadcrumbs = ["Admin", "Dashboard"], currentPage = 
             </div>
           </div>
 
-          {/* Right: search + bell */}
-          <div className="flex items-center gap-0.5">
+          {/* Right: search + bell + profile */}
+          <div className="flex items-center gap-1 pr-1">
             <button
               onClick={() => setSearchOpen(true)}
-              className="flex items-center justify-center size-11 rounded-xl text-slate-500 active:bg-slate-100 transition-colors"
+              className="flex items-center justify-center size-10 rounded-xl text-slate-500 active:bg-slate-100 transition-colors"
               style={{ WebkitTapHighlightColor: "transparent" }}
             >
               <Search className="size-5" strokeWidth={1.8} />
             </button>
             <NotificationBell size="mobile" />
+            <UserProfileDropdown />
           </div>
         </div>
 

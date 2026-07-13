@@ -71,7 +71,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
   const [zoom, setZoom] = useState(0.75)
   const [printScope, setPrintScope] = useState<'current' | 'all'>('current')
   const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false)
-  const [sidePanelOpen, setSidePanelOpen] = useState(true)
+  const [sidePanelOpen, setSidePanelOpen] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
   const [isConfirmOpen, setIsConfirmOpen] = useState(false)
 
@@ -88,6 +88,11 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
       }
     }
     loadEnrollments()
+    
+    // Auto-open side panel on desktop
+    if (typeof window !== 'undefined' && window.innerWidth >= 768) {
+      setSidePanelOpen(true)
+    }
   }, [])
 
   // Map enrollments to Figma's ClassInfo and EnrollmentItem for the search filter
@@ -460,7 +465,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
         )}
       </AnimatePresence>
 
-      <div className="flex flex-1 overflow-hidden print:overflow-visible print:block print-reset-layout">
+      <div className="flex flex-1 overflow-hidden print:overflow-visible print:block print-reset-layout relative">
         <DocumentCanvas
           reports={rawReports}
           activeReportId={activeReportId}
@@ -475,13 +480,21 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
           printScope={printScope}
         />
 
-        <div className="print:hidden flex flex-col h-full">
-          <SidePanel
-            open={sidePanelOpen}
-            onToggle={() => setSidePanelOpen(o => !o)}
-            activeReport={rawReports.find(r => r.id === activeReportId) || null}
-            reports={rawReports}
-          />
+        {/* Side Panel Wrapper - Overlay on Mobile, Inline on Desktop */}
+        <div 
+          className={`print:hidden absolute right-0 top-0 bottom-0 z-40 md:relative flex flex-col h-full ${
+            sidePanelOpen ? "shadow-2xl md:shadow-none bg-white" : ""
+          }`}
+          style={{ pointerEvents: sidePanelOpen ? 'auto' : 'none' }}
+        >
+          <div style={{ pointerEvents: 'auto', height: '100%' }}>
+            <SidePanel
+              open={sidePanelOpen}
+              onToggle={() => setSidePanelOpen(o => !o)}
+              activeReport={rawReports.find(r => r.id === activeReportId) || null}
+              reports={rawReports}
+            />
+          </div>
         </div>
       </div>
     </div>

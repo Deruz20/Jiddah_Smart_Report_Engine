@@ -392,7 +392,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
   }
 
   return (
-    <div className="h-screen bg-[#f1f5f9] font-sans flex flex-col relative print:bg-white overflow-hidden text-slate-800 print:overflow-visible print:h-auto print:block">
+    <div className="h-full bg-[#f1f5f9] font-sans flex flex-col relative print:bg-white overflow-hidden text-slate-800 print:overflow-visible print:h-auto print:block">
       <Toaster position="top-right" richColors closeButton />
 
       <AlertDialog.Root open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>

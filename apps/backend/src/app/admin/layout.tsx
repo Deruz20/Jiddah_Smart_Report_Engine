@@ -8,6 +8,9 @@ import { AppFooter } from "@/components/layout/app-footer";
 import { ProductTour } from "@/components/ProductTour";
 import { createClient } from "@/utils/supabase/client";
 
+import { usePathname } from "next/navigation";
+import { cn } from "@/components/figma-ui/ui/utils";
+
 export default function AdminLayout({
   children,
 }: {
@@ -15,6 +18,8 @@ export default function AdminLayout({
 }) {
   const [showTour, setShowTour] = useState(false);
   const [role, setRole] = useState("teacher");
+  const pathname = usePathname();
+  const isReportsPage = pathname === "/admin/reports";
   const supabase = createClient();
 
   useEffect(() => {
@@ -41,11 +46,14 @@ export default function AdminLayout({
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0 relative">
           <AppTopbar />
-          <main className="flex-1 overflow-y-auto print:overflow-visible flex flex-col">
-            <div className="flex-1">
+          <main className={cn(
+            "flex-1 flex flex-col print:overflow-visible",
+            isReportsPage ? "overflow-hidden" : "overflow-y-auto"
+          )}>
+            <div className="flex-1 flex flex-col min-h-0 relative">
               {children}
             </div>
-            <AppFooter />
+            {!isReportsPage && <AppFooter />}
           </main>
           <ProductTour isOpen={showTour} onClose={handleCloseTour} role={role} />
         </div>

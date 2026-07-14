@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Rule: if circular class is NOT P.7 and religion is Muslim, theology_class_id is required
-    const isMuslim = body.religion !== 'Non-Muslim';
+    const isMuslim = ['muslim', 'islam'].includes((body.religion || '').toLowerCase().trim());
     if (circularClassData.class_name !== 'P.7' && isMuslim && !body.theology_class_id) {
       return withCors(
         request,
@@ -143,7 +143,7 @@ export async function POST(request: NextRequest) {
         name: body.name.trim(),
         gender: body.gender || null,
         admission_number: body.admission_number.trim(),
-        religion: body.religion || 'Muslim',
+        is_muslim: isMuslim,
       }])
       .select('id, name, created_at')
 

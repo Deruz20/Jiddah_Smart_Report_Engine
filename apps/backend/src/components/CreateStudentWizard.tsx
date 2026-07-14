@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Check, RefreshCw, CheckCircle2, ChevronRight, ChevronLeft, Loader2 } from 'lucide-react';
 import { cn } from './figma-ui/Badge';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -491,6 +492,7 @@ export function CreateStudentWizard() {
         throw new Error(data.error || 'Failed to create student');
       }
 
+      toast.success('Student registered successfully!');
       setSubmitted(true);
       router.refresh();
 

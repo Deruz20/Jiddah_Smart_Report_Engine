@@ -9,6 +9,7 @@ import { HeroSection } from "@/components/HeroSection";
 import { AnimatedButton } from "@/components/AnimatedButton";
 import { createClient } from "@/utils/supabase/client";
 import { escapeHtml } from "@/lib/sanitize";
+import { toast } from "sonner";
 
 export type DashboardTeacher = {
   id: string;
@@ -23,10 +24,10 @@ export type DashboardTeacher = {
 };
 
 const teacherFormSchema = z.object({
-  full_name: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().email("Invalid email address").optional().or(z.literal("")),
+  full_name: z.string().min(2, "Please enter a valid full name."),
+  email: z.string().email("Please enter a valid email address (e.g., name@school.edu).").optional().or(z.literal("")),
   phone: z.string().optional().or(z.literal("")),
-  role: z.string().min(1, "Role is required"),
+  role: z.string().min(1, "Please select a role for this faculty member."),
   subject_specialization: z.string().optional().or(z.literal("")),
   class_assigned: z.string().optional().or(z.literal("")),
 });
@@ -175,6 +176,7 @@ export default function TeachersClient({
         };
         const { error } = await supabase.from('teachers').update(payload).eq('id', selectedTeacher.id);
         if (error) throw error;
+        toast.success("Teacher updated successfully!");
       } else {
         const response = await fetch('/api/admin/teachers/invite', {
           method: 'POST',
@@ -192,13 +194,13 @@ export default function TeachersClient({
         if (!response.ok) {
           throw new Error(result.error || 'Failed to create invite');
         }
-        alert('Invite created successfully! The teacher can now register.');
+        toast.success('Invite created successfully!', { description: 'The teacher can now register.' });
       }
       
       await refetch();
       closeModal();
     } catch (err: any) {
-      alert(err.message || 'Unable to save teacher');
+      toast.error('Failed to save teacher', { description: err.message });
     }
   };
 
@@ -211,8 +213,9 @@ export default function TeachersClient({
       const { error } = await supabase.from('teachers').delete().eq('id', teacher.id);
       if (error) throw error;
       await refetch();
+      toast.success("Teacher deactivated successfully");
     } catch (err: any) {
-      alert(err.message || 'Unable to delete teacher');
+      toast.error('Failed to deactivate teacher', { description: err.message });
     }
   };
 

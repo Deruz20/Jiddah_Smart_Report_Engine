@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { toast } from 'sonner'
 
 interface CreateClassFormProps {
   onSuccess?: () => void
@@ -8,8 +9,6 @@ interface CreateClassFormProps {
 
 export function CreateClassForm({ onSuccess }: CreateClassFormProps) {
   const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState(false)
   const [formData, setFormData] = useState({
     class_name: '',
     section: 'nursery', // Default to nursery
@@ -25,8 +24,6 @@ export function CreateClassForm({ onSuccess }: CreateClassFormProps) {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    setError(null)
-    setSuccess(false)
     setIsLoading(true)
 
     try {
@@ -44,17 +41,15 @@ export function CreateClassForm({ onSuccess }: CreateClassFormProps) {
         throw new Error(data.error || 'Failed to create class')
       }
 
-      setSuccess(true)
+      toast.success('Class created successfully!')
       setFormData({
         class_name: '',
         section: 'nursery',
       })
 
       onSuccess?.()
-
-      setTimeout(() => setSuccess(false), 3000)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
+    } catch (err: any) {
+      toast.error(err instanceof Error ? err.message : 'An error occurred')
     } finally {
       setIsLoading(false)
     }
@@ -63,18 +58,6 @@ export function CreateClassForm({ onSuccess }: CreateClassFormProps) {
   return (
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
       <h2 className="text-xl font-semibold text-gray-900 mb-6">Add New Class</h2>
-
-      {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-red-800 text-sm font-medium">❌ {error}</p>
-        </div>
-      )}
-
-      {success && (
-        <div className="mb-4 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
-          <p className="text-emerald-800 text-sm font-medium">✅ Class created successfully!</p>
-        </div>
-      )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

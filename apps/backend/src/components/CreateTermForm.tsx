@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { toast } from 'sonner'
 
 interface CreateTermFormProps {
   onSuccess?: () => void
@@ -8,8 +9,6 @@ interface CreateTermFormProps {
 
 export function CreateTermForm({ onSuccess }: CreateTermFormProps) {
   const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState(false)
   const [formData, setFormData] = useState({
     year: new Date().getFullYear(),
     term: 'beginning',
@@ -27,8 +26,6 @@ export function CreateTermForm({ onSuccess }: CreateTermFormProps) {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    setError(null)
-    setSuccess(false)
     setIsLoading(true)
 
     try {
@@ -46,7 +43,7 @@ export function CreateTermForm({ onSuccess }: CreateTermFormProps) {
         throw new Error(data.error || 'Failed to create academic term')
       }
 
-      setSuccess(true)
+      toast.success('Academic term created successfully!')
       setFormData({
         year: new Date().getFullYear(),
         term: 'beginning',
@@ -55,10 +52,8 @@ export function CreateTermForm({ onSuccess }: CreateTermFormProps) {
       })
 
       onSuccess?.()
-
-      setTimeout(() => setSuccess(false), 3000)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
+    } catch (err: any) {
+      toast.error(err instanceof Error ? err.message : 'An error occurred')
     } finally {
       setIsLoading(false)
     }
@@ -67,18 +62,6 @@ export function CreateTermForm({ onSuccess }: CreateTermFormProps) {
   return (
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
       <h2 className="text-xl font-semibold text-gray-900 mb-6">Add New Academic Term</h2>
-
-      {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-red-800 text-sm font-medium">❌ {error}</p>
-        </div>
-      )}
-
-      {success && (
-        <div className="mb-4 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
-          <p className="text-emerald-800 text-sm font-medium">✅ Academic term created successfully!</p>
-        </div>
-      )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

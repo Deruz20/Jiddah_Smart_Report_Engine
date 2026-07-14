@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
         theology_class_id,
         circular_classes ( id, class_name, section ),
         theology_classes ( id, class_name_arabic, class_name_english, level ),
-        students ( id, name, arabic_name, admission_number, created_at, religion )
+        students ( id, name, arabic_name, admission_number, created_at, is_muslim )
       `,
       'id',
       enrollment_ids
@@ -190,8 +190,19 @@ export async function POST(request: NextRequest) {
     const theologyOrder = ['القرآن الكريم', 'اللغة العربية', 'الفقه', 'التربية الإسلامية']
 
     const reports = requestedEnrollments.map(enrollment => {
-      const section = Array.isArray(enrollment.circular_classes) ? enrollment.circular_classes[0]?.section : (enrollment.circular_classes as any)?.section
-      const className = Array.isArray(enrollment.circular_classes) ? enrollment.circular_classes[0]?.class_name : (enrollment.circular_classes as any)?.class_name
+      const studentData = Array.isArray(enrollment.students) ? enrollment.students[0] : enrollment.students
+      const circularClassData = Array.isArray(enrollment.circular_classes) ? enrollment.circular_classes[0] : enrollment.circular_classes
+
+      if (!studentData || !circularClassData) {
+        return {
+          id: enrollment.id,
+          status: 'error',
+          error: 'Corrupted enrollment data: missing student or class'
+        }
+      }
+
+      const section = circularClassData?.section
+      const className = circularClassData?.class_name
       const sectionType = (section || className) ? resolveSectionType(section, className) : 'unknown'
       
       const circularSubjects = circularSubjectsCache[sectionType] || []
@@ -322,11 +333,12 @@ export async function POST(request: NextRequest) {
 
       return {
         id: enrollment.id,
+        status: 'success',
         student: {
-          name: (Array.isArray(enrollment.students) ? enrollment.students[0] : enrollment.students)?.name ?? '—',
-          admission_number: (Array.isArray(enrollment.students) ? enrollment.students[0] : enrollment.students)?.admission_number ?? '—',
-          arabic_name: (Array.isArray(enrollment.students) ? enrollment.students[0] : enrollment.students)?.arabic_name ?? null,
-          religion: (Array.isArray(enrollment.students) ? enrollment.students[0] : enrollment.students)?.religion ?? 'Muslim',
+          name: studentData?.name ?? '—',
+          admission_number: studentData?.admission_number ?? '—',
+          arabic_name: studentData?.arabic_name ?? null,
+          religion: studentData?.is_muslim === false ? 'Non-Muslim' : 'Muslim',
           class_name: className ?? '—',
           theology_class_arabic: theologyClassArabic ?? null,
           theology_class_english: theologyClassEnglish ?? null,

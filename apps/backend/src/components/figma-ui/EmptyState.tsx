@@ -7,7 +7,7 @@ interface EmptyStateProps {
 
 export function EmptyState({ onSearchOpen }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center h-full select-none">
+    <div className="flex flex-col items-center justify-center h-full w-full px-4 select-none overflow-y-auto py-8">
       {/* Background glow */}
       <motion.div
         className="absolute w-96 h-96 rounded-full pointer-events-none"
@@ -46,10 +46,10 @@ export function EmptyState({ onSearchOpen }: EmptyStateProps) {
 
       {/* Arabic title */}
       <div
-        className="mb-1"
+        className="mb-1 text-center"
         style={{
           fontFamily: "'Cairo', sans-serif",
-          fontSize: 22,
+          fontSize: "clamp(18px, 4vw, 22px)",
           fontWeight: 800,
           color: '#047857',
           letterSpacing: 1,
@@ -61,12 +61,12 @@ export function EmptyState({ onSearchOpen }: EmptyStateProps) {
 
       {/* Gold pill */}
       <div
-        className="mb-5 px-4 py-1 rounded-full"
+        className="mb-5 px-3 md:px-4 py-1 rounded-full text-center max-w-full"
         style={{
           background: 'rgba(212,175,55,0.1)',
           border: '1px solid rgba(212,175,55,0.4)',
           color: '#92730b',
-          fontSize: 12,
+          fontSize: "clamp(9px, 2.5vw, 12px)",
           fontWeight: 600,
           letterSpacing: '0.05em',
         }}
@@ -75,15 +75,15 @@ export function EmptyState({ onSearchOpen }: EmptyStateProps) {
       </div>
 
       <h2
-        className="mb-3 text-center"
-        style={{ fontSize: 20, fontWeight: 700, color: '#0f172a' }}
+        className="mb-3 text-center px-2"
+        style={{ fontSize: "clamp(16px, 4vw, 20px)", fontWeight: 700, color: '#0f172a' }}
       >
         Report Cards Ready to Generate
       </h2>
 
       <p
-        className="mb-8 text-center max-w-xs"
-        style={{ fontSize: 14, color: '#64748b', lineHeight: 1.7 }}
+        className="mb-6 md:mb-8 text-center max-w-[280px] md:max-w-xs px-2"
+        style={{ fontSize: "clamp(12px, 3vw, 14px)", color: '#64748b', lineHeight: 1.6 }}
       >
         Select a class or student, choose the Term and Phase, then click{' '}
         <strong style={{ color: '#047857' }}>Generate Reports</strong> to preview and download.
@@ -108,20 +108,20 @@ export function EmptyState({ onSearchOpen }: EmptyStateProps) {
       </motion.button>
 
       {/* Step hints */}
-      <div className="mt-8 flex gap-6">
+      <div className="mt-8 flex flex-row flex-wrap justify-center gap-3 md:gap-6 w-full max-w-md">
         {[
           { step: '1', label: 'Select class or students' },
           { step: '2', label: 'Choose Term & Phase' },
           { step: '3', label: 'Generate & Download' },
         ].map(({ step, label }) => (
-          <div key={step} className="flex flex-col items-center gap-1">
+          <div key={step} className="flex flex-col items-center gap-1 w-[85px] md:w-auto shrink-0">
             <div
-              className="w-7 h-7 rounded-full flex items-center justify-center font-bold"
-              style={{ background: 'rgba(5,150,105,0.12)', color: '#047857', fontSize: 13 }}
+              className="w-6 h-6 md:w-7 md:h-7 rounded-full flex items-center justify-center font-bold shrink-0"
+              style={{ background: 'rgba(5,150,105,0.12)', color: '#047857', fontSize: "clamp(11px, 3vw, 13px)" }}
             >
               {step}
             </div>
-            <span style={{ fontSize: 11, color: '#94a3b8', textAlign: 'center', maxWidth: 80 }}>
+            <span style={{ fontSize: "clamp(9px, 2.5vw, 11px)", color: '#94a3b8', textAlign: 'center', maxWidth: 80, lineHeight: 1.3 }}>
               {label}
             </span>
           </div>

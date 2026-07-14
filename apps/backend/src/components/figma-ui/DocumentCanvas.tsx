@@ -65,12 +65,11 @@ export function DocumentCanvas({
           </div>
         ) : layout === 'grid' ? (
           <div
-            className="print-reset-layout print-reset-zoom print:!block print:!p-0 print:!m-0"
+            className="print-reset-layout print-reset-zoom print:!block print:!p-0 print:!m-0 p-4 md:p-12"
             style={{
               display: 'flex',
               flexWrap: 'wrap' as const,
               gap: 32,
-              padding: 48,
               justifyContent: 'center',
             }}
           >
@@ -102,15 +101,13 @@ export function DocumentCanvas({
             </AnimatePresence>
           </div>
         ) : (
-          /* Single scroll layout */
           <div
-            className="print-reset-layout print-reset-zoom"
+            className="print-reset-layout print-reset-zoom p-4 md:p-12 pb-[100px] md:pb-[100px]"
             style={{
               display: 'flex',
               flexDirection: 'column' as const,
               alignItems: 'center',
               gap: 40,
-              padding: '48px 48px 100px',
             }}
           >
             <AnimatePresence>

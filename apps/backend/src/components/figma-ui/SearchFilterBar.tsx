@@ -122,6 +122,8 @@ export function SearchFilterBar({
               display: 'flex',
               flexDirection: 'column' as const,
               gap: 14,
+              maxHeight: 'calc(100vh - 56px)',
+              overflowY: 'auto',
             }}
           >
             {/* ── Row 1: Mode + Section + Curriculum ── */}

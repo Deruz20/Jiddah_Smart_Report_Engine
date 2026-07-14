@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Download, Printer, Share2, MessageSquare, Search, X, LayoutGrid, List, PanelTop } from 'lucide-react';
+import { Download, Printer, Share2, MessageSquare, Search, X, LayoutGrid, List, PanelTop, Menu } from 'lucide-react';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import * as Popover from '@radix-ui/react-popover';
 import * as Dialog from '@radix-ui/react-dialog';
+import { useSidebar } from './ui/sidebar';
 
 interface TopToolbarProps {
   searchOpen: boolean;
@@ -33,11 +34,12 @@ export function TopToolbar({
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [chosenEmoji, setChosenEmoji] = useState<string | null>(null);
   const [emojiOpen, setEmojiOpen] = useState(false);
+  const { toggleSidebar } = useSidebar();
 
   return (
     <Tooltip.Provider delayDuration={300}>
       <div
-        className="flex items-center gap-2 shrink-0"
+        className="flex items-center gap-2 shrink-0 w-full"
         style={{
           height: 56,
           padding: '0 16px',
@@ -47,8 +49,16 @@ export function TopToolbar({
           transition: 'border-color 0.3s',
         }}
       >
+        {/* ── Hamburger (Mobile) ────────── */}
+        <button
+          onClick={toggleSidebar}
+          className="md:hidden flex items-center justify-center w-9 h-9 rounded-lg hover:bg-slate-100 text-slate-600 flex-shrink-0"
+        >
+          <Menu size={20} />
+        </button>
+
         {/* ── Brand ─────────────────────── */}
-        <div className="flex items-center gap-2.5 mr-4">
+        <div className="flex items-center gap-2.5 mr-1 md:mr-4 flex-shrink-0">
           {/* Dual-tone icon */}
           <div className="relative w-8 h-8 rounded-lg overflow-hidden shadow-sm flex-shrink-0">
             <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, #047857 0%, #059669 50%, #f97316 100%)' }} />
@@ -56,7 +66,7 @@ export function TopToolbar({
               <span style={{ fontSize: 16 }}>📋</span>
             </div>
           </div>
-          <div>
+          <div className="hidden sm:block">
             <div style={{ fontSize: 13, fontWeight: 800, color: '#0f172a', lineHeight: 1 }}>
               Jiddah Islamic
             </div>
@@ -100,6 +110,7 @@ export function TopToolbar({
 
         {/* ── Layout toggle ─────────────── */}
         {reportCount > 1 && (
+          <div className="hidden md:block flex-shrink-0">
           <Tooltip.Root>
             <Tooltip.Trigger asChild>
               <motion.button
@@ -120,6 +131,7 @@ export function TopToolbar({
             </Tooltip.Trigger>
             <TooltipContent>{layout === 'grid' ? 'Single scroll view' : 'Grid view'}</TooltipContent>
           </Tooltip.Root>
+          </div>
         )}
 
         {/* ── Download ──────────────────── */}
@@ -139,21 +151,26 @@ export function TopToolbar({
         />
 
         {/* ── Share ─────────────────────── */}
-        <IconBtn
-          icon={<Share2 size={16} />}
-          tooltip="Share link"
-          onClick={onShare}
-          disabled={reportCount === 0}
-        />
+        <div className="hidden md:block flex-shrink-0">
+          <IconBtn
+            icon={<Share2 size={16} />}
+            tooltip="Share link"
+            onClick={onShare}
+            disabled={reportCount === 0}
+          />
+        </div>
 
         {/* ── Toggle App Header ─────────── */}
-        <IconBtn
-          icon={<PanelTop size={16} />}
-          tooltip="Toggle App Header"
-          onClick={() => window.dispatchEvent(new CustomEvent('toggle-topbar'))}
-        />
+        <div className="hidden md:block flex-shrink-0">
+          <IconBtn
+            icon={<PanelTop size={16} />}
+            tooltip="Toggle App Header"
+            onClick={() => window.dispatchEvent(new CustomEvent('toggle-topbar'))}
+          />
+        </div>
 
         {/* ── Emoji reaction ────────────── */}
+        <div className="hidden md:block flex-shrink-0">
         <Popover.Root open={emojiOpen} onOpenChange={setEmojiOpen}>
           <Tooltip.Root>
             <Tooltip.Trigger asChild>
@@ -205,8 +222,10 @@ export function TopToolbar({
             ))}
           </Popover.Content>
         </Popover.Root>
+        </div>
 
         {/* ── Feedback ──────────────────── */}
+        <div className="hidden md:block flex-shrink-0">
         <Dialog.Root open={feedbackOpen} onOpenChange={setFeedbackOpen}>
           <Tooltip.Root>
             <Tooltip.Trigger asChild>
@@ -283,11 +302,13 @@ export function TopToolbar({
             </Dialog.Content>
           </Dialog.Portal>
         </Dialog.Root>
+        </div>
 
         {/* ── Divider ───────────────────── */}
         <div style={{ width: 1, height: 22, background: 'rgba(0,0,0,0.08)', margin: '0 4px' }} />
 
         {/* ── Search toggle ─────────────── */}
+        <div className="flex-shrink-0">
         <Tooltip.Root>
           <Tooltip.Trigger asChild>
             <motion.button
@@ -314,8 +335,9 @@ export function TopToolbar({
               {searchOpen ? 'Close' : 'Filter'}
             </motion.button>
           </Tooltip.Trigger>
-          <TooltipContent>{searchOpen ? 'Close filter panel' : 'Open search & filter'}</TooltipContent>
-        </Tooltip.Root>
+            <TooltipContent>{searchOpen ? 'Close filter panel' : 'Open search & filter'}</TooltipContent>
+          </Tooltip.Root>
+        </div>
       </div>
     </Tooltip.Provider>
   );
@@ -338,7 +360,7 @@ function IconBtn({
         <motion.button
           onClick={onClick}
           disabled={disabled}
-          className="flex items-center justify-center rounded-lg"
+          className="flex items-center justify-center rounded-lg flex-shrink-0"
           style={{
             width: 34, height: 34,
             background: 'rgba(0,0,0,0.04)',

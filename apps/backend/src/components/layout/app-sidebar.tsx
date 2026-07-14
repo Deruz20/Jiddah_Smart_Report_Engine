@@ -225,7 +225,7 @@ export function AppSidebar() {
                     boxShadow: "0 4px 12px rgba(249,115,22,0.4)",
                   }}
                 >
-                  <Image src="/images/jiddah_islamic_school.jpg" alt="Logo" width={32} height={32} className="object-cover" style={{ width: "auto", height: "auto" }} />
+                  <img src="/images/jiddah_islamic_school.jpg" alt="Logo" width="32" height="32" className="object-cover w-full h-full" />
                 </div>
                 <div className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full bg-emerald-400 border-2 border-[#0f172a] shadow-[0_0_6px_rgba(52,211,153,0.6)]" />
               </div>

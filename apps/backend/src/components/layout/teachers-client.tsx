@@ -4,7 +4,7 @@ import React, { useState, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Search, Plus, Edit, Trash2, ChevronDown } from "lucide-react";
+import { Search, Plus, Edit, Trash2, ChevronDown, UserX } from "lucide-react";
 import { HeroSection } from "@/components/HeroSection";
 import { AnimatedButton } from "@/components/AnimatedButton";
 import { createClient } from "@/utils/supabase/client";
@@ -266,9 +266,12 @@ export default function TeachersClient({
         </div>
 
         {filteredTeachers.length === 0 ? (
-          <div className="text-center py-12">
-            <h3 className="text-lg font-medium text-gray-900">{teachers.length === 0 ? 'No teachers yet' : 'No results found'}</h3>
-            <p className="mt-1 text-sm text-gray-500">
+          <div className="py-16 text-center flex flex-col items-center justify-center">
+            <div className="w-14 h-14 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-center mb-4 text-slate-300">
+              <UserX size={24} />
+            </div>
+            <h3 className="text-sm font-bold text-slate-800">{teachers.length === 0 ? 'No teachers yet' : 'No results found'}</h3>
+            <p className="mt-1 text-sm text-slate-400">
               {teachers.length === 0 ? 'Add your first teacher using the button above.' : 'Try a different search term or role.'}
             </p>
           </div>

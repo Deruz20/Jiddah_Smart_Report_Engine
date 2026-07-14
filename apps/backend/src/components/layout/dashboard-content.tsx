@@ -32,6 +32,7 @@ import {
 import { motion } from "framer-motion";
 
 export interface DashboardData {
+  role: 'admin' | 'dos' | 'teacher';
   kpis: {
     totalStudents: number;
     activeTeachers: number;
@@ -75,25 +76,30 @@ const activityIcons: Record<string, typeof User> = {
 export default function DashboardContent({ data }: { data: DashboardData }) {
   const router = useRouter();
 
+  const { role } = data;
+  const isTeacher = role === 'teacher';
+  const isDOS = role === 'dos';
+  const isAdmin = role === 'admin';
+
   const kpiCards = useMemo(() => {
     const k = data.kpis;
-    return [
+    const cards = [
       {
-        label: "Total Students",
+        label: isTeacher ? "My Students" : "Total Students",
         value: String(k.totalStudents),
-        change: "Active enrollments",
+        change: isTeacher ? "Assigned" : "Active enrollments",
         icon: Users,
         textClass: "text-emerald-600",
         bgClass: "bg-emerald-100",
       },
-      {
+      ...(!isTeacher ? [{
         label: "Active Teachers",
         value: String(k.activeTeachers),
-        change: "Currently active",
+        change: isDOS ? "In Department" : "Currently active",
         icon: BookOpen,
         textClass: "text-emerald-900",
         bgClass: "bg-emerald-100",
-      },
+      }] : []),
       {
         label: "Reports Generated",
         value: String(k.reportsGenerated),
@@ -102,18 +108,24 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
         textClass: "text-indigo-600",
         bgClass: "bg-indigo-100",
       },
-      {
+      ...(!isTeacher ? [{
         label: "Avg Attendance",
         value: `${k.avgAttendance}%`,
-        change: "School average",
+        change: isDOS ? "Dept average" : "School average",
         icon: TrendingUp,
         textClass: "text-pink-600",
         bgClass: "bg-pink-100",
-      },
+      }] : [])
     ];
-  }, [data]);
+    return cards;
+  }, [data, isTeacher, isDOS]);
 
-  const subtitle = "Analytics, activity, and action cards for your school.";
+  const title = isAdmin ? "Admin Dashboard" : isDOS ? "Department Overview" : "Teacher Dashboard";
+  const subtitle = isAdmin 
+    ? "Analytics, activity, and action cards for your school."
+    : isDOS 
+    ? "Analytics, activity, and action cards for your department."
+    : "Manage your assigned classes and students.";
 
   const attendanceAverage = data.attendanceTrend.length
     ? Math.round(
@@ -125,22 +137,25 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
   return (
     <div className="w-full">
       <HeroSection
-        title="Admin Dashboard"
+        title={title}
         subtitle={subtitle}
         actions={
           <>
             <button
-              onClick={() => router.push("/admin/reports")}
+              onClick={() => router.push(isTeacher ? "/admin/marks" : "/admin/reports")}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#10B981] text-sm font-semibold text-white"
             >
-              <Printer className="w-4 h-4" /> Generate Reports
+              {isTeacher ? <Pencil className="w-4 h-4" /> : <Printer className="w-4 h-4" />} 
+              {isTeacher ? "Enter Marks" : "Generate Reports"}
             </button>
-            <button
-              onClick={() => router.push("/admin/analytics")}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700"
-            >
-              <BarChart3 className="w-4 h-4" /> View Analytics
-            </button>
+            {!isTeacher && (
+              <button
+                onClick={() => router.push("/admin/analytics")}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700"
+              >
+                <BarChart3 className="w-4 h-4" /> View Analytics
+              </button>
+            )}
           </>
         }
       />
@@ -179,40 +194,42 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
 
       {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        <div className="lg:col-span-2 rounded-3xl border border-slate-200/60 bg-white p-6 shadow-sm hover:shadow-md transition-shadow duration-300">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-            <div>
-              <h3 className="text-[15px] font-bold text-slate-800 tracking-tight">Attendance Trend</h3>
-              <p className="text-[13px] font-medium text-slate-500 mt-0.5">Monthly attendance data for the year.</p>
+        {!isTeacher && (
+          <div className="lg:col-span-2 rounded-3xl border border-slate-200/60 bg-white p-6 shadow-sm hover:shadow-md transition-shadow duration-300">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+              <div>
+                <h3 className="text-[15px] font-bold text-slate-800 tracking-tight">Attendance Trend</h3>
+                <p className="text-[13px] font-medium text-slate-500 mt-0.5">Monthly attendance data for the year.</p>
+              </div>
+              <span className="inline-flex self-start sm:self-auto rounded-full bg-emerald-50 border border-emerald-100 px-3 py-1 text-[12px] font-bold text-emerald-600 shadow-sm">
+                Avg {attendanceAverage}%
+              </span>
             </div>
-            <span className="inline-flex self-start sm:self-auto rounded-full bg-emerald-50 border border-emerald-100 px-3 py-1 text-[12px] font-bold text-emerald-600 shadow-sm">
-              Avg {attendanceAverage}%
-            </span>
+            <div className="relative -ml-4 sm:ml-0">
+              <ResponsiveContainer width="100%" height={220}>
+                <AreaChart data={data.attendanceTrend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="attendanceGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10B981" stopOpacity={0.25} />
+                      <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="4 4" stroke="rgba(148,163,184,0.15)" vertical={false} />
+                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#64748B", fontWeight: 500 }} axisLine={false} tickLine={false} dy={10} />
+                  <YAxis domain={[80, 100]} tick={{ fontSize: 11, fill: "#64748B", fontWeight: 500 }} axisLine={false} tickLine={false} dx={-10} />
+                  <Tooltip 
+                    contentStyle={{ borderRadius: "12px", border: "1px solid rgba(226,232,240,0.8)", boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1)", padding: "12px" }}
+                    itemStyle={{ color: "#0F172A", fontWeight: 600, fontSize: "13px" }}
+                    labelStyle={{ color: "#64748B", fontSize: "12px", marginBottom: "4px" }}
+                  />
+                  <Area type="monotone" dataKey="rate" stroke="#10B981" strokeWidth={3} fill="url(#attendanceGrad)" activeDot={{ r: 6, strokeWidth: 0, fill: "#059669" }} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-          <div className="relative -ml-4 sm:ml-0">
-            <ResponsiveContainer width="100%" height={220}>
-              <AreaChart data={data.attendanceTrend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="attendanceGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10B981" stopOpacity={0.25} />
-                    <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="4 4" stroke="rgba(148,163,184,0.15)" vertical={false} />
-                <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#64748B", fontWeight: 500 }} axisLine={false} tickLine={false} dy={10} />
-                <YAxis domain={[80, 100]} tick={{ fontSize: 11, fill: "#64748B", fontWeight: 500 }} axisLine={false} tickLine={false} dx={-10} />
-                <Tooltip 
-                  contentStyle={{ borderRadius: "12px", border: "1px solid rgba(226,232,240,0.8)", boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1)", padding: "12px" }}
-                  itemStyle={{ color: "#0F172A", fontWeight: 600, fontSize: "13px" }}
-                  labelStyle={{ color: "#64748B", fontSize: "12px", marginBottom: "4px" }}
-                />
-                <Area type="monotone" dataKey="rate" stroke="#10B981" strokeWidth={3} fill="url(#attendanceGrad)" activeDot={{ r: 6, strokeWidth: 0, fill: "#059669" }} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+        )}
 
-        <div className="rounded-3xl border border-slate-200/60 bg-white p-6 shadow-sm hover:shadow-md transition-shadow duration-300">
+        <div className={`rounded-3xl border border-slate-200/60 bg-white p-6 shadow-sm hover:shadow-md transition-shadow duration-300 ${isTeacher ? 'lg:col-span-3' : ''}`}>
           <div className="mb-6">
             <h3 className="text-[15px] font-bold text-slate-800 tracking-tight">Class Performance</h3>
             <p className="text-[13px] font-medium text-slate-500 mt-0.5">Average score by class.</p>
@@ -246,7 +263,13 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
           </div>
 
           {data.recentActivity.length === 0 ? (
-            <div className="rounded-2xl border border-slate-200/60 bg-slate-50/50 p-8 text-center text-[14px] text-slate-500 font-medium">No activity recorded yet.</div>
+            <div className="py-12 text-center flex flex-col items-center justify-center">
+              <div className="w-12 h-12 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-center mb-3 text-slate-300">
+                <AlertCircle size={20} />
+              </div>
+              <h3 className="text-[14px] font-bold text-slate-800">No activity recorded yet</h3>
+              <p className="text-[13px] text-slate-400 mt-0.5">Administrative actions will appear here.</p>
+            </div>
           ) : (
             <div className="space-y-3">
               {data.recentActivity.map((item, index) => {
@@ -291,7 +314,13 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
             </div>
 
             {data.notifications.length === 0 ? (
-              <div className="rounded-2xl border border-slate-200/60 bg-slate-50/50 p-6 text-center text-[14px] text-slate-500 font-medium">No notifications yet.</div>
+              <div className="py-10 text-center flex flex-col items-center justify-center">
+                <div className="w-12 h-12 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-center mb-3 text-slate-300">
+                  <Bell size={20} />
+                </div>
+                <h3 className="text-[14px] font-bold text-slate-800">No notifications yet</h3>
+                <p className="text-[13px] text-slate-400 mt-0.5">You're all caught up.</p>
+              </div>
             ) : (
               <div className="space-y-3">
                 {data.notifications.slice(0, 3).map((item) => (

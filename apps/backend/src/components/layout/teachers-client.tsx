@@ -78,7 +78,15 @@ const maskValue = (value: string | undefined) => {
   return value.length > 6 ? `${value.slice(0, 3)}...${value.slice(-3)}` : value
 }
 
-export default function TeachersClient({ initialTeachers }: { initialTeachers: DashboardTeacher[] }) {
+export default function TeachersClient({ 
+  initialTeachers, 
+  currentUserRole,
+  currentUserSubject
+}: { 
+  initialTeachers: DashboardTeacher[];
+  currentUserRole?: string;
+  currentUserSubject?: string;
+}) {
   const [teachers, setTeachers] = useState<DashboardTeacher[]>(initialTeachers);
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("All Roles");
@@ -154,23 +162,37 @@ export default function TeachersClient({ initialTeachers }: { initialTeachers: D
 
   const handleSaveTeacher = async (values: TeacherForm) => {
     try {
-      const supabase = createClient();
-      const payload = {
-        name: values.full_name,
-        role: values.role,
-        email: values.email || null,
-        phone: values.phone || null,
-        subject: values.subject_specialization || null,
-        classes: values.class_assigned ? values.class_assigned.split(',').map(s => s.trim()) : [],
-        status: 'active'
-      };
-
       if (selectedTeacher) {
+        const supabase = createClient();
+        const payload = {
+          name: values.full_name,
+          role: values.role,
+          email: values.email || null,
+          phone: values.phone || null,
+          subject: values.subject_specialization || null,
+          classes: values.class_assigned ? values.class_assigned.split(',').map(s => s.trim()) : [],
+          status: 'active'
+        };
         const { error } = await supabase.from('teachers').update(payload).eq('id', selectedTeacher.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('teachers').insert([payload]);
-        if (error) throw error;
+        const response = await fetch('/api/admin/teachers/invite', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: values.full_name,
+            role: values.role,
+            email: values.email,
+            phone: values.phone,
+            subject: values.subject_specialization,
+            classes: values.class_assigned ? values.class_assigned.split(',').map(s => s.trim()) : []
+          })
+        });
+        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(result.error || 'Failed to create invite');
+        }
+        alert('Invite created successfully! The teacher can now register.');
       }
       
       await refetch();
@@ -355,22 +377,31 @@ export default function TeachersClient({ initialTeachers }: { initialTeachers: D
                   />
                   {errors.full_name && <p className="mt-2 text-xs text-rose-600">{errors.full_name.message}</p>}
                 </div>
-                <div>
-                  <label className="mb-2 block text-sm font-semibold text-slate-700">Role</label>
-                  <select
-                    {...register('role')}
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-[#10B981]"
-                  >
-                    <option>Head Teacher</option>
-                    <option>DOS Secular</option>
-                    <option>DOS Theology</option>
-                    <option>Class Teacher</option>
-                    <option>Theology Instructor</option>
-                    <option>Deputy Head Teacher</option>
-                    <option>Support Staff</option>
-                  </select>
-                  {errors.role && <p className="mt-2 text-xs text-rose-600">{errors.role.message}</p>}
-                </div>
+                {currentUserRole === 'admin' ? (
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold text-slate-700">Role</label>
+                    <select
+                      {...register('role')}
+                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-[#10B981]"
+                    >
+                      <option value="Class Teacher">Class Teacher</option>
+                      <option value="Head Teacher">Head Teacher</option>
+                      <option value="DOS Secular">DOS Secular</option>
+                      <option value="DOS Theology">DOS Theology</option>
+                      <option value="Theology Instructor">Theology Instructor</option>
+                      <option value="Deputy Head Teacher">Deputy Head Teacher</option>
+                      <option value="Support Staff">Support Staff</option>
+                    </select>
+                    {errors.role && <p className="mt-2 text-xs text-rose-600">{errors.role.message}</p>}
+                  </div>
+                ) : (
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold text-slate-700">Role</label>
+                    <div className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+                      Inviting as a Teacher
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
@@ -395,17 +426,27 @@ export default function TeachersClient({ initialTeachers }: { initialTeachers: D
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="mb-2 block text-sm font-semibold text-slate-700">Subject Specialization</label>
-                  <input
-                    type="text"
-                    {...register('subject_specialization')}
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-[#10B981]"
-                  />
-                  {errors.subject_specialization && (
-                    <p className="mt-2 text-xs text-rose-600">{errors.subject_specialization.message}</p>
-                  )}
-                </div>
+                {currentUserRole === 'admin' ? (
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold text-slate-700">Department / Track (Subject)</label>
+                    <input
+                      type="text"
+                      {...register('subject_specialization')}
+                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-[#10B981]"
+                      placeholder="e.g. Theology, Secular"
+                    />
+                    {errors.subject_specialization && (
+                      <p className="mt-2 text-xs text-rose-600">{errors.subject_specialization.message}</p>
+                    )}
+                  </div>
+                ) : (
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold text-slate-700">Department / Track</label>
+                    <div className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+                      Inviting into: {currentUserSubject || 'Your Department'}
+                    </div>
+                  </div>
+                )}
                 <div>
                   <label className="mb-2 block text-sm font-semibold text-slate-700">Class Assigned (comma separated)</label>
                   <input

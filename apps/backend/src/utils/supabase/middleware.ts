@@ -36,16 +36,48 @@ export async function updateSession(request: NextRequest) {
   // https://supabase.com/docs/guides/auth/server-side/nextjs
   const { data: { user } } = await supabase.auth.getUser()
 
+  const role = user?.user_metadata?.role;
+  const isDOS = role && role.startsWith('DOS');
+  const isAdmin = role === 'admin';
+  const isTeacher = role === 'teacher' || role === 'Class Teacher' || role === 'Theology Instructor' || role === 'Head Teacher';
+
   // protected routes
-  if (request.nextUrl.pathname.startsWith('/admin') && !user) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/login'
-    return NextResponse.redirect(url)
+  if (request.nextUrl.pathname.startsWith('/admin')) {
+    if (!user) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/login'
+      return NextResponse.redirect(url)
+    }
+    // Only Admin and DOS can access /admin
+    if (!isAdmin && !isDOS) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/teacher' // fallback
+      return NextResponse.redirect(url)
+    }
   }
   
+  if (request.nextUrl.pathname.startsWith('/teacher')) {
+    if (!user) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/login'
+      return NextResponse.redirect(url)
+    }
+    // Any authenticated user with a valid role can access teacher area (DOS, teacher, admin)
+    // but typically admin might not need to. We'll allow all valid roles.
+    if (!isAdmin && !isDOS && !isTeacher && role !== 'Support Staff' && role !== 'Deputy Head Teacher') {
+        const url = request.nextUrl.clone()
+        url.pathname = '/login'
+        return NextResponse.redirect(url)
+    }
+  }
+
   if (request.nextUrl.pathname.startsWith('/login') && user) {
     const url = request.nextUrl.clone()
-    url.pathname = '/admin'
+    if (isAdmin || isDOS) {
+      url.pathname = '/admin'
+    } else {
+      url.pathname = '/teacher'
+    }
     return NextResponse.redirect(url)
   }
 

@@ -25,9 +25,23 @@ export default async function TeachersManagementPage() {
     joined: t.created_at || ''
   }))
 
+  const { data: authData } = await supabase.auth.getUser()
+  const user = authData.user
+
+  let currentUserRole = user?.user_metadata?.role || 'teacher'
+  let currentUserSubject = ''
+
+  if (user?.email) {
+    const { data: profile } = await supabase.from('teachers').select('role, subject').eq('email', user.email).single()
+    if (profile) {
+      currentUserRole = profile.role
+      currentUserSubject = profile.subject
+    }
+  }
+
   return (
     <div className="w-full h-full bg-slate-50 dark:bg-[#0f172a]">
-      <TeachersClient initialTeachers={formattedTeachers} />
+      <TeachersClient initialTeachers={formattedTeachers} currentUserRole={currentUserRole} currentUserSubject={currentUserSubject} />
     </div>
   )
 }

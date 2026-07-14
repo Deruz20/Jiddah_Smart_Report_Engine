@@ -15,7 +15,7 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }: any) => {
       const user = session?.user;
       if (!user) {
         router.replace("/login");

@@ -63,7 +63,7 @@ function LoginContent() {
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }: any) => {
       if (session) {
         if (
           session.user.user_metadata?.role?.toLowerCase().includes("teacher") &&

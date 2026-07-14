@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { useSidebar } from "../figma-ui/ui/sidebar";
 import { cn } from "../figma-ui/ui/utils";
+import { createClient } from "@/utils/supabase/client";
 
 /* ─── Breadcrumbs (desktop only) ─────────────────────────────────────────── */
 
@@ -433,7 +434,7 @@ export function AppTopbar({ breadcrumbs = ["Admin", "Dashboard"], currentPage = 
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: -60, opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="sticky top-0 z-30 border-b print:hidden lg:hidden"
+            className="sticky top-0 z-30 border-b print:hidden"
             style={{
               background: "rgba(255,255,255,0.92)",
               backdropFilter: "blur(16px)",
@@ -487,6 +488,12 @@ export function AppTopbar({ breadcrumbs = ["Admin", "Dashboard"], currentPage = 
         {/* ── Desktop layout ── */}
         <div className="hidden md:flex items-center gap-3 h-14 px-4">
           <div className="flex items-center gap-3">
+            <button
+              onClick={toggleSidebar}
+              className="flex items-center justify-center size-9 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors mr-1"
+            >
+              <Menu className="size-4.5" strokeWidth={1.8} />
+            </button>
             <Breadcrumbs crumbs={breadcrumbs} />
           </div>
           <div className="flex-1 flex justify-center">

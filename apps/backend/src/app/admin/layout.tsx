@@ -23,7 +23,7 @@ export default function AdminLayout({
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(({ data }: any) => {
       const user = data.session?.user;
       if (user?.user_metadata) {
         setRole(user.user_metadata.role || 'teacher');

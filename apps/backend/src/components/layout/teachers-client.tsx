@@ -79,6 +79,21 @@ const maskValue = (value: string | undefined) => {
   return value.length > 6 ? `${value.slice(0, 3)}...${value.slice(-3)}` : value
 }
 
+// Avatar color hashing
+function avatarColors(name: string) {
+  const palettes = [
+    'bg-emerald-100 text-emerald-700',
+    'bg-orange-100 text-orange-700',
+    'bg-blue-100 text-blue-700',
+    'bg-violet-100 text-violet-700',
+    'bg-rose-100 text-rose-700',
+    'bg-amber-100 text-amber-700',
+  ];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return palettes[Math.abs(hash) % palettes.length];
+}
+
 export default function TeachersClient({ 
   initialTeachers, 
   currentUserRole,
@@ -281,7 +296,7 @@ export default function TeachersClient({
               <div key={teacher.id} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
                 <div className="mb-4 flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 shrink-0">
+                    <div className={`flex h-12 w-12 items-center justify-center rounded-2xl shrink-0 ${avatarColors(teacher.name)}`}>
                       <span className="text-base font-bold">
                         {teacher.name
                           .split(' ')

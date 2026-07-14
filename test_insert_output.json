@@ -1,0 +1,8 @@
+{
+  "Class Teacher": "Success",
+  "Subject Teacher": "Failed: new row for relation \"teachers\" violates check constraint \"teachers_role_check\"",
+  "Head Teacher": "Success",
+  "DOS Secular": "Failed: new row for relation \"teachers\" violates check constraint \"teachers_role_check\"",
+  "DOS Theology": "Failed: new row for relation \"teachers\" violates check constraint \"teachers_role_check\"",
+  "teacher": "Failed: new row for relation \"teachers\" violates check constraint \"teachers_role_check\""
+}

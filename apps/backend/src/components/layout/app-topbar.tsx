@@ -58,11 +58,9 @@ function DesktopSearch() {
   const [query, setQuery] = React.useState("");
 
   return (
-    <motion.div
-      animate={{ width: focused ? "22rem" : "16rem" }}
-      transition={{ duration: 0.2, ease: "easeOut" }}
+    <div
       className={cn(
-        "relative hidden md:flex items-center gap-2 h-9 px-3 rounded-xl transition-all duration-200 border",
+        "relative hidden md:flex items-center gap-2 h-9 px-3 rounded-xl transition-colors duration-200 border w-72",
         focused
           ? "bg-white border-slate-200 shadow-[0_0_0_3px_rgba(16,185,129,0.12)]"
           : "bg-slate-100/80 border-slate-200/50 hover:bg-slate-100 hover:border-slate-200",
@@ -94,7 +92,7 @@ function DesktopSearch() {
           </motion.kbd>
         )}
       </AnimatePresence>
-    </motion.div>
+    </div>
   );
 }
 

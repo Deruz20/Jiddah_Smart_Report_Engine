@@ -19,8 +19,10 @@ import {
   Bell,
   UserCheck,
   BookMarked,
-  BookOpen,
+  Library,
+  CalendarDays,
   ScrollText,
+  BookOpen,
   FileText,
   Upload,
   Shield,
@@ -62,8 +64,8 @@ const navItems = [
   { icon: Users, label: "Students", id: "students", href: "/admin/students", roles: ["admin", "Admin", "Secular DOS", "Theology DOS", "teacher", "Class Teacher", "Theology Instructor"] },
   { icon: UserCheck, label: "Teachers & Staff", id: "teachers", href: "/admin/teachers", roles: ["admin", "Admin", "Secular DOS", "Theology DOS"] },
   { icon: BookMarked, label: "Classes", id: "classes", href: "/admin/classes", roles: ["admin", "Admin", "Secular DOS", "Theology DOS"] },
-  { icon: BookOpen, label: "Subjects", id: "subjects", href: "/admin/subjects", roles: ["admin", "Admin", "Secular DOS", "Theology DOS"] },
-  { icon: BookOpen, label: "Terms", id: "terms", href: "/admin/terms", roles: ["admin", "Admin", "DOS Secular", "DOS Theology", "Secular DOS", "Theology DOS"] },
+  { icon: Library, label: "Subjects", id: "subjects", href: "/admin/subjects", roles: ["admin", "Admin", "Secular DOS", "Theology DOS"] },
+  { icon: CalendarDays, label: "Terms", id: "terms", href: "/admin/terms", roles: ["admin", "Admin", "DOS Secular", "DOS Theology", "Secular DOS", "Theology DOS"] },
   { icon: GraduationCap, label: "Secular Hub", id: "secular", href: "/admin/circular", roles: ["admin", "Admin", "DOS Secular", "Secular DOS", "teacher", "Class Teacher"] },
   { icon: ScrollText, label: "Theology Hub", id: "theology", href: "/admin/theology", roles: ["admin", "Admin", "DOS Theology", "Theology DOS", "teacher", "Theology Instructor"] },
   { icon: ClipboardEdit, label: "Marks Entry", id: "marks", href: "/admin/marks", roles: ["admin", "Admin", "DOS Secular", "DOS Theology", "Secular DOS", "Theology DOS", "teacher", "Class Teacher", "Theology Instructor"] },
@@ -110,7 +112,7 @@ function NavItem({
               {active && (
                 <motion.div
                   layoutId="activeNavIndicator"
-                  className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-emerald-500 rounded-r-full"
+                  className="absolute left-0 top-0 bottom-0 w-1.5 bg-emerald-400 rounded-r-full shadow-[0_0_10px_rgba(52,211,153,0.5)]"
                 />
               )}
 
@@ -232,11 +234,11 @@ export function AppSidebar() {
               <AnimatePresence>
                 {!collapsed && (
                   <motion.div
-                    initial={{ opacity: 0, width: 0 }}
-                    animate={{ opacity: 1, width: "auto" }}
-                    exit={{ opacity: 0, width: 0 }}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
                     transition={{ duration: 0.2 }}
-                    className="overflow-hidden"
+                    className="overflow-hidden origin-left"
                   >
                     <p className="text-white font-semibold truncate hover:text-emerald-400 transition-colors" style={{ fontSize: "0.8rem", lineHeight: 1.2 }}>
                       Jiddah Smart
@@ -250,7 +252,7 @@ export function AppSidebar() {
             </div>
             
             {/* Search moved to top header */}
-            <button className="p-2 rounded-lg text-slate-400 hover:text-emerald-400 hover:bg-emerald-400/10 transition-colors mt-2" title="Search">
+            <button className="p-2 rounded-full text-slate-400 hover:text-white hover:bg-white/10 transition-colors mt-2" title="Search">
               <Search className="size-4" />
             </button>
           </div>

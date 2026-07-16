@@ -73,6 +73,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Fetch enrollment to get class_id
+    const { data: enrollment } = await supabase
+      .from('enrollments')
+      .select('theology_class_id')
+      .eq('id', enrollment_id)
+      .single()
+
     const updateData: any = {}
     if (mot_score !== undefined) updateData.mot_score = mot_score === '' ? null : parseFloat(mot_score)
     if (eot_score !== undefined) updateData.eot_score = eot_score === '' ? null : parseFloat(eot_score)
@@ -102,6 +109,8 @@ export async function POST(request: NextRequest) {
         enrollment_id,
         subject_id,
         term_id,
+        curriculum: 'theology',
+        class_id: enrollment?.theology_class_id || null,
         ...updateData
       }
       result = await supabase

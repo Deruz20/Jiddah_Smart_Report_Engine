@@ -161,7 +161,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
   }, [filterState])
 
   const executeGeneration = useCallback(async () => {
-    const { mode, studentIds, classIds, section, term, phase } = filterState
+    const { mode, studentIds, classIds, section, term, phase, curriculum } = filterState
 
     // Determine target enrollment IDs
     let targets: string[] = [];
@@ -198,7 +198,8 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
         body: JSON.stringify({
           enrollment_ids: targets,
           term_id: termObj.id,
-          score_type: phase.toLowerCase()
+          score_type: phase.toLowerCase(),
+          curriculum: curriculum === 'combined' ? 'secular' : curriculum // 'combined' uses secular batch endpoint but renders combined UI if we change this later. For now, combined is not supported well in strict isolation mode, but we will pass the value and let the backend default to secular. Let's pass curriculum correctly.
         })
       })
       const data = await response.json()

@@ -170,7 +170,7 @@ export async function POST(request: NextRequest) {
     // 1. Fetch enrollment's sections
     const { data: enrollment, error: enrollmentError } = await supabase
       .from('enrollments')
-      .select('circular_classes(section, class_name), theology_classes(level)')
+      .select('circular_class_id, theology_class_id, circular_classes(section, class_name), theology_classes(level)')
       .eq('id', enrollment_id)
       .single()
       
@@ -200,6 +200,8 @@ export async function POST(request: NextRequest) {
             enrollment_id,
             term_id,
             subject_id: mark.subject_id,
+            curriculum: 'secular',
+            class_id: enrollment.circular_class_id,
           }
           if (mark.bot_score !== undefined) payload.bot_score = mark.bot_score === '' || mark.bot_score === null ? null : Number(mark.bot_score)
           if (mark.mot_score !== undefined) payload.mot_score = mark.mot_score === '' || mark.mot_score === null ? null : Number(mark.mot_score)
@@ -246,6 +248,8 @@ export async function POST(request: NextRequest) {
             enrollment_id,
             term_id,
             subject_id: mark.subject_id,
+            curriculum: 'theology',
+            class_id: enrollment.theology_class_id,
           }
           if (mark.mot_score !== undefined) payload.mot_score = mark.mot_score === '' || mark.mot_score === null ? null : Number(mark.mot_score)
           if (mark.eot_score !== undefined) payload.eot_score = mark.eot_score === '' || mark.eot_score === null ? null : Number(mark.eot_score)

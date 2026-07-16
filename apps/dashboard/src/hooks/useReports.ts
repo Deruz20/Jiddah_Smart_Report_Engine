@@ -12,6 +12,7 @@ export interface ReportPreviewOptions {
   scoreType?: ReportScoreType
   autoGenerate?: boolean
   print?: boolean
+  curriculum?: string
 }
 
 /** Same-origin base for report preview (Vite proxies /admin → Next.js :3000). */
@@ -26,12 +27,14 @@ export function buildReportPreviewUrl({
   scoreType = 'eot',
   autoGenerate = true,
   print = false,
+  curriculum = 'secular',
 }: ReportPreviewOptions): string {
   const base = getReportPreviewBaseUrl()
   const params = new URLSearchParams({
     enrollment_id: enrollmentId,
     term_id: termId,
     score_type: scoreType,
+    curriculum: curriculum,
   })
   if (!autoGenerate) params.set('autogenerate', '0')
   if (print) params.set('print', '1')
@@ -56,12 +59,13 @@ export function useReports() {
   const { data, loading, error, refetch } = useApi<{ data: ReportListItem[] }>(ENDPOINTS.reports)
 
   const generateReport = useCallback(
-    async (enrollmentId: string, termId: string, scoreType: ReportScoreType = 'eot') => {
+    async (enrollmentId: string, termId: string, scoreType: ReportScoreType = 'eot', curriculum: string = 'secular') => {
       return api.get<unknown>(ENDPOINTS.report, {
         params: {
           enrollment_id: enrollmentId,
           term_id: termId,
           score_type: scoreType,
+          curriculum: curriculum,
         },
       })
     },

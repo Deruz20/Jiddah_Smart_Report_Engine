@@ -18,6 +18,7 @@ export default function ReportsPage() {
   const [selectedClass, setSelectedClass] = useState("All Classes");
   const [selectedTermId, setSelectedTermId] = useState(currentTerm?.id ?? "");
   const [reportType, setReportType] = useState("individual");
+  const [curriculum, setCurriculum] = useState("secular");
   const [generating, setGenerating] = useState(false);
   const [generationProgress, setGenerationProgress] = useState(0);
   const [generationDone, setGenerationDone] = useState(false);
@@ -44,7 +45,7 @@ export default function ReportsPage() {
     try {
       let done = 0;
       for (const student of targets) {
-        await generateReport(student.enrollmentId!, selectedTermId, "eot");
+        await generateReport(student.enrollmentId!, selectedTermId, "eot", curriculum);
         done += 1;
         setGenerationProgress(Math.round((done / targets.length) * 100));
       }
@@ -189,7 +190,19 @@ export default function ReportsPage() {
             </div>
 
             {/* Class + Term */}
-            <div className="grid grid-cols-2 gap-4 mb-5">
+            <div className="grid grid-cols-3 gap-4 mb-5">
+              <div>
+                <label className="block mb-1.5" style={{ fontSize: "13px", fontWeight: 600, color: "#374151" }}>Curriculum</label>
+                <div className="relative">
+                  <select value={curriculum} onChange={e => setCurriculum(e.target.value)}
+                    className="w-full pl-3 pr-8 py-2.5 rounded-xl border appearance-none"
+                    style={{ border: "1px solid #E5E7EB", background: "white", fontSize: "13.5px", color: "#374151" }}>
+                    <option value="secular">Secular</option>
+                    <option value="theology">Theology</option>
+                  </select>
+                  <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none" style={{ color: "#6B7280" }} />
+                </div>
+              </div>
               <div>
                 <label className="block mb-1.5" style={{ fontSize: "13px", fontWeight: 600, color: "#374151" }}>Class</label>
                 <div className="relative">
@@ -347,6 +360,7 @@ export default function ReportsPage() {
                               enrollmentId: student.enrollmentId,
                               termId: r.termId || selectedTermId,
                               scoreType: "eot",
+                              curriculum: curriculum,
                             }),
                             "_blank",
                             "noopener,noreferrer"

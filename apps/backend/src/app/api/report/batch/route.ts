@@ -23,7 +23,8 @@ import { z } from 'zod'
 const batchReportSchema = z.object({
   enrollment_ids: z.array(z.string().uuid()).min(1, 'At least one student is required'),
   term_id: z.string().uuid('Invalid term ID'),
-  score_type: z.enum(['bot', 'mot', 'eot']).default('mot')
+  score_type: z.enum(['bot', 'mot', 'eot']).default('mot'),
+  curriculum: z.enum(['secular', 'theology', 'combined']).default('secular')
 })
 
 export const dynamic = 'force-dynamic'
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Invalid payload', details: parsed.error.format() }, { status: 400 }))
     }
 
-    const { enrollment_ids, term_id, score_type } = parsed.data
+    const { enrollment_ids, term_id, score_type, curriculum } = parsed.data
 
     const cookieStore = await cookies()
     const supabase = createClient(cookieStore)
@@ -122,47 +123,52 @@ export async function POST(request: NextRequest) {
 
     // Fetch circular subjects for these sections
     const circularSubjectsCache: Record<string, any[]> = {}
-    for (const st of Array.from(sectionTypes)) {
-      const { data: subs } = await supabase.from('circular_subjects').select('id, subject_name').eq('section', st)
-      circularSubjectsCache[st] = subs || []
+    if (curriculum !== 'theology') {
+      for (const sectionType of Array.from(sectionTypes)) {
+        const { data: subs } = await supabase.from('circular_subjects').select('id, subject_name, section').eq('section', sectionType).order('subject_name', { ascending: true })
+        circularSubjectsCache[sectionType] = subs || []
+      }
     }
 
     // Fetch ALL enrollments in these circular classes (to compute global rank)
     let allClassmates: any[] = []
-    if (circularClassIds.length > 0) {
-      const { data: classmates } = await supabase
-        .from('enrollments')
-        .select('id, circular_class_id')
-        .in('circular_class_id', circularClassIds)
-        .eq('is_active', true)
-      if (classmates) allClassmates = classmates
-    }
-
-    const allClassmateIds = allClassmates.map(c => c.id)
-
-    // Fetch circular marks for EVERYONE in the class in chunks
-    let allCircularMarks: any[] = []
-    if (allClassmateIds.length > 0) {
-      allCircularMarks = await fetchInChunks('circular_marks', '*', 'enrollment_id', allClassmateIds, (q) => q.eq('term_id', term_id))
-    }
-
-    // Compute rankings per class
-    // classRankings[circular_class_id] = [ { enrollment_id, total } ] sorted by total DESC
     const classRankings: Record<string, { id: string, total: number }[]> = {}
-    for (const cId of circularClassIds) {
-      const classMembers = allClassmates.filter(c => c.circular_class_id === cId)
-      const memberTotals: { id: string, total: number }[] = []
-      
-      for (const member of classMembers) {
-        const memberMarks = allCircularMarks.filter(m => m.enrollment_id === member.id)
-        const hasMarks = memberMarks.some(m => typeof m[score_type + '_score'] === 'number')
-        if (hasMarks) {
-          const eTotal = memberMarks.reduce((sum, m) => sum + (typeof m[score_type + '_score'] === 'number' ? m[score_type + '_score'] : 0), 0)
-          memberTotals.push({ id: member.id, total: eTotal })
-        }
+    let allCircularMarks: any[] = []
+
+    if (curriculum !== 'theology') {
+      if (circularClassIds.length > 0) {
+        const { data: classmates } = await supabase
+          .from('enrollments')
+          .select('id, circular_class_id')
+          .in('circular_class_id', circularClassIds)
+          .eq('is_active', true)
+        if (classmates) allClassmates = classmates
       }
-      
-      classRankings[cId] = memberTotals.sort((a, b) => b.total - a.total)
+
+      const allClassmateIds = allClassmates.map(c => c.id)
+
+      // Fetch circular marks for EVERYONE in the class in chunks
+      if (allClassmateIds.length > 0) {
+        allCircularMarks = await fetchInChunks('circular_marks', '*', 'enrollment_id', allClassmateIds, (q) => q.eq('term_id', term_id))
+      }
+
+      // Compute rankings per class
+      // classRankings[circular_class_id] = [ { enrollment_id, total } ] sorted by total DESC
+      for (const cId of circularClassIds) {
+        const classMembers = allClassmates.filter(c => c.circular_class_id === cId)
+        const memberTotals: { id: string, total: number }[] = []
+
+        for (const member of classMembers) {
+          const memberMarks = allCircularMarks.filter(m => m.enrollment_id === member.id)
+          const hasMarks = memberMarks.some(m => typeof m[score_type + '_score'] === 'number')
+          if (hasMarks) {
+            const eTotal = memberMarks.reduce((sum, m) => sum + (typeof m[score_type + '_score'] === 'number' ? m[score_type + '_score'] : 0), 0)
+            memberTotals.push({ id: member.id, total: eTotal })
+          }
+        }
+
+        classRankings[cId] = memberTotals.sort((a, b) => b.total - a.total)
+      }
     }
 
     // 4. Handle Theology
@@ -171,15 +177,56 @@ export async function POST(request: NextRequest) {
     }).filter(Boolean))]
 
     const theologySubjectsCache: Record<string, any[]> = {}
-    for (const lvl of theologyLevels) {
-      const { data: subs } = await supabase.from('theology_subjects').select('id, subject_name_arabic').eq('level', lvl).order('sort_order', { ascending: true })
-      theologySubjectsCache[lvl] = subs || []
+    if (curriculum !== 'secular') {
+      for (const lvl of theologyLevels) {
+        const { data: subs } = await supabase.from('theology_subjects').select('id, subject_name_arabic').eq('level', lvl).order('sort_order', { ascending: true })
+        theologySubjectsCache[lvl] = subs || []
+      }
     }
 
     // Fetch theology marks ONLY for requested enrollments in chunks
     let requestedTheologyMarks: any[] = []
-    if (requestedEnrollments.length > 0) {
-      requestedTheologyMarks = await fetchInChunks('theology_marks', '*', 'enrollment_id', enrollment_ids, (q) => q.eq('term_id', term_id))
+    let theologyRankings: Record<string, { id: string, total: number }[]> = {}
+
+    if (curriculum !== 'secular') {
+      if (requestedEnrollments.length > 0) {
+        requestedTheologyMarks = await fetchInChunks('theology_marks', '*', 'enrollment_id', enrollment_ids, (q) => q.eq('term_id', term_id))
+      }
+
+      // If we are in theology mode, we need theology class rankings.
+      if (curriculum === 'theology') {
+        const theologyClassIds = [...new Set(requestedEnrollments.map(e => e.theology_class_id).filter(Boolean))]
+        if (theologyClassIds.length > 0) {
+          const { data: theoClassmates } = await supabase
+            .from('enrollments')
+            .select('id, theology_class_id')
+            .in('theology_class_id', theologyClassIds)
+            .eq('is_active', true)
+
+          if (theoClassmates) {
+            const allTheoClassmateIds = theoClassmates.map(c => c.id)
+            let allTheoMarks: any[] = []
+            if (allTheoClassmateIds.length > 0) {
+              allTheoMarks = await fetchInChunks('theology_marks', '*', 'enrollment_id', allTheoClassmateIds, (q) => q.eq('term_id', term_id))
+            }
+
+            for (const tId of theologyClassIds) {
+              const classMembers = theoClassmates.filter(c => c.theology_class_id === tId)
+              const memberTotals: { id: string, total: number }[] = []
+
+              for (const member of classMembers) {
+                const memberMarks = allTheoMarks.filter(m => m.enrollment_id === member.id)
+                const hasMarks = memberMarks.some(m => typeof m[score_type + '_score'] === 'number')
+                if (hasMarks) {
+                  const eTotal = memberMarks.reduce((sum, m) => sum + (typeof m[score_type + '_score'] === 'number' ? m[score_type + '_score'] : 0), 0)
+                  memberTotals.push({ id: member.id, total: eTotal })
+                }
+              }
+              theologyRankings[tId] = memberTotals.sort((a, b) => b.total - a.total)
+            }
+          }
+        }
+      }
     }
 
     // 5. Generate Reports Data array
@@ -259,19 +306,21 @@ export async function POST(request: NextRequest) {
       let position: number | null = null
       let total_students: number | null = null
       
-      if (enrollment.circular_class_id && classRankings[enrollment.circular_class_id]) {
-        const rankings = classRankings[enrollment.circular_class_id]
-        total_students = rankings.length
-        if (total_students > 0) {
-           const myRank = rankings.findIndex(r => r.total === targetTotal)
-           if (myRank !== -1) position = myRank + 1
+      if (curriculum !== 'theology') {
+        if (enrollment.circular_class_id && classRankings[enrollment.circular_class_id]) {
+          const rankings = classRankings[enrollment.circular_class_id]
+          total_students = rankings.length
+          if (total_students > 0) {
+             const myRank = rankings.findIndex(r => r.total === targetTotal)
+             if (myRank !== -1) position = myRank + 1
+          }
         }
       }
 
       // Theology
       let theologySectionData = null
       const theologyLevel = Array.isArray(enrollment.theology_classes) ? enrollment.theology_classes[0]?.level : (enrollment.theology_classes as any)?.level
-      if (enrollment.theology_class_id && theologyLevel) {
+      if (curriculum !== 'secular' && enrollment.theology_class_id && theologyLevel) {
         const tSubjects = theologySubjectsCache[theologyLevel] || []
         const eTheoMarks = requestedTheologyMarks.filter(m => m.enrollment_id === enrollment.id)
         
@@ -320,6 +369,57 @@ export async function POST(request: NextRequest) {
       const theologyClassArabic = Array.isArray(enrollment.theology_classes) ? enrollment.theology_classes[0]?.class_name_arabic : (enrollment.theology_classes as any)?.class_name_arabic
       const theologyClassEnglish = Array.isArray(enrollment.theology_classes) ? enrollment.theology_classes[0]?.class_name_english : (enrollment.theology_classes as any)?.class_name_english
 
+      if (curriculum === 'theology') {
+        let theologyPosition = null;
+        let totalTheologyStudents = null;
+        if (enrollment.theology_class_id && theologyRankings[enrollment.theology_class_id] && theologySectionData) {
+           const rankings = theologyRankings[enrollment.theology_class_id]
+           totalTheologyStudents = rankings.length
+           if (totalTheologyStudents > 0) {
+              const myRank = rankings.findIndex(r => r.total === theologySectionData.total)
+              if (myRank !== -1) theologyPosition = myRank + 1
+           }
+        }
+
+        return {
+          id: enrollment.id,
+          student: {
+            name: (Array.isArray(enrollment.students) ? enrollment.students[0] : enrollment.students)?.name ?? '—',
+            admission_number: (Array.isArray(enrollment.students) ? enrollment.students[0] : enrollment.students)?.admission_number ?? '—',
+            arabic_name: (Array.isArray(enrollment.students) ? enrollment.students[0] : enrollment.students)?.arabic_name ?? null,
+            religion: (Array.isArray(enrollment.students) ? enrollment.students[0] : enrollment.students)?.religion ?? 'Muslim',
+            class_name: '—',
+            theology_class_arabic: theologyClassArabic ?? null,
+            theology_class_english: theologyClassEnglish ?? null,
+            section: null,
+            academic_year: enrollment.academic_year,
+          },
+          term: {
+            label: term.label,
+            term_number: term.term_number,
+            academic_year: term.academic_year,
+            start_date: term.start_date,
+            end_date: term.end_date,
+            next_term_start: term.next_term_start,
+          },
+          score_type,
+          section_type: sectionType,
+          circular: null,
+          theology: theologySectionData,
+          meta: {
+            is_term_3: isTerm3,
+            promotion_status: isTerm3 && theologySectionData?.division ? getPromotionStatus(theologySectionData.division) : null,
+            position: theologyPosition,
+            total_students: totalTheologyStudents,
+          },
+          debug: {
+            enrollmentId: enrollment.id,
+            circularMarksCount: 0,
+            supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+          }
+        }
+      }
+
       return {
         id: enrollment.id,
         student: {
@@ -328,8 +428,8 @@ export async function POST(request: NextRequest) {
           arabic_name: (Array.isArray(enrollment.students) ? enrollment.students[0] : enrollment.students)?.arabic_name ?? null,
           religion: (Array.isArray(enrollment.students) ? enrollment.students[0] : enrollment.students)?.religion ?? 'Muslim',
           class_name: className ?? '—',
-          theology_class_arabic: theologyClassArabic ?? null,
-          theology_class_english: theologyClassEnglish ?? null,
+          theology_class_arabic: curriculum === 'secular' ? null : theologyClassArabic ?? null,
+          theology_class_english: curriculum === 'secular' ? null : theologyClassEnglish ?? null,
           section,
           academic_year: enrollment.academic_year,
         },
@@ -359,10 +459,12 @@ export async function POST(request: NextRequest) {
           position,
           total_students,
         },
-        theology: theologySectionData,
+        theology: curriculum === 'secular' ? null : theologySectionData,
         meta: {
           is_term_3: isTerm3,
           promotion_status,
+          position,
+          total_students,
         },
         debug: {
           enrollmentId: enrollment.id,
@@ -372,7 +474,7 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    return withCors(request, NextResponse.json({ reports }))
+    return withCors(request, NextResponse.json({ reports: reports.filter(r => r !== null) }))
   } catch (err: any) {
     console.error('Batch Report API POST error:', err)
     return withCors(request, NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 }))

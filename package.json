@@ -1,0 +1,14 @@
+{
+  "name": "jiddah-smart-report-engine",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspaces",
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspaces",
+    "vercel-build": "npm run build"
+  }
+}

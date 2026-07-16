@@ -101,7 +101,12 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
     const classMap = new Map<string, ClassGroup>()
 
     for (const e of enrollments) {
-      const clsName = e.circular_class && e.circular_class !== '—' ? e.circular_class : e.theology_class_arabic || 'Unassigned'
+      // Determine what class name to group by based on the selected curriculum.
+      // If we are looking for theology reports, group by the theology class name.
+      const clsName = filterState.curriculum === 'theology'
+          ? (e.theology_class_arabic || 'Unassigned Theology')
+          : (e.circular_class && e.circular_class !== '—' ? e.circular_class : e.theology_class_arabic || 'Unassigned');
+
       const id = e.enrollment_id
       
       let track: 'Secular' | 'Theology' | 'Both' = 'Secular'
@@ -121,6 +126,9 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
         track,
       })
 
+      // In theology mode, don't show students without a theology class in the selector logic
+      if (filterState.curriculum === 'theology' && !hasTheo) continue;
+
       if (!classMap.has(clsName)) {
         classMap.set(clsName, { 
           id: clsName, 
@@ -133,7 +141,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
     }
 
     return { figmaClasses: Array.from(classMap.values()), figmaEnrollments: eList }
-  }, [enrollments])
+  }, [enrollments, filterState.curriculum])
 
   const handleGenerate = useCallback(async () => {
     const { mode, studentIds, classIds, section, term, phase } = filterState

@@ -23,7 +23,8 @@ import { z } from 'zod'
 const batchReportSchema = z.object({
   enrollment_ids: z.array(z.string().uuid()).min(1, 'At least one student is required'),
   term_id: z.string().uuid('Invalid term ID'),
-  score_type: z.enum(['bot', 'mot', 'eot']).default('mot')
+  score_type: z.enum(['bot', 'mot', 'eot']).default('mot'),
+  curriculum: z.enum(['secular', 'theology', 'combined']).default('secular')
 })
 
 export const dynamic = 'force-dynamic'
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Invalid payload', details: parsed.error.format() }, { status: 400 }))
     }
 
-    const { enrollment_ids, term_id, score_type } = parsed.data
+    const { enrollment_ids, term_id, score_type, curriculum } = parsed.data
 
     const cookieStore = await cookies()
     const supabase = createClient(cookieStore)
@@ -84,7 +85,7 @@ export async function POST(request: NextRequest) {
         theology_class_id,
         circular_classes ( id, class_name, section ),
         theology_classes ( id, class_name_arabic, class_name_english, level ),
-        students ( id, name, arabic_name, admission_number, created_at, is_muslim )
+        students ( id, name, arabic_name, admission_number, created_at, religion )
       `,
       'id',
       enrollment_ids
@@ -331,17 +332,17 @@ export async function POST(request: NextRequest) {
       const theologyClassArabic = Array.isArray(enrollment.theology_classes) ? enrollment.theology_classes[0]?.class_name_arabic : (enrollment.theology_classes as any)?.class_name_arabic
       const theologyClassEnglish = Array.isArray(enrollment.theology_classes) ? enrollment.theology_classes[0]?.class_name_english : (enrollment.theology_classes as any)?.class_name_english
 
-      return {
+      const payload = {
         id: enrollment.id,
         status: 'success',
         student: {
           name: studentData?.name ?? '—',
           admission_number: studentData?.admission_number ?? '—',
           arabic_name: studentData?.arabic_name ?? null,
-          religion: studentData?.is_muslim === false ? 'Non-Muslim' : 'Muslim',
+          religion: studentData?.religion ?? 'Muslim',
           class_name: className ?? '—',
-          theology_class_arabic: theologyClassArabic ?? null,
-          theology_class_english: theologyClassEnglish ?? null,
+          theology_class_arabic: curriculum === 'secular' ? null : theologyClassArabic ?? null,
+          theology_class_english: curriculum === 'secular' ? null : theologyClassEnglish ?? null,
           section,
           academic_year: enrollment.academic_year,
         },
@@ -371,10 +372,12 @@ export async function POST(request: NextRequest) {
           position,
           total_students,
         },
-        theology: theologySectionData,
+        theology: curriculum === 'secular' ? null : theologySectionData,
         meta: {
           is_term_3: isTerm3,
           promotion_status,
+          position,
+          total_students,
         },
         debug: {
           enrollmentId: enrollment.id,
@@ -382,6 +385,19 @@ export async function POST(request: NextRequest) {
           supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
         }
       }
+
+      if ((curriculum === 'combined' || curriculum === 'theology') && enrollment.theology_class_id && theologyRankings[enrollment.theology_class_id] && theologySectionData) {
+           const rankings = theologyRankings[enrollment.theology_class_id]
+           const totalTheologyStudents = rankings.length
+           if (totalTheologyStudents > 0) {
+              const myRank = rankings.findIndex(r => r.total === theologySectionData.total)
+              if (myRank !== -1) {
+                 (payload.meta as any).theology_position = myRank + 1;
+                 (payload.meta as any).theology_total_students = totalTheologyStudents;
+              }
+           }
+      }
+      return payload;
     })
 
     return withCors(request, NextResponse.json({ reports }))

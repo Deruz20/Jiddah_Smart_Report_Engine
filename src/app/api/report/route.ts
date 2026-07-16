@@ -50,6 +50,7 @@ export async function GET(request: NextRequest) {
   const termId = searchParams.get('term_id')
   const score_type = searchParams.get('score_type') || 'mot'
   const scoreType = score_type
+  const curriculum = searchParams.get('curriculum') || 'secular'
 
   if (!enrollmentId || !termId) {
     return withCors(request, NextResponse.json({ error: 'enrollmentId and termId are required' }, { status: 400 }))
@@ -72,7 +73,7 @@ export async function GET(request: NextRequest) {
         circular_classes ( id, class_name, section ),
         theology_class_id,
         theology_classes ( id, class_name_arabic, class_name_english, level ),
-        students ( id, name, arabic_name, admission_number, is_muslim )
+        students ( id, name, arabic_name, admission_number, religion )
       `)
       .eq('id', enrollmentId)
       .single()
@@ -386,6 +387,90 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Only return data for the requested curriculum
+    if (curriculum === 'theology') {
+      if (!enrollment.theology_class_id) {
+        return withCors(request, NextResponse.json({ error: 'Student is not enrolled in a theology class' }, { status: 400 }))
+      }
+
+      const studentData = Array.isArray(enrollment.students) ? enrollment.students[0] : enrollment.students
+      const theologyClass = Array.isArray(enrollment.theology_classes) ? enrollment.theology_classes[0] : enrollment.theology_classes
+      const theologyClassArabic = theologyClass?.class_name_arabic
+      const theologyClassEnglish = theologyClass?.class_name_english
+
+      // For theology ranking, we need to calculate class positions.
+      // Doing this inline for theology if requested in theology mode.
+      let theologyPosition = null;
+      let totalTheologyStudents = null;
+
+      if (enrollment.theology_class_id && theologySectionData && typeof theologySectionData.total === 'number') {
+        const { data: theologyEnrollments } = await supabase
+          .from('enrollments')
+          .select('id, student_id')
+          .eq('theology_class_id', enrollment.theology_class_id)
+          .eq('is_active', true)
+
+        if (theologyEnrollments && theologyEnrollments.length > 0) {
+          const tEnrollmentIds = theologyEnrollments.map(e => e.id)
+          const { data: allTheologyMarks } = await supabase
+            .from('theology_marks')
+            .select('enrollment_id, eot_score, mot_score')
+            .in('enrollment_id', tEnrollmentIds)
+            .eq('term_id', termId)
+
+          if (allTheologyMarks) {
+            const totals = tEnrollmentIds.map(eid => {
+              const eMarks = allTheologyMarks.filter(m => m.enrollment_id === eid)
+              return eMarks.reduce((sum, mark) => {
+                const s = score_type === 'eot' ? mark.eot_score : mark.mot_score
+                return sum + (typeof s === 'number' ? s : 0)
+              }, 0)
+            })
+            totals.sort((a, b) => b - a)
+            const myRank = totals.findIndex(t => t === theologySectionData.total)
+            if (myRank !== -1) {
+              theologyPosition = myRank + 1
+              totalTheologyStudents = totals.length
+            }
+          }
+        }
+      }
+
+      return withCors(request, NextResponse.json({
+        student: {
+          name: studentData?.name ?? '—',
+          admission_number: studentData?.admission_number ?? '—',
+          arabic_name: studentData?.arabic_name ?? null,
+          religion: studentData?.religion ?? 'Muslim',
+          class_name: '—', // Hidden in theology mode
+          theology_class_arabic: theologyClassArabic ?? null,
+          theology_class_english: theologyClassEnglish ?? null,
+          section: null,
+          academic_year: enrollment.academic_year,
+        },
+        term: {
+          label: term.label,
+          term_number: term.term_number,
+          academic_year: term.academic_year,
+          start_date: term.start_date,
+          end_date: term.end_date,
+          next_term_start: term.next_term_start,
+        },
+        score_type,
+        section_type: sectionType,
+        circular: null, // Isolated completely from secular data
+        theology: theologySectionData,
+        meta: {
+          is_term_3: isTerm3,
+          promotion_status: isTerm3 && theologySectionData?.division ? getPromotionStatus(theologySectionData.division) : null,
+          theology_position: theologyPosition,
+          theology_total_students: totalTheologyStudents,
+        },
+        debug: debugInfo,
+      }))
+    }
+
+    // Default to 'secular' or 'combined' formatting
     const studentData = Array.isArray(enrollment.students) ? enrollment.students[0] : enrollment.students
     const circularClass = Array.isArray(enrollment.circular_classes) ? enrollment.circular_classes[0] : enrollment.circular_classes
     const theologyClass = Array.isArray(enrollment.theology_classes) ? enrollment.theology_classes[0] : enrollment.theology_classes
@@ -397,10 +482,10 @@ export async function GET(request: NextRequest) {
         name: studentData?.name ?? '—',
         admission_number: studentData?.admission_number ?? '—',
         arabic_name: studentData?.arabic_name ?? null,
-        religion: studentData?.is_muslim === false ? 'Non-Muslim' : 'Muslim',
+        religion: studentData?.religion ?? 'Muslim',
         class_name: (circularClass as any)?.class_name ?? '—',
-        theology_class_arabic: theologyClassArabic ?? null,
-        theology_class_english: theologyClassEnglish ?? null,
+        theology_class_arabic: curriculum === 'combined' ? (theologyClassArabic ?? null) : null,
+        theology_class_english: curriculum === 'combined' ? (theologyClassEnglish ?? null) : null,
         section,
         academic_year: enrollment.academic_year,
       },
@@ -430,12 +515,47 @@ export async function GET(request: NextRequest) {
         position,
         total_students,
       },
-      theology: theologySectionData,
+      theology: curriculum === 'combined' ? theologySectionData : null,
       meta: {
         is_term_3: isTerm3,
         promotion_status,
+        position,
+        total_students,
       },
       debug: debugInfo,
+    }
+
+    if (curriculum === 'combined' && enrollment.theology_class_id && theologySectionData && typeof theologySectionData.total === 'number') {
+        const { data: theologyEnrollments } = await supabase
+          .from('enrollments')
+          .select('id, student_id')
+          .eq('theology_class_id', enrollment.theology_class_id)
+          .eq('is_active', true)
+
+        if (theologyEnrollments && theologyEnrollments.length > 0) {
+          const tEnrollmentIds = theologyEnrollments.map(e => e.id)
+          const { data: allTheologyMarks } = await supabase
+            .from('theology_marks')
+            .select('enrollment_id, eot_score, mot_score')
+            .in('enrollment_id', tEnrollmentIds)
+            .eq('term_id', termId)
+
+          if (allTheologyMarks) {
+            const totals = tEnrollmentIds.map(eid => {
+              const eMarks = allTheologyMarks.filter(m => m.enrollment_id === eid)
+              return eMarks.reduce((sum, mark) => {
+                const s = score_type === 'eot' ? mark.eot_score : mark.mot_score
+                return sum + (typeof s === 'number' ? s : 0)
+              }, 0)
+            })
+            totals.sort((a, b) => b - a)
+            const myRank = totals.findIndex(t => t === theologySectionData.total)
+            if (myRank !== -1) {
+              (reportData.meta as any).theology_position = myRank + 1;
+              (reportData.meta as any).theology_total_students = totals.length;
+            }
+          }
+        }
     }
 
     return withCors(request, NextResponse.json(reportData))

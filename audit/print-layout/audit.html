@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+    body { font-family: 'Inter', system-ui, sans-serif; padding: 20px; background: #eee; }
+    .report { background: white; width: 210mm; padding: 20mm; margin-bottom: 20px; box-shadow: 0 0 10px rgba(0,0,0,0.1); box-sizing: border-box; }
+    .header-info { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+    .info-row { display: flex; gap: 8px; align-items: flex-end; }
+    .label { font-weight: 700; color: #64748b; white-space: nowrap; text-transform: uppercase; font-size: 10px; }
+    .line { flex: 1; min-width: 0; border-bottom: 1.5px dotted #cbd5e1; display: flex; align-items: flex-end; padding: 0 0 2px 4px; color: #1e40af; font-weight: 700; font-size: 14px; }
+    
+    table { width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; }
+    th { background: #1e40af; color: white; font-size: 11px; padding: 8px 6px; text-transform: uppercase; border-bottom: 2px solid #1e3a8a; font-weight: 700; text-align: left;}
+    td { border-bottom: 1px solid #e2e8f0; padding: 7px 6px; font-size: 12px; color: #334155; }
+    .data-cell { text-align: center; font-weight: 700; color: #1e40af; font-size: 13px; }
+</style>
+</head>
+<body>
+    <h2>Case 1: Extremely Long Name</h2>
+    <div class="report">
+        <div class="header-info">
+          <div class="info-row">
+            <span class="label">Name:</span>
+            <span class="line">Abdullahi Abubakar Mohammed Ibn Khaldun Al-Faruq The Third</span>
+            <span class="label">Class:</span>
+            <span class="line" style="flex: 0 0 100px;">Nursery 1</span>
+            <span class="label">Term:</span>
+            <span class="line" style="flex: 0 0 80px;">Term 1</span>
+          </div>
+        </div>
+    </div>
+
+    <h2>Case 2: Missing Grades (Null/Undefined)</h2>
+    <div class="report">
+        <table>
+            <thead>
+                <tr>
+                    <th>Subject</th>
+                    <th>Score</th>
+                    <th>Grade</th>
+                    <th>Remark</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Mathematics</td>
+                    <td class="data-cell">-</td>
+                    <td class="data-cell">-</td>
+                    <td>-</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

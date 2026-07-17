@@ -419,22 +419,22 @@ export default function TheologyHubClient({
 
           <div className="flex-1">
             <label className="block text-xs font-semibold text-slate-600 uppercase mb-2">View Type</label>
-            <div className="flex p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+            <div className="flex overflow-x-auto no-scrollbar p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
               <button
                 onClick={() => setActiveTab('assessment')}
-                className={`flex-1 py-1.5 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 ${activeTab === 'assessment' ? 'bg-white shadow-sm text-emerald-700' : 'text-slate-500 hover:text-slate-700'}`}
+                className={`flex-1 min-w-[120px] py-1.5 px-3 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 ${activeTab === 'assessment' ? 'bg-white shadow-sm text-emerald-700' : 'text-slate-500 hover:text-slate-700'}`}
               >
                 <BookOpen size={14} /> Assessment
               </button>
               <button
                 onClick={() => setActiveTab('analysis')}
-                className={`flex-1 py-1.5 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 ${activeTab === 'analysis' ? 'bg-white shadow-sm text-emerald-700' : 'text-slate-500 hover:text-slate-700'}`}
+                className={`flex-1 min-w-[120px] py-1.5 px-3 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 ${activeTab === 'analysis' ? 'bg-white shadow-sm text-emerald-700' : 'text-slate-500 hover:text-slate-700'}`}
               >
                 <ScrollText size={14} /> Analysis
               </button>
               <button
                 onClick={() => setActiveTab('top_students')}
-                className={`flex-1 py-1.5 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 ${activeTab === 'top_students' ? 'bg-white shadow-sm text-emerald-700' : 'text-slate-500 hover:text-slate-700'}`}
+                className={`flex-1 min-w-[120px] py-1.5 px-3 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 ${activeTab === 'top_students' ? 'bg-white shadow-sm text-emerald-700' : 'text-slate-500 hover:text-slate-700'}`}
               >
                 <Award size={14} /> Top Students
               </button>

@@ -41,7 +41,8 @@
 
   .report-container {
     transform: none !important;
-    width: 100vw !important;
+    width: 210mm !important;
+    min-width: 210mm !important;
     margin: 0 !important;
     padding: 0 !important;
     overflow: visible !important;

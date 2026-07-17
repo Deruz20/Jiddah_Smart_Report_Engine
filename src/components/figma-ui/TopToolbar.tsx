@@ -44,7 +44,7 @@ export function TopToolbar({
   return (
     <Tooltip.Provider delayDuration={300}>
       <div
-        className="flex items-center gap-2 shrink-0 w-full"
+        className="flex items-center gap-2 shrink-0 w-full overflow-x-auto no-scrollbar whitespace-nowrap"
         style={{
           height: 56,
           padding: '0 16px',

@@ -1,8 +1,8 @@
 'use client'
 
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, memo } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
-import { Loader2, Printer, Search, Download, BookOpen, ScrollText, Users, Award } from 'lucide-react'
+import { Loader2, ScrollText, BookOpen, Award } from 'lucide-react'
 import { toast } from 'sonner'
 import { createClient } from "@/utils/supabase/client"
 import { TheologyHubEmptyState } from './TheologyHubEmptyState'
@@ -22,6 +22,35 @@ type TheologyClassData = {
   class_name_english: string
   level: string
 }
+
+// ----------------------
+// Framer Motion Variants
+// ----------------------
+const tableVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.03 }
+  }
+}
+
+const rowVariants = {
+  hidden: { opacity: 0, y: 10 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.2 } }
+}
+
+// ----------------------
+// Helper Components
+// ----------------------
+const RemarkBadge = memo(({ score }: { score: number }) => {
+  if (score >= 75) return <span className="inline-flex items-center justify-center px-2.5 py-1 text-xs font-bold rounded-full bg-emerald-100 text-emerald-800 print:bg-transparent print:border-none print:text-black">ممتاز</span>
+  if (score >= 65) return <span className="inline-flex items-center justify-center px-2.5 py-1 text-xs font-bold rounded-full bg-teal-100 text-teal-800 print:bg-transparent print:border-none print:text-black">جيد جداً</span>
+  if (score >= 50) return <span className="inline-flex items-center justify-center px-2.5 py-1 text-xs font-bold rounded-full bg-amber-100 text-amber-800 print:bg-transparent print:border-none print:text-black">جيد</span>
+  if (score >= 40) return <span className="inline-flex items-center justify-center px-2.5 py-1 text-xs font-bold rounded-full bg-orange-100 text-orange-800 print:bg-transparent print:border-none print:text-black">مقبول</span>
+  return <span className="inline-flex items-center justify-center px-2.5 py-1 text-xs font-bold rounded-full bg-rose-100 text-rose-800 print:bg-transparent print:border-none print:text-black">ضعيف</span>
+})
+RemarkBadge.displayName = 'RemarkBadge'
+
 
 export default function TheologyHubClient({
   terms,
@@ -74,17 +103,15 @@ export default function TheologyHubClient({
     
     const levelSubjects = data.subjects.filter(s => s.level === classInfo.level)
     
-    // Primary columns we want: القرآن, اللغة العربية, الفقه, التربية
     const targetSubjects = ['القرآن', 'اللغة العربية', 'الفقه', 'التربية', 'التوحيد', 'السيرة']
     
-    // Sort subjects based on target order
     const orderedSubjects = [...levelSubjects].sort((a, b) => {
       let aIdx = targetSubjects.findIndex(t => a.subject_name_arabic.includes(t))
       let bIdx = targetSubjects.findIndex(t => b.subject_name_arabic.includes(t))
       if (aIdx === -1) aIdx = 999
       if (bIdx === -1) bIdx = 999
       return aIdx - bIdx
-    }).slice(0, 5) // keep max 5 subjects for the form
+    }).slice(0, 5)
 
     const processed = classEnrollments.map(enrollment => {
       const eMarks = data.marks.filter(m => m.enrollment_id === enrollment.id)
@@ -94,8 +121,6 @@ export default function TheologyHubClient({
       
       orderedSubjects.forEach(sub => {
         const mark = eMarks.find(m => m.subject_id === sub.id)
-        // For the assessment sheet we usually use MOT score, but we could use EOT if requested. Let's use EOT or MOT. 
-        // We'll use mot_score if it exists, otherwise eot_score (since this is for Mid-Term results)
         const score = mark?.mot_score != null ? mark.mot_score : (mark?.eot_score != null ? mark.eot_score : null)
         subjectScores[sub.id] = score
         if (score != null) total += score
@@ -110,7 +135,6 @@ export default function TheologyHubClient({
       }
     })
 
-    // Calculate positions
     processed.sort((a, b) => b.total - a.total)
     const uniqueTotals = Array.from(new Set(processed.map(p => p.total)))
     
@@ -123,7 +147,6 @@ export default function TheologyHubClient({
     }
   }, [data, activeClassId, theologyClasses])
 
-  // Auto-transliteration for missing arabic names
   React.useEffect(() => {
     if (!assessmentData.students || assessmentData.students.length === 0) return;
     const studentsToTranslate = assessmentData.students.filter(s => !s.arabic_name);
@@ -146,7 +169,6 @@ export default function TheologyHubClient({
             }
           }
           
-          // Update data locally to avoid reload loop
           setData(prevData => {
             if (!prevData) return prevData;
             const updatedEnrollments = prevData.enrollments.map(e => {
@@ -166,28 +188,17 @@ export default function TheologyHubClient({
     translateMissingNames();
   }, [assessmentData.students]);
 
-  // Helper to convert English digits to Eastern Arabic digits
   const toArabicNumerals = (num: string | number | null | undefined) => {
     if (num == null || num === '') return ''
     return num.toString().replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[parseInt(d)])
   }
 
-  // Get remark text in Arabic based on score
-  const getArabicRemark = (score: number) => {
-    if (score >= 75) return 'ممتاز' // Excellent
-    if (score >= 65) return 'جيد جداً' // Very Good
-    if (score >= 50) return 'جيد' // Good
-    if (score >= 40) return 'مقبول' // Fair
-    return 'ضعيف' // Weak
-  }
-
-  // Handle printing
   const handlePrint = () => {
     window.print()
   }
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 dark:bg-[#0f172a]">
+    <div className="flex flex-col h-full bg-slate-50 dark:bg-[#0f172a] print:bg-white">
       {/* TopToolbar */}
       <div className="print:hidden relative z-40 border-b border-slate-200/60 shadow-sm shrink-0">
         <TopToolbar 
@@ -295,100 +306,123 @@ export default function TheologyHubClient({
         {isLoading ? (
           <div className="flex flex-col items-center justify-center h-full print:hidden">
             <Loader2 className="w-8 h-8 animate-spin text-emerald-500 mb-4" />
-            <p className="text-slate-500">Loading theology data...</p>
+            <p className="text-slate-500 font-medium">Loading theology data...</p>
           </div>
         ) : !data || (!activeClassId && activeTab === 'assessment') || (!activeLevel && (activeTab === 'analysis' || activeTab === 'top_students')) ? (
           <TheologyHubEmptyState />
         ) : (
-          <div className="w-full mx-auto bg-white print:max-w-[210mm] print:shadow-none shadow-xl print:m-0 min-h-[297mm] overflow-x-auto">
+          <div className="w-full max-w-7xl mx-auto print:max-w-[210mm] print:m-0 min-h-[297mm]">
             
             {/* Assessment Tab */}
             {activeTab === 'assessment' && activeClassId && (
-              <div className="p-10 font-arabic text-right" dir="rtl">
-                {/* Header */}
-                <div className="text-center mb-6">
-                  <h2 className="text-xl font-bold mb-2">بسم الله الرحمن الرحيم</h2>
-                  <h1 className="text-2xl font-bold text-emerald-800 mb-2">مدرسة جدة الإسلامية للروضة والابتدائية _ نساغو واكيسو</h1>
-                  <h3 className="text-xl font-bold mb-4 underline">كشف الدرجات لمنتصف الفترة</h3>
+              <div className="font-arabic text-right print:p-10" dir="rtl">
+                
+                {/* Header (Print-optimized) */}
+                <div className="text-center mb-8">
+                  <h2 className="text-lg font-bold mb-1 text-slate-800 print:text-black">بسم الله الرحمن الرحيم</h2>
+                  <h1 className="text-2xl font-extrabold text-emerald-800 mb-2 print:text-black">مدرسة جدة الإسلامية للروضة والابتدائية _ نساغو واكيسو</h1>
+                  <h3 className="text-xl font-bold mb-4 underline underline-offset-4 text-slate-700 print:text-black">كشف الدرجات لمنتصف الفترة</h3>
                 </div>
 
-                <div className="flex justify-between items-center mb-4 font-bold">
+                <div className="flex justify-between items-center mb-6 font-semibold text-slate-700 print:text-black bg-white/50 print:bg-transparent px-4 py-3 rounded-xl border border-slate-200/50 print:border-none shadow-sm print:shadow-none">
                   <div>
                     <span>الفترة: </span>
-                    <span className="text-emerald-800 underline underline-offset-4 decoration-dotted px-4">
+                    <span className="text-emerald-800 print:text-black font-bold px-4">
                       {terms.find(t => t.id === activeTermId)?.label === 'Term 1' ? 'الأولى' : terms.find(t => t.id === activeTermId)?.label === 'Term 2' ? 'الثانية' : 'الثالثة'}
                     </span>
                   </div>
                   <div>
                     <span>الصف: </span>
-                    <span className="text-emerald-800 underline underline-offset-4 decoration-dotted px-4">
+                    <span className="text-emerald-800 print:text-black font-bold px-4">
                       {theologyClasses.find(c => c.id === activeClassId)?.class_name_arabic}
                     </span>
                   </div>
                   <div>
                     <span>السنة: </span>
-                    <span className="text-emerald-800 underline underline-offset-4 decoration-dotted px-4">
+                    <span className="text-emerald-800 print:text-black font-bold px-4">
                       {toArabicNumerals(terms.find(t => t.id === activeTermId)?.academic_year || '')}م
                     </span>
                   </div>
                 </div>
 
-                {/* Table */}
-                <table className="w-full border-collapse border-2 border-slate-800 mb-8 mt-6">
-                  <thead>
-                    <tr className="bg-slate-100">
-                      <th className="border border-slate-800 p-2 w-12 text-center">م</th>
-                      <th className="border border-slate-800 p-2 w-64">اسم التلميذ/ة</th>
-                      {assessmentData.orderedSubjects?.map(s => (
-                        <th key={s.id} className="border border-slate-800 p-2 text-center">{s.subject_name_arabic}</th>
-                      ))}
-                      <th className="border border-slate-800 p-2 text-center w-24">المجموع</th>
-                      <th className="border border-slate-800 p-2 text-center w-24">الموقف / الدرجة</th>
-                      <th className="border border-slate-800 p-2 text-center w-40">الملاحظات</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {assessmentData.students?.map((student, idx) => (
-                      <tr key={student.id}>
-                        <td className="border border-slate-800 p-2 text-center font-bold">{toArabicNumerals(idx + 1)}</td>
-                        <td className="border border-slate-800 p-2 font-bold">{student.arabic_name}</td>
-                        {assessmentData.orderedSubjects?.map(s => (
-                          <td key={s.id} className="border border-slate-800 p-2 text-center font-semibold text-emerald-800">
-                            {student.subjectScores[s.id] !== undefined ? toArabicNumerals(student.subjectScores[s.id]!) : ''}
-                          </td>
+                {/* Modern Glassmorphic Table Container */}
+                <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-200/60 dark:border-slate-800/60 overflow-hidden print:bg-transparent print:border-none print:shadow-none print:rounded-none">
+                  <div className="overflow-x-auto shadow-inner print:shadow-none print:overflow-visible">
+                    <table className="w-full text-right border-collapse print:border-2 print:border-black">
+                      <thead className="bg-slate-50/90 dark:bg-slate-800/90 backdrop-blur-md sticky top-0 z-10 print:bg-slate-100 print:static">
+                        <tr>
+                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-semibold text-sm w-12 text-center print:border print:border-black print:text-black">م</th>
+                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-semibold text-sm w-64 print:border print:border-black print:text-black">اسم التلميذ/ة</th>
+                          {assessmentData.orderedSubjects?.map(s => (
+                            <th key={s.id} className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-semibold text-sm text-center print:border print:border-black print:text-black">{s.subject_name_arabic}</th>
+                          ))}
+                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-semibold text-sm text-center w-24 print:border print:border-black print:text-black">المجموع</th>
+                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-semibold text-sm text-center w-24 print:border print:border-black print:text-black">الترتيب</th>
+                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-semibold text-sm text-center w-32 print:border print:border-black print:text-black">الملاحظات</th>
+                        </tr>
+                      </thead>
+                      <motion.tbody 
+                        initial="hidden" 
+                        animate="visible" 
+                        variants={tableVariants}
+                        className="print:!opacity-100 print:!transform-none"
+                      >
+                        {assessmentData.students?.map((student, idx) => (
+                          <motion.tr 
+                            variants={rowVariants}
+                            key={student.id} 
+                            className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors duration-200 border-b border-slate-100 dark:border-slate-800 last:border-0 print:border print:border-black print:hover:bg-transparent print:!opacity-100 print:!transform-none"
+                          >
+                            <td className="px-4 py-3 text-center text-slate-400 font-medium print:border print:border-black print:text-black">{toArabicNumerals(idx + 1)}</td>
+                            <td className="px-4 py-3 font-semibold text-slate-800 dark:text-slate-200 whitespace-nowrap print:border print:border-black print:text-black">{student.arabic_name || student.name}</td>
+                            
+                            {assessmentData.orderedSubjects?.map(s => (
+                              <td key={s.id} className="px-4 py-3 text-center font-medium text-slate-700 dark:text-slate-300 print:border print:border-black print:text-black">
+                                {student.subjectScores[s.id] !== undefined ? toArabicNumerals(student.subjectScores[s.id]!) : '-'}
+                              </td>
+                            ))}
+                            
+                            <td className="px-4 py-3 text-center font-bold text-slate-800 dark:text-white print:border print:border-black print:text-black">
+                              {student.total > 0 ? toArabicNumerals(student.total) : '-'}
+                            </td>
+                            
+                            <td className="px-4 py-3 text-center font-bold text-emerald-600 dark:text-emerald-400 print:border print:border-black print:text-black">
+                              {student.total > 0 ? toArabicNumerals(student.position) : '-'}
+                            </td>
+                            
+                            <td className="px-4 py-3 text-center font-medium print:border print:border-black print:text-black">
+                              {student.total > 0 ? (
+                                <RemarkBadge score={student.total / (assessmentData.orderedSubjects.length || 1)} />
+                              ) : '-'}
+                            </td>
+                          </motion.tr>
                         ))}
-                        <td className="border border-slate-800 p-2 text-center font-bold text-emerald-800">{student.total > 0 ? toArabicNumerals(student.total) : ''}</td>
-                        <td className="border border-slate-800 p-2 text-center font-bold text-emerald-800">{student.total > 0 ? toArabicNumerals(student.position) : ''}</td>
-                        <td className="border border-slate-800 p-2 text-center font-medium">
-                          {student.total > 0 ? getArabicRemark(student.total / (assessmentData.orderedSubjects.length || 1)) : ''}
-                        </td>
-                      </tr>
-                    ))}
-                    {/* Empty rows to fill space if needed */}
-                    {Array.from({ length: Math.max(0, 15 - (assessmentData.students?.length || 0)) }).map((_, i) => (
-                      <tr key={`empty-${i}`}>
-                        <td className="border border-slate-800 p-2 text-center">&nbsp;</td>
-                        <td className="border border-slate-800 p-2">&nbsp;</td>
-                        {assessmentData.orderedSubjects?.map(s => (
-                          <td key={`empty-${s.id}`} className="border border-slate-800 p-2">&nbsp;</td>
+
+                        {/* Empty Rows Padding for Print/Visual Balance */}
+                        {Array.from({ length: Math.max(0, 10 - (assessmentData.students?.length || 0)) }).map((_, i) => (
+                          <tr key={`empty-${i}`} className="border-b border-slate-100 last:border-0 print:border print:border-black print:h-10">
+                            <td className="px-4 py-3 print:border print:border-black">&nbsp;</td>
+                            <td className="px-4 py-3 print:border print:border-black">&nbsp;</td>
+                            {assessmentData.orderedSubjects?.map(s => <td key={`empty-${s.id}`} className="px-4 py-3 print:border print:border-black">&nbsp;</td>)}
+                            <td className="px-4 py-3 print:border print:border-black">&nbsp;</td>
+                            <td className="px-4 py-3 print:border print:border-black">&nbsp;</td>
+                            <td className="px-4 py-3 print:border print:border-black">&nbsp;</td>
+                          </tr>
                         ))}
-                        <td className="border border-slate-800 p-2">&nbsp;</td>
-                        <td className="border border-slate-800 p-2">&nbsp;</td>
-                        <td className="border border-slate-800 p-2">&nbsp;</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                      </motion.tbody>
+                    </table>
+                  </div>
+                </div>
 
                 {/* Footer Signatures */}
-                <div className="flex justify-between items-center mt-12 px-8">
+                <div className="flex justify-between items-center mt-12 px-8 text-slate-700 print:text-black">
                   <div className="text-center">
-                    <p className="font-bold mb-4">توقيع مربي الفصل:</p>
-                    <div className="border-b-2 border-dotted border-slate-400 w-48"></div>
+                    <p className="font-bold mb-6 text-sm">توقيع مربي الفصل:</p>
+                    <div className="border-b-2 border-dotted border-slate-400 print:border-black w-48"></div>
                   </div>
                   <div className="text-center">
-                    <p className="font-bold mb-4">توقيع مشرف التعليم:</p>
-                    <div className="border-b-2 border-dotted border-slate-400 w-48"></div>
+                    <p className="font-bold mb-6 text-sm">توقيع مشرف التعليم:</p>
+                    <div className="border-b-2 border-dotted border-slate-400 print:border-black w-48"></div>
                   </div>
                 </div>
               </div>
@@ -396,123 +430,133 @@ export default function TheologyHubClient({
             
             {/* Analysis Tab */}
             {activeTab === 'analysis' && activeLevel && (
-              <div className="p-10 font-arabic text-right" dir="rtl">
+              <div className="font-arabic text-right print:p-10" dir="rtl">
                 <div className="text-center mb-8">
-                  <h2 className="text-xl font-bold mb-2">بسم الله الرحمن الرحيم</h2>
-                  <h1 className="text-2xl font-bold text-emerald-800 mb-2">مدرسة جدة الإسلامية للروضة والابتدائية</h1>
-                  <h3 className="text-xl font-bold mb-4 underline">
-                    النظرة الأولى الدقيقة لنتائج منتصف الفترة 
-                  </h3>
+                  <h2 className="text-lg font-bold mb-1 text-slate-800 print:text-black">بسم الله الرحمن الرحيم</h2>
+                  <h1 className="text-2xl font-extrabold text-emerald-800 mb-2 print:text-black">مدرسة جدة الإسلامية للروضة والابتدائية</h1>
+                  <h3 className="text-xl font-bold mb-4 underline underline-offset-4 text-slate-700 print:text-black">النظرة الأولى الدقيقة لنتائج منتصف الفترة</h3>
                 </div>
 
-                <div className="flex justify-between items-center mb-6 font-bold">
+                <div className="flex justify-between items-center mb-6 font-semibold text-slate-700 print:text-black bg-white/50 print:bg-transparent px-4 py-3 rounded-xl border border-slate-200/50 print:border-none shadow-sm print:shadow-none">
                   <div>
                     <span>المرحلة: </span>
-                    <span className="text-emerald-800 underline underline-offset-4 decoration-dotted px-4">
+                    <span className="text-emerald-800 print:text-black font-bold px-4">
                       {activeLevel === 'raudha' ? 'الروضة' : activeLevel === 'ibtidaai_lower' ? 'الابتدائية السفلى' : 'الابتدائية العليا'}
                     </span>
                   </div>
                   <div>
                     <span>الفترة: </span>
-                    <span className="text-emerald-800 underline underline-offset-4 decoration-dotted px-4">
+                    <span className="text-emerald-800 print:text-black font-bold px-4">
                       {terms.find(t => t.id === activeTermId)?.label === 'Term 1' ? 'الأولى' : terms.find(t => t.id === activeTermId)?.label === 'Term 2' ? 'الثانية' : 'الثالثة'}
                     </span>
                   </div>
                   <div>
                     <span>السنة: </span>
-                    <span className="text-emerald-800 underline underline-offset-4 decoration-dotted px-4">
+                    <span className="text-emerald-800 print:text-black font-bold px-4">
                       {toArabicNumerals(terms.find(t => t.id === activeTermId)?.academic_year || '')}م
                     </span>
                   </div>
                 </div>
 
-                <table className="w-full border-collapse border-2 border-slate-800 mb-8 mt-6">
-                  <thead>
-                    <tr className="bg-slate-100">
-                      <th className="border border-slate-800 p-2 text-center w-32">الصف</th>
-                      <th className="border border-slate-800 p-2 text-center">عدد الطلاب</th>
-                      <th className="border border-slate-800 p-2 text-center">ممتاز</th>
-                      <th className="border border-slate-800 p-2 text-center">جيد جداً</th>
-                      <th className="border border-slate-800 p-2 text-center">جيد</th>
-                      <th className="border border-slate-800 p-2 text-center">مقبول</th>
-                      <th className="border border-slate-800 p-2 text-center">ضعيف</th>
-                      <th className="border border-slate-800 p-2 text-center">نسبة النجاح</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {theologyClasses.filter(c => c.level === activeLevel).map((cls) => {
-                      // Calculate stats for this class
-                      const classEnrollments = data.enrollments.filter(e => e.theology_class_id === cls.id)
-                      const targetSubjects = ['القرآن', 'اللغة العربية', 'الفقه', 'التربية', 'التوحيد', 'السيرة']
-                      const levelSubjects = data.subjects.filter(s => s.level === activeLevel)
-                      const orderedSubjects = [...levelSubjects].sort((a, b) => {
-                        let aIdx = targetSubjects.findIndex(t => a.subject_name_arabic.includes(t))
-                        let bIdx = targetSubjects.findIndex(t => b.subject_name_arabic.includes(t))
-                        if (aIdx === -1) aIdx = 999
-                        if (bIdx === -1) bIdx = 999
-                        return aIdx - bIdx
-                      }).slice(0, 5)
-
-                      let numStudents = 0
-                      let excellent = 0
-                      let vGood = 0
-                      let good = 0
-                      let fair = 0
-                      let weak = 0
-
-                      classEnrollments.forEach(e => {
-                        const eMarks = data.marks.filter(m => m.enrollment_id === e.id)
-                        let total = 0
-                        let hasMarks = false
-                        orderedSubjects.forEach(sub => {
-                          const mark = eMarks.find(m => m.subject_id === sub.id)
-                          const score = mark?.mot_score != null ? mark.mot_score : mark?.eot_score
-                          if (score != null) {
-                            total += score
-                            hasMarks = true
-                          }
-                        })
-                        
-                        if (hasMarks) {
-                          numStudents++
-                          const avg = total / (orderedSubjects.length || 1)
-                          if (avg >= 75) excellent++
-                          else if (avg >= 65) vGood++
-                          else if (avg >= 50) good++
-                          else if (avg >= 40) fair++
-                          else weak++
-                        }
-                      })
-
-                      const passed = excellent + vGood + good + fair
-                      const passRate = numStudents > 0 ? Math.round((passed / numStudents) * 100) : 0
-
-                      return (
-                        <tr key={cls.id}>
-                          <td className="border border-slate-800 p-2 text-center font-bold bg-slate-50">{cls.class_name_arabic}</td>
-                          <td className="border border-slate-800 p-2 text-center">{toArabicNumerals(numStudents)}</td>
-                          <td className="border border-slate-800 p-2 text-center">{toArabicNumerals(excellent)}</td>
-                          <td className="border border-slate-800 p-2 text-center">{toArabicNumerals(vGood)}</td>
-                          <td className="border border-slate-800 p-2 text-center">{toArabicNumerals(good)}</td>
-                          <td className="border border-slate-800 p-2 text-center">{toArabicNumerals(fair)}</td>
-                          <td className="border border-slate-800 p-2 text-center">{toArabicNumerals(weak)}</td>
-                          <td className="border border-slate-800 p-2 text-center font-bold text-emerald-700" dir="rtl">% {toArabicNumerals(passRate)}</td>
+                <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-200/60 dark:border-slate-800/60 overflow-hidden print:bg-transparent print:border-none print:shadow-none print:rounded-none">
+                  <div className="overflow-x-auto shadow-inner print:shadow-none print:overflow-visible">
+                    <table className="w-full text-right border-collapse print:border-2 print:border-black">
+                      <thead className="bg-slate-50/90 dark:bg-slate-800/90 backdrop-blur-md sticky top-0 z-10 print:bg-slate-100 print:static">
+                        <tr>
+                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-semibold text-sm text-center w-32 print:border print:border-black print:text-black">الصف</th>
+                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-semibold text-sm text-center print:border print:border-black print:text-black">عدد الطلاب</th>
+                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-emerald-600 font-semibold text-sm text-center print:border print:border-black print:text-black">ممتاز</th>
+                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-teal-600 font-semibold text-sm text-center print:border print:border-black print:text-black">جيد جداً</th>
+                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-amber-600 font-semibold text-sm text-center print:border print:border-black print:text-black">جيد</th>
+                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-orange-600 font-semibold text-sm text-center print:border print:border-black print:text-black">مقبول</th>
+                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-rose-600 font-semibold text-sm text-center print:border print:border-black print:text-black">ضعيف</th>
+                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-700 font-semibold text-sm text-center print:border print:border-black print:text-black">نسبة النجاح</th>
                         </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+                      </thead>
+                      <motion.tbody 
+                        initial="hidden" 
+                        animate="visible" 
+                        variants={tableVariants}
+                        className="print:!opacity-100 print:!transform-none"
+                      >
+                        {theologyClasses.filter(c => c.level === activeLevel).map((cls) => {
+                          const classEnrollments = data.enrollments.filter(e => e.theology_class_id === cls.id)
+                          const targetSubjects = ['القرآن', 'اللغة العربية', 'الفقه', 'التربية', 'التوحيد', 'السيرة']
+                          const levelSubjects = data.subjects.filter(s => s.level === activeLevel)
+                          const orderedSubjects = [...levelSubjects].sort((a, b) => {
+                            let aIdx = targetSubjects.findIndex(t => a.subject_name_arabic.includes(t))
+                            let bIdx = targetSubjects.findIndex(t => b.subject_name_arabic.includes(t))
+                            if (aIdx === -1) aIdx = 999
+                            if (bIdx === -1) bIdx = 999
+                            return aIdx - bIdx
+                          }).slice(0, 5)
+
+                          let numStudents = 0
+                          let excellent = 0
+                          let vGood = 0
+                          let good = 0
+                          let fair = 0
+                          let weak = 0
+
+                          classEnrollments.forEach(e => {
+                            const eMarks = data.marks.filter(m => m.enrollment_id === e.id)
+                            let total = 0
+                            let hasMarks = false
+                            orderedSubjects.forEach(sub => {
+                              const mark = eMarks.find(m => m.subject_id === sub.id)
+                              const score = mark?.mot_score != null ? mark.mot_score : mark?.eot_score
+                              if (score != null) {
+                                total += score
+                                hasMarks = true
+                              }
+                            })
+                            
+                            if (hasMarks) {
+                              numStudents++
+                              const avg = total / (orderedSubjects.length || 1)
+                              if (avg >= 75) excellent++
+                              else if (avg >= 65) vGood++
+                              else if (avg >= 50) good++
+                              else if (avg >= 40) fair++
+                              else weak++
+                            }
+                          })
+
+                          const passed = excellent + vGood + good + fair
+                          const passRate = numStudents > 0 ? Math.round((passed / numStudents) * 100) : 0
+
+                          return (
+                            <motion.tr 
+                              variants={rowVariants}
+                              key={cls.id}
+                              className="hover:bg-slate-50/80 transition-colors duration-200 border-b border-slate-100 last:border-0 print:border print:border-black print:hover:bg-transparent print:!opacity-100 print:!transform-none"
+                            >
+                              <td className="px-4 py-3 text-center font-bold text-slate-800 bg-slate-50/30 print:border print:border-black print:text-black">{cls.class_name_arabic}</td>
+                              <td className="px-4 py-3 text-center font-medium text-slate-600 print:border print:border-black print:text-black">{toArabicNumerals(numStudents)}</td>
+                              <td className="px-4 py-3 text-center font-semibold text-emerald-700 print:border print:border-black print:text-black">{toArabicNumerals(excellent)}</td>
+                              <td className="px-4 py-3 text-center font-semibold text-teal-700 print:border print:border-black print:text-black">{toArabicNumerals(vGood)}</td>
+                              <td className="px-4 py-3 text-center font-semibold text-amber-700 print:border print:border-black print:text-black">{toArabicNumerals(good)}</td>
+                              <td className="px-4 py-3 text-center font-semibold text-orange-700 print:border print:border-black print:text-black">{toArabicNumerals(fair)}</td>
+                              <td className="px-4 py-3 text-center font-semibold text-rose-700 print:border print:border-black print:text-black">{toArabicNumerals(weak)}</td>
+                              <td className="px-4 py-3 text-center font-extrabold text-emerald-600 print:border print:border-black print:text-black" dir="rtl">% {toArabicNumerals(passRate)}</td>
+                            </motion.tr>
+                          )
+                        })}
+                      </motion.tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
             )}
 
             {/* Top Students Tab */}
             {activeTab === 'top_students' && activeLevel && (
-              <div className="p-10 font-arabic text-right" dir="rtl">
+              <div className="font-arabic text-right print:p-10" dir="rtl">
                 <div className="text-center mb-8">
-                  <h3 className="text-2xl font-bold underline mb-8 mt-12">أسماء المتفوقين من كل مرحلة مع ذكر المعدل التراكمي لكل منهم</h3>
+                  <h3 className="text-2xl font-extrabold underline underline-offset-8 text-emerald-800 print:text-black mb-10 mt-6">أسماء المتفوقين من كل مرحلة مع ذكر المعدل التراكمي لكل منهم</h3>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                   {theologyClasses.filter(c => c.level === activeLevel).map((cls) => {
                     const classEnrollments = data.enrollments.filter(e => e.theology_class_id === cls.id)
                     const targetSubjects = ['القرآن', 'اللغة العربية', 'الفقه', 'التربية', 'التوحيد', 'السيرة']
@@ -535,7 +579,7 @@ export default function TheologyHubClient({
                       })
                       return {
                         id: e.id,
-                        name: e.students.arabic_name,
+                        name: e.students.arabic_name || e.students.name,
                         total,
                         avg: total / (orderedSubjects.length || 1)
                       }
@@ -544,29 +588,37 @@ export default function TheologyHubClient({
                     if (students.length === 0) return null
 
                     return (
-                      <div key={cls.id} className="border-2 border-slate-800 rounded-lg overflow-hidden">
-                        <div className="bg-slate-100 p-3 border-b-2 border-slate-800 font-bold text-center">
-                          {cls.class_name_arabic}
+                      <motion.div 
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.3 }}
+                        key={cls.id} 
+                        className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-200/60 dark:border-slate-800/60 overflow-hidden print:bg-transparent print:border-none print:shadow-none print:rounded-none"
+                      >
+                        <div className="bg-slate-50/90 backdrop-blur-md p-4 border-b border-slate-200/60 text-center print:border print:border-black print:bg-slate-100">
+                          <h4 className="font-extrabold text-slate-800 print:text-black text-lg">{cls.class_name_arabic}</h4>
                         </div>
-                        <table className="w-full">
-                          <thead>
-                            <tr className="bg-slate-50 border-b border-slate-800">
-                              <th className="p-2 border-l border-slate-800 w-12 text-center">م</th>
-                              <th className="p-2 border-l border-slate-800 text-right">الاسم</th>
-                              <th className="p-2 text-center w-24">المعدل</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {students.map((student, idx) => (
-                              <tr key={student.id} className="border-b border-slate-800 last:border-0">
-                                <td className="p-2 border-l border-slate-800 text-center font-bold">{toArabicNumerals(idx + 1)}</td>
-                                <td className="p-2 border-l border-slate-800 font-bold text-emerald-800">{student.name}</td>
-                                <td className="p-2 text-center font-bold">{toArabicNumerals(Math.round(student.avg))}</td>
+                        <div className="overflow-x-auto print:overflow-visible">
+                          <table className="w-full border-collapse print:border-2 print:border-black">
+                            <thead className="bg-slate-50/50 print:bg-slate-100">
+                              <tr>
+                                <th className="px-4 py-2 text-slate-500 font-semibold text-sm border-b border-slate-200/60 w-12 text-center print:border print:border-black print:text-black">م</th>
+                                <th className="px-4 py-2 text-slate-500 font-semibold text-sm border-b border-slate-200/60 text-right print:border print:border-black print:text-black">الاسم</th>
+                                <th className="px-4 py-2 text-slate-500 font-semibold text-sm border-b border-slate-200/60 text-center w-28 print:border print:border-black print:text-black">المعدل</th>
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
+                            </thead>
+                            <tbody>
+                              {students.map((student, idx) => (
+                                <tr key={student.id} className="hover:bg-slate-50/50 transition-colors duration-200 border-b border-slate-100 last:border-0 print:border print:border-black">
+                                  <td className="px-4 py-3 text-center font-bold text-slate-400 print:border print:border-black print:text-black">{toArabicNumerals(idx + 1)}</td>
+                                  <td className="px-4 py-3 font-bold text-emerald-800 print:border print:border-black print:text-black">{student.name}</td>
+                                  <td className="px-4 py-3 text-center font-extrabold text-slate-700 print:border print:border-black print:text-black">{toArabicNumerals(Math.round(student.avg))}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </motion.div>
                     )
                   })}
                 </div>

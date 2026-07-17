@@ -88,7 +88,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
   
   const [activeReportId, setActiveReportId] = useState<string | null>(null)
   const [zoom, setZoom] = useState(0.75)
-  const [printScope, setPrintScope] = useState<'current' | 'all'>('current')
+  const [printScope, setPrintScope] = useState<'current' | 'all' | string[]>('current')
   const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false)
   const [sidePanelOpen, setSidePanelOpen] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
@@ -463,10 +463,40 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
       <PrintDialog
         open={isPrintDialogOpen}
         onOpenChange={setIsPrintDialogOpen}
-        reportCount={rawReports.length}
+        reports={rawReports}
         onConfirmPrint={(mode) => {
           setPrintScope(mode)
-          setTimeout(() => window.print(), 300)
+          
+          let sanitizedFilename = 'Report.pdf';
+          
+          if (mode === 'current') {
+            const currentReport = rawReports.find(r => r.id === activeReportId);
+            const studentName = currentReport?.student_name || 'Student';
+            const term = filterState.term ? `_Term_${filterState.term}` : '';
+            sanitizedFilename = `${studentName}${term}_Report.pdf`;
+          } else if (mode === 'all') {
+            const className = filterState.classId ? figmaClasses.find(c => c.id === filterState.classId)?.name || filterState.classId : 'Batch';
+            const term = filterState.term ? `_Term_${filterState.term}` : '';
+            sanitizedFilename = `${className}${term}_Batch_Reports.pdf`;
+          } else {
+            sanitizedFilename = `Custom_Batch_Reports_${new Date().toISOString().split('T')[0]}.pdf`;
+          }
+          
+          // Sanitize filename for illegal Windows/macOS characters
+          sanitizedFilename = sanitizedFilename.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_');
+          
+          const originalTitle = document.title;
+          document.title = sanitizedFilename;
+          
+          setTimeout(() => {
+            window.print();
+          }, 300);
+          
+          const restoreTitle = () => {
+            document.title = originalTitle;
+            window.removeEventListener('afterprint', restoreTitle);
+          };
+          window.addEventListener('afterprint', restoreTitle);
         }}
       />
 

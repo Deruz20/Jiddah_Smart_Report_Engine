@@ -153,7 +153,8 @@ export default function TheologyHubClient({
   }, [assessmentData.students]);
 
   // Helper to convert English digits to Eastern Arabic digits
-  const toArabicNumerals = (num: string | number) => {
+  const toArabicNumerals = (num: string | number | null | undefined) => {
+    if (num == null || num === '') return ''
     return num.toString().replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[parseInt(d)])
   }
 

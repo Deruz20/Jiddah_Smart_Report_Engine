@@ -4,12 +4,14 @@ import { Download, Printer, Share2, MessageSquare, Search, X, LayoutGrid, List, 
 import * as Tooltip from '@radix-ui/react-tooltip';
 import * as Popover from '@radix-ui/react-popover';
 import * as Dialog from '@radix-ui/react-dialog';
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { useSidebar } from './ui/sidebar';
 
 interface TopToolbarProps {
   searchOpen?: boolean;
   onSearchToggle?: () => void;
   onDownload?: () => void;
+  downloadOptions?: { label: string, onClick: () => void, icon?: React.ReactNode }[];
   onPrint?: () => void;
   onShare?: () => void;
   reportCount?: number;
@@ -25,6 +27,7 @@ export function TopToolbar({
   searchOpen = false,
   onSearchToggle,
   onDownload,
+  downloadOptions,
   onPrint,
   onShare,
   reportCount = 0,
@@ -123,15 +126,54 @@ export function TopToolbar({
           </div>
         )}
 
-        {/* ── Download ──────────────────── */}
-        {onDownload && (
+        {/* ── Download / Export ─────────── */}
+        {downloadOptions && downloadOptions.length > 0 ? (
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger asChild>
+              <div className="flex-shrink-0">
+                <IconBtn
+                  icon={<Download size={16} />}
+                  tooltip="Export / Download"
+                  onClick={() => {}}
+                  disabled={reportCount === 0 && !title}
+                />
+              </div>
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Portal>
+              <DropdownMenu.Content
+                align="end"
+                sideOffset={6}
+                style={{
+                  background: 'white',
+                  borderRadius: 8,
+                  padding: 4,
+                  minWidth: 200,
+                  boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
+                  border: '1px solid rgba(0,0,0,0.08)',
+                  zIndex: 300,
+                }}
+              >
+                {downloadOptions.map((opt, i) => (
+                  <DropdownMenu.Item
+                    key={i}
+                    onClick={opt.onClick}
+                    className="flex items-center gap-3 px-3 py-2 text-sm text-slate-700 font-medium cursor-pointer rounded-md outline-none focus:bg-emerald-50 focus:text-emerald-700 transition-colors"
+                  >
+                    {opt.icon}
+                    {opt.label}
+                  </DropdownMenu.Item>
+                ))}
+              </DropdownMenu.Content>
+            </DropdownMenu.Portal>
+          </DropdownMenu.Root>
+        ) : onDownload ? (
           <IconBtn
             icon={<Download size={16} />}
             tooltip="Download reports"
             onClick={onDownload}
             disabled={reportCount === 0 && !title}
           />
-        )}
+        ) : null}
 
         {/* ── Print ─────────────────────── */}
         {onPrint && (

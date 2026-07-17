@@ -7,6 +7,8 @@ import { toast } from 'sonner'
 import { createClient } from "@/utils/supabase/client"
 import { TheologyHubEmptyState } from './TheologyHubEmptyState'
 import { TopToolbar } from '../figma-ui/TopToolbar'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
+import { generateAssessmentCSV, generateAnalysisCSV, generateTopStudentsCSV } from '@/utils/csvExport'
 
 type TermData = {
   id: string
@@ -59,20 +61,25 @@ export default function TheologyHubClient({
   terms: TermData[]
   theologyClasses: TheologyClassData[]
 }) {
-  const [activeTermId, setActiveTermId] = useState<string>(terms.find(t => t.is_current)?.id || terms[0]?.id || '')
-  const [activeClassId, setActiveClassId] = useState<string>('')
-  const [activeLevel, setActiveLevel] = useState<string>('raudha')
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+
+  const [activeTermId, setActiveTermId] = useState<string>(searchParams.get('term_id') || terms.find(t => t.is_current)?.id || terms[0]?.id || '')
+  const [activeClassId, setActiveClassId] = useState<string>(searchParams.get('class_id') || '')
+  const [activeLevel, setActiveLevel] = useState<string>(searchParams.get('level') || 'raudha')
+  const [activeTab, setActiveTab] = useState<'assessment' | 'analysis' | 'top_students'>((searchParams.get('tab') as any) || 'assessment')
   const [filtersOpen, setFiltersOpen] = useState(true)
   
-  const [activeTab, setActiveTab] = useState<'assessment' | 'analysis' | 'top_students'>('assessment')
-
   const [isLoading, setIsLoading] = useState(false)
+  const [isDownloading, setIsDownloading] = useState(false)
   const [data, setData] = useState<{
     enrollments: any[]
     marks: any[]
     subjects: any[]
   } | null>(null)
 
+  // Fetch Data
   useEffect(() => {
     if (!activeTermId) return
 
@@ -93,16 +100,26 @@ export default function TheologyHubClient({
     fetchData()
   }, [activeTermId])
 
+  // Sync URL State
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (activeTermId) params.set('term_id', activeTermId)
+    if (activeClassId) params.set('class_id', activeClassId)
+    if (activeLevel) params.set('level', activeLevel)
+    if (activeTab) params.set('tab', activeTab)
+    
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+  }, [activeTermId, activeClassId, activeLevel, activeTab, pathname, router, searchParams])
+
   // Process data for the Assessment Form
   const assessmentData = useMemo(() => {
-    if (!data || !activeClassId) return []
+    if (!data || !activeClassId) return { students: [], orderedSubjects: [] }
     
     const classEnrollments = data.enrollments.filter(e => e.theology_class_id === activeClassId)
     const classInfo = theologyClasses.find(c => c.id === activeClassId)
-    if (!classInfo) return []
+    if (!classInfo) return { students: [], orderedSubjects: [] }
     
     const levelSubjects = data.subjects.filter(s => s.level === classInfo.level)
-    
     const targetSubjects = ['القرآن', 'اللغة العربية', 'الفقه', 'التربية', 'التوحيد', 'السيرة']
     
     const orderedSubjects = [...levelSubjects].sort((a, b) => {
@@ -132,6 +149,7 @@ export default function TheologyHubClient({
         arabic_name: enrollment.students.arabic_name,
         total,
         subjectScores,
+        position: '-' as number | string
       }
     })
 
@@ -147,6 +165,115 @@ export default function TheologyHubClient({
     }
   }, [data, activeClassId, theologyClasses])
 
+  // Process data for the Analysis Form
+  const analysisData = useMemo(() => {
+    if (!data || !activeLevel) return []
+    const classes = theologyClasses.filter(c => c.level === activeLevel)
+    const targetSubjects = ['القرآن', 'اللغة العربية', 'الفقه', 'التربية', 'التوحيد', 'السيرة']
+    const levelSubjects = data.subjects.filter(s => s.level === activeLevel)
+    const orderedSubjects = [...levelSubjects].sort((a, b) => {
+      let aIdx = targetSubjects.findIndex(t => a.subject_name_arabic.includes(t))
+      let bIdx = targetSubjects.findIndex(t => b.subject_name_arabic.includes(t))
+      if (aIdx === -1) aIdx = 999
+      if (bIdx === -1) bIdx = 999
+      return aIdx - bIdx
+    }).slice(0, 5)
+
+    return classes.map(cls => {
+      const classEnrollments = data.enrollments.filter(e => e.theology_class_id === cls.id)
+      let numStudents = 0
+      let excellent = 0
+      let vGood = 0
+      let good = 0
+      let fair = 0
+      let weak = 0
+
+      classEnrollments.forEach(e => {
+        const eMarks = data.marks.filter(m => m.enrollment_id === e.id)
+        let total = 0
+        let hasMarks = false
+        orderedSubjects.forEach(sub => {
+          const mark = eMarks.find(m => m.subject_id === sub.id)
+          const score = mark?.mot_score != null ? mark.mot_score : mark?.eot_score
+          if (score != null) {
+            total += score
+            hasMarks = true
+          }
+        })
+        
+        if (hasMarks) {
+          numStudents++
+          const avg = total / (orderedSubjects.length || 1)
+          if (avg >= 75) excellent++
+          else if (avg >= 65) vGood++
+          else if (avg >= 50) good++
+          else if (avg >= 40) fair++
+          else weak++
+        }
+      })
+
+      const passed = excellent + vGood + good + fair
+      const passRate = numStudents > 0 ? Math.round((passed / numStudents) * 100) : 0
+      
+      return {
+        id: cls.id,
+        className: cls.class_name_arabic,
+        numStudents,
+        excellent,
+        vGood,
+        good,
+        fair,
+        weak,
+        passRate
+      }
+    })
+  }, [data, activeLevel, theologyClasses])
+
+  // Process data for Top Students Form
+  const topStudentsData = useMemo(() => {
+    if (!data || !activeLevel) return []
+    const classes = theologyClasses.filter(c => c.level === activeLevel)
+    const targetSubjects = ['القرآن', 'اللغة العربية', 'الفقه', 'التربية', 'التوحيد', 'السيرة']
+    const levelSubjects = data.subjects.filter(s => s.level === activeLevel)
+    const orderedSubjects = [...levelSubjects].sort((a, b) => {
+      let aIdx = targetSubjects.findIndex(t => a.subject_name_arabic.includes(t))
+      let bIdx = targetSubjects.findIndex(t => b.subject_name_arabic.includes(t))
+      if (aIdx === -1) aIdx = 999
+      if (bIdx === -1) bIdx = 999
+      return aIdx - bIdx
+    }).slice(0, 5)
+
+    return classes.map(cls => {
+      const classEnrollments = data.enrollments.filter(e => e.theology_class_id === cls.id)
+      const students = classEnrollments.map(e => {
+        const eMarks = data.marks.filter(m => m.enrollment_id === e.id)
+        let total = 0
+        orderedSubjects.forEach(sub => {
+          const mark = eMarks.find(m => m.subject_id === sub.id)
+          const score = mark?.mot_score != null ? mark.mot_score : mark?.eot_score
+          if (score != null) total += score
+        })
+        return {
+          id: e.id,
+          className: cls.class_name_arabic,
+          studentName: e.students.arabic_name || e.students.name,
+          total,
+          avg: total / (orderedSubjects.length || 1),
+          rank: 0
+        }
+      }).filter(s => s.total > 0).sort((a, b) => b.total - a.total).slice(0, 5)
+
+      students.forEach((s, i) => s.rank = i + 1)
+      
+      return {
+        classId: cls.id,
+        className: cls.class_name_arabic,
+        students
+      }
+    }).filter(group => group.students.length > 0)
+  }, [data, activeLevel, theologyClasses])
+
+  // Auto-transliteration for missing arabic names
   React.useEffect(() => {
     if (!assessmentData.students || assessmentData.students.length === 0) return;
     const studentsToTranslate = assessmentData.students.filter(s => !s.arabic_name);
@@ -197,12 +324,63 @@ export default function TheologyHubClient({
     window.print()
   }
 
+  const handleShare = async () => {
+    try {
+      const url = window.location.href
+      await navigator.clipboard.writeText(url)
+      toast.success("Link copied to clipboard!")
+    } catch (err) {
+      toast.error("Failed to copy link. Check your browser permissions.")
+    }
+  }
+
+  const handleDownload = () => {
+    setIsDownloading(true)
+    const dateStr = new Date().toISOString().split('T')[0]
+    const filename = `theologyhub-${activeTab}-${dateStr}.csv`
+    
+    // Slight timeout so UI can show loading state for heavy datasets
+    setTimeout(() => {
+      try {
+        if (activeTab === 'assessment') {
+          if (!assessmentData.students || assessmentData.students.length === 0) {
+            toast.error("No assessment data to download.")
+            return
+          }
+          generateAssessmentCSV(assessmentData.students, assessmentData.orderedSubjects, filename)
+        } else if (activeTab === 'analysis') {
+          if (analysisData.length === 0) {
+            toast.error("No analysis data to download.")
+            return
+          }
+          generateAnalysisCSV(analysisData, filename)
+        } else if (activeTab === 'top_students') {
+          if (topStudentsData.length === 0) {
+            toast.error("No top students data to download.")
+            return
+          }
+          const rows = topStudentsData.flatMap(g => g.students)
+          generateTopStudentsCSV(rows, filename)
+        }
+        toast.success("Download generated successfully!")
+      } catch (err) {
+        console.error(err)
+        toast.error("Failed to generate CSV.")
+      } finally {
+        setIsDownloading(false)
+      }
+    }, 50)
+  }
+
   return (
     <div className="flex flex-col h-full bg-slate-50 dark:bg-[#0f172a] print:bg-white">
       {/* TopToolbar */}
       <div className="print:hidden relative z-40 border-b border-slate-200/60 shadow-sm shrink-0">
         <TopToolbar 
           onPrint={handlePrint}
+          onShare={handleShare}
+          onDownload={handleDownload}
+          isGenerating={isDownloading}
           searchOpen={filtersOpen}
           onSearchToggle={() => setFiltersOpen(!filtersOpen)}
           title={
@@ -479,66 +657,21 @@ export default function TheologyHubClient({
                         variants={tableVariants}
                         className="print:!opacity-100 print:!transform-none"
                       >
-                        {theologyClasses.filter(c => c.level === activeLevel).map((cls) => {
-                          const classEnrollments = data.enrollments.filter(e => e.theology_class_id === cls.id)
-                          const targetSubjects = ['القرآن', 'اللغة العربية', 'الفقه', 'التربية', 'التوحيد', 'السيرة']
-                          const levelSubjects = data.subjects.filter(s => s.level === activeLevel)
-                          const orderedSubjects = [...levelSubjects].sort((a, b) => {
-                            let aIdx = targetSubjects.findIndex(t => a.subject_name_arabic.includes(t))
-                            let bIdx = targetSubjects.findIndex(t => b.subject_name_arabic.includes(t))
-                            if (aIdx === -1) aIdx = 999
-                            if (bIdx === -1) bIdx = 999
-                            return aIdx - bIdx
-                          }).slice(0, 5)
-
-                          let numStudents = 0
-                          let excellent = 0
-                          let vGood = 0
-                          let good = 0
-                          let fair = 0
-                          let weak = 0
-
-                          classEnrollments.forEach(e => {
-                            const eMarks = data.marks.filter(m => m.enrollment_id === e.id)
-                            let total = 0
-                            let hasMarks = false
-                            orderedSubjects.forEach(sub => {
-                              const mark = eMarks.find(m => m.subject_id === sub.id)
-                              const score = mark?.mot_score != null ? mark.mot_score : mark?.eot_score
-                              if (score != null) {
-                                total += score
-                                hasMarks = true
-                              }
-                            })
-                            
-                            if (hasMarks) {
-                              numStudents++
-                              const avg = total / (orderedSubjects.length || 1)
-                              if (avg >= 75) excellent++
-                              else if (avg >= 65) vGood++
-                              else if (avg >= 50) good++
-                              else if (avg >= 40) fair++
-                              else weak++
-                            }
-                          })
-
-                          const passed = excellent + vGood + good + fair
-                          const passRate = numStudents > 0 ? Math.round((passed / numStudents) * 100) : 0
-
+                        {analysisData.map((cls) => {
                           return (
                             <motion.tr 
                               variants={rowVariants}
                               key={cls.id}
                               className="hover:bg-slate-50/80 transition-colors duration-200 border-b border-slate-100 last:border-0 print:border print:border-black print:hover:bg-transparent print:!opacity-100 print:!transform-none"
                             >
-                              <td className="px-4 py-3 text-center font-bold text-slate-800 bg-slate-50/30 print:border print:border-black print:text-black">{cls.class_name_arabic}</td>
-                              <td className="px-4 py-3 text-center font-medium text-slate-600 print:border print:border-black print:text-black">{toArabicNumerals(numStudents)}</td>
-                              <td className="px-4 py-3 text-center font-semibold text-emerald-700 print:border print:border-black print:text-black">{toArabicNumerals(excellent)}</td>
-                              <td className="px-4 py-3 text-center font-semibold text-teal-700 print:border print:border-black print:text-black">{toArabicNumerals(vGood)}</td>
-                              <td className="px-4 py-3 text-center font-semibold text-amber-700 print:border print:border-black print:text-black">{toArabicNumerals(good)}</td>
-                              <td className="px-4 py-3 text-center font-semibold text-orange-700 print:border print:border-black print:text-black">{toArabicNumerals(fair)}</td>
-                              <td className="px-4 py-3 text-center font-semibold text-rose-700 print:border print:border-black print:text-black">{toArabicNumerals(weak)}</td>
-                              <td className="px-4 py-3 text-center font-extrabold text-emerald-600 print:border print:border-black print:text-black" dir="rtl">% {toArabicNumerals(passRate)}</td>
+                              <td className="px-4 py-3 text-center font-bold text-slate-800 bg-slate-50/30 print:border print:border-black print:text-black">{cls.className}</td>
+                              <td className="px-4 py-3 text-center font-medium text-slate-600 print:border print:border-black print:text-black">{toArabicNumerals(cls.numStudents)}</td>
+                              <td className="px-4 py-3 text-center font-semibold text-emerald-700 print:border print:border-black print:text-black">{toArabicNumerals(cls.excellent)}</td>
+                              <td className="px-4 py-3 text-center font-semibold text-teal-700 print:border print:border-black print:text-black">{toArabicNumerals(cls.vGood)}</td>
+                              <td className="px-4 py-3 text-center font-semibold text-amber-700 print:border print:border-black print:text-black">{toArabicNumerals(cls.good)}</td>
+                              <td className="px-4 py-3 text-center font-semibold text-orange-700 print:border print:border-black print:text-black">{toArabicNumerals(cls.fair)}</td>
+                              <td className="px-4 py-3 text-center font-semibold text-rose-700 print:border print:border-black print:text-black">{toArabicNumerals(cls.weak)}</td>
+                              <td className="px-4 py-3 text-center font-extrabold text-emerald-600 print:border print:border-black print:text-black" dir="rtl">% {toArabicNumerals(cls.passRate)}</td>
                             </motion.tr>
                           )
                         })}
@@ -557,46 +690,17 @@ export default function TheologyHubClient({
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                  {theologyClasses.filter(c => c.level === activeLevel).map((cls) => {
-                    const classEnrollments = data.enrollments.filter(e => e.theology_class_id === cls.id)
-                    const targetSubjects = ['القرآن', 'اللغة العربية', 'الفقه', 'التربية', 'التوحيد', 'السيرة']
-                    const levelSubjects = data.subjects.filter(s => s.level === activeLevel)
-                    const orderedSubjects = [...levelSubjects].sort((a, b) => {
-                      let aIdx = targetSubjects.findIndex(t => a.subject_name_arabic.includes(t))
-                      let bIdx = targetSubjects.findIndex(t => b.subject_name_arabic.includes(t))
-                      if (aIdx === -1) aIdx = 999
-                      if (bIdx === -1) bIdx = 999
-                      return aIdx - bIdx
-                    }).slice(0, 5)
-
-                    const students = classEnrollments.map(e => {
-                      const eMarks = data.marks.filter(m => m.enrollment_id === e.id)
-                      let total = 0
-                      orderedSubjects.forEach(sub => {
-                        const mark = eMarks.find(m => m.subject_id === sub.id)
-                        const score = mark?.mot_score != null ? mark.mot_score : mark?.eot_score
-                        if (score != null) total += score
-                      })
-                      return {
-                        id: e.id,
-                        name: e.students.arabic_name || e.students.name,
-                        total,
-                        avg: total / (orderedSubjects.length || 1)
-                      }
-                    }).filter(s => s.total > 0).sort((a, b) => b.total - a.total).slice(0, 5) // top 5
-
-                    if (students.length === 0) return null
-
+                  {topStudentsData.map((cls) => {
                     return (
                       <motion.div 
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ duration: 0.3 }}
-                        key={cls.id} 
+                        key={cls.classId} 
                         className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-200/60 dark:border-slate-800/60 overflow-hidden print:bg-transparent print:border-none print:shadow-none print:rounded-none"
                       >
                         <div className="bg-slate-50/90 backdrop-blur-md p-4 border-b border-slate-200/60 text-center print:border print:border-black print:bg-slate-100">
-                          <h4 className="font-extrabold text-slate-800 print:text-black text-lg">{cls.class_name_arabic}</h4>
+                          <h4 className="font-extrabold text-slate-800 print:text-black text-lg">{cls.className}</h4>
                         </div>
                         <div className="overflow-x-auto print:overflow-visible">
                           <table className="w-full border-collapse print:border-2 print:border-black">
@@ -608,10 +712,10 @@ export default function TheologyHubClient({
                               </tr>
                             </thead>
                             <tbody>
-                              {students.map((student, idx) => (
+                              {cls.students.map((student, idx) => (
                                 <tr key={student.id} className="hover:bg-slate-50/50 transition-colors duration-200 border-b border-slate-100 last:border-0 print:border print:border-black">
                                   <td className="px-4 py-3 text-center font-bold text-slate-400 print:border print:border-black print:text-black">{toArabicNumerals(idx + 1)}</td>
-                                  <td className="px-4 py-3 font-bold text-emerald-800 print:border print:border-black print:text-black">{student.name}</td>
+                                  <td className="px-4 py-3 font-bold text-emerald-800 print:border print:border-black print:text-black">{student.studentName}</td>
                                   <td className="px-4 py-3 text-center font-extrabold text-slate-700 print:border print:border-black print:text-black">{toArabicNumerals(Math.round(student.avg))}</td>
                                 </tr>
                               ))}

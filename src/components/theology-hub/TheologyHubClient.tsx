@@ -108,15 +108,52 @@ export default function TheologyHubClient({
 
     // Calculate positions
     processed.sort((a, b) => b.total - a.total)
+    const uniqueTotals = Array.from(new Set(processed.map(p => p.total)))
     
     return {
       orderedSubjects,
-      students: processed.map((p, idx) => ({
+      students: processed.map((p) => ({
         ...p,
-        position: p.total > 0 ? processed.filter(x => x.total > p.total).length + 1 : '-'
+        position: p.total > 0 ? uniqueTotals.filter(x => x > p.total).length + 1 : '-'
       }))
     }
   }, [data, activeClassId, theologyClasses])
+
+  // Auto-transliteration for missing arabic names
+  React.useEffect(() => {
+    if (!assessmentData.students || assessmentData.students.length === 0) return;
+    const studentsToTranslate = assessmentData.students.filter(s => !s.arabic_name);
+    if (studentsToTranslate.length === 0) return;
+
+    const translateMissingNames = async () => {
+      try {
+        const namesToTranslate = studentsToTranslate.map(s => s.name);
+        const res = await fetch('/api/transliterate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ names: namesToTranslate })
+        });
+        if (res.ok) {
+          const { transliterated } = await res.json();
+          const supabase = createClient();
+          for (let i = 0; i < studentsToTranslate.length; i++) {
+            if (transliterated[i]) {
+              await supabase.from('students').update({ arabic_name: transliterated[i] }).eq('id', studentsToTranslate[i].id);
+            }
+          }
+          window.location.reload(); // Refresh to show transliterated names
+        }
+      } catch (err) {
+        console.error("Auto transliteration failed", err);
+      }
+    };
+    translateMissingNames();
+  }, [assessmentData.students]);
+
+  // Helper to convert English digits to Eastern Arabic digits
+  const toArabicNumerals = (num: string | number) => {
+    return num.toString().replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[parseInt(d)])
+  }
 
   // Get remark text in Arabic based on score
   const getArabicRemark = (score: number) => {
@@ -268,7 +305,7 @@ export default function TheologyHubClient({
                   <div>
                     <span>السنة: </span>
                     <span className="text-emerald-800 underline underline-offset-4 decoration-dotted px-4">
-                      {terms.find(t => t.id === activeTermId)?.academic_year}م
+                      {toArabicNumerals(terms.find(t => t.id === activeTermId)?.academic_year || '')}م
                     </span>
                   </div>
                 </div>
@@ -290,15 +327,15 @@ export default function TheologyHubClient({
                   <tbody>
                     {assessmentData.students?.map((student, idx) => (
                       <tr key={student.id}>
-                        <td className="border border-slate-800 p-2 text-center font-bold">{idx + 1}</td>
+                        <td className="border border-slate-800 p-2 text-center font-bold">{toArabicNumerals(idx + 1)}</td>
                         <td className="border border-slate-800 p-2 font-bold">{student.arabic_name}</td>
                         {assessmentData.orderedSubjects?.map(s => (
                           <td key={s.id} className="border border-slate-800 p-2 text-center font-semibold text-emerald-800">
-                            {student.subjectScores[s.id] ?? ''}
+                            {student.subjectScores[s.id] !== undefined ? toArabicNumerals(student.subjectScores[s.id]!) : ''}
                           </td>
                         ))}
-                        <td className="border border-slate-800 p-2 text-center font-bold text-emerald-800">{student.total > 0 ? student.total : ''}</td>
-                        <td className="border border-slate-800 p-2 text-center font-bold text-emerald-800">{student.total > 0 ? student.position : ''}</td>
+                        <td className="border border-slate-800 p-2 text-center font-bold text-emerald-800">{student.total > 0 ? toArabicNumerals(student.total) : ''}</td>
+                        <td className="border border-slate-800 p-2 text-center font-bold text-emerald-800">{student.total > 0 ? toArabicNumerals(student.position) : ''}</td>
                         <td className="border border-slate-800 p-2 text-center font-medium">
                           {student.total > 0 ? getArabicRemark(student.total / (assessmentData.orderedSubjects.length || 1)) : ''}
                         </td>
@@ -361,7 +398,7 @@ export default function TheologyHubClient({
                   <div>
                     <span>السنة: </span>
                     <span className="text-emerald-800 underline underline-offset-4 decoration-dotted px-4">
-                      {terms.find(t => t.id === activeTermId)?.academic_year}م
+                      {toArabicNumerals(terms.find(t => t.id === activeTermId)?.academic_year || '')}م
                     </span>
                   </div>
                 </div>
@@ -430,13 +467,13 @@ export default function TheologyHubClient({
                       return (
                         <tr key={cls.id}>
                           <td className="border border-slate-800 p-2 text-center font-bold bg-slate-50">{cls.class_name_arabic}</td>
-                          <td className="border border-slate-800 p-2 text-center">{numStudents}</td>
-                          <td className="border border-slate-800 p-2 text-center">{excellent}</td>
-                          <td className="border border-slate-800 p-2 text-center">{vGood}</td>
-                          <td className="border border-slate-800 p-2 text-center">{good}</td>
-                          <td className="border border-slate-800 p-2 text-center">{fair}</td>
-                          <td className="border border-slate-800 p-2 text-center">{weak}</td>
-                          <td className="border border-slate-800 p-2 text-center font-bold text-emerald-700" dir="ltr">{passRate}%</td>
+                          <td className="border border-slate-800 p-2 text-center">{toArabicNumerals(numStudents)}</td>
+                          <td className="border border-slate-800 p-2 text-center">{toArabicNumerals(excellent)}</td>
+                          <td className="border border-slate-800 p-2 text-center">{toArabicNumerals(vGood)}</td>
+                          <td className="border border-slate-800 p-2 text-center">{toArabicNumerals(good)}</td>
+                          <td className="border border-slate-800 p-2 text-center">{toArabicNumerals(fair)}</td>
+                          <td className="border border-slate-800 p-2 text-center">{toArabicNumerals(weak)}</td>
+                          <td className="border border-slate-800 p-2 text-center font-bold text-emerald-700" dir="rtl">% {toArabicNumerals(passRate)}</td>
                         </tr>
                       )
                     })}
@@ -499,9 +536,9 @@ export default function TheologyHubClient({
                           <tbody>
                             {students.map((student, idx) => (
                               <tr key={student.id} className="border-b border-slate-800 last:border-0">
-                                <td className="p-2 border-l border-slate-800 text-center font-bold">{idx + 1}</td>
+                                <td className="p-2 border-l border-slate-800 text-center font-bold">{toArabicNumerals(idx + 1)}</td>
                                 <td className="p-2 border-l border-slate-800 font-bold text-emerald-800">{student.name}</td>
-                                <td className="p-2 text-center font-bold">{Math.round(student.avg)}</td>
+                                <td className="p-2 text-center font-bold">{toArabicNumerals(Math.round(student.avg))}</td>
                               </tr>
                             ))}
                           </tbody>

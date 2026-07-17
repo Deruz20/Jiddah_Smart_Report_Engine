@@ -1,8 +1,16 @@
+"use client";
+
 import React from "react";
 import Link from "next/link";
 import { GraduationCap } from "lucide-react";
+import { usePathname } from "next/navigation";
 
 export function AppFooter() {
+  const pathname = usePathname();
+  if (pathname === "/admin/reports" || pathname === "/admin/theology-hub") {
+    return null;
+  }
+
   return (
     <footer className="w-full mt-auto shrink-0 print:hidden px-6 pb-6 pt-4">
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">

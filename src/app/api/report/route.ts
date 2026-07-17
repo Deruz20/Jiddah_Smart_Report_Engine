@@ -442,8 +442,9 @@ export async function GET(request: NextRequest) {
               totals.sort((a, b) => b.total - a.total)
               const myObj = totals.find(r => r.id === enrollment.id)
               if (myObj) {
-                // Number of students with a strictly higher score + 1
-                theologyPosition = totals.filter(r => r.total > myObj.total).length + 1
+                // Dense Ranking: number of strictly higher UNIQUE totals + 1
+                const uniqueTotals = Array.from(new Set(totals.map(r => r.total)))
+                theologyPosition = uniqueTotals.filter(t => t > myObj.total).length + 1
               }
             }
           }

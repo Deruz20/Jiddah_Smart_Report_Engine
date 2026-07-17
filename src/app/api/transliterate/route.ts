@@ -18,7 +18,7 @@ export async function POST(req: Request) {
       // Attempt 1: OpenAI
       const prompt = `Transliterate the following Ugandan/Arabic names from English to Arabic. Provide ONLY a JSON array of strings in the exact same order. Do NOT include markdown formatting, backticks, or explanations.
 CRITICAL RULES:
-1. If a name is a standard Islamic name (e.g., Amiirah, Malik, Hakiimah, Yahaya, Nasheem, Abubakar, Umar, Khadijah, Aisha, etc.), write its TRUE traditional Arabic spelling (e.g., أميرة, مالك, حكيمة/حليمة, يحيى, نسيم, أبو بكر, عمر, خديجة, عائشة) rather than a literal phonetic guess.
+1. If a name is a standard Islamic name, write its TRUE traditional Arabic spelling rather than a literal phonetic guess. Examples: Amiirah -> أميرة, Malik -> مالك, Hakiimah -> حكيمة, Yahaya -> يحيى, Nasheem -> نسيم, Musa -> موسى, Muhsin -> محسن, Leilah -> ليلة, Kabiirah -> كبيرة, Sumayyah -> سمية, Abubakar -> أبو بكر, Umar -> عمر, Khadijah -> خديجة.
 2. For local/tribal surnames (e.g., Nampeera, Lubwama, Nabaccwa, Zawedde, Kangu, Kalungi), do a phonetic transliteration (e.g., نامبيرا, لوبواما, ناباشوا, زاويدي, كانغو, كالونجي).
 Names: ${JSON.stringify(names)}`;
       

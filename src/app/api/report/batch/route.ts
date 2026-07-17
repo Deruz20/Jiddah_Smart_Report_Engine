@@ -393,7 +393,8 @@ export async function POST(request: NextRequest) {
            if (rankings.length > 0) {
               const myObj = rankings.find(r => r.id === enrollment.id)
               if (myObj) {
-                theologyPosition = rankings.filter(r => r.total > myObj.total).length + 1
+                const uniqueTotals = Array.from(new Set(rankings.map(r => r.total)))
+                theologyPosition = uniqueTotals.filter(t => t > myObj.total).length + 1
               }
            }
         }

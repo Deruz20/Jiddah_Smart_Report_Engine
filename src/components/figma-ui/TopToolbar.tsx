@@ -7,29 +7,31 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { useSidebar } from './ui/sidebar';
 
 interface TopToolbarProps {
-  searchOpen: boolean;
-  onSearchToggle: () => void;
-  onDownload: () => void;
-  onPrint: () => void;
-  onShare: () => void;
-  reportCount: number;
-  layout: 'single' | 'grid';
-  onLayoutToggle: () => void;
+  searchOpen?: boolean;
+  onSearchToggle?: () => void;
+  onDownload?: () => void;
+  onPrint?: () => void;
+  onShare?: () => void;
+  reportCount?: number;
+  layout?: 'single' | 'grid';
+  onLayoutToggle?: () => void;
   isGenerating?: boolean;
+  title?: React.ReactNode;
 }
 
 const EMOJIS = ['👍', '❤️', '⭐', '🎉', '✅', '🔖'];
 
 export function TopToolbar({
-  searchOpen,
+  searchOpen = false,
   onSearchToggle,
   onDownload,
   onPrint,
   onShare,
-  reportCount,
-  layout,
+  reportCount = 0,
+  layout = 'single',
   onLayoutToggle,
   isGenerating,
+  title,
 }: TopToolbarProps) {
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [chosenEmoji, setChosenEmoji] = useState<string | null>(null);
@@ -61,7 +63,11 @@ export function TopToolbar({
 
         {/* ── Reports loaded badge ───────── */}
         <AnimatePresence>
-          {reportCount > 0 && (
+          {title ? (
+            <div className="flex items-center gap-2 mr-2">
+              {title}
+            </div>
+          ) : reportCount > 0 ? (
             <motion.div
               className="flex items-center gap-1.5 rounded-full"
               style={{
@@ -86,13 +92,13 @@ export function TopToolbar({
               />
               {isGenerating ? 'Generating…' : `${reportCount} report${reportCount !== 1 ? 's' : ''} loaded`}
             </motion.div>
-          )}
+          ) : null}
         </AnimatePresence>
 
         <div className="flex-1" />
 
         {/* ── Layout toggle ─────────────── */}
-        {reportCount > 1 && (
+        {reportCount > 1 && onLayoutToggle && (
           <div className="hidden md:block flex-shrink-0">
           <Tooltip.Root>
             <Tooltip.Trigger asChild>
@@ -118,30 +124,36 @@ export function TopToolbar({
         )}
 
         {/* ── Download ──────────────────── */}
-        <IconBtn
-          icon={<Download size={16} />}
-          tooltip="Download reports"
-          onClick={onDownload}
-          disabled={reportCount === 0}
-        />
+        {onDownload && (
+          <IconBtn
+            icon={<Download size={16} />}
+            tooltip="Download reports"
+            onClick={onDownload}
+            disabled={reportCount === 0 && !title}
+          />
+        )}
 
         {/* ── Print ─────────────────────── */}
-        <IconBtn
-          icon={<Printer size={16} />}
-          tooltip="Print reports"
-          onClick={onPrint}
-          disabled={reportCount === 0}
-        />
+        {onPrint && (
+          <IconBtn
+            icon={<Printer size={16} />}
+            tooltip="Print"
+            onClick={onPrint}
+            disabled={reportCount === 0 && !title}
+          />
+        )}
 
         {/* ── Share ─────────────────────── */}
-        <div className="hidden md:block flex-shrink-0">
-          <IconBtn
-            icon={<Share2 size={16} />}
-            tooltip="Share link"
-            onClick={onShare}
-            disabled={reportCount === 0}
-          />
-        </div>
+        {onShare && (
+          <div className="hidden md:block flex-shrink-0">
+            <IconBtn
+              icon={<Share2 size={16} />}
+              tooltip="Share link"
+              onClick={onShare}
+              disabled={reportCount === 0 && !title}
+            />
+          </div>
+        )}
 
         {/* ── Toggle App Header ─────────── */}
         <div className="hidden md:block flex-shrink-0">

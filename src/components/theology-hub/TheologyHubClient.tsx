@@ -6,6 +6,7 @@ import { Loader2, Printer, Search, Download, BookOpen, ScrollText, Users, Award 
 import { toast } from 'sonner'
 import { createClient } from "@/utils/supabase/client"
 import { TheologyHubEmptyState } from './TheologyHubEmptyState'
+import { TopToolbar } from '../figma-ui/TopToolbar'
 
 type TermData = {
   id: string
@@ -143,7 +144,19 @@ export default function TheologyHubClient({
               await supabase.from('students').update({ arabic_name: transliterated[i] }).eq('id', studentsToTranslate[i].id);
             }
           }
-          window.location.reload(); // Refresh to show transliterated names
+          
+          // Update data locally to avoid reload loop
+          setData(prevData => {
+            if (!prevData) return prevData;
+            const updatedEnrollments = prevData.enrollments.map(e => {
+              const idx = studentsToTranslate.findIndex(s => s.id === e.id);
+              if (idx !== -1 && transliterated[idx]) {
+                return { ...e, students: { ...e.students, arabic_name: transliterated[idx] } };
+              }
+              return e;
+            });
+            return { ...prevData, enrollments: updatedEnrollments };
+          });
         }
       } catch (err) {
         console.error("Auto transliteration failed", err);
@@ -174,30 +187,25 @@ export default function TheologyHubClient({
 
   return (
     <div className="flex flex-col h-full bg-slate-50 dark:bg-[#0f172a]">
-      {/* Header and Controls - Hidden on print */}
-      <div className="print:hidden border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#1e293b] p-6 shrink-0">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg text-emerald-600 dark:text-emerald-400">
-              <ScrollText size={24} />
+      {/* TopToolbar */}
+      <div className="print:hidden relative z-40 border-b border-slate-200/60 shadow-sm shrink-0">
+        <TopToolbar 
+          onPrint={handlePrint}
+          title={
+            <div className="flex items-center gap-2 text-slate-800 dark:text-white">
+              <div className="p-1.5 bg-emerald-100 dark:bg-emerald-900/30 rounded text-emerald-600 dark:text-emerald-400">
+                <ScrollText size={18} />
+              </div>
+              <h1 className="text-[15px] font-semibold tracking-tight">Theology Hub</h1>
             </div>
-            <div>
-              <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Theology Hub</h1>
-              <p className="text-sm text-slate-500 dark:text-slate-400">Generate and print theology assessment and analysis forms.</p>
-            </div>
-          </div>
-          <button 
-            onClick={handlePrint}
-            className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition shadow-sm"
-          >
-            <Printer size={16} />
-            Print Form
-          </button>
-        </div>
+          }
+        />
+      </div>
 
-        <div className="flex gap-4">
-          <div className="flex-1">
-            <label className="block text-xs font-semibold text-slate-600 uppercase mb-2">Term & Year</label>
+      {/* Controls Area (Filters) */}
+      <div className="bg-white dark:bg-[#1e293b] border-b border-slate-200/60 dark:border-slate-800 px-4 py-3 shadow-sm print:hidden shrink-0">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex-1 min-w-[200px]">
             <select
               className="w-full px-4 py-2 border border-slate-200 rounded-xl bg-slate-50 focus:ring-2 focus:ring-emerald-500"
               value={activeTermId}
@@ -269,7 +277,7 @@ export default function TheologyHubClient({
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 overflow-auto p-8 print:p-0">
+      <div className="flex-1 overflow-auto p-4 md:p-8 print:p-0">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center h-full print:hidden">
             <Loader2 className="w-8 h-8 animate-spin text-emerald-500 mb-4" />

@@ -33,6 +33,7 @@ export default function TheologyHubClient({
   const [activeTermId, setActiveTermId] = useState<string>(terms.find(t => t.is_current)?.id || terms[0]?.id || '')
   const [activeClassId, setActiveClassId] = useState<string>('')
   const [activeLevel, setActiveLevel] = useState<string>('raudha')
+  const [filtersOpen, setFiltersOpen] = useState(true)
   
   const [activeTab, setActiveTab] = useState<'assessment' | 'analysis' | 'top_students'>('assessment')
 
@@ -191,6 +192,8 @@ export default function TheologyHubClient({
       <div className="print:hidden relative z-40 border-b border-slate-200/60 shadow-sm shrink-0">
         <TopToolbar 
           onPrint={handlePrint}
+          searchOpen={filtersOpen}
+          onSearchToggle={() => setFiltersOpen(!filtersOpen)}
           title={
             <div className="flex items-center gap-2 text-slate-800 dark:text-white">
               <div className="p-1.5 bg-emerald-100 dark:bg-emerald-900/30 rounded text-emerald-600 dark:text-emerald-400">
@@ -203,9 +206,17 @@ export default function TheologyHubClient({
       </div>
 
       {/* Controls Area (Filters) */}
-      <div className="bg-white dark:bg-[#1e293b] border-b border-slate-200/60 dark:border-slate-800 px-4 py-3 shadow-sm print:hidden shrink-0">
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex-1 min-w-[200px]">
+      <AnimatePresence>
+        {filtersOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden bg-white dark:bg-[#1e293b] border-b border-slate-200/60 dark:border-slate-800 shadow-sm print:hidden shrink-0"
+          >
+            <div className="px-4 py-3">
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="flex-1 min-w-[200px]">
             <select
               className="w-full px-4 py-2 border border-slate-200 rounded-xl bg-slate-50 focus:ring-2 focus:ring-emerald-500"
               value={activeTermId}
@@ -270,11 +281,14 @@ export default function TheologyHubClient({
                 <option value="raudha">الروضة (Nursery)</option>
                 <option value="ibtidaai_lower">الابتدائية السفلى (Lower Primary)</option>
                 <option value="ibtidaai_upper">الابتدائية العليا (Upper Primary)</option>
-              </select>
+                </select>
+              </div>
+            )}
+          </div>
             </div>
-          )}
-        </div>
-      </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Main Content Area */}
       <div className="flex-1 overflow-auto p-4 md:p-8 print:p-0">

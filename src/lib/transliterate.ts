@@ -23,6 +23,11 @@ const ISLAMIC_NAMES_DICT: Record<string, string> = {
   'hamza': 'حمزة', 'hamzah': 'حمزة',
   'tariq': 'طارق', 'tarik': 'طارق',
   'khalid': 'خالد',
+  'malik': 'مالك',
+  'muhsin': 'محسن',
+  'twaibu': 'طيب', 'twaib': 'طيب', 'twayibu': 'طيب',
+  'zaid': 'زيد', 'zayd': 'زيد',
+  'yahaya': 'يحيى', 'yahya': 'يحيى',
   'rashid': 'راشد',
   'shaban': 'شعبان', 'shaaban': 'شعبان',
   'ramadhan': 'رمضان', 'ramadan': 'رمضان',
@@ -48,7 +53,13 @@ const ISLAMIC_NAMES_DICT: Record<string, string> = {
   'salma': 'سلمى',
   'asmak': 'أسماء', 'asma': 'أسماء',
   'jamila': 'جميلة', 'jamilah': 'جميلة',
-  'shadia': 'شادية'
+  'shadia': 'شادية',
+  'amiirah': 'أميرة', 'amira': 'أميرة', 'ameerah': 'أميرة',
+  'hakiimah': 'حكيمة', 'hakima': 'حكيمة',
+  'nasheem': 'نسيم', 'nashim': 'نسيم',
+  'leilah': 'ليلة', 'laila': 'ليلة', 'layla': 'ليلة',
+  'kabiirah': 'كبيرة', 'kabira': 'كبيرة',
+  'swalha': 'صالحة', 'swaliha': 'صالحة', 'saliha': 'صالحة'
 };
 
 const PHONETIC_MAP: Record<string, string> = {

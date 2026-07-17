@@ -28,7 +28,8 @@ body {
     padding: 0 !important;
     margin: 0 !important;
     gap: 0 !important;
-    width: 100% !important;
+    width: 210mm !important;
+    max-width: 210mm !important;
   }
 }
 

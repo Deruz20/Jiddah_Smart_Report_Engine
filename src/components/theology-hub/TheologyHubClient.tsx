@@ -4,6 +4,8 @@ import React, { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import { Loader2, Printer, Search, Download, BookOpen, ScrollText, Users, Award } from 'lucide-react'
 import { toast } from 'sonner'
+import { createClient } from "@/utils/supabase/client"
+import { TheologyHubEmptyState } from './TheologyHubEmptyState'
 
 type TermData = {
   id: string
@@ -272,10 +274,8 @@ export default function TheologyHubClient({
             <Loader2 className="w-8 h-8 animate-spin text-emerald-500 mb-4" />
             <p className="text-slate-500">Loading theology data...</p>
           </div>
-        ) : !data ? (
-          <div className="flex items-center justify-center h-full text-slate-500 print:hidden">
-            Select parameters to view forms.
-          </div>
+        ) : !data || (!activeClassId && activeTab === 'assessment') || (!activeLevel && (activeTab === 'analysis' || activeTab === 'top_students')) ? (
+          <TheologyHubEmptyState />
         ) : (
           <div className="w-full mx-auto bg-white print:max-w-[210mm] print:shadow-none shadow-xl print:m-0 min-h-[297mm] overflow-x-auto">
             

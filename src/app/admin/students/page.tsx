@@ -17,7 +17,7 @@ export default async function StudentsManagementPage() {
       is_active,
       circular_classes ( id, class_name, section ),
       theology_classes ( id, class_name_arabic, class_name_english ),
-      students ( id, name, admission_number, created_at, gender )
+      students ( id, name, admission_number, created_at, gender, is_archived, is_muslim, arabic_name )
     `)
     .eq('is_active', true)
     .order('academic_year', { ascending: false })
@@ -28,12 +28,17 @@ export default async function StudentsManagementPage() {
     admission_number: e.students.admission_number ?? '—',
     created_at: e.students.created_at,
     circular_class: e.circular_classes?.class_name ?? '—',
+    circular_class_id: e.circular_classes?.id ?? null,
     section: e.circular_classes?.section ?? null,
     theology_class_arabic: e.theology_classes?.class_name_arabic ?? null,
     theology_class_english: e.theology_classes?.class_name_english ?? null,
+    theology_class_id: e.theology_classes?.id ?? null,
     academic_year: e.academic_year,
     status: (e.theology_classes ? 'Theology' : (e.circular_classes?.section?.toLowerCase() === 'nursery' ? 'Nursery' : 'Primary')) as 'Nursery' | 'Primary' | 'Theology',
     gender: e.students.gender,
+    is_archived: e.students.is_archived ?? false,
+    is_muslim: e.students.is_muslim ?? false,
+    arabic_name: e.students.arabic_name ?? null,
   }))
 
   const heroStats = [

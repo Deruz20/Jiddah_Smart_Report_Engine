@@ -60,16 +60,11 @@ const navItems = [
 
   { icon: ClipboardEdit, label: "Marks Entry", id: "marks", href: "/admin/marks", roles: ["admin", "Admin", "DOS Secular", "DOS Theology", "Secular DOS", "Theology DOS", "teacher", "Class Teacher", "Theology Instructor"] },
   { icon: FileText, label: "Report Center", id: "reports", href: "/admin/reports", roles: ["admin", "Admin", "DOS Secular", "DOS Theology", "Secular DOS", "Theology DOS", "teacher", "Class Teacher", "Theology Instructor"] },
+  { icon: ScrollText, label: "Theology Hub", id: "theology-hub", href: "/admin/theology-hub", roles: ["admin", "Admin", "DOS Theology", "Theology DOS", "Theology Instructor"] },
   { icon: Settings, label: "Settings", id: "settings", href: "/admin/settings", roles: ["admin", "Admin", "DOS Secular", "DOS Theology", "Secular DOS", "Theology DOS", "teacher", "Class Teacher", "Theology Instructor"] },
 ];
 
-function NavItem({
-  icon: Icon,
-  label,
-  href,
-  active,
-  collapsed,
-}: {
+function NavItem({ icon: Icon, label, href, active, collapsed }: {
   icon: React.ElementType;
   label: string;
   href: string;
@@ -77,64 +72,105 @@ function NavItem({
   collapsed: boolean;
 }) {
   const { isMobile, setOpenMobile } = useSidebar();
+  
   return (
     <SidebarMenuItem>
-      <Tooltip delayDuration={150}>
-          <TooltipTrigger asChild>
-            <Link 
-              href={href} 
-              onClick={() => {
-                if (isMobile) setOpenMobile(false);
-              }}
-              className={cn(
-                "group/nav-item relative flex items-center h-[2.6rem] w-full rounded-xl transition-all duration-200 outline-none border-none",
-                collapsed ? "justify-center w-10 mx-auto" : "px-3",
-                active 
-                  ? "bg-emerald-500/15 text-emerald-400 font-medium shadow-sm" 
-                  : "text-slate-400 hover:bg-white/5 hover:text-slate-200"
-              )}
-            >
-              {active && !collapsed && (
-                <motion.div
-                  layoutId="activeNavIndicator"
-                  className="absolute left-0 top-1/2 -translate-y-1/2 h-2/3 w-[3px] bg-emerald-400 rounded-r-full shadow-[1px_0_8px_rgba(52,211,153,0.4)]"
-                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                />
-              )}
+      <Tooltip delayDuration={300}>
+        <TooltipTrigger asChild>
+          <Link
+            href={href}
+            onClick={() => isMobile && setOpenMobile(false)}
+            className={cn(
+              "group/nav-item relative flex items-center h-[2.75rem] w-full rounded-xl outline-none border-none",
+              collapsed ? "justify-center" : "px-3",
+              // We remove the static background colors here because Framer Motion handles the active background now
+              !active && "text-slate-400 hover:text-slate-200"
+            )}
+          >
+            {/* 1. THE SLIDING PILL (Micro-interaction: Fluid Active State) */}
+            {active && (
+              <motion.div
+                layoutId="active-nav-background"
+                className="absolute inset-0 bg-emerald-500/15 rounded-xl border border-emerald-500/20 z-0"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ 
+                  type: "spring", 
+                  stiffness: 350, 
+                  damping: 30, // Lower damping = slightly more bouncy
+                  mass: 0.8
+                }}
+              />
+            )}
 
-              <div className={cn("flex items-center justify-center size-8 shrink-0 rounded-lg", collapsed && !active && "group-hover/nav-item:scale-110 transition-transform")}>
-                <Icon
-                  className={cn(
-                    "size-[1.1rem] transition-all duration-200",
-                    active ? "text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.4)]" : "text-slate-400 group-hover/nav-item:text-slate-200"
-                  )}
-                  strokeWidth={active ? 2.2 : 1.8}
-                />
-              </div>
+            {/* 2. THE ACTIVE LEFT BAR (Micro-interaction: Anchor point) */}
+            {active && !collapsed && (
+              <motion.div
+                layoutId="active-nav-indicator"
+                className="absolute left-0 top-1/2 -translate-y-1/2 h-1/2 w-[3px] bg-emerald-400 rounded-r-full z-10 shadow-[1px_0_10px_rgba(52,211,153,0.5)]"
+                transition={{ type: "spring", stiffness: 350, damping: 30 }}
+              />
+            )}
 
-              <AnimatePresence>
-                {!collapsed && (
-                  <motion.span
-                    initial={{ opacity: 0, width: 0 }}
-                    animate={{ opacity: 1, width: "auto" }}
-                    exit={{ opacity: 0, width: 0 }}
-                    transition={{ duration: 0.15 }}
-                    className={cn(
-                      "truncate text-sm ml-2 overflow-hidden",
-                      active ? "text-emerald-400" : "text-slate-300 group-hover/nav-item:text-white"
-                    )}
-                  >
-                    {label}
-                  </motion.span>
+            {/* 3. THE ICON (Micro-interaction: Hover Nudge & Scale) */}
+            <div className={cn(
+              "relative z-10 flex items-center justify-center size-8 shrink-0 rounded-lg transition-transform duration-300 ease-out",
+              // Subtle pop on hover when inactive
+              !active && "group-hover/nav-item:scale-[1.15] group-hover/nav-item:-rotate-2"
+            )}>
+              <Icon
+                className={cn(
+                  "size-[1.15rem] transition-all duration-300 ease-out",
+                  active 
+                    ? "text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.4)]" 
+                    : "text-slate-400 group-hover/nav-item:text-slate-200"
                 )}
-              </AnimatePresence>
-            </Link>
-          </TooltipTrigger>
-          {collapsed && (
-            <TooltipContent side="right" sideOffset={14} className="bg-slate-800 border-slate-700 text-slate-100 text-xs shadow-xl font-medium z-[100]">
-              {label}
-            </TooltipContent>
-          )}
+                strokeWidth={active ? 2.2 : 1.8}
+              />
+            </div>
+
+            {/* 4. THE TEXT (Micro-interaction: Smooth Unfold & Hover Slide) */}
+            <AnimatePresence mode="popLayout">
+              {!collapsed && (
+                <motion.span
+                  initial={{ opacity: 0, width: 0, x: -10 }}
+                  animate={{ opacity: 1, width: "auto", x: 0 }}
+                  exit={{ opacity: 0, width: 0, x: -10 }}
+                  transition={{ 
+                    opacity: { duration: 0.2 }, 
+                    width: { type: "spring", stiffness: 400, damping: 40 },
+                    x: { duration: 0.2 }
+                  }}
+                  className={cn(
+                    "relative z-10 text-sm ml-3 overflow-hidden whitespace-nowrap transition-transform duration-300",
+                    active ? "text-emerald-400 font-medium" : "text-slate-300 font-normal",
+                    // Text nudges slightly right when hovering over an inactive item
+                    !active && "group-hover/nav-item:translate-x-1"
+                  )}
+                >
+                  {label}
+                </motion.span>
+              )}
+            </AnimatePresence>
+
+            {/* Subliminal Hover Background for Inactive Items */}
+            {!active && (
+              <div className="absolute inset-0 bg-white/0 rounded-xl transition-colors duration-300 group-hover/nav-item:bg-white-[0.03] z-0" />
+            )}
+          </Link>
+        </TooltipTrigger>
+
+        {/* 5. TOOLTIP (Refined for collapsed mode only) */}
+        {collapsed && (
+          <TooltipContent 
+            side="right" 
+            sideOffset={18} 
+            className="bg-slate-800 border-slate-700 text-slate-100 text-xs shadow-xl font-medium z-[100] px-3 py-1.5 rounded-lg"
+          >
+            {label}
+          </TooltipContent>
+        )}
       </Tooltip>
     </SidebarMenuItem>
   );

@@ -1,55 +1,80 @@
+import stringSimilarity from 'string-similarity';
+
 // Advanced Arabic Transliteration Engine for Ugandan & Islamic Names
 // Handles common Islamic names exactly, and uses advanced phonetic rules for local Luganda/Bantu names
 
 const ISLAMIC_NAMES_DICT: Record<string, string> = {
-  // Male Names
-  'muhammad': 'محمد', 'mohammed': 'محمد', 'muhamad': 'محمد', 'mohamed': 'محمد', 'muhd': 'محمد',
-  'ahmad': 'أحمد', 'ahmed': 'أحمد',
-  'ali': 'علي', 'aly': 'علي',
-  'umar': 'عمر', 'omar': 'عمر',
-  'abubakar': 'أبوبكر', 'abubaker': 'أبوبكر', 'abdul': 'عبد', 'abdullah': 'عبد الله', 'abdallah': 'عبد الله',
-  'usman': 'عثمان', 'uthman': 'عثمان', 'othman': 'عثمان',
-  'ibrahim': 'إبراهيم', 'ebrahim': 'إبراهيم',
-  'yusuf': 'يوسف', 'yousuf': 'يوسف', 'yosef': 'يوسف',
-  'isa': 'عيسى', 'issa': 'عيسى', 'eisa': 'عيسى',
-  'musa': 'موسى', 'mousa': 'موسى', 'mussa': 'موسى',
-  'hasan': 'حسن', 'hassan': 'حسن', 'hussein': 'حسين', 'husain': 'حسين',
-  'ismail': 'إسماعيل', 'ismael': 'إسماعيل',
-  'sulaiman': 'سليمان', 'sulayman': 'سليمان',
+  // Canonical Male Names
+  'muhammad': 'محمد',
+  'ahmad': 'أحمد',
+  'ali': 'علي',
+  'umar': 'عمر',
+  'abubakar': 'أبوبكر',
+  'usman': 'عثمان',
+  'ibrahim': 'إبراهيم',
+  'yusuf': 'يوسف',
+  'isa': 'عيسى',
+  'musa': 'موسى',
+  'hasan': 'حسن', 
+  'hussein': 'حسين',
+  'ismail': 'إسماعيل',
+  'sulaiman': 'سليمان',
   'yahya': 'يحيى',
-  'yunus': 'يونس', 'younus': 'يونس',
-  'abdirahman': 'عبد الرحمن', 'abdulrahman': 'عبد الرحمن',
+  'yunus': 'يونس',
+  'abdulrahman': 'عبد الرحمن',
   'bilal': 'بلال',
-  'hamza': 'حمزة', 'hamzah': 'حمزة',
-  'tariq': 'طارق', 'tarik': 'طارق',
+  'hamza': 'حمزة',
+  'tariq': 'طارق',
   'khalid': 'خالد',
+  'imran': 'عمران',
+  'shuraim': 'شريم',
+  'faham': 'فهم',
+  'arham': 'أرحم',
+  'malik': 'مالك',
+  'muhsin': 'محسن',
+  'twaibu': 'طيب',
+  'zaid': 'زيد',
   'rashid': 'راشد',
-  'shaban': 'شعبان', 'shaaban': 'شعبان',
-  'ramadhan': 'رمضان', 'ramadan': 'رمضان',
-  'kassim': 'قاسم', 'qasim': 'قاسم',
-  'bashir': 'بشير', 'beshir': 'بشير',
-  'swaleh': 'صالح', 'saleh': 'صالح', 'salih': 'صالح',
+  'shaban': 'شعبان',
+  'ramadhan': 'رمضان',
+  'kassim': 'قاسم',
+  'bashir': 'بشير',
+  'swaleh': 'صالح',
   
-  // Female Names
-  'fatima': 'فاطمة', 'fatimah': 'فاطمة', 'fatuma': 'فاطمة',
-  'aisha': 'عائشة', 'aysha': 'عائشة', 'asha': 'عائشة',
-  'khadija': 'خديجة', 'khadijah': 'خديجة',
-  'zainab': 'زينب', 'zeynab': 'زينب', 'zaynab': 'زينب',
-  'mariam': 'مريم', 'maryam': 'مريم',
-  'amina': 'آمنة', 'aminah': 'آمنة',
-  'ruqayya': 'رقية', 'ruqaiyah': 'رقية',
-  'sumayya': 'سمية', 'sumaiyah': 'سمية',
-  'halima': 'حليمة', 'halimah': 'حليمة',
-  'safiya': 'صفية', 'safiyyah': 'صفية',
-  'hafsa': 'حفصة', 'hafsah': 'حفصة',
-  'zubeida': 'زبيدة', 'zubaida': 'زبيدة',
+  // Canonical Female Names
+  'fatima': 'فاطمة',
+  'aisha': 'عائشة',
+  'khadija': 'خديجة',
+  'zainab': 'زينب',
+  'mariam': 'مريم',
+  'amina': 'آمنة',
+  'ruqayya': 'رقية',
+  'sumayyah': 'سمية',
+  'halima': 'حليمة',
+  'safiya': 'صفية',
+  'hafsa': 'حفصة',
+  'zubeida': 'زبيدة',
   'hawa': 'حواء',
-  'nuru': 'نور', 'noor': 'نور',
+  'nuru': 'نور',
   'salma': 'سلمى',
-  'asmak': 'أسماء', 'asma': 'أسماء',
-  'jamila': 'جميلة', 'jamilah': 'جميلة',
-  'shadia': 'شادية'
+  'asma': 'أسماء',
+  'jamila': 'جميلة',
+  'shadia': 'شادية',
+  'amiirah': 'أميرة',
+  'hakiimah': 'حكيمة',
+  'sameeha': 'سميحة',
+  'rahmah': 'رحمة',
+  'maysarat': 'ميسرة',
+  'shukran': 'شكران',
+  'nasheem': 'نسيم',
+  'leilah': 'ليلى',
+  'kabiirah': 'كبيرة',
+  'swalha': 'صالحة',
+  'taubah': 'توبة',
+  'daliirah': 'دليرة',
 };
+
+const ISLAMIC_KEYS = Object.keys(ISLAMIC_NAMES_DICT);
 
 const PHONETIC_MAP: Record<string, string> = {
   // Complex Consonants
@@ -69,12 +94,13 @@ export function transliterateEnglishToArabic(name: string): string {
   const words = name.toLowerCase().trim().split(/\s+/);
   
   const transliteratedWords = words.map(word => {
-    // 1. Dictionary Match for exact Islamic names
-    if (ISLAMIC_NAMES_DICT[word]) {
-      return ISLAMIC_NAMES_DICT[word];
+    // 1. SMART DICTIONARY: Fuzzy match to catch misspellings (e.g., 'mohammed' -> 'muhammad')
+    const match = stringSimilarity.findBestMatch(word, ISLAMIC_KEYS);
+    if (match.bestMatch.rating > 0.8) { 
+      return ISLAMIC_NAMES_DICT[match.bestMatch.target];
     }
 
-    // 2. Remove Luganda double consonants (e.g., Ssekandi -> Sekandi, Nnamdi -> Namdi)
+    // 2. LUGANDA PHONETICS: Strip leading double consonants (Sse-, Nna-)
     let processedWord = word.replace(/^([b-df-hj-np-tv-z])\1/g, '$1'); 
     
     let result = '';
@@ -83,37 +109,8 @@ export function transliterateEnglishToArabic(name: string): string {
     while (i < processedWord.length) {
       const char = processedWord[i];
       const nextChar = processedWord[i + 1] || '';
-      const thirdChar = processedWord[i + 2] || '';
       
-      // Handle Start of Word Vowels
-      if (i === 0 && 'aeiou'.includes(char)) {
-        if (char === 'a') result += 'أ';
-        else if (char === 'e' || char === 'i') result += 'إ';
-        else if (char === 'o' || char === 'u') result += 'أو';
-        i++;
-        continue;
-      }
-
-      // Handle Vowels (Middle and End)
-      if ('aeiou'.includes(char)) {
-        // Skip consecutive identical vowels (e.g., 'ee' -> 'ي', 'oo' -> 'و')
-        if (char === nextChar) {
-          if (char === 'a') result += 'ا';
-          else if (char === 'e' || char === 'i') result += 'ي';
-          else if (char === 'o' || char === 'u') result += 'و';
-          i += 2;
-          continue;
-        }
-
-        // Standard vowel mapping
-        if (char === 'a') result += 'ا';
-        else if (char === 'e' || char === 'i') result += 'ي';
-        else if (char === 'o' || char === 'u') result += 'و';
-        i++;
-        continue;
-      }
-
-      // Check for 2-letter phonemes (sh, ch, ny, etc.)
+      // Handle Digraphs first (sh, ch, ny)
       const twoLetter = char + nextChar;
       if (PHONETIC_MAP[twoLetter]) {
         result += PHONETIC_MAP[twoLetter];
@@ -121,18 +118,31 @@ export function transliterateEnglishToArabic(name: string): string {
         continue;
       }
 
-      // Single Consonant fallback
+      // Handle Vowels (Only use long vowels for double vowels in English, ignore short ones)
+      if ('aeiou'.includes(char)) {
+        if (i === 0) {
+          // Word starts with a vowel
+          result += char === 'a' ? 'أ' : 'إ';
+        } else if (char === nextChar) {
+          // Double English vowel (ee, oo) -> Long Arabic vowel
+          if (char === 'e' || char === 'i') result += 'ي';
+          else if (char === 'o' || char === 'u') result += 'و';
+          else if (char === 'a') result += 'ا';
+          i++; // Skip the second vowel
+        } else if (i === processedWord.length - 1) {
+          // Ending vowels usually need to be written in Bantu names
+          if (char === 'a') result += 'ا';
+          if (char === 'i' || char === 'e') result += 'ي';
+          if (char === 'o' || char === 'u') result += 'و';
+        }
+        // Middle short vowels are ignored (let the consonants connect naturally)
+        i++;
+        continue;
+      }
+
+      // Single Consonant
       result += PHONETIC_MAP[char] || char;
       i++;
-    }
-
-    // 3. Post-Processing Cleanup
-    // Remove repeated identical Arabic characters (except for specific cases)
-    result = result.replace(/(.)\1+/g, '$1');
-
-    // Fix ending 'ي' to look better (some names ending in 'i' or 'y')
-    if (result.endsWith('ي') && word.length > 2 && !['i', 'y', 'e'].includes(word[word.length-1])) {
-       // if the english word didn't end with a vowel, but somehow we ended with ي, leave it.
     }
 
     return result;

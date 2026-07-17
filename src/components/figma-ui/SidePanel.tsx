@@ -277,28 +277,30 @@ function IndividualView({ report }: { report: ReportData }) {
       </div>
 
       {/* Circular performance */}
-      <Section label="Secular Performance">
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          {circular.position && (
-            <StatCard label="Position" value={ordinal(circular.position)} color={ORANGE} />
-          )}
-          {circular.division && (
-            <StatCard label="Division" value={circular.division} color={divColor(circular.division)} />
-          )}
-          {circular.aggregate != null && (
-            <StatCard label="Aggregate" value={`${circular.aggregate}%`} color={EMERALD} />
-          )}
-          {circular.total != null && (
-            <StatCard label="Total Score" value={String(circular.total)} color="#0369a1" />
-          )}
-        </div>
-        {circular.conduct_remark && (
-          <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>Conduct:</span>
-            <Chip label={circular.conduct_remark} bg="#f0fdf4" border="#bbf7d0" color={EMERALD} />
+      {circular && (
+        <Section label="Secular Performance">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            {circular.position && (
+              <StatCard label="Position" value={ordinal(circular.position)} color={ORANGE} />
+            )}
+            {circular.division && (
+              <StatCard label="Division" value={circular.division} color={divColor(circular.division)} />
+            )}
+            {circular.aggregate != null && (
+              <StatCard label="Aggregate" value={`${circular.aggregate}%`} color={EMERALD} />
+            )}
+            {circular.total != null && (
+              <StatCard label="Total Score" value={String(circular.total)} color="#0369a1" />
+            )}
           </div>
-        )}
-      </Section>
+          {circular.conduct_remark && (
+            <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>Conduct:</span>
+              <Chip label={circular.conduct_remark} bg="#f0fdf4" border="#bbf7d0" color={EMERALD} />
+            </div>
+          )}
+        </Section>
+      )}
 
       {/* Theology performance */}
       {theology && (
@@ -337,7 +339,7 @@ function IndividualView({ report }: { report: ReportData }) {
       )}
 
       {/* Teacher comment */}
-      {circular.class_teacher_comment && (
+      {circular?.class_teacher_comment && (
         <div>
           <div style={{ fontSize: 12, fontWeight: 700, color: EMERALD, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
             Teacher's Comment

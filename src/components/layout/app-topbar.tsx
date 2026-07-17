@@ -422,12 +422,12 @@ export function AppTopbar({ breadcrumbs = ["Admin", "Dashboard"], currentPage = 
   const { toggleSidebar } = useSidebar();
   const [searchOpen, setSearchOpen] = React.useState(false);
   const pathname = usePathname();
-  const isReportsPage = pathname === "/admin/reports";
+  const isReportsPage = pathname === "/admin/reports" || pathname === "/admin/theology-hub";
   const [isTopbarHidden, setIsTopbarHidden] = React.useState(isReportsPage);
 
   // Auto-hide topbar when navigating to reports page
   React.useEffect(() => {
-    setIsTopbarHidden(pathname === "/admin/reports");
+    setIsTopbarHidden(pathname === "/admin/reports" || pathname === "/admin/theology-hub");
   }, [pathname]);
 
   // Listen for global toggle events from other components (like TopToolbar)
@@ -439,6 +439,20 @@ export function AppTopbar({ breadcrumbs = ["Admin", "Dashboard"], currentPage = 
 
   return (
     <>
+      <AnimatePresence>
+        {isTopbarHidden && (
+          <motion.button
+            initial={{ y: -20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -20, opacity: 0 }}
+            onClick={() => setIsTopbarHidden(false)}
+            className="fixed top-0 right-1/2 translate-x-1/2 z-50 bg-white border border-t-0 border-slate-200 rounded-b-xl shadow-md p-1 px-4 text-slate-400 hover:text-emerald-500 hover:bg-slate-50 transition-colors print:hidden"
+            title="Show Topbar"
+          >
+            <ChevronDown className="size-4" strokeWidth={2.5} />
+          </motion.button>
+        )}
+      </AnimatePresence>
       <AnimatePresence>
         {!isTopbarHidden && (
           <motion.header
@@ -510,6 +524,13 @@ export function AppTopbar({ breadcrumbs = ["Admin", "Dashboard"], currentPage = 
             <NotificationBell />
             <div className="w-px h-5 bg-slate-200 mx-0.5" />
             <UserProfileDropdown />
+            <button
+              onClick={() => setIsTopbarHidden(true)}
+              className="flex items-center justify-center size-8 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors ml-1"
+              title="Hide Topbar"
+            >
+              <ChevronUp className="size-4" strokeWidth={2} />
+            </button>
           </div>
         </div>
       </motion.header>

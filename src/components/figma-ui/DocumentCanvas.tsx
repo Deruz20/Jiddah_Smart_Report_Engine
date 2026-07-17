@@ -15,7 +15,7 @@ interface DocumentCanvasProps {
   onFitScreen: () => void;
   onSearchOpen: () => void;
   renderReport: (report: any, isActive: boolean) => React.ReactNode;
-  printScope?: 'current' | 'all';
+  printScope?: 'current' | 'all' | string[];
 }
 
 export function DocumentCanvas({
@@ -78,7 +78,7 @@ export function DocumentCanvas({
                 <motion.div
                   key={report.id}
                   data-report-id={report.id}
-                  className={`${printScope === 'current' && report.id !== activeReportId ? 'print:hidden' : ''} print-reset-zoom print:!outline-none print:!shadow-none`}
+                  className={`${(printScope === 'current' && report.id !== activeReportId) || (Array.isArray(printScope) && !printScope.includes(report.id)) ? 'print:hidden' : ''} print-reset-zoom print:!outline-none print:!shadow-none`}
                   onClick={() => onSelectReport(report.id)}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -115,7 +115,7 @@ export function DocumentCanvas({
                 <motion.div
                   key={report.id}
                   data-report-id={report.id}
-                  className={`${printScope === 'current' && report.id !== activeReportId ? 'print:hidden' : ''} print-reset-zoom print:!outline-none print:!shadow-none`}
+                  className={`${(printScope === 'current' && report.id !== activeReportId) || (Array.isArray(printScope) && !printScope.includes(report.id)) ? 'print:hidden' : ''} print-reset-zoom print:!outline-none print:!shadow-none`}
                   onClick={() => onSelectReport(report.id)}
                   initial={{ opacity: 0, y: 24 }}
                   animate={{ opacity: 1, y: 0 }}

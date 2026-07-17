@@ -4,32 +4,37 @@ import { Download, Printer, Share2, MessageSquare, Search, X, LayoutGrid, List, 
 import * as Tooltip from '@radix-ui/react-tooltip';
 import * as Popover from '@radix-ui/react-popover';
 import * as Dialog from '@radix-ui/react-dialog';
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { useSidebar } from './ui/sidebar';
 
 interface TopToolbarProps {
-  searchOpen: boolean;
-  onSearchToggle: () => void;
-  onDownload: () => void;
-  onPrint: () => void;
-  onShare: () => void;
-  reportCount: number;
-  layout: 'single' | 'grid';
-  onLayoutToggle: () => void;
+  searchOpen?: boolean;
+  onSearchToggle?: () => void;
+  onDownload?: () => void;
+  downloadOptions?: { label: string, onClick: () => void, icon?: React.ReactNode }[];
+  onPrint?: () => void;
+  onShare?: () => void;
+  reportCount?: number;
+  layout?: 'single' | 'grid';
+  onLayoutToggle?: () => void;
   isGenerating?: boolean;
+  title?: React.ReactNode;
 }
 
 const EMOJIS = ['👍', '❤️', '⭐', '🎉', '✅', '🔖'];
 
 export function TopToolbar({
-  searchOpen,
+  searchOpen = false,
   onSearchToggle,
   onDownload,
+  downloadOptions,
   onPrint,
   onShare,
-  reportCount,
-  layout,
+  reportCount = 0,
+  layout = 'single',
   onLayoutToggle,
   isGenerating,
+  title,
 }: TopToolbarProps) {
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [chosenEmoji, setChosenEmoji] = useState<string | null>(null);
@@ -61,7 +66,11 @@ export function TopToolbar({
 
         {/* ── Reports loaded badge ───────── */}
         <AnimatePresence>
-          {reportCount > 0 && (
+          {title ? (
+            <div className="flex items-center gap-2 mr-2">
+              {title}
+            </div>
+          ) : reportCount > 0 ? (
             <motion.div
               className="flex items-center gap-1.5 rounded-full"
               style={{
@@ -86,13 +95,13 @@ export function TopToolbar({
               />
               {isGenerating ? 'Generating…' : `${reportCount} report${reportCount !== 1 ? 's' : ''} loaded`}
             </motion.div>
-          )}
+          ) : null}
         </AnimatePresence>
 
         <div className="flex-1" />
 
         {/* ── Layout toggle ─────────────── */}
-        {reportCount > 1 && (
+        {reportCount > 1 && onLayoutToggle && (
           <div className="hidden md:block flex-shrink-0">
           <Tooltip.Root>
             <Tooltip.Trigger asChild>
@@ -117,31 +126,76 @@ export function TopToolbar({
           </div>
         )}
 
-        {/* ── Download ──────────────────── */}
-        <IconBtn
-          icon={<Download size={16} />}
-          tooltip="Download reports"
-          onClick={onDownload}
-          disabled={reportCount === 0}
-        />
+        {/* ── Download / Export ─────────── */}
+        {downloadOptions && downloadOptions.length > 0 ? (
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger asChild>
+              <div className="flex-shrink-0">
+                <IconBtn
+                  icon={<Download size={16} />}
+                  tooltip="Export / Download"
+                  onClick={() => {}}
+                  disabled={reportCount === 0 && !title}
+                />
+              </div>
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Portal>
+              <DropdownMenu.Content
+                align="end"
+                sideOffset={6}
+                style={{
+                  background: 'white',
+                  borderRadius: 8,
+                  padding: 4,
+                  minWidth: 200,
+                  boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
+                  border: '1px solid rgba(0,0,0,0.08)',
+                  zIndex: 300,
+                }}
+              >
+                {downloadOptions.map((opt, i) => (
+                  <DropdownMenu.Item
+                    key={i}
+                    onClick={opt.onClick}
+                    className="flex items-center gap-3 px-3 py-2 text-sm text-slate-700 font-medium cursor-pointer rounded-md outline-none focus:bg-emerald-50 focus:text-emerald-700 transition-colors"
+                  >
+                    {opt.icon}
+                    {opt.label}
+                  </DropdownMenu.Item>
+                ))}
+              </DropdownMenu.Content>
+            </DropdownMenu.Portal>
+          </DropdownMenu.Root>
+        ) : onDownload ? (
+          <IconBtn
+            icon={<Download size={16} />}
+            tooltip="Download reports"
+            onClick={onDownload}
+            disabled={reportCount === 0 && !title}
+          />
+        ) : null}
 
         {/* ── Print ─────────────────────── */}
-        <IconBtn
-          icon={<Printer size={16} />}
-          tooltip="Print reports"
-          onClick={onPrint}
-          disabled={reportCount === 0}
-        />
+        {onPrint && (
+          <IconBtn
+            icon={<Printer size={16} />}
+            tooltip="Print"
+            onClick={onPrint}
+            disabled={reportCount === 0 && !title}
+          />
+        )}
 
         {/* ── Share ─────────────────────── */}
-        <div className="hidden md:block flex-shrink-0">
-          <IconBtn
-            icon={<Share2 size={16} />}
-            tooltip="Share link"
-            onClick={onShare}
-            disabled={reportCount === 0}
-          />
-        </div>
+        {onShare && (
+          <div className="hidden md:block flex-shrink-0">
+            <IconBtn
+              icon={<Share2 size={16} />}
+              tooltip="Share link"
+              onClick={onShare}
+              disabled={reportCount === 0 && !title}
+            />
+          </div>
+        )}
 
         {/* ── Toggle App Header ─────────── */}
         <div className="hidden md:block flex-shrink-0">

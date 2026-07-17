@@ -1,8 +1,11 @@
 'use client';
 
 import React, { useState, useMemo, useDeferredValue } from 'react';
-import { Search, Filter, MoreHorizontal, Download, ChevronDown, ChevronUp, ChevronsUpDown, UserX } from 'lucide-react';
+import { Search, Filter, MoreHorizontal, Download, ChevronDown, ChevronUp, ChevronsUpDown, UserX, Edit2, Archive, RotateCcw, Trash2 } from 'lucide-react';
 import { Badge } from './figma-ui/Badge';
+import { EditStudentModal } from './EditStudentModal';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 export type Student = {
   id: string;
@@ -10,17 +13,20 @@ export type Student = {
   admission_number: string;
   created_at: string;
   circular_class: string;
+  circular_class_id?: string | null;
   section: string | null;
   theology_class_arabic: string | null;
   theology_class_english: string | null;
+  theology_class_id?: string | null;
   academic_year: string;
   status: 'Nursery' | 'Primary' | 'Theology';
   gender?: 'Male' | 'Female';
+  is_archived?: boolean;
 };
 
 type SortKey = 'name' | 'admission_number' | 'created_at' | 'circular_class';
 type SortDir = 'asc' | 'desc';
-type FilterTab = 'All' | 'Primary' | 'Nursery' | 'Theology';
+type FilterTab = 'All' | 'Primary' | 'Nursery' | 'Theology' | 'Archived';
 
 const PAGE_SIZE = 8;
 
@@ -56,12 +62,21 @@ export function StudentsListClient({ students }: StudentsTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>('created_at');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [page, setPage] = useState(1);
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const router = useRouter();
 
-  const tabs: FilterTab[] = ['All', 'Primary', 'Nursery', 'Theology'];
+  const tabs: FilterTab[] = ['All', 'Primary', 'Nursery', 'Theology', 'Archived'];
 
   const tabCounts = useMemo(() => {
-    const counts: Record<FilterTab, number> = { All: students.length, Primary: 0, Nursery: 0, Theology: 0 };
-    students.forEach((s) => { counts[s.status] = (counts[s.status] || 0) + 1; });
+    const counts: Record<FilterTab, number> = { All: 0, Primary: 0, Nursery: 0, Theology: 0, Archived: 0 };
+    students.forEach((s) => {
+      if (s.is_archived) {
+        counts.Archived++;
+      } else {
+        counts.All++;
+        counts[s.status] = (counts[s.status] || 0) + 1;
+      }
+    });
     return counts;
   }, [students]);
 
@@ -77,7 +92,13 @@ export function StudentsListClient({ students }: StudentsTableProps) {
 
   const filtered = useMemo(() => {
     let list = students;
-    if (activeTab !== 'All') list = list.filter((s) => s.status === activeTab);
+    if (activeTab === 'Archived') {
+      list = list.filter((s) => s.is_archived);
+    } else {
+      list = list.filter((s) => !s.is_archived);
+      if (activeTab !== 'All') list = list.filter((s) => s.status === activeTab);
+    }
+
     if (deferredSearchTerm.trim()) {
       const q = deferredSearchTerm.toLowerCase();
       list = list.filter(
@@ -98,6 +119,45 @@ export function StudentsListClient({ students }: StudentsTableProps) {
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const handleArchive = async (student: Student) => {
+    if (!confirm(`Are you sure you want to archive ${student.name}?`)) return;
+    try {
+      const res = await fetch(`/api/students/${student.id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to archive student');
+      toast.success(`${student.name} has been archived`);
+      router.refresh();
+    } catch (err) {
+      toast.error('Failed to archive student');
+    }
+  };
+
+  const handleHardDelete = async (student: Student) => {
+    if (!confirm(`WARNING: Are you sure you want to PERMANENTLY delete ${student.name}? This will erase all their marks and enrollments. This cannot be undone.`)) return;
+    try {
+      const res = await fetch(`/api/students/${student.id}?hard_delete=true`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete student permanently');
+      toast.success(`${student.name} has been permanently deleted`);
+      router.refresh();
+    } catch (err) {
+      toast.error('Failed to delete student');
+    }
+  };
+
+  const handleRestore = async (student: Student) => {
+    try {
+      const res = await fetch(`/api/students/${student.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_archived: false })
+      });
+      if (!res.ok) throw new Error('Failed to restore student');
+      toast.success(`${student.name} has been restored`);
+      router.refresh();
+    } catch (err) {
+      toast.error('Failed to restore student');
+    }
+  };
 
   const ThCell = ({ label, col }: { label: string; col: SortKey }) => (
     <th
@@ -238,9 +298,37 @@ export function StudentsListClient({ students }: StudentsTableProps) {
                     {student.status}
                   </Badge>
                 </td>
-                <td className="px-5 py-4 whitespace-nowrap text-right">
-                  <button className="text-slate-300 hover:text-emerald-600 transition-colors p-1.5 rounded-lg hover:bg-emerald-50 opacity-0 group-hover:opacity-100 focus:opacity-100">
-                    <MoreHorizontal size={18} />
+                <td className="px-5 py-4 whitespace-nowrap text-right flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                  <button 
+                    onClick={() => setEditingStudent(student)}
+                    className="text-slate-400 hover:text-blue-600 transition-colors p-1.5 rounded-lg hover:bg-blue-50"
+                    title="Edit Student"
+                  >
+                    <Edit2 size={16} />
+                  </button>
+                  {student.is_archived ? (
+                    <button 
+                      onClick={() => handleRestore(student)}
+                      className="text-slate-400 hover:text-emerald-600 transition-colors p-1.5 rounded-lg hover:bg-emerald-50"
+                      title="Restore Student"
+                    >
+                      <RotateCcw size={16} />
+                    </button>
+                  ) : (
+                    <button 
+                      onClick={() => handleArchive(student)}
+                      className="text-slate-400 hover:text-amber-600 transition-colors p-1.5 rounded-lg hover:bg-amber-50"
+                      title="Archive Student"
+                    >
+                      <Archive size={16} />
+                    </button>
+                  )}
+                  <button 
+                    onClick={() => handleHardDelete(student)}
+                    className="text-slate-400 hover:text-rose-600 transition-colors p-1.5 rounded-lg hover:bg-rose-50"
+                    title="Permanently Delete Student"
+                  >
+                    <Trash2 size={16} />
                   </button>
                 </td>
               </tr>
@@ -299,6 +387,13 @@ export function StudentsListClient({ students }: StudentsTableProps) {
           </button>
         </div>
       </div>
+
+      <EditStudentModal 
+        isOpen={!!editingStudent}
+        onClose={() => setEditingStudent(null)}
+        student={editingStudent}
+        onSaved={() => router.refresh()}
+      />
     </div>
   );
 }

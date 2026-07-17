@@ -372,7 +372,7 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
           </div>
           <div className="info-item">
             <span>عدد الأطفال:</span>
-            <div className="dot-line">{toAr(reportData?.circular?.total_students)}</div>
+            <div className="dot-line">{toAr(reportData?.meta?.total_students)}</div>
           </div>
         </div>
 

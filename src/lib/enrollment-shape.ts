@@ -3,6 +3,7 @@ type StudentRow = {
   name: string
   admission_number?: string | null
   created_at?: string
+  is_archived?: boolean
 }
 
 /** Supabase may return a joined row as an object or single-element array. */
@@ -57,5 +58,6 @@ export function reshapeEnrollmentRow(e: {
     theology_class_english: theology?.class_name_english ?? null,
     theology_level: theology?.level ?? null,
     academic_year: e.academic_year,
+    is_archived: student.is_archived ?? false,
   }
 }

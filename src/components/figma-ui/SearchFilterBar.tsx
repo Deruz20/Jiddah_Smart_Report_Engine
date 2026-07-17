@@ -165,7 +165,7 @@ export function SearchFilterBar({
                   {CURRICULUM_OPTIONS.map((opt) => (
                     <motion.button
                       key={opt.value}
-                      onClick={() => onChange({ curriculum: opt.value as FilterState['curriculum'] })}
+                      onClick={() => onChange({ curriculum: opt.value as FilterState['curriculum'], classIds: [], studentIds: [] })}
                       style={{
                         padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600,
                         cursor: 'pointer', border: `1px solid`,
@@ -522,7 +522,7 @@ function SegmentedPair({
           style={{
             padding: '4px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600,
             cursor: 'pointer', border: 'none',
-            background: value === opt.value ? activeColor : 'transparent',
+            background: value === opt.value ? activeColor : 'rgba(255, 255, 255, 0)',
             color: value === opt.value ? 'white' : '#64748b',
             boxShadow: value === opt.value ? `0 1px 4px ${activeColor}44` : 'none',
             transition: 'all 0.15s',

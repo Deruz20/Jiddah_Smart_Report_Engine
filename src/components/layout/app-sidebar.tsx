@@ -60,6 +60,7 @@ const navItems = [
 
   { icon: ClipboardEdit, label: "Marks Entry", id: "marks", href: "/admin/marks", roles: ["admin", "Admin", "DOS Secular", "DOS Theology", "Secular DOS", "Theology DOS", "teacher", "Class Teacher", "Theology Instructor"] },
   { icon: FileText, label: "Report Center", id: "reports", href: "/admin/reports", roles: ["admin", "Admin", "DOS Secular", "DOS Theology", "Secular DOS", "Theology DOS", "teacher", "Class Teacher", "Theology Instructor"] },
+  { icon: ScrollText, label: "Theology Hub", id: "theology-hub", href: "/admin/theology-hub", roles: ["admin", "Admin", "DOS Theology", "Theology DOS", "Theology Instructor"] },
   { icon: Settings, label: "Settings", id: "settings", href: "/admin/settings", roles: ["admin", "Admin", "DOS Secular", "DOS Theology", "Secular DOS", "Theology DOS", "teacher", "Class Teacher", "Theology Instructor"] },
 ];
 
@@ -88,7 +89,7 @@ function NavItem({
               }}
               className={cn(
                 "group/nav-item relative flex items-center h-[2.6rem] w-full rounded-xl transition-all duration-200 outline-none border-none",
-                collapsed ? "justify-center w-10 mx-auto" : "px-3",
+                collapsed ? "justify-center" : "px-3",
                 active 
                   ? "bg-emerald-500/15 text-emerald-400 font-medium shadow-sm" 
                   : "text-slate-400 hover:bg-white/5 hover:text-slate-200"

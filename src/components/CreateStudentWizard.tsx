@@ -114,14 +114,50 @@ function Step1({ form, setField }: { form: FormData; setField: (k: keyof FormDat
           <span>Arabic Name</span>
           <span className="text-xs font-normal text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">(Optional)</span>
         </label>
-        <input
-          type="text"
-          dir="rtl"
-          className={cn(inputClass, 'text-right')}
-          placeholder="e.g. يوسف موتيبي"
-          value={form.name_arabic}
-          onChange={(e) => setField('name_arabic', e.target.value)}
-        />
+        <div className="flex gap-2">
+          <input
+            type="text"
+            dir="rtl"
+            className={cn(inputClass, 'text-right flex-1')}
+            placeholder="e.g. يوسف موتيبي"
+            value={form.name_arabic}
+            onChange={(e) => setField('name_arabic', e.target.value)}
+          />
+          <button
+            type="button"
+            onClick={async () => {
+              if (!form.name) {
+                toast.error('Please enter an English name first');
+                return;
+              }
+              toast.loading('Transliterating...', { id: 'transliterate-wiz' });
+              try {
+                const res = await fetch('/api/transliterate', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ names: [form.name] })
+                });
+                if (res.ok) {
+                  const data = await res.json();
+                  if (data.transliterated?.[0]) {
+                    setField('name_arabic', data.transliterated[0]);
+                    toast.success('Transliterated successfully', { id: 'transliterate-wiz' });
+                  } else {
+                    toast.error('Failed to transliterate', { id: 'transliterate-wiz' });
+                  }
+                } else {
+                  toast.error('Failed to transliterate', { id: 'transliterate-wiz' });
+                }
+              } catch (e) {
+                toast.error('Error connecting to server', { id: 'transliterate-wiz' });
+              }
+            }}
+            className="flex-shrink-0 flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-emerald-50 hover:border-emerald-300 text-slate-600 hover:text-emerald-600 text-sm font-semibold transition-all shadow-sm"
+          >
+            <RefreshCw size={14} />
+            Auto
+          </button>
+        </div>
       </div>
 
       {/* Gender */}

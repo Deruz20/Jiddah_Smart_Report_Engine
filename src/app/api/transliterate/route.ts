@@ -16,7 +16,11 @@ export async function POST(req: Request) {
 
     try {
       // Attempt 1: OpenAI
-      const prompt = `Transliterate the following Ugandan/Arabic names from English to Arabic. Provide ONLY a JSON array of strings in the exact same order. Do NOT include markdown or explanations. Names: ${JSON.stringify(names)}`;
+      const prompt = `Transliterate the following Ugandan/Arabic names from English to Arabic. Provide ONLY a JSON array of strings in the exact same order. Do NOT include markdown formatting, backticks, or explanations.
+CRITICAL RULES:
+1. If a name is a standard Islamic name (e.g., Amiirah, Malik, Hakiimah, Yahaya, Nasheem, Abubakar, Umar, Khadijah, Aisha, etc.), write its TRUE traditional Arabic spelling (e.g., أميرة, مالك, حكيمة/حليمة, يحيى, نسيم, أبو بكر, عمر, خديجة, عائشة) rather than a literal phonetic guess.
+2. For local/tribal surnames (e.g., Nampeera, Lubwama, Nabaccwa, Zawedde, Kangu, Kalungi), do a phonetic transliteration (e.g., نامبيرا, لوبواما, ناباشوا, زاويدي, كانغو, كالونجي).
+Names: ${JSON.stringify(names)}`;
       
       const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -25,7 +29,7 @@ export async function POST(req: Request) {
           'Authorization': `Bearer ${OPENAI_API_KEY}`
         },
         body: JSON.stringify({
-          model: 'gpt-3.5-turbo',
+          model: 'gpt-4o-mini',
           messages: [{ role: 'user', content: prompt }],
           temperature: 0.1,
         })
@@ -33,7 +37,14 @@ export async function POST(req: Request) {
 
       if (openaiRes.ok) {
         const data = await openaiRes.json();
-        const content = data.choices[0].message.content.trim();
+        let content = data.choices[0].message.content.trim();
+        // Remove markdown backticks if GPT accidentally includes them
+        if (content.startsWith('```json')) {
+          content = content.substring(7, content.length - 3).trim();
+        } else if (content.startsWith('```')) {
+          content = content.substring(3, content.length - 3).trim();
+        }
+        
         let result = [];
         try {
           result = JSON.parse(content);
@@ -43,6 +54,9 @@ export async function POST(req: Request) {
         } catch (e) {
           console.error("Failed to parse OpenAI response", content);
         }
+      } else {
+        const errorText = await openaiRes.text();
+        console.error("OpenAI error response:", errorText);
       }
     } catch (error) {
       console.error("OpenAI failed", error);

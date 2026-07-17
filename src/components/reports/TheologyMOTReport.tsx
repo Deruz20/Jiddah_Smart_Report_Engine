@@ -117,13 +117,13 @@ export default function TheologyMOTReport({ reportData }: any) {
           <span>عدد الطلبة :</span>
           <div className="line-dots">
             <span className="line-text">
-              {toAr(reportData?.circular?.total_students)}
+              {toAr(reportData?.meta?.total_students)}
             </span>
           </div>
           <span className="rank">الترتيب :</span>
           <div className="line-dots">
             <span className="line-text">
-              {toAr(reportData?.circular?.position)}
+              {toAr(reportData?.meta?.position)}
             </span>
           </div>
         </div>

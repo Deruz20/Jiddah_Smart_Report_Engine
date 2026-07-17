@@ -50,6 +50,7 @@ export async function GET(request: NextRequest) {
   const termId = searchParams.get('term_id')
   const score_type = searchParams.get('score_type') || 'mot'
   const scoreType = score_type
+  const curriculum = searchParams.get('curriculum') || 'secular'
 
   if (!enrollmentId || !termId) {
     return withCors(request, NextResponse.json({ error: 'enrollmentId and termId are required' }, { status: 400 }))
@@ -333,15 +334,15 @@ export async function GET(request: NextRequest) {
           score: numericScore,
           grade_display,
           theology_remark: existing?.eot_score != null ? (
-            existing.eot_score >= 90 ? 'ممتاز' :
-            existing.eot_score >= 80 ? 'جيد جداً' :
-            existing.eot_score >= 70 ? 'جيد' :
-            existing.eot_score >= 60 ? 'مقبول' : 'ضعيف'
+            existing.eot_score >= 75 ? 'ممتاز' :
+            existing.eot_score >= 65 ? 'جيد جداً' :
+            existing.eot_score >= 50 ? 'جيد' :
+            existing.eot_score >= 40 ? 'مقبول' : 'ضعيف'
           ) : existing?.mot_score != null ? (
-            existing.mot_score >= 90 ? 'ممتاز' :
-            existing.mot_score >= 80 ? 'جيد جداً' :
-            existing.mot_score >= 70 ? 'جيد' :
-            existing.mot_score >= 60 ? 'مقبول' : 'ضعيف'
+            existing.mot_score >= 75 ? 'ممتاز' :
+            existing.mot_score >= 65 ? 'جيد جداً' :
+            existing.mot_score >= 50 ? 'جيد' :
+            existing.mot_score >= 40 ? 'مقبول' : 'ضعيف'
           ) : null
         }
       })
@@ -384,6 +385,109 @@ export async function GET(request: NextRequest) {
         aggregate: theologyAggregate,
         division: theologyAggregate !== null ? getDivision(theologyAggregate) : null,
       }
+    }
+
+    // Only return data for the requested curriculum
+    if (curriculum === 'theology') {
+      if (!enrollment.theology_class_id) {
+        return withCors(request, NextResponse.json({ error: 'Student is not enrolled in a theology class' }, { status: 400 }))
+      }
+
+      const studentData = Array.isArray(enrollment.students) ? enrollment.students[0] : enrollment.students
+      const theologyClass = Array.isArray(enrollment.theology_classes) ? enrollment.theology_classes[0] : enrollment.theology_classes
+      const theologyClassArabic = theologyClass?.class_name_arabic
+      const theologyClassEnglish = theologyClass?.class_name_english
+
+      // For theology ranking, we need to calculate class positions.
+      // Doing this inline for theology if requested in theology mode.
+      let theologyPosition = null;
+      let totalTheologyStudents = null;
+
+      if (enrollment.theology_class_id && theologySectionData && typeof theologySectionData.total === 'number') {
+        const { data: theologyEnrollments } = await supabase
+          .from('enrollments')
+          .select('id, student_id')
+          .eq('theology_class_id', enrollment.theology_class_id)
+          .eq('is_active', true)
+
+        if (theologyEnrollments && theologyEnrollments.length > 0) {
+          const tEnrollmentIds = theologyEnrollments.map(e => e.id)
+          const { data: allTheologyMarks } = await supabase
+            .from('theology_marks')
+            .select('enrollment_id, subject_id, mot_score, eot_score')
+            .eq('term_id', termId)
+            .in('enrollment_id', tEnrollmentIds)
+
+          if (allTheologyMarks) {
+            const totals: {id: string, total: number}[] = []
+
+            for (const e of theologyEnrollments) {
+              const eMarks = allTheologyMarks.filter(m => m.enrollment_id === e.id)
+              let eTotal = 0
+              let hasMarks = false
+
+              for (const m of eMarks) {
+                 const s = scoreType === 'mot' ? m.mot_score : m.eot_score;
+                 if (typeof s === 'number') {
+                    eTotal += s;
+                    hasMarks = true;
+                 }
+              }
+
+              if (hasMarks) totals.push({ id: e.id, total: eTotal })
+            }
+
+            if (totals.length > 0) {
+              totalTheologyStudents = theologyEnrollments.length
+              totals.sort((a, b) => b.total - a.total)
+              const myObj = totals.find(r => r.id === enrollment.id)
+              if (myObj) {
+                // Number of students with a strictly higher score + 1
+                theologyPosition = totals.filter(r => r.total > myObj.total).length + 1
+              }
+            }
+          }
+        }
+      }
+
+      return withCors(request, NextResponse.json({
+        id: enrollment.id,
+        status: 'success',
+        student: {
+          name: studentData?.name ?? '—',
+          admission_number: studentData?.admission_number ?? '—',
+          arabic_name: studentData?.arabic_name ?? null,
+          religion: studentData?.is_muslim === false ? 'Non-Muslim' : 'Muslim',
+          class_name: '—',
+          theology_class_arabic: theologyClassArabic ?? null,
+          theology_class_english: theologyClassEnglish ?? null,
+          section: null,
+          academic_year: enrollment.academic_year,
+        },
+        term: {
+          label: term.label,
+          term_number: term.term_number,
+          academic_year: term.academic_year,
+          start_date: term.start_date,
+          end_date: term.end_date,
+          next_term_start: term.next_term_start,
+        },
+        score_type,
+        section_type: sectionType,
+        circular: null,
+        theology: theologySectionData,
+        meta: {
+          is_term_3: isTerm3,
+          promotion_status: isTerm3 && theologySectionData?.division ? getPromotionStatus(theologySectionData.division) : null,
+          position: theologyPosition,
+          total_students: totalTheologyStudents,
+        },
+        debug: {
+          enrollmentId: enrollment.id,
+          circularMarksCount: 0,
+          supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+        }
+      }))
     }
 
     const studentData = Array.isArray(enrollment.students) ? enrollment.students[0] : enrollment.students
@@ -430,12 +534,14 @@ export async function GET(request: NextRequest) {
         position,
         total_students,
       },
-      theology: theologySectionData,
+      theology: curriculum === 'secular' ? null : theologySectionData,
       meta: {
         is_term_3: isTerm3,
         promotion_status,
+        position,
+        total_students,
       },
-      debug: debugInfo,
+      debug: {debugInfo},
     }
 
     return withCors(request, NextResponse.json(reportData))

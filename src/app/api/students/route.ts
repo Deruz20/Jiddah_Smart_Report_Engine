@@ -20,6 +20,10 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
+    const { searchParams } = new URL(request.url)
+    const archivedParam = searchParams.get('archived')
+    const isArchived = archivedParam === 'true'
+
     const { data, error } = await supabase
       .from('enrollments')
       .select(`
@@ -28,9 +32,10 @@ export async function GET(request: NextRequest) {
         is_active,
         circular_classes ( id, class_name, section ),
         theology_classes ( id, class_name_arabic, class_name_english ),
-        students ( id, name, admission_number, created_at )
+        students!inner ( id, name, admission_number, created_at, is_archived )
       `)
       .eq('is_active', true)
+      .eq('students.is_archived', isArchived)
       .order('academic_year', { ascending: false })
 
     if (error) {

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
+import Link from 'next/link';
 import { FileText, Download, Printer, RefreshCw, Check, ChevronDown, Eye, Zap, BarChart2, Search } from "lucide-react";
 import { HeroSection } from "@/components/HeroSection";
 import { PageState } from "@/components/PageState";
@@ -248,6 +249,13 @@ export default function ReportsClient({
               )}
 
               <div className="flex gap-3">
+                <Link
+                  href="/admin/reports/blank"
+                  className="flex items-center gap-2 px-5 py-3 rounded-xl font-semibold hover:bg-slate-50 transition-all border border-slate-200 text-slate-700 text-sm"
+                  target="_blank"
+                >
+                  <Printer className="w-4 h-4" /> Blank Templates
+                </Link>
                 <button
                   onClick={handleGenerate}
                   disabled={generating}

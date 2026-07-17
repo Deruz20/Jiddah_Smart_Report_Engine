@@ -73,7 +73,6 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
   const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false)
   const [sidePanelOpen, setSidePanelOpen] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
-  const [isConfirmOpen, setIsConfirmOpen] = useState(false)
 
   // Load roster
   useEffect(() => {
@@ -89,10 +88,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
     }
     loadEnrollments()
     
-    // Auto-open side panel on desktop
-    if (typeof window !== 'undefined' && window.innerWidth >= 768) {
-      setSidePanelOpen(true)
-    }
+    // Panel starts collapsed by default
   }, [])
 
   // Map enrollments to Figma's ClassInfo and EnrollmentItem for the search filter
@@ -101,14 +97,33 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
     const classMap = new Map<string, ClassGroup>()
 
     for (const e of enrollments) {
-      const clsName = e.circular_class && e.circular_class !== '—' ? e.circular_class : e.theology_class_arabic || 'Unassigned'
-      const id = e.enrollment_id
-      
-      let track: 'Secular' | 'Theology' | 'Both' = 'Secular'
       const hasCirc = e.circular_class && e.circular_class !== '—'
       const hasTheo = !!e.theology_class_arabic
+      
+      let clsName = e.circular_class && e.circular_class !== '—' ? e.circular_class : e.theology_class_arabic || 'Unassigned'
+      let sectionType = (e.section as any) || 'unknown'
+
+      if (filterState.curriculum === 'theology') {
+        if (!hasTheo) continue
+        clsName = e.theology_class_arabic || 'Unassigned'
+        const tLevel = e.theology_level
+        if (tLevel === 'raudha') sectionType = 'nursery'
+        else if (tLevel === 'ibtidaai_lower') sectionType = 'lower_primary'
+        else if (tLevel === 'ibtidaai_upper') sectionType = 'upper_primary'
+        else sectionType = 'unknown'
+      } else if (filterState.curriculum === 'secular') {
+        if (!hasCirc) continue
+        clsName = e.circular_class || 'Unassigned'
+        sectionType = (e.section as any) || 'unknown'
+      } else {
+        if (!hasCirc && !hasTheo) continue
+      }
+      
+      let track: 'Secular' | 'Theology' | 'Both' = 'Secular'
       if (hasCirc && hasTheo) track = 'Both'
       else if (hasTheo) track = 'Theology'
+
+      const id = e.enrollment_id
 
       eList.push({
         enrollment_id: id,
@@ -116,7 +131,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
         arabic_name: '', // Backend lacks arabic_name
         admission_number: e.admission_number,
         circular_class: clsName,
-        section_type: e.section || 'unknown',
+        section_type: sectionType,
         theology_class_arabic: e.theology_class_arabic,
         track,
       })
@@ -125,7 +140,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
         classMap.set(clsName, { 
           id: clsName, 
           name: clsName, 
-          section_type: (e.section as any) || 'unknown',
+          section_type: sectionType,
           enrollmentIds: []
         })
       }
@@ -133,7 +148,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
     }
 
     return { figmaClasses: Array.from(classMap.values()), figmaEnrollments: eList }
-  }, [enrollments])
+  }, [enrollments, filterState.curriculum])
 
   const handleGenerate = useCallback(async () => {
     const { mode, studentIds, classIds, section, term, phase } = filterState
@@ -151,11 +166,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
       return
     }
 
-    if (mode === 'class' && (filterState.curriculum === 'theology' || filterState.curriculum === 'combined')) {
-      toast.warning('Theology marks may be incomplete for some students.')
-      setIsConfirmOpen(true)
-      return
-    }
+
 
     executeGeneration()
   }, [filterState])
@@ -198,7 +209,8 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
         body: JSON.stringify({
           enrollment_ids: targets,
           term_id: termObj.id,
-          score_type: phase.toLowerCase()
+          score_type: phase.toLowerCase(),
+          curriculum: filterState.curriculum === 'combined' ? 'secular' : filterState.curriculum
         })
       })
       const data = await response.json()
@@ -326,7 +338,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
     const isP7 = report.student.class_name?.toLowerCase() === 'p.7'
     const isPrim = report.section_type === 'lower_primary' || report.section_type === 'upper_primary'
     
-    const hasCirc = report.circular.subjects.length > 0
+    const hasCirc = !!report.circular && report.circular.subjects.length > 0
     const hasTheo = !!report.theology
     
     let format = 'circular'
@@ -393,38 +405,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
 
   return (
     <div className="h-full bg-[#f1f5f9] font-sans flex flex-col relative print:bg-white overflow-hidden text-slate-800 print:overflow-visible print:h-auto print:block">
-      <Toaster position="top-right" richColors closeButton />
-
-      <AlertDialog.Root open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
-        <AlertDialog.Portal>
-          <AlertDialog.Overlay className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 transition-opacity animate-in fade-in" />
-          <AlertDialog.Content className="fixed left-[50%] top-[50%] z-50 w-full max-w-md translate-x-[-50%] translate-y-[-50%] rounded-2xl bg-white p-6 shadow-xl animate-in zoom-in-95 fade-in border border-slate-100">
-            <div className="flex flex-col gap-4">
-              <AlertDialog.Title className="text-lg font-semibold text-slate-800">
-                Are you sure?
-              </AlertDialog.Title>
-              <AlertDialog.Description className="text-sm text-slate-600 leading-relaxed">
-                You are generating reports that include Theology, but some students may have incomplete theology marks. Do you want to proceed anyway?
-              </AlertDialog.Description>
-              <div className="flex justify-end gap-3 mt-4">
-                <AlertDialog.Cancel asChild>
-                  <button className="px-4 py-2 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">
-                    Cancel
-                  </button>
-                </AlertDialog.Cancel>
-                <AlertDialog.Action asChild>
-                  <button 
-                    onClick={() => executeGeneration()}
-                    className="px-4 py-2 rounded-xl text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 transition-colors shadow-sm"
-                  >
-                    Proceed
-                  </button>
-                </AlertDialog.Action>
-              </div>
-            </div>
-          </AlertDialog.Content>
-        </AlertDialog.Portal>
-      </AlertDialog.Root>
+      
 
       <PrintDialog
         open={isPrintDialogOpen}

@@ -115,4 +115,67 @@ describe('Student CRUD API', () => {
 
     expect(mockSupabase.from('students').update).toHaveBeenCalledWith({ is_archived: false });
   });
+
+  it('Test 5: Hard deleting a student deletes enrollments and historical marks', async () => {
+    req = new NextRequest('http://localhost/api/students/1?hard_delete=true', { method: 'DELETE' });
+
+    // Setup mock to return an enrollment
+    mockSupabase.from.mockReturnValue({
+      update: jest.fn().mockReturnThis(),
+      insert: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      delete: jest.fn().mockReturnThis(),
+      in: jest.fn().mockReturnThis(),
+      single: jest.fn().mockResolvedValue({
+        data: { id: 'e1' },
+        error: null
+      }),
+      then: jest.fn().mockImplementation((callback) => {
+         callback({ data: [{id: 'e1'}] });
+      })
+    });
+
+    // We just override the select behavior for this test slightly to simulate getting enrollments
+    const enrollmentsSelectMock = jest.fn().mockResolvedValue({ data: [{ id: 'e1' }] });
+    const originalFrom = mockSupabase.from;
+    mockSupabase.from = jest.fn().mockImplementation((table) => {
+        const chain = {
+            update: jest.fn().mockReturnThis(),
+            insert: jest.fn().mockReturnThis(),
+            select: jest.fn().mockReturnThis(),
+            eq: jest.fn().mockReturnThis(),
+            delete: jest.fn().mockReturnThis(),
+            in: jest.fn().mockReturnThis(),
+        };
+        if (table === 'enrollments') {
+            chain.select = jest.fn().mockReturnThis();
+            chain.eq = jest.fn().mockReturnValue(Promise.resolve({ data: [{ id: 'e1' }] }));
+            // Delete chain
+            chain.delete = jest.fn().mockReturnThis();
+        }
+        if (table === 'students' || table === 'circular_marks' || table === 'theology_marks') {
+             chain.delete = jest.fn().mockReturnThis();
+             chain.eq = jest.fn().mockReturnValue(Promise.resolve({ error: null }));
+             chain.in = jest.fn().mockReturnValue(Promise.resolve({ error: null }));
+        }
+        return chain;
+    });
+
+    const res = await DELETE(req, { params: Promise.resolve({ id: '1' }) });
+    expect(res.status).toBe(200);
+
+    // Verify marks are deleted
+    expect(mockSupabase.from).toHaveBeenCalledWith('circular_marks');
+    expect(mockSupabase.from).toHaveBeenCalledWith('theology_marks');
+
+    // Verify enrollments are deleted
+    expect(mockSupabase.from).toHaveBeenCalledWith('enrollments');
+
+    // Verify students are deleted
+    expect(mockSupabase.from).toHaveBeenCalledWith('students');
+
+    // Restore mockSupabase.from
+    mockSupabase.from = originalFrom;
+  });
 });

@@ -28,9 +28,10 @@ export async function GET(request: NextRequest) {
         is_active,
         circular_classes ( id, class_name, section ),
         theology_classes ( id, class_name_arabic, class_name_english, level ),
-        students ( id, name, admission_number, created_at )
+        students!inner ( id, name, admission_number, created_at, is_archived )
       `)
       .eq('is_active', true)
+      .eq('students.is_archived', false)
       .order('academic_year', { ascending: false })
 
     if (error) {

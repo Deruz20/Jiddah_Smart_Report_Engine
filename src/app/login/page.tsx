@@ -240,7 +240,7 @@ function LoginContent() {
   );
 
   return (
-    <div className="min-h-screen flex bg-[#0B1120] text-slate-200 overflow-hidden relative font-sans">
+    <div className="min-h-screen flex flex-col lg:flex-row bg-[#0B1120] text-slate-200 overflow-x-hidden overflow-y-auto relative font-sans">
       {/* Dynamic Background */}
       <div className="absolute inset-0 z-0 pointer-events-none">
         <Image

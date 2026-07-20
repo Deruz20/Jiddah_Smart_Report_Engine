@@ -21,7 +21,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       .single();
 
     let callerRole = callerProfile?.role;
-    if (!callerProfile && user.user_metadata?.role === 'admin') {
+    if (!callerProfile && (user.user_metadata?.role === 'admin' || user.user_metadata?.role === 'Administrator')) {
       callerRole = 'admin';
     }
 
@@ -33,7 +33,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const { name, role, email, phone, subject, classes, status } = body;
 
     // Only Admin can freely update. DOS can only update teachers in their department.
-    if (callerRole !== 'admin') {
+    if (callerRole !== 'admin' && callerRole !== 'Administrator') {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
 
@@ -81,11 +81,11 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
       .single();
 
     let callerRole = callerProfile?.role;
-    if (!callerProfile && user.user_metadata?.role === 'admin') {
+    if (!callerProfile && (user.user_metadata?.role === 'admin' || user.user_metadata?.role === 'Administrator')) {
       callerRole = 'admin';
     }
 
-    if (callerRole !== 'admin') {
+    if (callerRole !== 'admin' && callerRole !== 'Administrator') {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
 

@@ -39,6 +39,11 @@ export default async function TeachersManagementPage() {
     }
   }
 
+  // Normalize Administrator to admin so the TeachersClient correctly grants full edit capabilities
+  if (currentUserRole === 'Administrator' || currentUserRole === 'admin') {
+    currentUserRole = 'admin';
+  }
+
   return (
     <div className="w-full h-full bg-slate-50 dark:bg-[#0f172a]">
       <TeachersClient initialTeachers={formattedTeachers} currentUserRole={currentUserRole} currentUserSubject={currentUserSubject} />

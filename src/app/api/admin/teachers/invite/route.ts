@@ -27,7 +27,7 @@ export async function POST(req: Request) {
     let callerSubject = callerProfile?.subject;
     const callerId = callerProfile?.id || user.id; // Use auth user.id as fallback if no teacher row
 
-    if (!callerProfile && user.user_metadata?.role === 'admin') {
+    if (!callerProfile && (user.user_metadata?.role === 'admin' || user.user_metadata?.role === 'Administrator')) {
       callerRole = 'admin';
     }
 

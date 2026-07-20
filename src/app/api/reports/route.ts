@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
     const supabase = createClient(cookieStore)
 
     // 1. Fetch Student & Class info
-    const { data: student, error: studentError } = await supabase
+    const { data: studentArr, error: studentError } = await supabase
       .from('students')
       .select(`
         id, 
@@ -37,12 +37,42 @@ export async function GET(request: NextRequest) {
           id,
           class_name,
           section
+        ),
+        enrollments!inner (
+          theology_class
         )
       `)
       .eq('id', student_id)
-      .single()
+      .eq('enrollments.is_active', true)
+      .limit(1)
 
-    if (studentError) throw new Error('Student not found')
+    if (studentError || !studentArr || studentArr.length === 0) throw new Error('Student not found')
+    const student = studentArr[0]
+
+    // Security Check
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      const { data: profile } = await supabase.from('teachers').select('role, subject, classes').eq('email', user.email).single()
+      const rawRole = profile?.role || user.user_metadata?.role || '';
+      const isDOS = typeof rawRole === 'string' && rawRole.toUpperCase().includes('DOS');
+      const isTeacher = typeof rawRole === 'string' && (rawRole.includes('Class Teacher') || rawRole.includes('Theology Instructor') || rawRole.toLowerCase() === 'teacher');
+      
+      if (isTeacher) {
+        const assignedClasses = profile?.classes || [];
+        if (!assignedClasses.includes(student.class_name)) {
+          throw new Error('Unauthorized: Student not in your assigned classes')
+        }
+      } else if (isDOS) {
+        const isTheology = rawRole.toUpperCase().includes('THEOLOGY') || profile?.subject?.toLowerCase().includes('theology');
+        const hasTheologyClass = student.enrollments?.[0]?.theology_class != null;
+        if (isTheology && !hasTheologyClass) {
+          throw new Error('Unauthorized: Student is not in the Theology department')
+        }
+        if (!isTheology && !student.class_name) {
+          throw new Error('Unauthorized: Student is not in the Secular department')
+        }
+      }
+    }
 
     // 2. Fetch Term info
     const { data: term, error: termError } = await supabase

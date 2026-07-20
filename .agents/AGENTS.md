@@ -7,3 +7,33 @@
 - **Release & Deploy**: Use `/ship` to run tests and open PRs, `/land-and-deploy` to merge and verify production health, and `/document-release` to keep docs updated.
 - **Operational**: Use `/context-save` and `/context-restore` for managing workflow states, and `/health` for code quality checks.
 - **Execution Style**: When acting in these roles, follow the standard gstack writing style: outcome-framed questions, concise responses, and a focus on user impact. If plan-mode is active, treat the skill file as executable instructions, not just a reference.
+
+## Project Standing Rules
+
+These apply to every session in this repo, regardless of which gstack skill
+(if any) is active.
+
+- **Real output, not self-reports.** "Fixed" and "verified" mean pasted
+  diffs, actual command output, actual query results, or actual
+  screenshots — never a narrative description of what was probably done.
+- **Stop before schema changes.** Any database migration, ALTER TABLE, or
+  edit to credentials/env vars gets flagged and held for explicit approval
+  before running — never bundled silently into a broader task.
+- **Investigate before writing code.** Confirm the actual current schema,
+  actual current file contents, and any existing helper/pattern already in
+  the codebase before proposing a change.
+- **Scope strictly to what was asked.** No incidental refactors, renames,
+  or "while I'm in here" cleanup bundled into an unrelated fix.
+- **Access-control claims must be enforced server-side.** Any statement
+  that a role (admin/DOS/teacher) is "scoped to" or "restricted to"
+  specific data must be backed by an actual RLS policy or server-side
+  query filter — name it explicitly. Hiding a button or nav item is not
+  scoping.
+- **The six report-card components are locked.** PrimaryEOTReport,
+  PrimaryMOTReport, NurseryEOTReport, NurseryMOTReport, TheologyMOTReport,
+  NurseryTheologyEOTReport use inline styles only (no Tailwind), and their
+  print-stability decisions (A4 dimensions, BOT columns excluded,
+  Arabic-Indic numerals in theology sections, theology reports fully
+  Arabic with no English labels) don't get touched as a side effect of an
+  unrelated change.
+- **One commit per verified, isolated change**, not one commit per session.

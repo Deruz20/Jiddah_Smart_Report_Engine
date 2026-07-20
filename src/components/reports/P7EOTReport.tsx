@@ -438,7 +438,7 @@ export default function P7EOTReport({ reportData }: any) {
           </div>
 
           <div className="header-right">
-            <h2>مدرسة جدة الإسلامية للروضة والابتدائية بنساغو</h2>
+            <h2>مدرسة جدة الإسلامية للروضة والابتدائية بانساغو</h2>
           </div>
         </header>
 

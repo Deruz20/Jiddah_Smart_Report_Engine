@@ -434,7 +434,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
           </div>
 
           <div className="header-right">
-            <h2>مدرسة جدة الإسلامية للروضة والإبتدائية - نساغو - واكيسو</h2>
+            <h2>مدرسة جدة الإسلامية للروضة والإبتدائية - انساغو - واكيسو</h2>
           </div>
         </header>
 
@@ -491,7 +491,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
                 </div>
                 <span className="label">الفترة :</span>
                 <div className="line">
-                  {toAr(termInArabic(reportData?.term?.term_number))}
+                  {toAr(reportData?.term?.term_number)}
                 </div>
                 <span className="label">عام :</span>
                 <div className="line">

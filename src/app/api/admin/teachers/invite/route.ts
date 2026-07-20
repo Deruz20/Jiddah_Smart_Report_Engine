@@ -27,7 +27,7 @@ export async function POST(req: Request) {
     let callerSubject = callerProfile?.subject;
     const callerId = callerProfile?.id || user.id; // Use auth user.id as fallback if no teacher row
 
-    if (!callerProfile && user.user_metadata?.role === 'admin') {
+    if (!callerProfile && (user.user_metadata?.role === 'admin' || user.user_metadata?.role === 'Administrator')) {
       callerRole = 'admin';
     }
 
@@ -45,7 +45,11 @@ export async function POST(req: Request) {
     let finalRole = requestedRole;
     let finalSubject = requestedSubject;
 
-    if (callerRole === 'admin') {
+    if (callerRole === 'admin' || callerRole === 'Administrator') {
+      // Auto-infer subject for DOS if not explicitly provided in the UI
+      if (finalRole === 'DOS Theology' && !finalSubject) finalSubject = 'Theology';
+      if (finalRole === 'DOS Secular' && !finalSubject) finalSubject = 'Secular';
+
       // Admin: freely selectable role and subject, but must be provided
       if (!finalRole || !finalSubject) {
         return NextResponse.json({ error: 'Role and Department/Track are required for Admin invites' }, { status: 400 });
@@ -55,11 +59,17 @@ export async function POST(req: Request) {
       if (requestedRole && requestedRole.toUpperCase().includes('DOS')) {
         return NextResponse.json({ error: 'A DOS cannot invite another DOS' }, { status: 403 });
       }
+      if (requestedRole === 'Head Teacher' || requestedRole === 'Administrator' || requestedRole === 'Deputy Head Teacher') {
+        return NextResponse.json({ error: 'A DOS cannot invite administrative roles' }, { status: 403 });
+      }
       if (requestedSubject && requestedSubject !== callerSubject) {
         return NextResponse.json({ error: 'A DOS can only invite into their own Department/Track' }, { status: 403 });
       }
 
-      finalRole = requestedRole || 'teacher'; // Let them pick Class Teacher etc, but not DOS
+      if (!requestedRole) {
+        return NextResponse.json({ error: 'Role is required' }, { status: 400 });
+      }
+      finalRole = requestedRole;
       finalSubject = callerSubject;
     } else {
       // Regular teachers cannot invite

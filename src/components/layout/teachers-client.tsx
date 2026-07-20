@@ -38,7 +38,7 @@ const defaultTeacherFormValues: TeacherForm = {
   full_name: '',
   email: '',
   phone: '',
-  role: 'Head Teacher',
+  role: '',
   subject_specialization: '',
   class_assigned: '',
 };
@@ -408,26 +408,40 @@ export default function TeachersClient({
                 {currentUserRole === 'admin' ? (
                   <div>
                     <label className="mb-2 block text-sm font-semibold text-slate-700">Role</label>
-                    <select
-                      {...register('role')}
-                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-[#10B981]"
-                    >
-                      <option value="Class Teacher">Class Teacher</option>
-                      <option value="Head Teacher">Head Teacher</option>
-                      <option value="DOS Secular">DOS Secular</option>
-                      <option value="DOS Theology">DOS Theology</option>
-                      <option value="Theology Instructor">Theology Instructor</option>
-                      <option value="Deputy Head Teacher">Deputy Head Teacher</option>
-                      <option value="Support Staff">Support Staff</option>
-                    </select>
+                    <div className="relative">
+                      <select
+                        {...register('role')}
+                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 pr-10 text-sm text-slate-900 outline-none appearance-none focus:border-[#10B981]"
+                      >
+                        <option value="" disabled>Select a role...</option>
+                        <option value="Class Teacher">Class Teacher</option>
+                        <option value="Head Teacher">Head Teacher</option>
+                        <option value="DOS Secular">DOS Secular</option>
+                        <option value="DOS Theology">DOS Theology</option>
+                        <option value="Theology Instructor">Theology Instructor</option>
+                        <option value="Deputy Head Teacher">Deputy Head Teacher</option>
+                        <option value="Support Staff">Support Staff</option>
+                      </select>
+                      <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    </div>
                     {errors.role && <p className="mt-2 text-xs text-rose-600">{errors.role.message}</p>}
                   </div>
                 ) : (
                   <div>
                     <label className="mb-2 block text-sm font-semibold text-slate-700">Role</label>
-                    <div className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
-                      Inviting as a Teacher
+                    <div className="relative">
+                      <select
+                        {...register('role')}
+                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 pr-10 text-sm text-slate-900 outline-none appearance-none focus:border-[#10B981]"
+                      >
+                        <option value="" disabled>Select a role...</option>
+                        <option value="Class Teacher">Class Teacher</option>
+                        <option value="Theology Instructor">Theology Instructor</option>
+                        <option value="Support Staff">Support Staff</option>
+                      </select>
+                      <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                     </div>
+                    {errors.role && <p className="mt-2 text-xs text-rose-600">{errors.role.message}</p>}
                   </div>
                 )}
               </div>
@@ -456,20 +470,26 @@ export default function TeachersClient({
               <div className="grid gap-4 md:grid-cols-2">
                 {currentUserRole === 'admin' ? (
                   <div>
-                    <label className="mb-2 block text-sm font-semibold text-slate-700">Department / Track (Subject)</label>
-                    <input
-                      type="text"
-                      {...register('subject_specialization')}
-                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-[#10B981]"
-                      placeholder="e.g. Theology, Secular"
-                    />
+                    <label className="mb-2 block text-sm font-semibold text-slate-700">Scope (Department / Track)</label>
+                    <div className="relative">
+                      <select
+                        {...register('subject_specialization')}
+                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 pr-10 text-sm text-slate-900 outline-none appearance-none focus:border-[#10B981]"
+                      >
+                        <option value="">None / Unassigned</option>
+                        <option value="Secular">Secular</option>
+                        <option value="Theology">Theology</option>
+                        <option value="Administration">Administration</option>
+                      </select>
+                      <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    </div>
                     {errors.subject_specialization && (
                       <p className="mt-2 text-xs text-rose-600">{errors.subject_specialization.message}</p>
                     )}
                   </div>
                 ) : (
                   <div>
-                    <label className="mb-2 block text-sm font-semibold text-slate-700">Department / Track</label>
+                    <label className="mb-2 block text-sm font-semibold text-slate-700">Scope (Department / Track)</label>
                     <div className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
                       Inviting into: {currentUserSubject || 'Your Department'}
                     </div>

@@ -33,14 +33,24 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'No pending invitation for this email' }, { status: 404 });
     }
 
+    let finalRole = invite.role;
+    let finalSubject = invite.subject;
+    if (invite.role === 'DOS Theology') {
+      finalRole = 'DOS';
+      finalSubject = 'Theology';
+    } else if (invite.role === 'DOS Secular') {
+      finalRole = 'DOS';
+      finalSubject = 'Secular';
+    }
+
     // 2. Create the auth.users account
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
       user_metadata: {
-        role: invite.role,
-        subject: invite.subject,
+        role: finalRole,
+        subject: finalSubject,
         name: invite.name
       }
     });
@@ -60,8 +70,8 @@ export async function POST(req: Request) {
         {
           id: userId,
           email: invite.email,
-          role: invite.role,
-          subject: invite.subject,
+          role: finalRole,
+          subject: finalSubject,
           name: invite.name,
           classes: invite.classes || [],
           phone: invite.phone || phone || null,

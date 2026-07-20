@@ -42,7 +42,7 @@ export default function TheologyMOTReport({ reportData }: any) {
         <div className="header">
           <div className="basmala">بسم الله الرحمن الرحيم</div>
           <div className="school">
-            مدرسة جدة الإسلامية للروضة والابتدائية _ نساغو واكيسو
+            مدرسة جدة الإسلامية للروضة والابتدائية _ انساغو واكيسو
           </div>
           <div className="title">كشف الدرجات لمنتصف الفترة</div>
         </div>
@@ -61,7 +61,7 @@ export default function TheologyMOTReport({ reportData }: any) {
             <span>الفترة:</span>
             <div className="line-dots short">
               <span className="line-text">
-                {toAr(termInArabic(reportData?.term?.term_number))}
+                {toAr(reportData?.term?.term_number)}
               </span>
             </div>
 

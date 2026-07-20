@@ -361,7 +361,7 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
           </div>
           <div className="info-item">
             <span>الفترة:</span>
-            <div className="dot-line">{toAr(termInArabic(reportData?.term?.term_number))}</div>
+            <div className="dot-line">{toAr(reportData?.term?.term_number)}</div>
           </div>
           <div className="info-item">
             <span>السنة:</span>

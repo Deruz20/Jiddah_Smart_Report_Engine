@@ -46,6 +46,10 @@ export async function POST(req: Request) {
     let finalSubject = requestedSubject;
 
     if (callerRole === 'admin' || callerRole === 'Administrator') {
+      // Auto-infer subject for DOS if not explicitly provided in the UI
+      if (finalRole === 'DOS Theology' && !finalSubject) finalSubject = 'Theology';
+      if (finalRole === 'DOS Secular' && !finalSubject) finalSubject = 'Secular';
+
       // Admin: freely selectable role and subject, but must be provided
       if (!finalRole || !finalSubject) {
         return NextResponse.json({ error: 'Role and Department/Track are required for Admin invites' }, { status: 400 });

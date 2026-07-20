@@ -38,7 +38,7 @@ const defaultTeacherFormValues: TeacherForm = {
   full_name: '',
   email: '',
   phone: '',
-  role: 'Head Teacher',
+  role: '',
   subject_specialization: '',
   class_assigned: '',
 };
@@ -413,6 +413,7 @@ export default function TeachersClient({
                         {...register('role')}
                         className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 pr-10 text-sm text-slate-900 outline-none appearance-none focus:border-[#10B981]"
                       >
+                        <option value="" disabled>Select a role...</option>
                         <option value="Class Teacher">Class Teacher</option>
                         <option value="Head Teacher">Head Teacher</option>
                         <option value="DOS Secular">DOS Secular</option>
@@ -433,6 +434,7 @@ export default function TeachersClient({
                         {...register('role')}
                         className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 pr-10 text-sm text-slate-900 outline-none appearance-none focus:border-[#10B981]"
                       >
+                        <option value="" disabled>Select a role...</option>
                         <option value="Class Teacher">Class Teacher</option>
                         <option value="Theology Instructor">Theology Instructor</option>
                         <option value="Support Staff">Support Staff</option>

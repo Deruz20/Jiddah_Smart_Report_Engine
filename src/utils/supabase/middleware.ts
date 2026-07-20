@@ -36,44 +36,80 @@ export async function updateSession(request: NextRequest) {
   // https://supabase.com/docs/guides/auth/server-side/nextjs
   const { data: { user } } = await supabase.auth.getUser()
 
-  const validRoles = [
-    'admin', 'Admin',
-    'DOS Secular', 'DOS Theology', 'Secular DOS', 'Theology DOS',
-    'teacher', 'Class Teacher', 'Theology Instructor', 'Head Teacher',
-    'Support Staff', 'Deputy Head Teacher'
-  ];
-  const role = user?.user_metadata?.role;
-  const isValidRole = role && validRoles.includes(role);
+  // Fetch role from database (source of truth)
+  let role = 'guest';
 
-  // protected routes
-  if (request.nextUrl.pathname.startsWith('/admin')) {
-    if (!user) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/login'
-      return NextResponse.redirect(url)
+  if (user) {
+    if (user.user_metadata?.role === 'admin') {
+      role = 'admin'; // Bootstrap admin fallback
     }
-    // If the user is authenticated but doesn't have a recognized role, we could deny,
-    // but the sidebar simply filters what they see. Let's just ensure they are logged in.
+
+    // DB query for actual role
+    if (user.email) {
+      const { data: teacherProfile } = await supabase
+        .from('teachers')
+        .select('role')
+        .eq('email', user.email)
+        .single();
+      
+      if (teacherProfile?.role) {
+        role = teacherProfile.role;
+      }
+    }
   }
+
+  // Explicit mapping of roles to landing paths
+  let targetLanding = '/pending';
   
-  // If they somehow navigate to /teacher, redirect them back to /admin
-  if (request.nextUrl.pathname.startsWith('/teacher')) {
-    if (!user) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/login'
-      return NextResponse.redirect(url)
+  if (role === 'admin' || role === 'Administrator' || role === 'Head Teacher') {
+    targetLanding = '/admin';
+  } else if (role === 'DOS' || (typeof role === 'string' && role.toUpperCase().includes('DOS'))) {
+    targetLanding = '/dos';
+  } else if (role === 'Class Teacher' || role === 'Theology Instructor' || role === 'teacher') {
+    targetLanding = '/teacher';
+  } else if (role === 'Support Staff' || role === 'Deputy Head Teacher') {
+    targetLanding = '/pending';
+  }
+
+  const path = request.nextUrl.pathname;
+
+  if (role === 'guest') {
+    // Protect authenticated routes
+    if (path.startsWith('/admin') || path.startsWith('/dos') || path.startsWith('/teacher') || path.startsWith('/pending') || path === '/') {
+      const url = request.nextUrl.clone();
+      url.pathname = '/login';
+      return NextResponse.redirect(url);
     }
-    const url = request.nextUrl.clone()
-    url.pathname = '/admin'
-    return NextResponse.redirect(url)
+  } else {
+    // If logged in and hitting login or root, go to target landing
+    if (path === '/login' || path === '/') {
+      const url = request.nextUrl.clone();
+      url.pathname = targetLanding;
+      return NextResponse.redirect(url);
+    }
+
+    // Protect role-specific routes from unauthorized access
+    if (path.startsWith('/admin') && targetLanding !== '/admin') {
+      const url = request.nextUrl.clone();
+      url.pathname = targetLanding;
+      return NextResponse.redirect(url);
+    }
+    if (path.startsWith('/dos') && targetLanding !== '/dos') {
+      const url = request.nextUrl.clone();
+      url.pathname = targetLanding;
+      return NextResponse.redirect(url);
+    }
+    if (path.startsWith('/teacher') && targetLanding !== '/teacher') {
+      const url = request.nextUrl.clone();
+      url.pathname = targetLanding;
+      return NextResponse.redirect(url);
+    }
+    if (path.startsWith('/pending') && targetLanding !== '/pending') {
+      const url = request.nextUrl.clone();
+      url.pathname = targetLanding;
+      return NextResponse.redirect(url);
+    }
   }
 
-  // Redirect logged in users away from /login
-  if (request.nextUrl.pathname.startsWith('/login') && user) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/admin'
-    return NextResponse.redirect(url)
-  }
-
-  return supabaseResponse
+  return supabaseResponse;
 }

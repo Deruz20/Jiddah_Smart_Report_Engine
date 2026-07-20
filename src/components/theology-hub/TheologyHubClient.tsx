@@ -498,7 +498,7 @@ export default function TheologyHubClient({
                 {/* Header (Print-optimized) */}
                 <div className="text-center mb-8">
                   <h2 className="text-lg font-bold mb-1 text-slate-800 print:text-black">بسم الله الرحمن الرحيم</h2>
-                  <h1 className="text-2xl font-extrabold text-emerald-800 mb-2 print:text-black">مدرسة جدة الإسلامية للروضة والابتدائية _ نساغو واكيسو</h1>
+                  <h1 className="text-2xl font-extrabold text-emerald-800 mb-2 print:text-black">مدرسة جدة الإسلامية للروضة والابتدائية _ انساغو واكيسو</h1>
                   <h3 className="text-xl font-bold mb-4 underline underline-offset-4 text-slate-700 print:text-black">كشف الدرجات لمنتصف الفترة</h3>
                 </div>
 

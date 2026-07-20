@@ -320,7 +320,7 @@ export default function PrimaryBOTReport({ reportData }: { reportData: any }) {
           </div>
 
           <div className="school-right">
-            <h2>مدرسة جدة الإسلامية للروضة والإبتدائية - نساغو - واكيسو</h2>
+            <h2>مدرسة جدة الإسلامية للروضة والإبتدائية - انساغو - واكيسو</h2>
           </div>
         </div>
 

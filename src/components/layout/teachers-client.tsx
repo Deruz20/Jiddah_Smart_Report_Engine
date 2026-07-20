@@ -425,9 +425,15 @@ export default function TeachersClient({
                 ) : (
                   <div>
                     <label className="mb-2 block text-sm font-semibold text-slate-700">Role</label>
-                    <div className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
-                      Inviting as a Teacher
-                    </div>
+                    <select
+                      {...register('role')}
+                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-[#10B981]"
+                    >
+                      <option value="Class Teacher">Class Teacher</option>
+                      <option value="Theology Instructor">Theology Instructor</option>
+                      <option value="Support Staff">Support Staff</option>
+                    </select>
+                    {errors.role && <p className="mt-2 text-xs text-rose-600">{errors.role.message}</p>}
                   </div>
                 )}
               </div>

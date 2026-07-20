@@ -126,7 +126,7 @@ export function JiddahReport({ data }: JiddahReportProps) {
               fontWeight: 700, color: 'rgba(255,255,255,0.75)',
               direction: 'rtl',
             }}>
-              مدرسة جدة الإسلامية — نساغو، واكيسو
+              مدرسة جدة الإسلامية — انساغو، واكيسو
             </div>
           </div>
 

@@ -126,7 +126,7 @@ where not exists (select 1 from public.teachers limit 1);
 --   id uuid primary key default gen_random_uuid(),
 --   name text not null,
 --   role text not null check (role in (
---     'Head Teacher', 'Class Teacher', 'Theology Instructor', 'Administrator', 'Support Staff'
+--     'Head Teacher', 'Class Teacher', 'Theology Instructor', 'Administrator', 'Support Staff', 'DOS'
 --   )),
 --   subject text default '',
 --   classes text[] default '{}',

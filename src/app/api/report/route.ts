@@ -64,6 +64,17 @@ export async function GET(request: NextRequest) {
     const cookieStore = await cookies()
     const supabase = createClient(cookieStore)
 
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+    }
+
+    const { verifyDataAccess } = await import('@/lib/auth-server')
+    const authRes = await verifyDataAccess(supabase, user, 'read')
+    if (!authRes.isAuthorized) {
+      return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
+    }
+
     const { data: enrollment, error: enrollmentError } = await supabase
       .from('enrollments')
       .select(`

@@ -18,6 +18,17 @@ export async function GET(request: NextRequest) {
     const cookieStore = await cookies()
     const supabase = createClient(cookieStore)
 
+    const user = await getAuthenticatedUser(supabase)
+    if (!user) {
+      return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+    }
+
+    const { verifyDataAccess } = await import('@/lib/auth-server')
+    const authRes = await verifyDataAccess(supabase, user, 'read')
+    if (!authRes.isAuthorized || (authRes.role !== 'Administrator' && authRes.role !== 'admin')) {
+      return withCors(request, NextResponse.json({ error: 'Access Denied: Administrator only' }, { status: 403 }))
+    }
+
     const { data, error } = await supabase.from('school_settings').select('*').limit(1).single()
     if (error) {
       console.error('settings/school GET error:', error.message)
@@ -42,6 +53,12 @@ export async function PATCH(request: NextRequest) {
 
     if (!user) {
       return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+    }
+
+    const { verifyDataAccess } = await import('@/lib/auth-server')
+    const authRes = await verifyDataAccess(supabase, user, 'write')
+    if (!authRes.isAuthorized || (authRes.role !== 'Administrator' && authRes.role !== 'admin')) {
+      return withCors(request, NextResponse.json({ error: 'Access Denied: Administrator only' }, { status: 403 }))
     }
 
     const body = await request.json()

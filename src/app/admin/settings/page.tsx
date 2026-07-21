@@ -9,6 +9,15 @@ export default async function TermSettingsPage() {
   const cookieStore = await cookies()
   const supabase = createClient(cookieStore)
 
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return <div className="p-10">Unauthorized</div>
+
+  const { verifyDataAccess } = await import('@/lib/auth-server')
+  const authRes = await verifyDataAccess(supabase, user, 'read');
+  if (!authRes.isAuthorized || (authRes.role !== 'Administrator' && authRes.role !== 'admin')) {
+    return <div className="p-10 text-red-500">Access Denied: You must be an Administrator to access Settings.</div>
+  }
+
   const { data: terms, error } = await supabase
     .from('terms')
     .select('id, label, academic_year, term_number, is_current, start_date, end_date, next_term_start')

@@ -22,6 +22,12 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
+    const { verifyDataAccess } = await import('@/lib/auth-server')
+    const authRes = await verifyDataAccess(supabase, user, 'read')
+    if (!authRes.isAuthorized || (authRes.role !== 'Administrator' && authRes.role !== 'admin')) {
+      return withCors(request, NextResponse.json({ error: 'Access Denied: Administrator only' }, { status: 403 }))
+    }
+
     const { data, error } = await supabase
       .from('terms')
       .select('*')
@@ -52,6 +58,12 @@ export async function POST(request: NextRequest) {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
       return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+    }
+
+    const { verifyDataAccess } = await import('@/lib/auth-server')
+    const authRes = await verifyDataAccess(supabase, user, 'write')
+    if (!authRes.isAuthorized || (authRes.role !== 'Administrator' && authRes.role !== 'admin')) {
+      return withCors(request, NextResponse.json({ error: 'Access Denied: Administrator only' }, { status: 403 }))
     }
 
     const body = await request.json()

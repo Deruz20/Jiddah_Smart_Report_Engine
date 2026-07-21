@@ -21,18 +21,13 @@ export async function POST(req: Request) {
       .eq('email', user.email)
       .single();
 
-    // If caller is not in teachers table, check if they are the bootstrap Admin
-    // Typically the bootstrap admin has 'admin' in user_metadata and isn't in teachers
-    let callerRole = callerProfile?.role;
-    let callerSubject = callerProfile?.subject;
-    const callerId = callerProfile?.id || user.id; // Use auth user.id as fallback if no teacher row
-
-    if (!callerProfile && (user.user_metadata?.role === 'admin' || user.user_metadata?.role === 'Administrator')) {
-      callerRole = 'admin';
-    }
+    // If caller is not in teachers table, deny access
+    const callerRole = callerProfile?.role;
+    const callerSubject = callerProfile?.subject;
+    const callerId = callerProfile?.id;
 
     if (!callerRole) {
-      return NextResponse.json({ error: 'Caller role not found' }, { status: 403 });
+      return NextResponse.json({ error: 'Caller role not found in teachers directory' }, { status: 403 });
     }
 
     const body = await req.json();

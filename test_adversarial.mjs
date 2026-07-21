@@ -87,7 +87,7 @@ async function runAdversarialTest() {
   const secClassId = secularEnrollment[0].circular_class_id
   
   // Get a real term_id
-  const { data: terms } = await supabaseAdmin.from('academic_terms').select('id').limit(1)
+  const { data: terms } = await supabaseAdmin.from('terms').select('id').limit(1)
   const realTermId = terms?.[0]?.id || '123e4567-e89b-12d3-a456-426614174000'
 
   // 1. Setup Users
@@ -101,7 +101,7 @@ async function runAdversarialTest() {
   // 2. DOS Secular Tests
   const dosCookie = await loginAndGetCookie('sec_dos_3@jiddahschool.ug')
   await runTest('DOS Secular reading Secular Student Marks', `http://localhost:3000/api/marks?enrollment_id=${secEnrId}&term_id=${realTermId}`, 'GET', dosCookie, 200)
-  await runTest('DOS Secular reading Theology Student Marks', `http://localhost:3000/api/marks?enrollment_id=${theoEnrId}&term_id=${realTermId}`, 'GET', dosCookie, 200, null, 'theology_marks')
+  await runTest('DOS Secular reading Theology Student Marks', `http://localhost:3000/api/theology-marks?enrollment_id=${theoEnrId}&term_id=${realTermId}`, 'GET', dosCookie, 403, null, 'theology_marks')
   
   // 3. Support Staff Tests
   const supportCookie = await loginAndGetCookie('support_staff@jiddahschool.ug')
@@ -110,8 +110,8 @@ async function runAdversarialTest() {
   // 4. Head Teacher Tests
   const headCookie = await loginAndGetCookie('head_teacher@jiddahschool.ug')
   await runTest('Head Teacher reading Secular marks', `http://localhost:3000/api/marks?enrollment_id=${secEnrId}&term_id=${realTermId}`, 'GET', headCookie, 200)
-  await runTest('Head Teacher reading Theology marks', `http://localhost:3000/api/marks?enrollment_id=${theoEnrId}&term_id=${realTermId}`, 'GET', headCookie, 200)
-  await runTest('Head Teacher writing Theology marks', `http://localhost:3000/api/marks`, 'POST', headCookie, 403, { enrollment_id: theoEnrId, term_id: realTermId, score_type: 'bot', subject_id: '123e4567-e89b-12d3-a456-426614174000' })
+  await runTest('Head Teacher reading Theology marks', `http://localhost:3000/api/theology-marks?enrollment_id=${theoEnrId}&term_id=${realTermId}`, 'GET', headCookie, 200)
+  await runTest('Head Teacher writing Theology marks', `http://localhost:3000/api/theology-marks`, 'POST', headCookie, 403, { enrollment_id: theoEnrId, term_id: realTermId, score_type: 'bot', subject_id: '123e4567-e89b-12d3-a456-426614174000' })
   
   // 5. Class Teacher Tests
   const ctOwnCookie = await loginAndGetCookie('class_teacher_own@jiddahschool.ug')

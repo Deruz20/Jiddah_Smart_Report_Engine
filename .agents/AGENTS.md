@@ -37,3 +37,43 @@ These apply to every session in this repo, regardless of which gstack skill
   Arabic with no English labels) don't get touched as a side effect of an
   unrelated change.
 - **One commit per verified, isolated change**, not one commit per session.
+
+- Don't silently remove or weaken a previously-approved access-control
+  boundary to resolve a UX complaint. Fix the underlying bug without
+  removing the restriction; if removing the restriction genuinely seems
+  correct, flag it for approval instead of just doing it.
+- Merges to main touching authentication, authorization, or
+  settings/configuration access get flagged for review before pushing —
+  a clean build is not sufficient evidence of correctness for these.
+
+
+## Access Control Integrity
+**DO NOT SILENTLY REMOVE OR WEAKEN erifyDataAccess() BOUNDARIES**.
+The following API routes and pages are strictly gated and MUST call erifyDataAccess in all methods before processing requests:
+- /api/marks
+- /api/theology-marks
+- /api/circular-marks
+- /api/students
+- /api/students/[id]
+- /api/enrollments
+- /api/reports
+- /api/secular-hub
+- /api/theology-hub
+- /api/settings/school
+- /api/settings/terms
+- /api/settings/terms/active
+- /admin/settings/page.tsx
+- /admin/settings/remarks/page.tsx
+
+
+### Known gaps â€” lower priority, not yet gated
+The following routes read or write data but do not currently use the erifyDataAccess pipeline (they either rely on localized checks or just session presence):
+- /api/classes
+- /api/subjects
+- /api/theology-classes
+- /api/theology-subjects
+- /api/analytics/dashboard
+- /api/activity
+- /api/documents/*
+- /api/signatures/*
+- /api/notifications/*

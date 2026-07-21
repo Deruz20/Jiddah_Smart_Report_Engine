@@ -74,6 +74,7 @@ function NavItem({ icon: Icon, label, href, id, active, collapsed, role }: {
   role: string;
 }) {
   const { isMobile, setOpenMobile } = useSidebar();
+  const pathname = usePathname();
   
   // Dynamically resolve base path instead of hardcoding /admin
   let basePath = '/admin';
@@ -89,7 +90,7 @@ function NavItem({ icon: Icon, label, href, id, active, collapsed, role }: {
   const dynamicHref = href.startsWith('/admin') ? href.replace('/admin', basePath) : href;
 
   // Highlight Dashboard properly
-  const isActive = active || (id === 'dashboard' && window.location.pathname === basePath);
+  const isActive = active || (id === 'dashboard' && pathname === basePath);
 
   return (
     <SidebarMenuItem>

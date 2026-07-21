@@ -3,6 +3,7 @@ import { createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
+import { verifyDataAccess } from '@/lib/auth-server'
 
 export async function OPTIONS(request: NextRequest) {
   return apiOptions(request)
@@ -20,11 +21,16 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
+    const authRes = await verifyDataAccess(supabase, user, 'read')
+    if (!authRes.isAuthorized) {
+      return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
+    }
+
     const { searchParams } = new URL(request.url)
     const archivedParam = searchParams.get('archived')
     const isArchived = archivedParam === 'true'
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('enrollments')
       .select(`
         id,
@@ -37,6 +43,23 @@ export async function GET(request: NextRequest) {
       .eq('is_active', true)
       .eq('students.is_archived', isArchived)
       .order('academic_year', { ascending: false })
+
+    if (authRes.filterByClasses) {
+      const assignedClasses = authRes.filterByClasses;
+      if (assignedClasses.length > 0) {
+        query = query.in('circular_class_id', assignedClasses)
+      } else {
+        query = query.eq('circular_class_id', 'UNASSIGNED_DUMMY_VALUE')
+      }
+    } else if (authRes.filterByDepartment) {
+      if (authRes.filterByDepartment === 'theology') {
+        query = query.not('theology_class_id', 'is', null)
+      } else if (authRes.filterByDepartment === 'secular') {
+        query = query.not('circular_class_id', 'is', null)
+      }
+    }
+
+    const { data, error } = await query
 
     if (error) {
       console.error('Supabase error:', error)
@@ -77,6 +100,24 @@ export async function POST(request: NextRequest) {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
       return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+    }
+
+    const authRes = await verifyDataAccess(supabase, user, 'write')
+    if (!authRes.isAuthorized) {
+      return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
+    }
+
+    if (authRes.filterByClasses) {
+      if (!authRes.filterByClasses.includes(body.circular_class_id)) {
+        return withCors(request, NextResponse.json({ error: 'Unauthorized: Cannot enroll student into unassigned class' }, { status: 403 }))
+      }
+    } else if (authRes.filterByDepartment) {
+      if (authRes.filterByDepartment === 'theology' && !body.theology_class_id) {
+        return withCors(request, NextResponse.json({ error: 'Unauthorized: Must assign a Theology class' }, { status: 403 }))
+      }
+      if (authRes.filterByDepartment === 'secular' && !body.circular_class_id) {
+        return withCors(request, NextResponse.json({ error: 'Unauthorized: Must assign a Secular class' }, { status: 403 }))
+      }
     }
 
     // Check if admission number already exists

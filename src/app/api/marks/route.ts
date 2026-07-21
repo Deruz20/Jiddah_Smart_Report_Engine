@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { isCoreSubject } from '@/lib/grading'
 import { resolveSectionType } from '@/lib/section-type'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
+import { verifyDataAccess } from '@/lib/auth-server'
 
 export async function OPTIONS(request: NextRequest) {
   return apiOptions(request)
@@ -50,6 +51,26 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Enrollment not found' }, { status: 404 }))
     }
 
+    // Security Check
+    const authRes = await verifyDataAccess(supabase, user, 'read');
+    if (!authRes.isAuthorized) {
+      return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
+    }
+    if (authRes.filterByClasses) {
+      if (!authRes.filterByClasses.includes(enrollment.circular_class_id) && !authRes.filterByClasses.includes(enrollment.theology_class_id)) {
+        return withCors(request, NextResponse.json({ error: 'Unauthorized: You do not have access to this student\'s classes.' }, { status: 403 }))
+      }
+    }
+    
+    if (authRes.filterByDepartment) {
+      if (authRes.filterByDepartment === 'theology' && !enrollment.theology_class_id) {
+        return withCors(request, NextResponse.json({ error: 'Unauthorized: Student is not in the Theology department' }, { status: 403 }))
+      }
+      if (authRes.filterByDepartment === 'secular' && !enrollment.circular_class_id) {
+        return withCors(request, NextResponse.json({ error: 'Unauthorized: Student is not in the Secular department' }, { status: 403 }))
+      }
+    }
+
     // Fetch circular subjects
     const circularClassMeta = Array.isArray(enrollment.circular_classes)
       ? enrollment.circular_classes[0]
@@ -82,7 +103,7 @@ export async function GET(request: NextRequest) {
       (existingCircularMarks || []).map((mark: any) => [mark.subject_id, mark])
     )
 
-    const circular_marks = (subjects || []).map((subject: any) => {
+    let circular_marks = (subjects || []).map((subject: any) => {
       const existingMark = circularMarkMap.get(subject.id)
       return {
         subject_id: subject.id,
@@ -138,6 +159,12 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    if (authRes.filterByDepartment === 'secular') {
+      theology_marks = [];
+    } else if (authRes.filterByDepartment === 'theology') {
+      circular_marks = [];
+    }
+
     return withCors(request, NextResponse.json({
       circular_marks,
       theology_marks,
@@ -170,12 +197,32 @@ export async function POST(request: NextRequest) {
     // 1. Fetch enrollment's sections
     const { data: enrollment, error: enrollmentError } = await supabase
       .from('enrollments')
-      .select('circular_classes(section, class_name), theology_classes(level)')
+      .select('circular_class_id, theology_class_id, circular_classes(section, class_name), theology_classes(level)')
       .eq('id', enrollment_id)
       .single()
       
     if (enrollmentError || !enrollment) {
       return withCors(request, NextResponse.json({ error: 'Enrollment not found' }, { status: 404 }))
+    }
+
+    // Security Check
+    const authRes = await verifyDataAccess(supabase, user, 'write');
+    if (!authRes.isAuthorized) {
+      return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
+    }
+    if (authRes.filterByClasses) {
+      if (!authRes.filterByClasses.includes(enrollment.circular_class_id) && !authRes.filterByClasses.includes(enrollment.theology_class_id)) {
+        return withCors(request, NextResponse.json({ error: 'Unauthorized: You do not have access to this student\'s classes.' }, { status: 403 }))
+      }
+    }
+
+    if (authRes.filterByDepartment) {
+      if (authRes.filterByDepartment === 'theology' && !enrollment.theology_class_id) {
+        return withCors(request, NextResponse.json({ error: 'Unauthorized: Student is not in the Theology department' }, { status: 403 }))
+      }
+      if (authRes.filterByDepartment === 'secular' && !enrollment.circular_class_id) {
+        return withCors(request, NextResponse.json({ error: 'Unauthorized: Student is not in the Secular department' }, { status: 403 }))
+      }
     }
 
     const circularClassMeta = Array.isArray(enrollment.circular_classes)

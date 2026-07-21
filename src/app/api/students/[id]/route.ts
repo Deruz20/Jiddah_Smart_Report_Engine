@@ -2,6 +2,7 @@ import { createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
+import { verifyDataAccess } from '@/lib/auth-server'
 
 export async function OPTIONS(request: NextRequest) {
   return apiOptions(request)
@@ -34,6 +35,24 @@ export async function PUT(
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
       return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+    }
+
+    const authRes = await verifyDataAccess(supabase, user, 'write')
+    if (!authRes.isAuthorized) {
+      return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
+    }
+
+    if (authRes.filterByClasses) {
+      if (!authRes.filterByClasses.includes(body.circular_class_id)) {
+        return withCors(request, NextResponse.json({ error: 'Unauthorized: Cannot modify student outside your assigned classes' }, { status: 403 }))
+      }
+    } else if (authRes.filterByDepartment) {
+      if (authRes.filterByDepartment === 'theology' && !body.theology_class_id) {
+        return withCors(request, NextResponse.json({ error: 'Unauthorized: Must assign a Theology class' }, { status: 403 }))
+      }
+      if (authRes.filterByDepartment === 'secular' && !body.circular_class_id) {
+        return withCors(request, NextResponse.json({ error: 'Unauthorized: Must assign a Secular class' }, { status: 403 }))
+      }
     }
 
     const isMuslim = ['muslim', 'islam'].includes((body.religion || '').toLowerCase().trim());
@@ -146,6 +165,35 @@ export async function DELETE(
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
       return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+    }
+
+    const authRes = await verifyDataAccess(supabase, user, 'write')
+    if (!authRes.isAuthorized) {
+      return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
+    }
+
+    // Must fetch student's enrollment to verify permission for DELETE
+    if (authRes.filterByClasses || authRes.filterByDepartment) {
+      const { data: existingEnrollment } = await supabase
+        .from('enrollments')
+        .select('circular_class_id, theology_class_id')
+        .eq('student_id', studentId)
+        .eq('is_active', true)
+        .single()
+        
+      if (existingEnrollment) {
+        if (authRes.filterByClasses && !authRes.filterByClasses.includes(existingEnrollment.circular_class_id)) {
+          return withCors(request, NextResponse.json({ error: 'Unauthorized to delete this student' }, { status: 403 }))
+        }
+        if (authRes.filterByDepartment) {
+          if (authRes.filterByDepartment === 'theology' && !existingEnrollment.theology_class_id) {
+            return withCors(request, NextResponse.json({ error: 'Unauthorized to delete Secular student' }, { status: 403 }))
+          }
+          if (authRes.filterByDepartment === 'secular' && !existingEnrollment.circular_class_id) {
+            return withCors(request, NextResponse.json({ error: 'Unauthorized to delete Theology student' }, { status: 403 }))
+          }
+        }
+      }
     }
 
     if (isHardDelete) {

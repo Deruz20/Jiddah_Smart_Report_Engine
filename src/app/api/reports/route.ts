@@ -3,6 +3,7 @@ import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { getSubjectGradeNumber } from '@/lib/grading'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
+import { verifyDataAccess } from '@/lib/auth-server'
 
 export async function OPTIONS(request: NextRequest) {
   return apiOptions(request)
@@ -39,7 +40,7 @@ export async function GET(request: NextRequest) {
           section
         ),
         enrollments!inner (
-          theology_class
+          theology_class_id
         )
       `)
       .eq('id', student_id)
@@ -51,26 +52,22 @@ export async function GET(request: NextRequest) {
 
     // Security Check
     const { data: { user } } = await supabase.auth.getUser()
-    if (user) {
-      const { data: profile } = await supabase.from('teachers').select('role, subject, classes').eq('email', user.email).single()
-      const rawRole = profile?.role || user.user_metadata?.role || '';
-      const isDOS = typeof rawRole === 'string' && rawRole.toUpperCase().includes('DOS');
-      const isTeacher = typeof rawRole === 'string' && (rawRole.includes('Class Teacher') || rawRole.includes('Theology Instructor') || rawRole.toLowerCase() === 'teacher');
-      
-      if (isTeacher) {
-        const assignedClasses = profile?.classes || [];
-        if (!assignedClasses.includes(student.class_name)) {
-          throw new Error('Unauthorized: Student not in your assigned classes')
-        }
-      } else if (isDOS) {
-        const isTheology = rawRole.toUpperCase().includes('THEOLOGY') || profile?.subject?.toLowerCase().includes('theology');
-        const hasTheologyClass = student.enrollments?.[0]?.theology_class != null;
-        if (isTheology && !hasTheologyClass) {
-          throw new Error('Unauthorized: Student is not in the Theology department')
-        }
-        if (!isTheology && !student.class_name) {
-          throw new Error('Unauthorized: Student is not in the Secular department')
-        }
+    if (!user) {
+      return withCors(request, NextResponse.json({ error: 'Authentication required. Please log in.' }, { status: 401 }))
+    }
+
+    const authRes = await verifyDataAccess(supabase, user, 'read', student.class_name);
+    if (!authRes.isAuthorized) {
+      return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
+    }
+
+    if (authRes.filterByDepartment) {
+      const hasTheologyClass = student.enrollments?.[0]?.theology_class_id != null;
+      if (authRes.filterByDepartment === 'theology' && !hasTheologyClass) {
+        return withCors(request, NextResponse.json({ error: 'Unauthorized: Student is not in the Theology department' }, { status: 403 }))
+      }
+      if (authRes.filterByDepartment === 'secular' && !student.class_name) {
+        return withCors(request, NextResponse.json({ error: 'Unauthorized: Student is not in the Secular department' }, { status: 403 }))
       }
     }
 

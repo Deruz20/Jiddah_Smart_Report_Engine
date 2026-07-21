@@ -3,6 +3,7 @@ import { createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
+import { verifyDataAccess } from '@/lib/auth-server'
 
 export async function OPTIONS(request: NextRequest) {
   return apiOptions(request)
@@ -20,11 +21,10 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Authentication required. Please log in.' }, { status: 401 }))
     }
 
-    const { data: profile } = await supabase.from('teachers').select('role, subject, classes').eq('email', user.email).single()
-    const rawRole = profile?.role || user.user_metadata?.role || '';
-    const isDOS = typeof rawRole === 'string' && rawRole.toUpperCase().includes('DOS');
-    const isTeacher = typeof rawRole === 'string' && (rawRole.includes('Class Teacher') || rawRole.includes('Theology Instructor') || rawRole.toLowerCase() === 'teacher');
-    const isAdmin = !isDOS && !isTeacher;
+    const authRes = await verifyDataAccess(supabase, user, 'read');
+    if (!authRes.isAuthorized) {
+      return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
+    }
 
     let query = supabase
       .from('enrollments')
@@ -39,19 +39,18 @@ export async function GET(request: NextRequest) {
       .eq('is_active', true)
       .order('academic_year', { ascending: false })
 
-    if (isTeacher) {
-      const assignedClasses = profile?.classes || [];
+    if (authRes.filterByClasses) {
+      const assignedClasses = authRes.filterByClasses;
       if (assignedClasses.length > 0) {
-        query = query.in('circular_class', assignedClasses)
+        query = query.in('circular_class_id', assignedClasses)
       } else {
-        query = query.eq('circular_class', 'UNASSIGNED_DUMMY_VALUE')
+        query = query.eq('circular_class_id', 'UNASSIGNED_DUMMY_VALUE')
       }
-    } else if (isDOS) {
-      const isTheology = rawRole.toUpperCase().includes('THEOLOGY') || profile?.subject?.toLowerCase().includes('theology');
-      if (isTheology) {
-        query = query.not('theology_class', 'is', null)
-      } else {
-        query = query.not('circular_class', 'is', null)
+    } else if (authRes.filterByDepartment) {
+      if (authRes.filterByDepartment === 'theology') {
+        query = query.not('theology_class_id', 'is', null)
+      } else if (authRes.filterByDepartment === 'secular') {
+        query = query.not('circular_class_id', 'is', null)
       }
     }
 

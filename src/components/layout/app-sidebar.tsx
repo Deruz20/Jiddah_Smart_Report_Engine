@@ -52,16 +52,16 @@ import { cn } from "../figma-ui/ui/utils";
 import { createClient } from "@/utils/supabase/client";
 
 const navItems = [
-  { icon: LayoutDashboard, label: "Dashboard", id: "dashboard", href: "/admin", roles: ["admin", "Admin", "Secular DOS", "Theology DOS", "teacher", "Class Teacher", "Theology Instructor"] },
-  { icon: Users, label: "Students", id: "students", href: "/admin/students", roles: ["admin", "Admin", "Secular DOS", "Theology DOS", "teacher", "Class Teacher", "Theology Instructor"] },
-  { icon: UserCheck, label: "Teachers & Staff", id: "teachers", href: "/admin/teachers", roles: ["admin", "Admin", "Secular DOS", "Theology DOS"] },
-  { icon: BookMarked, label: "Classes", id: "classes", href: "/admin/classes", roles: ["admin", "Admin", "Secular DOS", "Theology DOS"] },
-  { icon: Library, label: "Subjects", id: "subjects", href: "/admin/subjects", roles: ["admin", "Admin", "Secular DOS", "Theology DOS"] },
+  { icon: LayoutDashboard, label: "Dashboard", id: "dashboard", href: "/admin", roles: ["Administrator", "admin", "Head Teacher", "Deputy Head Teacher", "DOS", "DOS Secular", "DOS Theology", "Class Teacher", "Theology Instructor"] },
+  { icon: Users, label: "Students", id: "students", href: "/admin/students", roles: ["Administrator", "admin", "Head Teacher", "Deputy Head Teacher", "DOS", "DOS Secular", "DOS Theology", "Class Teacher", "Theology Instructor"] },
+  { icon: UserCheck, label: "Teachers & Staff", id: "teachers", href: "/admin/teachers", roles: ["Administrator", "admin", "Head Teacher", "Deputy Head Teacher", "DOS", "DOS Secular", "DOS Theology"] },
+  { icon: BookMarked, label: "Classes", id: "classes", href: "/admin/classes", roles: ["Administrator", "admin", "Head Teacher", "Deputy Head Teacher", "DOS", "DOS Secular", "DOS Theology"] },
+  { icon: Library, label: "Subjects", id: "subjects", href: "/admin/subjects", roles: ["Administrator", "admin", "Head Teacher", "Deputy Head Teacher", "DOS", "DOS Secular", "DOS Theology"] },
 
-  { icon: ClipboardEdit, label: "Marks Entry", id: "marks", href: "/admin/marks", roles: ["admin", "Admin", "DOS Secular", "DOS Theology", "Secular DOS", "Theology DOS", "teacher", "Class Teacher", "Theology Instructor"] },
-  { icon: FileText, label: "Report Center", id: "reports", href: "/admin/reports", roles: ["admin", "Admin", "DOS Secular", "DOS Theology", "Secular DOS", "Theology DOS", "teacher", "Class Teacher", "Theology Instructor"] },
-  { icon: ScrollText, label: "Theology Hub", id: "theology-hub", href: "/admin/theology-hub", roles: ["admin", "Admin", "DOS Theology", "Theology DOS", "Theology Instructor"] },
-  { icon: Settings, label: "Settings", id: "settings", href: "/admin/settings", roles: ["admin", "Admin", "DOS Secular", "DOS Theology", "Secular DOS", "Theology DOS", "teacher", "Class Teacher", "Theology Instructor"] },
+  { icon: ClipboardEdit, label: "Marks Entry", id: "marks", href: "/admin/marks", roles: ["Administrator", "admin", "Head Teacher", "Deputy Head Teacher", "DOS", "DOS Secular", "DOS Theology", "Class Teacher", "Theology Instructor"] },
+  { icon: FileText, label: "Report Center", id: "reports", href: "/admin/reports", roles: ["Administrator", "admin", "Head Teacher", "Deputy Head Teacher", "DOS", "DOS Secular", "DOS Theology", "Class Teacher", "Theology Instructor"] },
+  { icon: ScrollText, label: "Theology Hub", id: "theology-hub", href: "/admin/theology-hub", roles: ["Administrator", "admin", "Head Teacher", "Deputy Head Teacher", "DOS", "DOS Theology", "Theology Instructor"] },
+  { icon: Settings, label: "Settings", id: "settings", href: "/admin/settings", roles: ["Administrator", "admin", "Head Teacher", "Deputy Head Teacher", "DOS", "DOS Secular", "DOS Theology", "Class Teacher", "Theology Instructor", "Support Staff"] },
 ];
 
 function NavItem({ icon: Icon, label, href, id, active, collapsed, role }: {

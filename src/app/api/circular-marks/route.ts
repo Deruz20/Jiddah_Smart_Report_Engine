@@ -1,6 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
+import { verifyDataAccess } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,6 +15,14 @@ export async function GET(request: NextRequest) {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const authRes = await verifyDataAccess(supabase, user, 'read')
+    if (!authRes.isAuthorized) {
+      return NextResponse.json({ error: authRes.message }, { status: 403 })
+    }
+    if (authRes.filterByDepartment && authRes.filterByDepartment === 'theology') {
+      return NextResponse.json({ error: 'Unauthorized: Cannot access Secular marks' }, { status: 403 })
     }
 
     let query = supabase
@@ -72,6 +81,14 @@ export async function POST(request: NextRequest) {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const authRes = await verifyDataAccess(supabase, user, 'write')
+    if (!authRes.isAuthorized) {
+      return NextResponse.json({ error: authRes.message }, { status: 403 })
+    }
+    if (authRes.filterByDepartment && authRes.filterByDepartment === 'theology') {
+      return NextResponse.json({ error: 'Unauthorized: Cannot modify Secular marks' }, { status: 403 })
     }
 
     const updateData: any = {}

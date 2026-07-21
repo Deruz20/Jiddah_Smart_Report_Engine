@@ -25,6 +25,8 @@ export async function OPTIONS(request: NextRequest) {
   return apiOptions(request)
 }
 
+import { verifyDataAccess } from '@/lib/auth-server'
+
 export async function GET(request: NextRequest) {
   const preflight = corsPreflight(request)
   if (preflight) return preflight
@@ -32,10 +34,24 @@ export async function GET(request: NextRequest) {
   try {
     const cookieStore = await cookies()
     const supabase = createClient(cookieStore)
+    
+    const authRes = await verifyDataAccess(supabase);
+    if (!authRes.isAuthorized) {
+      return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
+    }
+
     const role = request.nextUrl.searchParams.get('role')?.trim()
     const search = request.nextUrl.searchParams.get('search')?.trim()
 
     let query = supabase.from('teachers').select('*').order('name', { ascending: true })
+
+    if (authRes.filterByDepartment === 'secular') {
+      // Exclude Theology teachers
+      query = query.not('subject', 'ilike', '%Theology%');
+    } else if (authRes.filterByDepartment === 'theology') {
+      // Include only Theology teachers
+      query = query.ilike('subject', '%Theology%');
+    }
 
     if (role) {
       query = query.ilike('role', `%${role}%`)

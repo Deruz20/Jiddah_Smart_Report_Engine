@@ -64,11 +64,11 @@ export async function updateSession(request: NextRequest) {
   if (role === 'admin' || role === 'Administrator' || role === 'Head Teacher') {
     targetLanding = '/admin';
   } else if (role === 'DOS' || (typeof role === 'string' && role.toUpperCase().includes('DOS'))) {
-    targetLanding = '/dos';
+    targetLanding = '/admin'; // Consolidate to unified admin dashboard
   } else if (role === 'Class Teacher' || role === 'Theology Instructor' || role === 'teacher') {
-    targetLanding = '/teacher';
+    targetLanding = '/admin'; // Consolidate to unified admin dashboard
   } else if (role === 'Support Staff' || role === 'Deputy Head Teacher') {
-    targetLanding = '/pending';
+    targetLanding = '/pending'; // Or specific landing
   }
 
   const path = request.nextUrl.pathname;
@@ -94,14 +94,10 @@ export async function updateSession(request: NextRequest) {
       url.pathname = targetLanding;
       return NextResponse.redirect(url);
     }
-    if (path.startsWith('/dos') && targetLanding !== '/dos') {
+    // Redirect old dos/teacher paths to admin equivalent
+    if (path.startsWith('/dos') || path.startsWith('/teacher')) {
       const url = request.nextUrl.clone();
-      url.pathname = targetLanding;
-      return NextResponse.redirect(url);
-    }
-    if (path.startsWith('/teacher') && targetLanding !== '/teacher') {
-      const url = request.nextUrl.clone();
-      url.pathname = targetLanding;
+      url.pathname = path.replace(/^\/(dos|teacher)/, '/admin');
       return NextResponse.redirect(url);
     }
     if (path.startsWith('/pending') && targetLanding !== '/pending') {

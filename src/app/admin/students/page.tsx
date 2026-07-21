@@ -6,11 +6,18 @@ import { MetricCard } from '@/components/figma-ui/MetricCard'
 import { RegistrationTips } from '@/components/figma-ui/RegistrationTips'
 import { GraduationCap, BookOpen, TrendingUp, Calendar } from 'lucide-react'
 
+import { verifyDataAccess } from '@/lib/auth-server'
+
 export default async function StudentsManagementPage() {
   const cookieStore = await cookies()
   const supabase = createClient(cookieStore)
+  
+  const authRes = await verifyDataAccess(supabase);
+  if (!authRes.isAuthorized) {
+    return <div className="p-10 text-red-500">Access Denied: {authRes.message}</div>
+  }
 
-  const { data: enrollments } = await supabase
+  let query = supabase
     .from('enrollments')
     .select(`
       academic_year,
@@ -20,7 +27,15 @@ export default async function StudentsManagementPage() {
       students ( id, name, admission_number, created_at, gender, is_archived, is_muslim, arabic_name )
     `)
     .eq('is_active', true)
-    .order('academic_year', { ascending: false })
+    .order('academic_year', { ascending: false });
+    
+  if (authRes.filterByDepartment === 'secular') {
+    query = query.not('circular_class_id', 'is', null);
+  } else if (authRes.filterByDepartment === 'theology') {
+    query = query.not('theology_class_id', 'is', null);
+  }
+
+  const { data: enrollments } = await query;
 
   const students = (enrollments || []).map((e: any) => ({
     id: e.students.id,
@@ -134,7 +149,7 @@ export default async function StudentsManagementPage() {
               <p className="text-sm text-slate-500 mt-0.5">{students.length} active registrations</p>
             </div>
           </div>
-          <StudentsListClient students={students} />
+          <StudentsListClient students={students} department={authRes.filterByDepartment} />
         </section>
 
       </div>

@@ -2,16 +2,28 @@ import { createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import TeachersClient, { DashboardTeacher } from '@/components/layout/teachers-client'
 
+import { verifyDataAccess } from '@/lib/auth-server'
+
 export const dynamic = "force-dynamic";
 
 export default async function TeachersManagementPage() {
   const cookieStore = await cookies()
   const supabase = createClient(cookieStore)
 
-  const { data: teachers } = await supabase
-    .from('teachers')
-    .select('*')
-    .order('name', { ascending: true })
+  const authRes = await verifyDataAccess(supabase);
+  if (!authRes.isAuthorized) {
+    return <div className="p-10 text-red-500">Access Denied: {authRes.message}</div>
+  }
+
+  let query = supabase.from('teachers').select('*').order('name', { ascending: true });
+
+  if (authRes.filterByDepartment === 'secular') {
+    query = query.not('subject', 'ilike', '%Theology%');
+  } else if (authRes.filterByDepartment === 'theology') {
+    query = query.ilike('subject', '%Theology%');
+  }
+
+  const { data: teachers } = await query;
 
   const formattedTeachers = (teachers || []).map((t: any) => ({
     id: t.id,

@@ -53,9 +53,10 @@ function avatarColors(name: string) {
 
 interface StudentsTableProps {
   students: Student[];
+  department?: string;
 }
 
-export function StudentsListClient({ students }: StudentsTableProps) {
+export function StudentsListClient({ students, department }: StudentsTableProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const deferredSearchTerm = useDeferredValue(searchTerm);
   const [activeTab, setActiveTab] = useState<FilterTab>('All');
@@ -65,7 +66,11 @@ export function StudentsListClient({ students }: StudentsTableProps) {
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const router = useRouter();
 
-  const tabs: FilterTab[] = ['All', 'Primary', 'Nursery', 'Theology', 'Archived'];
+  const tabs: FilterTab[] = useMemo(() => {
+    if (department === 'secular') return ['All', 'Primary', 'Nursery', 'Archived'];
+    if (department === 'theology') return ['All', 'Theology', 'Archived'];
+    return ['All', 'Primary', 'Nursery', 'Theology', 'Archived'];
+  }, [department]);
 
   const tabCounts = useMemo(() => {
     const counts: Record<FilterTab, number> = { All: 0, Primary: 0, Nursery: 0, Theology: 0, Archived: 0 };
@@ -269,15 +274,17 @@ export function StudentsListClient({ students }: StudentsTableProps) {
                   </code>
                 </td>
                 <td className="px-5 py-4 whitespace-nowrap">
-                  <div className="text-sm font-semibold text-slate-800">
-                    {student.circular_class}
-                    {student.section && (
-                      <span className="ml-1.5 text-xs font-medium text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
-                        {student.section}
-                      </span>
-                    )}
-                  </div>
-                  {(student.theology_class_english || student.theology_class_arabic) && (
+                  {department !== 'theology' && (
+                    <div className="text-sm font-semibold text-slate-800">
+                      {student.circular_class}
+                      {student.section && (
+                        <span className="ml-1.5 text-xs font-medium text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+                          {student.section}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  {department !== 'secular' && (student.theology_class_english || student.theology_class_arabic) && (
                     <div className="text-xs text-slate-400 mt-0.5">
                       {student.theology_class_english || student.theology_class_arabic}
                     </div>

@@ -435,9 +435,17 @@ export default function TeachersClient({
                         className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 pr-10 text-sm text-slate-900 outline-none appearance-none focus:border-[#10B981]"
                       >
                         <option value="" disabled>Select a role...</option>
-                        <option value="Class Teacher">Class Teacher</option>
-                        <option value="Theology Instructor">Theology Instructor</option>
-                        <option value="Support Staff">Support Staff</option>
+                        {currentUserRole === 'DOS Secular' ? (
+                          <option value="Class Teacher">Class Teacher</option>
+                        ) : currentUserRole === 'DOS Theology' ? (
+                          <option value="Theology Instructor">Theology Instructor</option>
+                        ) : (
+                          <>
+                            <option value="Class Teacher">Class Teacher</option>
+                            <option value="Theology Instructor">Theology Instructor</option>
+                            <option value="Support Staff">Support Staff</option>
+                          </>
+                        )}
                       </select>
                       <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                     </div>

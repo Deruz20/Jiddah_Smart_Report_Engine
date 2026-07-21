@@ -60,7 +60,8 @@ const navItems = [
 
   { icon: ClipboardEdit, label: "Marks Entry", id: "marks", href: "/admin/marks", roles: ["Administrator", "admin", "Head Teacher", "Deputy Head Teacher", "DOS", "DOS Secular", "DOS Theology", "Class Teacher", "Theology Instructor"] },
   { icon: FileText, label: "Report Center", id: "reports", href: "/admin/reports", roles: ["Administrator", "admin", "Head Teacher", "Deputy Head Teacher", "DOS", "DOS Secular", "DOS Theology", "Class Teacher", "Theology Instructor"] },
-  { icon: ScrollText, label: "Theology Hub", id: "theology-hub", href: "/admin/theology-hub", roles: ["Administrator", "admin", "Head Teacher", "Deputy Head Teacher", "DOS", "DOS Theology", "Theology Instructor"] },
+  { icon: ScrollText, label: "Secular Hub", id: "secular-hub", href: "/admin/secular-hub", roles: ["Administrator", "admin", "Head Teacher", "Deputy Head Teacher", "DOS", "DOS Secular", "Class Teacher"] },
+  { icon: ScrollText, label: "Theology Hub", id: "theology-hub", href: "/admin/theology-hub", roles: ["Administrator", "admin", "Head Teacher", "Deputy Head Teacher", "DOS Theology", "Theology Instructor"] },
   { icon: Settings, label: "Settings", id: "settings", href: "/admin/settings", roles: ["Administrator", "admin", "Head Teacher", "Deputy Head Teacher", "DOS", "DOS Secular", "DOS Theology", "Class Teacher", "Theology Instructor", "Support Staff"] },
 ];
 
@@ -76,18 +77,9 @@ function NavItem({ icon: Icon, label, href, id, active, collapsed, role }: {
   const { isMobile, setOpenMobile } = useSidebar();
   const pathname = usePathname();
   
-  // Dynamically resolve base path instead of hardcoding /admin
-  let basePath = '/admin';
-  if (role === 'admin' || role === 'Administrator' || role === 'Head Teacher') {
-    basePath = '/admin';
-  } else if (role.toUpperCase().includes('DOS') || role === 'DOS Secular' || role === 'DOS Theology') {
-    basePath = '/dos';
-  } else if (role === 'Class Teacher' || role === 'Theology Instructor' || role === 'teacher') {
-    basePath = '/teacher';
-  }
-
-  // Rewrite /admin to basePath unless the href doesn't start with /admin
-  const dynamicHref = href.startsWith('/admin') ? href.replace('/admin', basePath) : href;
+  // Removed DOS/Teacher dynamic base path rewriting because we unified the dashboard under /admin
+  const basePath = '/admin';
+  const dynamicHref = href;
 
   // Highlight Dashboard properly
   const isActive = active || (id === 'dashboard' && pathname === basePath);
@@ -208,7 +200,15 @@ export function AppSidebar() {
     supabase.auth.getSession().then(({ data }: any) => {
       const user = data.session?.user;
       if (user?.user_metadata) {
-        setRole(user.user_metadata.role || 'teacher');
+        let sessionRole = user.user_metadata.role || 'teacher';
+        const subject = user.user_metadata.subject || '';
+        
+        // Normalize DOS role
+        if (sessionRole.toUpperCase() === 'DOS') {
+           sessionRole = (subject && subject.toLowerCase().includes('theology')) ? 'DOS Theology' : 'DOS Secular';
+        }
+        
+        setRole(sessionRole);
         setUserName(user.user_metadata.full_name || user.email?.split('@')[0] || 'User');
       }
     });

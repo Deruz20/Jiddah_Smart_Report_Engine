@@ -224,6 +224,28 @@ function MobileSearchOverlay({ open, onClose }: { open: boolean; onClose: () => 
 /* ─── Term Badge (desktop only) ──────────────────────────────────────────── */
 
 function TermBadge() {
+  const [termName, setTermName] = React.useState<string>("Loading...");
+
+  React.useEffect(() => {
+    async function fetchTerm() {
+      try {
+        const res = await fetch('/api/settings/terms/active');
+        if (res.ok) {
+          const json = await res.json();
+          if (json?.data) {
+            setTermName(`${json.data.term_name}, ${json.data.academic_year}`);
+          } else {
+            setTermName("No Active Term");
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch term:", err);
+        setTermName("Error fetching term");
+      }
+    }
+    fetchTerm();
+  }, []);
+
   return (
     <div
       className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg"
@@ -234,7 +256,7 @@ function TermBadge() {
     >
       <div className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
       <span className="text-emerald-700 font-medium" style={{ fontSize: "0.75rem" }}>
-        Term 1, 2026
+        {termName}
       </span>
     </div>
   );

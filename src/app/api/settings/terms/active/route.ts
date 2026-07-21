@@ -2,6 +2,7 @@ import { createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
+import { recordActivity } from '@/lib/api-server'
 
 export async function OPTIONS(request: NextRequest) {
   return apiOptions(request)
@@ -70,6 +71,10 @@ export async function POST(request: NextRequest) {
       }
       return withCors(request, NextResponse.json({ error: error.message }, { status: 500 }))
     }
+
+    await recordActivity(supabase, user.id, 'Set Active Term', {
+      term_id: termId
+    })
 
     return withCors(request, NextResponse.json({ success: true, message: 'Active term updated' }))
   } catch (err: any) {

@@ -12,7 +12,10 @@ export default async function StudentsManagementPage() {
   const cookieStore = await cookies()
   const supabase = createClient(cookieStore)
   
-  const authRes = await verifyDataAccess(supabase);
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return <div className="p-10">Unauthorized</div>
+
+  const authRes = await verifyDataAccess(supabase, user, 'read');
   if (!authRes.isAuthorized) {
     return <div className="p-10 text-red-500">Access Denied: {authRes.message}</div>
   }

@@ -1,4 +1,3 @@
-import stringSimilarity from 'string-similarity';
 
 // Advanced Arabic Transliteration Engine for Ugandan & Islamic Names
 // Handles common Islamic names exactly, and uses advanced phonetic rules for local Luganda/Bantu names
@@ -94,10 +93,9 @@ export function transliterateEnglishToArabic(name: string): string {
   const words = name.toLowerCase().trim().split(/\s+/);
   
   const transliteratedWords = words.map(word => {
-    // 1. SMART DICTIONARY: Fuzzy match to catch misspellings (e.g., 'mohammed' -> 'muhammad')
-    const match = stringSimilarity.findBestMatch(word, ISLAMIC_KEYS);
-    if (match.bestMatch.rating > 0.8) { 
-      return ISLAMIC_NAMES_DICT[match.bestMatch.target];
+    // 1. EXACT DICTIONARY MATCH ONLY (No fuzzy matching)
+    if (ISLAMIC_NAMES_DICT[word]) {
+      return ISLAMIC_NAMES_DICT[word];
     }
 
     // 2. LUGANDA PHONETICS: Strip leading double consonants (Sse-, Nna-)
@@ -118,7 +116,7 @@ export function transliterateEnglishToArabic(name: string): string {
         continue;
       }
 
-      // Handle Vowels (Only use long vowels for double vowels in English, ignore short ones)
+      // Handle Vowels (Preserve short and long vowels for readable local names)
       if ('aeiou'.includes(char)) {
         if (i === 0) {
           // Word starts with a vowel
@@ -129,13 +127,12 @@ export function transliterateEnglishToArabic(name: string): string {
           else if (char === 'o' || char === 'u') result += 'و';
           else if (char === 'a') result += 'ا';
           i++; // Skip the second vowel
-        } else if (i === processedWord.length - 1) {
-          // Ending vowels usually need to be written in Bantu names
+        } else {
+          // Explicitly map short vowels in Bantu names so the syllable structure is readable
           if (char === 'a') result += 'ا';
           if (char === 'i' || char === 'e') result += 'ي';
           if (char === 'o' || char === 'u') result += 'و';
         }
-        // Middle short vowels are ignored (let the consonants connect naturally)
         i++;
         continue;
       }

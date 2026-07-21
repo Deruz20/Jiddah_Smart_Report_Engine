@@ -4,6 +4,7 @@ import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { verifyDataAccess } from '@/lib/auth-server'
+import { recordActivity } from '@/lib/api-server'
 
 export async function OPTIONS(request: NextRequest) {
   return apiOptions(request)
@@ -120,22 +121,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Check if admission number already exists
-    const { data: existingStudent } = await supabase
-      .from('students')
-      .select('id')
-      .eq('admission_number', body.admission_number)
-
-    if (existingStudent && existingStudent.length > 0) {
-      return withCors(
-        request,
-        NextResponse.json(
-          { error: 'Admission number already exists' },
-          { status: 409 }
-        )
-      )
-    }
-
     // Get circular class to check if it's P.7
     const { data: circularClassData, error: circularError } = await supabase
       .from('circular_classes')
@@ -175,7 +160,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 1. Insert new student with admission number
+    // 1. Insert new student with admission number. Postgres UNIQUE constraint prevents race conditions.
     const { data: studentData, error: studentError } = await supabase
       .from('students')
       .insert([{
@@ -188,6 +173,15 @@ export async function POST(request: NextRequest) {
 
     if (studentError) {
       console.error('Student insert error:', studentError)
+      if (studentError.code === '23505') {
+        return withCors(
+          request,
+          NextResponse.json(
+            { error: 'Admission number already exists' },
+            { status: 409 }
+          )
+        )
+      }
       return withCors(request, NextResponse.json({ error: studentError.message }, { status: 500 }))
     }
 
@@ -238,6 +232,13 @@ export async function POST(request: NextRequest) {
       theology_class_english: enrollment?.theology_classes?.class_name_english ?? null,
       academic_year: enrollment?.academic_year,
     }
+
+    // Log Activity
+    await recordActivity(supabase, user.id, 'Registered new student', {
+      student_id: studentId,
+      student_name: body.name.trim(),
+      admission_number: body.admission_number.trim()
+    })
 
     return withCors(request, NextResponse.json(response, { status: 201 }))
   } catch (err) {

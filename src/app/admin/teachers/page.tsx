@@ -10,7 +10,10 @@ export default async function TeachersManagementPage() {
   const cookieStore = await cookies()
   const supabase = createClient(cookieStore)
 
-  const authRes = await verifyDataAccess(supabase);
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return <div className="p-10">Unauthorized</div>
+
+  const authRes = await verifyDataAccess(supabase, user, 'read');
   if (!authRes.isAuthorized) {
     return <div className="p-10 text-red-500">Access Denied: {authRes.message}</div>
   }
@@ -37,8 +40,7 @@ export default async function TeachersManagementPage() {
     joined: t.created_at || ''
   }))
 
-  const { data: authData } = await supabase.auth.getUser()
-  const user = authData.user
+
 
   let currentUserRole = user?.user_metadata?.role || 'teacher'
   let currentUserSubject = ''

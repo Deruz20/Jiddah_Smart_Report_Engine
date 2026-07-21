@@ -58,5 +58,5 @@ export default async function SecularHubPage() {
     )
   }
 
-  return <SecularHubClient terms={terms} circularClasses={circularClasses} />
+  return <SecularHubClient terms={terms} circularClasses={circularClasses as any} />
 }

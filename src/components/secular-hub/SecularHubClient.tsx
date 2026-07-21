@@ -146,7 +146,7 @@ export default function SecularHubClient({
       return {
         id: enrollment.id,
         name: enrollment.students.name,
-        name: enrollment.students.name,
+        arabic_name: enrollment.students.arabic_name || '',
         total,
         subjectScores,
         position: '-' as number | string
@@ -347,7 +347,7 @@ export default function SecularHubClient({
             toast.error("No assessment data to download.")
             return
           }
-          generateAssessmentCSV(assessmentData.students, assessmentData.orderedSubjects, filename)
+          generateAssessmentCSV(assessmentData.students as any, assessmentData.orderedSubjects, filename)
         } else if (activeTab === 'analysis') {
           if (analysisData.length === 0) {
             toast.error("No analysis data to download.")

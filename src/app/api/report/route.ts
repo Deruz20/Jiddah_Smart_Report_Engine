@@ -479,7 +479,7 @@ export async function GET(request: NextRequest) {
         theology: theologySectionData,
         meta: {
           is_term_3: isTerm3,
-          promotion_status: isTerm3 && theologySectionData?.division ? getPromotionStatus(theologySectionData.division) : null,
+          promotion_status: isTerm3 && theologySectionData?.division ? getPromotionStatus(theologySectionData.division as any) : null,
           position: theologyPosition,
           total_students: totalTheologyStudents,
         },

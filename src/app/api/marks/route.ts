@@ -5,6 +5,7 @@ import { isCoreSubject } from '@/lib/grading'
 import { resolveSectionType } from '@/lib/section-type'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { verifyDataAccess } from '@/lib/auth-server'
+import { recordActivity } from '@/lib/api-server'
 
 export async function OPTIONS(request: NextRequest) {
   return apiOptions(request)
@@ -326,6 +327,12 @@ export async function POST(request: NextRequest) {
         }
       }
     }
+
+    await recordActivity(supabase, user.id, 'Entered Marks', {
+      enrollment_id,
+      term_id,
+      score_type
+    })
 
     return withCors(request, NextResponse.json({ success: true }))
   } catch (err) {

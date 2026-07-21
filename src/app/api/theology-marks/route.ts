@@ -2,6 +2,7 @@ import { createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyDataAccess } from '@/lib/auth-server'
+import { recordActivity } from '@/lib/api-server'
 
 export async function GET(request: NextRequest) {
   try {
@@ -131,6 +132,13 @@ export async function POST(request: NextRequest) {
       console.error('Supabase error:', result.error)
       return NextResponse.json({ error: result.error.message }, { status: 400 })
     }
+
+    await recordActivity(supabase, user.id, 'Entered Theology Marks', {
+      enrollment_id,
+      term_id,
+      mot_score,
+      eot_score
+    })
 
     return NextResponse.json({ data: result.data }, { status: existing ? 200 : 201 })
   } catch (err) {

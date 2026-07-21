@@ -35,10 +35,10 @@ export async function GET(request: NextRequest) {
     const cookieStore = await cookies()
     const supabase = createClient(cookieStore)
     
-    const authRes = await verifyDataAccess(supabase);
-    if (!authRes.isAuthorized) {
-      return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
-    }
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
+
+    const authRes = await verifyDataAccess(supabase, user, 'read');
 
     const role = request.nextUrl.searchParams.get('role')?.trim()
     const search = request.nextUrl.searchParams.get('search')?.trim()
@@ -156,6 +156,9 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase.from('teachers').insert([insertData]).select()
     if (error) {
       console.error('teachers POST error:', error.message)
+      if (error.code === '23505') {
+        return withCors(request, NextResponse.json({ error: 'Email already exists' }, { status: 409 }))
+      }
       return withCors(request, NextResponse.json({ error: error.message }, { status: 500 }))
     }
 

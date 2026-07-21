@@ -76,8 +76,8 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
       classIds: searchParams.get('classIds') ? searchParams.get('classIds')!.split(',') : [],
       section: (searchParams.get('section') as any) || 'all',
       gender: (searchParams.get('gender') as any) || 'All',
-      term: searchParams.get('term') || '',
-      phase: searchParams.get('phase') || '',
+      term: (searchParams.get('term') as any) || '',
+      phase: (searchParams.get('phase') as any) || '',
       curriculum: (searchParams.get('curriculum') as any) || 'secular',
       layout: (searchParams.get('layout') as any) || 'single',
     }
@@ -125,7 +125,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
       if (filterState.curriculum === 'theology') {
         if (!hasTheo) continue
         clsName = e.theology_class_arabic || 'Unassigned'
-        const tLevel = e.theology_level
+        const tLevel = (e as any).theology_level
         if (tLevel === 'raudha') sectionType = 'nursery'
         else if (tLevel === 'ibtidaai_lower') sectionType = 'lower_primary'
         else if (tLevel === 'ibtidaai_upper') sectionType = 'upper_primary'
@@ -463,7 +463,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
       <PrintDialog
         open={isPrintDialogOpen}
         onOpenChange={setIsPrintDialogOpen}
-        reports={rawReports}
+        reports={rawReports as any}
         onConfirmPrint={(mode) => {
           setPrintScope(mode)
           
@@ -471,11 +471,11 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
           
           if (mode === 'current') {
             const currentReport = rawReports.find(r => r.id === activeReportId);
-            const studentName = currentReport?.student_name || 'Student';
+            const studentName = (currentReport as any)?.student?.name || 'Student';
             const term = filterState.term ? `_Term_${filterState.term}` : '';
             sanitizedFilename = `${studentName}${term}_Report.pdf`;
           } else if (mode === 'all') {
-            const className = filterState.classId ? figmaClasses.find(c => c.id === filterState.classId)?.name || filterState.classId : 'Batch';
+            const className = (filterState as any).classIds?.[0] ? figmaClasses.find(c => c.id === (filterState as any).classIds[0])?.name || 'Batch' : 'Batch';
             const term = filterState.term ? `_Term_${filterState.term}` : '';
             sanitizedFilename = `${className}${term}_Batch_Reports.pdf`;
           } else {

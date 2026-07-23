@@ -20,8 +20,10 @@ export type Student = {
   theology_class_id?: string | null;
   academic_year: string;
   status: 'Nursery' | 'Primary' | 'Theology';
-  gender?: 'Male' | 'Female';
+  is_theology_enrolled?: boolean;
+  gender?: string | null;
   is_archived?: boolean;
+  is_muslim?: boolean;
 };
 
 type SortKey = 'name' | 'admission_number' | 'created_at' | 'circular_class';
@@ -256,54 +258,71 @@ export function StudentsListClient({ students, department }: StudentsTableProps)
                 {/* Left accent bar on hover */}
                 <td className="px-5 py-4 whitespace-nowrap">
                   <div className="flex items-center gap-3">
-                    <div className={`h-9 w-9 flex-shrink-0 rounded-full bg-gradient-to-br ${avatarColors(student.name)} flex items-center justify-center font-bold shadow-sm text-sm`}>
-                      {student.name.charAt(0)}
+                    <div className={`h-10 w-10 flex-shrink-0 rounded-2xl bg-gradient-to-br ${avatarColors(student.name)} flex items-center justify-center font-bold shadow-[0_2px_10px_-3px_rgba(0,0,0,0.1)] text-sm border border-white/50`}>
+                      {student.name.charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <div className="text-sm font-semibold text-slate-900">{student.name}</div>
-                      <div className="text-xs text-slate-400 mt-0.5">
-                        {student.gender && <span className="mr-1.5">{student.gender === 'Female' ? '♀' : '♂'}</span>}
-                        Joined {new Date(student.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      <div className="text-sm font-bold text-slate-800 tracking-tight">{student.name}</div>
+                      <div className="flex items-center gap-2 text-xs text-slate-400 mt-0.5 font-medium">
+                        {student.gender && (
+                          <span className={`inline-flex items-center justify-center px-1.5 py-0.5 rounded-md text-[10px] uppercase tracking-wider font-bold ${
+                            student.gender.toLowerCase() === 'female' 
+                              ? 'bg-rose-50 text-rose-600 border border-rose-100' 
+                              : 'bg-blue-50 text-blue-600 border border-blue-100'
+                          }`}>
+                            {student.gender.toLowerCase() === 'female' ? '♀ Female' : '♂ Male'}
+                          </span>
+                        )}
+                        <span>
+                          Joined {new Date(student.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </span>
                       </div>
                     </div>
                   </div>
                 </td>
                 <td className="px-5 py-4 whitespace-nowrap">
-                  <code className="text-xs font-mono text-slate-600 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
+                  <code className="text-[11px] font-mono font-bold text-slate-600 bg-slate-100/80 px-2 py-1 rounded-md border border-slate-200/60 shadow-sm">
                     {student.admission_number}
                   </code>
                 </td>
                 <td className="px-5 py-4 whitespace-nowrap">
                   {department !== 'theology' && (
-                    <div className="text-sm font-semibold text-slate-800">
+                    <div className="text-sm font-bold text-slate-700 flex items-center gap-1.5">
                       {student.circular_class}
                       {student.section && (
-                        <span className="ml-1.5 text-xs font-medium text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+                        <span className="text-[10px] uppercase tracking-widest font-bold text-slate-500 bg-white border border-slate-200 px-1.5 py-0.5 rounded shadow-sm">
                           {student.section}
                         </span>
                       )}
                     </div>
                   )}
                   {department !== 'secular' && (student.theology_class_english || student.theology_class_arabic) && (
-                    <div className="text-xs text-slate-400 mt-0.5">
+                    <div className="text-[11px] font-semibold text-amber-600 bg-amber-50 inline-flex px-1.5 py-0.5 rounded mt-1 border border-amber-100">
                       {student.theology_class_english || student.theology_class_arabic}
                     </div>
                   )}
                 </td>
                 <td className="px-5 py-4 whitespace-nowrap">
-                  <span className="text-xs font-medium text-slate-500 bg-slate-50 border border-slate-200 px-2 py-1 rounded-lg">
+                  <span className="text-[11px] font-bold text-slate-500 bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-md shadow-sm">
                     {student.academic_year}
                   </span>
                 </td>
                 <td className="px-5 py-4 whitespace-nowrap">
-                  <Badge
-                    variant={
-                      student.status === 'Primary' ? 'emerald' :
-                      student.status === 'Theology' ? 'orange' : 'blue'
-                    }
-                  >
-                    {student.status}
-                  </Badge>
+                  <div className="flex flex-col items-start gap-1">
+                    <Badge
+                      variant={
+                        student.status === 'Primary' ? 'emerald' :
+                        student.status === 'Theology' ? 'orange' : 'blue'
+                      }
+                    >
+                      {student.status}
+                    </Badge>
+                    {student.is_theology_enrolled && student.status !== 'Theology' && (
+                      <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded uppercase tracking-wider border border-orange-100">
+                        + Theology
+                      </span>
+                    )}
+                  </div>
                 </td>
                 <td className="px-5 py-4 whitespace-nowrap text-right flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                   <button 

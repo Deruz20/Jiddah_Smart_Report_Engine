@@ -56,11 +56,9 @@ const statusBadgeStyle = (status: string) => {
 
 const roleBadgeStyle = (role: string) => {
   switch (role) {
-    case 'Head Teacher':
     case 'Class Teacher':
-    case 'Theology Instructor':
-    case 'DOS Secular':
-    case 'DOS Theology':
+    case 'Teacher':
+    case 'DOS':
       return { background: 'rgba(16,185,129,0.12)', color: '#065F46' }
     case 'Deputy Head Teacher':
     case 'Support Staff':
@@ -275,12 +273,10 @@ export default function TeachersClient({
               className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none appearance-none focus:border-[#10B981] transition-colors"
             >
               <option>All Roles</option>
-              <option>Head Teacher</option>
-              <option>DOS Secular</option>
-              <option>DOS Theology</option>
+              <option>Administrator</option>
+              <option>DOS</option>
               <option>Class Teacher</option>
-              <option>Theology Instructor</option>
-              <option>Deputy Head Teacher</option>
+              <option>Teacher</option>
               <option>Support Staff</option>
             </select>
             <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -413,13 +409,10 @@ export default function TeachersClient({
                         {...register('role')}
                         className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 pr-10 text-sm text-slate-900 outline-none appearance-none focus:border-[#10B981]"
                       >
-                        <option value="" disabled>Select a role...</option>
+                        <option value="Administrator">Administrator</option>
+                        <option value="DOS">DOS</option>
                         <option value="Class Teacher">Class Teacher</option>
-                        <option value="Head Teacher">Head Teacher</option>
-                        <option value="DOS Secular">DOS Secular</option>
-                        <option value="DOS Theology">DOS Theology</option>
-                        <option value="Theology Instructor">Theology Instructor</option>
-                        <option value="Deputy Head Teacher">Deputy Head Teacher</option>
+                        <option value="Teacher">Teacher</option>
                         <option value="Support Staff">Support Staff</option>
                       </select>
                       <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />

@@ -120,7 +120,7 @@ export default function SecularHubClient({
     if (!classInfo) return { students: [], orderedSubjects: [] }
     
     const levelSubjects = data.subjects.filter(s => s.level === classInfo.level)
-    const targetSubjects = ['القرآن', 'اللغة العربية', 'الفقه', 'التربية', 'التوحيد', 'السيرة']
+    const targetSubjects = ['Mathematics', 'English', 'Science', 'SST', 'Literacy', 'Reading']
     
     const orderedSubjects = [...levelSubjects].sort((a, b) => {
       let aIdx = targetSubjects.findIndex(t => a.subject_name.includes(t))

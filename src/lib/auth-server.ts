@@ -76,7 +76,6 @@ export async function verifyDataAccess(
   // 4. DOS
   if (role === 'DOS Secular' || role === 'DOS Theology' || role === 'DOS') {
     const isTheology = role === 'DOS Theology' || (role === 'DOS' && profile.subject?.toLowerCase().includes('theology'));
-    const isSecular = role === 'DOS Secular' || (role === 'DOS' && !profile.subject?.toLowerCase().includes('theology'));
     
     const myDepartment: Department = isTheology ? 'theology' : 'secular';
 
@@ -87,15 +86,20 @@ export async function verifyDataAccess(
     return { isAuthorized: true, role, filterByDepartment: myDepartment };
   }
 
-  // 5. Class Teacher & Theology Instructor
-  if (role === 'Class Teacher' || role === 'Theology Instructor') {
+  // 5. Class Teacher, Theology Instructor, Teacher
+  if (role === 'Class Teacher' || role === 'Theology Instructor' || role === 'Teacher') {
     const assignedClasses: string[] = profile.classes || [];
     
     if (targetClass && !assignedClasses.includes(targetClass)) {
       return { isAuthorized: false, message: `Unauthorized: You do not have access to class ${targetClass}.` };
     }
 
-    const myDepartment: Department = role === 'Theology Instructor' ? 'theology' : 'secular';
+    const isTheology = role === 'Theology Instructor' || (profile.subject?.toLowerCase().includes('theology'));
+    const myDepartment: Department = isTheology ? 'theology' : 'secular';
+
+    if (targetDepartment && targetDepartment !== myDepartment) {
+      return { isAuthorized: false, message: `Unauthorized: You only have access to the ${myDepartment} department.` };
+    }
 
     // If they didn't specify a target class, we authorize but return their assigned classes so the endpoint can filter.
     return { isAuthorized: true, role, filterByClasses: assignedClasses, filterByDepartment: myDepartment };

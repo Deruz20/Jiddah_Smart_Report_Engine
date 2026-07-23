@@ -109,7 +109,9 @@ export async function POST(request: NextRequest) {
     }
 
     if (authRes.filterByClasses) {
-      if (!authRes.filterByClasses.includes(body.circular_class_id)) {
+      const isTheology = authRes.filterByDepartment === 'theology';
+      const targetClassId = isTheology ? body.theology_class_id : body.circular_class_id;
+      if (!targetClassId || !authRes.filterByClasses.includes(targetClassId)) {
         return withCors(request, NextResponse.json({ error: 'Unauthorized: Cannot enroll student into unassigned class' }, { status: 403 }))
       }
     } else if (authRes.filterByDepartment) {

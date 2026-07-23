@@ -43,7 +43,9 @@ export async function PUT(
     }
 
     if (authRes.filterByClasses) {
-      if (!authRes.filterByClasses.includes(body.circular_class_id)) {
+      const isTheology = authRes.filterByDepartment === 'theology';
+      const targetClassId = isTheology ? body.theology_class_id : body.circular_class_id;
+      if (!targetClassId || !authRes.filterByClasses.includes(targetClassId)) {
         return withCors(request, NextResponse.json({ error: 'Unauthorized: Cannot modify student outside your assigned classes' }, { status: 403 }))
       }
     } else if (authRes.filterByDepartment) {
@@ -182,8 +184,12 @@ export async function DELETE(
         .single()
         
       if (existingEnrollment) {
-        if (authRes.filterByClasses && !authRes.filterByClasses.includes(existingEnrollment.circular_class_id)) {
-          return withCors(request, NextResponse.json({ error: 'Unauthorized to delete this student' }, { status: 403 }))
+        if (authRes.filterByClasses) {
+          const isTheology = authRes.filterByDepartment === 'theology';
+          const targetClassId = isTheology ? existingEnrollment.theology_class_id : existingEnrollment.circular_class_id;
+          if (!targetClassId || !authRes.filterByClasses.includes(targetClassId)) {
+            return withCors(request, NextResponse.json({ error: 'Unauthorized to delete this student' }, { status: 403 }))
+          }
         }
         if (authRes.filterByDepartment) {
           if (authRes.filterByDepartment === 'theology' && !existingEnrollment.theology_class_id) {

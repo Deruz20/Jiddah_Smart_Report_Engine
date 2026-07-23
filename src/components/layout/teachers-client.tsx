@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -29,7 +29,7 @@ const teacherFormSchema = z.object({
   phone: z.string().optional().or(z.literal("")),
   role: z.string().min(1, "Please select a role for this faculty member."),
   subject_specialization: z.string().optional().or(z.literal("")),
-  class_assigned: z.string().optional().or(z.literal("")),
+  classes_assigned: z.array(z.string()).optional(),
 });
 
 type TeacherForm = z.infer<typeof teacherFormSchema>;
@@ -40,7 +40,7 @@ const defaultTeacherFormValues: TeacherForm = {
   phone: '',
   role: '',
   subject_specialization: '',
-  class_assigned: '',
+  classes_assigned: [],
 };
 
 const statusBadgeStyle = (status: string) => {
@@ -108,6 +108,20 @@ export default function TeachersClient({
   const [showFormModal, setShowFormModal] = useState(false);
   const [selectedTeacher, setSelectedTeacher] = useState<DashboardTeacher | null>(null);
 
+  const [circularClasses, setCircularClasses] = useState<any[]>([]);
+  const [theologyClasses, setTheologyClasses] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchClasses = async () => {
+      const supabase = createClient();
+      const { data: cClasses } = await supabase.from('circular_classes').select('id, class_name, section').order('class_name');
+      const { data: tClasses } = await supabase.from('theology_classes').select('id, class_name_english, class_name_arabic').order('class_name_english');
+      if (cClasses) setCircularClasses(cClasses);
+      if (tClasses) setTheologyClasses(tClasses);
+    };
+    fetchClasses();
+  }, []);
+
 
 
   const addTeacherForm = useForm<TeacherForm>({
@@ -163,7 +177,7 @@ export default function TeachersClient({
       phone: teacher.phone ?? '',
       role: teacher.role as TeacherForm['role'],
       subject_specialization: teacher.subject ?? '',
-      class_assigned: teacher.classes.join(', '),
+      classes_assigned: teacher.classes ?? [],
     });
     setShowFormModal(true);
   };
@@ -184,7 +198,7 @@ export default function TeachersClient({
           email: values.email || null,
           phone: values.phone || null,
           subject: values.subject_specialization || null,
-          classes: values.class_assigned ? values.class_assigned.split(',').map(s => s.trim()) : [],
+          classes: values.classes_assigned || [],
           status: 'active'
         };
         const response = await fetch(`/api/admin/teachers/${selectedTeacher.id}`, {
@@ -205,7 +219,7 @@ export default function TeachersClient({
             email: values.email,
             phone: values.phone,
             subject: values.subject_specialization,
-            classes: values.class_assigned ? values.class_assigned.split(',').map(s => s.trim()) : []
+            classes: values.classes_assigned || []
           })
         });
         const result = await response.json();
@@ -496,14 +510,49 @@ export default function TeachersClient({
                     </div>
                   </div>
                 )}
-                <div>
-                  <label className="mb-2 block text-sm font-semibold text-slate-700">Class Assigned (comma separated)</label>
-                  <input
-                    type="text"
-                    {...register('class_assigned')}
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-[#10B981]"
-                  />
-                  {errors.class_assigned && <p className="mt-2 text-xs text-rose-600">{errors.class_assigned.message}</p>}
+                <div className="col-span-full">
+                  <label className="mb-2 block text-sm font-semibold text-slate-700">Classes Assigned (Check all that apply)</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-60 overflow-y-auto p-4 border border-slate-200 rounded-2xl bg-slate-50">
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Secular Classes</h4>
+                      <div className="space-y-2">
+                        {circularClasses.map(c => (
+                          <label key={c.id} className="flex items-center gap-2 cursor-pointer group">
+                            <input
+                              type="checkbox"
+                              value={c.id}
+                              {...register('classes_assigned')}
+                              className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                            />
+                            <span className="text-sm font-medium text-slate-700 group-hover:text-slate-900 transition-colors">
+                              {c.class_name} {c.section ? `(${c.section})` : ''}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Theology Classes</h4>
+                      <div className="space-y-2">
+                        {theologyClasses.map(t => (
+                          <label key={t.id} className="flex items-center gap-2 cursor-pointer group">
+                            <input
+                              type="checkbox"
+                              value={t.id}
+                              {...register('classes_assigned')}
+                              className="w-4 h-4 rounded border-slate-300 text-orange-500 focus:ring-orange-400"
+                            />
+                            <span className="text-sm font-medium text-slate-700 group-hover:text-slate-900 transition-colors">
+                              {t.class_name_english || t.class_name_arabic}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  {errors.classes_assigned && (
+                    <p className="mt-2 text-xs text-rose-600">{errors.classes_assigned.message}</p>
+                  )}
                 </div>
               </div>
 

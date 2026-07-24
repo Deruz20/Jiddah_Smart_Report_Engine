@@ -8,6 +8,10 @@ import { PUT, DELETE, PATCH } from '../app/api/students/[id]/route';
 jest.mock('@/utils/supabase/server', () => ({
   createClient: jest.fn(),
 }));
+jest.mock('@/lib/auth-server', () => ({
+  verifyDataAccess: jest.fn().mockResolvedValue({ isAuthorized: true }),
+}));
+
 jest.mock('next/headers', () => ({
   cookies: jest.fn(() => ({})),
 }));

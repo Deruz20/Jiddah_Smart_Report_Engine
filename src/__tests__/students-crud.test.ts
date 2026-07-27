@@ -11,6 +11,9 @@ jest.mock('@/utils/supabase/server', () => ({
 jest.mock('next/headers', () => ({
   cookies: jest.fn(() => ({})),
 }));
+jest.mock('@/lib/auth-server', () => ({
+  verifyDataAccess: jest.fn().mockResolvedValue({ isAuthorized: true, role: 'Administrator' }),
+}));
 
 const mockSupabase = {
   auth: {

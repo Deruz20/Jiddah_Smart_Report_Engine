@@ -19,6 +19,10 @@ const mockSupabase = {
   from: jest.fn(),
 };
 
+jest.mock("@/lib/auth-server", () => ({
+  verifyDataAccess: jest.fn().mockResolvedValue({ isAuthorized: true, role: "Administrator" }),
+}));
+
 describe('Student CRUD API', () => {
   let req: NextRequest;
 
@@ -114,5 +118,70 @@ describe('Student CRUD API', () => {
     expect(res.status).toBe(200);
 
     expect(mockSupabase.from('students').update).toHaveBeenCalledWith({ is_archived: false });
+  });
+});
+
+import { GET as getEnrollments } from '../app/api/enrollments/route';
+import { GET as getReports } from '../app/api/reports/route';
+
+describe('Student soft delete hiding from views', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    const { createClient } = require('@/utils/supabase/server');
+    createClient.mockReturnValue(mockSupabase);
+
+    mockSupabase.from.mockReturnValue({
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      order: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
+    });
+  });
+
+  it('Test 5: GET /api/enrollments applies is_archived = false filter', async () => {
+    const req = new NextRequest('http://localhost/api/enrollments');
+    await getEnrollments(req);
+
+    expect(mockSupabase.from).toHaveBeenCalledWith('enrollments');
+    expect(mockSupabase.from().select).toHaveBeenCalled();
+    expect(mockSupabase.from().eq).toHaveBeenCalledWith('is_active', true);
+    expect(mockSupabase.from().eq).toHaveBeenCalledWith('students.is_archived', false);
+  });
+
+  it('Test 6: GET /api/reports allows fetching historical marks for archived students', async () => {
+    const req = new NextRequest('http://localhost/api/reports?student_id=1&term_id=1');
+
+    // Setup specific mock for reports logic
+    const studentSelectMock = jest.fn().mockReturnThis();
+    const studentEqMock = jest.fn().mockReturnThis();
+    const studentLimitMock = jest.fn().mockResolvedValue({
+      data: [{ id: '1', class_name: 'P.1', enrollments: [{ theology_class_id: null }] }],
+      error: null
+    });
+
+    // Just verifying that it queries 'students' with the correct ID, and does NOT filter by is_archived
+    mockSupabase.from.mockImplementation((table) => {
+      if (table === 'students') {
+        return {
+          select: studentSelectMock,
+          eq: studentEqMock,
+          limit: studentLimitMock,
+        };
+      }
+      return { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), in: jest.fn().mockReturnThis(), single: jest.fn().mockResolvedValue({ data: null, error: null }) };
+    });
+
+    // Run the API
+    try {
+        await getReports(req);
+    } catch(e) {}
+
+    expect(mockSupabase.from).toHaveBeenCalledWith('students');
+    expect(studentEqMock).toHaveBeenCalledWith('id', '1');
+    expect(studentEqMock).toHaveBeenCalledWith('enrollments.is_active', true);
+    // Ensure it did NOT get called with is_archived
+    expect(studentEqMock).not.toHaveBeenCalledWith('is_archived', false);
+    expect(studentEqMock).not.toHaveBeenCalledWith('students.is_archived', false);
   });
 });

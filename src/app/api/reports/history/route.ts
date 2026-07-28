@@ -30,8 +30,9 @@ export async function GET(request: NextRequest) {
     const [{ data: enrollments }, { data: currentTerm }] = await Promise.all([
       supabase
         .from('enrollments')
-        .select('id, circular_classes ( class_name )')
-        .eq('is_active', true),
+        .select('id, circular_classes ( class_name ), students!inner ( id )')
+        .eq('is_active', true)
+        .eq('students.is_archived', false),
       supabase.from('terms').select('id, label').eq('is_current', true).maybeSingle(),
     ])
 

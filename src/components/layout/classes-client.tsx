@@ -10,6 +10,7 @@ import { Label } from "@/components/figma-ui/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/figma-ui/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/figma-ui/ui/dialog";
 import { createClient } from "@/utils/supabase/client";
+import Link from "next/link";
 
 const getSectionColor = (section: string) => {
   const colors: Record<string, string> = {
@@ -175,25 +176,27 @@ export default function ClassesClient({ initialClasses }: { initialClasses: Clas
                 >
                   <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-[#065F46] to-[#F97316] opacity-0 group-hover:opacity-100 transition-opacity" />
                   
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <div className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center text-[#065F46] shrink-0">
-                        <BookMarked className="w-5 h-5" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <h3 className="font-bold text-gray-900 text-lg leading-tight truncate">{cls.class_name}</h3>
-                        <span className={`inline-block mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase border truncate max-w-full ${getSectionColor(cls.section || "")}`}>
-                          {getSectionLabel(cls.section || "")}
-                        </span>
+                  <Link href={`/admin/classes/${cls.id}`} className="block">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center text-[#065F46] shrink-0">
+                          <BookMarked className="w-5 h-5" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h3 className="font-bold text-gray-900 text-lg leading-tight truncate group-hover:text-[#065F46] transition-colors">{cls.class_name}</h3>
+                          <span className={`inline-block mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase border truncate max-w-full ${getSectionColor(cls.section || "")}`}>
+                            {getSectionLabel(cls.section || "")}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  </Link>
 
                   <div className="flex items-center justify-end gap-2 mt-6 pt-4 border-t border-gray-100">
-                    <Button variant="ghost" size="icon" onClick={() => openEdit(cls)} className="h-8 w-8 text-gray-500 hover:text-[#065F46] hover:bg-[#065F46]/10 rounded-lg">
+                    <Button variant="ghost" size="icon" onClick={(e) => { e.preventDefault(); openEdit(cls); }} className="h-8 w-8 text-gray-500 hover:text-[#065F46] hover:bg-[#065F46]/10 rounded-lg">
                       <Edit className="w-4 h-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => openDelete(cls)} className="h-8 w-8 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg">
+                    <Button variant="ghost" size="icon" onClick={(e) => { e.preventDefault(); openDelete(cls); }} className="h-8 w-8 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg">
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>

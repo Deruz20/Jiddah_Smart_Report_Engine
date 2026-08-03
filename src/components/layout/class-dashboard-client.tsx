@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   Users, BookOpen, GraduationCap, ArrowLeft, 
   Settings, ChevronDown, CheckCircle, Clock,
-  Edit, Plus, Trash2, Printer
+  Edit, Plus, Trash2, Printer, Search, Filter, Download, Edit2, Archive, UserPlus
 } from "lucide-react";
 import Link from "next/link";
 import { TopToolbar } from "@/components/figma-ui/TopToolbar";
@@ -14,6 +15,22 @@ import { Input } from "@/components/figma-ui/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/figma-ui/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/figma-ui/ui/select";
 import { createClient } from "@/utils/supabase/client";
+import { Badge } from "@/components/figma-ui/Badge";
+import { EditStudentModal } from "@/components/EditStudentModal";
+
+function avatarColors(name: string) {
+  const palettes = [
+    'from-emerald-100 to-emerald-200 text-emerald-700',
+    'from-orange-100 to-orange-200 text-orange-700',
+    'from-blue-100 to-blue-200 text-blue-700',
+    'from-violet-100 to-violet-200 text-violet-700',
+    'from-rose-100 to-rose-200 text-rose-700',
+    'from-amber-100 to-amber-200 text-amber-700',
+  ];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return palettes[Math.abs(hash) % palettes.length];
+}
 import { toast } from "sonner"; // Assuming sonner is available or will just use standard alerts if not. We'll use alert for simplicity.
 
 export default function ClassDashboardClient({ 
@@ -32,14 +49,53 @@ export default function ClassDashboardClient({
   const [classData, setClassData] = useState(initialClassData);
   const [activeTab, setActiveTab] = useState<"students" | "performance" | "teachers" | "curriculum" | "settings">("students");
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [editingStudent, setEditingStudent] = useState<any | null>(null);
+  const router = useRouter();
   const [formData, setFormData] = useState({ class_name: classData.class_name, section: classData.section, class_teacher_id: classData.class_teacher_id || "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // KPIs
   const totalStudents = enrollments.length;
-  const boysCount = enrollments.filter(e => e.student?.gender === 'Male' || e.student?.gender === 'M').length;
-  const girlsCount = enrollments.filter(e => e.student?.gender === 'Female' || e.student?.gender === 'F').length;
-  const totalSubjects = subjects.length; // Actually should filter by section if applicable
+  const boysCount = enrollments.filter(e => e.student?.gender?.toLowerCase() === 'male' || e.student?.gender?.toLowerCase() === 'm').length;
+  const girlsCount = enrollments.filter(e => e.student?.gender?.toLowerCase() === 'female' || e.student?.gender?.toLowerCase() === 'f').length;
+  // Remove duplicated subjects (which happen due to secular/theology mixups or bad data)
+  const uniqueSubjects = useMemo(() => {
+    const seen = new Set();
+    return subjects.filter(sub => {
+      if (sub.section && sub.section !== classData.section) return false;
+      const normalizedName = (sub.subject_name || '').trim().toLowerCase();
+      if (seen.has(normalizedName)) {
+        return false;
+      }
+      seen.add(normalizedName);
+      return true;
+    });
+  }, [subjects, classData.section]);
+
+  const totalSubjects = uniqueSubjects.length;
+
+  // Determine actual class teacher from teachers table if not directly assigned via classData
+  const assignedClassTeacher = useMemo(() => {
+    if (classData.class_teacher) return classData.class_teacher;
+    // Fallback: check if any teacher is assigned to this class and has role Class Teacher
+    return teachers.find(t => {
+      const tClasses = typeof t.classes === 'string' 
+        ? t.classes.split(',').map((c: string) => c.trim()) 
+        : (t.classes || []);
+      return (tClasses.includes(classData.id) || tClasses.includes(classData.class_name)) && t.role === 'Class Teacher';
+    });
+  }, [classData, teachers]);
+
+  // Find all teachers assigned to this class
+  const classTeachersList = useMemo(() => {
+    return teachers.filter(t => {
+      const tClasses = typeof t.classes === 'string' 
+        ? t.classes.split(',').map((c: string) => c.trim()) 
+        : (t.classes || []);
+      return tClasses.includes(classData.id) || tClasses.includes(classData.class_name);
+    });
+  }, [classData, teachers]);
 
   // Calculate Class Average
   const classAverage = useMemo(() => {
@@ -99,7 +155,7 @@ export default function ClassDashboardClient({
       { id: "students", label: "Students", icon: <Users className="w-4 h-4" /> },
       { id: "performance", label: "Performance", icon: <CheckCircle className="w-4 h-4" /> },
       { id: "teachers", label: "Teachers", icon: <GraduationCap className="w-4 h-4" /> },
-      { id: "curriculum", label: "Curriculum", icon: <BookOpen className="w-4 h-4" /> },
+      { id: "curriculum", label: "BookOpen", icon: <BookOpen className="w-4 h-4" /> },
       { id: "settings", label: "Settings", icon: <Settings className="w-4 h-4" /> },
     ] as const;
 
@@ -123,92 +179,288 @@ export default function ClassDashboardClient({
     );
   };
 
+  // Students Tab Logic
+  const filteredEnrollments = useMemo(() => {
+    if (!searchTerm.trim()) return enrollments;
+    const q = searchTerm.toLowerCase();
+    return enrollments.filter(e => {
+      const name = (e.student?.name || e.student?.full_name || "").toLowerCase();
+      const adm = (e.student?.admission_number || "").toLowerCase();
+      return name.includes(q) || adm.includes(q);
+    });
+  }, [enrollments, searchTerm]);
+
+  const handleExport = () => {
+    const csvContent = "data:text/csv;charset=utf-8," 
+      + "Name,Admission Number,Gender,Status\n"
+      + filteredEnrollments.map(e => `"${e.student?.name || e.student?.full_name || ''}","${e.student?.admission_number || ''}","${e.student?.gender || ''}","${e.student?.status || ''}"`).join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `${classData.class_name}_students.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success('Exported class list successfully');
+  };
+
+  const handleArchive = async (student: any) => {
+    if (!student) return;
+    const studentName = student.name || student.full_name || 'Student';
+    if (!confirm(`Are you sure you want to archive ${studentName}?`)) return;
+    try {
+      const res = await fetch(`/api/students/${student.id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to archive student');
+      toast.success(`${studentName} has been archived`);
+      router.refresh();
+    } catch (err) {
+      toast.error('Failed to archive student');
+    }
+  };
+
+  const handleHardDelete = async (student: any) => {
+    if (!student) return;
+    const studentName = student.name || student.full_name || 'Student';
+    if (!confirm(`WARNING: Are you sure you want to PERMANENTLY delete ${studentName}? This cannot be undone.`)) return;
+    try {
+      const res = await fetch(`/api/students/${student.id}?hard_delete=true`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete student permanently');
+      toast.success(`${studentName} has been permanently deleted`);
+      router.refresh();
+    } catch (err) {
+      toast.error('Failed to delete student');
+    }
+  };
+
   const renderStudentsTab = () => (
-    <div className="bg-white/80 backdrop-blur-xl border border-gray-200/50 rounded-2xl overflow-hidden shadow-sm">
-      <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-        <h3 className="text-lg font-bold text-gray-900">Enrolled Students ({totalStudents})</h3>
-        <Button className="bg-[#065F46] hover:bg-[#047857] text-white rounded-xl">
-          <Plus className="w-4 h-4 mr-2" /> Add Student
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h3 className="text-lg font-bold text-gray-900">Enrolled Students</h3>
+          <p className="text-sm text-gray-500">{totalStudents} students in {classData.class_name}</p>
+        </div>
+        <Button className="bg-[#065F46] hover:bg-[#065F46]/90 text-white rounded-xl shadow-sm">
+          <UserPlus className="w-4 h-4 mr-2" />
+          Add Student
         </Button>
       </div>
+      
+      {/* Search + Actions Bar */}
+      <div className="px-6 py-4 bg-slate-50/40 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-3">
+        <div className="relative w-full sm:max-w-xs">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search by name or ID..."
+            className="block w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#065F46]/20 focus:border-[#065F46] text-sm transition-all shadow-sm"
+          />
+        </div>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <button 
+            onClick={() => toast.info('Advanced filtering for class lists coming soon!')}
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-all shadow-sm flex-1 sm:flex-none justify-center"
+          >
+            <Filter className="w-3.5 h-3.5 text-slate-400" />
+            Filters
+          </button>
+          <button 
+            onClick={handleExport}
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-all shadow-sm flex-1 sm:flex-none justify-center"
+          >
+            <Download className="w-3.5 h-3.5 text-slate-400" />
+            Export
+          </button>
+        </div>
+      </div>
+
       <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse">
+        <table className="min-w-full text-left border-collapse">
           <thead>
             <tr className="bg-gray-50/50 text-gray-500 text-xs font-semibold uppercase tracking-wider">
-              <th className="p-4 border-b border-gray-100">Adm No.</th>
-              <th className="p-4 border-b border-gray-100">Student Name</th>
-              <th className="p-4 border-b border-gray-100">Gender</th>
-              <th className="p-4 border-b border-gray-100">Status</th>
-              <th className="p-4 border-b border-gray-100 text-right">Actions</th>
+              <th className="p-4 border-b border-gray-100 text-xs font-bold text-slate-500 uppercase tracking-wider">Student</th>
+              <th className="p-4 border-b border-gray-100 text-xs font-bold text-slate-500 uppercase tracking-wider">Adm No.</th>
+              <th className="p-4 border-b border-gray-100 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
+              <th className="p-4 border-b border-gray-100 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
-            {enrollments.length === 0 ? (
+            {filteredEnrollments.length === 0 ? (
               <tr>
-                <td colSpan={5} className="p-8 text-center text-gray-400">
+                <td colSpan={4} className="p-8 text-center text-gray-400">
                   <Users className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                  No students currently enrolled in this class.
+                  {searchTerm.trim() ? "No students match your search." : "No students currently enrolled in this class."}
                 </td>
               </tr>
             ) : (
-              enrollments.map((enrollment) => (
-                <tr key={enrollment.id} className="hover:bg-gray-50/50 transition-colors group">
-                  <td className="p-4 text-sm font-medium text-gray-900">
-                    {enrollment.student?.admission_number || "N/A"}
+              filteredEnrollments.map((enrollment) => {
+                const studentName = enrollment.student?.name || enrollment.student?.full_name || "Unknown";
+                return (
+                <tr key={enrollment.id} className="hover:bg-slate-50/70 transition-colors group">
+                  <td className="p-4 whitespace-nowrap">
+                    <div className="flex items-center gap-3">
+                      <div className={`h-10 w-10 flex-shrink-0 rounded-2xl bg-gradient-to-br ${avatarColors(studentName)} flex items-center justify-center font-bold shadow-[0_2px_10px_-3px_rgba(0,0,0,0.1)] text-sm border border-white/50`}>
+                        {studentName.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <div className="text-sm font-bold text-slate-800 tracking-tight">{studentName}</div>
+                        <div className="flex items-center gap-2 text-xs text-slate-400 mt-0.5 font-medium">
+                          {enrollment.student?.gender && (
+                            <span className={`inline-flex items-center justify-center px-1.5 py-0.5 rounded-md text-[10px] uppercase tracking-wider font-bold ${
+                              enrollment.student.gender.toLowerCase() === 'female' 
+                                ? 'bg-rose-50 text-rose-600 border border-rose-100' 
+                                : 'bg-blue-50 text-blue-600 border border-blue-100'
+                            }`}>
+                              {enrollment.student.gender.toLowerCase() === 'female' ? '♀ Female' : '♂ Male'}
+                            </span>
+                          )}
+                          {enrollment.student?.created_at && (
+                            <span>Joined {new Date(enrollment.student.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   </td>
-                  <td className="p-4">
-                    <div className="text-sm font-bold text-gray-900">{enrollment.student?.full_name}</div>
+                  <td className="p-4 whitespace-nowrap">
+                    <code className="text-[11px] font-mono font-bold text-slate-600 bg-slate-100/80 px-2 py-1 rounded-md border border-slate-200/60 shadow-sm">
+                      {enrollment.student?.admission_number || "N/A"}
+                    </code>
                   </td>
-                  <td className="p-4 text-sm text-gray-600">
-                    {enrollment.student?.gender}
+                  <td className="p-4 whitespace-nowrap">
+                    <div className="flex flex-col items-start gap-1">
+                      <Badge
+                        variant={
+                          enrollment.student?.status === 'Primary' ? 'emerald' :
+                          enrollment.student?.status === 'Theology' ? 'orange' : 'blue'
+                        }
+                      >
+                        {enrollment.student?.status || "Active"}
+                      </Badge>
+                      {enrollment.student?.is_theology_enrolled && enrollment.student?.status !== 'Theology' && (
+                        <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded uppercase tracking-wider border border-orange-100">
+                          + Theology
+                        </span>
+                      )}
+                    </div>
                   </td>
-                  <td className="p-4">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                      Active
-                    </span>
-                  </td>
-                  <td className="p-4 text-right">
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-[#065F46] opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Edit className="w-4 h-4" />
-                    </Button>
+                  <td className="p-4 text-right whitespace-nowrap flex items-center justify-end gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => setEditingStudent(enrollment.student)} className="text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors p-1.5 rounded-lg" title="Edit">
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => handleArchive(enrollment.student)} className="text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-colors p-1.5 rounded-lg" title="Archive">
+                      <Archive className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => handleHardDelete(enrollment.student)} className="text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors p-1.5 rounded-lg" title="Delete">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </td>
                 </tr>
-              ))
+              )})
             )}
             
             {/* Visual Padding for short lists */}
-            {enrollments.length > 0 && enrollments.length < 5 && Array.from({length: 5 - enrollments.length}).map((_, i) => (
+            {filteredEnrollments.length > 0 && filteredEnrollments.length < 5 && Array.from({length: 5 - filteredEnrollments.length}).map((_, i) => (
               <tr key={`pad-${i}`}>
-                <td colSpan={5} className="p-4 border-b border-gray-50 opacity-0 h-[61px]">.</td>
+                <td colSpan={4} className="p-4 border-b border-gray-50 opacity-0 h-[61px]">.</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      <EditStudentModal 
+        isOpen={!!editingStudent}
+        onClose={() => setEditingStudent(null)}
+        student={editingStudent}
+        onSaved={() => router.refresh()}
+      />
     </div>
   );
 
-  const renderCurriculumTab = () => (
-    <div className="bg-white/80 backdrop-blur-xl border border-gray-200/50 rounded-2xl overflow-hidden shadow-sm">
+  const renderCurriculumTab = () => {
+    // Exact theology subjects requested by user
+    const theologyKeywords = [
+      'quran', 'qur\'an', 'qiraat',
+      'lugha', 'lughatul', 'arabic',
+      'fiqh',
+      'tarbiyah', 'tarbiya',
+      'siira', 'seerah',
+      'hadith',
+      'tawhiid', 'tauheed'
+    ];
+    
+    const secularSubjects = uniqueSubjects.filter(sub => {
+      const name = (sub.subject_name || '').toLowerCase();
+      return !theologyKeywords.some(keyword => name.includes(keyword));
+    });
+
+    const theologySubjects = uniqueSubjects.filter(sub => {
+      const name = (sub.subject_name || '').toLowerCase();
+      return theologyKeywords.some(keyword => name.includes(keyword));
+    });
+
+    return (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
       <div className="p-6 border-b border-gray-100">
         <h3 className="text-lg font-bold text-gray-900">Configured Subjects</h3>
         <p className="text-sm text-gray-500">Subjects assigned to {getSectionLabel(classData.section)}</p>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-6">
-        {subjects.map((sub) => (
-          <div key={sub.id} className="border border-gray-100 p-4 rounded-xl flex items-center space-x-4 bg-gray-50/50 hover:bg-white hover:shadow-sm hover:border-gray-200 transition-all">
-            <div className="w-10 h-10 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
-              <BookOpen className="w-5 h-5" />
+      
+      <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Secular Column */}
+        <div>
+          <h4 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">
+            Secular Curriculum ({secularSubjects.length})
+          </h4>
+          {secularSubjects.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {secularSubjects.map((sub) => (
+                <div key={sub.id} className="border border-gray-100 p-4 rounded-xl flex items-center space-x-4 bg-gray-50/50 hover:bg-white hover:shadow-sm hover:border-gray-200 transition-all">
+                  <div className="w-10 h-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                    <BookOpen className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-gray-900">{sub.subject_name}</p>
+                    <p className="text-xs text-gray-500">{sub.subject_code || "Core Subject"}</p>
+                  </div>
+                </div>
+              ))}
             </div>
-            <div>
-              <p className="font-bold text-gray-900">{sub.subject_name}</p>
-              <p className="text-xs text-gray-500">{sub.subject_code || "Core Subject"}</p>
+          ) : (
+            <p className="text-sm text-gray-400 p-4 bg-gray-50 rounded-xl border border-dashed border-gray-200 text-center">
+              No secular subjects assigned.
+            </p>
+          )}
+        </div>
+
+        {/* Theology Column */}
+        <div>
+          <h4 className="text-sm font-semibold text-amber-600 uppercase tracking-wider mb-4 border-b border-amber-100/50 pb-2">
+            Theology Curriculum ({theologySubjects.length})
+          </h4>
+          {theologySubjects.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {theologySubjects.map((sub) => (
+                <div key={sub.id} className="border border-amber-100/50 p-4 rounded-xl flex items-center space-x-4 bg-amber-50/30 hover:bg-amber-50/80 hover:shadow-sm hover:border-amber-200 transition-all">
+                  <div className="w-10 h-10 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                    <BookOpen className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-gray-900">{sub.subject_name}</p>
+                    <p className="text-xs text-amber-700/70">{sub.subject_code || "Theology Subject"}</p>
+                  </div>
+                </div>
+              ))}
             </div>
-          </div>
-        ))}
+          ) : (
+            <p className="text-sm text-gray-400 p-4 bg-gray-50 rounded-xl border border-dashed border-gray-200 text-center">
+              No theology subjects assigned.
+            </p>
+          )}
+        </div>
       </div>
     </div>
-  );
+  )};
 
   const renderTeachersTab = () => (
     <div className="bg-white/80 backdrop-blur-xl border border-gray-200/50 rounded-2xl overflow-hidden shadow-sm p-6">
@@ -218,14 +470,15 @@ export default function ClassDashboardClient({
       
       <div className="mb-8">
         <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">Class Teacher</h4>
-        {classData.class_teacher ? (
-          <div className="flex items-center space-x-4 p-4 border border-[#065F46]/20 bg-[#065F46]/5 rounded-xl max-w-md">
-            <div className="w-12 h-12 rounded-full bg-[#065F46]/10 flex items-center justify-center text-[#065F46] font-bold text-lg">
-              {classData.class_teacher.name.charAt(0)}
+        {assignedClassTeacher ? (
+          <div className="flex items-center space-x-4 p-4 border border-[#065F46]/20 bg-[#065F46]/5 rounded-xl max-w-md relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-white/40 rounded-full blur-2xl -mr-8 -mt-8 pointer-events-none" />
+            <div className="w-12 h-12 rounded-full bg-white shadow-sm border border-[#065F46]/10 flex items-center justify-center text-[#065F46] font-bold text-lg shrink-0">
+              {assignedClassTeacher.name.charAt(0).toUpperCase()}
             </div>
-            <div>
-              <p className="font-bold text-gray-900">{classData.class_teacher.name}</p>
-              <p className="text-sm text-[#065F46]">Primary Class Teacher</p>
+            <div className="relative z-10">
+              <p className="font-bold text-gray-900">{assignedClassTeacher.name}</p>
+              <p className="text-sm text-[#065F46] font-medium">Primary Class Teacher</p>
             </div>
           </div>
         ) : (
@@ -240,8 +493,24 @@ export default function ClassDashboardClient({
       </div>
 
       <div>
-        <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">Subject Teachers (Mock)</h4>
-        <p className="text-sm text-gray-500 mb-4">Subject assignment mapping feature is coming soon.</p>
+        <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">Assigned Teachers ({classTeachersList.length})</h4>
+        {classTeachersList.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {classTeachersList.map(teacher => (
+              <div key={teacher.id} className="flex items-center space-x-4 p-4 border border-gray-100 rounded-xl bg-white shadow-sm hover:shadow-md transition-shadow">
+                <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 font-bold text-sm shrink-0">
+                  {teacher.name.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <p className="font-bold text-gray-900 text-sm">{teacher.name}</p>
+                  <p className="text-xs text-gray-500">{teacher.role || "Teacher"}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-gray-500 mb-4 bg-gray-50 p-4 rounded-xl text-center border border-dashed border-gray-200">No teachers are currently assigned to teach this class.</p>
+        )}
       </div>
     </div>
   );
@@ -404,9 +673,9 @@ export default function ClassDashboardClient({
               <div>
                 <p className="text-sm font-medium text-gray-500">Class Teacher</p>
                 <p className="text-lg font-bold text-gray-900 mt-2 truncate w-[150px]">
-                  {classData.class_teacher ? classData.class_teacher.name : "Not Assigned"}
+                  {assignedClassTeacher ? assignedClassTeacher.name : "Not Assigned"}
                 </p>
-                {classData.class_teacher ? (
+                {assignedClassTeacher ? (
                   <p className="text-xs text-purple-600 font-medium mt-1">Assigned</p>
                 ) : (
                   <button onClick={() => { setActiveTab('settings'); setIsEditModalOpen(true); }} className="text-xs text-blue-600 font-medium mt-1 hover:underline">

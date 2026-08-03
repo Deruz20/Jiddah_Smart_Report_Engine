@@ -18,6 +18,14 @@ export default async function TeachersManagementPage() {
     return <div className="p-10 text-red-500">Access Denied: {authRes.message}</div>
   }
 
+  // Fetch classes to map UUIDs to names
+  const { data: circularClasses } = await supabase.from('circular_classes').select('id, class_name');
+  const { data: theologyClasses } = await supabase.from('theology_classes').select('id, class_name');
+
+  const classMap = new Map<string, string>();
+  (circularClasses || []).forEach(c => classMap.set(c.id, c.class_name));
+  (theologyClasses || []).forEach(c => classMap.set(c.id, c.class_name));
+
   let query = supabase.from('teachers').select('*').order('name', { ascending: true });
 
   if (authRes.filterByDepartment === 'secular') {
@@ -28,17 +36,22 @@ export default async function TeachersManagementPage() {
 
   const { data: teachers } = await query;
 
-  const formattedTeachers = (teachers || []).map((t: any) => ({
-    id: t.id,
-    name: t.name || '',
-    role: t.role || '',
-    subject: t.subject || '',
-    classes: typeof t.classes === 'string' ? t.classes.split(',').map((c: string) => c.trim()).filter(Boolean) : (t.classes || []),
-    email: t.email || '',
-    phone: t.phone || '',
-    status: t.status || 'active',
-    joined: t.created_at || ''
-  }))
+  const formattedTeachers = (teachers || []).map((t: any) => {
+    const classIds = typeof t.classes === 'string' ? t.classes.split(',').map((c: string) => c.trim()).filter(Boolean) : (t.classes || []);
+    const classNames = classIds.map((id: string) => classMap.get(id) || id);
+    
+    return {
+      id: t.id,
+      name: t.name || '',
+      role: t.role || '',
+      subject: t.subject || '',
+      classes: classNames,
+      email: t.email || '',
+      phone: t.phone || '',
+      status: t.status || 'active',
+      joined: t.created_at || ''
+    };
+  })
 
 
 

@@ -4,7 +4,8 @@ import ClassDashboardClient from '@/components/layout/class-dashboard-client'
 
 export const dynamic = "force-dynamic";
 
-export default async function ClassDetailsPage({ params }: { params: { id: string } }) {
+export default async function ClassDetailsPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const cookieStore = await cookies()
   const supabase = createClient(cookieStore)
 

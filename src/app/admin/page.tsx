@@ -49,14 +49,16 @@ export default async function AdminDashboard() {
     { data: classes },
     { count: reportCount },
     { data: recentActivityLogs },
-    { data: recentNotifications }
+    { data: recentNotifications },
+    { data: rawMarks }
   ] = await Promise.all([
     studentQuery,
     teacherQuery,
     classQuery,
     reportQuery,
     supabase.from('activity_logs').select('*').order('created_at', { ascending: false }).limit(5),
-    supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(5)
+    supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(5),
+    supabase.from('circular_marks').select('mot_score, eot_score, enrollments!inner(circular_class_id)')
   ]);
 
   // Mock attendance trend matching the old Dashboard UI
@@ -71,10 +73,48 @@ export default async function AdminDashboard() {
     { month: "Apr", rate: 92 },
   ];
 
-  const classPerformance = classes?.map((c) => ({
-    class: c.class_name,
-    avg: Math.floor(Math.random() * 20) + 75, // Placeholder until full marks query is implemented
-  })) || [];
+  // Calculate class performance
+  const classScores: Record<string, { total: number; count: number }> = {};
+  
+  if (rawMarks && Array.isArray(rawMarks)) {
+    rawMarks.forEach((m: any) => {
+      const classId = m.enrollments?.circular_class_id;
+      if (!classId) return;
+      
+      let score = 0;
+      let valid = false;
+      if (m.eot_score != null && !isNaN(Number(m.eot_score))) {
+        score = Number(m.eot_score);
+        valid = true;
+      } else if (m.mot_score != null && !isNaN(Number(m.mot_score))) {
+        score = Number(m.mot_score);
+        valid = true;
+      }
+      
+      if (valid) {
+        if (!classScores[classId]) {
+          classScores[classId] = { total: 0, count: 0 };
+        }
+        classScores[classId].total += score;
+        classScores[classId].count += 1;
+      }
+    });
+  }
+
+  const classPerformance = classes?.map((c) => {
+    const perf = classScores[c.id];
+    return {
+      class: c.class_name,
+      avg: perf && perf.count > 0 ? Math.round(perf.total / perf.count) : 0,
+    };
+  }) || [];
+
+  const avgAttendance = attendanceTrend.length
+    ? Math.round(
+        attendanceTrend.reduce((sum, item) => sum + Number(item.rate), 0) /
+          attendanceTrend.length
+      )
+    : 0;
 
   const data: DashboardData = {
     role,
@@ -82,7 +122,7 @@ export default async function AdminDashboard() {
       totalStudents: studentCount ?? 0,
       activeTeachers: teacherCount ?? 0,
       reportsGenerated: reportCount ?? 0,
-      avgAttendance: 93, // Based on trend average
+      avgAttendance,
     },
     attendanceTrend,
     classPerformance,

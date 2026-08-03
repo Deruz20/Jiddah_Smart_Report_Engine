@@ -81,7 +81,9 @@ export function StudentsListClient({ students, department }: StudentsTableProps)
         counts.Archived++;
       } else {
         counts.All++;
-        counts[s.status] = (counts[s.status] || 0) + 1;
+        if (s.status === 'Primary') counts.Primary++;
+        if (s.status === 'Nursery') counts.Nursery++;
+        if (s.status === 'Theology' || s.is_theology_enrolled) counts.Theology++;
       }
     });
     return counts;
@@ -103,7 +105,13 @@ export function StudentsListClient({ students, department }: StudentsTableProps)
       list = list.filter((s) => s.is_archived);
     } else {
       list = list.filter((s) => !s.is_archived);
-      if (activeTab !== 'All') list = list.filter((s) => s.status === activeTab);
+      if (activeTab !== 'All') {
+        if (activeTab === 'Theology') {
+          list = list.filter((s) => s.is_theology_enrolled || s.status === 'Theology');
+        } else {
+          list = list.filter((s) => s.status === activeTab);
+        }
+      }
     }
 
     if (deferredSearchTerm.trim()) {
@@ -166,6 +174,20 @@ export function StudentsListClient({ students, department }: StudentsTableProps)
     }
   };
 
+  const handleExport = () => {
+    const csvContent = "data:text/csv;charset=utf-8," 
+      + "Name,Admission Number,Class,Theology Class,Academic Year,Status\n"
+      + filtered.map(s => `"${s.name}","${s.admission_number}","${s.circular_class || ''}","${s.theology_class_english || s.theology_class_arabic || ''}","${s.academic_year}","${s.status}"`).join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "students.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success('Exported students successfully');
+  };
+
   const ThCell = ({ label, col }: { label: string; col: SortKey }) => (
     <th
       scope="col"
@@ -219,11 +241,17 @@ export function StudentsListClient({ students, department }: StudentsTableProps)
           />
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto">
-          <button className="flex items-center gap-1.5 px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-all shadow-sm flex-1 sm:flex-none justify-center">
+          <button 
+            onClick={() => toast.info('Use the tabs above to filter by department/status')}
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-all shadow-sm flex-1 sm:flex-none justify-center"
+          >
             <Filter size={14} className="text-slate-400" />
             Filters
           </button>
-          <button className="flex items-center gap-1.5 px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-all shadow-sm flex-1 sm:flex-none justify-center">
+          <button 
+            onClick={handleExport}
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-all shadow-sm flex-1 sm:flex-none justify-center"
+          >
             <Download size={14} className="text-slate-400" />
             Export
           </button>
@@ -324,7 +352,7 @@ export function StudentsListClient({ students, department }: StudentsTableProps)
                     )}
                   </div>
                 </td>
-                <td className="px-5 py-4 whitespace-nowrap text-right flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                <td className="px-5 py-4 whitespace-nowrap text-right flex items-center justify-end gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                   <button 
                     onClick={() => setEditingStudent(student)}
                     className="text-slate-400 hover:text-blue-600 transition-colors p-1.5 rounded-lg hover:bg-blue-50"

@@ -2,13 +2,11 @@
 
 import React, { useState, useEffect, useMemo, memo } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
-import { Loader2, ScrollText, BookOpen, Award } from 'lucide-react'
+import { Loader2, ScrollText, BookOpen, Award, LayoutDashboard, SearchX } from 'lucide-react'
 import { toast } from 'sonner'
-import { createClient } from "@/utils/supabase/client"
-import { SecularHubEmptyState } from './SecularHubEmptyState'
-import { TopToolbar } from '../figma-ui/TopToolbar'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { generateAssessmentCSV, generateAnalysisCSV, generateTopStudentsCSV } from '@/utils/csvExport'
+import { TopToolbar } from '../figma-ui/TopToolbar'
 
 type TermData = {
   id: string
@@ -21,8 +19,7 @@ type TermData = {
 type CircularClassData = {
   id: string
   class_name: string
-  class_name_english: string
-  level: string
+  section: string
 }
 
 // ----------------------
@@ -41,18 +38,40 @@ const rowVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.2 } }
 }
 
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.05, delayChildren: 0.1 }
+  }
+}
+
+const itemVariants: any = {
+  hidden: { opacity: 0, y: 15 },
+  visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
+}
+
 // ----------------------
 // Helper Components
 // ----------------------
 const RemarkBadge = memo(({ score }: { score: number }) => {
-  if (score >= 75) return <span className="inline-flex items-center justify-center px-2.5 py-1 text-xs font-bold rounded-full bg-emerald-100 text-emerald-800 print:bg-transparent print:border-none print:text-black">Excellent</span>
-  if (score >= 65) return <span className="inline-flex items-center justify-center px-2.5 py-1 text-xs font-bold rounded-full bg-teal-100 text-teal-800 print:bg-transparent print:border-none print:text-black">Very Good</span>
-  if (score >= 50) return <span className="inline-flex items-center justify-center px-2.5 py-1 text-xs font-bold rounded-full bg-amber-100 text-amber-800 print:bg-transparent print:border-none print:text-black">Good</span>
-  if (score >= 40) return <span className="inline-flex items-center justify-center px-2.5 py-1 text-xs font-bold rounded-full bg-orange-100 text-orange-800 print:bg-transparent print:border-none print:text-black">Fair</span>
-  return <span className="inline-flex items-center justify-center px-2.5 py-1 text-xs font-bold rounded-full bg-rose-100 text-rose-800 print:bg-transparent print:border-none print:text-black">Poor</span>
+  if (score >= 75) return <span className="inline-flex items-center justify-center px-3 py-1 text-[11px] uppercase tracking-wider font-bold rounded-full bg-emerald-100/80 text-emerald-700 border border-emerald-200/50 print:bg-transparent print:border-none print:text-black">Excellent</span>
+  if (score >= 65) return <span className="inline-flex items-center justify-center px-3 py-1 text-[11px] uppercase tracking-wider font-bold rounded-full bg-indigo-100/80 text-indigo-700 border border-indigo-200/50 print:bg-transparent print:border-none print:text-black">Very Good</span>
+  if (score >= 50) return <span className="inline-flex items-center justify-center px-3 py-1 text-[11px] uppercase tracking-wider font-bold rounded-full bg-blue-100/80 text-blue-700 border border-blue-200/50 print:bg-transparent print:border-none print:text-black">Good</span>
+  if (score >= 40) return <span className="inline-flex items-center justify-center px-3 py-1 text-[11px] uppercase tracking-wider font-bold rounded-full bg-amber-100/80 text-amber-700 border border-amber-200/50 print:bg-transparent print:border-none print:text-black">Fair</span>
+  return <span className="inline-flex items-center justify-center px-3 py-1 text-[11px] uppercase tracking-wider font-bold rounded-full bg-rose-100/80 text-rose-700 border border-rose-200/50 print:bg-transparent print:border-none print:text-black">Poor</span>
 })
 RemarkBadge.displayName = 'RemarkBadge'
 
+const RankBadge = memo(({ rank }: { rank: number | string }) => {
+  if (rank === '-') return <span className="text-slate-400 font-medium">-</span>;
+  const numRank = Number(rank);
+  if (numRank === 1) return <span className="inline-flex items-center justify-center w-7 h-7 text-xs font-bold rounded-full bg-amber-100 text-amber-600 ring-2 ring-amber-200/50 shadow-sm print:ring-0 print:bg-transparent print:text-black">1</span>;
+  if (numRank === 2) return <span className="inline-flex items-center justify-center w-7 h-7 text-xs font-bold rounded-full bg-slate-200 text-slate-600 ring-2 ring-slate-300/50 shadow-sm print:ring-0 print:bg-transparent print:text-black">2</span>;
+  if (numRank === 3) return <span className="inline-flex items-center justify-center w-7 h-7 text-xs font-bold rounded-full bg-orange-100 text-orange-700 ring-2 ring-orange-200/50 shadow-sm print:ring-0 print:bg-transparent print:text-black">3</span>;
+  return <span className="inline-flex items-center justify-center w-7 h-7 text-xs font-semibold rounded-full bg-slate-50 text-slate-600 border border-slate-200 print:border-none print:text-black">{rank}</span>;
+})
+RankBadge.displayName = 'RankBadge'
 
 export default function SecularHubClient({
   terms,
@@ -67,10 +86,10 @@ export default function SecularHubClient({
 
   const [activeTermId, setActiveTermId] = useState<string>(searchParams.get('term_id') || terms.find(t => t.is_current)?.id || terms[0]?.id || '')
   const [activeClassId, setActiveClassId] = useState<string>(searchParams.get('class_id') || '')
-  const [activeLevel, setActiveLevel] = useState<string>(searchParams.get('level') || 'raudha')
+  const [activeLevel, setActiveLevel] = useState<string>(searchParams.get('level') || 'nursery')
   const [activeTab, setActiveTab] = useState<'assessment' | 'analysis' | 'top_students'>((searchParams.get('tab') as any) || 'assessment')
-  const [filtersOpen, setFiltersOpen] = useState(true)
   
+  const [filtersOpen, setFiltersOpen] = useState(true)
   const [isLoading, setIsLoading] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
   const [data, setData] = useState<{
@@ -119,16 +138,10 @@ export default function SecularHubClient({
     const classInfo = circularClasses.find(c => c.id === activeClassId)
     if (!classInfo) return { students: [], orderedSubjects: [] }
     
-    const levelSubjects = data.subjects.filter(s => s.level === classInfo.level)
-    const targetSubjects = ['Mathematics', 'English', 'Science', 'SST', 'Literacy', 'Reading']
+    const levelSubjects = data.subjects.filter(s => s.section?.toLowerCase() === classInfo.section?.toLowerCase())
     
-    const orderedSubjects = [...levelSubjects].sort((a, b) => {
-      let aIdx = targetSubjects.findIndex(t => a.subject_name.includes(t))
-      let bIdx = targetSubjects.findIndex(t => b.subject_name.includes(t))
-      if (aIdx === -1) aIdx = 999
-      if (bIdx === -1) bIdx = 999
-      return aIdx - bIdx
-    }).slice(0, 5)
+    // Sort subjects alphabetically. No slicing or hardcoding.
+    const orderedSubjects = [...levelSubjects].sort((a, b) => a.subject_name.localeCompare(b.subject_name))
 
     const processed = classEnrollments.map(enrollment => {
       const eMarks = data.marks.filter(m => m.enrollment_id === enrollment.id)
@@ -145,8 +158,7 @@ export default function SecularHubClient({
 
       return {
         id: enrollment.id,
-        name: enrollment.students.name,
-        arabic_name: enrollment.students.arabic_name || '',
+        name: enrollment.students?.name || 'Unknown Student',
         total,
         subjectScores,
         position: '-' as number | string
@@ -168,16 +180,10 @@ export default function SecularHubClient({
   // Process data for the Analysis Form
   const analysisData = useMemo(() => {
     if (!data || !activeLevel) return []
-    const classes = circularClasses.filter(c => c.level === activeLevel)
-    const targetSubjects = ['القرآن', 'اللغة العربية', 'الفقه', 'التربية', 'التوحيد', 'السيرة']
-    const levelSubjects = data.subjects.filter(s => s.level === activeLevel)
-    const orderedSubjects = [...levelSubjects].sort((a, b) => {
-      let aIdx = targetSubjects.findIndex(t => a.subject_name.includes(t))
-      let bIdx = targetSubjects.findIndex(t => b.subject_name.includes(t))
-      if (aIdx === -1) aIdx = 999
-      if (bIdx === -1) bIdx = 999
-      return aIdx - bIdx
-    }).slice(0, 5)
+    const classes = circularClasses.filter(c => c.section === activeLevel)
+    const levelSubjects = data.subjects.filter(s => s.section === activeLevel)
+    
+    const orderedSubjects = [...levelSubjects].sort((a, b) => a.subject_name.localeCompare(b.subject_name))
 
     return classes.map(cls => {
       const classEnrollments = data.enrollments.filter(e => e.circular_class_id === cls.id)
@@ -232,16 +238,10 @@ export default function SecularHubClient({
   // Process data for Top Students Form
   const topStudentsData = useMemo(() => {
     if (!data || !activeLevel) return []
-    const classes = circularClasses.filter(c => c.level === activeLevel)
-    const targetSubjects = ['القرآن', 'اللغة العربية', 'الفقه', 'التربية', 'التوحيد', 'السيرة']
-    const levelSubjects = data.subjects.filter(s => s.level === activeLevel)
-    const orderedSubjects = [...levelSubjects].sort((a, b) => {
-      let aIdx = targetSubjects.findIndex(t => a.subject_name.includes(t))
-      let bIdx = targetSubjects.findIndex(t => b.subject_name.includes(t))
-      if (aIdx === -1) aIdx = 999
-      if (bIdx === -1) bIdx = 999
-      return aIdx - bIdx
-    }).slice(0, 5)
+    const classes = circularClasses.filter(c => c.section === activeLevel)
+    const levelSubjects = data.subjects.filter(s => s.section === activeLevel)
+    
+    const orderedSubjects = [...levelSubjects].sort((a, b) => a.subject_name.localeCompare(b.subject_name))
 
     return classes.map(cls => {
       const classEnrollments = data.enrollments.filter(e => e.circular_class_id === cls.id)
@@ -273,98 +273,36 @@ export default function SecularHubClient({
     }).filter(group => group.students.length > 0)
   }, [data, activeLevel, circularClasses])
 
-  // Auto-transliteration for missing arabic names
-  React.useEffect(() => {
-    if (!assessmentData.students || assessmentData.students.length === 0) return;
-    const studentsToTranslate = assessmentData.students.filter(s => !s.name);
-    if (studentsToTranslate.length === 0) return;
-
-    const translateMissingNames = async () => {
-      try {
-        const namesToTranslate = studentsToTranslate.map(s => s.name);
-        const res = await fetch('/api/transliterate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ names: namesToTranslate })
-        });
-        if (res.ok) {
-          const { transliterated } = await res.json();
-          const supabase = createClient();
-          for (let i = 0; i < studentsToTranslate.length; i++) {
-            if (transliterated[i]) {
-              await supabase.from('students').update({ name: transliterated[i] }).eq('id', studentsToTranslate[i].id);
-            }
-          }
-          
-          setData(prevData => {
-            if (!prevData) return prevData;
-            const updatedEnrollments = prevData.enrollments.map(e => {
-              const idx = studentsToTranslate.findIndex(s => s.id === e.id);
-              if (idx !== -1 && transliterated[idx]) {
-                return { ...e, students: { ...e.students, name: transliterated[idx] } };
-              }
-              return e;
-            });
-            return { ...prevData, enrollments: updatedEnrollments };
-          });
-        }
-      } catch (err) {
-        console.error("Auto transliteration failed", err);
-      }
-    };
-    translateMissingNames();
-  }, [assessmentData.students]);
-
-  const toEnglishNumerals = (num: string | number | null | undefined) => {
-    if (num == null || num === '') return ''
-    return num.toString().replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[parseInt(d)])
-  }
-
-  const handlePrint = () => {
-    window.print()
-  }
+  const handlePrint = () => window.print()
 
   const handleShare = async () => {
     try {
-      const url = window.location.href
-      await navigator.clipboard.writeText(url)
+      await navigator.clipboard.writeText(window.location.href)
       toast.success("Link copied to clipboard!")
-    } catch (err) {
-      toast.error("Failed to copy link. Check your browser permissions.")
+    } catch {
+      toast.error("Failed to copy link.")
     }
   }
 
   const handleDownload = () => {
     setIsDownloading(true)
     const dateStr = new Date().toISOString().split('T')[0]
-    const filename = `theologyhub-${activeTab}-${dateStr}.csv`
+    const filename = `secularhub-${activeTab}-${dateStr}.csv`
     
-    // Slight timeout so UI can show loading state for heavy datasets
     setTimeout(() => {
       try {
         if (activeTab === 'assessment') {
-          if (!assessmentData.students || assessmentData.students.length === 0) {
-            toast.error("No assessment data to download.")
-            return
-          }
+          if (!assessmentData.students?.length) return toast.error("No assessment data to download.")
           generateAssessmentCSV(assessmentData.students as any, assessmentData.orderedSubjects, filename)
         } else if (activeTab === 'analysis') {
-          if (analysisData.length === 0) {
-            toast.error("No analysis data to download.")
-            return
-          }
+          if (!analysisData.length) return toast.error("No analysis data to download.")
           generateAnalysisCSV(analysisData, filename)
         } else if (activeTab === 'top_students') {
-          if (topStudentsData.length === 0) {
-            toast.error("No top students data to download.")
-            return
-          }
-          const rows = topStudentsData.flatMap(g => g.students)
-          generateTopStudentsCSV(rows, filename)
+          if (!topStudentsData.length) return toast.error("No top students data to download.")
+          generateTopStudentsCSV(topStudentsData.flatMap(g => g.students), filename)
         }
         toast.success("Download generated successfully!")
-      } catch (err) {
-        console.error(err)
+      } catch {
         toast.error("Failed to generate CSV.")
       } finally {
         setIsDownloading(false)
@@ -373,8 +311,9 @@ export default function SecularHubClient({
   }
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 dark:bg-[#0f172a] print:bg-white">
-      {/* TopToolbar */}
+    <div className="flex flex-col h-full bg-slate-50 dark:bg-[#0f172a] print:bg-white text-slate-900 dark:text-slate-100 font-sans">
+      
+      {/* Enterprise Top Navigation using Theology Hub Component */}
       <div className="print:hidden relative z-40 border-b border-slate-200/60 shadow-sm shrink-0">
         <TopToolbar 
           onPrint={handlePrint}
@@ -385,8 +324,8 @@ export default function SecularHubClient({
           onSearchToggle={() => setFiltersOpen(!filtersOpen)}
           title={
             <div className="flex items-center gap-2 text-slate-800 dark:text-white">
-              <div className="p-1.5 bg-emerald-100 dark:bg-emerald-900/30 rounded text-emerald-600 dark:text-emerald-400">
-                <ScrollText size={18} />
+              <div className="p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded text-blue-600 dark:text-blue-400">
+                <LayoutDashboard size={18} />
               </div>
               <h1 className="text-[15px] font-semibold tracking-tight">Secular Hub</h1>
             </div>
@@ -394,7 +333,7 @@ export default function SecularHubClient({
         />
       </div>
 
-      {/* Controls Area (Filters) */}
+      {/* Control Panel (Filters) */}
       <AnimatePresence>
         {filtersOpen && (
           <motion.div
@@ -403,77 +342,80 @@ export default function SecularHubClient({
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden bg-white dark:bg-[#1e293b] border-b border-slate-200/60 dark:border-slate-800 shadow-sm print:hidden shrink-0"
           >
-            <div className="px-4 py-3">
+            <div className="px-4 py-3 max-w-7xl mx-auto">
               <div className="flex flex-wrap items-center gap-4">
+                
+                {/* Term Selector */}
                 <div className="flex-1 min-w-[200px]">
-            <select
-              className="w-full px-4 py-2 border border-slate-200 rounded-xl bg-slate-50 focus:ring-2 focus:ring-emerald-500"
-              value={activeTermId}
-              onChange={(e) => setActiveTermId(e.target.value)}
-            >
-              {terms.map(t => (
-                <option key={t.id} value={t.id}>{t.label} ({t.academic_year})</option>
-              ))}
-            </select>
-          </div>
+                  <label className="block text-xs font-semibold text-slate-600 uppercase mb-2">Academic Term</label>
+                  <select
+                    className="w-full px-4 py-2 border border-slate-200 rounded-xl bg-slate-50 focus:ring-2 focus:ring-blue-500 text-sm"
+                    value={activeTermId}
+                    onChange={(e) => setActiveTermId(e.target.value)}
+                  >
+                    {terms.map(t => (
+                      <option key={t.id} value={t.id}>{t.label} ({t.academic_year})</option>
+                    ))}
+                  </select>
+                </div>
 
-          <div className="flex-1">
-            <label className="block text-xs font-semibold text-slate-600 uppercase mb-2">View Type</label>
-            <div className="flex overflow-x-auto no-scrollbar p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
-              <button
-                onClick={() => setActiveTab('assessment')}
-                className={`flex-1 min-w-[120px] py-1.5 px-3 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 ${activeTab === 'assessment' ? 'bg-white shadow-sm text-emerald-700' : 'text-slate-500 hover:text-slate-700'}`}
-              >
-                <BookOpen size={14} /> Assessment
-              </button>
-              <button
-                onClick={() => setActiveTab('analysis')}
-                className={`flex-1 min-w-[120px] py-1.5 px-3 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 ${activeTab === 'analysis' ? 'bg-white shadow-sm text-emerald-700' : 'text-slate-500 hover:text-slate-700'}`}
-              >
-                <ScrollText size={14} /> Analysis
-              </button>
-              <button
-                onClick={() => setActiveTab('top_students')}
-                className={`flex-1 min-w-[120px] py-1.5 px-3 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 ${activeTab === 'top_students' ? 'bg-white shadow-sm text-emerald-700' : 'text-slate-500 hover:text-slate-700'}`}
-              >
-                <Award size={14} /> Top Students
-              </button>
-            </div>
-          </div>
+                {/* View Toggle */}
+                <div className="flex-1">
+                  <label className="block text-xs font-semibold text-slate-600 uppercase mb-2">Dashboard View</label>
+                  <div className="flex overflow-x-auto no-scrollbar p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+                    <button
+                      onClick={() => setActiveTab('assessment')}
+                      className={`flex-1 min-w-[120px] py-1.5 px-3 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 ${activeTab === 'assessment' ? 'bg-white shadow-sm text-blue-700' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                      <BookOpen size={14} /> Assessment
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('analysis')}
+                      className={`flex-1 min-w-[120px] py-1.5 px-3 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 ${activeTab === 'analysis' ? 'bg-white shadow-sm text-blue-700' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                      <ScrollText size={14} /> Analysis
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('top_students')}
+                      className={`flex-1 min-w-[120px] py-1.5 px-3 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 ${activeTab === 'top_students' ? 'bg-white shadow-sm text-blue-700' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                      <Award size={14} /> Top Students
+                    </button>
+                  </div>
+                </div>
 
-          {activeTab === 'assessment' && (
-            <div className="flex-1">
-              <label className="block text-xs font-semibold text-slate-600 uppercase mb-2">Class</label>
-              <select
-                className="w-full px-4 py-2 border border-slate-200 rounded-xl bg-slate-50 focus:ring-2 focus:ring-emerald-500 text-right"
-                dir="rtl"
-                value={activeClassId}
-                onChange={(e) => setActiveClassId(e.target.value)}
-              >
-                <option value="">-- اختر الصف --</option>
-                {circularClasses.map(t => (
-                  <option key={t.id} value={t.id}>{t.class_name} ({t.class_name_english})</option>
-                ))}
-              </select>
-            </div>
-          )}
+                {/* Contextual Selectors */}
+                {activeTab === 'assessment' && (
+                  <div className="flex-1 min-w-[200px]">
+                    <label className="block text-xs font-semibold text-slate-600 uppercase mb-2">Class List</label>
+                    <select
+                      className="w-full px-4 py-2 border border-slate-200 rounded-xl bg-slate-50 focus:ring-2 focus:ring-blue-500 text-sm"
+                      value={activeClassId}
+                      onChange={(e) => setActiveClassId(e.target.value)}
+                    >
+                      <option value="">-- Select a Class --</option>
+                      {circularClasses.map(t => (
+                        <option key={t.id} value={t.id}>{t.class_name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
-          {(activeTab === 'analysis' || activeTab === 'top_students') && (
-            <div className="flex-1">
-              <label className="block text-xs font-semibold text-slate-600 uppercase mb-2">Level</label>
-              <select
-                className="w-full px-4 py-2 border border-slate-200 rounded-xl bg-slate-50 focus:ring-2 focus:ring-emerald-500 text-right"
-                dir="rtl"
-                value={activeLevel}
-                onChange={(e) => setActiveLevel(e.target.value)}
-              >
-                <option value="raudha">الروضة (Nursery)</option>
-                <option value="ibtidaai_lower">الابتدائية السفلى (Lower Primary)</option>
-                <option value="ibtidaai_upper">الابتدائية العليا (Upper Primary)</option>
-                </select>
+                {(activeTab === 'analysis' || activeTab === 'top_students') && (
+                  <div className="flex-1 min-w-[200px]">
+                    <label className="block text-xs font-semibold text-slate-600 uppercase mb-2">Academic Level</label>
+                    <select
+                      className="w-full px-4 py-2 border border-slate-200 rounded-xl bg-slate-50 focus:ring-2 focus:ring-blue-500 text-sm"
+                      value={activeLevel}
+                      onChange={(e) => setActiveLevel(e.target.value)}
+                    >
+                      <option value="nursery">Nursery Section</option>
+                      <option value="lower_primary">Lower Primary</option>
+                      <option value="upper_primary">Upper Primary</option>
+                    </select>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
             </div>
           </motion.div>
         )}
@@ -483,60 +425,66 @@ export default function SecularHubClient({
       <div className="flex-1 overflow-auto p-4 md:p-8 print:p-0">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center h-full print:hidden">
-            <Loader2 className="w-8 h-8 animate-spin text-emerald-500 mb-4" />
+            <Loader2 className="w-8 h-8 animate-spin text-blue-500 mb-4" />
             <p className="text-slate-500 font-medium">Loading secular data...</p>
           </div>
-        ) : !data || (!activeClassId && activeTab === 'assessment') || (!activeLevel && (activeTab === 'analysis' || activeTab === 'top_students')) ? (
-          <SecularHubEmptyState />
+        ) : (!data || (!activeClassId && activeTab === 'assessment') || (!activeLevel && (activeTab === 'analysis' || activeTab === 'top_students'))) ? (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="flex flex-col items-center justify-center h-full text-center p-8 max-w-md mx-auto"
+          >
+            <div className="w-20 h-20 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center mb-6 ring-8 ring-blue-50/50 dark:ring-blue-900/10">
+              <SearchX className="w-10 h-10 text-blue-500 dark:text-blue-400" />
+            </div>
+            <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">No Data Selected</h3>
+            <p className="text-slate-500 dark:text-slate-400 leading-relaxed">
+              Please select {activeTab === 'assessment' ? 'a specific class' : 'an academic level'} from the control panel to view the reports.
+            </p>
+          </motion.div>
         ) : (
           <div className="w-full max-w-7xl mx-auto print:max-w-[210mm] print:m-0 min-h-[297mm]">
             
             {/* Assessment Tab */}
             {activeTab === 'assessment' && activeClassId && (
-              <div className="font-arabic text-right print:p-10" dir="rtl">
+              <div className="print:p-10 text-left">
                 
-                {/* Header (Print-optimized) */}
-                <div className="text-center mb-8">
-                  <h2 className="text-lg font-bold mb-1 text-slate-800 print:text-black">بسم الله الرحمن الرحيم</h2>
-                  <h1 className="text-2xl font-extrabold text-emerald-800 mb-2 print:text-black">مدرسة جدة الإسلامية للروضة والابتدائية _ انساغو واكيسو</h1>
-                  <h3 className="text-xl font-bold mb-4 underline underline-offset-4 text-slate-700 print:text-black">كشف الدرجات لمنتصف الفترة</h3>
+                {/* Print Header */}
+                <div className="text-center mb-8 hidden print:block">
+                  <h1 className="text-2xl font-extrabold text-slate-800 print:text-black mb-1 uppercase tracking-wide">Jiddah Islamic Nursery & Primary School</h1>
+                  <h3 className="text-xl font-bold mb-4 underline underline-offset-4 text-slate-700 print:text-black uppercase">Mid-Term Assessment Report</h3>
                 </div>
 
+                {/* Context Bar */}
                 <div className="flex justify-between items-center mb-6 font-semibold text-slate-700 print:text-black bg-white/50 print:bg-transparent px-4 py-3 rounded-xl border border-slate-200/50 print:border-none shadow-sm print:shadow-none">
                   <div>
-                    <span>الفترة: </span>
-                    <span className="text-emerald-800 print:text-black font-bold px-4">
-                      {terms.find(t => t.id === activeTermId)?.label === 'Term 1' ? 'الأولى' : terms.find(t => t.id === activeTermId)?.label === 'Term 2' ? 'الثانية' : 'الثالثة'}
-                    </span>
+                    <span className="uppercase text-[11px] tracking-wider text-slate-500 mr-2">Term:</span>
+                    <span className="text-blue-800 print:text-black font-bold">{terms.find(t => t.id === activeTermId)?.label}</span>
                   </div>
                   <div>
-                    <span>الصف: </span>
-                    <span className="text-emerald-800 print:text-black font-bold px-4">
-                      {circularClasses.find(c => c.id === activeClassId)?.class_name}
-                    </span>
+                    <span className="uppercase text-[11px] tracking-wider text-slate-500 mr-2">Class:</span>
+                    <span className="text-blue-800 print:text-black font-bold">{circularClasses.find(c => c.id === activeClassId)?.class_name}</span>
                   </div>
                   <div>
-                    <span>السنة: </span>
-                    <span className="text-emerald-800 print:text-black font-bold px-4">
-                      {toEnglishNumerals(terms.find(t => t.id === activeTermId)?.academic_year || '')}م
-                    </span>
+                    <span className="uppercase text-[11px] tracking-wider text-slate-500 mr-2">Year:</span>
+                    <span className="text-blue-800 print:text-black font-bold">{terms.find(t => t.id === activeTermId)?.academic_year}</span>
                   </div>
                 </div>
 
-                {/* Modern Glassmorphic Table Container */}
+                {/* Glassmorphic Table Container */}
                 <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-200/60 dark:border-slate-800/60 overflow-hidden print:bg-transparent print:border-none print:shadow-none print:rounded-none">
                   <div className="overflow-x-auto shadow-inner print:shadow-none print:overflow-visible">
-                    <table className="w-full text-right border-collapse print:border-2 print:border-black">
+                    <table className="w-full text-left border-collapse print:border-2 print:border-black">
                       <thead className="bg-slate-50/90 dark:bg-slate-800/90 backdrop-blur-md sticky top-0 z-10 print:bg-slate-100 print:static">
                         <tr>
-                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-semibold text-sm w-12 text-center print:border print:border-black print:text-black">م</th>
-                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-semibold text-sm w-64 print:border print:border-black print:text-black">اسم التلميذ/ة</th>
+                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-semibold text-xs uppercase tracking-wider w-12 text-center print:border print:border-black print:text-black">#</th>
+                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-semibold text-xs uppercase tracking-wider w-64 print:border print:border-black print:text-black">Student Name</th>
                           {assessmentData.orderedSubjects?.map(s => (
-                            <th key={s.id} className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-semibold text-sm text-center print:border print:border-black print:text-black">{s.subject_name}</th>
+                            <th key={s.id} className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-semibold text-xs uppercase tracking-wider text-center print:border print:border-black print:text-black">{s.subject_name}</th>
                           ))}
-                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-semibold text-sm text-center w-24 print:border print:border-black print:text-black">المجموع</th>
-                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-semibold text-sm text-center w-24 print:border print:border-black print:text-black">الترتيب</th>
-                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-semibold text-sm text-center w-32 print:border print:border-black print:text-black">الملاحظات</th>
+                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-semibold text-xs uppercase tracking-wider text-center w-24 print:border print:border-black print:text-black">Total</th>
+                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-semibold text-xs uppercase tracking-wider text-center w-24 print:border print:border-black print:text-black">Rank</th>
+                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-semibold text-xs uppercase tracking-wider text-center w-32 print:border print:border-black print:text-black">Remarks</th>
                         </tr>
                       </thead>
                       <motion.tbody 
@@ -551,21 +499,21 @@ export default function SecularHubClient({
                             key={student.id} 
                             className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors duration-200 border-b border-slate-100 dark:border-slate-800 last:border-0 print:border print:border-black print:hover:bg-transparent print:!opacity-100 print:!transform-none"
                           >
-                            <td className="px-4 py-3 text-center text-slate-400 font-medium print:border print:border-black print:text-black">{toEnglishNumerals(idx + 1)}</td>
-                            <td className="px-4 py-3 font-semibold text-slate-800 dark:text-slate-200 whitespace-nowrap print:border print:border-black print:text-black">{student.name || student.name}</td>
+                            <td className="px-4 py-3 text-center text-slate-400 font-medium print:border print:border-black print:text-black">{idx + 1}</td>
+                            <td className="px-4 py-3 font-semibold text-slate-800 dark:text-slate-200 whitespace-nowrap print:border print:border-black print:text-black">{student.name}</td>
                             
                             {assessmentData.orderedSubjects?.map(s => (
                               <td key={s.id} className="px-4 py-3 text-center font-medium text-slate-700 dark:text-slate-300 print:border print:border-black print:text-black">
-                                {student.subjectScores[s.id] !== undefined ? toEnglishNumerals(student.subjectScores[s.id]!) : '-'}
+                                {student.subjectScores[s.id] !== undefined ? student.subjectScores[s.id] : '-'}
                               </td>
                             ))}
                             
                             <td className="px-4 py-3 text-center font-bold text-slate-800 dark:text-white print:border print:border-black print:text-black">
-                              {student.total > 0 ? toEnglishNumerals(student.total) : '-'}
+                              {student.total > 0 ? student.total : '-'}
                             </td>
                             
-                            <td className="px-4 py-3 text-center font-bold text-emerald-600 dark:text-emerald-400 print:border print:border-black print:text-black">
-                              {student.total > 0 ? toEnglishNumerals(student.position) : '-'}
+                            <td className="px-4 py-3 text-center font-bold text-blue-600 dark:text-blue-400 print:border print:border-black print:text-black">
+                              {student.total > 0 ? <RankBadge rank={student.position} /> : '-'}
                             </td>
                             
                             <td className="px-4 py-3 text-center font-medium print:border print:border-black print:text-black">
@@ -578,7 +526,7 @@ export default function SecularHubClient({
 
                         {/* Empty Rows Padding for Print/Visual Balance */}
                         {Array.from({ length: Math.max(0, 10 - (assessmentData.students?.length || 0)) }).map((_, i) => (
-                          <tr key={`empty-${i}`} className="border-b border-slate-100 last:border-0 print:border print:border-black print:h-10">
+                          <tr key={`empty-${i}`} className="border-b border-slate-100 dark:border-slate-800/50 last:border-0 print:border print:border-black print:h-10">
                             <td className="px-4 py-3 print:border print:border-black">&nbsp;</td>
                             <td className="px-4 py-3 print:border print:border-black">&nbsp;</td>
                             {assessmentData.orderedSubjects?.map(s => <td key={`empty-${s.id}`} className="px-4 py-3 print:border print:border-black">&nbsp;</td>)}
@@ -593,13 +541,13 @@ export default function SecularHubClient({
                 </div>
 
                 {/* Footer Signatures */}
-                <div className="flex justify-between items-center mt-12 px-8 text-slate-700 print:text-black">
+                <div className="flex justify-between items-center mt-12 px-8 text-slate-700 print:text-black hidden print:flex">
                   <div className="text-center">
-                    <p className="font-bold mb-6 text-sm">توقيع مربي الفصل:</p>
+                    <p className="font-bold mb-6 text-sm uppercase tracking-wider">Class Teacher's Signature</p>
                     <div className="border-b-2 border-dotted border-slate-400 print:border-black w-48"></div>
                   </div>
                   <div className="text-center">
-                    <p className="font-bold mb-6 text-sm">توقيع مشرف التعليم:</p>
+                    <p className="font-bold mb-6 text-sm uppercase tracking-wider">Head of Academics Signature</p>
                     <div className="border-b-2 border-dotted border-slate-400 print:border-black w-48"></div>
                   </div>
                 </div>
@@ -608,47 +556,43 @@ export default function SecularHubClient({
             
             {/* Analysis Tab */}
             {activeTab === 'analysis' && activeLevel && (
-              <div className="font-arabic text-right print:p-10" dir="rtl">
-                <div className="text-center mb-8">
-                  <h2 className="text-lg font-bold mb-1 text-slate-800 print:text-black">بسم الله الرحمن الرحيم</h2>
-                  <h1 className="text-2xl font-extrabold text-emerald-800 mb-2 print:text-black">مدرسة جدة الإسلامية للروضة والابتدائية</h1>
-                  <h3 className="text-xl font-bold mb-4 underline underline-offset-4 text-slate-700 print:text-black">النظرة الأولى الدقيقة لنتائج منتصف الفترة</h3>
+              <div className="print:p-10 text-left">
+                
+                {/* Print Header */}
+                <div className="text-center mb-8 hidden print:block">
+                  <h1 className="text-2xl font-extrabold text-slate-800 print:text-black mb-1 uppercase tracking-wide">Jiddah Islamic Nursery & Primary School</h1>
+                  <h3 className="text-xl font-bold mb-4 underline underline-offset-4 text-slate-700 print:text-black uppercase">Mid-Term Analytics Overview</h3>
                 </div>
 
+                {/* Context Bar */}
                 <div className="flex justify-between items-center mb-6 font-semibold text-slate-700 print:text-black bg-white/50 print:bg-transparent px-4 py-3 rounded-xl border border-slate-200/50 print:border-none shadow-sm print:shadow-none">
                   <div>
-                    <span>المرحلة: </span>
-                    <span className="text-emerald-800 print:text-black font-bold px-4">
-                      {activeLevel === 'raudha' ? 'الروضة' : activeLevel === 'ibtidaai_lower' ? 'الابتدائية السفلى' : 'الابتدائية العليا'}
-                    </span>
+                    <span className="uppercase text-[11px] tracking-wider text-slate-500 mr-2">Level:</span>
+                    <span className="text-blue-800 print:text-black font-bold uppercase">{activeLevel.replace('_', ' ')}</span>
                   </div>
                   <div>
-                    <span>الفترة: </span>
-                    <span className="text-emerald-800 print:text-black font-bold px-4">
-                      {terms.find(t => t.id === activeTermId)?.label === 'Term 1' ? 'الأولى' : terms.find(t => t.id === activeTermId)?.label === 'Term 2' ? 'الثانية' : 'الثالثة'}
-                    </span>
+                    <span className="uppercase text-[11px] tracking-wider text-slate-500 mr-2">Term:</span>
+                    <span className="text-blue-800 print:text-black font-bold">{terms.find(t => t.id === activeTermId)?.label}</span>
                   </div>
                   <div>
-                    <span>السنة: </span>
-                    <span className="text-emerald-800 print:text-black font-bold px-4">
-                      {toEnglishNumerals(terms.find(t => t.id === activeTermId)?.academic_year || '')}م
-                    </span>
+                    <span className="uppercase text-[11px] tracking-wider text-slate-500 mr-2">Year:</span>
+                    <span className="text-blue-800 print:text-black font-bold">{terms.find(t => t.id === activeTermId)?.academic_year}</span>
                   </div>
                 </div>
 
                 <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-200/60 dark:border-slate-800/60 overflow-hidden print:bg-transparent print:border-none print:shadow-none print:rounded-none">
                   <div className="overflow-x-auto shadow-inner print:shadow-none print:overflow-visible">
-                    <table className="w-full text-right border-collapse print:border-2 print:border-black">
+                    <table className="w-full text-left border-collapse print:border-2 print:border-black">
                       <thead className="bg-slate-50/90 dark:bg-slate-800/90 backdrop-blur-md sticky top-0 z-10 print:bg-slate-100 print:static">
                         <tr>
-                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-semibold text-sm text-center w-32 print:border print:border-black print:text-black">الصف</th>
-                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-semibold text-sm text-center print:border print:border-black print:text-black">عدد الطلاب</th>
-                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-emerald-600 font-semibold text-sm text-center print:border print:border-black print:text-black">Excellent</th>
-                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-teal-600 font-semibold text-sm text-center print:border print:border-black print:text-black">Very Good</th>
-                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-amber-600 font-semibold text-sm text-center print:border print:border-black print:text-black">Good</th>
-                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-orange-600 font-semibold text-sm text-center print:border print:border-black print:text-black">Fair</th>
-                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-rose-600 font-semibold text-sm text-center print:border print:border-black print:text-black">Poor</th>
-                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-700 font-semibold text-sm text-center print:border print:border-black print:text-black">نسبة النجاح</th>
+                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-semibold text-xs uppercase tracking-wider w-40 print:border print:border-black print:text-black">Class Segment</th>
+                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-semibold text-xs uppercase tracking-wider text-center print:border print:border-black print:text-black">Capacity</th>
+                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-emerald-600 font-semibold text-xs uppercase tracking-wider text-center print:border print:border-black print:text-black">Excellent</th>
+                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-indigo-600 font-semibold text-xs uppercase tracking-wider text-center print:border print:border-black print:text-black">V. Good</th>
+                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-blue-600 font-semibold text-xs uppercase tracking-wider text-center print:border print:border-black print:text-black">Good</th>
+                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-amber-600 font-semibold text-xs uppercase tracking-wider text-center print:border print:border-black print:text-black">Fair</th>
+                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-rose-600 font-semibold text-xs uppercase tracking-wider text-center print:border print:border-black print:text-black">Poor</th>
+                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-700 font-semibold text-xs uppercase tracking-wider text-center print:border print:border-black print:text-black">Pass Index</th>
                         </tr>
                       </thead>
                       <motion.tbody 
@@ -664,14 +608,14 @@ export default function SecularHubClient({
                               key={cls.id}
                               className="hover:bg-slate-50/80 transition-colors duration-200 border-b border-slate-100 last:border-0 print:border print:border-black print:hover:bg-transparent print:!opacity-100 print:!transform-none"
                             >
-                              <td className="px-4 py-3 text-center font-bold text-slate-800 bg-slate-50/30 print:border print:border-black print:text-black">{cls.className}</td>
-                              <td className="px-4 py-3 text-center font-medium text-slate-600 print:border print:border-black print:text-black">{toEnglishNumerals(cls.numStudents)}</td>
-                              <td className="px-4 py-3 text-center font-semibold text-emerald-700 print:border print:border-black print:text-black">{toEnglishNumerals(cls.excellent)}</td>
-                              <td className="px-4 py-3 text-center font-semibold text-teal-700 print:border print:border-black print:text-black">{toEnglishNumerals(cls.vGood)}</td>
-                              <td className="px-4 py-3 text-center font-semibold text-amber-700 print:border print:border-black print:text-black">{toEnglishNumerals(cls.good)}</td>
-                              <td className="px-4 py-3 text-center font-semibold text-orange-700 print:border print:border-black print:text-black">{toEnglishNumerals(cls.fair)}</td>
-                              <td className="px-4 py-3 text-center font-semibold text-rose-700 print:border print:border-black print:text-black">{toEnglishNumerals(cls.weak)}</td>
-                              <td className="px-4 py-3 text-center font-extrabold text-emerald-600 print:border print:border-black print:text-black" dir="rtl">% {toEnglishNumerals(cls.passRate)}</td>
+                              <td className="px-4 py-3 font-bold text-slate-800 bg-slate-50/30 print:border print:border-black print:text-black">{cls.className}</td>
+                              <td className="px-4 py-3 text-center font-medium text-slate-600 print:border print:border-black print:text-black">{cls.numStudents}</td>
+                              <td className="px-4 py-3 text-center font-semibold text-emerald-700 print:border print:border-black print:text-black">{cls.excellent}</td>
+                              <td className="px-4 py-3 text-center font-semibold text-indigo-700 print:border print:border-black print:text-black">{cls.vGood}</td>
+                              <td className="px-4 py-3 text-center font-semibold text-blue-700 print:border print:border-black print:text-black">{cls.good}</td>
+                              <td className="px-4 py-3 text-center font-semibold text-amber-700 print:border print:border-black print:text-black">{cls.fair}</td>
+                              <td className="px-4 py-3 text-center font-semibold text-rose-700 print:border print:border-black print:text-black">{cls.weak}</td>
+                              <td className="px-4 py-3 text-center font-extrabold text-blue-600 print:border print:border-black print:text-black">{cls.passRate}%</td>
                             </motion.tr>
                           )
                         })}
@@ -684,9 +628,12 @@ export default function SecularHubClient({
 
             {/* Top Students Tab */}
             {activeTab === 'top_students' && activeLevel && (
-              <div className="font-arabic text-right print:p-10" dir="rtl">
-                <div className="text-center mb-8">
-                  <h3 className="text-2xl font-extrabold underline underline-offset-8 text-emerald-800 print:text-black mb-10 mt-6">أسماء المتفوقين من كل مرحلة مع ذكر المعدل التراكمي لكل منهم</h3>
+              <div className="print:p-10 text-left">
+                
+                {/* Print Header */}
+                <div className="text-center mb-10 hidden print:block">
+                  <h1 className="text-2xl font-extrabold text-slate-800 print:text-black mb-1 uppercase tracking-wide">Jiddah Islamic Nursery & Primary School</h1>
+                  <h3 className="text-xl font-bold mb-4 underline underline-offset-4 text-slate-700 print:text-black uppercase">Top Performers Leaderboard</h3>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -699,24 +646,32 @@ export default function SecularHubClient({
                         key={cls.classId} 
                         className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-200/60 dark:border-slate-800/60 overflow-hidden print:bg-transparent print:border-none print:shadow-none print:rounded-none"
                       >
-                        <div className="bg-slate-50/90 backdrop-blur-md p-4 border-b border-slate-200/60 text-center print:border print:border-black print:bg-slate-100">
-                          <h4 className="font-extrabold text-slate-800 print:text-black text-lg">{cls.className}</h4>
+                        <div className="bg-slate-50/90 backdrop-blur-md p-4 border-b border-slate-200/60 text-center print:border print:border-black print:bg-slate-100 flex items-center justify-between">
+                          <h4 className="font-extrabold text-slate-800 print:text-black text-lg">{cls.className} Rankings</h4>
+                          <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 print:text-black">Top {cls.students.length}</span>
                         </div>
-                        <div className="overflow-x-auto print:overflow-visible">
+                        <div className="overflow-x-auto print:overflow-visible p-2">
                           <table className="w-full border-collapse print:border-2 print:border-black">
-                            <thead className="bg-slate-50/50 print:bg-slate-100">
+                            <thead className="bg-slate-50/50 print:bg-slate-100 hidden">
                               <tr>
-                                <th className="px-4 py-2 text-slate-500 font-semibold text-sm border-b border-slate-200/60 w-12 text-center print:border print:border-black print:text-black">م</th>
-                                <th className="px-4 py-2 text-slate-500 font-semibold text-sm border-b border-slate-200/60 text-right print:border print:border-black print:text-black">الاسم</th>
-                                <th className="px-4 py-2 text-slate-500 font-semibold text-sm border-b border-slate-200/60 text-center w-28 print:border print:border-black print:text-black">المعدل</th>
+                                <th className="px-4 py-2 text-slate-500 font-semibold text-sm border-b border-slate-200/60 w-12 text-center print:border print:border-black print:text-black">#</th>
+                                <th className="px-4 py-2 text-slate-500 font-semibold text-sm border-b border-slate-200/60 text-left print:border print:border-black print:text-black">Name</th>
+                                <th className="px-4 py-2 text-slate-500 font-semibold text-sm border-b border-slate-200/60 text-right w-28 print:border print:border-black print:text-black">Average</th>
                               </tr>
                             </thead>
                             <tbody>
                               {cls.students.map((student, idx) => (
                                 <tr key={student.id} className="hover:bg-slate-50/50 transition-colors duration-200 border-b border-slate-100 last:border-0 print:border print:border-black">
-                                  <td className="px-4 py-3 text-center font-bold text-slate-400 print:border print:border-black print:text-black">{toEnglishNumerals(idx + 1)}</td>
-                                  <td className="px-4 py-3 font-bold text-emerald-800 print:border print:border-black print:text-black">{student.studentName}</td>
-                                  <td className="px-4 py-3 text-center font-extrabold text-slate-700 print:border print:border-black print:text-black">{toEnglishNumerals(Math.round(student.avg))}</td>
+                                  <td className="px-4 py-3 text-center w-12 print:border print:border-black">
+                                    <RankBadge rank={idx + 1} />
+                                  </td>
+                                  <td className="px-4 py-3 font-bold text-slate-800 print:border print:border-black print:text-black">
+                                    {student.studentName}
+                                  </td>
+                                  <td className="px-4 py-3 text-right print:border print:border-black print:text-black">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5 print:hidden">Avg</p>
+                                    <p className="font-extrabold text-blue-700 print:text-black text-lg leading-none">{Math.round(student.avg)}</p>
+                                  </td>
                                 </tr>
                               ))}
                             </tbody>

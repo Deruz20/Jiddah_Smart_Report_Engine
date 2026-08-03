@@ -13,7 +13,7 @@ type TermData = {
 type CircularClassData = {
   id: string
   class_name: string
-  level: string
+  section: string
 }
 
 export const dynamic = "force-dynamic";
@@ -35,8 +35,8 @@ export default async function SecularHubPage() {
         .order('term_number', { ascending: true }),
       supabase
         .from('circular_classes')
-        .select('id, class_name, level')
-        .order('level', { ascending: true })
+        .select('id, class_name, section')
+        .order('section', { ascending: true })
         .order('class_name', { ascending: true })
     ])
 

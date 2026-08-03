@@ -233,7 +233,7 @@ function TermBadge() {
         if (res.ok) {
           const json = await res.json();
           if (json?.data) {
-            setTermName(`${json.data.term_name}, ${json.data.academic_year}`);
+            setTermName(`${json.data.label}, ${json.data.academic_year}`);
           } else {
             setTermName("No Active Term");
           }

@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
         circular_class_id,
         is_active,
         students ( name, admission_number ),
-        circular_classes ( id, class_name, level )
+        circular_classes ( id, class_name, section )
       `)
       .not('circular_class_id', 'is', null)
       .eq('is_active', true)
@@ -52,25 +52,30 @@ export async function GET(request: NextRequest) {
     const enrollmentIds = enrollments.map(e => e.id)
 
     // 2. Fetch marks for these enrollments for the given term
-    const { data: marks, error: marksError } = await supabase
-      .from('marks')
-      .select(`
-        id,
-        enrollment_id,
-        subject_id,
-        bot_score,
-        mot_score,
-        eot_score
-      `)
-      .eq('term_id', termId)
-      .in('enrollment_id', enrollmentIds)
+    let marks: any[] = []
+    if (enrollmentIds.length > 0) {
+      const { data, error: marksError } = await supabase
+        .from('circular_marks')
+        .select(`
+          id,
+          enrollment_id,
+          subject_id,
+          bot_score,
+          mot_score,
+          eot_score
+        `)
+        .eq('term_id', termId)
+        .in('enrollment_id', enrollmentIds)
 
-    if (marksError) throw marksError
+      if (marksError) throw marksError
+      marks = data
+    }
 
     // 3. Fetch subjects
     const { data: subjects, error: subjectsError } = await supabase
       .from('subjects')
-      .select('id, subject_name, level')
+      .select('id, subject_name, section, curriculum')
+      .eq('curriculum', 'secular')
 
     if (subjectsError) throw subjectsError
 

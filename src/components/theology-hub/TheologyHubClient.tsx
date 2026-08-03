@@ -273,47 +273,7 @@ export default function TheologyHubClient({
     }).filter(group => group.students.length > 0)
   }, [data, activeLevel, theologyClasses])
 
-  // Auto-transliteration for missing arabic names
-  React.useEffect(() => {
-    if (!assessmentData.students || assessmentData.students.length === 0) return;
-    const studentsToTranslate = assessmentData.students.filter(s => !s.arabic_name);
-    if (studentsToTranslate.length === 0) return;
 
-    const translateMissingNames = async () => {
-      try {
-        const namesToTranslate = studentsToTranslate.map(s => s.name);
-        const res = await fetch('/api/transliterate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ names: namesToTranslate })
-        });
-        if (res.ok) {
-          const { transliterated } = await res.json();
-          const supabase = createClient();
-          for (let i = 0; i < studentsToTranslate.length; i++) {
-            if (transliterated[i]) {
-              await supabase.from('students').update({ arabic_name: transliterated[i] }).eq('id', studentsToTranslate[i].id);
-            }
-          }
-          
-          setData(prevData => {
-            if (!prevData) return prevData;
-            const updatedEnrollments = prevData.enrollments.map(e => {
-              const idx = studentsToTranslate.findIndex(s => s.id === e.id);
-              if (idx !== -1 && transliterated[idx]) {
-                return { ...e, students: { ...e.students, arabic_name: transliterated[idx] } };
-              }
-              return e;
-            });
-            return { ...prevData, enrollments: updatedEnrollments };
-          });
-        }
-      } catch (err) {
-        console.error("Auto transliteration failed", err);
-      }
-    };
-    translateMissingNames();
-  }, [assessmentData.students]);
 
   const toArabicNumerals = (num: string | number | null | undefined) => {
     if (num == null || num === '') return ''

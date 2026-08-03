@@ -40,6 +40,9 @@ export default async function StudentsManagementPage() {
 
   const { data: enrollments } = await query;
 
+  const { data: activeTerm } = await supabase.from('terms').select('*').eq('is_current', true).single();
+  const currentAcademicYear = activeTerm?.academic_year || '2024–25';
+
   const students = (enrollments || []).map((e: any) => ({
     id: e.students.id,
     name: e.students.name,
@@ -64,7 +67,7 @@ export default async function StudentsManagementPage() {
     { label: 'Active Students', value: students.length, icon: GraduationCap, color: 'emerald' },
     { label: 'Classes Running', value: 7, icon: BookOpen, color: 'orange' }, // Mock for now or calculate unique classes
     { label: 'Growth YoY', value: '+18%', icon: TrendingUp, color: 'emerald' },
-    { label: 'Academic Year', value: '2024–25', icon: Calendar, color: 'slate' },
+    { label: 'Academic Year', value: currentAcademicYear, icon: Calendar, color: 'slate' },
   ];
 
   return (
@@ -100,7 +103,7 @@ export default async function StudentsManagementPage() {
             <div className="hidden sm:flex items-center gap-2 mt-1">
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-full text-emerald-700 text-xs font-semibold">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                Live · Academic Year 2024–2025
+                Live · Academic Year {currentAcademicYear}
               </span>
             </div>
           </div>

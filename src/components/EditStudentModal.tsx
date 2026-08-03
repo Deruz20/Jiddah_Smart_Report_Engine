@@ -89,8 +89,8 @@ export function EditStudentModal({ isOpen, onClose, student, onSaved }: EditStud
       const circularData = await circularRes.json();
       const theologyData = await theologyRes.json();
       
-      setCircularClasses(circularData);
-      setTheologyClasses(theologyData);
+      setCircularClasses(circularData.data || []);
+      setTheologyClasses(theologyData.data || theologyData || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch classes');
     } finally {
@@ -100,7 +100,7 @@ export function EditStudentModal({ isOpen, onClose, student, onSaved }: EditStud
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.admission_number || !formData.circular_class_id) {
+    if (!formData.name || !formData.admission_number || (!formData.circular_class_id && !formData.theology_class_id)) {
       toast.error('Please fill in all required fields');
       return;
     }
@@ -252,12 +252,11 @@ export function EditStudentModal({ isOpen, onClose, student, onSaved }: EditStud
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Secular Class *</label>
+                    <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Secular Class</label>
                     <select
                       className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-sm"
                       value={formData.circular_class_id}
                       onChange={(e) => setFormData({ ...formData, circular_class_id: e.target.value })}
-                      required
                     >
                       <option value="">Select Class</option>
                       {circularClasses.map(c => (

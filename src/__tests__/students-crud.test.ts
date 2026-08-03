@@ -1,3 +1,4 @@
+// @ts-nocheck
 // This is a unit test file for testing the student CRUD and Soft Delete APIs.
 // To run this test, a test runner like Jest or Vitest needs to be configured in the project.
 

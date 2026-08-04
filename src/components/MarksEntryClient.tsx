@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef, useTransition } from 'react'
+import { usePowerSync } from '@powersync/react'
 import { transliterateEnglishToArabic } from '@/lib/transliterate'
 
 type TermData = {
@@ -44,6 +45,7 @@ interface MarksEntryClientProps {
 type ExamType = 'bot' | 'mot' | 'eot' | 'all'
 
 export function MarksEntryClient({ terms }: MarksEntryClientProps) {
+  const powerSync = usePowerSync()
   const [enrollments, setEnrollments] = useState<EnrollmentData[]>([])
   const [selectedTermId, setSelectedTermId] = useState('')
   const [selectedEnrollmentId, setSelectedEnrollmentId] = useState('')
@@ -66,21 +68,27 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
       setError(null)
 
       try {
-        const res = await fetch('/api/enrollments')
-        if (!res.ok) {
-          const payload = await res.json()
-          throw new Error(payload.error || 'Failed to load enrollments')
-        }
-
-        const data = await res.json()
+        const data = await powerSync.getAll(`
+          SELECT 
+            e.student_id as enrollment_id,
+            s.name, s.admission_number,
+            cc.class_name as circular_class, cc.section,
+            tc.class_name_arabic as theology_class_arabic,
+            tc.class_name_english as theology_class_level
+          FROM enrollments e
+          JOIN students s ON e.student_id = s.id
+          LEFT JOIN circular_classes cc ON e.circular_class_id = cc.id
+          LEFT JOIN theology_classes tc ON e.theology_class_id = tc.id
+        `)
+        
         const mappedEnrollments: EnrollmentData[] = data.map((e: any) => ({
           id: e.enrollment_id,
-          name: e.name,
-          admission_number: e.admission_number,
-          circular_class: e.circular_class,
-          section: e.section,
-          theology_class_arabic: e.theology_class_arabic,
-          theology_class_level: e.theology_class_level,
+          name: e.name || 'Unknown Student',
+          admission_number: e.admission_number || '',
+          circular_class: e.circular_class || '',
+          section: e.section || null,
+          theology_class_arabic: e.theology_class_arabic || null,
+          theology_class_level: e.theology_class_level || null,
         }))
         setEnrollments(mappedEnrollments)
       } catch (err) {
@@ -107,17 +115,26 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
       setSuccess(false)
 
       try {
-        const res = await fetch(
-          `/api/marks?enrollment_id=${encodeURIComponent(selectedEnrollmentId)}&term_id=${encodeURIComponent(selectedTermId)}`
-        )
-        const payload = await res.json()
+        const circular = await powerSync.getAll(`
+          SELECT 
+            s.id as subject_id, s.subject_name, 'true' as is_core,
+            cm.bot_mark as bot_score, cm.mot_mark as mot_score, cm.eot_mark as eot_score
+          FROM subjects s
+          LEFT JOIN circular_marks cm ON cm.subject_id = s.id AND cm.enrollment_id = ?
+          WHERE s.curriculum = 'circular'
+        `, [selectedEnrollmentId]);
 
-        if (!res.ok) {
-          throw new Error(payload.error || 'Failed to load marks')
-        }
+        const theology = await powerSync.getAll(`
+          SELECT 
+            s.id as subject_id, s.subject_name as subject_name_arabic,
+            tm.mot_mark as mot_score, tm.eot_mark as eot_score
+          FROM subjects s
+          LEFT JOIN theology_marks tm ON tm.subject_id = s.id AND tm.enrollment_id = ?
+          WHERE s.curriculum = 'theology'
+        `, [selectedEnrollmentId]);
 
-        setCircularMarks(payload.circular_marks || [])
-        setTheologyMarks(payload.theology_marks || [])
+        setCircularMarks(circular as any)
+        setTheologyMarks(theology as any)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load marks')
       } finally {
@@ -209,37 +226,39 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
 
     startTransition(async () => {
       try {
-        const circularPayload = circularMarks.map((mark) => {
-          const payload: any = { subject_id: mark.subject_id }
-          if (['bot', 'all'].includes(examType)) payload.bot_score = mark.bot_score
-          if (['mot', 'all'].includes(examType)) payload.mot_score = mark.mot_score
-          if (['eot', 'all'].includes(examType)) payload.eot_score = mark.eot_score
-          return payload
-        })
+        await powerSync.writeTransaction(async (tx) => {
+          for (const mark of circularMarks) {
+            let bot = mark.bot_score;
+            let mot = mark.mot_score;
+            let eot = mark.eot_score;
+            
+            // Upsert for circular marks
+            await tx.execute(`
+              INSERT INTO circular_marks (id, enrollment_id, subject_id, bot_mark, mot_mark, eot_mark, updated_by)
+              VALUES (uuid(), ?, ?, ?, ?, ?, 'local_user')
+              ON CONFLICT(enrollment_id, subject_id) DO UPDATE SET
+                bot_mark = EXCLUDED.bot_mark,
+                mot_mark = EXCLUDED.mot_mark,
+                eot_mark = EXCLUDED.eot_mark,
+                updated_by = EXCLUDED.updated_by
+            `, [selectedEnrollmentId, mark.subject_id, bot ?? null, mot ?? null, eot ?? null]);
+          }
 
-        const theologyPayload = theologyMarks.map((mark) => {
-          const payload: any = { subject_id: mark.subject_id }
-          if (['mot', 'all'].includes(examType)) payload.mot_score = mark.mot_score
-          if (['eot', 'all'].includes(examType)) payload.eot_score = mark.eot_score
-          return payload
-        })
-
-        const response = await fetch('/api/marks', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            enrollment_id: selectedEnrollmentId,
-            term_id: selectedTermId,
-            score_type: examType,
-            circular_marks: circularPayload,
-            theology_marks: theologyPayload.length > 0 ? theologyPayload : null,
-          }),
-        })
-
-        const payload = await response.json()
-        if (!response.ok) {
-          throw new Error(payload.error || 'Failed to save marks')
-        }
+          for (const mark of theologyMarks) {
+            let mot = mark.mot_score;
+            let eot = mark.eot_score;
+            
+            // Upsert for theology marks
+            await tx.execute(`
+              INSERT INTO theology_marks (id, enrollment_id, subject_id, bot_mark, mot_mark, eot_mark, updated_by)
+              VALUES (uuid(), ?, ?, NULL, ?, ?, 'local_user')
+              ON CONFLICT(enrollment_id, subject_id) DO UPDATE SET
+                mot_mark = EXCLUDED.mot_mark,
+                eot_mark = EXCLUDED.eot_mark,
+                updated_by = EXCLUDED.updated_by
+            `, [selectedEnrollmentId, mark.subject_id, mot ?? null, eot ?? null]);
+          }
+        });
 
         setSuccess(true)
         setTimeout(() => setSuccess(false), 3500)

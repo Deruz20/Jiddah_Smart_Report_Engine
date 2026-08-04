@@ -1,4 +1,4 @@
-CREATE TABLE public.teacher_invites (
+CREATE TABLE IF NOT EXISTS public.teacher_invites (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email TEXT UNIQUE NOT NULL,
   status TEXT NOT NULL CHECK (status IN ('pending', 'claimed')) DEFAULT 'pending',

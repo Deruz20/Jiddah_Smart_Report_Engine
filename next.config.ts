@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import withSerwistInit from "@serwist/next";
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 
@@ -32,4 +33,9 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+const withSerwist = withSerwistInit({
+  swSrc: "src/app/sw.ts",
+  swDest: "public/sw.js",
+});
+
+export default withSerwist(nextConfig);

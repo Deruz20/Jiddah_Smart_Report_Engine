@@ -24,6 +24,7 @@ import {
 import { useSidebar } from "../figma-ui/ui/sidebar";
 import { cn } from "../figma-ui/ui/utils";
 import { createClient } from "@/utils/supabase/client";
+import { PowerSyncStatus } from "./PowerSyncStatus";
 
 /* ─── Breadcrumbs (desktop only) ─────────────────────────────────────────── */
 
@@ -521,6 +522,7 @@ export function AppTopbar({ breadcrumbs = ["Admin", "Dashboard"], currentPage = 
 
           {/* Right: search + bell + profile */}
           <div className="flex items-center gap-1 pr-1">
+            <PowerSyncStatus />
             <button
               onClick={() => setSearchOpen(true)}
               className="flex items-center justify-center size-11 rounded-xl text-slate-500 active:bg-slate-100 active:scale-95 transition-all"
@@ -543,6 +545,7 @@ export function AppTopbar({ breadcrumbs = ["Admin", "Dashboard"], currentPage = 
           </div>
           <div className="flex items-center gap-2">
             <TermBadge />
+            <PowerSyncStatus />
             <NotificationBell />
             <div className="w-px h-5 bg-slate-200 mx-0.5" />
             <UserProfileDropdown />

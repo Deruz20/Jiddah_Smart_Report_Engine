@@ -5,7 +5,7 @@ import { Plus, Edit, Trash2, Search, BookOpen } from "lucide-react";
 import { HeroSection } from "@/components/HeroSection";
 import { Button } from "@/components/figma-ui/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/figma-ui/ui/dialog";
-import { createClient } from "@/utils/supabase/client";
+import { usePowerSync } from '@powersync/react';
 
 export default function TheologyClient({ 
   initialMarks, 
@@ -17,7 +17,10 @@ export default function TheologyClient({
   initialEnrollments: any[], 
   initialSubjects: any[], 
   initialActiveTerm: any 
+  initialSubjects: any[], 
+  initialActiveTerm: any 
 }) {
+  const powerSync = usePowerSync();
   const [marks, setMarks] = useState(initialMarks);
   const [enrollments] = useState(initialEnrollments);
   const [subjects] = useState(initialSubjects);
@@ -42,25 +45,48 @@ export default function TheologyClient({
 
 
   const refetch = async () => {
-    const supabase = createClient();
-    const { data } = await supabase
-      .from('theology_marks')
-      .select(`
-        id,
-        enrollment_id,
-        subject_id,
-        term_id,
-        mot_score,
-        eot_score,
-        enrollments (
-          student_id,
-          theology_class_id,
-          students ( name ),
-          theology_classes ( class_name_english, level )
-        ),
-        theology_subjects ( subject_name_arabic, level )
+    try {
+      const data = await powerSync.getAll(`
+        SELECT 
+          tm.id,
+          tm.enrollment_id,
+          tm.subject_id,
+          NULL as term_id,
+          tm.mot_mark as mot_score,
+          tm.eot_mark as eot_score,
+          e.student_id,
+          e.theology_class_id,
+          s.name as student_name,
+          tc.class_name_english,
+          tc.class_name_arabic as level,
+          sub.subject_name as subject_name_arabic,
+          sub.section as level
+        FROM theology_marks tm
+        LEFT JOIN enrollments e ON tm.enrollment_id = e.id
+        LEFT JOIN students s ON e.student_id = s.id
+        LEFT JOIN theology_classes tc ON e.theology_class_id = tc.id
+        LEFT JOIN subjects sub ON tm.subject_id = sub.id
       `);
-    if (data) setMarks(data);
+      
+      const formattedMarks = data.map(row => ({
+        id: row.id,
+        enrollment_id: row.enrollment_id,
+        subject_id: row.subject_id,
+        term_id: row.term_id,
+        mot_score: row.mot_score,
+        eot_score: row.eot_score,
+        enrollments: {
+          student_id: row.student_id,
+          theology_class_id: row.theology_class_id,
+          students: { name: row.student_name },
+          theology_classes: { class_name_english: row.class_name_english, level: row.level }
+        },
+        theology_subjects: { subject_name_arabic: row.subject_name_arabic, level: row.level }
+      }));
+      setMarks(formattedMarks);
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   useEffect(() => {
@@ -95,34 +121,35 @@ export default function TheologyClient({
   const handleSaveBatch = async () => {
     if (!selectedEnrollmentId) return alert("Student is required");
     setIsSubmitting(true);
-    const supabase = createClient();
     try {
       const student = enrollments.find(e => e.id === selectedEnrollmentId);
       const studentSubjects = subjects.filter(s => s.level === student?.theology_classes?.level);
 
-      const promises = studentSubjects.map(async (sub) => {
-        const scoreObj = batchScores[sub.id];
-        if (!scoreObj) return;
+      await powerSync.writeTransaction(async (tx) => {
+        for (const sub of studentSubjects) {
+          const scoreObj = batchScores[sub.id];
+          if (!scoreObj) continue;
 
-        const hasScores = scoreObj.mot_score !== "" || scoreObj.eot_score !== "";
-        if (!hasScores) return;
+          const hasScores = scoreObj.mot_score !== "" || scoreObj.eot_score !== "";
+          if (!hasScores) continue;
 
-        const payload = {
-          enrollment_id: selectedEnrollmentId,
-          subject_id: sub.id,
-          term_id: activeTerm?.id,
-          mot_score: scoreObj.mot_score === "" ? null : parseFloat(scoreObj.mot_score),
-          eot_score: scoreObj.eot_score === "" ? null : parseFloat(scoreObj.eot_score)
-        };
+          const mot = scoreObj.mot_score === "" ? null : parseFloat(scoreObj.mot_score);
+          const eot = scoreObj.eot_score === "" ? null : parseFloat(scoreObj.eot_score);
 
-        if (scoreObj.id) {
-          return supabase.from('theology_marks').update(payload).eq('id', scoreObj.id);
-        } else {
-          return supabase.from('theology_marks').insert([payload]);
+          if (scoreObj.id) {
+            await tx.execute(
+              'UPDATE theology_marks SET mot_mark = ?, eot_mark = ? WHERE id = ?',
+              [mot, eot, scoreObj.id]
+            );
+          } else {
+            await tx.execute(
+              'INSERT INTO theology_marks (id, enrollment_id, subject_id, bot_mark, mot_mark, eot_mark, updated_by) VALUES (uuid(), ?, ?, NULL, ?, ?, ?)',
+              [selectedEnrollmentId, sub.id, mot, eot, 'local_user']
+            );
+          }
         }
       });
 
-      await Promise.all(promises);
       setIsCreateOpen(false);
       setSelectedEnrollmentId("");
       setBatchScores({});
@@ -136,15 +163,14 @@ export default function TheologyClient({
 
   const handleEdit = async () => {
     setIsSubmitting(true);
-    const supabase = createClient();
     try {
-      const payload = {
-        mot_score: formData.mot_score === "" ? null : parseFloat(formData.mot_score),
-        eot_score: formData.eot_score === "" ? null : parseFloat(formData.eot_score)
-      };
+      const mot = formData.mot_score === "" ? null : parseFloat(formData.mot_score);
+      const eot = formData.eot_score === "" ? null : parseFloat(formData.eot_score);
       
-      const { error } = await supabase.from('theology_marks').update(payload).eq('id', selectedMark.id);
-      if (error) throw error;
+      await powerSync.execute(
+        'UPDATE theology_marks SET mot_mark = ?, eot_mark = ? WHERE id = ?',
+        [mot, eot, selectedMark.id]
+      );
       
       setIsEditOpen(false);
       refetch();
@@ -157,10 +183,8 @@ export default function TheologyClient({
 
   const handleDelete = async () => {
     setIsSubmitting(true);
-    const supabase = createClient();
     try {
-      const { error } = await supabase.from('theology_marks').delete().eq('id', selectedMark.id);
-      if (error) throw error;
+      await powerSync.execute('DELETE FROM theology_marks WHERE id = ?', [selectedMark.id]);
       
       setIsDeleteOpen(false);
       refetch();

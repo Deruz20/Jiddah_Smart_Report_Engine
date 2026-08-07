@@ -1,0 +1,4 @@
+FROM journeyapps/powersync-service:latest
+
+# Copy the powersync configuration file into the container
+COPY powersync.yaml /config/powersync.yaml

@@ -1,11 +1,13 @@
 port: 8080
 
-database:
-  uri: ${PS_DATA_SOURCE_URI}
+replication:
+  connections:
+    - type: postgresql
+      uri: !env PS_DATA_SOURCE_URI
 
 storage:
-  postgres:
-    uri: ${PS_PG_URI}
+  type: postgresql
+  uri: !env PS_PG_URI
 
 config:
   edition: 3

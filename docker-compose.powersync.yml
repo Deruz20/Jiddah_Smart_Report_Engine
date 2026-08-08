@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  powersync-db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: powersync
+      POSTGRES_PASSWORD: powersync_local_pass
+      POSTGRES_DB: powersync
+    ports:
+      - "5433:5432"
+    volumes:
+      - powersync-db-data:/var/lib/postgresql/data
+
+  powersync:
+    build: 
+      context: .
+      dockerfile: Dockerfile.powersync
+    restart: always
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env.powersync
+    environment:
+      PS_PG_URI: postgresql://powersync:powersync_local_pass@powersync-db:5432/powersync
+      PS_PORT: 8080
+    depends_on:
+      - powersync-db
+
+volumes:
+  powersync-db-data:

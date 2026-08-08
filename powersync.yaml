@@ -1,8 +1,8 @@
 port: 8080
 
 client_auth:
-  - jwks_uri: https://vismrobdsdsaxmqegcay.supabase.co/auth/v1/.well-known/jwks.json
-    audience: authenticated
+  jwks_uri: https://vismrobdsdsaxmqegcay.supabase.co/auth/v1/.well-known/jwks.json
+  audience: ['authenticated']
 
 replication:
   connections:
@@ -13,90 +13,92 @@ storage:
   type: postgresql
   uri: !env PS_PG_URI
 
-config:
-  edition: 3
+sync_config:
+  content: |
+    config:
+      edition: 3
 
-with:
-  my_teacher:
-    SELECT id, role FROM teachers WHERE auth_user_id = auth.user_id()
+    with:
+      my_teacher:
+        SELECT id, role FROM teachers WHERE auth_user_id = auth.user_id()
 
-  # Pure homeroom assignment — circular side only, this is what grants
-  # cross-subject visibility (including theology) for report compilation.
-  my_homeroom_classes:
-    SELECT id AS class_id FROM circular_classes
-    WHERE class_teacher_id IN (SELECT id FROM my_teacher)
+      # Pure homeroom assignment — circular side only, this is what grants
+      # cross-subject visibility (including theology) for report compilation.
+      my_homeroom_classes:
+        SELECT id AS class_id FROM circular_classes
+        WHERE class_teacher_id IN (SELECT id FROM my_teacher)
 
-  # Everything that grants circular_marks visibility: subject-teacher
-  # assignment, homeroom status, or a full-access role.
-  my_circular_access_classes:
-    SELECT id AS class_id FROM circular_classes
-    WHERE class_teacher_id IN (SELECT id FROM my_teacher)
-      OR id IN (
-        SELECT class_id FROM teacher_class_assignments
-        WHERE teacher_id IN (SELECT id FROM my_teacher) AND class_type = 'circular'
-      )
-      OR (SELECT role FROM my_teacher)
-          IN ('DOS Secular','Administrator','admin','Head Teacher','Deputy Head Teacher')
+      # Everything that grants circular_marks visibility: subject-teacher
+      # assignment, homeroom status, or a full-access role.
+      my_circular_access_classes:
+        SELECT id AS class_id FROM circular_classes
+        WHERE class_teacher_id IN (SELECT id FROM my_teacher)
+          OR id IN (
+            SELECT class_id FROM teacher_class_assignments
+            WHERE teacher_id IN (SELECT id FROM my_teacher) AND class_type = 'circular'
+          )
+          OR (SELECT role FROM my_teacher)
+              IN ('DOS Secular','Administrator','admin','Head Teacher','Deputy Head Teacher')
 
-  # Everything that grants theology_marks visibility via subject assignment
-  # or a full-access role. Homeroom access is handled separately below.
-  my_theology_access_classes:
-    SELECT id AS class_id FROM theology_classes
-    WHERE id IN (
-        SELECT class_id FROM teacher_class_assignments
-        WHERE teacher_id IN (SELECT id FROM my_teacher) AND class_type = 'theology'
-      )
-      OR (SELECT role FROM my_teacher)
-          IN ('DOS Theology','Administrator','admin','Head Teacher','Deputy Head Teacher')
+      # Everything that grants theology_marks visibility via subject assignment
+      # or a full-access role. Homeroom access is handled separately below.
+      my_theology_access_classes:
+        SELECT id AS class_id FROM theology_classes
+        WHERE id IN (
+            SELECT class_id FROM teacher_class_assignments
+            WHERE teacher_id IN (SELECT id FROM my_teacher) AND class_type = 'theology'
+          )
+          OR (SELECT role FROM my_teacher)
+              IN ('DOS Theology','Administrator','admin','Head Teacher','Deputy Head Teacher')
 
-streams:
-  my_profile:
-    auto_subscribe: true
-    query: SELECT * FROM teachers WHERE auth_user_id = auth.user_id()
+    streams:
+      my_profile:
+        auto_subscribe: true
+        query: SELECT * FROM teachers WHERE auth_user_id = auth.user_id()
 
-  subjects_ref:
-    auto_subscribe: true
-    query: SELECT * FROM subjects
+      subjects_ref:
+        auto_subscribe: true
+        query: SELECT * FROM subjects
 
-  my_circular_classes_stream:
-    auto_subscribe: true
-    query: SELECT * FROM circular_classes WHERE id IN (SELECT class_id FROM my_circular_access_classes)
+      my_circular_classes_stream:
+        auto_subscribe: true
+        query: SELECT * FROM circular_classes WHERE id IN (SELECT class_id FROM my_circular_access_classes)
 
-  my_theology_classes_stream:
-    auto_subscribe: true
-    query: SELECT * FROM theology_classes WHERE id IN (SELECT class_id FROM my_theology_access_classes)
+      my_theology_classes_stream:
+        auto_subscribe: true
+        query: SELECT * FROM theology_classes WHERE id IN (SELECT class_id FROM my_theology_access_classes)
 
-  my_enrollments:
-    auto_subscribe: true
-    query: |
-      SELECT * FROM enrollments
-      WHERE circular_class_id IN (SELECT class_id FROM my_circular_access_classes)
-         OR theology_class_id IN (SELECT class_id FROM my_theology_access_classes)
+      my_enrollments:
+        auto_subscribe: true
+        query: |
+          SELECT * FROM enrollments
+          WHERE circular_class_id IN (SELECT class_id FROM my_circular_access_classes)
+             OR theology_class_id IN (SELECT class_id FROM my_theology_access_classes)
 
-  my_students:
-    auto_subscribe: true
-    query: |
-      SELECT * FROM students
-      WHERE id IN (
-        SELECT student_id FROM enrollments
-        WHERE circular_class_id IN (SELECT class_id FROM my_circular_access_classes)
-           OR theology_class_id IN (SELECT class_id FROM my_theology_access_classes)
-      )
+      my_students:
+        auto_subscribe: true
+        query: |
+          SELECT * FROM students
+          WHERE id IN (
+            SELECT student_id FROM enrollments
+            WHERE circular_class_id IN (SELECT class_id FROM my_circular_access_classes)
+               OR theology_class_id IN (SELECT class_id FROM my_theology_access_classes)
+          )
 
-  my_circular_marks:
-    auto_subscribe: true
-    query: |
-      SELECT cm.* FROM circular_marks cm
-      WHERE cm.enrollment_id IN (
-        SELECT id FROM enrollments WHERE circular_class_id IN (SELECT class_id FROM my_circular_access_classes)
-      )
+      my_circular_marks:
+        auto_subscribe: true
+        query: |
+          SELECT cm.* FROM circular_marks cm
+          WHERE cm.enrollment_id IN (
+            SELECT id FROM enrollments WHERE circular_class_id IN (SELECT class_id FROM my_circular_access_classes)
+          )
 
-  my_theology_marks:
-    auto_subscribe: true
-    query: |
-      SELECT tm.* FROM theology_marks tm
-      WHERE tm.enrollment_id IN (
-        SELECT id FROM enrollments
-        WHERE theology_class_id IN (SELECT class_id FROM my_theology_access_classes)
-           OR circular_class_id IN (SELECT class_id FROM my_homeroom_classes)
-      )
+      my_theology_marks:
+        auto_subscribe: true
+        query: |
+          SELECT tm.* FROM theology_marks tm
+          WHERE tm.enrollment_id IN (
+            SELECT id FROM enrollments
+            WHERE theology_class_id IN (SELECT class_id FROM my_theology_access_classes)
+               OR circular_class_id IN (SELECT class_id FROM my_homeroom_classes)
+          )

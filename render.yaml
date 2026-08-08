@@ -16,6 +16,6 @@ services:
       - key: PS_PG_URI
         fromDatabase:
           name: powersync-db
-          property: internalConnectionString
+          property: connectionString
       - key: PS_PORT
         value: "8080"

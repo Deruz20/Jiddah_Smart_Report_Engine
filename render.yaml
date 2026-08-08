@@ -13,9 +13,5 @@ services:
     envVars:
       - key: PS_DATA_SOURCE_URI
         sync: false
-      - key: PS_PG_URI
-        fromDatabase:
-          name: powersync-db
-          property: connectionString
       - key: PS_PORT
         value: "8080"

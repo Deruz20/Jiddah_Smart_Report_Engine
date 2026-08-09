@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { RefreshCw, CheckCircle2, AlertCircle, Clock } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Button } from '@/components/figma-ui/ui/button'
 
 export type SyncState = 'synced' | 'pending' | 'error' | 'syncing'
 

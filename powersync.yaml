@@ -8,12 +8,10 @@ replication:
   connections:
     - type: postgresql
       uri: !env PS_DATA_SOURCE_URI
-      sslmode: disable
 
 storage:
   type: postgresql
   uri: !env PS_PG_URI
-  sslmode: disable
 
 
 

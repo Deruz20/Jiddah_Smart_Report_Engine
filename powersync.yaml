@@ -23,17 +23,14 @@ sync_config:
       edition: 3
 
     with:
-      my_teacher:
-        SELECT id FROM teachers WHERE auth_user_id = auth.user_id()
-
       my_homeroom_classes:
-        SELECT id AS class_id FROM circular_classes WHERE class_teacher_id IN (SELECT id FROM my_teacher)
+        SELECT id AS class_id FROM circular_classes WHERE class_teacher_id IN (SELECT id FROM teachers WHERE auth_user_id = auth.user_id())
 
       my_assigned_circular_classes:
-        SELECT class_id FROM teacher_class_assignments WHERE teacher_id IN (SELECT id FROM my_teacher) AND class_type = 'circular'
+        SELECT class_id FROM teacher_class_assignments WHERE teacher_id IN (SELECT id FROM teachers WHERE auth_user_id = auth.user_id()) AND class_type = 'circular'
 
       my_assigned_theology_classes:
-        SELECT class_id FROM teacher_class_assignments WHERE teacher_id IN (SELECT id FROM my_teacher) AND class_type = 'theology'
+        SELECT class_id FROM teacher_class_assignments WHERE teacher_id IN (SELECT id FROM teachers WHERE auth_user_id = auth.user_id()) AND class_type = 'theology'
 
     streams:
       my_profile:
@@ -54,8 +51,9 @@ sync_config:
       circular_classes_admin:
         auto_subscribe: true
         query: |
-          SELECT circular_classes.* FROM circular_classes, teachers 
-          WHERE teachers.auth_user_id = auth.user_id() AND teachers.role IN ('DOS Secular','Administrator','admin','Head Teacher','Deputy Head Teacher')
+          SELECT circular_classes.* FROM circular_classes
+          INNER JOIN teachers ON teachers.auth_user_id = auth.user_id()
+          WHERE teachers.role IN ('DOS Secular','Administrator','admin','Head Teacher','Deputy Head Teacher')
 
       theology_classes_assigned:
         auto_subscribe: true
@@ -64,8 +62,9 @@ sync_config:
       theology_classes_admin:
         auto_subscribe: true
         query: |
-          SELECT theology_classes.* FROM theology_classes, teachers 
-          WHERE teachers.auth_user_id = auth.user_id() AND teachers.role IN ('DOS Theology','Administrator','admin','Head Teacher','Deputy Head Teacher')
+          SELECT theology_classes.* FROM theology_classes
+          INNER JOIN teachers ON teachers.auth_user_id = auth.user_id()
+          WHERE teachers.role IN ('DOS Theology','Administrator','admin','Head Teacher','Deputy Head Teacher')
 
       enrollments_assigned:
         auto_subscribe: true
@@ -78,14 +77,16 @@ sync_config:
       enrollments_circular_admin:
         auto_subscribe: true
         query: |
-          SELECT enrollments.* FROM enrollments, teachers 
-          WHERE teachers.auth_user_id = auth.user_id() AND teachers.role IN ('DOS Secular','Administrator','admin','Head Teacher','Deputy Head Teacher')
+          SELECT enrollments.* FROM enrollments
+          INNER JOIN teachers ON teachers.auth_user_id = auth.user_id()
+          WHERE teachers.role IN ('DOS Secular','Administrator','admin','Head Teacher','Deputy Head Teacher')
 
       enrollments_theology_admin:
         auto_subscribe: true
         query: |
-          SELECT enrollments.* FROM enrollments, teachers 
-          WHERE teachers.auth_user_id = auth.user_id() AND teachers.role IN ('DOS Theology','Administrator','admin','Head Teacher','Deputy Head Teacher')
+          SELECT enrollments.* FROM enrollments
+          INNER JOIN teachers ON teachers.auth_user_id = auth.user_id()
+          WHERE teachers.role IN ('DOS Theology','Administrator','admin','Head Teacher','Deputy Head Teacher')
 
       students_assigned:
         auto_subscribe: true
@@ -101,14 +102,16 @@ sync_config:
       students_circular_admin:
         auto_subscribe: true
         query: |
-          SELECT students.* FROM students, teachers 
-          WHERE teachers.auth_user_id = auth.user_id() AND teachers.role IN ('DOS Secular','Administrator','admin','Head Teacher','Deputy Head Teacher')
+          SELECT students.* FROM students
+          INNER JOIN teachers ON teachers.auth_user_id = auth.user_id()
+          WHERE teachers.role IN ('DOS Secular','Administrator','admin','Head Teacher','Deputy Head Teacher')
 
       students_theology_admin:
         auto_subscribe: true
         query: |
-          SELECT students.* FROM students, teachers 
-          WHERE teachers.auth_user_id = auth.user_id() AND teachers.role IN ('DOS Theology','Administrator','admin','Head Teacher','Deputy Head Teacher')
+          SELECT students.* FROM students
+          INNER JOIN teachers ON teachers.auth_user_id = auth.user_id()
+          WHERE teachers.role IN ('DOS Theology','Administrator','admin','Head Teacher','Deputy Head Teacher')
 
       circular_marks_assigned:
         auto_subscribe: true
@@ -123,8 +126,9 @@ sync_config:
       circular_marks_admin:
         auto_subscribe: true
         query: |
-          SELECT circular_marks.* FROM circular_marks, teachers 
-          WHERE teachers.auth_user_id = auth.user_id() AND teachers.role IN ('DOS Secular','Administrator','admin','Head Teacher','Deputy Head Teacher')
+          SELECT circular_marks.* FROM circular_marks
+          INNER JOIN teachers ON teachers.auth_user_id = auth.user_id()
+          WHERE teachers.role IN ('DOS Secular','Administrator','admin','Head Teacher','Deputy Head Teacher')
 
       theology_marks_assigned:
         auto_subscribe: true
@@ -139,5 +143,6 @@ sync_config:
       theology_marks_admin:
         auto_subscribe: true
         query: |
-          SELECT theology_marks.* FROM theology_marks, teachers 
-          WHERE teachers.auth_user_id = auth.user_id() AND teachers.role IN ('DOS Theology','Administrator','admin','Head Teacher','Deputy Head Teacher')
+          SELECT theology_marks.* FROM theology_marks
+          INNER JOIN teachers ON teachers.auth_user_id = auth.user_id()
+          WHERE teachers.role IN ('DOS Theology','Administrator','admin','Head Teacher','Deputy Head Teacher')

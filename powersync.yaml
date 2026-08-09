@@ -52,8 +52,7 @@ sync_config:
         auto_subscribe: true
         query: |
           SELECT circular_classes.* FROM circular_classes
-          INNER JOIN teachers ON teachers.auth_user_id = auth.user_id()
-          WHERE teachers.role IN ('DOS Secular','Administrator','admin','Head Teacher','Deputy Head Teacher')
+          WHERE auth.user_id() IN (SELECT auth_user_id FROM teachers WHERE role IN ('DOS Secular','Administrator','admin','Head Teacher','Deputy Head Teacher'))
 
       theology_classes_assigned:
         auto_subscribe: true
@@ -63,8 +62,7 @@ sync_config:
         auto_subscribe: true
         query: |
           SELECT theology_classes.* FROM theology_classes
-          INNER JOIN teachers ON teachers.auth_user_id = auth.user_id()
-          WHERE teachers.role IN ('DOS Theology','Administrator','admin','Head Teacher','Deputy Head Teacher')
+          WHERE auth.user_id() IN (SELECT auth_user_id FROM teachers WHERE role IN ('DOS Theology','Administrator','admin','Head Teacher','Deputy Head Teacher'))
 
       enrollments_assigned:
         auto_subscribe: true
@@ -78,15 +76,13 @@ sync_config:
         auto_subscribe: true
         query: |
           SELECT enrollments.* FROM enrollments
-          INNER JOIN teachers ON teachers.auth_user_id = auth.user_id()
-          WHERE teachers.role IN ('DOS Secular','Administrator','admin','Head Teacher','Deputy Head Teacher')
+          WHERE auth.user_id() IN (SELECT auth_user_id FROM teachers WHERE role IN ('DOS Secular','Administrator','admin','Head Teacher','Deputy Head Teacher'))
 
       enrollments_theology_admin:
         auto_subscribe: true
         query: |
           SELECT enrollments.* FROM enrollments
-          INNER JOIN teachers ON teachers.auth_user_id = auth.user_id()
-          WHERE teachers.role IN ('DOS Theology','Administrator','admin','Head Teacher','Deputy Head Teacher')
+          WHERE auth.user_id() IN (SELECT auth_user_id FROM teachers WHERE role IN ('DOS Theology','Administrator','admin','Head Teacher','Deputy Head Teacher'))
 
       students_assigned:
         auto_subscribe: true
@@ -103,15 +99,13 @@ sync_config:
         auto_subscribe: true
         query: |
           SELECT students.* FROM students
-          INNER JOIN teachers ON teachers.auth_user_id = auth.user_id()
-          WHERE teachers.role IN ('DOS Secular','Administrator','admin','Head Teacher','Deputy Head Teacher')
+          WHERE auth.user_id() IN (SELECT auth_user_id FROM teachers WHERE role IN ('DOS Secular','Administrator','admin','Head Teacher','Deputy Head Teacher'))
 
       students_theology_admin:
         auto_subscribe: true
         query: |
           SELECT students.* FROM students
-          INNER JOIN teachers ON teachers.auth_user_id = auth.user_id()
-          WHERE teachers.role IN ('DOS Theology','Administrator','admin','Head Teacher','Deputy Head Teacher')
+          WHERE auth.user_id() IN (SELECT auth_user_id FROM teachers WHERE role IN ('DOS Theology','Administrator','admin','Head Teacher','Deputy Head Teacher'))
 
       circular_marks_assigned:
         auto_subscribe: true
@@ -127,8 +121,7 @@ sync_config:
         auto_subscribe: true
         query: |
           SELECT circular_marks.* FROM circular_marks
-          INNER JOIN teachers ON teachers.auth_user_id = auth.user_id()
-          WHERE teachers.role IN ('DOS Secular','Administrator','admin','Head Teacher','Deputy Head Teacher')
+          WHERE auth.user_id() IN (SELECT auth_user_id FROM teachers WHERE role IN ('DOS Secular','Administrator','admin','Head Teacher','Deputy Head Teacher'))
 
       theology_marks_assigned:
         auto_subscribe: true
@@ -144,5 +137,4 @@ sync_config:
         auto_subscribe: true
         query: |
           SELECT theology_marks.* FROM theology_marks
-          INNER JOIN teachers ON teachers.auth_user_id = auth.user_id()
-          WHERE teachers.role IN ('DOS Theology','Administrator','admin','Head Teacher','Deputy Head Teacher')
+          WHERE auth.user_id() IN (SELECT auth_user_id FROM teachers WHERE role IN ('DOS Theology','Administrator','admin','Head Teacher','Deputy Head Teacher'))

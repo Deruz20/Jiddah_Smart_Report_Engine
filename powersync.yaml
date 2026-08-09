@@ -26,12 +26,6 @@ sync_config:
       my_teacher:
         SELECT id FROM teachers WHERE auth_user_id = auth.user_id()
 
-      is_circular_admin:
-        SELECT id FROM teachers WHERE auth_user_id = auth.user_id() AND role IN ('DOS Secular','Administrator','admin','Head Teacher','Deputy Head Teacher')
-
-      is_theology_admin:
-        SELECT id FROM teachers WHERE auth_user_id = auth.user_id() AND role IN ('DOS Theology','Administrator','admin','Head Teacher','Deputy Head Teacher')
-
       my_homeroom_classes:
         SELECT id AS class_id FROM circular_classes WHERE class_teacher_id IN (SELECT id FROM my_teacher)
 
@@ -59,7 +53,9 @@ sync_config:
 
       circular_classes_admin:
         auto_subscribe: true
-        query: SELECT circular_classes.* FROM circular_classes, is_circular_admin
+        query: |
+          SELECT circular_classes.* FROM circular_classes, teachers 
+          WHERE teachers.auth_user_id = auth.user_id() AND teachers.role IN ('DOS Secular','Administrator','admin','Head Teacher','Deputy Head Teacher')
 
       theology_classes_assigned:
         auto_subscribe: true
@@ -67,7 +63,9 @@ sync_config:
 
       theology_classes_admin:
         auto_subscribe: true
-        query: SELECT theology_classes.* FROM theology_classes, is_theology_admin
+        query: |
+          SELECT theology_classes.* FROM theology_classes, teachers 
+          WHERE teachers.auth_user_id = auth.user_id() AND teachers.role IN ('DOS Theology','Administrator','admin','Head Teacher','Deputy Head Teacher')
 
       enrollments_assigned:
         auto_subscribe: true
@@ -79,11 +77,15 @@ sync_config:
 
       enrollments_circular_admin:
         auto_subscribe: true
-        query: SELECT enrollments.* FROM enrollments, is_circular_admin
+        query: |
+          SELECT enrollments.* FROM enrollments, teachers 
+          WHERE teachers.auth_user_id = auth.user_id() AND teachers.role IN ('DOS Secular','Administrator','admin','Head Teacher','Deputy Head Teacher')
 
       enrollments_theology_admin:
         auto_subscribe: true
-        query: SELECT enrollments.* FROM enrollments, is_theology_admin
+        query: |
+          SELECT enrollments.* FROM enrollments, teachers 
+          WHERE teachers.auth_user_id = auth.user_id() AND teachers.role IN ('DOS Theology','Administrator','admin','Head Teacher','Deputy Head Teacher')
 
       students_assigned:
         auto_subscribe: true
@@ -98,11 +100,15 @@ sync_config:
 
       students_circular_admin:
         auto_subscribe: true
-        query: SELECT students.* FROM students, is_circular_admin
+        query: |
+          SELECT students.* FROM students, teachers 
+          WHERE teachers.auth_user_id = auth.user_id() AND teachers.role IN ('DOS Secular','Administrator','admin','Head Teacher','Deputy Head Teacher')
 
       students_theology_admin:
         auto_subscribe: true
-        query: SELECT students.* FROM students, is_theology_admin
+        query: |
+          SELECT students.* FROM students, teachers 
+          WHERE teachers.auth_user_id = auth.user_id() AND teachers.role IN ('DOS Theology','Administrator','admin','Head Teacher','Deputy Head Teacher')
 
       circular_marks_assigned:
         auto_subscribe: true
@@ -116,7 +122,9 @@ sync_config:
 
       circular_marks_admin:
         auto_subscribe: true
-        query: SELECT circular_marks.* FROM circular_marks, is_circular_admin
+        query: |
+          SELECT circular_marks.* FROM circular_marks, teachers 
+          WHERE teachers.auth_user_id = auth.user_id() AND teachers.role IN ('DOS Secular','Administrator','admin','Head Teacher','Deputy Head Teacher')
 
       theology_marks_assigned:
         auto_subscribe: true
@@ -130,4 +138,6 @@ sync_config:
 
       theology_marks_admin:
         auto_subscribe: true
-        query: SELECT theology_marks.* FROM theology_marks, is_theology_admin
+        query: |
+          SELECT theology_marks.* FROM theology_marks, teachers 
+          WHERE teachers.auth_user_id = auth.user_id() AND teachers.role IN ('DOS Theology','Administrator','admin','Head Teacher','Deputy Head Teacher')

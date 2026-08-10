@@ -14,7 +14,8 @@ export function PowerSyncStatus() {
   } else if (!status.connected) {
     state = 'pending';
   } else if (status.dataFlowStatus.error) {
-    state = 'error';
+    // Treat generic network errors as offline/pending rather than hard red errors
+    state = 'pending';
   }
 
   return (

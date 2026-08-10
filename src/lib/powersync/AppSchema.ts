@@ -26,6 +26,7 @@ const students = new Table({
 const circular_classes = new Table({
   class_name: column.text,
   class_teacher_id: column.text,
+  section: column.text,
 });
 
 const theology_classes = new Table({
@@ -39,6 +40,7 @@ const enrollments = new Table({
   term_id: column.text,
   circular_class_id: column.text,
   theology_class_id: column.text,
+  theology_status: column.text,
 });
 
 const circular_marks = new Table({

@@ -107,10 +107,15 @@ export function EditStudentModal({ isOpen, onClose, student, onSaved }: EditStud
 
     setIsSubmitting(true);
     try {
+      const theology_status = formData.religion === 'Muslim' && formData.theology_class_id ? 'active' : 'not_applicable';
+      
       const res = await fetch(`/api/students/${student.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          theology_status
+        }),
       });
 
       const data = await res.json();

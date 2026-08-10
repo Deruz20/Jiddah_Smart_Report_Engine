@@ -44,14 +44,14 @@ export function SyncStatus({ state, lastSyncedAt, pendingCount = 0, onSyncNow, o
         {state === 'synced' && (
           <>
             <CheckCircle2 className="w-4 h-4 text-green-500" />
-            <span className="font-medium text-slate-700">Synced</span>
+            <span className="font-medium text-slate-700 hidden sm:inline">Synced</span>
           </>
         )}
         
         {state === 'pending' && (
           <>
             <Clock className="w-4 h-4 text-orange-500" />
-            <span className="font-medium text-slate-700">
+            <span className="font-medium text-slate-700 hidden sm:inline">
               {pendingCount} Pending
             </span>
           </>
@@ -60,14 +60,14 @@ export function SyncStatus({ state, lastSyncedAt, pendingCount = 0, onSyncNow, o
         {state === 'syncing' && (
           <>
             <RefreshCw className="w-4 h-4 text-blue-500 animate-spin" />
-            <span className="font-medium text-slate-700">Syncing...</span>
+            <span className="font-medium text-slate-700 hidden sm:inline">Syncing...</span>
           </>
         )}
 
         {state === 'error' && (
           <>
             <AlertCircle className="w-4 h-4 text-red-500" />
-            <span className="font-medium text-red-600">Action Required</span>
+            <span className="font-medium text-red-600 hidden sm:inline">Action Required</span>
             {onResolveError && (
               <Button 
                 variant="link" 
@@ -85,7 +85,7 @@ export function SyncStatus({ state, lastSyncedAt, pendingCount = 0, onSyncNow, o
       <div className="w-px h-4 bg-slate-200" />
 
       {/* Last Synced Time */}
-      <div className="text-slate-500 text-xs flex items-center gap-2">
+      <div className="hidden sm:flex text-slate-500 text-xs items-center gap-2">
         <span>Last updated: {formatTime(lastSyncedAt)}</span>
       </div>
 

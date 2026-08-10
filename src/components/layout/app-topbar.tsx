@@ -349,6 +349,12 @@ function UserProfileDropdown() {
 
   const handleLogout = async () => {
     const supabase = createClient();
+    try {
+      const { powerSync } = await import("../providers/PowerSyncProvider");
+      await powerSync.disconnectAndClear();
+    } catch (e) {
+      console.error("Failed to clear PowerSync database:", e);
+    }
     await supabase.auth.signOut();
     router.replace("/login");
   };

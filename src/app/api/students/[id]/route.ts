@@ -119,6 +119,7 @@ export async function PUT(
             student_id: studentId,
             circular_class_id: newCircularClass,
             theology_class_id: newTheologyClass,
+            theology_status: body.theology_status || 'not_applicable',
             academic_year: currentEnrollment.academic_year,
             is_active: true,
           }])
@@ -136,6 +137,7 @@ export async function PUT(
           student_id: studentId,
           circular_class_id: newCircularClass,
           theology_class_id: newTheologyClass,
+          theology_status: body.theology_status || 'not_applicable',
           academic_year: new Date().getFullYear(),
           is_active: true,
         }])

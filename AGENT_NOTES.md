@@ -1,7 +1,10 @@
 # Agent Notes
 
 ## 1. Vercel SPA Routing
-Added `vercel.json` with the SPA rewrite rule. Both backend and frontend deployments should now be accessible without 404s on sub-routes.
+- Added `vercel.json` with the SPA rewrite rule. Both backend and frontend deployments should now be accessible without 404s on sub-routes.
+
+## PowerSync Deployment
+- We've shifted from attempting a local Docker Compose setup to a Render deployment. A previous issue with local Docker resulted in an exit code 1 for the Node entrypoint; while initially suspected as an Alpine/WSL kernel incompatibility, it may just be an entrypoint/quoting issue. We should not treat it as a settled hardware bug.
 
 ## 2. "No students in this class" Bug Investigation
 I queried the `enrollments` table directly from the production Supabase database.

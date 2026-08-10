@@ -194,6 +194,7 @@ export async function POST(request: NextRequest) {
       student_id: studentId,
       circular_class_id: body.circular_class_id,
       theology_class_id: body.theology_class_id || null,
+      theology_status: body.theology_status || 'not_applicable',
       academic_year: body.academic_year,
       is_active: true,
     }

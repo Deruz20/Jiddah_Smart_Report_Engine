@@ -15,6 +15,8 @@ export const powerSync = new PowerSyncDatabase({
 
 export const connector = new SupabaseConnector();
 
+import { PowerSyncSplash } from "../layout/PowerSyncSplash";
+
 export function PowerSyncProvider({ children }: { children: ReactNode }) {
   const [isInitialized, setIsInitialized] = useState(false);
 
@@ -37,12 +39,15 @@ export function PowerSyncProvider({ children }: { children: ReactNode }) {
   }, []);
 
   if (!isInitialized) {
-    return <div>Initializing local database...</div>;
+    // Basic fallback while SQLite sets up locally (usually instant)
+    return <div className="h-screen w-full bg-[#0f172a]" />;
   }
 
   return (
     <PowerSyncContext.Provider value={powerSync}>
-      {children}
+      <PowerSyncSplash>
+        {children}
+      </PowerSyncSplash>
     </PowerSyncContext.Provider>
   );
 }

@@ -62,6 +62,8 @@ const navItems = [
   { icon: FileText, label: "Report Center", id: "reports", href: "/admin/reports", roles: ["Administrator", "admin", "Head Teacher", "Deputy Head Teacher", "DOS Theology", "DOS Secular", "Class Teacher Theology", "Class Teacher Secular", "Teacher Theology", "Teacher Secular"] },
   { icon: ScrollText, label: "Secular Hub", id: "secular-hub", href: "/admin/secular-hub", roles: ["Administrator", "admin", "Head Teacher", "Deputy Head Teacher", "DOS Secular", "Class Teacher Secular", "Teacher Secular"] },
   { icon: ScrollText, label: "Theology Hub", id: "theology-hub", href: "/admin/theology-hub", roles: ["Administrator", "admin", "Head Teacher", "Deputy Head Teacher", "DOS Theology", "Class Teacher Theology", "Teacher Theology"] },
+  { icon: Shield, label: "Activity Log", id: "activity", href: "/admin/activity", roles: ["Administrator", "admin", "Head Teacher", "Deputy Head Teacher", "DOS Theology", "DOS Secular"] },
+  { icon: UserCheck, label: "Invites", id: "invites", href: "/admin/invites", roles: ["Administrator", "admin", "Head Teacher", "Deputy Head Teacher", "DOS Theology", "DOS Secular"] },
   { icon: Settings, label: "Settings", id: "settings", href: "/admin/settings", roles: ["Administrator", "admin", "Head Teacher", "Deputy Head Teacher", "DOS Theology", "DOS Secular", "Class Teacher Theology", "Class Teacher Secular", "Teacher Theology", "Teacher Secular", "Support Staff"] },
 ];
 

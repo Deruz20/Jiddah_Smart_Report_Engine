@@ -20,6 +20,7 @@ export type EnrollmentData = {
   section: string | null
   theology_class_arabic: string | null
   theology_class_level: string | null
+  theology_status: string | null
 }
 
 type CircularMarkRow = {
@@ -71,6 +72,7 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
         const data = await powerSync.getAll(`
           SELECT 
             e.student_id as enrollment_id,
+            e.theology_status,
             s.name, s.admission_number,
             cc.class_name as circular_class, cc.section,
             tc.class_name_arabic as theology_class_arabic,
@@ -89,6 +91,7 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
           section: e.section || null,
           theology_class_arabic: e.theology_class_arabic || null,
           theology_class_level: e.theology_class_level || null,
+          theology_status: e.theology_status || 'active',
         }))
         setEnrollments(mappedEnrollments)
       } catch (err) {
@@ -342,15 +345,18 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
             </div>
           </div>
 
-          {/* Error & Student Box */}
+          {/* Instead of a raw red error box, we use sonner for critical errors, and a clean empty state here if data failed to load */}
           {error && (
-            <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 animate-up shadow-sm">
-              {error}
+            <div className="flex flex-col items-center justify-center p-12 text-slate-500 bg-slate-50/50 rounded-2xl border border-slate-100 border-dashed">
+              <AlertCircle className="w-8 h-8 text-rose-400 mb-3 opacity-50" />
+              <p className="text-sm font-medium">Unable to load class data</p>
+              <p className="text-xs text-slate-400 mt-1">Please try refreshing or check your connection.</p>
             </div>
           )}
 
-          {!selectedTermId || !selectedEnrollmentId ? (
-            <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-6 text-sm text-gray-500 transition-all">
+          {!error && !selectedEnrollment && (
+            !selectedEnrollmentId ? (
+              <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-6 text-sm text-gray-500 transition-all">
               Select a term and student to view the marks entry form.
             </div>
           ) : isFetching || isLoading ? (
@@ -470,7 +476,7 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
               </div>
 
               {/* Theology Marks Table */}
-              {theologyMarks.length > 0 && examType !== 'bot' && (
+              {theologyMarks.length > 0 && examType !== 'bot' && selectedEnrollment?.theology_status !== 'not_applicable' && (
                 <div className="space-y-3 pt-4">
                   <h3 className="text-sm font-bold text-gray-800" dir="rtl">
                     درجات اللاهوت

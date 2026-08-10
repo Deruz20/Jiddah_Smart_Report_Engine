@@ -508,6 +508,8 @@ export function CreateStudentWizard() {
         throw new Error('Please fill in all required fields');
       }
 
+      const theology_status = form.religion === 'Muslim' && form.theology_class_id ? 'active' : 'not_applicable';
+
       const response = await fetch('/api/students', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -520,6 +522,7 @@ export function CreateStudentWizard() {
           theology_class_id: form.theology_class_id || null,
           academic_year: parseInt(form.academic_year, 10),
           religion: form.religion,
+          theology_status: theology_status,
         }),
       });
 

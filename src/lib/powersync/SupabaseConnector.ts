@@ -7,7 +7,7 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
   async fetchCredentials() {
     const { data: { session }, error } = await this.client.auth.getSession();
     if (error || !session) {
-      throw new Error('Not authenticated');
+      return null;
     }
 
     return {
@@ -28,6 +28,29 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
         const table = this.client.from(op.table);
         
         if (op.op === 'PUT') {
+          // Check for stale theology_status
+          if (op.table === 'theology_marks' && op.opData && op.opData.enrollment_id) {
+            const { data: enrollment } = await this.client
+              .from('enrollments')
+              .select('theology_status')
+              .eq('id', op.opData.enrollment_id)
+              .single();
+              
+            if (enrollment && enrollment.theology_status === 'not_applicable') {
+              const { data: { session } } = await this.client.auth.getSession();
+              if (session?.user?.id) {
+                await this.client.from('activity_log').insert({
+                  teacher_id: session.user.id,
+                  action_type: 'stale_theology_write',
+                  target_table: op.table,
+                  target_id: op.id,
+                  description: 'Teacher synced theology marks for a student whose theology_status was changed online to not_applicable while they were offline.',
+                  metadata: { opData: op.opData }
+                });
+              }
+            }
+          }
+
           // op.opData contains the data. We also need to inject id.
           const { error } = await table.upsert({ id: op.id, ...op.opData });
           if (error) throw error;

@@ -69,19 +69,40 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
       setError(null)
 
       try {
-        const data = await powerSync.getAll(`
-          SELECT 
-            e.student_id as enrollment_id,
-            e.theology_status,
-            s.name, s.admission_number,
-            cc.class_name as circular_class, cc.section,
-            tc.class_name_arabic as theology_class_arabic,
-            tc.class_name_english as theology_class_level
-          FROM enrollments e
-          JOIN students s ON e.student_id = s.id
-          LEFT JOIN circular_classes cc ON e.circular_class_id = cc.id
-          LEFT JOIN theology_classes tc ON e.theology_class_id = tc.id
-        `)
+        let data;
+        try {
+          data = await powerSync.getAll(`
+            SELECT 
+              e.student_id as enrollment_id,
+              e.theology_status,
+              s.name, s.admission_number,
+              cc.class_name as circular_class, cc.section,
+              tc.class_name_arabic as theology_class_arabic,
+              tc.class_name_english as theology_class_level
+            FROM enrollments e
+            JOIN students s ON e.student_id = s.id
+            LEFT JOIN circular_classes cc ON e.circular_class_id = cc.id
+            LEFT JOIN theology_classes tc ON e.theology_class_id = tc.id
+          `)
+        } catch (innerErr: any) {
+          if (innerErr.message && innerErr.message.includes('no such column: cc.section')) {
+            data = await powerSync.getAll(`
+              SELECT 
+                e.student_id as enrollment_id,
+                e.theology_status,
+                s.name, s.admission_number,
+                cc.class_name as circular_class,
+                tc.class_name_arabic as theology_class_arabic,
+                tc.class_name_english as theology_class_level
+              FROM enrollments e
+              JOIN students s ON e.student_id = s.id
+              LEFT JOIN circular_classes cc ON e.circular_class_id = cc.id
+              LEFT JOIN theology_classes tc ON e.theology_class_id = tc.id
+            `)
+          } else {
+            throw innerErr;
+          }
+        }
         
         const mappedEnrollments: EnrollmentData[] = data.map((e: any) => ({
           id: e.enrollment_id,

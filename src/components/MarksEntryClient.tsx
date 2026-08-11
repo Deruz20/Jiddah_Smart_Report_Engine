@@ -579,7 +579,7 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
                 </span>
               </button>
             </div>
-          ) : null}
+          ) : null)}
         </form>
       </div>
     </div>

@@ -45,9 +45,9 @@ const enrollments = new Table({
 const circular_marks = new Table({
   enrollment_id: column.text,
   subject_id: column.text,
-  bot_mark: column.real,
-  mot_mark: column.real,
-  eot_mark: column.real,
+  bot_score: column.real,
+  mot_score: column.real,
+  eot_score: column.real,
   updated_by: column.text,
   device_id: column.text,
 }, { indexes: { enrollment_subject: ['enrollment_id', 'subject_id'] } });
@@ -55,9 +55,9 @@ const circular_marks = new Table({
 const theology_marks = new Table({
   enrollment_id: column.text,
   subject_id: column.text,
-  bot_mark: column.real,
-  mot_mark: column.real,
-  eot_mark: column.real,
+  bot_score: column.real,
+  mot_score: column.real,
+  eot_score: column.real,
   updated_by: column.text,
   device_id: column.text,
 }, { indexes: { enrollment_subject: ['enrollment_id', 'subject_id'] } });

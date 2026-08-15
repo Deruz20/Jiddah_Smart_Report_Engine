@@ -150,7 +150,7 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
         const circular = await powerSync.getAll(`
           SELECT 
             s.id as subject_id, s.subject_name, 'true' as is_core,
-            cm.bot_mark as bot_score, cm.mot_mark as mot_score, cm.eot_mark as eot_score
+            cm.bot_score, cm.mot_score, cm.eot_score
           FROM subjects s
           LEFT JOIN circular_marks cm ON cm.subject_id = s.id AND cm.enrollment_id = ?
           WHERE s.curriculum = 'secular' AND (s.section = ? OR s.section = ? OR s.section IS NULL)
@@ -159,7 +159,7 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
         const theology = await powerSync.getAll(`
           SELECT 
             s.id as subject_id, s.subject_name as subject_name_arabic,
-            tm.mot_mark as mot_score, tm.eot_mark as eot_score
+            tm.mot_score, tm.eot_score
           FROM subjects s
           LEFT JOIN theology_marks tm ON tm.subject_id = s.id AND tm.enrollment_id = ?
           WHERE s.curriculum = 'theology' AND (s.section = ? OR s.section = ? OR s.section IS NULL)
@@ -227,12 +227,12 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
             
             // Upsert for circular marks
             await tx.execute(`
-              INSERT INTO circular_marks (id, enrollment_id, subject_id, bot_mark, mot_mark, eot_mark, updated_by)
+              INSERT INTO circular_marks (id, enrollment_id, subject_id, bot_score, mot_score, eot_score, updated_by)
               VALUES (uuid(), ?, ?, ?, ?, ?, 'local_user')
               ON CONFLICT(enrollment_id, subject_id) DO UPDATE SET
-                bot_mark = EXCLUDED.bot_mark,
-                mot_mark = EXCLUDED.mot_mark,
-                eot_mark = EXCLUDED.eot_mark,
+                bot_score = EXCLUDED.bot_score,
+                mot_score = EXCLUDED.mot_score,
+                eot_score = EXCLUDED.eot_score,
                 updated_by = EXCLUDED.updated_by
             `, [selectedEnrollmentId, mark.subject_id, bot ?? null, mot ?? null, eot ?? null]);
           }
@@ -243,11 +243,11 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
             
             // Upsert for theology marks
             await tx.execute(`
-              INSERT INTO theology_marks (id, enrollment_id, subject_id, bot_mark, mot_mark, eot_mark, updated_by)
+              INSERT INTO theology_marks (id, enrollment_id, subject_id, bot_score, mot_score, eot_score, updated_by)
               VALUES (uuid(), ?, ?, NULL, ?, ?, 'local_user')
               ON CONFLICT(enrollment_id, subject_id) DO UPDATE SET
-                mot_mark = EXCLUDED.mot_mark,
-                eot_mark = EXCLUDED.eot_mark,
+                mot_score = EXCLUDED.mot_score,
+                eot_score = EXCLUDED.eot_score,
                 updated_by = EXCLUDED.updated_by
             `, [selectedEnrollmentId, mark.subject_id, mot ?? null, eot ?? null]);
           }

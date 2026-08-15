@@ -1,5 +1,6 @@
 import { reshapeEnrollmentRow } from '@/lib/enrollment-shape'
 import { createClient } from '@/utils/supabase/server'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
@@ -108,6 +109,12 @@ export async function POST(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
     }
 
+    const supabaseAdmin = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { persistSession: false, autoRefreshToken: false } }
+    );
+
     if (authRes.filterByClasses) {
       const isTheology = authRes.filterByDepartment === 'theology';
       const targetClassId = isTheology ? body.theology_class_id : body.circular_class_id;
@@ -163,7 +170,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 1. Insert new student with admission number. Postgres UNIQUE constraint prevents race conditions.
-    const { data: studentData, error: studentError } = await supabase
+    const { data: studentData, error: studentError } = await supabaseAdmin
       .from('students')
       .insert([{
         name: body.name.trim(),
@@ -201,7 +208,7 @@ export async function POST(request: NextRequest) {
       is_active: true,
     }
 
-    const { data: enrollmentData, error: enrollmentError } = await supabase
+    const { data: enrollmentData, error: enrollmentError } = await supabaseAdmin
       .from('enrollments')
       .insert([enrollmentInsertData])
       .select(`

@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 type SectionType = 'Nursery' | 'Lower Primary' | 'Upper Primary' | '';
-type TheologySectionType = 'روضة' | 'ابتدائية_سفلى' | 'ابتدائية_عليا' | '';
+type TheologySectionType = 'روضة' | 'ابتدائية_سفلى' | 'ابتدائية_عليا' | 'not_applicable' | '';
 
 interface CircularClass {
   id: string;
@@ -338,9 +338,10 @@ function Step3({ form, setField, classes }: { form: FormData; setField: (k: keyo
 
 function Step4({ form, setField, theologyClasses }: { form: FormData; setField: (k: keyof FormData, v: string) => void; theologyClasses: TheologyClass[] }) {
   const theologySections: { value: TheologySectionType; label: string; sub: string }[] = [
-    { value: 'روضة', label: 'الروضة', sub: 'السفلى، الوسطى، العليا' },
-    { value: 'ابتدائية_سفلى', label: 'الابتدائية السفلى', sub: 'الصف الأول - الثالث' },
-    { value: 'ابتدائية_عليا', label: 'الابتدائية العليا', sub: 'الصف الرابع - السابع' },
+    { value: 'روضة', label: 'الروضة', sub: 'Nursery' },
+    { value: 'ابتدائية_سفلى', label: 'ابتدائية سفلى', sub: 'Primary 1-3' },
+    { value: 'ابتدائية_عليا', label: 'ابتدائية عليا', sub: 'Primary 4-7' },
+    { value: 'not_applicable', label: 'تخطي', sub: 'Assign Later' },
   ];
 
   const theologyOptions = theologyClasses.filter(c => {
@@ -356,7 +357,7 @@ function Step4({ form, setField, theologyClasses }: { form: FormData; setField: 
       {form.religion === 'Muslim' && theologyClasses.length > 0 && (
         <div className="space-y-2">
           <p className={labelClass}>Step 4A: Select Theology Section</p>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {theologySections.map((ts) => (
             <SelectionCard
               key={ts.value}
@@ -379,7 +380,7 @@ function Step4({ form, setField, theologyClasses }: { form: FormData; setField: 
       )}
 
       {/* 4B — Theology Class (Muslim Only) */}
-      {form.religion === 'Muslim' && theologyClasses.length > 0 && (
+      {form.religion === 'Muslim' && theologyClasses.length > 0 && form.theology_section !== 'not_applicable' && (
         <div>
           <label className={cn(labelClass, 'flex items-center justify-between')}>
             <span>Step 4B: Select Theology Class</span>

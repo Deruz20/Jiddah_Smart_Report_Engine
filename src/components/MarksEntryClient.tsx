@@ -226,15 +226,17 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
             let eot = mark.eot_score;
             
             // Upsert for circular marks
-            await tx.execute(`
-              INSERT INTO circular_marks (id, enrollment_id, subject_id, bot_score, mot_score, eot_score, updated_by)
-              VALUES (uuid(), ?, ?, ?, ?, ?, 'local_user')
-              ON CONFLICT(enrollment_id, subject_id) DO UPDATE SET
-                bot_score = EXCLUDED.bot_score,
-                mot_score = EXCLUDED.mot_score,
-                eot_score = EXCLUDED.eot_score,
-                updated_by = EXCLUDED.updated_by
-            `, [selectedEnrollmentId, mark.subject_id, bot ?? null, mot ?? null, eot ?? null]);
+            const checkC = await tx.execute('SELECT id FROM circular_marks WHERE enrollment_id = ? AND subject_id = ?', [selectedEnrollmentId, mark.subject_id]);
+            if (checkC.rows?.length && checkC.rows.length > 0) {
+              await tx.execute(`
+                UPDATE circular_marks SET bot_score = ?, mot_score = ?, eot_score = ?, updated_by = 'local_user' WHERE id = ?
+              `, [bot ?? null, mot ?? null, eot ?? null, checkC.rows.item(0).id]);
+            } else {
+              await tx.execute(`
+                INSERT INTO circular_marks (id, enrollment_id, subject_id, bot_score, mot_score, eot_score, updated_by)
+                VALUES (uuid(), ?, ?, ?, ?, ?, 'local_user')
+              `, [selectedEnrollmentId, mark.subject_id, bot ?? null, mot ?? null, eot ?? null]);
+            }
           }
 
           for (const mark of theologyMarks) {
@@ -242,14 +244,17 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
             let eot = mark.eot_score;
             
             // Upsert for theology marks
-            await tx.execute(`
-              INSERT INTO theology_marks (id, enrollment_id, subject_id, bot_score, mot_score, eot_score, updated_by)
-              VALUES (uuid(), ?, ?, NULL, ?, ?, 'local_user')
-              ON CONFLICT(enrollment_id, subject_id) DO UPDATE SET
-                mot_score = EXCLUDED.mot_score,
-                eot_score = EXCLUDED.eot_score,
-                updated_by = EXCLUDED.updated_by
-            `, [selectedEnrollmentId, mark.subject_id, mot ?? null, eot ?? null]);
+            const checkT = await tx.execute('SELECT id FROM theology_marks WHERE enrollment_id = ? AND subject_id = ?', [selectedEnrollmentId, mark.subject_id]);
+            if (checkT.rows?.length && checkT.rows.length > 0) {
+              await tx.execute(`
+                UPDATE theology_marks SET mot_score = ?, eot_score = ?, updated_by = 'local_user' WHERE id = ?
+              `, [mot ?? null, eot ?? null, checkT.rows.item(0).id]);
+            } else {
+              await tx.execute(`
+                INSERT INTO theology_marks (id, enrollment_id, subject_id, bot_score, mot_score, eot_score, updated_by)
+                VALUES (uuid(), ?, ?, NULL, ?, ?, 'local_user')
+              `, [selectedEnrollmentId, mark.subject_id, mot ?? null, eot ?? null]);
+            }
           }
         });
 

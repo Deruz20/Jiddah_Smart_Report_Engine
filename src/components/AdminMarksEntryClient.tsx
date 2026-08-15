@@ -146,37 +146,54 @@ export function AdminMarksEntryClient({ terms }: AdminMarksEntryClientProps) {
 
     startTransition(async () => {
       try {
-        // Upsert circular marks
-        const cUpserts = circularMarks
-          .filter(m => m.bot_score !== null || m.mot_score !== null || m.eot_score !== null)
-          .map(m => ({
-            enrollment_id: selectedEnrollmentId,
-            subject_id: m.subject_id,
-            bot_score: m.bot_score,
-            mot_score: m.mot_score,
-            eot_score: m.eot_score,
-            updated_by: 'admin_user'
-          }))
-        
-        if (cUpserts.length > 0) {
-          const { error } = await supabase.from('circular_marks').upsert(cUpserts, { onConflict: 'enrollment_id, subject_id' })
-          if (error) throw error
+        // Save circular marks
+        const cToSave = circularMarks.filter(m => m.bot_score !== null || m.mot_score !== null || m.eot_score !== null)
+        if (cToSave.length > 0) {
+          const { data: existingC } = await supabase.from('circular_marks').select('id, subject_id').eq('enrollment_id', selectedEnrollmentId)
+          for (const m of cToSave) {
+            const existing = existingC?.find(e => e.subject_id === m.subject_id)
+            if (existing) {
+              await supabase.from('circular_marks').update({
+                bot_score: m.bot_score,
+                mot_score: m.mot_score,
+                eot_score: m.eot_score,
+                updated_by: 'admin_user'
+              }).eq('id', existing.id)
+            } else {
+              await supabase.from('circular_marks').insert({
+                enrollment_id: selectedEnrollmentId,
+                subject_id: m.subject_id,
+                bot_score: m.bot_score,
+                mot_score: m.mot_score,
+                eot_score: m.eot_score,
+                updated_by: 'admin_user'
+              })
+            }
+          }
         }
 
-        // Upsert theology marks
-        const tUpserts = theologyMarks
-          .filter(m => m.mot_score !== null || m.eot_score !== null)
-          .map(m => ({
-            enrollment_id: selectedEnrollmentId,
-            subject_id: m.subject_id,
-            mot_score: m.mot_score,
-            eot_score: m.eot_score,
-            updated_by: 'admin_user'
-          }))
-
-        if (tUpserts.length > 0) {
-          const { error } = await supabase.from('theology_marks').upsert(tUpserts, { onConflict: 'enrollment_id, subject_id' })
-          if (error) throw error
+        // Save theology marks
+        const tToSave = theologyMarks.filter(m => m.mot_score !== null || m.eot_score !== null)
+        if (tToSave.length > 0) {
+          const { data: existingT } = await supabase.from('theology_marks').select('id, subject_id').eq('enrollment_id', selectedEnrollmentId)
+          for (const m of tToSave) {
+            const existing = existingT?.find(e => e.subject_id === m.subject_id)
+            if (existing) {
+              await supabase.from('theology_marks').update({
+                mot_score: m.mot_score,
+                eot_score: m.eot_score,
+                updated_by: 'admin_user'
+              }).eq('id', existing.id)
+            } else {
+              await supabase.from('theology_marks').insert({
+                enrollment_id: selectedEnrollmentId,
+                subject_id: m.subject_id,
+                mot_score: m.mot_score,
+                eot_score: m.eot_score,
+                updated_by: 'admin_user'
+              })
+            }
+          }
         }
 
         setSuccess(true)

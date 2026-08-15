@@ -2,7 +2,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import Link from 'next/link'
-import { MarksEntryClient } from '@/components/MarksEntryClient'
+import { AdminMarksEntryClient } from '@/components/AdminMarksEntryClient'
 
 export const dynamic = 'force-dynamic'
 
@@ -55,7 +55,7 @@ export default async function MarksEntryPage() {
             <p className="text-red-600 text-sm mt-1">Please ensure the database connection is active and the terms table exists.</p>
           </div>
         ) : (
-          <MarksEntryClient terms={terms} />
+          <AdminMarksEntryClient terms={terms} />
         )}
       </div>
     </div>

@@ -222,47 +222,31 @@ export function SharedMarksEntry({
             </div>
           ) : selectedEnrollment ? (
             <div className="animate-in slide-in-from-bottom-4 duration-500 space-y-8">
-              {/* Student Details Box */}
-              <div 
-                className="relative overflow-hidden rounded-[24px] p-6 sm:p-8"
-                style={{ 
-                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', 
-                  boxShadow: '0 10px 30px rgba(16,185,129,0.2)',
-                }}
-              >
-                <div className="absolute top-0 right-0 -mt-8 -mr-8 w-48 h-48 bg-white opacity-10 rounded-full blur-2xl pointer-events-none" />
-                <div className="absolute bottom-0 left-0 -mb-8 -ml-8 w-32 h-32 bg-emerald-300 opacity-20 rounded-full blur-xl pointer-events-none" />
-                
-                <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 z-10">
-                  <div className="flex items-center gap-5">
-                    <div className="hidden sm:flex items-center justify-center w-14 h-14 rounded-2xl bg-white/20 text-white font-bold text-xl backdrop-blur-md border border-white/20 shadow-inner">
-                      {selectedEnrollment.name.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <p className="text-emerald-100 text-xs font-bold uppercase tracking-wider mb-1">Secular Profile</p>
-                      <p className="text-2xl text-white font-bold capitalize">{selectedEnrollment.name.toLowerCase()}</p>
-                      <div className="flex items-center gap-3 mt-2 text-emerald-50 text-sm font-medium">
-                        <span className="flex items-center gap-1.5 bg-black/10 px-2.5 py-1 rounded-lg backdrop-blur-md">ID: {selectedEnrollment.admission_number}</span>
-                        <span className="flex items-center gap-1.5 bg-black/10 px-2.5 py-1 rounded-lg backdrop-blur-md">Class: {selectedEnrollment.circular_class} {selectedEnrollment.section ? `• ${selectedEnrollment.section}` : ''}</span>
-                      </div>
+              {/* Slim Sticky Context Header */}
+              <div className="sticky top-4 z-40 bg-white/90 backdrop-blur-xl border border-slate-200/60 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-4 min-w-0">
+                  <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-emerald-100 to-emerald-50 text-emerald-700 font-bold text-lg border border-emerald-100 shadow-sm shrink-0">
+                    {selectedEnrollment.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <h2 className="text-lg font-bold text-slate-800 truncate capitalize leading-tight mb-1">{selectedEnrollment.name.toLowerCase()}</h2>
+                    <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-slate-500">
+                      <span className="bg-slate-100 px-2 py-0.5 rounded-md text-slate-600 border border-slate-200/60">{selectedEnrollment.admission_number}</span>
+                      <span className="bg-slate-100 px-2 py-0.5 rounded-md text-slate-600 border border-slate-200/60">{selectedEnrollment.circular_class} {selectedEnrollment.section ? `• ${selectedEnrollment.section}` : ''}</span>
                     </div>
                   </div>
-                  
-                  {selectedEnrollment.theology_class_arabic && (
-                    <div className="sm:text-right pt-4 sm:pt-0 border-t border-white/10 sm:border-t-0 sm:border-l sm:pl-6">
-                      <p className="text-emerald-100 text-xs font-bold uppercase tracking-wider mb-1" dir="rtl" style={{ fontFamily: '"Noto Naskh Arabic", serif' }}>الملف الشخصي</p>
-                      <p className="text-2xl text-white font-bold" dir="rtl" style={{ fontFamily: '"Noto Naskh Arabic", serif' }}>
-                        {transliterateEnglishToArabic(selectedEnrollment.name.toLowerCase())}
-                      </p>
-                      <div className="flex sm:justify-end items-center gap-3 mt-2 text-emerald-50 text-sm font-medium" dir="rtl">
-                        <span className="flex items-center gap-1.5 bg-black/10 px-2.5 py-1 rounded-lg backdrop-blur-md" style={{ fontFamily: '"Noto Naskh Arabic", serif' }}>ID: {selectedEnrollment.admission_number}</span>
-                        <span className="flex items-center gap-1.5 bg-black/10 px-2.5 py-1 rounded-lg backdrop-blur-md" style={{ fontFamily: '"Noto Naskh Arabic", serif' }}>
-                          الدرجة اللاهوتية: {selectedEnrollment.theology_class_arabic}
-                        </span>
-                      </div>
-                    </div>
-                  )}
                 </div>
+                
+                {selectedEnrollment.theology_class_arabic && (
+                  <div className="text-right shrink-0 pt-3 sm:pt-0 border-t border-slate-100 sm:border-t-0 sm:border-l sm:border-slate-100 sm:pl-4">
+                    <h2 className="text-lg font-bold text-slate-800 leading-tight mb-1" dir="rtl" style={{ fontFamily: '"Noto Naskh Arabic", serif' }}>
+                      {transliterateEnglishToArabic(selectedEnrollment.name.toLowerCase())}
+                    </h2>
+                    <div className="text-xs font-medium text-slate-500" dir="rtl" style={{ fontFamily: '"Noto Naskh Arabic", serif' }}>
+                      <span className="bg-slate-100 px-2 py-0.5 rounded-md text-slate-600 border border-slate-200/60">{selectedEnrollment.theology_class_arabic}</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Secular Marks Table */}

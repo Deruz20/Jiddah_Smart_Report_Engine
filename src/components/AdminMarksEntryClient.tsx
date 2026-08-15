@@ -34,7 +34,6 @@ export function AdminMarksEntryClient({ terms }: AdminMarksEntryClientProps) {
           .select(`
             id,
             student_id,
-            theology_status,
             students!inner ( name, admission_number ),
             circular_classes ( class_name, section ),
             theology_classes ( class_name_arabic, class_name_english )
@@ -51,7 +50,7 @@ export function AdminMarksEntryClient({ terms }: AdminMarksEntryClientProps) {
           section: e.circular_classes?.section || null,
           theology_class_arabic: e.theology_classes?.class_name_arabic || null,
           theology_class_level: e.theology_classes?.class_name_english || null,
-          theology_status: e.theology_status || 'active',
+          theology_status: e.theology_classes?.class_name_arabic ? 'active' : 'inactive',
         }))
         setEnrollments(mappedEnrollments)
       } catch (err: any) {

@@ -70,7 +70,6 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
           SELECT 
             e.id as enrollment_id,
             e.student_id,
-            e.theology_status,
             s.name, s.admission_number,
             cc.class_name as circular_class, cc.section,
             tc.class_name_arabic as theology_class_arabic,
@@ -90,7 +89,7 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
           section: e.section || null,
           theology_class_arabic: e.theology_class_arabic || null,
           theology_class_level: e.theology_class_level || null,
-          theology_status: e.theology_status || 'active',
+          theology_status: e.theology_class_arabic ? 'active' : 'inactive',
         }))
         setEnrollments(mappedEnrollments)
       } catch (err: any) {

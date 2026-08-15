@@ -89,7 +89,7 @@ export function SharedMarksEntry({
     )
   }
 
-  const renderScoreInput = (value: number | null, onChange: (val: string) => void, placeholder: string, disabled: boolean = false) => {
+  const renderScoreInput = (value: number | null, onChange: (val: string) => void, placeholder: string, disabled: boolean = false, rowIndex?: number, tableName?: string) => {
     const val = value === null ? '' : String(value)
     const numVal = parseFloat(val)
     const hasScore = val !== ''
@@ -106,6 +106,26 @@ export function SharedMarksEntry({
         value={val}
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
+        data-col={placeholder}
+        data-row={rowIndex}
+        data-table={tableName}
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'Enter') {
+            e.preventDefault()
+            const currentCol = e.currentTarget.getAttribute('data-col')
+            const currentTable = e.currentTarget.getAttribute('data-table')
+            const currentRow = parseInt(e.currentTarget.getAttribute('data-row') || '0', 10)
+            let targetRow = currentRow
+            if (e.key === 'ArrowUp') targetRow--
+            if (e.key === 'ArrowDown' || e.key === 'Enter') targetRow++
+            
+            const target = document.querySelector(`input[data-table="${currentTable}"][data-col="${currentCol}"][data-row="${targetRow}"]`) as HTMLInputElement
+            if (target) {
+              target.focus()
+              target.select()
+            }
+          }
+        }}
         style={isHigh
           ? { borderColor: '#86efac', background: '#f0fdf4', color: '#15803d' }
           : isLow
@@ -118,6 +138,16 @@ export function SharedMarksEntry({
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <style>{`
+        input[type="number"].score-input::-webkit-inner-spin-button,
+        input[type="number"].score-input::-webkit-outer-spin-button {
+          -webkit-appearance: none;
+          margin: 0;
+        }
+        input[type="number"].score-input {
+          -moz-appearance: textfield;
+        }
+      `}</style>
       <div 
         className="max-w-5xl mx-auto bg-white/70 backdrop-blur-xl border border-white/50 p-4 sm:p-8"
         style={{ borderRadius: 24, boxShadow: '0 20px 40px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,1)' }}
@@ -269,7 +299,7 @@ export function SharedMarksEntry({
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-slate-50">
-                        {circularMarks.map((mark) => (
+                        {circularMarks.map((mark, idx) => (
                           <tr key={mark.subject_id} className="transition-colors hover:bg-slate-50/50 group">
                             <td className="px-3 sm:px-6 py-4 text-sm font-semibold text-slate-700 whitespace-nowrap">{mark.subject_name}</td>
                             <td className="px-3 sm:px-6 py-4 text-sm text-center">
@@ -281,17 +311,17 @@ export function SharedMarksEntry({
                             </td>
                             {['bot', 'all'].includes(examType) && (
                               <td className="px-3 sm:px-6 py-3">
-                                {renderScoreInput(mark.bot_score, (val) => handleCircularScoreChange(mark.subject_id, 'bot', val), 'BOT')}
+                                {renderScoreInput(mark.bot_score, (val) => handleCircularScoreChange(mark.subject_id, 'bot', val), 'BOT', false, idx, 'secular')}
                               </td>
                             )}
                             {['mot', 'all'].includes(examType) && (
                               <td className="px-3 sm:px-6 py-3">
-                                {renderScoreInput(mark.mot_score, (val) => handleCircularScoreChange(mark.subject_id, 'mot', val), 'MOT')}
+                                {renderScoreInput(mark.mot_score, (val) => handleCircularScoreChange(mark.subject_id, 'mot', val), 'MOT', false, idx, 'secular')}
                               </td>
                             )}
                             {['eot', 'all'].includes(examType) && (
                               <td className="px-3 sm:px-6 py-3">
-                                {renderScoreInput(mark.eot_score, (val) => handleCircularScoreChange(mark.subject_id, 'eot', val), 'EOT')}
+                                {renderScoreInput(mark.eot_score, (val) => handleCircularScoreChange(mark.subject_id, 'eot', val), 'EOT', false, idx, 'secular')}
                               </td>
                             )}
                           </tr>
@@ -325,19 +355,19 @@ export function SharedMarksEntry({
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-slate-50">
-                          {theologyMarks.map((mark) => (
+                          {theologyMarks.map((mark, idx) => (
                             <tr key={mark.subject_id} className="transition-colors hover:bg-slate-50/50 group">
                               <td className="px-3 sm:px-6 py-4 text-[15px] font-bold text-slate-700 text-right whitespace-nowrap" dir="rtl" style={{ fontFamily: '"Noto Naskh Arabic", serif' }}>
                                 {mark.subject_name_arabic}
                               </td>
                               {['mot', 'all'].includes(examType) && (
                                 <td className="px-3 sm:px-6 py-3">
-                                  {renderScoreInput(mark.mot_score, (val) => handleTheologyScoreChange(mark.subject_id, 'mot', val), 'MOT')}
+                                  {renderScoreInput(mark.mot_score, (val) => handleTheologyScoreChange(mark.subject_id, 'mot', val), 'MOT', false, idx, 'theology')}
                                 </td>
                               )}
                               {['eot', 'all'].includes(examType) && (
                                 <td className="px-3 sm:px-6 py-3">
-                                  {renderScoreInput(mark.eot_score, (val) => handleTheologyScoreChange(mark.subject_id, 'eot', val), 'EOT')}
+                                  {renderScoreInput(mark.eot_score, (val) => handleTheologyScoreChange(mark.subject_id, 'eot', val), 'EOT', false, idx, 'theology')}
                                 </td>
                               )}
                             </tr>

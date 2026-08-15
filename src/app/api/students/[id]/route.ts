@@ -75,7 +75,7 @@ export async function PUT(
       .update({
         name: body.name.trim(),
         arabic_name: body.arabic_name ? body.arabic_name.trim() : null,
-        gender: body.gender || null,
+        gender: body.gender ? body.gender.toLowerCase() : null,
         admission_number: body.admission_number.trim(),
         is_muslim: isMuslim,
       })

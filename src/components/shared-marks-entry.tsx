@@ -36,14 +36,17 @@ export interface SharedMarksEntryProps {
   setSuccess: (s: boolean) => void;
 
   onSave: (event?: React.FormEvent<HTMLFormElement>) => void;
+  allowedDepartment?: 'secular' | 'theology' | 'both';
 }
 
 export function SharedMarksEntry({
   terms, enrollments, selectedTermId, onSelectTerm, selectedEnrollmentId, onSelectEnrollment,
   circularMarks, setCircularMarks, theologyMarks, setTheologyMarks,
   examType, setExamType, isFetching, isLoading, isSaving, isPending,
-  error, success, setSuccess, onSave
+  error, success, setSuccess, onSave, allowedDepartment = 'both'
 }: SharedMarksEntryProps) {
+  
+  const [activeView, setActiveView] = useState<'secular' | 'theology' | 'both'>(allowedDepartment)
   
   const selectedEnrollment = enrollments.find((e) => e.id === selectedEnrollmentId) || null
 
@@ -257,7 +260,30 @@ export function SharedMarksEntry({
                 </div>
               </div>
 
+              {/* Dynamic View Toggles (Admins only) */}
+              {allowedDepartment === 'both' && (
+                <div className="bg-white p-5 rounded-[20px] shadow-sm border border-slate-100/60 flex items-center justify-between gap-4 flex-wrap">
+                  <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 whitespace-nowrap">
+                    <span className="flex items-center justify-center w-5 h-5 rounded-full bg-blue-100 text-blue-700 text-xs">👀</span>
+                    View Mode
+                  </label>
+                  <div className="flex gap-2 p-1 bg-slate-100/80 rounded-xl flex-1 max-w-md overflow-x-auto">
+                    {(['both', 'secular', 'theology'] as const).map((view) => (
+                      <button
+                        key={view}
+                        type="button"
+                        onClick={() => setActiveView(view)}
+                        className={`flex-1 min-w-[60px] px-3 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${activeView === view ? 'bg-white text-blue-600 shadow-sm border border-blue-100' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
+                      >
+                        {view}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Secular Marks Table */}
+              {(activeView === 'both' || activeView === 'secular') && (
               <div className="space-y-4">
                 <div className="flex items-center gap-2 px-1">
                   <div className="w-1.5 h-6 bg-blue-500 rounded-full" />
@@ -305,12 +331,12 @@ export function SharedMarksEntry({
                         ))}
                       </tbody>
                     </table>
-                  </div>
                 </div>
               </div>
+              )}
 
               {/* Theology Marks Table */}
-              {theologyMarks.length > 0 && examType !== 'bot' && selectedEnrollment?.theology_status !== 'not_applicable' && (
+              {(activeView === 'both' || activeView === 'theology') && theologyMarks.length > 0 && examType !== 'bot' && selectedEnrollment?.theology_status !== 'not_applicable' && (
                 <div className="space-y-4 pt-6">
                   <div className="flex items-center justify-end gap-2 px-1" dir="rtl">
                     <div className="w-1.5 h-6 bg-orange-500 rounded-full" />

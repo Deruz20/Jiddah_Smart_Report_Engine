@@ -113,9 +113,12 @@ export function CreateSubjectForm({ onSuccess }: CreateSubjectFormProps) {
               required
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition bg-white"
             >
-              <option value="nursery">Nursery</option>
-              <option value="lower_primary">Lower Primary</option>
-              <option value="upper_primary">Upper Primary</option>
+              <option value="Baby">Baby (Nursery)</option>
+              <option value="Middle">Middle (Nursery)</option>
+              <option value="Top">Top (Nursery)</option>
+              <option value="nursery">All Nursery</option>
+              <option value="lower_primary">Lower Primary (P.1 - P.3)</option>
+              <option value="upper_primary">Upper Primary (P.4 - P.7)</option>
             </select>
           </div>
         </div>

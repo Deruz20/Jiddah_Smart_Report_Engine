@@ -92,9 +92,10 @@ export function AdminMarksEntryClient({ terms }: AdminMarksEntryClientProps) {
 
         const selectedEnrollment = enrollments.find(e => e.id === selectedEnrollmentId)
         const section = selectedEnrollment?.section || null
+        const className = selectedEnrollment?.circular_class || null
 
         const circular: CircularMarkRow[] = subjects
-          .filter(s => s.curriculum === 'secular' && (s.section === section || s.section === null))
+          .filter(s => s.curriculum === 'secular' && (s.section === section || s.section === className || s.section === null))
           .map(s => {
             const mark = cMarks.find(m => m.subject_id === s.id)
             return {
@@ -108,7 +109,7 @@ export function AdminMarksEntryClient({ terms }: AdminMarksEntryClientProps) {
           })
 
         const theology: TheologyMarkRow[] = subjects
-          .filter(s => s.curriculum === 'theology' && (s.section === section || s.section === null))
+          .filter(s => s.curriculum === 'theology' && (s.section === section || s.section === className || s.section === null))
           .map(s => {
             const mark = tMarks.find(m => m.subject_id === s.id)
             return {

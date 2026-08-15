@@ -58,6 +58,29 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [isPending, startTransition] = useTransition()
+  const [allowedDepartment, setAllowedDepartment] = useState<'secular' | 'theology' | 'both'>('both')
+
+  // Load teacher department restriction from their assigned subject track
+  useEffect(() => {
+    const loadTeacherDept = async () => {
+      try {
+        const res = await powerSync.getAll('SELECT subject FROM teachers LIMIT 1')
+        if (res && res.length > 0 && res[0].subject) {
+          const track = res[0].subject.toLowerCase()
+          if (track.includes('secular')) {
+            setAllowedDepartment('secular')
+          } else if (track.includes('theology')) {
+            setAllowedDepartment('theology')
+          } else {
+            setAllowedDepartment('both')
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load teacher subject track:', err)
+      }
+    }
+    loadTeacherDept()
+  }, [powerSync])
 
   // Load enrollments on mount
   useEffect(() => {
@@ -122,6 +145,7 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
       try {
         const selectedEnrollment = enrollments.find(e => e.id === selectedEnrollmentId)
         const section = selectedEnrollment?.section || null
+        const className = selectedEnrollment?.circular_class || null
 
         const circular = await powerSync.getAll(`
           SELECT 
@@ -129,8 +153,8 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
             cm.bot_mark as bot_score, cm.mot_mark as mot_score, cm.eot_mark as eot_score
           FROM subjects s
           LEFT JOIN circular_marks cm ON cm.subject_id = s.id AND cm.enrollment_id = ?
-          WHERE s.curriculum = 'secular' AND (s.section = ? OR s.section IS NULL)
-        `, [selectedEnrollmentId, section]);
+          WHERE s.curriculum = 'secular' AND (s.section = ? OR s.section = ? OR s.section IS NULL)
+        `, [selectedEnrollmentId, section, className]);
 
         const theology = await powerSync.getAll(`
           SELECT 
@@ -138,8 +162,8 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
             tm.mot_mark as mot_score, tm.eot_mark as eot_score
           FROM subjects s
           LEFT JOIN theology_marks tm ON tm.subject_id = s.id AND tm.enrollment_id = ?
-          WHERE s.curriculum = 'theology' AND (s.section = ? OR s.section IS NULL)
-        `, [selectedEnrollmentId, section]);
+          WHERE s.curriculum = 'theology' AND (s.section = ? OR s.section = ? OR s.section IS NULL)
+        `, [selectedEnrollmentId, section, className]);
 
         setCircularMarks(circular as any)
         setTheologyMarks(theology as any)
@@ -261,6 +285,7 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
       success={success}
       setSuccess={setSuccess}
       onSave={handleSaveMarks}
+      allowedDepartment={allowedDepartment}
     />
   )
 }

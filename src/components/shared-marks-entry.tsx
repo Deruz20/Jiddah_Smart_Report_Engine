@@ -119,7 +119,7 @@ export function SharedMarksEntry({
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div 
-        className="max-w-5xl mx-auto bg-white/70 backdrop-blur-xl border border-white/50 p-6 sm:p-8"
+        className="max-w-5xl mx-auto bg-white/70 backdrop-blur-xl border border-white/50 p-4 sm:p-8"
         style={{ borderRadius: 24, boxShadow: '0 20px 40px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,1)' }}
       >
         <div className="flex items-center gap-4 mb-8">
@@ -294,18 +294,18 @@ export function SharedMarksEntry({
                     <table className="min-w-full divide-y divide-slate-100">
                       <thead className="bg-slate-50/50">
                         <tr>
-                          <th className="px-6 py-4 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">Subject</th>
-                          <th className="px-6 py-4 text-center text-[11px] font-bold text-slate-400 uppercase tracking-wider">Core</th>
-                          {['bot', 'all'].includes(examType) && <th className="px-6 py-4 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">BOT Score</th>}
-                          {['mot', 'all'].includes(examType) && <th className="px-6 py-4 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">MOT Score</th>}
-                          {['eot', 'all'].includes(examType) && <th className="px-6 py-4 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">EOT Score</th>}
+                          <th className="px-3 sm:px-6 py-4 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">Subject</th>
+                          <th className="px-3 sm:px-6 py-4 text-center text-[11px] font-bold text-slate-400 uppercase tracking-wider">Core</th>
+                          {['bot', 'all'].includes(examType) && <th className="px-3 sm:px-6 py-4 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">BOT Score</th>}
+                          {['mot', 'all'].includes(examType) && <th className="px-3 sm:px-6 py-4 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">MOT Score</th>}
+                          {['eot', 'all'].includes(examType) && <th className="px-3 sm:px-6 py-4 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">EOT Score</th>}
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-slate-50">
                         {circularMarks.map((mark) => (
                           <tr key={mark.subject_id} className="transition-colors hover:bg-slate-50/50 group">
-                            <td className="px-6 py-4 text-sm font-semibold text-slate-700 whitespace-nowrap">{mark.subject_name}</td>
-                            <td className="px-6 py-4 text-sm text-center">
+                            <td className="px-3 sm:px-6 py-4 text-sm font-semibold text-slate-700 whitespace-nowrap">{mark.subject_name}</td>
+                            <td className="px-3 sm:px-6 py-4 text-sm text-center">
                               {mark.is_core ? (
                                 <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-50 text-blue-500 text-xs font-bold ring-1 ring-blue-500/10">✓</span>
                               ) : (
@@ -313,17 +313,17 @@ export function SharedMarksEntry({
                               )}
                             </td>
                             {['bot', 'all'].includes(examType) && (
-                              <td className="px-6 py-3">
+                              <td className="px-3 sm:px-6 py-3">
                                 {renderScoreInput(mark.bot_score, (val) => handleCircularScoreChange(mark.subject_id, 'bot', val), 'BOT')}
                               </td>
                             )}
                             {['mot', 'all'].includes(examType) && (
-                              <td className="px-6 py-3">
+                              <td className="px-3 sm:px-6 py-3">
                                 {renderScoreInput(mark.mot_score, (val) => handleCircularScoreChange(mark.subject_id, 'mot', val), 'MOT')}
                               </td>
                             )}
                             {['eot', 'all'].includes(examType) && (
-                              <td className="px-6 py-3">
+                              <td className="px-3 sm:px-6 py-3">
                                 {renderScoreInput(mark.eot_score, (val) => handleCircularScoreChange(mark.subject_id, 'eot', val), 'EOT')}
                               </td>
                             )}
@@ -350,26 +350,26 @@ export function SharedMarksEntry({
                       <table className="min-w-full divide-y divide-slate-100">
                         <thead className="bg-slate-50/50">
                           <tr>
-                            <th className="px-6 py-4 text-right text-[12px] font-bold text-slate-400 uppercase tracking-wider" dir="rtl" style={{ fontFamily: '"Noto Naskh Arabic", serif' }}>
+                            <th className="px-3 sm:px-6 py-4 text-right text-[12px] font-bold text-slate-400 uppercase tracking-wider" dir="rtl" style={{ fontFamily: '"Noto Naskh Arabic", serif' }}>
                               المادة
                             </th>
-                            {['mot', 'all'].includes(examType) && <th className="px-6 py-4 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">MOT Score</th>}
-                            {['eot', 'all'].includes(examType) && <th className="px-6 py-4 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">EOT Score</th>}
+                            {['mot', 'all'].includes(examType) && <th className="px-3 sm:px-6 py-4 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">MOT Score</th>}
+                            {['eot', 'all'].includes(examType) && <th className="px-3 sm:px-6 py-4 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">EOT Score</th>}
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-slate-50">
                           {theologyMarks.map((mark) => (
                             <tr key={mark.subject_id} className="transition-colors hover:bg-slate-50/50 group">
-                              <td className="px-6 py-4 text-[15px] font-bold text-slate-700 text-right whitespace-nowrap" dir="rtl" style={{ fontFamily: '"Noto Naskh Arabic", serif' }}>
+                              <td className="px-3 sm:px-6 py-4 text-[15px] font-bold text-slate-700 text-right whitespace-nowrap" dir="rtl" style={{ fontFamily: '"Noto Naskh Arabic", serif' }}>
                                 {mark.subject_name_arabic}
                               </td>
                               {['mot', 'all'].includes(examType) && (
-                                <td className="px-6 py-3">
+                                <td className="px-3 sm:px-6 py-3">
                                   {renderScoreInput(mark.mot_score, (val) => handleTheologyScoreChange(mark.subject_id, 'mot', val), 'MOT')}
                                 </td>
                               )}
                               {['eot', 'all'].includes(examType) && (
-                                <td className="px-6 py-3">
+                                <td className="px-3 sm:px-6 py-3">
                                   {renderScoreInput(mark.eot_score, (val) => handleTheologyScoreChange(mark.subject_id, 'eot', val), 'EOT')}
                                 </td>
                               )}

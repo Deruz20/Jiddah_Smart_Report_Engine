@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
     const circularSubjectsCache: Record<string, any[]> = {}
     if (curriculum !== 'theology') {
       for (const st of Array.from(sectionTypes)) {
-        const { data: subs } = await supabase.from('circular_subjects').select('id, subject_name').eq('section', st)
+        const { data: subs } = await supabase.from('subjects').select('id, subject_name').eq('curriculum', 'secular').eq('section', st)
         circularSubjectsCache[st] = subs || []
       }
     }
@@ -192,8 +192,8 @@ export async function POST(request: NextRequest) {
     const theologySubjectsCache: Record<string, any[]> = {}
     if (curriculum !== 'secular') {
       for (const lvl of theologyLevels) {
-        const { data: subs } = await supabase.from('theology_subjects').select('id, subject_name_arabic').eq('level', lvl).order('sort_order', { ascending: true })
-        theologySubjectsCache[lvl] = subs || []
+        const { data: subs } = await supabase.from('subjects').select('id, subject_name').eq('curriculum', 'theology').eq('section', lvl)
+        theologySubjectsCache[lvl] = subs?.map(s => ({ id: s.id, subject_name_arabic: s.subject_name })) || []
       }
     }
 

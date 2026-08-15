@@ -118,8 +118,9 @@ export async function GET(request: NextRequest) {
     }
 
     const { data: circularSubjects, error: circularSubjectsError } = await supabase
-      .from('circular_subjects')
+      .from('subjects')
       .select('id, subject_name')
+      .eq('curriculum', 'secular')
       .eq('section', sectionType)
       .order('subject_name', { ascending: true })
 
@@ -301,11 +302,13 @@ export async function GET(request: NextRequest) {
     let existingTheologyMarks: any = null;
 
     if (enrollment.theology_class_id && theologyLevel) {
-      const { data: theologySubjects, error: theologySubjectsError } = await supabase
-        .from('theology_subjects')
-        .select('id, subject_name_arabic')
-        .eq('level', theologyLevel)
-        .order('sort_order', { ascending: true })
+      const { data: theologySubjectsRaw, error: theologySubjectsError } = await supabase
+        .from('subjects')
+        .select('id, subject_name')
+        .eq('curriculum', 'theology')
+        .eq('section', theologyLevel)
+
+      const theologySubjects = theologySubjectsRaw?.map(s => ({ id: s.id, subject_name_arabic: s.subject_name }))
 
       if (theologySubjectsError) {
         return withCors(request, NextResponse.json({ error: theologySubjectsError.message }, { status: 500 }))

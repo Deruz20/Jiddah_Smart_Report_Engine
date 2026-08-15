@@ -331,6 +331,7 @@ export function SharedMarksEntry({
                         ))}
                       </tbody>
                     </table>
+                  </div>
                 </div>
               </div>
               )}

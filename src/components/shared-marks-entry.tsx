@@ -295,8 +295,8 @@ export function SharedMarksEntry({
                 </div>
                 <div className="bg-white border border-slate-200/60 rounded-[24px] shadow-sm overflow-hidden">
                   <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-slate-100">
-                      <thead className="bg-slate-50/50">
+                    <table className="min-w-full divide-y divide-slate-100 block sm:table">
+                      <thead className="bg-slate-50/50 hidden sm:table-header-group">
                         <tr>
                           <th className="px-3 sm:px-6 py-4 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">Subject</th>
                           <th className="px-3 sm:px-6 py-4 text-center text-[11px] font-bold text-slate-400 uppercase tracking-wider">Core</th>
@@ -305,11 +305,20 @@ export function SharedMarksEntry({
                           {['eot', 'all'].includes(examType) && <th className="px-3 sm:px-6 py-4 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">EOT Score</th>}
                         </tr>
                       </thead>
-                      <tbody className="bg-white divide-y divide-slate-50">
+                      <tbody className="bg-white divide-y divide-slate-50 block sm:table-row-group">
                         {circularMarks.map((mark, idx) => (
-                          <tr key={mark.subject_id} className="transition-colors hover:bg-slate-50/50 group">
-                            <td className="px-3 sm:px-6 py-4 text-sm font-semibold text-slate-700 whitespace-nowrap">{mark.subject_name}</td>
-                            <td className="px-3 sm:px-6 py-4 text-sm text-center">
+                          <tr key={mark.subject_id} className="transition-colors hover:bg-slate-50/50 group flex flex-wrap sm:table-row p-4 sm:p-0">
+                            <td className="w-full sm:w-auto px-0 sm:px-6 pb-3 sm:pb-4 pt-0 sm:pt-4 text-sm font-semibold text-slate-700 whitespace-nowrap flex items-center justify-between sm:table-cell border-b border-slate-100 sm:border-0 mb-3 sm:mb-0">
+                              <span>{mark.subject_name}</span>
+                              <span className="sm:hidden">
+                                {mark.is_core ? (
+                                  <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-50 text-blue-500 text-[10px] font-bold ring-1 ring-blue-500/10">✓</span>
+                                ) : (
+                                  <span className="text-slate-300">—</span>
+                                )}
+                              </span>
+                            </td>
+                            <td className="hidden sm:table-cell px-3 sm:px-6 py-4 text-sm text-center">
                               {mark.is_core ? (
                                 <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-50 text-blue-500 text-xs font-bold ring-1 ring-blue-500/10">✓</span>
                               ) : (
@@ -317,17 +326,20 @@ export function SharedMarksEntry({
                               )}
                             </td>
                             {['bot', 'all'].includes(examType) && (
-                              <td className="px-3 sm:px-6 py-3">
+                              <td className="flex-1 sm:flex-none px-1 sm:px-6 py-1 sm:py-3 flex flex-col items-center sm:table-cell">
+                                <span className="sm:hidden text-[10px] font-bold text-slate-400 mb-1">BOT</span>
                                 {renderScoreInput(mark.bot_score, (val) => handleCircularScoreChange(mark.subject_id, 'bot', val), 'BOT', false, idx, 'secular')}
                               </td>
                             )}
                             {['mot', 'all'].includes(examType) && (
-                              <td className="px-3 sm:px-6 py-3">
+                              <td className="flex-1 sm:flex-none px-1 sm:px-6 py-1 sm:py-3 flex flex-col items-center sm:table-cell">
+                                <span className="sm:hidden text-[10px] font-bold text-slate-400 mb-1">MOT</span>
                                 {renderScoreInput(mark.mot_score, (val) => handleCircularScoreChange(mark.subject_id, 'mot', val), 'MOT', false, idx, 'secular')}
                               </td>
                             )}
                             {['eot', 'all'].includes(examType) && (
-                              <td className="px-3 sm:px-6 py-3">
+                              <td className="flex-1 sm:flex-none px-1 sm:px-6 py-1 sm:py-3 flex flex-col items-center sm:table-cell">
+                                <span className="sm:hidden text-[10px] font-bold text-slate-400 mb-1">EOT</span>
                                 {renderScoreInput(mark.eot_score, (val) => handleCircularScoreChange(mark.subject_id, 'eot', val), 'EOT', false, idx, 'secular')}
                               </td>
                             )}
@@ -351,8 +363,8 @@ export function SharedMarksEntry({
                   </div>
                   <div className="bg-white border border-slate-200/60 rounded-[24px] shadow-sm overflow-hidden">
                     <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-slate-100">
-                        <thead className="bg-slate-50/50">
+                      <table className="min-w-full divide-y divide-slate-100 block sm:table">
+                        <thead className="bg-slate-50/50 hidden sm:table-header-group">
                           <tr>
                             <th className="px-3 sm:px-6 py-4 text-right text-[12px] font-bold text-slate-400 uppercase tracking-wider" dir="rtl" style={{ fontFamily: '"Noto Naskh Arabic", serif' }}>
                               المادة
@@ -361,19 +373,21 @@ export function SharedMarksEntry({
                             {['eot', 'all'].includes(examType) && <th className="px-3 sm:px-6 py-4 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">EOT Score</th>}
                           </tr>
                         </thead>
-                        <tbody className="bg-white divide-y divide-slate-50">
+                        <tbody className="bg-white divide-y divide-slate-50 block sm:table-row-group">
                           {theologyMarks.map((mark, idx) => (
-                            <tr key={mark.subject_id} className="transition-colors hover:bg-slate-50/50 group">
-                              <td className="px-3 sm:px-6 py-4 text-[15px] font-bold text-slate-700 text-right whitespace-nowrap" dir="rtl" style={{ fontFamily: '"Noto Naskh Arabic", serif' }}>
+                          <tr key={mark.subject_id} className="transition-colors hover:bg-slate-50/50 group flex flex-wrap flex-row-reverse sm:table-row p-4 sm:p-0">
+                              <td className="w-full sm:w-auto px-0 sm:px-6 pb-3 sm:pb-4 pt-0 sm:pt-4 text-[15px] font-bold text-slate-700 text-right whitespace-nowrap block sm:table-cell border-b border-slate-100 sm:border-0 mb-3 sm:mb-0" dir="rtl" style={{ fontFamily: '"Noto Naskh Arabic", serif' }}>
                                 {mark.subject_name_arabic}
                               </td>
                               {['mot', 'all'].includes(examType) && (
-                                <td className="px-3 sm:px-6 py-3">
+                                <td className="flex-1 sm:flex-none px-1 sm:px-6 py-1 sm:py-3 flex flex-col items-center sm:table-cell">
+                                  <span className="sm:hidden text-[10px] font-bold text-slate-400 mb-1">MOT</span>
                                   {renderScoreInput(mark.mot_score, (val) => handleTheologyScoreChange(mark.subject_id, 'mot', val), 'MOT', false, idx, 'theology')}
                                 </td>
                               )}
                               {['eot', 'all'].includes(examType) && (
-                                <td className="px-3 sm:px-6 py-3">
+                                <td className="flex-1 sm:flex-none px-1 sm:px-6 py-1 sm:py-3 flex flex-col items-center sm:table-cell">
+                                  <span className="sm:hidden text-[10px] font-bold text-slate-400 mb-1">EOT</span>
                                   {renderScoreInput(mark.eot_score, (val) => handleTheologyScoreChange(mark.subject_id, 'eot', val), 'EOT', false, idx, 'theology')}
                                 </td>
                               )}

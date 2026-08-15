@@ -133,34 +133,23 @@ export function SharedMarksEntry({
         </div>
 
         <form onSubmit={onSave} className="space-y-8">
-          {/* Step 1 & 2 */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-1 rounded-3xl bg-slate-50/50 border border-slate-100">
-            <div className="bg-white p-5 rounded-[20px] shadow-sm border border-slate-100/60">
-              <label htmlFor="term" className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-3">
-                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 text-xs">1</span>
-                Select Term
-              </label>
+          {/* Unified Control Bar */}
+          <div className="flex flex-wrap items-center gap-4 p-3 bg-white border border-slate-200 rounded-2xl shadow-sm mb-6">
+            <div className="flex-1 min-w-[200px]">
               <select
-                id="term"
+                aria-label="Term"
                 value={selectedTermId}
                 onChange={(e) => onSelectTerm(e.target.value)}
-                className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/10 transition-all bg-slate-50/50 hover:bg-white text-slate-700 appearance-none cursor-pointer"
-                style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundPosition: 'right 1rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.2em' }}
+                className="w-full px-3 py-2 text-sm border-none bg-slate-50 hover:bg-slate-100 rounded-lg text-slate-700 font-medium cursor-pointer focus:ring-2 focus:ring-emerald-500/20 outline-none transition-colors"
               >
                 <option value="">Choose a term...</option>
                 {terms.map((term) => (
-                  <option key={term.id} value={term.id}>
-                    {`${term.label} ${term.academic_year}`}
-                  </option>
+                  <option key={term.id} value={term.id}>{`${term.label} ${term.academic_year}`}</option>
                 ))}
               </select>
             </div>
-
-            <div className="bg-white p-5 rounded-[20px] shadow-sm border border-slate-100/60">
-              <label htmlFor="student" className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-3">
-                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 text-xs">2</span>
-                Select Student
-              </label>
+            
+            <div className="flex-1 min-w-[250px]">
               <StudentCombobox 
                 enrollments={enrollments} 
                 selectedId={selectedEnrollmentId} 
@@ -170,6 +159,42 @@ export function SharedMarksEntry({
                 }} 
               />
             </div>
+
+            <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-lg" aria-label="Exam Type">
+              {(['bot', 'mot', 'eot', 'all'] as ExamType[]).map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => { setExamType(type); setSuccess(false) }}
+                  className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wide rounded-md transition-all ${
+                    examType === type 
+                      ? 'bg-white text-emerald-700 shadow-sm' 
+                      : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
+                  }`}
+                >
+                  {type}
+                </button>
+              ))}
+            </div>
+
+            {allowedDepartment === 'both' && (
+              <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-lg ml-auto" aria-label="Department View">
+                {(['both', 'secular', 'theology'] as const).map((view) => (
+                  <button
+                    key={view}
+                    type="button"
+                    onClick={() => setActiveView(view)}
+                    className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wide rounded-md transition-all ${
+                      activeView === view 
+                        ? 'bg-white text-blue-700 shadow-sm' 
+                        : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
+                    }`}
+                  >
+                    {view}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {error && (
@@ -239,48 +264,6 @@ export function SharedMarksEntry({
                   )}
                 </div>
               </div>
-
-              {/* Step 3 */}
-              <div className="bg-white p-5 rounded-[20px] shadow-sm border border-slate-100/60 flex items-center justify-between gap-4 flex-wrap">
-                <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 whitespace-nowrap">
-                  <span className="flex items-center justify-center w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 text-xs">3</span>
-                  Select Exam Type
-                </label>
-                <div className="flex gap-2 p-1 bg-slate-100/80 rounded-xl flex-1 max-w-md overflow-x-auto">
-                  {(['bot', 'mot', 'eot', 'all'] as ExamType[]).map((type) => (
-                    <button
-                      key={type}
-                      type="button"
-                      onClick={() => { setExamType(type); setSuccess(false) }}
-                      className={`flex-1 min-w-[60px] px-3 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${examType === type ? 'bg-white text-emerald-600 shadow-sm border border-emerald-100' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
-                    >
-                      {type}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Dynamic View Toggles (Admins only) */}
-              {allowedDepartment === 'both' && (
-                <div className="bg-white p-5 rounded-[20px] shadow-sm border border-slate-100/60 flex items-center justify-between gap-4 flex-wrap">
-                  <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 whitespace-nowrap">
-                    <span className="flex items-center justify-center w-5 h-5 rounded-full bg-blue-100 text-blue-700 text-xs">👀</span>
-                    View Mode
-                  </label>
-                  <div className="flex gap-2 p-1 bg-slate-100/80 rounded-xl flex-1 max-w-md overflow-x-auto">
-                    {(['both', 'secular', 'theology'] as const).map((view) => (
-                      <button
-                        key={view}
-                        type="button"
-                        onClick={() => setActiveView(view)}
-                        className={`flex-1 min-w-[60px] px-3 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${activeView === view ? 'bg-white text-blue-600 shadow-sm border border-blue-100' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
-                      >
-                        {view}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
 
               {/* Secular Marks Table */}
               {(activeView === 'both' || activeView === 'secular') && (

@@ -69,6 +69,7 @@ export default function TheologyHubClient({
   const [activeClassId, setActiveClassId] = useState<string>(searchParams.get('class_id') || '')
   const [activeLevel, setActiveLevel] = useState<string>(searchParams.get('level') || 'raudha')
   const [activeTab, setActiveTab] = useState<'assessment' | 'analysis' | 'top_students'>((searchParams.get('tab') as any) || 'assessment')
+  const [examPhase, setExamPhase] = useState<'mot' | 'eot'>((searchParams.get('exam_phase') as any) || 'eot')
   const [filtersOpen, setFiltersOpen] = useState(true)
   
   const [isLoading, setIsLoading] = useState(false)
@@ -107,9 +108,10 @@ export default function TheologyHubClient({
     if (activeClassId) params.set('class_id', activeClassId)
     if (activeLevel) params.set('level', activeLevel)
     if (activeTab) params.set('tab', activeTab)
+    if (examPhase) params.set('exam_phase', examPhase)
     
     router.replace(`${pathname}?${params.toString()}`, { scroll: false })
-  }, [activeTermId, activeClassId, activeLevel, activeTab, pathname, router, searchParams])
+  }, [activeTermId, activeClassId, activeLevel, activeTab, examPhase, pathname, router, searchParams])
 
   // Process data for the Assessment Form
   const assessmentData = useMemo(() => {
@@ -138,7 +140,7 @@ export default function TheologyHubClient({
       
       orderedSubjects.forEach(sub => {
         const mark = eMarks.find(m => m.subject_id === sub.id)
-        const score = mark?.mot_score != null ? mark.mot_score : (mark?.eot_score != null ? mark.eot_score : null)
+        const score = mark?.[`${examPhase}_mark`] ?? null
         subjectScores[sub.id] = score
         if (score != null) total += score
       })
@@ -163,7 +165,7 @@ export default function TheologyHubClient({
         position: p.total > 0 ? uniqueTotals.filter(x => x > p.total).length + 1 : '-'
       }))
     }
-  }, [data, activeClassId, theologyClasses])
+  }, [data, activeClassId, theologyClasses, examPhase])
 
   // Process data for the Analysis Form
   const analysisData = useMemo(() => {
@@ -194,7 +196,7 @@ export default function TheologyHubClient({
         let hasMarks = false
         orderedSubjects.forEach(sub => {
           const mark = eMarks.find(m => m.subject_id === sub.id)
-          const score = mark?.mot_score != null ? mark.mot_score : mark?.eot_score
+          const score = mark?.[`${examPhase}_mark`] ?? null
           if (score != null) {
             total += score
             hasMarks = true
@@ -227,7 +229,7 @@ export default function TheologyHubClient({
         passRate
       }
     })
-  }, [data, activeLevel, theologyClasses])
+  }, [data, activeLevel, theologyClasses, examPhase])
 
   // Process data for Top Students Form
   const topStudentsData = useMemo(() => {
@@ -250,7 +252,7 @@ export default function TheologyHubClient({
         let total = 0
         orderedSubjects.forEach(sub => {
           const mark = eMarks.find(m => m.subject_id === sub.id)
-          const score = mark?.mot_score != null ? mark.mot_score : mark?.eot_score
+          const score = mark?.[`${examPhase}_mark`] ?? null
           if (score != null) total += score
         })
         return {
@@ -271,7 +273,7 @@ export default function TheologyHubClient({
         students
       }
     }).filter(group => group.students.length > 0)
-  }, [data, activeLevel, theologyClasses])
+  }, [data, activeLevel, theologyClasses, examPhase])
 
 
 
@@ -401,6 +403,24 @@ export default function TheologyHubClient({
             </div>
           </div>
 
+          <div className="flex-1 min-w-[120px]">
+            <label className="block text-xs font-semibold text-slate-600 uppercase mb-2">Exam Phase</label>
+            <div className="flex overflow-x-auto no-scrollbar p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+              <button
+                onClick={() => setExamPhase('mot')}
+                className={`flex-1 py-1.5 px-3 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 ${examPhase === 'mot' ? 'bg-white shadow-sm text-blue-700' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                MOT
+              </button>
+              <button
+                onClick={() => setExamPhase('eot')}
+                className={`flex-1 py-1.5 px-3 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 ${examPhase === 'eot' ? 'bg-white shadow-sm text-blue-700' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                EOT
+              </button>
+            </div>
+          </div>
+
           {activeTab === 'assessment' && (
             <div className="flex-1">
               <label className="block text-xs font-semibold text-slate-600 uppercase mb-2">Class</label>
@@ -473,6 +493,12 @@ export default function TheologyHubClient({
                     <span>الصف: </span>
                     <span className="text-emerald-800 print:text-black font-bold px-4">
                       {theologyClasses.find(c => c.id === activeClassId)?.class_name_arabic}
+                    </span>
+                  </div>
+                  <div>
+                    <span>الاختبار: </span>
+                    <span className="text-emerald-800 print:text-black font-bold px-4">
+                      {examPhase === 'mot' ? 'منتصف الفترة (MOT)' : 'نهاية الفترة (EOT)'}
                     </span>
                   </div>
                   <div>

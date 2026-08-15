@@ -102,9 +102,9 @@ export function AdminMarksEntryClient({ terms }: AdminMarksEntryClientProps) {
               subject_id: s.id,
               subject_name: s.subject_name,
               is_core: true,
-              bot_score: mark?.bot_score ?? null,
-              mot_score: mark?.mot_score ?? null,
-              eot_score: mark?.eot_score ?? null
+              bot_score: mark?.bot_mark ?? null,
+              mot_score: mark?.mot_mark ?? null,
+              eot_score: mark?.eot_mark ?? null
             }
           })
 
@@ -115,8 +115,8 @@ export function AdminMarksEntryClient({ terms }: AdminMarksEntryClientProps) {
             return {
               subject_id: s.id,
               subject_name_arabic: s.subject_name,
-              mot_score: mark?.mot_score ?? null,
-              eot_score: mark?.eot_score ?? null
+              mot_score: mark?.mot_mark ?? null,
+              eot_score: mark?.eot_mark ?? null
             }
           })
 
@@ -154,18 +154,18 @@ export function AdminMarksEntryClient({ terms }: AdminMarksEntryClientProps) {
             const existing = existingC?.find(e => e.subject_id === m.subject_id)
             if (existing) {
               await supabase.from('circular_marks').update({
-                bot_score: m.bot_score,
-                mot_score: m.mot_score,
-                eot_score: m.eot_score,
+                bot_mark: m.bot_score,
+                mot_mark: m.mot_score,
+                eot_mark: m.eot_score,
                 updated_by: 'admin_user'
               }).eq('id', existing.id)
             } else {
               await supabase.from('circular_marks').insert({
                 enrollment_id: selectedEnrollmentId,
                 subject_id: m.subject_id,
-                bot_score: m.bot_score,
-                mot_score: m.mot_score,
-                eot_score: m.eot_score,
+                bot_mark: m.bot_score,
+                mot_mark: m.mot_score,
+                eot_mark: m.eot_score,
                 updated_by: 'admin_user'
               })
             }
@@ -180,16 +180,16 @@ export function AdminMarksEntryClient({ terms }: AdminMarksEntryClientProps) {
             const existing = existingT?.find(e => e.subject_id === m.subject_id)
             if (existing) {
               await supabase.from('theology_marks').update({
-                mot_score: m.mot_score,
-                eot_score: m.eot_score,
+                mot_mark: m.mot_score,
+                eot_mark: m.eot_score,
                 updated_by: 'admin_user'
               }).eq('id', existing.id)
             } else {
               await supabase.from('theology_marks').insert({
                 enrollment_id: selectedEnrollmentId,
                 subject_id: m.subject_id,
-                mot_score: m.mot_score,
-                eot_score: m.eot_score,
+                mot_mark: m.mot_score,
+                eot_mark: m.eot_score,
                 updated_by: 'admin_user'
               })
             }

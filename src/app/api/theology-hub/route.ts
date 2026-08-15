@@ -58,8 +58,9 @@ export async function GET(request: NextRequest) {
         id,
         enrollment_id,
         subject_id,
-        mot_score,
-        eot_score
+        bot_mark,
+        mot_mark,
+        eot_mark
       `)
       .eq('term_id', termId)
       .in('enrollment_id', enrollmentIds)

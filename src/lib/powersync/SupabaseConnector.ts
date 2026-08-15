@@ -1,5 +1,5 @@
 import { PowerSyncBackendConnector, AbstractPowerSyncDatabase } from '@powersync/web';
-import { createClient } from '../supabase-browser';
+import { createClient } from '../../utils/supabase/client';
 
 export class SupabaseConnector implements PowerSyncBackendConnector {
   client = createClient();

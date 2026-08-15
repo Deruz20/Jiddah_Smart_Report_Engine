@@ -47,56 +47,28 @@ export default function CircularClient({
 
   const refetch = async () => {
     try {
-      let data;
-      try {
-        data = await powerSync.getAll(`
-          SELECT 
-            cm.id,
-            cm.enrollment_id,
-            cm.subject_id,
-            NULL as term_id,
-            cm.bot_mark as bot_score,
-            cm.mot_mark as mot_score,
-            cm.eot_mark as eot_score,
-            e.student_id,
-            e.circular_class_id,
-            s.name as student_name,
-            cc.class_name,
-            cc.section as class_section,
-            sub.subject_name,
-            sub.section as subject_section
-          FROM circular_marks cm
-          LEFT JOIN enrollments e ON cm.enrollment_id = e.id
-          LEFT JOIN students s ON e.student_id = s.id
-          LEFT JOIN circular_classes cc ON e.circular_class_id = cc.id
-          LEFT JOIN subjects sub ON cm.subject_id = sub.id
-        `);
-      } catch (innerErr: any) {
-        if (innerErr.message && (innerErr.message.includes('no such column: cc.section') || innerErr.message.includes('no such column: sub.section'))) {
-          data = await powerSync.getAll(`
-            SELECT 
-              cm.id,
-              cm.enrollment_id,
-              cm.subject_id,
-              NULL as term_id,
-              cm.bot_mark as bot_score,
-              cm.mot_mark as mot_score,
-              cm.eot_mark as eot_score,
-              e.student_id,
-              e.circular_class_id,
-              s.name as student_name,
-              cc.class_name,
-              sub.subject_name
-            FROM circular_marks cm
-            LEFT JOIN enrollments e ON cm.enrollment_id = e.id
-            LEFT JOIN students s ON e.student_id = s.id
-            LEFT JOIN circular_classes cc ON e.circular_class_id = cc.id
-            LEFT JOIN subjects sub ON cm.subject_id = sub.id
-          `);
-        } else {
-          throw innerErr;
-        }
-      }
+      const data = await powerSync.getAll(`
+        SELECT 
+          cm.id,
+          cm.enrollment_id,
+          cm.subject_id,
+          NULL as term_id,
+          cm.bot_mark as bot_score,
+          cm.mot_mark as mot_score,
+          cm.eot_mark as eot_score,
+          e.student_id,
+          e.circular_class_id,
+          s.name as student_name,
+          cc.class_name,
+          cc.section as class_section,
+          sub.subject_name,
+          sub.section as subject_section
+        FROM circular_marks cm
+        LEFT JOIN enrollments e ON cm.enrollment_id = e.id
+        LEFT JOIN students s ON e.student_id = s.id
+        LEFT JOIN circular_classes cc ON e.circular_class_id = cc.id
+        LEFT JOIN subjects sub ON cm.subject_id = sub.id
+      `);
       
       const formattedMarks = data.map(row => ({
         id: row.id,
@@ -115,8 +87,12 @@ export default function CircularClient({
         circular_subjects: { subject_name: row.subject_name, section: row.subject_section }
       }));
       setMarks(formattedMarks);
-    } catch (e) {
-      console.error(e);
+    } catch (e: any) {
+      if (e.message && e.message.includes('no such column')) {
+        alert('System update required. Please log out and clear your browser cache/site data to sync the latest version.');
+      } else {
+        console.error(e);
+      }
     }
   };
 

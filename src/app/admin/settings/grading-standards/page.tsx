@@ -1,12 +1,12 @@
 import { createClient } from "@/utils/supabase/server";
 import { cookies } from "next/headers";
-import { RemarksClient } from "@/components/layout/remarks-client";
+import { GradingStandardsClient } from "@/components/layout/grading-standards-client";
 
 export const metadata = {
-  title: "Smart Grading Remarks - Jiddah Engine",
+  title: "Smart Grading Standards - Jiddah Engine",
 };
 
-export default async function RemarksPage() {
+export default async function GradingStandardsPage() {
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 
@@ -22,11 +22,11 @@ export default async function RemarksPage() {
   return (
     <div className="p-6 md:p-12">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-slate-900">Grading Remarks</h1>
-        <p className="text-slate-500 mt-2">Configure the standard remarks that will auto-generate based on student scores on report cards.</p>
+        <h1 className="text-3xl font-bold text-slate-900">Grading Standards</h1>
+        <p className="text-slate-500 mt-2">Configure the score ranges and remarks that will auto-generate based on student performance on report cards.</p>
       </div>
 
-      <RemarksClient />
+      <GradingStandardsClient role={authRes.role ?? 'guest'} userId={user.id} />
     </div>
   );
 }

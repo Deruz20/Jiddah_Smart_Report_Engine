@@ -170,6 +170,8 @@ export async function POST(request: NextRequest) {
         gender: body.gender || null,
         admission_number: body.admission_number.trim(),
         is_muslim: isMuslim,
+        circular_index_number: body.circular_index_number || null,
+        theology_index_number: body.theology_index_number || null,
       }])
       .select('id, name, created_at')
 

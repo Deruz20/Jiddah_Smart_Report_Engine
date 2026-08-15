@@ -227,26 +227,97 @@ export function AppSidebar() {
     <Sidebar
       collapsible="icon"
       className="border-r-0 print:hidden z-40"
-      style={{ "--sidebar-width": "15rem" } as React.CSSProperties}
+      style={{ "--sidebar-width": "15rem", "--sidebar-background": "#0a0f1c", "--sidebar-border": "rgba(30,41,59,0.6)" } as React.CSSProperties}
     >
-      <div className="flex flex-col h-full bg-[#0a0f1c] border-r border-slate-800/60 shadow-2xl">
-        {/* Header */}
-        <SidebarHeader className="px-4 pt-5 pb-4">
-          <div className={cn("flex items-center", collapsed ? "justify-center" : "justify-between")}>
-            <div 
-              className={cn("flex items-center gap-3 min-w-0 cursor-pointer group/logo", collapsed && "flex-col")}
-              onClick={toggleSidebar}
-              title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+      {/* Header */}
+      <SidebarHeader className="px-4 pt-5 pb-4 bg-[#0a0f1c] border-r border-slate-800/60 shadow-xl z-20">
+        <div className={cn("flex items-center", collapsed ? "justify-center" : "justify-between")}>
+          <div 
+            className={cn("flex items-center gap-3 min-w-0 cursor-pointer group/logo", collapsed && "flex-col")}
+            onClick={toggleSidebar}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            <div className="relative shrink-0 transition-transform duration-300 group-hover/logo:scale-105">
+              <div
+                className="flex items-center justify-center size-[34px] rounded-xl overflow-hidden bg-white ring-1 ring-white/10"
+                style={{
+                  boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
+                }}
+              >
+                <img src="/images/jiddah_islamic_school.jpg" alt="Logo" width="34" height="34" className="object-cover w-full h-full" />
+              </div>
+            </div>
+            <AnimatePresence>
+              {!collapsed && (
+                <motion.div
+                  initial={{ opacity: 0, width: 0 }}
+                  animate={{ opacity: 1, width: "auto" }}
+                  exit={{ opacity: 0, width: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden whitespace-nowrap"
+                >
+                  <p className="text-white font-bold tracking-wide" style={{ fontSize: "0.85rem", lineHeight: 1.2 }}>
+                    Jiddah Smart
+                  </p>
+                  <p className="text-slate-400 font-medium" style={{ fontSize: "0.68rem", lineHeight: 1.2 }}>
+                    Report Engine
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+      </SidebarHeader>
+
+      {/* Nav items */}
+      <SidebarContent className="px-3 pt-2 overflow-x-hidden bg-[#0a0f1c] border-r border-slate-800/60 shadow-xl z-10 relative">
+        <SidebarGroup className="p-0">
+          <SidebarGroupContent>
+            <SidebarMenu className="gap-1">
+              {navItems.filter(item => item.roles.includes(role)).map((item) => {
+                const active = item.href === '/admin' 
+                  ? pathname === '/admin' 
+                  : (pathname === item.href || pathname.startsWith(`${item.href}/`));
+                return (
+                  <NavItem
+                    key={item.id}
+                    id={item.id}
+                    icon={item.icon}
+                    label={item.label}
+                    href={item.href}
+                    active={active}
+                    collapsed={collapsed}
+                    role={role}
+                  />
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+
+      {/* Footer - User profile */}
+      <SidebarFooter className="p-3 pb-4 bg-[#0a0f1c] border-r border-slate-800/60 shadow-xl z-20">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <div
+              className={cn(
+                "flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-colors duration-200 hover:bg-white/5",
+                collapsed && "justify-center",
+              )}
             >
-              <div className="relative shrink-0 transition-transform duration-300 group-hover/logo:scale-105">
+              <div className="relative shrink-0">
                 <div
-                  className="flex items-center justify-center size-[34px] rounded-xl overflow-hidden bg-white ring-1 ring-white/10"
+                  className="flex items-center justify-center size-9 rounded-xl text-emerald-950 font-bold tracking-wider"
                   style={{
-                    boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
+                    background: "linear-gradient(135deg, #34d399 0%, #059669 100%)",
+                    fontSize: "0.75rem",
+                    boxShadow: "0 2px 10px rgba(16,185,129,0.3)",
                   }}
                 >
-                  <img src="/images/jiddah_islamic_school.jpg" alt="Logo" width="34" height="34" className="object-cover w-full h-full" />
+                  {userName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || userName.slice(0,2).toUpperCase()}
                 </div>
+                <div className="absolute -bottom-0.5 -right-0.5 size-3 rounded-full bg-emerald-400 border-[2.5px] border-[#0a0f1c]" />
               </div>
               <AnimatePresence>
                 {!collapsed && (
@@ -254,128 +325,55 @@ export function AppSidebar() {
                     initial={{ opacity: 0, width: 0 }}
                     animate={{ opacity: 1, width: "auto" }}
                     exit={{ opacity: 0, width: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="overflow-hidden whitespace-nowrap"
+                    transition={{ duration: 0.15 }}
+                    className="flex-1 min-w-0 text-left overflow-hidden whitespace-nowrap"
                   >
-                    <p className="text-white font-bold tracking-wide" style={{ fontSize: "0.85rem", lineHeight: 1.2 }}>
-                      Jiddah Smart
+                    <p className="text-slate-100 font-medium truncate" style={{ fontSize: "0.82rem", lineHeight: 1.3 }}>
+                      {userName}
                     </p>
-                    <p className="text-slate-400 font-medium" style={{ fontSize: "0.68rem", lineHeight: 1.2 }}>
-                      Report Engine
+                    <p className="text-emerald-500/80 font-medium truncate" style={{ fontSize: "0.7rem", lineHeight: 1.3 }}>
+                      {role}
                     </p>
                   </motion.div>
                 )}
               </AnimatePresence>
             </div>
-          </div>
-        </SidebarHeader>
-
-        {/* Nav items */}
-        <SidebarContent className="px-3 pt-2 overflow-x-hidden">
-          <SidebarGroup className="p-0">
-            <SidebarGroupContent>
-              <SidebarMenu className="gap-1">
-                {navItems.filter(item => item.roles.includes(role)).map((item) => {
-                  const active = item.href === '/admin' 
-                    ? pathname === '/admin' 
-                    : (pathname === item.href || pathname.startsWith(`${item.href}/`));
-                  return (
-                    <NavItem
-                      key={item.id}
-                      id={item.id}
-                      icon={item.icon}
-                      label={item.label}
-                      href={item.href}
-                      active={active}
-                      collapsed={collapsed}
-                      role={role}
-                    />
-                  );
-                })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        </SidebarContent>
-
-        {/* Footer - User profile */}
-        <SidebarFooter className="p-3 pb-4">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <div
-                className={cn(
-                  "flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-colors duration-200 hover:bg-white/5",
-                  collapsed && "justify-center",
-                )}
-              >
-                <div className="relative shrink-0">
-                  <div
-                    className="flex items-center justify-center size-9 rounded-xl text-emerald-950 font-bold tracking-wider"
-                    style={{
-                      background: "linear-gradient(135deg, #34d399 0%, #059669 100%)",
-                      fontSize: "0.75rem",
-                      boxShadow: "0 2px 10px rgba(16,185,129,0.3)",
-                    }}
-                  >
-                    {userName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || userName.slice(0,2).toUpperCase()}
-                  </div>
-                  <div className="absolute -bottom-0.5 -right-0.5 size-3 rounded-full bg-emerald-400 border-[2.5px] border-[#0a0f1c]" />
-                </div>
-                <AnimatePresence>
-                  {!collapsed && (
-                    <motion.div
-                      initial={{ opacity: 0, width: 0 }}
-                      animate={{ opacity: 1, width: "auto" }}
-                      exit={{ opacity: 0, width: 0 }}
-                      transition={{ duration: 0.15 }}
-                      className="flex-1 min-w-0 text-left overflow-hidden whitespace-nowrap"
-                    >
-                      <p className="text-slate-100 font-medium truncate" style={{ fontSize: "0.82rem", lineHeight: 1.3 }}>
-                        {userName}
-                      </p>
-                      <p className="text-emerald-500/80 font-medium truncate" style={{ fontSize: "0.7rem", lineHeight: 1.3 }}>
-                        {role}
-                      </p>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            side="top"
+            align="center"
+            sideOffset={12}
+            className="w-56 bg-slate-900 border-slate-800 text-slate-200 z-[100] shadow-2xl"
+          >
+            <DropdownMenuLabel className="font-normal p-3">
+              <div className="flex flex-col space-y-1">
+                <p className="text-sm font-medium text-white">{userName}</p>
+                <p className="text-xs text-slate-400">{role}</p>
               </div>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              side="top"
-              align="center"
-              sideOffset={12}
-              className="w-56 bg-slate-900 border-slate-800 text-slate-200 z-[100] shadow-2xl"
-            >
-              <DropdownMenuLabel className="font-normal p-3">
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium text-white">{userName}</p>
-                  <p className="text-xs text-slate-400">{role}</p>
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator className="bg-slate-800" />
-              <DropdownMenuItem onClick={async () => {
-                const supabase = createClient();
-                await supabase.auth.updateUser({ data: { tour_completed: false } });
-                window.location.reload();
-              }} className="cursor-pointer focus:bg-slate-800 focus:text-white py-2">
-                <BookOpen className="mr-2 h-4 w-4 text-slate-400" />
-                <span>Replay Product Tour</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/admin/settings" className="cursor-pointer focus:bg-slate-800 focus:text-white py-2">
-                  <Settings className="mr-2 h-4 w-4 text-slate-400" />
-                  <span>Settings</span>
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-slate-800" />
-              <DropdownMenuItem onClick={handleLogout} className="text-red-400 focus:text-red-300 focus:bg-red-950/50 cursor-pointer py-2">
-                <LogOut className="mr-2 h-4 w-4" />
-                <span>Log out</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </SidebarFooter>
-      </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator className="bg-slate-800" />
+            <DropdownMenuItem onClick={async () => {
+              const supabase = createClient();
+              await supabase.auth.updateUser({ data: { tour_completed: false } });
+              window.location.reload();
+            }} className="cursor-pointer focus:bg-slate-800 focus:text-white py-2">
+              <BookOpen className="mr-2 h-4 w-4 text-slate-400" />
+              <span>Replay Product Tour</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/admin/settings" className="cursor-pointer focus:bg-slate-800 focus:text-white py-2">
+                <Settings className="mr-2 h-4 w-4 text-slate-400" />
+                <span>Settings</span>
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator className="bg-slate-800" />
+            <DropdownMenuItem onClick={handleLogout} className="text-red-400 focus:text-red-300 focus:bg-red-950/50 cursor-pointer py-2">
+              <LogOut className="mr-2 h-4 w-4" />
+              <span>Log out</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </SidebarFooter>
     </Sidebar>
   );
 }

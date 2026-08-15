@@ -14,6 +14,7 @@ type TermData = {
 
 export type EnrollmentData = {
   id: string
+  student_id?: string | null
   name: string
   admission_number: string
   circular_class: string
@@ -71,7 +72,8 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
       try {
         const data = await powerSync.getAll(`
           SELECT 
-            e.student_id as enrollment_id,
+            e.id as enrollment_id,
+            e.student_id,
             e.theology_status,
             s.name, s.admission_number,
             cc.class_name as circular_class, cc.section,
@@ -85,6 +87,7 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
         
         const mappedEnrollments: EnrollmentData[] = data.map((e: any) => ({
           id: e.enrollment_id,
+          student_id: e.student_id ?? null,
           name: e.name || 'Unknown Student',
           admission_number: e.admission_number || '',
           circular_class: e.circular_class || '',

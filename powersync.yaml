@@ -88,3 +88,30 @@ sync_config:
             WHERE theology_class_id IN (SELECT class_id FROM my_assigned_theology_classes)
                OR circular_class_id IN (SELECT class_id FROM my_homeroom_classes)
           )
+
+      activity_log_assigned:
+        auto_subscribe: true
+        query: SELECT * FROM activity_log WHERE teacher_id = auth.user_id()
+
+      grading_standards_ref:
+        auto_subscribe: true
+        query: SELECT * FROM grading_standards
+
+      report_templates_ref:
+        auto_subscribe: true
+        query: SELECT * FROM report_templates
+
+      exam_types_ref:
+        auto_subscribe: true
+        query: SELECT * FROM exam_types
+
+      special_exam_marks_assigned:
+        auto_subscribe: true
+        query: |
+          SELECT sm.* FROM special_exam_marks sm
+          WHERE sm.enrollment_id IN (
+            SELECT id FROM enrollments
+            WHERE circular_class_id IN (SELECT class_id FROM my_assigned_circular_classes)
+               OR circular_class_id IN (SELECT class_id FROM my_homeroom_classes)
+               OR theology_class_id IN (SELECT class_id FROM my_assigned_theology_classes)
+          )

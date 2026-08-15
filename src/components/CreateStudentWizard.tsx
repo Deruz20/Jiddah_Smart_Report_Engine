@@ -36,6 +36,8 @@ interface FormData {
   theology_class_id: string;
   academic_year: string;
   religion: 'Muslim' | 'Non-Muslim' | '';
+  circular_index_number: string;
+  theology_index_number: string;
 }
 
 const initialForm: FormData = {
@@ -49,6 +51,8 @@ const initialForm: FormData = {
   theology_class_id: '',
   academic_year: new Date().getFullYear().toString(),
   religion: 'Muslim',
+  circular_index_number: '',
+  theology_index_number: '',
 };
 
 // ─── Static Data ────────────────────────────────────────────────────────────
@@ -313,6 +317,19 @@ function Step3({ form, setField, classes }: { form: FormData; setField: (k: keyo
           </div>
         </div>
       )}
+
+      {selectedClass?.class_name.includes('P.7') && (
+        <div>
+          <label className={labelClass}>Secular Index Number</label>
+          <input
+            type="text"
+            className={inputClass}
+            placeholder="e.g. 123456/123"
+            value={form.circular_index_number}
+            onChange={(e) => setField('circular_index_number', e.target.value)}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -336,7 +353,7 @@ function Step4({ form, setField, theologyClasses }: { form: FormData; setField: 
   return (
     <div className="space-y-5">
       {/* 4A — Theology Section (Muslim Only) */}
-      {form.religion === 'Muslim' && (
+      {form.religion === 'Muslim' && theologyClasses.length > 0 && (
         <div className="space-y-2">
           <p className={labelClass}>Step 4A: Select Theology Section</p>
           <div className="grid grid-cols-3 gap-2">
@@ -362,7 +379,7 @@ function Step4({ form, setField, theologyClasses }: { form: FormData; setField: 
       )}
 
       {/* 4B — Theology Class (Muslim Only) */}
-      {form.religion === 'Muslim' && (
+      {form.religion === 'Muslim' && theologyClasses.length > 0 && (
         <div>
           <label className={cn(labelClass, 'flex items-center justify-between')}>
             <span>Step 4B: Select Theology Class</span>
@@ -387,6 +404,25 @@ function Step4({ form, setField, theologyClasses }: { form: FormData; setField: 
           <p className={noteClass}>
             ℹ Theology class level is independent of circular class level
           </p>
+        </div>
+      )}
+
+      {form.religion === 'Muslim' && theologyClasses.length === 0 && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          No theology classes are available for this term yet. This student will be marked as not applicable unless a theology class is added later.
+        </div>
+      )}
+
+      {form.religion === 'Muslim' && theologyClasses.length > 0 && theologyOptions.find(o => o.id === form.theology_class_id)?.class_name_english.includes('7') && (
+        <div>
+          <label className={labelClass}>Theology Index Number</label>
+          <input
+            type="text"
+            className={inputClass}
+            placeholder="e.g. TH-123456"
+            value={form.theology_index_number}
+            onChange={(e) => setField('theology_index_number', e.target.value)}
+          />
         </div>
       )}
 
@@ -523,6 +559,8 @@ export function CreateStudentWizard() {
           academic_year: parseInt(form.academic_year, 10),
           religion: form.religion,
           theology_status: theology_status,
+          circular_index_number: form.circular_index_number || null,
+          theology_index_number: form.theology_index_number || null,
         }),
       });
 

@@ -5,6 +5,7 @@ import { PowerSyncDatabase } from "@powersync/web";
 import { PowerSyncContext } from "@powersync/react";
 import { AppSchema } from "../../lib/powersync/AppSchema";
 import { SupabaseConnector } from "../../lib/powersync/SupabaseConnector";
+import { createClient } from "@/utils/supabase/client";
 
 export const powerSync = new PowerSyncDatabase({
   schema: AppSchema,
@@ -21,25 +22,52 @@ export function PowerSyncProvider({ children }: { children: ReactNode }) {
   const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
-    // Initialize PowerSync
-    powerSync.init().then(() => {
-      // Setup persistent storage if possible
-      if (typeof navigator !== "undefined" && navigator.storage && navigator.storage.persist) {
-        navigator.storage.persist().catch(console.error);
-      }
+    let isMounted = true;
+    const supabase = createClient();
 
-      // Connect to the backend
-      powerSync.connect(connector);
-      setIsInitialized(true);
-    }).catch(console.error);
+    const syncAuthState = async () => {
+      if (!isMounted) return;
+
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (session) {
+        powerSync.connect(connector);
+      } else {
+        powerSync.disconnect();
+      }
+    };
+
+    const subscription = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!isMounted) return;
+
+      if (session) {
+        powerSync.connect(connector);
+      } else {
+        powerSync.disconnect();
+      }
+    });
+
+    powerSync.init()
+      .then(() => {
+        if (typeof navigator !== "undefined" && navigator.storage && navigator.storage.persist) {
+          navigator.storage.persist().catch(console.error);
+        }
+
+        return syncAuthState();
+      })
+      .then(() => {
+        if (isMounted) setIsInitialized(true);
+      })
+      .catch(console.error);
 
     return () => {
+      isMounted = false;
+      subscription.data.subscription.unsubscribe();
       powerSync.disconnect();
     };
   }, []);
 
   if (!isInitialized) {
-    // Basic fallback while SQLite sets up locally (usually instant)
     return <div className="h-screen w-full bg-[#0f172a]" />;
   }
 

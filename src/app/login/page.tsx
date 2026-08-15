@@ -173,11 +173,14 @@ function LoginContent() {
     setLoading(true);
     const supabase = createClient();
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(values.email);
+      const redirectUrl = `${window.location.origin}/reset-password`;
+      const { error } = await supabase.auth.resetPasswordForEmail(values.email, {
+        redirectTo: redirectUrl,
+      });
       if (error) throw error;
-      alert("Password reset email sent (check your inbox or spam)");
+      alert("Password reset email sent (check your inbox or spam). Open the link to choose a new password.");
       setCurrentEmail(values.email);
-      setScreen("login"); // OTP UI not fully wired to supabase magic links here to keep it simple, so redirect to login
+      setScreen("login");
     } catch (error: any) {
       alert(error.message || "Error sending reset email");
     } finally {

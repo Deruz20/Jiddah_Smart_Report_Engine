@@ -1,5 +1,4 @@
-import { createClient } from '@/utils/supabase/server'
-import { cookies } from 'next/headers'
+import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 
@@ -12,8 +11,14 @@ export async function GET(request: NextRequest) {
   if (preflight) return preflight
 
   try {
-    const cookieStore = await cookies()
-    const supabase = createClient(cookieStore)
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+    if (!supabaseUrl || !supabaseKey) {
+      return withCors(request, NextResponse.json({ error: 'Supabase configuration missing' }, { status: 500 }))
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseKey)
 
     const { data, error } = await supabase
       .from('theology_classes')

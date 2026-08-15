@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { SidebarProvider } from "@/components/figma-ui/ui/sidebar";
+import { SidebarInset, SidebarProvider } from "@/components/figma-ui/ui/sidebar";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppTopbar } from "@/components/layout/app-topbar";
 import { AppFooter } from "@/components/layout/app-footer";
@@ -45,23 +45,20 @@ export default function AdminLayout({
 
   return (
     <SidebarProvider defaultOpen={true}>
-      <div className="flex w-full h-screen print:h-auto print:min-h-screen overflow-hidden print:overflow-visible bg-slate-50 dark:bg-[#0f172a] print:bg-white">
-        <AppSidebar />
-        <div className="flex-1 flex flex-col min-w-0 relative">
-          <AppTopbar />
-          <main className={cn(
-            "flex-1 flex flex-col print:overflow-visible",
-            isReportsPage ? "overflow-hidden" : "overflow-y-auto"
-          )}>
-            <div className="flex-1 flex flex-col min-h-0 relative">
-              {children}
-            </div>
-            {!isReportsPage && <AppFooter />}
-
-          </main>
-          <ProductTour isOpen={showTour} onClose={handleCloseTour} role={role} />
+      <AppSidebar />
+      <SidebarInset className="h-screen print:h-auto print:min-h-screen overflow-hidden print:overflow-visible bg-slate-50 dark:bg-[#0f172a] print:bg-white flex flex-col min-w-0 relative">
+        <AppTopbar />
+        <div className={cn(
+          "flex-1 flex flex-col print:overflow-visible",
+          isReportsPage ? "overflow-hidden" : "overflow-y-auto"
+        )}>
+          <div className="flex-1 flex flex-col min-h-0 relative">
+            {children}
+          </div>
+          {!isReportsPage && <AppFooter />}
         </div>
-      </div>
+        <ProductTour isOpen={showTour} onClose={handleCloseTour} role={role} />
+      </SidebarInset>
     </SidebarProvider>
   );
 }

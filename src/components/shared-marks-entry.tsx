@@ -97,42 +97,49 @@ export function SharedMarksEntry({
     const isLow  = hasScore && numVal < 50
 
     return (
-      <input
-        className="score-input w-full min-w-[60px] text-center"
-        type="number"
-        min="0"
-        max="100"
-        placeholder={placeholder}
-        value={val}
-        onChange={(e) => onChange(e.target.value)}
-        disabled={disabled}
-        data-col={placeholder}
-        data-row={rowIndex}
-        data-table={tableName}
-        onKeyDown={(e) => {
-          if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'Enter') {
-            e.preventDefault()
-            const currentCol = e.currentTarget.getAttribute('data-col')
-            const currentTable = e.currentTarget.getAttribute('data-table')
-            const currentRow = parseInt(e.currentTarget.getAttribute('data-row') || '0', 10)
-            let targetRow = currentRow
-            if (e.key === 'ArrowUp') targetRow--
-            if (e.key === 'ArrowDown' || e.key === 'Enter') targetRow++
-            
-            const target = document.querySelector(`input[data-table="${currentTable}"][data-col="${currentCol}"][data-row="${targetRow}"]`) as HTMLInputElement
-            if (target) {
-              target.focus()
-              target.select()
+      <div className="relative w-full max-w-[80px] mx-auto">
+        <input
+          className={`score-input w-full px-2 py-1.5 text-center text-sm font-bold rounded-lg border focus:outline-none focus:ring-2 transition-all ${
+            isHigh 
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-700 focus:border-emerald-400 focus:ring-emerald-400/20' 
+              : isLow 
+                ? 'border-rose-200 bg-rose-50 text-rose-700 focus:border-rose-400 focus:ring-rose-400/20' 
+                : 'border-slate-200 bg-slate-50/50 text-slate-700 focus:border-blue-400 focus:ring-blue-400/20 hover:bg-white hover:border-slate-300'
+          }`}
+          type="number"
+          min="0"
+          max="100"
+          placeholder={placeholder}
+          value={val}
+          onChange={(e) => onChange(e.target.value)}
+          disabled={disabled}
+          data-col={placeholder}
+          data-row={rowIndex}
+          data-table={tableName}
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'Enter') {
+              e.preventDefault()
+              const currentCol = e.currentTarget.getAttribute('data-col')
+              const currentTable = e.currentTarget.getAttribute('data-table')
+              const currentRow = parseInt(e.currentTarget.getAttribute('data-row') || '0', 10)
+              let targetRow = currentRow
+              if (e.key === 'ArrowUp') targetRow--
+              if (e.key === 'ArrowDown' || e.key === 'Enter') targetRow++
+              
+              const target = document.querySelector(`input[data-table="${currentTable}"][data-col="${currentCol}"][data-row="${targetRow}"]`) as HTMLInputElement
+              if (target) {
+                target.focus()
+                target.select()
+              }
             }
-          }
-        }}
-        style={isHigh
-          ? { borderColor: '#86efac', background: '#f0fdf4', color: '#15803d' }
-          : isLow
-            ? { borderColor: '#fca5a5', background: '#fff5f5', color: '#dc2626' }
-            : {}
-        }
-      />
+          }}
+        />
+        {isLow && (
+          <div className="absolute right-1 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-rose-600"><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+          </div>
+        )}
+      </div>
     )
   }
 

@@ -129,7 +129,7 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
             cm.bot_mark as bot_score, cm.mot_mark as mot_score, cm.eot_mark as eot_score
           FROM subjects s
           LEFT JOIN circular_marks cm ON cm.subject_id = s.id AND cm.enrollment_id = ?
-          WHERE s.curriculum = 'circular' AND (s.section = ? OR s.section IS NULL)
+          WHERE s.curriculum = 'secular' AND (s.section = ? OR s.section IS NULL)
         `, [selectedEnrollmentId, section]);
 
         const theology = await powerSync.getAll(`

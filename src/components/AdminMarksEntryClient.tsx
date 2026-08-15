@@ -94,7 +94,7 @@ export function AdminMarksEntryClient({ terms }: AdminMarksEntryClientProps) {
         const section = selectedEnrollment?.section || null
 
         const circular: CircularMarkRow[] = subjects
-          .filter(s => s.curriculum === 'circular' && (s.section === section || s.section === null))
+          .filter(s => s.curriculum === 'secular' && (s.section === section || s.section === null))
           .map(s => {
             const mark = cMarks.find(m => m.subject_id === s.id)
             return {

@@ -28,8 +28,6 @@ export default function TheologyMOTReport({ reportData }: any) {
   }
 
   const subjects = reportData?.theology?.subjects ?? []
-  const s = (i: number) => toAr(subjects[i]?.mot_score)
-  const sg = (i: number) => subjects[i]?.mot_grade_display ?? '--'
 
   const renderCard = () => (
     <div className="theology-mot-report font-cairo">
@@ -92,18 +90,16 @@ export default function TheologyMOTReport({ reportData }: any) {
           <table className="table">
             <tbody>
               <tr>
-                <th>القرآن</th>
-                <th>اللغة العربية</th>
-                <th>الفقه</th>
-                <th>التربية</th>
+                {subjects.map((subj: any, index: number) => (
+                  <th key={index}>{subj.subject_name_arabic || subj.subject_name}</th>
+                ))}
                 <th>المجموع</th>
                 <th className="red">الدرجة</th>
               </tr>
               <tr>
-                <td>{s(0)}</td>
-                <td>{s(1)}</td>
-                <td>{s(2)}</td>
-                <td>{s(3)}</td>
+                {subjects.map((subj: any, index: number) => (
+                  <td key={index}>{toAr(subj.mot_score)}</td>
+                ))}
                 <td>{toAr(reportData?.theology?.mot_total)}</td>
                 <td className="red">
                   {reportData?.theology?.division ?? '--'}

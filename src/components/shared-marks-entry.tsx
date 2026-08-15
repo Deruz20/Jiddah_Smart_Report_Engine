@@ -47,6 +47,19 @@ export function SharedMarksEntry({
 }: SharedMarksEntryProps) {
   
   const [activeView, setActiveView] = useState<'secular' | 'theology' | 'both'>(allowedDepartment)
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  
+  useEffect(() => {
+    if (success) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setHasUnsavedChanges(false)
+    }
+  }, [success])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setHasUnsavedChanges(false)
+  }, [selectedEnrollmentId, selectedTermId])
   
   const selectedEnrollment = enrollments.find((e) => e.id === selectedEnrollmentId) || null
 
@@ -56,6 +69,8 @@ export function SharedMarksEntry({
       const num = Number(value)
       if (num < 0 || num > 100) return
     }
+
+    setHasUnsavedChanges(true)
 
     setCircularMarks((prev) =>
       prev.map((mark) => {
@@ -77,6 +92,8 @@ export function SharedMarksEntry({
       const num = Number(value)
       if (num < 0 || num > 100) return
     }
+
+    setHasUnsavedChanges(true)
 
     setTheologyMarks((prev) =>
       prev.map((mark) => {
@@ -400,7 +417,7 @@ export function SharedMarksEntry({
                 </div>
               )}
 
-              {success && (
+              {success && !hasUnsavedChanges && (
                 <div className="flex items-center gap-3 p-4 text-emerald-700 bg-emerald-50 rounded-2xl border border-emerald-100 shadow-sm animate-in zoom-in-95">
                   <div className="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 shrink-0">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
@@ -409,29 +426,39 @@ export function SharedMarksEntry({
                 </div>
               )}
 
-              <button
-                type="submit"
-                className="w-full relative overflow-hidden group flex items-center justify-center gap-2 py-4 px-8 rounded-2xl text-white font-bold text-lg transition-all duration-300 shadow-[0_8px_20px_rgba(16,185,129,0.3)] hover:shadow-[0_12px_24px_rgba(16,185,129,0.4)] hover:-translate-y-0.5 active:translate-y-0 active:shadow-none disabled:opacity-70 disabled:pointer-events-none"
-                style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }}
-                disabled={isSaving || isPending}
-              >
-                <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out" />
-                <span className="relative z-10 flex items-center gap-2">
-                  {isSaving || isPending ? (
-                    <>
-                      <svg className="animate-spin" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-                      </svg>
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-                      Save {examType.toUpperCase()} Marks
-                    </>
-                  )}
-                </span>
-              </button>
+              {/* Sticky Save Bar */}
+              {hasUnsavedChanges && (
+                <div className="fixed bottom-0 left-0 right-0 z-[100] p-4 sm:p-6 animate-in slide-in-from-bottom-full duration-300 pointer-events-none">
+                  <div className="max-w-3xl mx-auto bg-slate-900/95 backdrop-blur-2xl border border-slate-700 p-3 sm:p-4 rounded-2xl shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-4 pointer-events-auto">
+                    <div className="flex flex-col items-center sm:items-start text-center sm:text-left w-full sm:w-auto">
+                      <span className="text-white font-bold text-sm">Unsaved Changes</span>
+                      <span className="text-slate-400 text-xs hidden sm:block">You have modified scores for this student.</span>
+                    </div>
+                    <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
+                      <button 
+                        type="button" 
+                        onClick={() => {
+                          setHasUnsavedChanges(false)
+                          onSelectEnrollment('')
+                        }}
+                        className="flex-1 sm:flex-none px-4 py-2.5 text-sm font-semibold text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl transition-colors"
+                      >
+                        Discard
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isSaving || isPending}
+                        className="flex-1 sm:flex-none px-6 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-white text-sm font-bold rounded-xl transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:shadow-[0_0_20px_rgba(16,185,129,0.5)] active:scale-95 disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2"
+                      >
+                        {(isSaving || isPending) && (
+                          <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
+                        )}
+                        Save {examType.toUpperCase()}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           ) : null)}
         </form>

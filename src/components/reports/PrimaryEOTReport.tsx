@@ -670,7 +670,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
                         {subject.theology_remark ?? ''}
                       </td>
                     </tr>
-                  ))}
+                  )})}
                   <tr style={{ background: '#f2f2f2', fontWeight: 800 }}>
                     <td>
                       <b>المجموع</b>

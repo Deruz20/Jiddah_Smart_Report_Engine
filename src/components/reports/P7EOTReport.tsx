@@ -114,7 +114,7 @@ export default function P7EOTReport({ reportData }: any) {
 }
 
 .p7-eot-report .school-left {
-  width: 45%;
+  width: 42%;
 }
 
 .p7-eot-report .school-left h1 {
@@ -134,7 +134,7 @@ export default function P7EOTReport({ reportData }: any) {
 }
 
 .p7-eot-report .header-center {
-  width: 10%;
+  width: 16%;
   text-align: center;
   display: flex;
   flex-direction: column;
@@ -154,7 +154,7 @@ export default function P7EOTReport({ reportData }: any) {
 }
 
 .p7-eot-report .header-right {
-  width: 45%;
+  width: 42%;
   text-align: right;
   display: flex;
   flex-direction: column;
@@ -247,10 +247,10 @@ export default function P7EOTReport({ reportData }: any) {
   background: var(--primary-green);
   color: white;
   font-size: 11px;
-  padding: 6px;
-  text-transform: uppercase;
+  padding: 10px 4px;
+  text-align: center;
   font-weight: 700;
-  letter-spacing: 0.5px;
+  text-transform: uppercase;
 }
 
 .p7-eot-report .table-banner {
@@ -265,12 +265,11 @@ export default function P7EOTReport({ reportData }: any) {
 }
 
 .p7-eot-report td {
-  padding: 4px 6px;
-  text-align: center;
+  padding: 12px 6px;
   font-size: 12px;
-  vertical-align: middle;
+  color: var(--data-navy);
   font-weight: 600;
-  color: #334155;
+  text-align: center;
 }
 
 .p7-eot-report tbody tr:nth-child(even) {
@@ -346,27 +345,27 @@ export default function P7EOTReport({ reportData }: any) {
   display: flex;
   gap: 16px;
   align-items: flex-end;
-  margin-top: 16px;
+  margin-top: 24px;
 }
 
 .p7-eot-report .footer-left {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
 }
 
 .p7-eot-report .comment-card {
   border: 2px dashed var(--border-light);
   border-radius: 8px;
-  padding: 10px 14px;
+  padding: 14px 18px;
   background: white;
 }
 
 .p7-eot-report .comment-row {
   display: flex;
   gap: 16px;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 }
 
 .p7-eot-report .comment-row:last-child {
@@ -415,7 +414,7 @@ export default function P7EOTReport({ reportData }: any) {
 
 .p7-eot-report .date-item {
   flex: 1;
-  padding: 8px 12px;
+  padding: 10px 12px;
   border-radius: 6px;
   border: 1px solid #cbd5e1;
   display: flex;
@@ -534,11 +533,11 @@ export default function P7EOTReport({ reportData }: any) {
                 </tr>
 
                 <tr>
-                  <th rowSpan={2} style={{ width: '18%' }}>SUBJECTS</th>
+                  <th rowSpan={2} style={{ width: '22%' }}>SUBJECTS</th>
                   <th colSpan={2} style={{ width: '18%' }}>BEGINNING OF TERM</th>
                   <th colSpan={2} style={{ width: '18%' }}>MIDTERM</th>
                   <th colSpan={2} style={{ width: '18%' }}>END OF TERM</th>
-                  <th rowSpan={2} style={{ width: '28%' }}>TEACHER'S REMARKS</th>
+                  <th rowSpan={2} style={{ width: '24%' }}>TEACHER'S REMARKS</th>
                 </tr>
 
                 <tr>

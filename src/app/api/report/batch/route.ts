@@ -172,9 +172,9 @@ export async function POST(request: NextRequest) {
         
         for (const member of classMembers) {
           const memberMarks = allCircularMarks.filter(m => m.enrollment_id === member.id)
-          const hasMarks = memberMarks.some(m => typeof m[score_type + '_score'] === 'number')
+          const hasMarks = memberMarks.some(m => typeof m[score_type + '_mark'] === 'number')
           if (hasMarks) {
-            const eTotal = memberMarks.reduce((sum, m) => sum + (typeof m[score_type + '_score'] === 'number' ? m[score_type + '_score'] : 0), 0)
+            const eTotal = memberMarks.reduce((sum, m) => sum + (typeof m[score_type + '_mark'] === 'number' ? m[score_type + '_mark'] : 0), 0)
             memberTotals.push({ id: member.id, total: eTotal })
           }
         }
@@ -230,9 +230,9 @@ export async function POST(request: NextRequest) {
 
               for (const member of classMembers) {
                 const memberMarks = allTheoMarks.filter(m => m.enrollment_id === member.id)
-                const hasMarks = memberMarks.some(m => typeof m[score_type + '_score'] === 'number')
+                const hasMarks = memberMarks.some(m => typeof m[score_type + '_mark'] === 'number')
                 if (hasMarks) {
-                  const eTotal = memberMarks.reduce((sum, m) => sum + (typeof m[score_type + '_score'] === 'number' ? m[score_type + '_score'] : 0), 0)
+                  const eTotal = memberMarks.reduce((sum, m) => sum + (typeof m[score_type + '_mark'] === 'number' ? m[score_type + '_mark'] : 0), 0)
                   memberTotals.push({ id: member.id, total: eTotal })
                 }
               }
@@ -272,27 +272,27 @@ export async function POST(request: NextRequest) {
 
       const circularRows = circularSubjects.map((subject: any) => {
         const existing = eCircularMarks.find(m => m.subject_id === subject.id)
-        const score = score_type === 'mot' ? existing?.mot_score ?? null : existing?.eot_score ?? null
+        const score = score_type === 'mot' ? existing?.mot_mark ?? null : existing?.eot_mark ?? null
         const numericScore = typeof score === 'number' ? score : null
 
         const gradeInfo = numericScore !== null
           ? sectionType === 'nursery' ? getNurseryGrade(numericScore) : { grade: getGradeDisplay(getSubjectGradeNumber(numericScore)), remark: getSubjectRemark(getSubjectGradeNumber(numericScore)) }
           : { grade: '—', remark: '' }
 
-        const motGradeInfo = typeof existing?.mot_score === 'number' 
-          ? sectionType === 'nursery' ? getNurseryGrade(existing.mot_score) : { grade: getGradeDisplay(getSubjectGradeNumber(existing.mot_score)), remark: getSubjectRemark(getSubjectGradeNumber(existing.mot_score)) }
+        const motGradeInfo = typeof existing?.mot_mark === 'number' 
+          ? sectionType === 'nursery' ? getNurseryGrade(existing.mot_mark) : { grade: getGradeDisplay(getSubjectGradeNumber(existing.mot_mark)), remark: getSubjectRemark(getSubjectGradeNumber(existing.mot_mark)) }
           : { grade: null, remark: null }
           
-        const eotGradeInfo = typeof existing?.eot_score === 'number'
-          ? sectionType === 'nursery' ? getNurseryGrade(existing.eot_score) : { grade: getGradeDisplay(getSubjectGradeNumber(existing.eot_score)), remark: getSubjectRemark(getSubjectGradeNumber(existing.eot_score)) }
+        const eotGradeInfo = typeof existing?.eot_mark === 'number'
+          ? sectionType === 'nursery' ? getNurseryGrade(existing.eot_mark) : { grade: getGradeDisplay(getSubjectGradeNumber(existing.eot_mark)), remark: getSubjectRemark(getSubjectGradeNumber(existing.eot_mark)) }
           : { grade: null, remark: null }
 
         return {
           subject_name: subject.subject_name,
-          bot_score: existing?.bot_score ?? null,
-          mot_score: existing?.mot_score ?? null,
-          eot_score: existing?.eot_score ?? null,
-          bot_grade_display: existing?.bot_score != null ? (sectionType === 'nursery' ? getNurseryGrade(existing.bot_score).grade : getGradeDisplay(getSubjectGradeNumber(existing.bot_score))) : null,
+          bot_score: existing?.bot_mark ?? null,
+          mot_score: existing?.mot_mark ?? null,
+          eot_score: existing?.eot_mark ?? null,
+          bot_grade_display: existing?.bot_mark != null ? (sectionType === 'nursery' ? getNurseryGrade(existing.bot_mark).grade : getGradeDisplay(getSubjectGradeNumber(existing.bot_mark))) : null,
           mot_grade_display: motGradeInfo.grade,
           eot_grade_display: eotGradeInfo.grade,
           score: numericScore,
@@ -352,21 +352,21 @@ export async function POST(request: NextRequest) {
         
         const theoRows = tSubjects.map(sub => {
           const existing = eTheoMarks.find(m => m.subject_id === sub.id)
-          const score = score_type === 'mot' ? existing?.mot_score ?? null : existing?.eot_score ?? null
+          const score = score_type === 'mot' ? existing?.mot_mark ?? null : existing?.eot_mark ?? null
           const numericScore = typeof score === 'number' ? score : null
           const grade_display = numericScore !== null ? getGradeDisplay(getSubjectGradeNumber(numericScore)) : '—'
-          const mot_grade_display = typeof existing?.mot_score === 'number' ? getGradeDisplay(getSubjectGradeNumber(existing.mot_score)) : null
-          const eot_grade_display = typeof existing?.eot_score === 'number' ? getGradeDisplay(getSubjectGradeNumber(existing.eot_score)) : null
+          const mot_grade_display = typeof existing?.mot_mark === 'number' ? getGradeDisplay(getSubjectGradeNumber(existing.mot_mark)) : null
+          const eot_grade_display = typeof existing?.eot_mark === 'number' ? getGradeDisplay(getSubjectGradeNumber(existing.eot_mark)) : null
 
           return {
             subject_name_arabic: sub.subject_name_arabic,
-            mot_score: existing?.mot_score ?? null,
-            eot_score: existing?.eot_score ?? null,
+            mot_score: existing?.mot_mark ?? null,
+            eot_score: existing?.eot_mark ?? null,
             mot_grade_display,
             eot_grade_display,
             score: numericScore,
             grade_display,
-            theology_remark: existing?.eot_score != null ? (existing.eot_score >= 75 ? 'ممتاز' : existing.eot_score >= 65 ? 'جيد جداً' : existing.eot_score >= 50 ? 'جيد' : existing.eot_score >= 40 ? 'مقبول' : 'ضعيف') : existing?.mot_score != null ? (existing.mot_score >= 75 ? 'ممتاز' : existing.mot_score >= 65 ? 'جيد جداً' : existing.mot_score >= 50 ? 'جيد' : existing.mot_score >= 40 ? 'مقبول' : 'ضعيف') : null
+            theology_remark: existing?.eot_mark != null ? (existing.eot_mark >= 75 ? 'ممتاز' : existing.eot_mark >= 65 ? 'جيد جداً' : existing.eot_mark >= 50 ? 'جيد' : existing.eot_mark >= 40 ? 'مقبول' : 'ضعيف') : existing?.mot_mark != null ? (existing.mot_mark >= 75 ? 'ممتاز' : existing.mot_mark >= 65 ? 'جيد جداً' : existing.mot_mark >= 50 ? 'جيد' : existing.mot_mark >= 40 ? 'مقبول' : 'ضعيف') : null
           }
         })
         

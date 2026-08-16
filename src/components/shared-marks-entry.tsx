@@ -47,6 +47,19 @@ export function SharedMarksEntry({
 }: SharedMarksEntryProps) {
   
   const [activeView, setActiveView] = useState<'secular' | 'theology' | 'both'>(allowedDepartment)
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  
+  useEffect(() => {
+    if (success) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setHasUnsavedChanges(false)
+    }
+  }, [success])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setHasUnsavedChanges(false)
+  }, [selectedEnrollmentId, selectedTermId])
   
   const selectedEnrollment = enrollments.find((e) => e.id === selectedEnrollmentId) || null
 
@@ -56,6 +69,8 @@ export function SharedMarksEntry({
       const num = Number(value)
       if (num < 0 || num > 100) return
     }
+
+    setHasUnsavedChanges(true)
 
     setCircularMarks((prev) =>
       prev.map((mark) => {
@@ -78,6 +93,8 @@ export function SharedMarksEntry({
       if (num < 0 || num > 100) return
     }
 
+    setHasUnsavedChanges(true)
+
     setTheologyMarks((prev) =>
       prev.map((mark) => {
         if (mark.subject_id === subject_id) {
@@ -89,7 +106,7 @@ export function SharedMarksEntry({
     )
   }
 
-  const renderScoreInput = (value: number | null, onChange: (val: string) => void, placeholder: string, disabled: boolean = false) => {
+  const renderScoreInput = (value: number | null, onChange: (val: string) => void, placeholder: string, disabled: boolean = false, rowIndex?: number, tableName?: string) => {
     const val = value === null ? '' : String(value)
     const numVal = parseFloat(val)
     const hasScore = val !== ''
@@ -97,27 +114,64 @@ export function SharedMarksEntry({
     const isLow  = hasScore && numVal < 50
 
     return (
-      <input
-        className="score-input w-full min-w-[60px] text-center"
-        type="number"
-        min="0"
-        max="100"
-        placeholder={placeholder}
-        value={val}
-        onChange={(e) => onChange(e.target.value)}
-        disabled={disabled}
-        style={isHigh
-          ? { borderColor: '#86efac', background: '#f0fdf4', color: '#15803d' }
-          : isLow
-            ? { borderColor: '#fca5a5', background: '#fff5f5', color: '#dc2626' }
-            : {}
-        }
-      />
+      <div className="relative w-full max-w-[80px] mx-auto">
+        <input
+          className={`score-input w-full px-2 py-1.5 text-center text-sm font-bold rounded-lg border focus:outline-none focus:ring-2 transition-all ${
+            isHigh 
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-700 focus:border-emerald-400 focus:ring-emerald-400/20' 
+              : isLow 
+                ? 'border-rose-200 bg-rose-50 text-rose-700 focus:border-rose-400 focus:ring-rose-400/20' 
+                : 'border-slate-200 bg-slate-50/50 text-slate-700 focus:border-blue-400 focus:ring-blue-400/20 hover:bg-white hover:border-slate-300'
+          }`}
+          type="number"
+          min="0"
+          max="100"
+          placeholder={placeholder}
+          value={val}
+          onChange={(e) => onChange(e.target.value)}
+          disabled={disabled}
+          data-col={placeholder}
+          data-row={rowIndex}
+          data-table={tableName}
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'Enter') {
+              e.preventDefault()
+              const currentCol = e.currentTarget.getAttribute('data-col')
+              const currentTable = e.currentTarget.getAttribute('data-table')
+              const currentRow = parseInt(e.currentTarget.getAttribute('data-row') || '0', 10)
+              let targetRow = currentRow
+              if (e.key === 'ArrowUp') targetRow--
+              if (e.key === 'ArrowDown' || e.key === 'Enter') targetRow++
+              
+              const target = document.querySelector(`input[data-table="${currentTable}"][data-col="${currentCol}"][data-row="${targetRow}"]`) as HTMLInputElement
+              if (target) {
+                target.focus()
+                target.select()
+              }
+            }
+          }}
+        />
+        {isLow && (
+          <div className="absolute right-1 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-rose-600"><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+          </div>
+        )}
+      </div>
     )
   }
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <style>{`
+        input[type="number"].score-input::-webkit-inner-spin-button,
+        input[type="number"].score-input::-webkit-outer-spin-button {
+          -webkit-appearance: none;
+          margin: 0;
+        }
+        input[type="number"].score-input {
+          -moz-appearance: textfield;
+        }
+      `}</style>
       <div 
         className="max-w-5xl mx-auto bg-white/70 backdrop-blur-xl border border-white/50 p-4 sm:p-8"
         style={{ borderRadius: 24, boxShadow: '0 20px 40px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,1)' }}
@@ -133,34 +187,23 @@ export function SharedMarksEntry({
         </div>
 
         <form onSubmit={onSave} className="space-y-8">
-          {/* Step 1 & 2 */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-1 rounded-3xl bg-slate-50/50 border border-slate-100">
-            <div className="bg-white p-5 rounded-[20px] shadow-sm border border-slate-100/60">
-              <label htmlFor="term" className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-3">
-                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 text-xs">1</span>
-                Select Term
-              </label>
+          {/* Unified Control Bar */}
+          <div className="flex flex-wrap items-center gap-4 p-3 bg-white border border-slate-200 rounded-2xl shadow-sm mb-6">
+            <div className="flex-1 min-w-[200px]">
               <select
-                id="term"
+                aria-label="Term"
                 value={selectedTermId}
                 onChange={(e) => onSelectTerm(e.target.value)}
-                className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/10 transition-all bg-slate-50/50 hover:bg-white text-slate-700 appearance-none cursor-pointer"
-                style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundPosition: 'right 1rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.2em' }}
+                className="w-full px-3 py-2 text-sm border-none bg-slate-50 hover:bg-slate-100 rounded-lg text-slate-700 font-medium cursor-pointer focus:ring-2 focus:ring-emerald-500/20 outline-none transition-colors"
               >
                 <option value="">Choose a term...</option>
                 {terms.map((term) => (
-                  <option key={term.id} value={term.id}>
-                    {`${term.label} ${term.academic_year}`}
-                  </option>
+                  <option key={term.id} value={term.id}>{`${term.label} ${term.academic_year}`}</option>
                 ))}
               </select>
             </div>
-
-            <div className="bg-white p-5 rounded-[20px] shadow-sm border border-slate-100/60">
-              <label htmlFor="student" className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-3">
-                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 text-xs">2</span>
-                Select Student
-              </label>
+            
+            <div className="flex-1 min-w-[250px]">
               <StudentCombobox 
                 enrollments={enrollments} 
                 selectedId={selectedEnrollmentId} 
@@ -170,6 +213,42 @@ export function SharedMarksEntry({
                 }} 
               />
             </div>
+
+            <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-lg" aria-label="Exam Type">
+              {(['bot', 'mot', 'eot', 'all'] as ExamType[]).map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => { setExamType(type); setSuccess(false) }}
+                  className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wide rounded-md transition-all ${
+                    examType === type 
+                      ? 'bg-white text-emerald-700 shadow-sm' 
+                      : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
+                  }`}
+                >
+                  {type}
+                </button>
+              ))}
+            </div>
+
+            {allowedDepartment === 'both' && (
+              <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-lg ml-auto" aria-label="Department View">
+                {(['both', 'secular', 'theology'] as const).map((view) => (
+                  <button
+                    key={view}
+                    type="button"
+                    onClick={() => setActiveView(view)}
+                    className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wide rounded-md transition-all ${
+                      activeView === view 
+                        ? 'bg-white text-blue-700 shadow-sm' 
+                        : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
+                    }`}
+                  >
+                    {view}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {error && (
@@ -197,90 +276,32 @@ export function SharedMarksEntry({
             </div>
           ) : selectedEnrollment ? (
             <div className="animate-in slide-in-from-bottom-4 duration-500 space-y-8">
-              {/* Student Details Box */}
-              <div 
-                className="relative overflow-hidden rounded-[24px] p-6 sm:p-8"
-                style={{ 
-                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', 
-                  boxShadow: '0 10px 30px rgba(16,185,129,0.2)',
-                }}
-              >
-                <div className="absolute top-0 right-0 -mt-8 -mr-8 w-48 h-48 bg-white opacity-10 rounded-full blur-2xl pointer-events-none" />
-                <div className="absolute bottom-0 left-0 -mb-8 -ml-8 w-32 h-32 bg-emerald-300 opacity-20 rounded-full blur-xl pointer-events-none" />
+              {/* Slim Sticky Context Header */}
+              <div className="sticky top-4 z-40 bg-white/90 backdrop-blur-xl border border-slate-200/60 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-4 min-w-0">
+                  <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-emerald-100 to-emerald-50 text-emerald-700 font-bold text-lg border border-emerald-100 shadow-sm shrink-0">
+                    {selectedEnrollment.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <h2 className="text-lg font-bold text-slate-800 truncate capitalize leading-tight mb-1">{selectedEnrollment.name.toLowerCase()}</h2>
+                    <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-slate-500">
+                      <span className="bg-slate-100 px-2 py-0.5 rounded-md text-slate-600 border border-slate-200/60">{selectedEnrollment.admission_number}</span>
+                      <span className="bg-slate-100 px-2 py-0.5 rounded-md text-slate-600 border border-slate-200/60">{selectedEnrollment.circular_class} {selectedEnrollment.section ? `• ${selectedEnrollment.section}` : ''}</span>
+                    </div>
+                  </div>
+                </div>
                 
-                <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 z-10">
-                  <div className="flex items-center gap-5">
-                    <div className="hidden sm:flex items-center justify-center w-14 h-14 rounded-2xl bg-white/20 text-white font-bold text-xl backdrop-blur-md border border-white/20 shadow-inner">
-                      {selectedEnrollment.name.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <p className="text-emerald-100 text-xs font-bold uppercase tracking-wider mb-1">Secular Profile</p>
-                      <p className="text-2xl text-white font-bold capitalize">{selectedEnrollment.name.toLowerCase()}</p>
-                      <div className="flex items-center gap-3 mt-2 text-emerald-50 text-sm font-medium">
-                        <span className="flex items-center gap-1.5 bg-black/10 px-2.5 py-1 rounded-lg backdrop-blur-md">ID: {selectedEnrollment.admission_number}</span>
-                        <span className="flex items-center gap-1.5 bg-black/10 px-2.5 py-1 rounded-lg backdrop-blur-md">Class: {selectedEnrollment.circular_class} {selectedEnrollment.section ? `• ${selectedEnrollment.section}` : ''}</span>
-                      </div>
+                {selectedEnrollment.theology_class_arabic && (
+                  <div className="text-right shrink-0 pt-3 sm:pt-0 border-t border-slate-100 sm:border-t-0 sm:border-l sm:border-slate-100 sm:pl-4">
+                    <h2 className="text-lg font-bold text-slate-800 leading-tight mb-1" dir="rtl" style={{ fontFamily: '"Noto Naskh Arabic", serif' }}>
+                      {transliterateEnglishToArabic(selectedEnrollment.name.toLowerCase())}
+                    </h2>
+                    <div className="text-xs font-medium text-slate-500" dir="rtl" style={{ fontFamily: '"Noto Naskh Arabic", serif' }}>
+                      <span className="bg-slate-100 px-2 py-0.5 rounded-md text-slate-600 border border-slate-200/60">{selectedEnrollment.theology_class_arabic}</span>
                     </div>
                   </div>
-                  
-                  {selectedEnrollment.theology_class_arabic && (
-                    <div className="sm:text-right pt-4 sm:pt-0 border-t border-white/10 sm:border-t-0 sm:border-l sm:pl-6">
-                      <p className="text-emerald-100 text-xs font-bold uppercase tracking-wider mb-1" dir="rtl" style={{ fontFamily: '"Noto Naskh Arabic", serif' }}>الملف الشخصي</p>
-                      <p className="text-2xl text-white font-bold" dir="rtl" style={{ fontFamily: '"Noto Naskh Arabic", serif' }}>
-                        {transliterateEnglishToArabic(selectedEnrollment.name.toLowerCase())}
-                      </p>
-                      <div className="flex sm:justify-end items-center gap-3 mt-2 text-emerald-50 text-sm font-medium" dir="rtl">
-                        <span className="flex items-center gap-1.5 bg-black/10 px-2.5 py-1 rounded-lg backdrop-blur-md" style={{ fontFamily: '"Noto Naskh Arabic", serif' }}>ID: {selectedEnrollment.admission_number}</span>
-                        <span className="flex items-center gap-1.5 bg-black/10 px-2.5 py-1 rounded-lg backdrop-blur-md" style={{ fontFamily: '"Noto Naskh Arabic", serif' }}>
-                          الدرجة اللاهوتية: {selectedEnrollment.theology_class_arabic}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                )}
               </div>
-
-              {/* Step 3 */}
-              <div className="bg-white p-5 rounded-[20px] shadow-sm border border-slate-100/60 flex items-center justify-between gap-4 flex-wrap">
-                <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 whitespace-nowrap">
-                  <span className="flex items-center justify-center w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 text-xs">3</span>
-                  Select Exam Type
-                </label>
-                <div className="flex gap-2 p-1 bg-slate-100/80 rounded-xl flex-1 max-w-md overflow-x-auto">
-                  {(['bot', 'mot', 'eot', 'all'] as ExamType[]).map((type) => (
-                    <button
-                      key={type}
-                      type="button"
-                      onClick={() => { setExamType(type); setSuccess(false) }}
-                      className={`flex-1 min-w-[60px] px-3 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${examType === type ? 'bg-white text-emerald-600 shadow-sm border border-emerald-100' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
-                    >
-                      {type}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Dynamic View Toggles (Admins only) */}
-              {allowedDepartment === 'both' && (
-                <div className="bg-white p-5 rounded-[20px] shadow-sm border border-slate-100/60 flex items-center justify-between gap-4 flex-wrap">
-                  <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 whitespace-nowrap">
-                    <span className="flex items-center justify-center w-5 h-5 rounded-full bg-blue-100 text-blue-700 text-xs">👀</span>
-                    View Mode
-                  </label>
-                  <div className="flex gap-2 p-1 bg-slate-100/80 rounded-xl flex-1 max-w-md overflow-x-auto">
-                    {(['both', 'secular', 'theology'] as const).map((view) => (
-                      <button
-                        key={view}
-                        type="button"
-                        onClick={() => setActiveView(view)}
-                        className={`flex-1 min-w-[60px] px-3 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${activeView === view ? 'bg-white text-blue-600 shadow-sm border border-blue-100' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
-                      >
-                        {view}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
 
               {/* Secular Marks Table */}
               {(activeView === 'both' || activeView === 'secular') && (
@@ -291,8 +312,8 @@ export function SharedMarksEntry({
                 </div>
                 <div className="bg-white border border-slate-200/60 rounded-[24px] shadow-sm overflow-hidden">
                   <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-slate-100">
-                      <thead className="bg-slate-50/50">
+                    <table className="min-w-full divide-y divide-slate-100 block sm:table">
+                      <thead className="bg-slate-50/50 hidden sm:table-header-group">
                         <tr>
                           <th className="px-3 sm:px-6 py-4 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">Subject</th>
                           <th className="px-3 sm:px-6 py-4 text-center text-[11px] font-bold text-slate-400 uppercase tracking-wider">Core</th>
@@ -301,11 +322,20 @@ export function SharedMarksEntry({
                           {['eot', 'all'].includes(examType) && <th className="px-3 sm:px-6 py-4 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">EOT Score</th>}
                         </tr>
                       </thead>
-                      <tbody className="bg-white divide-y divide-slate-50">
-                        {circularMarks.map((mark) => (
-                          <tr key={mark.subject_id} className="transition-colors hover:bg-slate-50/50 group">
-                            <td className="px-3 sm:px-6 py-4 text-sm font-semibold text-slate-700 whitespace-nowrap">{mark.subject_name}</td>
-                            <td className="px-3 sm:px-6 py-4 text-sm text-center">
+                      <tbody className="bg-white divide-y divide-slate-50 block sm:table-row-group">
+                        {circularMarks.map((mark, idx) => (
+                          <tr key={mark.subject_id} className="transition-colors hover:bg-slate-50/50 group flex flex-wrap sm:table-row p-4 sm:p-0">
+                            <td className="w-full sm:w-auto px-0 sm:px-6 pb-3 sm:pb-4 pt-0 sm:pt-4 text-sm font-semibold text-slate-700 whitespace-nowrap flex items-center justify-between sm:table-cell border-b border-slate-100 sm:border-0 mb-3 sm:mb-0">
+                              <span>{mark.subject_name}</span>
+                              <span className="sm:hidden">
+                                {mark.is_core ? (
+                                  <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-50 text-blue-500 text-[10px] font-bold ring-1 ring-blue-500/10">✓</span>
+                                ) : (
+                                  <span className="text-slate-300">—</span>
+                                )}
+                              </span>
+                            </td>
+                            <td className="hidden sm:table-cell px-3 sm:px-6 py-4 text-sm text-center">
                               {mark.is_core ? (
                                 <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-50 text-blue-500 text-xs font-bold ring-1 ring-blue-500/10">✓</span>
                               ) : (
@@ -313,18 +343,21 @@ export function SharedMarksEntry({
                               )}
                             </td>
                             {['bot', 'all'].includes(examType) && (
-                              <td className="px-3 sm:px-6 py-3">
-                                {renderScoreInput(mark.bot_score, (val) => handleCircularScoreChange(mark.subject_id, 'bot', val), 'BOT')}
+                              <td className="flex-1 sm:flex-none px-1 sm:px-6 py-1 sm:py-3 flex flex-col items-center sm:table-cell">
+                                <span className="sm:hidden text-[10px] font-bold text-slate-400 mb-1">BOT</span>
+                                {renderScoreInput(mark.bot_score, (val) => handleCircularScoreChange(mark.subject_id, 'bot', val), 'BOT', false, idx, 'secular')}
                               </td>
                             )}
                             {['mot', 'all'].includes(examType) && (
-                              <td className="px-3 sm:px-6 py-3">
-                                {renderScoreInput(mark.mot_score, (val) => handleCircularScoreChange(mark.subject_id, 'mot', val), 'MOT')}
+                              <td className="flex-1 sm:flex-none px-1 sm:px-6 py-1 sm:py-3 flex flex-col items-center sm:table-cell">
+                                <span className="sm:hidden text-[10px] font-bold text-slate-400 mb-1">MOT</span>
+                                {renderScoreInput(mark.mot_score, (val) => handleCircularScoreChange(mark.subject_id, 'mot', val), 'MOT', false, idx, 'secular')}
                               </td>
                             )}
                             {['eot', 'all'].includes(examType) && (
-                              <td className="px-3 sm:px-6 py-3">
-                                {renderScoreInput(mark.eot_score, (val) => handleCircularScoreChange(mark.subject_id, 'eot', val), 'EOT')}
+                              <td className="flex-1 sm:flex-none px-1 sm:px-6 py-1 sm:py-3 flex flex-col items-center sm:table-cell">
+                                <span className="sm:hidden text-[10px] font-bold text-slate-400 mb-1">EOT</span>
+                                {renderScoreInput(mark.eot_score, (val) => handleCircularScoreChange(mark.subject_id, 'eot', val), 'EOT', false, idx, 'secular')}
                               </td>
                             )}
                           </tr>
@@ -347,8 +380,8 @@ export function SharedMarksEntry({
                   </div>
                   <div className="bg-white border border-slate-200/60 rounded-[24px] shadow-sm overflow-hidden">
                     <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-slate-100">
-                        <thead className="bg-slate-50/50">
+                      <table className="min-w-full divide-y divide-slate-100 block sm:table">
+                        <thead className="bg-slate-50/50 hidden sm:table-header-group">
                           <tr>
                             <th className="px-3 sm:px-6 py-4 text-right text-[12px] font-bold text-slate-400 uppercase tracking-wider" dir="rtl" style={{ fontFamily: '"Noto Naskh Arabic", serif' }}>
                               المادة
@@ -357,20 +390,22 @@ export function SharedMarksEntry({
                             {['eot', 'all'].includes(examType) && <th className="px-3 sm:px-6 py-4 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">EOT Score</th>}
                           </tr>
                         </thead>
-                        <tbody className="bg-white divide-y divide-slate-50">
-                          {theologyMarks.map((mark) => (
-                            <tr key={mark.subject_id} className="transition-colors hover:bg-slate-50/50 group">
-                              <td className="px-3 sm:px-6 py-4 text-[15px] font-bold text-slate-700 text-right whitespace-nowrap" dir="rtl" style={{ fontFamily: '"Noto Naskh Arabic", serif' }}>
+                        <tbody className="bg-white divide-y divide-slate-50 block sm:table-row-group">
+                          {theologyMarks.map((mark, idx) => (
+                          <tr key={mark.subject_id} className="transition-colors hover:bg-slate-50/50 group flex flex-wrap flex-row-reverse sm:table-row p-4 sm:p-0">
+                              <td className="w-full sm:w-auto px-0 sm:px-6 pb-3 sm:pb-4 pt-0 sm:pt-4 text-[15px] font-bold text-slate-700 text-right whitespace-nowrap block sm:table-cell border-b border-slate-100 sm:border-0 mb-3 sm:mb-0" dir="rtl" style={{ fontFamily: '"Noto Naskh Arabic", serif' }}>
                                 {mark.subject_name_arabic}
                               </td>
                               {['mot', 'all'].includes(examType) && (
-                                <td className="px-3 sm:px-6 py-3">
-                                  {renderScoreInput(mark.mot_score, (val) => handleTheologyScoreChange(mark.subject_id, 'mot', val), 'MOT')}
+                                <td className="flex-1 sm:flex-none px-1 sm:px-6 py-1 sm:py-3 flex flex-col items-center sm:table-cell">
+                                  <span className="sm:hidden text-[10px] font-bold text-slate-400 mb-1">MOT</span>
+                                  {renderScoreInput(mark.mot_score, (val) => handleTheologyScoreChange(mark.subject_id, 'mot', val), 'MOT', false, idx, 'theology')}
                                 </td>
                               )}
                               {['eot', 'all'].includes(examType) && (
-                                <td className="px-3 sm:px-6 py-3">
-                                  {renderScoreInput(mark.eot_score, (val) => handleTheologyScoreChange(mark.subject_id, 'eot', val), 'EOT')}
+                                <td className="flex-1 sm:flex-none px-1 sm:px-6 py-1 sm:py-3 flex flex-col items-center sm:table-cell">
+                                  <span className="sm:hidden text-[10px] font-bold text-slate-400 mb-1">EOT</span>
+                                  {renderScoreInput(mark.eot_score, (val) => handleTheologyScoreChange(mark.subject_id, 'eot', val), 'EOT', false, idx, 'theology')}
                                 </td>
                               )}
                             </tr>
@@ -382,7 +417,7 @@ export function SharedMarksEntry({
                 </div>
               )}
 
-              {success && (
+              {success && !hasUnsavedChanges && (
                 <div className="flex items-center gap-3 p-4 text-emerald-700 bg-emerald-50 rounded-2xl border border-emerald-100 shadow-sm animate-in zoom-in-95">
                   <div className="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 shrink-0">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
@@ -391,29 +426,39 @@ export function SharedMarksEntry({
                 </div>
               )}
 
-              <button
-                type="submit"
-                className="w-full relative overflow-hidden group flex items-center justify-center gap-2 py-4 px-8 rounded-2xl text-white font-bold text-lg transition-all duration-300 shadow-[0_8px_20px_rgba(16,185,129,0.3)] hover:shadow-[0_12px_24px_rgba(16,185,129,0.4)] hover:-translate-y-0.5 active:translate-y-0 active:shadow-none disabled:opacity-70 disabled:pointer-events-none"
-                style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }}
-                disabled={isSaving || isPending}
-              >
-                <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out" />
-                <span className="relative z-10 flex items-center gap-2">
-                  {isSaving || isPending ? (
-                    <>
-                      <svg className="animate-spin" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-                      </svg>
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-                      Save {examType.toUpperCase()} Marks
-                    </>
-                  )}
-                </span>
-              </button>
+              {/* Sticky Save Bar */}
+              {hasUnsavedChanges && (
+                <div className="fixed bottom-0 left-0 right-0 z-[100] p-4 sm:p-6 animate-in slide-in-from-bottom-full duration-300 pointer-events-none">
+                  <div className="max-w-3xl mx-auto bg-slate-900/95 backdrop-blur-2xl border border-slate-700 p-3 sm:p-4 rounded-2xl shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-4 pointer-events-auto">
+                    <div className="flex flex-col items-center sm:items-start text-center sm:text-left w-full sm:w-auto">
+                      <span className="text-white font-bold text-sm">Unsaved Changes</span>
+                      <span className="text-slate-400 text-xs hidden sm:block">You have modified scores for this student.</span>
+                    </div>
+                    <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
+                      <button 
+                        type="button" 
+                        onClick={() => {
+                          setHasUnsavedChanges(false)
+                          onSelectEnrollment('')
+                        }}
+                        className="flex-1 sm:flex-none px-4 py-2.5 text-sm font-semibold text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl transition-colors"
+                      >
+                        Discard
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isSaving || isPending}
+                        className="flex-1 sm:flex-none px-6 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-white text-sm font-bold rounded-xl transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:shadow-[0_0_20px_rgba(16,185,129,0.5)] active:scale-95 disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2"
+                      >
+                        {(isSaving || isPending) && (
+                          <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
+                        )}
+                        Save {examType.toUpperCase()}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           ) : null)}
         </form>

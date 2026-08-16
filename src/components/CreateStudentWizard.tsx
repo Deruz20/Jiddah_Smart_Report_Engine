@@ -341,7 +341,10 @@ function Step4({ form, setField, theologyClasses }: { form: FormData; setField: 
       {/* 4A — Theology Section (Muslim Only) */}
       {form.religion === 'Muslim' && theologyClasses.length > 0 && (
         <div className="space-y-2">
-          <p className={labelClass}>Step 4A: Select Theology Section</p>
+          <label className={cn(labelClass, 'flex items-center gap-2')}>
+            <span>Step 4A: Select Theology Section</span>
+            <span className="text-xs font-normal text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">(Optional)</span>
+          </label>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {theologySections.map((ts) => (
             <SelectionCard

@@ -14,11 +14,31 @@ export async function GET(request: NextRequest) {
     const cookieStore = await cookies()
     const supabase = createClient(cookieStore)
 
-    const { data, error } = await supabase
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+    }
+
+    const { verifyDataAccess } = await import('@/lib/auth-server')
+    const authRes = await verifyDataAccess(supabase, user, 'read')
+    if (!authRes.isAuthorized) {
+      return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
+    }
+
+    let query = supabase
       .from('circular_classes')
       .select('id, class_name, section')
       .order('section', { ascending: true })
       .order('class_name', { ascending: true })
+
+    if (authRes.filterByClasses && authRes.filterByClasses.length > 0) {
+      query = query.in('class_name', authRes.filterByClasses)
+    } else if (authRes.filterByClasses && authRes.filterByClasses.length === 0 && authRes.role !== 'Administrator' && authRes.role !== 'admin') {
+      // If a non-admin has NO classes assigned, they shouldn't see any classes
+      return withCors(request, NextResponse.json({ data: [] }))
+    }
+
+    const { data, error } = await query
 
     if (error) {
       console.error('Supabase error:', error)

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useTransition } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { SharedMarksEntry, ExamType } from './shared-marks-entry'
-import { TermData, EnrollmentData, CircularMarkRow, TheologyMarkRow } from './MarksEntryClient'
+import { TermData, EnrollmentData, CircularMarkRow, TheologyMarkRow } from '@/types/models'
 
 interface AdminMarksEntryClientProps {
   terms: TermData[]
@@ -108,8 +108,10 @@ export function AdminMarksEntryClient({ terms }: AdminMarksEntryClientProps) {
             }
           })
 
+        const theologyLevel = selectedEnrollment?.theology_class_level || null
+
         const theology: TheologyMarkRow[] = subjects
-          .filter(s => s.curriculum === 'theology' && (s.section === section || s.section === className || s.section === null))
+          .filter(s => s.curriculum === 'theology' && (s.section === theologyLevel || s.section === null))
           .map(s => {
             const mark = tMarks.find(m => m.subject_id === s.id)
             return {
@@ -162,6 +164,7 @@ export function AdminMarksEntryClient({ terms }: AdminMarksEntryClientProps) {
             } else {
               await supabase.from('circular_marks').insert({
                 enrollment_id: selectedEnrollmentId,
+                term_id: selectedTermId,
                 subject_id: m.subject_id,
                 bot_score: m.bot_score,
                 mot_score: m.mot_score,
@@ -187,6 +190,7 @@ export function AdminMarksEntryClient({ terms }: AdminMarksEntryClientProps) {
             } else {
               await supabase.from('theology_marks').insert({
                 enrollment_id: selectedEnrollmentId,
+                term_id: selectedTermId,
                 subject_id: m.subject_id,
                 mot_score: m.mot_score,
                 eot_score: m.eot_score,

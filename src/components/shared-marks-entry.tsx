@@ -2,7 +2,7 @@
 
 import React, { useRef, useState, useEffect } from 'react'
 import { transliterateEnglishToArabic } from '@/lib/transliterate'
-import { EnrollmentData, CircularMarkRow, TheologyMarkRow, TermData } from './MarksEntryClient'
+import { EnrollmentData, CircularMarkRow, TheologyMarkRow, TermData } from '@/types/models'
 
 export type ExamType = 'bot' | 'mot' | 'eot' | 'all'
 

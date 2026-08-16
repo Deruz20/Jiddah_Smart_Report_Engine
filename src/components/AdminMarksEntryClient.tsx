@@ -102,23 +102,30 @@ export function AdminMarksEntryClient({ terms }: AdminMarksEntryClientProps) {
               subject_id: s.id,
               subject_name: s.subject_name,
               is_core: true,
-              bot_score: mark?.bot_mark ?? null,
-              mot_score: mark?.mot_mark ?? null,
-              eot_score: mark?.eot_mark ?? null
+              bot_score: mark?.bot_score ?? null,
+              mot_score: mark?.mot_score ?? null,
+              eot_score: mark?.eot_score ?? null
             }
           })
 
         const theologyLevel = selectedEnrollment?.theology_class_level || null
+        let mappedTheologySection: string | null = null
+        if (theologyLevel) {
+          const upperLevel = theologyLevel.toUpperCase()
+          if (['P.1', 'P.2', 'P.3'].includes(upperLevel)) mappedTheologySection = 'lower_primary'
+          else if (['P.4', 'P.5', 'P.6', 'P.7'].includes(upperLevel)) mappedTheologySection = 'upper_primary'
+          else if (['BABY', 'MIDDLE', 'TOP', 'NURSERY'].includes(upperLevel)) mappedTheologySection = 'nursery'
+        }
 
         const theology: TheologyMarkRow[] = subjects
-          .filter(s => s.curriculum === 'theology' && (s.section === theologyLevel || s.section === null))
+          .filter(s => s.curriculum === 'theology' && (s.section === mappedTheologySection || s.section === theologyLevel || s.section === null))
           .map(s => {
             const mark = tMarks.find(m => m.subject_id === s.id)
             return {
               subject_id: s.id,
               subject_name_arabic: s.subject_name,
-              mot_score: mark?.mot_mark ?? null,
-              eot_score: mark?.eot_mark ?? null
+              mot_score: mark?.mot_score ?? null,
+              eot_score: mark?.eot_score ?? null
             }
           })
 
@@ -156,9 +163,9 @@ export function AdminMarksEntryClient({ terms }: AdminMarksEntryClientProps) {
             const existing = existingC?.find(e => e.subject_id === m.subject_id)
             if (existing) {
               await supabase.from('circular_marks').update({
-                bot_mark: m.bot_score,
-                mot_mark: m.mot_score,
-                eot_mark: m.eot_score,
+                bot_score: m.bot_score,
+                mot_score: m.mot_score,
+                eot_score: m.eot_score,
                 updated_by: 'admin_user'
               }).eq('id', existing.id)
             } else {
@@ -166,9 +173,9 @@ export function AdminMarksEntryClient({ terms }: AdminMarksEntryClientProps) {
                 enrollment_id: selectedEnrollmentId,
                 term_id: selectedTermId,
                 subject_id: m.subject_id,
-                bot_mark: m.bot_score,
-                mot_mark: m.mot_score,
-                eot_mark: m.eot_score,
+                bot_score: m.bot_score,
+                mot_score: m.mot_score,
+                eot_score: m.eot_score,
                 updated_by: 'admin_user'
               })
             }
@@ -183,8 +190,8 @@ export function AdminMarksEntryClient({ terms }: AdminMarksEntryClientProps) {
             const existing = existingT?.find(e => e.subject_id === m.subject_id)
             if (existing) {
               await supabase.from('theology_marks').update({
-                mot_mark: m.mot_score,
-                eot_mark: m.eot_score,
+                mot_score: m.mot_score,
+                eot_score: m.eot_score,
                 updated_by: 'admin_user'
               }).eq('id', existing.id)
             } else {
@@ -192,8 +199,8 @@ export function AdminMarksEntryClient({ terms }: AdminMarksEntryClientProps) {
                 enrollment_id: selectedEnrollmentId,
                 term_id: selectedTermId,
                 subject_id: m.subject_id,
-                mot_mark: m.mot_score,
-                eot_mark: m.eot_score,
+                mot_score: m.mot_score,
+                eot_score: m.eot_score,
                 updated_by: 'admin_user'
               })
             }

@@ -365,95 +365,102 @@ export default function TheologyHubClient({
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden bg-white dark:bg-[#1e293b] border-b border-slate-200/60 dark:border-slate-800 shadow-sm print:hidden shrink-0"
           >
-            <div className="px-4 py-3">
-              <div className="flex flex-wrap items-center gap-4">
-                <div className="flex-1 min-w-[200px]">
-            <select
-              className="w-full px-4 py-2 border border-slate-200 rounded-xl bg-slate-50 focus:ring-2 focus:ring-emerald-500"
-              value={activeTermId}
-              onChange={(e) => setActiveTermId(e.target.value)}
-            >
-              {terms.map(t => (
-                <option key={t.id} value={t.id}>{t.label} ({t.academic_year})</option>
-              ))}
-            </select>
-          </div>
+            <div className="p-4 md:p-6 bg-slate-50/50 dark:bg-slate-900/50">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                
+                {/* Term Selector */}
+                <div className="flex flex-col">
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Term / Year</label>
+                  <select
+                    className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium"
+                    value={activeTermId}
+                    onChange={(e) => setActiveTermId(e.target.value)}
+                  >
+                    {terms.map(t => (
+                      <option key={t.id} value={t.id}>{t.label} ({t.academic_year})</option>
+                    ))}
+                  </select>
+                </div>
 
-          <div className="flex-1">
-            <label className="block text-xs font-semibold text-slate-600 uppercase mb-2">View Type</label>
-            <div className="flex overflow-x-auto no-scrollbar p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
-              <button
-                onClick={() => setActiveTab('assessment')}
-                className={`flex-1 min-w-[120px] py-1.5 px-3 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 ${activeTab === 'assessment' ? 'bg-white shadow-sm text-emerald-700' : 'text-slate-500 hover:text-slate-700'}`}
-              >
-                <BookOpen size={14} /> Assessment
-              </button>
-              <button
-                onClick={() => setActiveTab('analysis')}
-                className={`flex-1 min-w-[120px] py-1.5 px-3 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 ${activeTab === 'analysis' ? 'bg-white shadow-sm text-emerald-700' : 'text-slate-500 hover:text-slate-700'}`}
-              >
-                <ScrollText size={14} /> Analysis
-              </button>
-              <button
-                onClick={() => setActiveTab('top_students')}
-                className={`flex-1 min-w-[120px] py-1.5 px-3 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 ${activeTab === 'top_students' ? 'bg-white shadow-sm text-emerald-700' : 'text-slate-500 hover:text-slate-700'}`}
-              >
-                <Award size={14} /> Top Students
-              </button>
-            </div>
-          </div>
+                {/* View Type */}
+                <div className="flex flex-col">
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">View Type</label>
+                  <div className="flex p-1 bg-slate-200/50 dark:bg-slate-800 rounded-xl ring-1 ring-slate-200/50 dark:ring-slate-700">
+                    <button
+                      onClick={() => setActiveTab('assessment')}
+                      className={`flex-1 py-1.5 px-2 text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 ${activeTab === 'assessment' ? 'bg-white dark:bg-slate-700 shadow-sm text-emerald-700 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'}`}
+                    >
+                      <BookOpen size={14} /> Assessment
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('analysis')}
+                      className={`flex-1 py-1.5 px-2 text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 ${activeTab === 'analysis' ? 'bg-white dark:bg-slate-700 shadow-sm text-emerald-700 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'}`}
+                    >
+                      <ScrollText size={14} /> Analysis
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('top_students')}
+                      className={`flex-1 py-1.5 px-2 text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 ${activeTab === 'top_students' ? 'bg-white dark:bg-slate-700 shadow-sm text-emerald-700 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'}`}
+                    >
+                      <Award size={14} /> Top Students
+                    </button>
+                  </div>
+                </div>
 
-          <div className="flex-1 min-w-[120px]">
-            <label className="block text-xs font-semibold text-slate-600 uppercase mb-2">Exam Phase</label>
-            <div className="flex overflow-x-auto no-scrollbar p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
-              <button
-                onClick={() => setExamPhase('mot')}
-                className={`flex-1 py-1.5 px-3 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 ${examPhase === 'mot' ? 'bg-white shadow-sm text-blue-700' : 'text-slate-500 hover:text-slate-700'}`}
-              >
-                MOT
-              </button>
-              <button
-                onClick={() => setExamPhase('eot')}
-                className={`flex-1 py-1.5 px-3 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 ${examPhase === 'eot' ? 'bg-white shadow-sm text-blue-700' : 'text-slate-500 hover:text-slate-700'}`}
-              >
-                EOT
-              </button>
-            </div>
-          </div>
+                {/* Exam Phase */}
+                <div className="flex flex-col">
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Exam Phase</label>
+                  <div className="flex p-1 bg-slate-200/50 dark:bg-slate-800 rounded-xl ring-1 ring-slate-200/50 dark:ring-slate-700">
+                    <button
+                      onClick={() => setExamPhase('mot')}
+                      className={`flex-1 py-1.5 px-3 text-sm font-semibold rounded-lg transition-all flex items-center justify-center ${examPhase === 'mot' ? 'bg-white dark:bg-slate-700 shadow-sm text-blue-700 dark:text-blue-400' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'}`}
+                    >
+                      MOT
+                    </button>
+                    <button
+                      onClick={() => setExamPhase('eot')}
+                      className={`flex-1 py-1.5 px-3 text-sm font-semibold rounded-lg transition-all flex items-center justify-center ${examPhase === 'eot' ? 'bg-white dark:bg-slate-700 shadow-sm text-blue-700 dark:text-blue-400' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'}`}
+                    >
+                      EOT
+                    </button>
+                  </div>
+                </div>
 
-          {activeTab === 'assessment' && (
-            <div className="flex-1">
-              <label className="block text-xs font-semibold text-slate-600 uppercase mb-2">Class</label>
-              <select
-                className="w-full px-4 py-2 border border-slate-200 rounded-xl bg-slate-50 focus:ring-2 focus:ring-emerald-500 text-right"
-                dir="rtl"
-                value={activeClassId}
-                onChange={(e) => setActiveClassId(e.target.value)}
-              >
-                <option value="">-- اختر الصف --</option>
-                {theologyClasses.map(t => (
-                  <option key={t.id} value={t.id}>{t.class_name_arabic} ({t.class_name_english})</option>
-                ))}
-              </select>
-            </div>
-          )}
+                {/* Context Selector (Class / Level) */}
+                <div className="flex flex-col">
+                  {activeTab === 'assessment' ? (
+                    <>
+                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 text-right" dir="rtl">الصف (Class)</label>
+                      <select
+                        className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium text-right font-arabic"
+                        dir="rtl"
+                        value={activeClassId}
+                        onChange={(e) => setActiveClassId(e.target.value)}
+                      >
+                        <option value="">-- اختر الصف --</option>
+                        {theologyClasses.map(t => (
+                          <option key={t.id} value={t.id}>{t.class_name_arabic} ({t.class_name_english})</option>
+                        ))}
+                      </select>
+                    </>
+                  ) : (
+                    <>
+                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 text-right" dir="rtl">المرحلة (Level)</label>
+                      <select
+                        className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium text-right font-arabic"
+                        dir="rtl"
+                        value={activeLevel}
+                        onChange={(e) => setActiveLevel(e.target.value)}
+                      >
+                        <option value="raudha">الروضة (Nursery)</option>
+                        <option value="ibtidaai_lower">الابتدائية السفلى (Lower Primary)</option>
+                        <option value="ibtidaai_upper">الابتدائية العليا (Upper Primary)</option>
+                      </select>
+                    </>
+                  )}
+                </div>
 
-          {(activeTab === 'analysis' || activeTab === 'top_students') && (
-            <div className="flex-1">
-              <label className="block text-xs font-semibold text-slate-600 uppercase mb-2">Level</label>
-              <select
-                className="w-full px-4 py-2 border border-slate-200 rounded-xl bg-slate-50 focus:ring-2 focus:ring-emerald-500 text-right"
-                dir="rtl"
-                value={activeLevel}
-                onChange={(e) => setActiveLevel(e.target.value)}
-              >
-                <option value="raudha">الروضة (Nursery)</option>
-                <option value="ibtidaai_lower">الابتدائية السفلى (Lower Primary)</option>
-                <option value="ibtidaai_upper">الابتدائية العليا (Upper Primary)</option>
-                </select>
               </div>
-            )}
-          </div>
             </div>
           </motion.div>
         )}

@@ -161,25 +161,32 @@ export function SearchFilterBar({
 
               {/* Curriculum */}
               <FilterGroup label="Curriculum">
-                <div style={{ display: 'flex', gap: 4 }}>
-                  {CURRICULUM_OPTIONS.map((opt) => (
-                    <motion.button
-                      key={opt.value}
-                      onClick={() => onChange({ curriculum: opt.value as FilterState['curriculum'], classIds: [], studentIds: [] })}
-                      style={{
-                        padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600,
-                        cursor: 'pointer', border: `1px solid`,
-                        background: curriculum === opt.value ? opt.bg : 'white',
-                        borderColor: curriculum === opt.value ? opt.border : 'rgba(0,0,0,0.1)',
-                        color: curriculum === opt.value ? opt.color : '#64748b',
-                        transition: 'all 0.15s',
-                      }}
-                      whileHover={{ scale: 1.04 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      {opt.label}
-                    </motion.button>
-                  ))}
+                <div style={{
+                  display: 'inline-flex', gap: 0,
+                  background: 'rgba(0,0,0,0.04)', borderRadius: 10,
+                  border: '1px solid rgba(0,0,0,0.08)', padding: 3,
+                }}>
+                  {CURRICULUM_OPTIONS.map((opt) => {
+                    const selected = curriculum === opt.value;
+                    return (
+                      <motion.button
+                        key={opt.value}
+                        onClick={() => onChange({ curriculum: opt.value as FilterState['curriculum'], classIds: [], studentIds: [] })}
+                        style={{
+                          padding: '6px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+                          cursor: 'pointer', border: 'none',
+                          background: selected ? 'white' : 'transparent',
+                          color: selected ? opt.color : '#64748b',
+                          boxShadow: selected ? '0 2px 6px rgba(0,0,0,0.08)' : 'none',
+                          transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                        }}
+                        whileHover={!selected ? { color: opt.color, background: 'rgba(255,255,255,0.4)' } : {}}
+                        whileTap={{ scale: 0.96 }}
+                      >
+                        {opt.label}
+                      </motion.button>
+                    )
+                  })}
                 </div>
               </FilterGroup>
             </div>

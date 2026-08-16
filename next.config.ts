@@ -31,6 +31,18 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  async headers() {
+    return [
+      {
+        source: "/manifest.webmanifest",
+        headers: [
+          { key: "Access-Control-Allow-Origin", value: "*" },
+          { key: "Access-Control-Allow-Methods", value: "GET,OPTIONS" },
+          { key: "Access-Control-Allow-Headers", value: "X-Requested-With, content-type, Authorization" },
+        ],
+      },
+    ];
+  },
 };
 
 const withSerwist = withSerwistInit({

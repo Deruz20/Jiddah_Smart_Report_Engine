@@ -44,63 +44,58 @@ export function TopToolbar({
   return (
     <Tooltip.Provider delayDuration={300}>
       <div
-        className="flex items-center gap-2 shrink-0 w-full overflow-x-auto no-scrollbar whitespace-nowrap"
+        className="flex items-center justify-between shrink-0 w-full bg-white/80 backdrop-blur-md z-30 transition-all duration-300"
         style={{
-          height: 56,
-          padding: '0 16px',
-          background: 'white',
-          borderBottom: `1px solid ${reportCount > 0 ? 'rgba(249,115,22,0.2)' : 'rgba(0,0,0,0.07)'}`,
-          boxShadow: '0 1px 8px rgba(0,0,0,0.05)',
-          transition: 'border-color 0.3s',
+          height: 60,
+          padding: '0 12px',
+          borderBottom: `1px solid ${reportCount > 0 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(0,0,0,0.05)'}`,
+          boxShadow: '0 1px 12px rgba(0,0,0,0.03)',
         }}
       >
-        {/* ── Hamburger (Mobile) ────────── */}
-        <button
-          onClick={toggleSidebar}
-          className="md:hidden flex items-center justify-center w-9 h-9 rounded-lg hover:bg-slate-100 text-slate-600 flex-shrink-0"
-        >
-          <Menu size={20} />
-        </button>
+        <div className="flex items-center gap-3 md:gap-4 overflow-hidden">
+          {/* ── Hamburger (Mobile) ────────── */}
+          <button
+            onClick={toggleSidebar}
+            className="md:hidden flex items-center justify-center w-10 h-10 rounded-xl hover:bg-slate-100 text-slate-600 transition-colors"
+          >
+            <Menu size={22} />
+          </button>
 
-
-
-        {/* ── Reports loaded badge ───────── */}
-        <AnimatePresence>
-          {title ? (
-            <div className="flex items-center gap-2 mr-2">
-              {title}
-            </div>
-          ) : reportCount > 0 ? (
-            <motion.div
-              className="flex items-center gap-1.5 rounded-full"
-              style={{
-                background: '#fff7ed',
-                border: '1px solid #fed7aa',
-                padding: '3px 10px',
-                fontSize: 12,
-                fontWeight: 700,
-                color: '#ea580c',
-              }}
-              initial={{ opacity: 0, scale: 0.85 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.85 }}
-            >
-              <span
+          {/* ── Reports loaded badge ───────── */}
+          <AnimatePresence>
+            {title ? (
+              <div className="flex items-center gap-2 font-medium truncate">
+                {title}
+              </div>
+            ) : reportCount > 0 ? (
+              <motion.div
+                className="flex items-center gap-2 rounded-xl truncate"
                 style={{
-                  width: 6, height: 6, borderRadius: '50%',
-                  background: isGenerating ? '#f97316' : '#22c55e',
-                  display: 'inline-block',
-                  boxShadow: `0 0 0 2px ${isGenerating ? '#fed7aa' : '#bbf7d0'}`,
+                  background: isGenerating ? '#fff7ed' : '#ecfdf5',
+                  border: `1px solid ${isGenerating ? '#fed7aa' : '#a7f3d0'}`,
+                  padding: '6px 12px',
                 }}
-              />
-              {isGenerating ? 'Generating…' : `${reportCount} report${reportCount !== 1 ? 's' : ''} loaded`}
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+              >
+                <span
+                  style={{
+                    width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+                    background: isGenerating ? '#f97316' : '#10b981',
+                    boxShadow: `0 0 0 3px ${isGenerating ? 'rgba(249,115,22,0.2)' : 'rgba(16,185,129,0.2)'}`,
+                  }}
+                  className={isGenerating ? 'animate-pulse' : ''}
+                />
+                <span className="text-xs md:text-sm font-bold text-slate-700 truncate">
+                  {isGenerating ? 'Generating…' : `${reportCount} loaded`}
+                </span>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+        </div>
 
-        <div className="flex-1" />
-
-        {/* ── Layout toggle ─────────────── */}
+        <div className="flex items-center gap-1.5 md:gap-2">
         {reportCount > 1 && onLayoutToggle && (
           <div className="hidden md:block flex-shrink-0">
           <Tooltip.Root>
@@ -374,6 +369,7 @@ export function TopToolbar({
           </Tooltip.Trigger>
             <TooltipContent>{searchOpen ? 'Close filter panel' : 'Open search & filter'}</TooltipContent>
           </Tooltip.Root>
+        </div>
         </div>
       </div>
     </Tooltip.Provider>

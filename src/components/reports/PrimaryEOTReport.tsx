@@ -71,7 +71,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
       <style
         dangerouslySetInnerHTML={{
           __html: `
-    @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Poppins:wght@400;500;600;700;800&family=Cairo:wght@600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Poppins:wght@400;500;600;700;800&family=Cairo:wght@600;700;800&display=swap');
 
     .primary-eot-report,
     .primary-eot-report * {
@@ -79,13 +79,15 @@ export default function PrimaryEOTReport({ reportData }: any) {
     }
 
     .primary-eot-report {
-        --primary-green: #0f5b48;
-        --accent-gold: #c5a059;
-        --deep-maroon: #7d140c;
-        --bg-cream: #fdfaf2;
-        --border-light: #d8c68a;
-        --data-indigo: #2d3436;
-        --data-teal: #0984e3;
+        --primary-green: #0a4f3b;
+        --secondary-green: #147a5c;
+        --accent-gold: #b8860b;
+        --deep-maroon: #800000;
+        --bg-cream: #fffdf7;
+        --border-light: #e2d8b8;
+        --data-indigo: #1e293b;
+        --data-teal: #0369a1;
+        --soft-gray: #f8f9fa;
         
         width: 100%;
         height: 100%;
@@ -94,8 +96,9 @@ export default function PrimaryEOTReport({ reportData }: any) {
         
         margin: 0 auto;
         background: var(--bg-cream);
-        border: 4px double var(--primary-green);
-        padding: 12px 24px;
+        border: 1px solid var(--primary-green);
+        box-shadow: inset 0 0 0 3px white, inset 0 0 0 5px var(--primary-green);
+        padding: 16px 24px;
         position: relative;
         display: flex;
         flex-direction: column;
@@ -112,7 +115,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
         inset: 0;
         background: url('/school_budge.jpeg') center center no-repeat;
         background-size: 350px;
-        opacity: 0.04;
+        opacity: 0.03;
         pointer-events: none;
         z-index: 0;
     }
@@ -128,7 +131,9 @@ export default function PrimaryEOTReport({ reportData }: any) {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 8px;
+        margin-bottom: 12px;
+        border-bottom: 2px solid var(--primary-green);
+        padding-bottom: 8px;
     }
 
     .primary-eot-report .school-left { width: 32%; }
@@ -137,21 +142,22 @@ export default function PrimaryEOTReport({ reportData }: any) {
         font-size: 16px;
         color: var(--deep-maroon);
         font-weight: 800;
-        line-height: 1.15;
+        line-height: 1.2;
+        letter-spacing: -0.2px;
     }
-    .primary-eot-report .school-left p { margin: 2px 0; font-size: 10px; font-weight: 500; color: #444; }
+    .primary-eot-report .school-left p { margin: 2px 0; font-size: 10px; font-weight: 500; color: #475569; }
 
     .primary-eot-report .header-center { width: 36%; text-align: center; display: flex; flex-direction: column; align-items: center; }
     .primary-eot-report .bismillah {
         font-family: 'Amiri', serif;
-        font-size: 22px;
+        font-size: 24px;
         color: var(--primary-green);
         margin-bottom: 2px;
     }
     
     .primary-eot-report .logo {
-        width: 50px;
-        height: 50px;
+        width: 55px;
+        height: 55px;
         margin: 0 auto 6px;
     }
     
@@ -163,12 +169,14 @@ export default function PrimaryEOTReport({ reportData }: any) {
 
     .primary-eot-report .report-badge {
         display: inline-block;
-        background: var(--primary-green);
+        background: linear-gradient(135deg, var(--primary-green), var(--secondary-green));
         color: white;
-        padding: 4px 16px;
-        border-radius: 999px;
-        font-size: 14px;
-        font-weight: 700;
+        padding: 4px 18px;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.2);
     }
 
     .primary-eot-report .header-right { width: 32%; text-align: right; direction: rtl; font-family: 'Cairo', sans-serif;}
@@ -176,98 +184,117 @@ export default function PrimaryEOTReport({ reportData }: any) {
         margin: 0;
         font-size: 20px;
         color: var(--deep-maroon);
-        line-height: 1.2;
-        font-weight: 700;
+        line-height: 1.3;
+        font-weight: 800;
     }
 
     /* INFO BOXES */
     .primary-eot-report .info-container {
         flex: 0 0 auto;
         display: flex;
-        gap: 15px;
-        margin-bottom: 10px;
+        gap: 16px;
+        margin-bottom: 12px;
     }
     .primary-eot-report .info-box {
         flex: 1;
         background: white;
         border: 1px solid var(--border-light);
         border-radius: 8px;
-        padding: 8px 14px;
+        padding: 10px 16px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.02);
     }
     .primary-eot-report .info-row {
         display: flex;
         align-items: center;
         gap: 8px;
-        margin-bottom: 4px;
+        margin-bottom: 6px;
         font-size: 12px;
     }
     .primary-eot-report .info-row:last-child { margin-bottom: 0; }
-    .primary-eot-report .label { font-weight: 700; color: #333; white-space: nowrap; }
+    .primary-eot-report .label { font-weight: 700; color: #334155; white-space: nowrap; text-transform: uppercase; font-size: 11px; }
     .primary-eot-report .line { 
         flex: 1; 
         min-width: 0;
-        border-bottom: 1.5px dotted #aaa; 
+        border-bottom: 1.5px dashed #cbd5e1; 
         display: flex;
         align-items: flex-end;
-        padding: 0 0 1px 4px;
+        padding: 0 0 2px 4px;
         color: var(--data-indigo);
-        font-weight: 900;
-        font-size: 15px;
+        font-weight: 800;
+        font-size: 14px;
     }
     .primary-eot-report .info-box[dir="rtl"] .line {
         padding-left: 0;
         padding-right: 4px;
         font-family: 'Cairo', sans-serif;
     }
+    .primary-eot-report .info-box[dir="rtl"] .label { text-transform: none; font-size: 12px; font-weight: 800; }
 
     /* TABLES */
     .primary-eot-report .tables-container {
         flex: 1 1 auto;
         display: flex;
-        gap: 15px;
+        gap: 16px;
         min-height: 0; /* allows shrinking */
     }
     .primary-eot-report .academic-side, .primary-eot-report .theology-side { 
-        width: 50%; 
         display: flex;
         flex-direction: column;
     }
+    .primary-eot-report .academic-side { flex: 2.2; }
+    .primary-eot-report .theology-side { flex: 1; }
 
     .primary-eot-report table {
         width: 100%;
-        border-collapse: collapse;
+        border-collapse: separate;
+        border-spacing: 0;
+        border-radius: 8px;
+        overflow: hidden;
+        border: 1px solid var(--primary-green);
         background: white;
-        border: 1px solid var(--border-light);
     }
+    .primary-eot-report th, .primary-eot-report td {
+        border-right: 1px solid var(--border-light);
+        border-bottom: 1px solid var(--border-light);
+    }
+    .primary-eot-report th:last-child, .primary-eot-report td:last-child { border-right: none; }
+    .primary-eot-report tr:last-child td { border-bottom: none; }
+    
     .primary-eot-report th {
         background: var(--primary-green);
         color: white;
-        font-size: 11px;
-        padding: 3px 4px;
+        font-size: 10px;
+        padding: 4px;
         text-transform: uppercase;
-        border: 1px solid rgba(255,255,255,0.2);
+        font-weight: 700;
+        letter-spacing: 0.5px;
     }
     .primary-eot-report .table-banner {
         background: var(--accent-gold);
         color: white;
         font-size: 13px;
-        letter-spacing: 1px;
-        padding: 2px;
+        letter-spacing: 2px;
+        padding: 4px;
         text-align: center;
+        text-transform: uppercase;
+        font-weight: 800;
     }
     .primary-eot-report td {
-        border: 1px solid #ddd;
-        padding: 2px 4px;
+        padding: 3px 6px;
         text-align: center;
         font-size: 11px;
         vertical-align: middle;
+        font-weight: 600;
+        color: #334155;
+    }
+    .primary-eot-report tbody tr:nth-child(even) {
+        background-color: rgba(226, 216, 184, 0.15);
     }
     
     .primary-eot-report .data-cell {
         color: var(--data-indigo);
-        font-weight: 900;
-        font-size: 14px;
-        text-align: center;
+        font-weight: 800;
+        font-size: 13px;
     }
     
     .primary-eot-report .remarks-cell {
@@ -275,49 +302,50 @@ export default function PrimaryEOTReport({ reportData }: any) {
         font-weight: 800;
         font-style: italic;
         font-size: 11px;
-        padding: 2px 4px;
         white-space: normal;
         line-height: 1.2;
     }
 
     /* GRADING KEY */
     .primary-eot-report .grading-key { 
-        margin-top: 6px; 
+        margin-top: 8px; 
         flex: 0 0 auto;
+        border: 1px solid #cbd5e1;
     }
-    .primary-eot-report .grading-key th { background: #555; font-size: 10px; padding: 3px; }
-    .primary-eot-report .grading-key td { font-size: 10px; font-weight: 700; padding: 3px; }
+    .primary-eot-report .grading-key th { background: #475569; font-size: 10px; padding: 4px; border-right: 1px solid #64748b; border-bottom: 1px solid #64748b; }
+    .primary-eot-report .grading-key td { font-size: 10px; font-weight: 800; padding: 4px; border-right: 1px solid #cbd5e1; border-bottom: none; }
+    .primary-eot-report .grading-key tr:last-child th { border-bottom: none; }
 
     /* THEOLOGY SIDE (RTL) */
     .primary-eot-report .theology-side { direction: rtl; }
     .primary-eot-report .theology-side th, .primary-eot-report .theology-side td { font-family: 'Amiri', serif; font-size: 13px; }
-    .primary-eot-report .theology-side .table-banner { font-size: 15px; }
+    .primary-eot-report .theology-side .table-banner { font-size: 16px; letter-spacing: 0; }
     
     .primary-eot-report .th-subhead {
-        background: #f8f9fa;
+        background: #e2e8f0;
         color: var(--primary-green);
-        font-weight: 700;
+        font-weight: 800;
         font-size: 12px;
     }
 
     .primary-eot-report .theology-footer {
         flex: 0 0 auto;
         display: flex;
-        gap: 10px;
-        margin-top: 6px;
+        gap: 12px;
+        margin-top: 8px;
     }
     .primary-eot-report .t-comment {
         flex: 1;
         border: 1px solid var(--border-light);
-        padding: 4px 8px;
+        padding: 6px 10px;
         background: white;
         font-family: 'Amiri', serif;
-        font-size: 12px;
+        font-size: 13px;
         text-align: right;
-        border-radius: 4px;
+        border-radius: 6px;
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 8px;
     }
 
     /* PREMIUM FOOTER */
@@ -326,72 +354,74 @@ export default function PrimaryEOTReport({ reportData }: any) {
         display: flex;
         gap: 16px;
         align-items: flex-end;
-        margin-top: 6px;
+        margin-top: 12px;
     }
 
-    .primary-eot-report .footer-left { flex: 1; display: flex; flex-direction: column; }
+    .primary-eot-report .footer-left { flex: 1; display: flex; flex-direction: column; gap: 8px; }
 
     .primary-eot-report .comment-card {
-        border: 1.5px dashed var(--primary-green);
+        border: 2px dashed var(--border-light);
         border-radius: 8px;
-        padding: 4px 8px;
-        background: rgba(255,255,255,0.85);
+        padding: 8px 12px;
+        background: white;
     }
-    .primary-eot-report .comment-row { display: flex; gap: 14px; margin-bottom: 4px; }
+    .primary-eot-report .comment-row { display: flex; gap: 16px; margin-bottom: 6px; }
     .primary-eot-report .comment-row:last-child { margin-bottom: 0; }
     .primary-eot-report .c-field { display: flex; align-items: center; gap: 8px; min-width: 0; }
-    .primary-eot-report .c-field span { font-size: 12px; font-weight: 700; white-space: nowrap; }
+    .primary-eot-report .c-field span { font-size: 11px; font-weight: 800; white-space: nowrap; text-transform: uppercase; color: #475569; }
     .primary-eot-report .w-line { 
         flex: 1; 
-        border-bottom: 1px dotted #666; 
-        padding-bottom: 1px;
+        border-bottom: 1.5px dashed #cbd5e1; 
+        padding-bottom: 2px;
         min-width: 0;
     }
     .primary-eot-report .line-text {
-        font-size: 11px;
+        font-size: 12px;
         line-height: 1.2;
         white-space: normal;
         color: var(--data-indigo);
-        font-weight: 700;
+        font-weight: 800;
         font-style: italic;
+        font-family: 'Georgia', serif;
     }
 
     .primary-eot-report .term-dates-bar {
         display: flex;
         gap: 12px;
-        margin-top: 6px;
     }
     .primary-eot-report .date-item {
         flex: 1;
         padding: 6px 12px;
         border-radius: 6px;
-        border: 1px solid #ddd;
+        border: 1px solid #cbd5e1;
         display: flex;
         align-items: center;
         justify-content: center;
         gap: 8px;
-        font-size: 12px;
-        font-weight: 700;
+        font-size: 11px;
+        font-weight: 800;
+        text-transform: uppercase;
+        background: white;
     }
-    .primary-eot-report .red-date { background: #fff0f0; border-color: #ffb3b3; color: var(--deep-maroon); }
-    .primary-eot-report .blue-date { background: #eef3ff; border-color: #a9c2ff; color: #1d4ed8; }
+    .primary-eot-report .red-date { border-color: #fca5a5; color: #b91c1c; }
+    .primary-eot-report .blue-date { border-color: #93c5fd; color: #1d4ed8; }
     
     .primary-eot-report .validity-strip {
-        margin-top: 10px;
-        background: var(--deep-maroon);
+        background: var(--primary-green);
         color: white;
         border-radius: 4px;
         text-align: center;
         padding: 6px;
         font-size: 10px;
         font-weight: 800;
+        letter-spacing: 1px;
     }
 
     .primary-eot-report .stamp-box {
-        width: 130px;
-        height: 130px;
+        width: 140px;
+        height: 140px;
         border-radius: 50%;
-        border: 2px dashed #9aa8bd;
+        border: 2px dashed #94a3b8;
         background: white;
         display: flex;
         align-items: center;
@@ -399,7 +429,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
         text-align: center;
         font-size: 12px;
         font-weight: 800;
-        color: #7584a0;
+        color: #cbd5e1;
         flex-shrink: 0;
         align-self: flex-end;
     }

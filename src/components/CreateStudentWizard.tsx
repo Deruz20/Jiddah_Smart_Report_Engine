@@ -58,8 +58,10 @@ const SCHOOL_PREFIX = 'JINPS';
 // ─── Helper ─────────────────────────────────────────────────────────────────
 
 function generateAdmissionNumber(year: string): string {
-  const num = String(Math.floor(Math.random() * 10000)).padStart(4, '0');
-  return `${SCHOOL_PREFIX}-${year}-${num}`;
+  // Use timestamp and random characters to guarantee uniqueness
+  const timestamp = Date.now().toString(36).slice(-4).toUpperCase();
+  const randomChars = Math.random().toString(36).substring(2, 4).toUpperCase();
+  return `${SCHOOL_PREFIX}-${year}-${timestamp}${randomChars}`;
 }
 
 // ─── Sub-components ─────────────────────────────────────────────────────────

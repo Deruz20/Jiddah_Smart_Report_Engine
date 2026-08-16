@@ -52,19 +52,23 @@ export async function GET(request: NextRequest) {
     const enrollmentIds = enrollments.map(e => e.id)
 
     // 2. Fetch marks for these enrollments for the given term
-    const { data: marks, error: marksError } = await supabase
-      .from('theology_marks')
-      .select(`
-        id,
-        enrollment_id,
-        subject_id,
-        mot_score,
-        eot_score
-      `)
-      .eq('term_id', termId)
-      .in('enrollment_id', enrollmentIds)
+    let marks: any[] = []
+    if (enrollmentIds.length > 0) {
+      const { data: marksData, error: marksError } = await supabase
+        .from('theology_marks')
+        .select(`
+          id,
+          enrollment_id,
+          subject_id,
+          mot_score,
+          eot_score
+        `)
+        .eq('term_id', termId)
+        .in('enrollment_id', enrollmentIds)
 
-    if (marksError) throw marksError
+      if (marksError) throw marksError
+      marks = marksData
+    }
 
     // 3. Fetch subjects
     const { data: subjects, error: subjectsError } = await supabase

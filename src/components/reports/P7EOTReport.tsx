@@ -634,9 +634,14 @@ export default function P7EOTReport({ reportData }: any) {
                       الدرجة الصغرى
                     </th>
                   </tr>
-                  {reportData?.theology?.subjects?.map((subject: any) => (
+                  {reportData?.theology?.subjects?.map((subject: any) => {
+                    const arabicName = subject.subject_name_arabic === 'التاريخ والسيرة' 
+                      ? 'التربية' 
+                      : subject.subject_name_arabic;
+                      
+                    return (
                     <tr key={subject.subject_name_arabic}>
-                      <td>{subject.subject_name_arabic}</td>
+                      <td>{arabicName}</td>
                       <td className="data-cell">{toAr(100)}</td>
                       <td className="data-cell">{toAr(subject.mot_score)}</td>
                       <td className="data-cell">{toAr(100)}</td>
@@ -645,7 +650,7 @@ export default function P7EOTReport({ reportData }: any) {
                         {subject.theology_remark ?? ''}
                       </td>
                     </tr>
-                  ))}
+                  )})}
                   <tr style={{ background: 'rgba(226, 216, 184, 0.25)', fontWeight: 800 }}>
                     <td>
                       <b>المجموع</b>

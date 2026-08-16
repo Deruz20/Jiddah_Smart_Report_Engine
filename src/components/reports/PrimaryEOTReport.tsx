@@ -241,7 +241,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
         display: flex;
         flex-direction: column;
     }
-    .primary-eot-report .academic-side { flex: 2.2; }
+    .primary-eot-report .academic-side { flex: 1.5; }
     .primary-eot-report .theology-side { flex: 1; }
 
     .primary-eot-report table {
@@ -654,9 +654,14 @@ export default function PrimaryEOTReport({ reportData }: any) {
                       الدرجة الصغرى
                     </th>
                   </tr>
-                  {reportData?.theology?.subjects?.map((subject: any) => (
+                  {reportData?.theology?.subjects?.map((subject: any) => {
+                    const arabicName = subject.subject_name_arabic === 'التاريخ والسيرة' 
+                      ? 'التربية' 
+                      : subject.subject_name_arabic;
+                    
+                    return (
                     <tr key={subject.subject_name_arabic}>
-                      <td>{subject.subject_name_arabic}</td>
+                      <td>{arabicName}</td>
                       <td className="data-cell">{toAr(100)}</td>
                       <td className="data-cell">{toAr(subject.mot_score)}</td>
                       <td className="data-cell">{toAr(100)}</td>

@@ -75,7 +75,7 @@ export default function P7EOTReport({ reportData }: any) {
   background: var(--bg-cream);
   border: 1px solid var(--primary-green);
   box-shadow: inset 0 0 0 3px white, inset 0 0 0 5px var(--primary-green);
-  padding: 20px 28px;
+  padding: 16px 20px;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -246,8 +246,8 @@ export default function P7EOTReport({ reportData }: any) {
 .p7-eot-report th {
   background: var(--primary-green);
   color: white;
-  font-size: 11px;
-  padding: 10px 4px;
+  font-size: 10px;
+  padding: 6px 2px;
   text-align: center;
   font-weight: 700;
   text-transform: uppercase;
@@ -265,8 +265,8 @@ export default function P7EOTReport({ reportData }: any) {
 }
 
 .p7-eot-report td {
-  padding: 12px 6px;
-  font-size: 12px;
+  padding: 8px 4px;
+  font-size: 11px;
   color: var(--data-navy);
   font-weight: 600;
   text-align: center;
@@ -345,7 +345,7 @@ export default function P7EOTReport({ reportData }: any) {
   display: flex;
   gap: 16px;
   align-items: flex-end;
-  margin-top: 24px;
+  margin-top: 12px;
 }
 
 .p7-eot-report .footer-left {
@@ -442,8 +442,8 @@ export default function P7EOTReport({ reportData }: any) {
 }
 
 .p7-eot-report .stamp-box {
-  width: 150px;
-  height: 150px;
+  width: 130px;
+  height: 130px;
   border-radius: 50%;
   border: 2px dashed #94a3b8;
   background: white;

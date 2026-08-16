@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useTransition } from 'react'
+import { createClient } from '@/utils/supabase/client'
 import { usePowerSync } from '@powersync/react'
 import { SharedMarksEntry, ExamType } from './shared-marks-entry'
 
@@ -122,14 +123,43 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
           WHERE s.curriculum = 'secular' AND (s.section = ? OR s.section = ? OR s.section IS NULL)
         `, [selectedEnrollmentId, section, className]);
 
-        const theology = await powerSync.getAll(`
-          SELECT 
-            s.id as subject_id, s.subject_name as subject_name_arabic,
-            tm.mot_score, tm.eot_score
-          FROM subjects s
-          LEFT JOIN theology_marks tm ON tm.subject_id = s.id AND tm.enrollment_id = ?
-          WHERE s.curriculum = 'theology' AND (s.section = ? OR s.section = ? OR s.section IS NULL)
-        `, [selectedEnrollmentId, section, className]);
+        let theology: any[] = []
+        if (selectedEnrollment?.theology_class_id) {
+          // Fetch theology marks from PowerSync local DB
+          const localMarks = await powerSync.getAll(`
+            SELECT subject_id, mot_score, eot_score FROM theology_marks WHERE enrollment_id = ?
+          `, [selectedEnrollmentId]);
+          
+          const marksMap = new Map(localMarks.map(m => [m.subject_id, m]));
+
+          // Fallback to fetch theology subjects from Supabase directly
+          const supabase = createClient();
+          const { data: theologyClassData } = await supabase
+            .from('theology_classes')
+            .select('level')
+            .eq('id', selectedEnrollment.theology_class_id)
+            .single();
+          
+          if (theologyClassData) {
+            const { data: theologySubjects } = await supabase
+              .from('theology_subjects')
+              .select('id, subject_name_arabic')
+              .eq('level', theologyClassData.level)
+              .order('sort_order', { ascending: true });
+            
+            if (theologySubjects) {
+              theology = theologySubjects.map(sub => {
+                const m = marksMap.get(sub.id) || {};
+                return {
+                  subject_id: sub.id,
+                  subject_name_arabic: sub.subject_name_arabic,
+                  mot_score: m.mot_score ?? null,
+                  eot_score: m.eot_score ?? null
+                };
+              });
+            }
+          }
+        }
 
         setCircularMarks(circular as any)
         setTheologyMarks(theology as any)

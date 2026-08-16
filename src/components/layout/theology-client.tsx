@@ -6,6 +6,7 @@ import { HeroSection } from "@/components/HeroSection";
 import { Button } from "@/components/figma-ui/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/figma-ui/ui/dialog";
 import { usePowerSync } from '@powersync/react';
+import { createClient } from '@/utils/supabase/client';
 
 export default function TheologyClient({ 
   initialMarks, 
@@ -52,37 +53,41 @@ export default function TheologyClient({
           tm.enrollment_id,
           tm.subject_id,
           NULL as term_id,
-          tm.mot_mark as mot_score,
-          tm.eot_mark as eot_score,
+          tm.mot_score,
+          tm.eot_score,
           e.student_id,
           e.theology_class_id,
           s.name as student_name,
           tc.class_name_english,
-          tc.class_name_arabic as level,
-          sub.subject_name as subject_name_arabic,
-          sub.section as level
+          tc.class_name_arabic as level
         FROM theology_marks tm
         LEFT JOIN enrollments e ON tm.enrollment_id = e.id
         LEFT JOIN students s ON e.student_id = s.id
         LEFT JOIN theology_classes tc ON e.theology_class_id = tc.id
-        LEFT JOIN subjects sub ON tm.subject_id = sub.id
       `);
       
-      const formattedMarks = data.map(row => ({
-        id: row.id,
-        enrollment_id: row.enrollment_id,
-        subject_id: row.subject_id,
-        term_id: row.term_id,
-        mot_score: row.mot_score,
-        eot_score: row.eot_score,
-        enrollments: {
-          student_id: row.student_id,
-          theology_class_id: row.theology_class_id,
-          students: { name: row.student_name },
-          theology_classes: { class_name_english: row.class_name_english, level: row.level }
-        },
-        theology_subjects: { subject_name_arabic: row.subject_name_arabic, level: row.level }
-      }));
+      const supabase = createClient();
+      const { data: theologySubjects } = await supabase.from('theology_subjects').select('id, subject_name_arabic, level');
+      const subjectMap = new Map((theologySubjects || []).map(s => [s.id, s]));
+
+      const formattedMarks = data.map(row => {
+        const sub = subjectMap.get(row.subject_id);
+        return {
+          id: row.id,
+          enrollment_id: row.enrollment_id,
+          subject_id: row.subject_id,
+          term_id: row.term_id,
+          mot_score: row.mot_score,
+          eot_score: row.eot_score,
+          enrollments: {
+            student_id: row.student_id,
+            theology_class_id: row.theology_class_id,
+            students: { name: row.student_name },
+            theology_classes: { class_name_english: row.class_name_english, level: row.level }
+          },
+          theology_subjects: { subject_name_arabic: sub?.subject_name_arabic, level: sub?.level }
+        }
+      });
       setMarks(formattedMarks);
     } catch (e) {
       console.error(e);

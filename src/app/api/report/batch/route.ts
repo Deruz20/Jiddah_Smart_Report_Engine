@@ -192,8 +192,9 @@ export async function POST(request: NextRequest) {
     const theologySubjectsCache: Record<string, any[]> = {}
     if (curriculum !== 'secular') {
       for (const lvl of theologyLevels) {
-        const { data: subs } = await supabase.from('subjects').select('id, subject_name').eq('curriculum', 'theology').eq('section', lvl)
-        theologySubjectsCache[lvl] = subs?.map(s => ({ id: s.id, subject_name_arabic: s.subject_name })) || []
+        if (!lvl) continue;
+        const { data: subs } = await supabase.from('theology_subjects').select('id, subject_name_arabic').eq('level', lvl)
+        theologySubjectsCache[lvl] = subs?.map(s => ({ id: s.id, subject_name_arabic: s.subject_name_arabic })) || []
       }
     }
 

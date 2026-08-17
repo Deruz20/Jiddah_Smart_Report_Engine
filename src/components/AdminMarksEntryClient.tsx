@@ -34,10 +34,12 @@ export function AdminMarksEntryClient({ terms }: AdminMarksEntryClientProps) {
           .select(`
             id,
             student_id,
-            students!inner ( name, admission_number ),
+            students!inner ( name, admission_number, is_archived ),
             circular_classes ( class_name, section ),
             theology_classes ( class_name_arabic, class_name_english )
           `)
+          .eq('is_active', true)
+          .eq('students.is_archived', false)
         
         if (error) throw error
 
@@ -153,10 +155,9 @@ export function AdminMarksEntryClient({ terms }: AdminMarksEntryClientProps) {
 
     setIsSaving(true)
 
-    startTransition(async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser()
-        const authUserId = user?.id
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      const authUserId = user?.id
 
         let updatedById = undefined;
         if (authUserId) {
@@ -246,13 +247,12 @@ export function AdminMarksEntryClient({ terms }: AdminMarksEntryClientProps) {
         console.error("WRITE_FAILED_MESSAGE:", err?.message);
         console.error("WRITE_FAILED_CODE:", err?.code);
         console.error("WRITE_FAILED_DETAILS:", err?.details);
-        console.error("WRITE_FAILED_HINT:", err?.hint);
-        setError(err?.message || err?.details || 'An unexpected error occurred')
+        
+        setError(err?.message || 'Failed to save marks')
       } finally {
         setIsSaving(false)
       }
-    })
-  }
+    }
 
   return (
     <SharedMarksEntry 

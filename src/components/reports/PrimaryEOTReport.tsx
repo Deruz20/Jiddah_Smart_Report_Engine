@@ -21,7 +21,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
 
   const toAr = (val: number | string | null | undefined): string => {
     if (val == null) return "--";
-    return String(val).replace(/[0-9]/g, (d) => "٠١٢٣٤٥٦٧٨٩"[int(d)]);
+    return String(val).replace(/[0-9]/g, (d) => "٠١٢٣٤٥٦٧٨٩"[+d]);
   };
 
   const toHijri = (gregorianYear: number): number =>

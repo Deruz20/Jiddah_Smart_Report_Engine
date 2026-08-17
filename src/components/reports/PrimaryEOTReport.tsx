@@ -668,20 +668,25 @@ export default function PrimaryEOTReport({ reportData }: any) {
                       الدرجة الصغرى
                     </th>
                   </tr>
-                  {reportData?.theology?.subjects?.map((subject: any) => {
-                    const arabicName = subject.subject_name_arabic === 'التاريخ والسيرة' 
-                      ? 'التربية' 
-                      : subject.subject_name_arabic;
-                    
+                  {[
+                    'القرآن الكريم',
+                    'اللغة العربية',
+                    'الفقه الإسلامي',
+                    'التربية الإسلامية'
+                  ].map((arabicName) => {
+                    const subject = reportData?.theology?.subjects?.find((s: any) => {
+                      const dbName = s.subject_name_arabic === 'التاريخ والسيرة' ? 'التربية' : (s.subject_name_arabic || '');
+                      return arabicName.includes(dbName) || dbName.includes(arabicName.split(' ')[0]);
+                    });
                     return (
-                    <tr key={subject.subject_name_arabic}>
+                    <tr key={arabicName}>
                       <td>{arabicName}</td>
                       <td className="data-cell">{toAr(100)}</td>
-                      <td className="data-cell">{toAr(subject.mot_score)}</td>
+                      <td className="data-cell">{toAr(subject?.mot_score)}</td>
                       <td className="data-cell">{toAr(100)}</td>
-                      <td className="data-cell">{toAr(subject.eot_score)}</td>
+                      <td className="data-cell">{toAr(subject?.eot_score)}</td>
                       <td className="remarks-cell">
-                        {subject.theology_remark ?? ''}
+                        {subject?.theology_remark ?? ''}
                       </td>
                     </tr>
                   )})}

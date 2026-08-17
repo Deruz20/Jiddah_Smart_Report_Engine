@@ -20,136 +20,88 @@ export default function PrimaryBOTReport({ reportData }: { reportData: any }) {
     }
 
     .primary-bot-report {
-        --data-navy: #0f172a;
-        --data-indigo: #3730a3;
-        --data-teal: #0f766e;
-        
-        margin: 0;
-        background: #fffef8;
-        border: 4px solid #163f2d;
-        position: relative;
-        overflow: visible;
-        padding: 12px;
-        color: #1a1a1a;
-        page-break-inside: avoid;
-        page-break-after: avoid;
-        font-family: 'Poppins', sans-serif;
-        box-sizing: border-box;
+        --primary-green: #064e3b;
+        --secondary-green: #047857;
+        --accent-gold: #fbbf24;
+        --data-indigo: #1e293b;
+        --data-teal: #0369a1;
+        --soft-gray: #f8fafc;
+        --border-light: #e2e8f0;
+
         flex: 1 1 auto;
         width: 100%;
         height: 100%;
-        max-height: 100%;
         display: flex;
         flex-direction: column;
-        justify-content: space-between;
-    }
-
-    /* Decorative Watermark */
-    .primary-bot-report .watermark-bg {
-        position: absolute;
-        top: 0; left: 0; right: 0; bottom: 0;
-        background: url('/school_budge.jpeg') center center no-repeat;
-        background-size: contain;
-        opacity: 0.04;
-        pointer-events: none;
-        z-index: 0;
-    }
-    .primary-bot-report > *:not(.watermark-bg):not(.final-footer) {
+        background: transparent;
+        padding: 0;
         position: relative;
-        z-index: 1;
+        overflow: hidden;
     }
 
-    /* Decorative Border */
-    .primary-bot-report::before {
-        content: "✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦";
-        position: absolute;
-        top: 6px;
-        left: 0;
-        width: 100%;
-        text-align: center;
-        color: #0d5c3f;
-        letter-spacing: 6px;
-        font-size: 14px;
-    }
 
-    .primary-bot-report::after {
-        content: "✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦";
-        position: absolute;
-        bottom: 6px;
-        left: 0;
-        width: 100%;
-        text-align: center;
-        color: #0d5c3f;
-        letter-spacing: 6px;
-        font-size: 14px;
-    }
 
     /* Header */
-    .primary-bot-report .top-arabic {
-        text-align: center;
-        font-family: 'Cairo', sans-serif;
-        font-size: 24px;
-        color: #0d5c3f;
-        font-weight: 700;
-        margin-top: 5px;
-    }
-
     .primary-bot-report .header {
+        flex: 0 0 auto;
         display: flex;
-        justify-content: space-between;
         align-items: center;
-        margin-top: 5px;
-        width: 100%;
-        gap: 12px;
+        justify-content: space-between;
+        background: linear-gradient(to right, var(--primary-green), var(--secondary-green));
+        padding: 16px 24px;
+        border-bottom: 4px solid var(--accent-gold);
+        color: white;
     }
 
-    .primary-bot-report .school-left { flex: 1; }
-    .primary-bot-report .school-left h1 {
-        color: #7a1408;
-        font-size: 18px;
-        line-height: 1.2;
-        font-weight: 700;
-    }
-
-    .primary-bot-report .school-left p {
-        margin-top: 5px;
-        font-size: 11px;
-        line-height: 1.3;
-        color: #444;
-    }
+    .primary-bot-report .school-left { width: 33%; }
+    .primary-bot-report .school-left h1 { margin: 0; font-size: 16px; font-weight: 800; color: white; line-height: 1.2; letter-spacing: -0.2px; }
+    .primary-bot-report .school-left p { margin: 2px 0 0; font-size: 10px; font-weight: 500; color: #a7f3d0; }
 
     .primary-bot-report .logo {
-        width: 85px;
-        height: auto;
-        display: flex;
-        justify-content: center;
-        align-items: center;
+        width: 60px;
+        height: 60px;
+        flex-shrink: 0;
+        background: white;
+        border-radius: 12px;
+        padding: 4px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
-
-    .primary-bot-report .school-right { flex: 1; text-align: right; font-family: 'Cairo', sans-serif; direction: rtl; }
-    .primary-bot-report .school-right h2 { color: #7a1408; font-size: 21px; line-height: 1.4; font-weight: 700; }
+    
+    .primary-bot-report .school-right { width: 33%; text-align: right; }
+    .primary-bot-report .school-right h2 { margin: 0; font-size: 19px; color: white; font-weight: 800; font-family: 'Cairo', sans-serif; }
 
     /* Ribbon */
     .primary-bot-report .ribbon {
-        width: 100%;
-        margin: 12px auto;
-        background: linear-gradient(to right, #0d5c3f, #15734f);
-        color: #fff;
+        background: rgba(255,255,255,0.2);
+        color: white;
         text-align: center;
-        padding: 10px;
-        border-radius: 50px;
-        font-size: 18px;
-        font-weight: 700;
-        box-shadow: 0 4px 10px rgba(0,0,0,.15);
-        border: 3px solid #d6b14c;
+        padding: 6px;
+        font-size: 14px;
+        font-weight: 800;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        border-radius: 999px;
+        border: 1px solid rgba(255,255,255,0.3);
+        margin: 10px auto;
+        display: inline-block;
+        padding: 4px 18px;
     }
 
-    /* Info Section */
+    /* INFO BOXES */
+    .primary-bot-report .report-body {
+        padding: 8px 24px 16px;
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 auto;
+    }
+
     .primary-bot-report .info {
-        margin-top: 10px;
-        border: 2px solid #d6b14c;
+        background: var(--soft-gray);
+        border: 1px solid var(--border-light);
         border-radius: 12px;
-        padding: 10px 15px;
+        padding: 12px 16px;
+        margin-bottom: 12px;
+        box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
     }
 
     .primary-bot-report .info-row {
@@ -158,52 +110,66 @@ export default function PrimaryBOTReport({ reportData }: { reportData: any }) {
         margin-bottom: 8px;
     }
 
-    .primary-bot-report .field { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }
+    .primary-bot-report .field { display: flex; align-items: center; gap: 8px; font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
     .primary-bot-report .line { 
-        border-bottom: 1.5px dotted #9ca3af; 
+        border-bottom: 1.5px dashed #cbd5e1; 
         flex: 1;
         min-width: 0;
         display: flex;
         align-items: center;
         justify-content: flex-start;
-        color: var(--data-navy);
-        font-weight: 900;
-        font-size: 15px;
+        color: var(--data-indigo);
+        font-weight: 800;
+        font-size: 14px;
         padding-bottom: 2px;
         padding-left: 8px;
+        text-transform: none;
+        letter-spacing: normal;
     }
 
     /* Main Table */
     .primary-bot-report .main-table {
         width: 100%;
-        border-collapse: collapse;
-        margin-top: 15px;
+        border-collapse: separate;
+        border-spacing: 0;
+        border-radius: 8px;
+        overflow: hidden;
+        border: 1px solid var(--border-light);
+        background: white;
     }
 
     .primary-bot-report .main-table th {
-        background: #0d5c3f;
-        color: #fff;
-        padding: 4px 2px;
-        border: 1px solid #d6b14c;
-        font-size: 11px;
+        background: var(--primary-green);
+        color: white;
+        font-size: 10px;
+        padding: 6px 4px;
+        text-transform: uppercase;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        border-right: 1px solid var(--border-light);
+        border-bottom: 1px solid var(--border-light);
     }
+    .primary-bot-report .main-table th:last-child { border-right: none; }
 
     .primary-bot-report .main-table td {
-        border: 1px solid #d6b14c;
-        padding: 10px 8px;
-        height: 32px;
+        border-right: 1px solid var(--border-light);
+        border-bottom: 1px solid var(--border-light);
+        padding: 4px 6px;
         font-size: 11px;
         text-align: center;
         font-weight: 600;
+        color: #334155;
     }
+    .primary-bot-report .main-table td:last-child { border-right: none; }
 
-    .primary-bot-report .main-table .subhead { background: #e8f3ec; color: #0d5c3f; font-weight: 700; }
+    .primary-bot-report .main-table .subhead th { background: var(--secondary-green); color: white; border-bottom: 2px solid #064e3b; }
+    .primary-bot-report .main-table .subhead th[rowspan="2"] { background: var(--primary-green); }
     .primary-bot-report .subject { font-weight: 700; text-align: left !important; }
 
     .primary-bot-report .data-cell {
         color: var(--data-indigo);
-        font-weight: 900;
-        font-size: 14px;
+        font-weight: 800;
+        font-size: 13px;
         text-align: center;
     }
     
@@ -216,33 +182,37 @@ export default function PrimaryBOTReport({ reportData }: { reportData: any }) {
     }
 
     /* Grading */
-    .primary-bot-report .grading { margin-top: 10px; }
-    .primary-bot-report .grade-title { font-size: 13px; font-weight: 700; color: #7a1408; margin-bottom: 4px; }
-    .primary-bot-report .grade-table { width: 100%; border-collapse: collapse; }
-    .primary-bot-report .grade-table th { background: #d6b14c; color: #000; padding: 6px; border: 1px solid #333; font-size: 10px; }
-    .primary-bot-report .grade-table td { border: 1px solid #333; text-align: center; padding: 6px; font-size: 11px; }
+    .primary-bot-report .grading { margin-top: 12px; }
+    .primary-bot-report .grade-table { 
+        width: 100%; 
+        border-collapse: separate; 
+        border-spacing: 0;
+        border-radius: 6px;
+        overflow: hidden;
+        border: 1px solid var(--border-light);
+    }
+    .primary-bot-report .grade-table th { background: #475569; color: white; font-size: 10px; padding: 4px; border-right: 1px solid #64748b; border-bottom: 1px solid #64748b; letter-spacing: 0; }
+    .primary-bot-report .grade-table td { font-size: 10px; font-weight: 800; padding: 4px; border-right: 1px solid var(--border-light); text-align: center; }
 
     /* Bottom Section */
-    .primary-bot-report .bottom { margin-top: 10px; padding-bottom: 0.5rem; }
-    .primary-bot-report .comment-box { margin-bottom: 12px; }
-    .primary-bot-report .comment-label { font-weight: 700; font-size: 13px; margin-bottom: 5px; color: #111; }
-    .primary-bot-report .comment-line { border-bottom: 2px dotted #444; height: 22px; margin-bottom: 5px; }
+    .primary-bot-report .bottom { margin-top: 12px; padding-bottom: 0.5rem; }
     
     .primary-bot-report .comment-field {
       display: flex;
-      flex-direction: column;
-      gap: 3px;
-      margin-bottom: 12px;
+      gap: 8px;
+      margin-bottom: 8px;
       flex: 0 0 auto;
+      align-items: center;
     }
     .primary-bot-report .comment-field > span:first-child {
-      font-weight: 700;
-      font-size: 13px;
-      color: #111;
+      font-weight: 800;
+      font-size: 11px;
+      color: #475569;
+      text-transform: uppercase;
     }
     .primary-bot-report .filled-line {
-      width: 100%;
-      border-bottom: 1.5px dotted #9ca3af;
+      flex: 1;
+      border-bottom: 1.5px dashed #cbd5e1;
       min-height: 22px;
       display: flex;
       align-items: center;
@@ -252,11 +222,12 @@ export default function PrimaryBOTReport({ reportData }: { reportData: any }) {
 
     .primary-bot-report .line-text {
       font-style: italic;
-      color: var(--data-teal);
-      font-weight: 900; font-size: 15px;
+      color: var(--data-indigo);
+      font-weight: 800; font-size: 13px;
       line-height: 1.2;
       background: transparent;
       padding-right: 4px;
+      font-family: 'Georgia', serif;
     }
 
     .primary-bot-report .footer-row {
@@ -275,13 +246,13 @@ export default function PrimaryBOTReport({ reportData }: { reportData: any }) {
         display: flex;
         justify-content: center;
         align-items: center;
-        color: #7584a0;
-        font-size: 11px;
-        font-weight: 700;
+        color: #94a3b8;
+        font-size: 12px;
+        font-weight: 800;
         text-align: center;
-        background: transparent;
-        border: 2px dashed #7584a0;
-        border-radius: 50%;
+        background: white;
+        border: 2px dashed #94a3b8;
+        border-radius: 16px;
         box-shadow: none;
     }
 
@@ -289,11 +260,11 @@ export default function PrimaryBOTReport({ reportData }: { reportData: any }) {
         flex: 0 0 auto;
         margin-top: 10px;
         width: 100%;
-        background: #7a1408;
+        background: var(--primary-green);
         color: white;
         text-align: center;
-        padding: 5px;
-        font-size: 11px;
+        padding: 6px;
+        font-size: 10px;
         font-weight: 800;
         border-radius: 4px;
         letter-spacing: 1px;
@@ -319,13 +290,12 @@ export default function PrimaryBOTReport({ reportData }: { reportData: any }) {
             <img src="/school_budge.jpeg" alt="School Badge" style={{ width: '100%', height: 'auto' }} />
           </div>
 
-          <div className="school-right">
-            <h2>مدرسة جدة الإسلامية للروضة والإبتدائية - انساغو - واكيسو</h2>
+          <div className="header-right" style={{ width: '33%', textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+            <div className="ribbon" style={{ margin: 0 }}>{reportData?.section_type === 'upper_primary' ? 'UPPER' : 'LOWER'} REPORT FORM - BEGINNING OF TERM</div>
           </div>
         </div>
 
-        <div className="ribbon">{reportData?.section_type === 'upper_primary' ? 'UPPER' : 'LOWER'} REPORT FORM - BEGINNING OF TERM</div>
-
+        <div className="report-body">
         <div className="info">
           <div className="info-row">
             <div className="field">Class: <div className="line">{reportData?.student?.class_name}</div></div>
@@ -438,6 +408,7 @@ export default function PrimaryBOTReport({ reportData }: { reportData: any }) {
 
         <div className="final-footer">
           THIS REPORT FORM IS INVALID WITHOUT THE OFFICIAL SCHOOL STAMP
+        </div>
         </div>
 
       </div>

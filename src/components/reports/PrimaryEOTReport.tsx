@@ -79,15 +79,15 @@ export default function PrimaryEOTReport({ reportData }: any) {
     }
 
     .primary-eot-report {
-        --primary-green: #0a4f3b;
-        --secondary-green: #147a5c;
-        --accent-gold: #b8860b;
+        --primary-green: #064e3b;
+        --secondary-green: #047857;
+        --accent-gold: #fbbf24;
         --deep-maroon: #800000;
-        --bg-cream: #fffdf7;
-        --border-light: #e2d8b8;
+        --bg-cream: transparent;
+        --border-light: #e2e8f0;
         --data-indigo: #1e293b;
         --data-teal: #0369a1;
-        --soft-gray: #f8f9fa;
+        --soft-gray: #f8fafc;
         
         width: 100%;
         height: 100%;
@@ -95,10 +95,10 @@ export default function PrimaryEOTReport({ reportData }: any) {
         overflow: hidden;
         
         margin: 0 auto;
-        background: var(--bg-cream);
-        border: 1px solid var(--primary-green);
-        box-shadow: inset 0 0 0 3px white, inset 0 0 0 5px var(--primary-green);
-        padding: 16px 24px;
+        background: transparent;
+        border: none;
+        box-shadow: none;
+        padding: 0;
         position: relative;
         display: flex;
         flex-direction: column;
@@ -131,27 +131,28 @@ export default function PrimaryEOTReport({ reportData }: any) {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 12px;
-        border-bottom: 2px solid var(--primary-green);
-        padding-bottom: 8px;
+        background: linear-gradient(to right, var(--primary-green), var(--secondary-green));
+        padding: 16px 24px;
+        border-bottom: 4px solid var(--accent-gold);
+        color: white;
     }
 
     .primary-eot-report .school-left { width: 32%; }
     .primary-eot-report .school-left h1 {
         margin: 0;
-        font-size: 16px;
-        color: var(--deep-maroon);
+        font-size: 17px;
+        color: white;
         font-weight: 800;
         line-height: 1.2;
         letter-spacing: -0.2px;
     }
-    .primary-eot-report .school-left p { margin: 2px 0; font-size: 10px; font-weight: 500; color: #475569; }
+    .primary-eot-report .school-left p { margin: 2px 0; font-size: 10px; font-weight: 500; color: #a7f3d0; }
 
     .primary-eot-report .header-center { width: 36%; text-align: center; display: flex; flex-direction: column; align-items: center; }
     .primary-eot-report .bismillah {
         font-family: 'Amiri', serif;
         font-size: 24px;
-        color: var(--primary-green);
+        color: white;
         margin-bottom: 2px;
     }
     
@@ -159,6 +160,10 @@ export default function PrimaryEOTReport({ reportData }: any) {
         width: 55px;
         height: 55px;
         margin: 0 auto 6px;
+        background: white;
+        border-radius: 12px;
+        padding: 4px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
     
     .primary-eot-report .logo img {
@@ -169,23 +174,32 @@ export default function PrimaryEOTReport({ reportData }: any) {
 
     .primary-eot-report .report-badge {
         display: inline-block;
-        background: linear-gradient(135deg, var(--primary-green), var(--secondary-green));
+        background: rgba(255,255,255,0.2);
         color: white;
         padding: 4px 18px;
-        border-radius: 6px;
+        border-radius: 999px;
         font-size: 13px;
         font-weight: 800;
-        letter-spacing: 0.5px;
-        text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        letter-spacing: 0.05em;
+        border: 1px solid rgba(255,255,255,0.3);
     }
 
     .primary-eot-report .header-right { width: 32%; text-align: right; direction: rtl; font-family: 'Cairo', sans-serif;}
     .primary-eot-report .header-right h2 {
         margin: 0;
-        font-size: 20px;
-        color: var(--deep-maroon);
+        font-size: 19px;
+        color: white;
         line-height: 1.3;
         font-weight: 800;
+    }
+
+    /* BODY PADDING */
+    .primary-eot-report .report-body {
+        padding: 16px 24px;
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 auto;
+        min-height: 0;
     }
 
     /* INFO BOXES */
@@ -193,15 +207,15 @@ export default function PrimaryEOTReport({ reportData }: any) {
         flex: 0 0 auto;
         display: flex;
         gap: 16px;
-        margin-bottom: 12px;
+        margin-bottom: 16px;
     }
     .primary-eot-report .info-box {
         flex: 1;
-        background: white;
+        background: var(--soft-gray);
         border: 1px solid var(--border-light);
-        border-radius: 8px;
-        padding: 10px 16px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+        border-radius: 12px;
+        padding: 12px 16px;
+        box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
     }
     .primary-eot-report .info-row {
         display: flex;
@@ -211,7 +225,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
         font-size: 12px;
     }
     .primary-eot-report .info-row:last-child { margin-bottom: 0; }
-    .primary-eot-report .label { font-weight: 700; color: #334155; white-space: nowrap; text-transform: uppercase; font-size: 11px; }
+    .primary-eot-report .label { font-weight: 700; color: #64748b; white-space: nowrap; text-transform: uppercase; font-size: 10px; letter-spacing: 0.05em; }
     .primary-eot-report .line { 
         flex: 1; 
         min-width: 0;
@@ -250,7 +264,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
         border-spacing: 0;
         border-radius: 8px;
         overflow: hidden;
-        border: 1px solid var(--primary-green);
+        border: 1px solid var(--border-light);
         background: white;
     }
     .primary-eot-report th, .primary-eot-report td {
@@ -264,20 +278,21 @@ export default function PrimaryEOTReport({ reportData }: any) {
         background: var(--primary-green);
         color: white;
         font-size: 10px;
-        padding: 4px;
+        padding: 6px 4px;
         text-transform: uppercase;
         font-weight: 700;
         letter-spacing: 0.5px;
     }
     .primary-eot-report .table-banner {
-        background: var(--accent-gold);
+        background: var(--secondary-green);
         color: white;
         font-size: 13px;
         letter-spacing: 2px;
-        padding: 4px;
+        padding: 6px;
         text-align: center;
         text-transform: uppercase;
         font-weight: 800;
+        border-bottom: 2px solid #064e3b;
     }
     .primary-eot-report td {
         padding: 3px 6px;
@@ -308,12 +323,12 @@ export default function PrimaryEOTReport({ reportData }: any) {
 
     /* GRADING KEY */
     .primary-eot-report .grading-key { 
-        margin-top: 8px; 
+        margin-top: 12px; 
         flex: 0 0 auto;
-        border: 1px solid #cbd5e1;
+        border: 1px solid var(--border-light);
     }
-    .primary-eot-report .grading-key th { background: #475569; font-size: 10px; padding: 4px; border-right: 1px solid #64748b; border-bottom: 1px solid #64748b; }
-    .primary-eot-report .grading-key td { font-size: 10px; font-weight: 800; padding: 4px; border-right: 1px solid #cbd5e1; border-bottom: none; }
+    .primary-eot-report .grading-key th { background: #475569; color: white; font-size: 10px; padding: 4px; border-right: 1px solid #64748b; border-bottom: 1px solid #64748b; letter-spacing: 0; }
+    .primary-eot-report .grading-key td { font-size: 10px; font-weight: 800; padding: 4px; border-right: 1px solid var(--border-light); border-bottom: none; }
     .primary-eot-report .grading-key tr:last-child th { border-bottom: none; }
 
     /* THEOLOGY SIDE (RTL) */
@@ -418,9 +433,9 @@ export default function PrimaryEOTReport({ reportData }: any) {
     }
 
     .primary-eot-report .stamp-box {
-        width: 140px;
-        height: 140px;
-        border-radius: 50%;
+        width: 120px;
+        height: 120px;
+        border-radius: 16px;
         border: 2px dashed #94a3b8;
         background: white;
         display: flex;
@@ -429,7 +444,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
         text-align: center;
         font-size: 12px;
         font-weight: 800;
-        color: #cbd5e1;
+        color: #94a3b8;
         flex-shrink: 0;
         align-self: flex-end;
     }
@@ -468,6 +483,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
           </div>
         </header>
 
+        <div className="report-body">
         {/* INFO SECTION */}
         <section className="info-container">
           <div
@@ -793,6 +809,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
             STAMP
           </div>
         </footer>
+        </div>
       </div>
     </ReportContainer>
   )

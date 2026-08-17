@@ -32,11 +32,6 @@ export default function TheologyMOTReport({ reportData }: any) {
 
   const renderCard = () => (
     <div className="theology-mot-report font-cairo">
-      <div className="corner top-right"></div>
-      <div className="corner top-left"></div>
-      <div className="corner bottom-right"></div>
-      <div className="corner bottom-left"></div>
-
       <div className="inner">
         <div className="header">
           <div className="basmala">بسم الله الرحمن الرحيم</div>
@@ -127,12 +122,17 @@ export default function TheologyMOTReport({ reportData }: any) {
           </div>
         </div>
 
-        <div className="comment">
-          <span>تقرير مرب الفصل :</span>
-          <div className="line-dots">
-            <span className="line-text">
-              {getTheologyComment(isEOT ? (reportData?.theology?.eot_total ?? 0) : (reportData?.theology?.mot_total ?? 0))}
-            </span>
+        <div className="comment-section">
+          <div className="comment" style={{ flex: 1, margin: 0 }}>
+            <span>تقرير مرب الفصل :</span>
+            <div className="line-dots">
+              <span className="line-text">
+                {getTheologyComment(isEOT ? (reportData?.theology?.eot_total ?? 0) : (reportData?.theology?.mot_total ?? 0))}
+              </span>
+            </div>
+          </div>
+          <div className="stamp-box">
+            الختم الرسمي للمدرسة
           </div>
         </div>
       </div>
@@ -148,39 +148,22 @@ export default function TheologyMOTReport({ reportData }: any) {
 @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap');
 
 .theology-mot-report-page {
+    --primary-green: #064e3b;
+    --secondary-green: #047857;
     --data-navy: #0f172a;
-    --data-indigo: #3730a3;
-    --data-teal: #0f766e;
+    --data-indigo: #1e293b;
+    --data-teal: #0369a1;
     
     flex: 1 1 auto;
     width: 100%;
     height: 100%;
-    max-height: 100%;
     display: flex;
     flex-direction: column;
     box-sizing: border-box;
-    background: #fcf4db; /* matching the user's PDF yellow background */
+    background: transparent;
 }
 
-.cut-line {
-    height: 0;
-    border-top: 1.5px dashed #b5a371;
-    position: relative;
-    z-index: 10;
-}
 
-.cut-line::after {
-    content: '✂ Cut Here';
-    position: absolute;
-    top: -9px;
-    left: 40px;
-    background: #fcf4db;
-    padding: 0 10px;
-    color: #888;
-    font-size: 11px;
-    font-family: sans-serif;
-    font-weight: 600;
-}
 
 /* MAIN CARD */
 .theology-mot-report {
@@ -198,15 +181,7 @@ export default function TheologyMOTReport({ reportData }: any) {
     justify-content: center;
 }
 
-/* INNER BORDER DECOR */
-.theology-mot-report::after {
-    content: '';
-    position: absolute;
-    inset: 15px;
-    border: 2px solid #000;
-    pointer-events: none;
-    border-radius: 2px;
-}
+
 
 /* WATERMARK */
 .theology-mot-report::before {
@@ -230,13 +205,18 @@ export default function TheologyMOTReport({ reportData }: any) {
 .theology-mot-report .header {
     text-align: center;
     position: relative;
+    background: linear-gradient(to right, var(--primary-green), var(--secondary-green));
+    padding: 16px;
+    border-radius: 12px;
+    color: white;
+    border-bottom: 4px solid #fbbf24;
 }
 
 .theology-mot-report .basmala {
     font-family: 'Amiri', serif;
     font-size: 24px;
     font-weight: 700;
-    color: #0d5c46;
+    color: white;
     margin-bottom: 4px;
     letter-spacing: .5px;
 }
@@ -244,8 +224,8 @@ export default function TheologyMOTReport({ reportData }: any) {
 .theology-mot-report .school {
     font-size: 22px;
     font-weight: 800;
-    color: #b71c1c;
-    text-shadow: 1px 1px 0 #ffffff, 2px 2px 0 rgba(13,92,70,.15);
+    color: white;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
     line-height: 1.3;
 }
 
@@ -253,10 +233,12 @@ export default function TheologyMOTReport({ reportData }: any) {
     margin-top: 6px;
     font-size: 18px;
     font-weight: 900;
-    color: #111;
+    color: white;
     display: inline-block;
-    padding: 2px 22px;
-    border-bottom: 3px solid #0d5c46;
+    padding: 4px 22px;
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 999px;
+    background: rgba(255,255,255,0.2);
 }
 
 /* INFO AREA */
@@ -266,6 +248,11 @@ export default function TheologyMOTReport({ reportData }: any) {
     font-weight: 700;
     color: #111;
     line-height: 1.5;
+    background: #f8fafc;
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
 }
 
 .theology-mot-report .row {
@@ -273,7 +260,6 @@ export default function TheologyMOTReport({ reportData }: any) {
     align-items: center;
     gap: 12px;
     margin-bottom: 12px;
-    border-bottom: 1px dashed rgba(13,92,70,0.35);
     padding-bottom: 8px;
 }
 
@@ -293,14 +279,14 @@ export default function TheologyMOTReport({ reportData }: any) {
 .theology-mot-report .line-dots {
     flex: 1;
     min-width: 0;
-    border-bottom: 1.5px dotted #9ca3af;
+    border-bottom: 1.5px dashed #cbd5e1;
     height: 18px;
     display: flex;
     align-items: center;
     justify-content: flex-start;
     padding: 0 8px 2px 8px;
-    color: var(--data-navy);
-    font-weight: 900;
+    color: var(--data-indigo);
+    font-weight: 800;
     font-size: 16px;
 }
 
@@ -322,34 +308,43 @@ export default function TheologyMOTReport({ reportData }: any) {
 
 .theology-mot-report .table {
     width: 95%;
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0;
     table-layout: fixed;
     font-size: 15px;
-    background: rgba(255,255,255,.22);
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    overflow: hidden;
 }
 
 .theology-mot-report .table th,
 .theology-mot-report .table td {
-    border: 1.5px solid #0d5c46;
+    border-right: 1px solid #e2e8f0;
+    border-bottom: 1px solid #e2e8f0;
     text-align: center;
     white-space: normal;
     word-break: break-word;
 }
+.theology-mot-report .table th:last-child,
+.theology-mot-report .table td:last-child {
+    border-right: none;
+}
 
 .theology-mot-report .table th {
     padding: 6px 4px;
-    background: linear-gradient(180deg, #f6e6b4 0%, #e3c25a 100%);
-    color: #111;
-    font-weight: 900;
+    background: var(--secondary-green);
+    color: white;
+    font-weight: 700;
+    border-bottom: 2px solid var(--primary-green);
 }
 
 .theology-mot-report .table td {
     height: 28px;
-    background: rgba(255,255,255,.35);
+    background: white;
     vertical-align: middle;
     padding: 2px;
     color: var(--data-indigo);
-    font-weight: 900;
+    font-weight: 800;
     font-size: 16px;
 }
 
@@ -379,19 +374,30 @@ export default function TheologyMOTReport({ reportData }: any) {
     font-weight: 900;
 }
 
-/* PREMIUM CORNER ORNAMENTS */
-.theology-mot-report .corner {
-    position: absolute;
-    width: 30px;
-    height: 30px;
-    border-color: #0d5c46;
-    z-index: 3;
+/* STAMP BOX */
+.theology-mot-report .stamp-box {
+    width: 120px;
+    height: 120px;
+    border-radius: 16px;
+    border: 2px dashed #94a3b8;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 800;
+    color: #94a3b8;
+    flex-shrink: 0;
+    margin-right: auto;
 }
 
-.theology-mot-report .top-right { top: 12px; right: 12px; border-top: 3px solid; border-right: 3px solid; }
-.theology-mot-report .top-left { top: 12px; left: 12px; border-top: 3px solid; border-left: 3px solid; }
-.theology-mot-report .bottom-right { bottom: 12px; right: 12px; border-bottom: 3px solid; border-right: 3px solid; }
-.theology-mot-report .bottom-left { bottom: 12px; left: 12px; border-bottom: 3px solid; border-left: 3px solid; }
+.theology-mot-report .comment-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-top: 14px;
+}
 
 @media print {
     .theology-mot-report-page {

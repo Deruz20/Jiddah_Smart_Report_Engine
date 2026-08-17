@@ -55,15 +55,16 @@ export default function P7EOTReport({ reportData }: any) {
 }
 
 .p7-eot-report {
-  --primary-green: #0a4f3b;
-  --secondary-green: #147a5c;
-  --accent-gold: #b8860b;
+  --primary-green: #064e3b;
+  --secondary-green: #047857;
+  --accent-gold: #fbbf24;
   --deep-maroon: #800000;
-  --bg-cream: #fffdf7;
-  --border-light: #e2d8b8;
+  --bg-cream: transparent;
+  --border-light: #e2e8f0;
   --data-navy: #0f172a;
   --data-indigo: #1e293b;
   --data-teal: #0369a1;
+  --soft-gray: #f8fafc;
   
   flex: 1 1 auto;
   width: 100%;
@@ -72,10 +73,10 @@ export default function P7EOTReport({ reportData }: any) {
 
 
   margin: 0 auto;
-  background: var(--bg-cream);
-  border: 1px solid var(--primary-green);
-  box-shadow: inset 0 0 0 3px white, inset 0 0 0 5px var(--primary-green);
-  padding: 16px 20px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -108,9 +109,10 @@ export default function P7EOTReport({ reportData }: any) {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
-  border-bottom: 2px solid var(--primary-green);
-  padding-bottom: 12px;
+  background: linear-gradient(to right, var(--primary-green), var(--secondary-green));
+  padding: 16px 24px;
+  border-bottom: 4px solid var(--accent-gold);
+  color: white;
 }
 
 .p7-eot-report .school-left {
@@ -119,9 +121,9 @@ export default function P7EOTReport({ reportData }: any) {
 
 .p7-eot-report .school-left h1 {
   margin: 0;
-  font-size: 19px;
+  font-size: 20px;
   line-height: 1.2;
-  color: var(--deep-maroon);
+  color: white;
   font-weight: 800;
   letter-spacing: -0.2px;
 }
@@ -129,7 +131,7 @@ export default function P7EOTReport({ reportData }: any) {
 .p7-eot-report .school-left p {
   margin: 4px 0 0 0;
   font-size: 11px;
-  color: #475569;
+  color: #a7f3d0;
   font-weight: 500;
 }
 
@@ -145,6 +147,10 @@ export default function P7EOTReport({ reportData }: any) {
   width: 75px;
   height: 75px;
   margin: 0 auto;
+  background: white;
+  border-radius: 12px;
+  padding: 4px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
 .p7-eot-report .logo img {
@@ -163,26 +169,35 @@ export default function P7EOTReport({ reportData }: any) {
 
 .p7-eot-report .report-badge {
   display: inline-block;
-  background: linear-gradient(135deg, var(--primary-green), var(--secondary-green));
+  background: rgba(255,255,255,0.2);
   color: white;
   padding: 6px 20px;
-  border-radius: 6px;
+  border-radius: 999px;
   font-size: 14px;
   font-weight: 800;
-  letter-spacing: 0.5px;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+  letter-spacing: 0.05em;
+  border: 1px solid rgba(255,255,255,0.3);
   margin-top: 10px;
+}
+
+/* ================= BODY ================= */
+.p7-eot-report .report-body {
+  padding: 16px 24px;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 /* ================= INFO ================= */
 .p7-eot-report .info-box {
   flex: 0 0 auto;
-  background: white;
+  background: var(--soft-gray);
   border: 1px solid var(--border-light);
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 12px 16px;
   margin-bottom: 16px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
 }
 
 .p7-eot-report .info-row {
@@ -199,10 +214,11 @@ export default function P7EOTReport({ reportData }: any) {
 
 .p7-eot-report .label {
   font-weight: 700;
-  color: #334155;
+  color: #64748b;
   white-space: nowrap;
   text-transform: uppercase;
-  font-size: 11px;
+  font-size: 10px;
+  letter-spacing: 0.05em;
 }
 
 .p7-eot-report .line {
@@ -233,7 +249,7 @@ export default function P7EOTReport({ reportData }: any) {
   border-spacing: 0;
   border-radius: 8px;
   overflow: hidden;
-  border: 1px solid var(--primary-green);
+  border: 1px solid var(--border-light);
   background: white;
 }
 .p7-eot-report th, .p7-eot-report td {
@@ -254,7 +270,7 @@ export default function P7EOTReport({ reportData }: any) {
 }
 
 .p7-eot-report .table-banner {
-  background: var(--accent-gold);
+  background: var(--secondary-green);
   color: white;
   font-size: 14px;
   letter-spacing: 2px;
@@ -262,6 +278,7 @@ export default function P7EOTReport({ reportData }: any) {
   text-align: center;
   text-transform: uppercase;
   font-weight: 800;
+  border-bottom: 2px solid #064e3b;
 }
 
 .p7-eot-report td {
@@ -317,13 +334,14 @@ export default function P7EOTReport({ reportData }: any) {
 
 /* ================= GRADING ================= */
 .p7-eot-report .grading-key {
-  margin-top: 4px;
+  margin-top: 16px;
   flex: 0 0 auto;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--border-light);
 }
 
 .p7-eot-report .grading-key th {
   background: #475569;
+  color: white;
   font-size: 10px;
   padding: 6px;
   border-right: 1px solid #64748b;
@@ -334,7 +352,7 @@ export default function P7EOTReport({ reportData }: any) {
   font-size: 10px;
   font-weight: 800;
   padding: 4px;
-  border-right: 1px solid #cbd5e1;
+  border-right: 1px solid var(--border-light);
   border-bottom: none;
 }
 .p7-eot-report .grading-key tr:last-child th { border-bottom: none; }
@@ -354,7 +372,6 @@ export default function P7EOTReport({ reportData }: any) {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  padding-right: 140px;
 }
 
 .p7-eot-report .comment-card {
@@ -444,22 +461,20 @@ export default function P7EOTReport({ reportData }: any) {
 }
 
 .p7-eot-report .stamp-box {
-  position: absolute;
-  bottom: 0px;
-  right: 0px;
-  width: 130px;
-  height: 130px;
-  border-radius: 50%;
+  width: 120px;
+  height: 120px;
+  border-radius: 16px;
   border: 2px dashed #94a3b8;
   background: white;
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 800;
-  color: #cbd5e1;
+  color: #94a3b8;
   flex-shrink: 0;
+  align-self: flex-end;
 }
           `
         }}
@@ -490,7 +505,8 @@ export default function P7EOTReport({ reportData }: any) {
             </div>
           </div>
         </header>
-
+        
+        <div className="report-body">
         <section className="info-box">
           <div className="info-row">
             <span className="label">Pupil's Name:</span>
@@ -775,6 +791,7 @@ export default function P7EOTReport({ reportData }: any) {
             STAMP
           </div>
         </footer>
+        </div>
       </div>
     </ReportContainer>
   )

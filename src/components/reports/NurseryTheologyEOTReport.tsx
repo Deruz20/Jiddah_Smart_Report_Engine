@@ -62,10 +62,11 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
     --nursery-mint: #e8f5e9;
     --nursery-gold: #d4af37;
     --nursery-text: #2c3e50;
-    --primary-green: #0f5b48;
+    --primary-green: #064e3b;
+    --secondary-green: #047857;
     --data-navy: #0f172a;
-    --data-indigo: #3730a3;
-    --data-teal: #0f766e;
+    --data-indigo: #1e293b;
+    --data-teal: #0369a1;
     flex: 1 1 auto;
     width: 100%;
     height: 100%;
@@ -145,35 +146,39 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
     flex: 0 0 auto;
     text-align: center;
     margin-bottom: 10px;
-    border-bottom: 3px double var(--nursery-mint);
-    padding-bottom: 5px;
+    background: linear-gradient(to right, var(--primary-green), var(--secondary-green));
+    padding: 12px;
+    border-radius: 12px;
+    color: white;
+    border-bottom: 4px solid var(--nursery-gold);
 }
 
 .nursery-theology-eot-report .basmala {
     font-family: 'Amiri', serif;
     font-size: 36px;
-    color: var(--primary-green);
+    color: white;
     margin-bottom: 10px;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
 }
 
 .nursery-theology-eot-report .school-name {
     font-size: 32px;
     font-weight: 900;
-    color: #b71c1c;
+    color: white;
     margin: 5px 0;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
 }
 
 .nursery-theology-eot-report .report-badge {
-    background: var(--nursery-gold);
+    background: rgba(255,255,255,0.2);
     color: white;
     display: inline-block;
     padding: 5px 30px;
-    border-radius: 50px;
+    border-radius: 999px;
     font-size: 22px;
     font-weight: 700;
     margin-top: 10px;
-    box-shadow: 0 4px 10px rgba(212,175,55,0.3);
+    border: 1px solid rgba(255,255,255,0.3);
 }
 
 .nursery-theology-eot-report .info-grid {
@@ -182,9 +187,11 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
     grid-template-columns: 1fr 1fr;
     gap: 10px;
     margin: 10px 0;
-    background: var(--nursery-blue);
+    background: #f8fafc;
     padding: 10px 15px;
-    border-radius: 15px;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
 }
 
 .nursery-theology-eot-report .info-item {
@@ -311,6 +318,7 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
     flex: 0 0 auto;
     display: flex;
     justify-content: space-between;
+    align-items: flex-end;
     margin-top: 20px;
     padding: 0 10px;
 }
@@ -322,22 +330,24 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
 
 .nursery-theology-eot-report .sign-line {
     width: 180px;
-    border-top: 2px solid var(--nursery-text);
+    border-top: 1.5px dashed var(--nursery-text);
     margin-top: 35px;
 }
 
 .nursery-theology-eot-report .footer-stamp {
-    flex: 0 0 auto;
+    width: 120px;
+    height: 120px;
+    border-radius: 16px;
+    border: 2px dashed #94a3b8;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     text-align: center;
-    margin-top: 20px;
-    padding: 10px;
-    border-radius: 10px;
-    background: #fff1f0;
-    color: #d32f2f;
-    font-weight: 900;
-    font-size: 18px;
-    border: 2px solid #ffcdd2;
-    text-transform: uppercase;
+    font-size: 12px;
+    font-weight: 800;
+    color: #94a3b8;
+    flex-shrink: 0;
 }
         `
       }} />
@@ -424,14 +434,13 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
             <div>تقرير مرب الفصل</div>
             <div className="sign-line"></div>
           </div>
+          <div className="footer-stamp">
+            الختم الرسمي للمدرسة
+          </div>
           <div className="sign-field">
             <div>تقرير مدير المدرسة</div>
             <div className="sign-line"></div>
           </div>
-        </div>
-
-        <div className="footer-stamp">
-          هذا التقرير غير صالح بدون ختم المدرسة الرسمي
         </div>
       </div>
     </ReportContainer>

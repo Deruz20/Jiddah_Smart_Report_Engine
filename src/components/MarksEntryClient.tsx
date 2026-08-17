@@ -216,6 +216,9 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
 
     startTransition(async () => {
       try {
+        const { data: { user } } = await supabase.auth.getUser()
+        const userId = user?.id
+
         if (BYPASS_POWERSYNC_WRITES) {
           const supabase = createClient();
           const { data: existingC, error: errC } = await supabase.from('circular_marks').select('id, subject_id').eq('enrollment_id', selectedEnrollmentId).eq('term_id', selectedTermId);
@@ -232,7 +235,7 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
                 bot_score: bot,
                 mot_score: mot,
                 eot_score: eot,
-                updated_by: 'local_user_bypass'
+                updated_by: userId
               }).eq('id', existing.id);
               if (error) throw error;
             } else {
@@ -243,7 +246,7 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
                 bot_score: bot,
                 mot_score: mot,
                 eot_score: eot,
-                updated_by: 'local_user_bypass'
+                updated_by: userId
               });
               if (error) throw error;
             }
@@ -261,7 +264,7 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
               const { error } = await supabase.from('theology_marks').update({
                 mot_score: mot,
                 eot_score: eot,
-                updated_by: 'local_user_bypass'
+                updated_by: userId
               }).eq('id', existing.id);
               if (error) throw error;
             } else {
@@ -271,7 +274,7 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
                 subject_id: mark.subject_id,
                 mot_score: mot,
                 eot_score: eot,
-                updated_by: 'local_user_bypass'
+                updated_by: userId
               });
               if (error) throw error;
             }
@@ -319,8 +322,9 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
 
         setSuccess(true)
         setTimeout(() => setSuccess(false), 3500)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'An unexpected error occurred')
+      } catch (err: any) {
+        console.error('supabase error', { name: err?.name, message: err?.message, code: err?.code, details: err?.details, hint: err?.hint, status: err?.status, full: err })
+        setError(err?.message || err?.details || 'An unexpected error occurred')
       } finally {
         setIsSaving(false)
       }

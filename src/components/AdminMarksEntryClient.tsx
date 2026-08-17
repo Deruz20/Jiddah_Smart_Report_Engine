@@ -155,6 +155,26 @@ export function AdminMarksEntryClient({ terms }: AdminMarksEntryClientProps) {
 
     startTransition(async () => {
       try {
+        const { data: { user } } = await supabase.auth.getUser()
+        const authUserId = user?.id
+
+        let updatedById = undefined;
+        if (authUserId) {
+          const { data: teacherData } = await supabase.from('teachers').select('id').eq('auth_user_id', authUserId).single();
+          if (teacherData?.id) {
+            updatedById = teacherData.id;
+          }
+        }
+
+        if (updatedById) {
+          console.log('--- BEFORE WRITE LOGS ---')
+          console.log('Value being sent as updated_by:', updatedById)
+          console.log('Type of updated_by:', typeof updatedById, '| First 8 chars:', updatedById.substring(0, 8))
+        } else {
+           console.log('--- BEFORE WRITE LOGS ---')
+           console.log('No teacher record found for auth user. Omitting updated_by.')
+        }
+
         // Save circular marks
         const cToSave = circularMarks.filter(m => m.bot_score !== null || m.mot_score !== null || m.eot_score !== null)
         if (cToSave.length > 0) {
@@ -162,22 +182,28 @@ export function AdminMarksEntryClient({ terms }: AdminMarksEntryClientProps) {
           for (const m of cToSave) {
             const existing = existingC?.find(e => e.subject_id === m.subject_id)
             if (existing) {
-              await supabase.from('circular_marks').update({
+              const payload: any = {
                 bot_score: m.bot_score,
                 mot_score: m.mot_score,
-                eot_score: m.eot_score,
-                updated_by: 'admin_user'
-              }).eq('id', existing.id)
+                eot_score: m.eot_score
+              }
+              if (updatedById) payload.updated_by = updatedById;
+              
+              const { error } = await supabase.from('circular_marks').update(payload).eq('id', existing.id)
+              if (error) throw error;
             } else {
-              await supabase.from('circular_marks').insert({
+              const payload: any = {
                 enrollment_id: selectedEnrollmentId,
                 term_id: selectedTermId,
                 subject_id: m.subject_id,
                 bot_score: m.bot_score,
                 mot_score: m.mot_score,
-                eot_score: m.eot_score,
-                updated_by: 'admin_user'
-              })
+                eot_score: m.eot_score
+              }
+              if (updatedById) payload.updated_by = updatedById;
+
+              const { error } = await supabase.from('circular_marks').insert(payload)
+              if (error) throw error;
             }
           }
         }
@@ -189,20 +215,26 @@ export function AdminMarksEntryClient({ terms }: AdminMarksEntryClientProps) {
           for (const m of tToSave) {
             const existing = existingT?.find(e => e.subject_id === m.subject_id)
             if (existing) {
-              await supabase.from('theology_marks').update({
+              const payload: any = {
                 mot_score: m.mot_score,
-                eot_score: m.eot_score,
-                updated_by: 'admin_user'
-              }).eq('id', existing.id)
+                eot_score: m.eot_score
+              }
+              if (updatedById) payload.updated_by = updatedById;
+
+              const { error } = await supabase.from('theology_marks').update(payload).eq('id', existing.id)
+              if (error) throw error;
             } else {
-              await supabase.from('theology_marks').insert({
+              const payload: any = {
                 enrollment_id: selectedEnrollmentId,
                 term_id: selectedTermId,
                 subject_id: m.subject_id,
                 mot_score: m.mot_score,
-                eot_score: m.eot_score,
-                updated_by: 'admin_user'
-              })
+                eot_score: m.eot_score
+              }
+              if (updatedById) payload.updated_by = updatedById;
+
+              const { error } = await supabase.from('theology_marks').insert(payload)
+              if (error) throw error;
             }
           }
         }
@@ -210,7 +242,12 @@ export function AdminMarksEntryClient({ terms }: AdminMarksEntryClientProps) {
         setSuccess(true)
         setTimeout(() => setSuccess(false), 3500)
       } catch (err: any) {
-        setError(err.message || 'An unexpected error occurred')
+        console.error("WRITE_FAILED_RAW:", err);
+        console.error("WRITE_FAILED_MESSAGE:", err?.message);
+        console.error("WRITE_FAILED_CODE:", err?.code);
+        console.error("WRITE_FAILED_DETAILS:", err?.details);
+        console.error("WRITE_FAILED_HINT:", err?.hint);
+        setError(err?.message || err?.details || 'An unexpected error occurred')
       } finally {
         setIsSaving(false)
       }

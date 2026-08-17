@@ -426,6 +426,9 @@ export function SharedMarksEntry({
                 </div>
               )}
 
+              {/* Spacer so the sticky footer doesn't hide the last row */}
+              <div className="h-28 sm:h-32 w-full" />
+
               {/* Sticky Save Bar */}
               {hasUnsavedChanges && (
                 <div className="fixed bottom-0 left-0 right-0 z-[100] p-4 sm:p-6 animate-in slide-in-from-bottom-full duration-300 pointer-events-none">

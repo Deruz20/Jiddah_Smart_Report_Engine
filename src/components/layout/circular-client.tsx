@@ -87,11 +87,12 @@ export default function CircularClient({
         circular_subjects: { subject_name: row.subject_name, section: row.subject_section }
       }));
       setMarks(formattedMarks);
-    } catch (e: any) {
-      if (e.message && e.message.includes('no such column')) {
+    } catch (err: any) {
+      console.error('supabase error', { name: err?.name, message: err?.message, code: err?.code, details: err?.details, hint: err?.hint, status: err?.status, full: err })
+      if (err.message && err.message.includes('no such column')) {
         alert('System update required. Please log out and clear your browser cache/site data to sync the latest version.');
       } else {
-        console.error(e);
+        console.error(err);
       }
     }
   };
@@ -156,8 +157,7 @@ export default function CircularClient({
             const { error } = await supabase.from('circular_marks').update({
               bot_score: bot,
               mot_score: mot,
-              eot_score: eot,
-              updated_by: 'local_user_bypass'
+              eot_score: eot
             }).eq('id', existing.id);
             if (error) throw error;
           } else {
@@ -166,8 +166,7 @@ export default function CircularClient({
               subject_id: sub.id,
               bot_score: bot,
               mot_score: mot,
-              eot_score: eot,
-              updated_by: 'local_user_bypass'
+              eot_score: eot
             };
             if (activeTerm) {
               updates.term_id = activeTerm.id;

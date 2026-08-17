@@ -150,8 +150,7 @@ export default function TheologyClient({
           if (existing) {
             const { error } = await supabase.from('theology_marks').update({
               mot_score: mot,
-              eot_score: eot,
-              updated_by: 'local_user_bypass'
+              eot_score: eot
             }).eq('id', existing.id);
             if (error) throw error;
           } else {
@@ -159,8 +158,7 @@ export default function TheologyClient({
               enrollment_id: selectedEnrollmentId,
               subject_id: sub.id,
               mot_score: mot,
-              eot_score: eot,
-              updated_by: 'local_user_bypass'
+              eot_score: eot
             };
             if (activeTerm) {
               updates.term_id = activeTerm.id;

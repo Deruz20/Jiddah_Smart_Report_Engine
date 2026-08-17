@@ -8,6 +8,7 @@ import { ReportContainer } from '@/components/reports/shared/ReportContainer'
 import { transliterateEnglishToArabic } from '@/lib/transliterate'
 
 export default function PrimaryEOTReport({ reportData }: any) {
+  console.log("THEOLOGY SUBJECTS COUNT:", reportData?.theology?.subjects?.length);
   const className =
     reportData?.class_name ||
     reportData?.class ||
@@ -62,7 +63,6 @@ export default function PrimaryEOTReport({ reportData }: any) {
       <td className="remarks-cell">
         {subject.remark ?? ''}
       </td>
-      <td></td>
     </tr>
   )
 
@@ -550,7 +550,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
           {/* ACADEMIC TABLE */}
           <div
             className="academic-side"
-            style={{ width: showTheologyPanel ? '70%' : '100%' }}
+            style={!showTheologyPanel ? { flex: 1 } : {}}
           >
             <table>
               <tbody>
@@ -564,8 +564,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
                   <th colSpan={2} style={{ width: '17%' }}>BEGINNING OF TERM</th>
                   <th colSpan={2} style={{ width: '17%' }}>MIDTERM</th>
                   <th colSpan={2} style={{ width: '17%' }}>END OF TERM</th>
-                  <th rowSpan={2} style={{ width: '26%' }}>TEACHER'S REMARKS</th>
-                  <th rowSpan={2} style={{ width: '6%' }}>INITIALS</th>
+                  <th rowSpan={2} style={{ width: '32%' }}>TEACHER'S REMARKS</th>
                 </tr>
                 <tr>
                   <th style={{ width: '8.5%' }}>MARK</th>
@@ -586,7 +585,6 @@ export default function PrimaryEOTReport({ reportData }: any) {
                   <td className="data-cell">{reportData?.circular?.mot_aggregate ?? '--'}</td>
                   <td className="data-cell">{reportData?.circular?.eot_total ?? '--'}</td>
                   <td className="data-cell">{reportData?.circular?.aggregate ?? '--'}</td>
-                  <td></td>
                   <td></td>
                 </tr>
               </tbody>
@@ -626,7 +624,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
 
           {/* THEOLOGY TABLE */}
           {showTheologyPanel && (
-            <div className="theology-side" style={{ width: '30%' }}>
+            <div className="theology-side">
               <table className="theology-table">
                 <tbody>
                   <tr>

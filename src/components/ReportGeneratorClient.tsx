@@ -302,7 +302,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
         }
 
         const incompleteMarks = generatedReportsData.filter(r => 
-          r.score_type === 'eot' && r.circular.subjects.some((subj: any) => subj.eot_score === null)
+          r.score_type === 'eot' && r.circular && r.circular.subjects.some((subj: any) => subj.eot_score === null)
         );
         if (incompleteMarks.length > 0) {
           toast.warning(`Incomplete marks detected for ${incompleteMarks.length} students`, {

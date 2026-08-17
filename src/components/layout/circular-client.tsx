@@ -1,11 +1,13 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Plus, Edit, Trash2, Search, BookOpen } from "lucide-react";
+import { Plus, Edit, Trash2, Search, BookOpen, Loader2 } from "lucide-react";
 import { HeroSection } from "@/components/HeroSection";
 import { Button } from "@/components/figma-ui/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/figma-ui/ui/dialog";
 import { usePowerSync } from '@powersync/react';
+import { BYPASS_POWERSYNC_WRITES } from '@/lib/powersync/bypass';
+import { createClient } from '@/utils/supabase/client';
 
 export default function CircularClient({ 
   initialMarks, 
@@ -15,8 +17,6 @@ export default function CircularClient({
 }: { 
   initialMarks: any[], 
   initialEnrollments: any[], 
-  initialSubjects: any[], 
-  initialActiveTerm: any 
   initialSubjects: any[], 
   initialActiveTerm: any 
 }) {
@@ -133,7 +133,13 @@ export default function CircularClient({
       const student = enrollments.find(e => e.id === selectedEnrollmentId);
       const studentSubjects = subjects.filter(s => s.section === student?.circular_classes?.section);
 
-      await powerSync.writeTransaction(async (tx) => {
+      if (BYPASS_POWERSYNC_WRITES) {
+        const supabase = createClient();
+        const termIdToUse = activeTerm ? activeTerm.id : null;
+        
+        const { data: existingC, error: errC } = await supabase.from('circular_marks').select('id, subject_id').eq('enrollment_id', selectedEnrollmentId).eq('term_id', termIdToUse);
+        if (errC) throw errC;
+
         for (const sub of studentSubjects) {
           const scoreObj = batchScores[sub.id];
           if (!scoreObj) continue;
@@ -144,20 +150,59 @@ export default function CircularClient({
           const bot = scoreObj.bot_score === "" ? null : parseFloat(scoreObj.bot_score);
           const mot = scoreObj.mot_score === "" ? null : parseFloat(scoreObj.mot_score);
           const eot = scoreObj.eot_score === "" ? null : parseFloat(scoreObj.eot_score);
-
-          if (scoreObj.id) {
-            await tx.execute(
-              'UPDATE circular_marks SET bot_mark = ?, mot_mark = ?, eot_mark = ? WHERE id = ?',
-              [bot, mot, eot, scoreObj.id]
-            );
+          const existing = existingC?.find(e => e.subject_id === sub.id);
+          
+          if (existing) {
+            const { error } = await supabase.from('circular_marks').update({
+              bot_score: bot,
+              mot_score: mot,
+              eot_score: eot,
+              updated_by: 'local_user_bypass'
+            }).eq('id', existing.id);
+            if (error) throw error;
           } else {
-            await tx.execute(
-              'INSERT INTO circular_marks (id, enrollment_id, subject_id, bot_mark, mot_mark, eot_mark, updated_by) VALUES (uuid(), ?, ?, ?, ?, ?, ?)',
-              [selectedEnrollmentId, sub.id, bot, mot, eot, 'local_user']
-            );
+            const updates: any = {
+              enrollment_id: selectedEnrollmentId,
+              subject_id: sub.id,
+              bot_score: bot,
+              mot_score: mot,
+              eot_score: eot,
+              updated_by: 'local_user_bypass'
+            };
+            if (activeTerm) {
+              updates.term_id = activeTerm.id;
+            }
+            const { error } = await supabase.from('circular_marks').insert(updates);
+            if (error) throw error;
           }
         }
-      });
+      } else {
+        await powerSync.writeTransaction(async (tx) => {
+          for (const sub of studentSubjects) {
+            const scoreObj = batchScores[sub.id];
+            if (!scoreObj) continue;
+
+            const hasScores = scoreObj.bot_score !== "" || scoreObj.mot_score !== "" || scoreObj.eot_score !== "";
+            if (!hasScores) continue;
+
+            const bot = scoreObj.bot_score === "" ? null : parseFloat(scoreObj.bot_score);
+            const mot = scoreObj.mot_score === "" ? null : parseFloat(scoreObj.mot_score);
+            const eot = scoreObj.eot_score === "" ? null : parseFloat(scoreObj.eot_score);
+
+            if (scoreObj.id) {
+              await tx.execute(
+                'UPDATE circular_marks SET bot_score = ?, mot_score = ?, eot_score = ? WHERE id = ?',
+                [bot, mot, eot, scoreObj.id]
+              );
+            } else {
+              await tx.execute(
+                'INSERT INTO circular_marks (id, enrollment_id, subject_id, bot_score, mot_score, eot_score, updated_by) VALUES (uuid(), ?, ?, ?, ?, ?, ?)',
+                [selectedEnrollmentId, sub.id, bot, mot, eot, 'local_user']
+              );
+            }
+          }
+        });
+      }
 
       setIsCreateOpen(false);
       setSelectedEnrollmentId("");

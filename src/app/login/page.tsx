@@ -71,7 +71,7 @@ function LoginContent() {
         ) {
           router.replace("/onboarding");
         } else {
-          router.replace("/");
+          router.replace(redirectTo);
         }
       }
     });
@@ -117,7 +117,7 @@ function LoginContent() {
       ) {
         router.replace("/onboarding");
       } else {
-        router.replace("/");
+        router.replace(redirectTo);
       }
     } catch (error: any) {
       // Clear corrupt session cache if login fails

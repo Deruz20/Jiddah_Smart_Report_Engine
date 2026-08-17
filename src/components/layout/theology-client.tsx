@@ -7,6 +7,7 @@ import { Button } from "@/components/figma-ui/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/figma-ui/ui/dialog";
 import { usePowerSync } from '@powersync/react';
 import { createClient } from '@/utils/supabase/client';
+import { BYPASS_POWERSYNC_WRITES } from '@/lib/powersync/bypass';
 
 export default function TheologyClient({ 
   initialMarks, 
@@ -16,8 +17,6 @@ export default function TheologyClient({
 }: { 
   initialMarks: any[], 
   initialEnrollments: any[], 
-  initialSubjects: any[], 
-  initialActiveTerm: any 
   initialSubjects: any[], 
   initialActiveTerm: any 
 }) {
@@ -130,7 +129,13 @@ export default function TheologyClient({
       const student = enrollments.find(e => e.id === selectedEnrollmentId);
       const studentSubjects = subjects.filter(s => s.level === student?.theology_classes?.level);
 
-      await powerSync.writeTransaction(async (tx) => {
+      if (BYPASS_POWERSYNC_WRITES) {
+        const supabase = createClient();
+        const termIdToUse = activeTerm ? activeTerm.id : null;
+        
+        const { data: existingT, error: errT } = await supabase.from('theology_marks').select('id, subject_id').eq('enrollment_id', selectedEnrollmentId).eq('term_id', termIdToUse);
+        if (errT) throw errT;
+
         for (const sub of studentSubjects) {
           const scoreObj = batchScores[sub.id];
           if (!scoreObj) continue;
@@ -140,20 +145,56 @@ export default function TheologyClient({
 
           const mot = scoreObj.mot_score === "" ? null : parseFloat(scoreObj.mot_score);
           const eot = scoreObj.eot_score === "" ? null : parseFloat(scoreObj.eot_score);
-
-          if (scoreObj.id) {
-            await tx.execute(
-              'UPDATE theology_marks SET mot_mark = ?, eot_mark = ? WHERE id = ?',
-              [mot, eot, scoreObj.id]
-            );
+          const existing = existingT?.find(e => e.subject_id === sub.id);
+          
+          if (existing) {
+            const { error } = await supabase.from('theology_marks').update({
+              mot_score: mot,
+              eot_score: eot,
+              updated_by: 'local_user_bypass'
+            }).eq('id', existing.id);
+            if (error) throw error;
           } else {
-            await tx.execute(
-              'INSERT INTO theology_marks (id, enrollment_id, subject_id, bot_mark, mot_mark, eot_mark, updated_by) VALUES (uuid(), ?, ?, NULL, ?, ?, ?)',
-              [selectedEnrollmentId, sub.id, mot, eot, 'local_user']
-            );
+            const updates: any = {
+              enrollment_id: selectedEnrollmentId,
+              subject_id: sub.id,
+              mot_score: mot,
+              eot_score: eot,
+              updated_by: 'local_user_bypass'
+            };
+            if (activeTerm) {
+              updates.term_id = activeTerm.id;
+            }
+            const { error } = await supabase.from('theology_marks').insert(updates);
+            if (error) throw error;
           }
         }
-      });
+      } else {
+        await powerSync.writeTransaction(async (tx) => {
+          for (const sub of studentSubjects) {
+            const scoreObj = batchScores[sub.id];
+            if (!scoreObj) continue;
+
+            const hasScores = scoreObj.mot_score !== "" || scoreObj.eot_score !== "";
+            if (!hasScores) continue;
+
+            const mot = scoreObj.mot_score === "" ? null : parseFloat(scoreObj.mot_score);
+            const eot = scoreObj.eot_score === "" ? null : parseFloat(scoreObj.eot_score);
+
+            if (scoreObj.id) {
+              await tx.execute(
+                'UPDATE theology_marks SET mot_score = ?, eot_score = ? WHERE id = ?',
+                [mot, eot, scoreObj.id]
+              );
+            } else {
+              await tx.execute(
+                'INSERT INTO theology_marks (id, enrollment_id, subject_id, mot_score, eot_score, updated_by) VALUES (uuid(), ?, ?, ?, ?, ?)',
+                [selectedEnrollmentId, sub.id, mot, eot, 'local_user']
+              );
+            }
+          }
+        });
+      }
 
       setIsCreateOpen(false);
       setSelectedEnrollmentId("");
@@ -173,7 +214,7 @@ export default function TheologyClient({
       const eot = formData.eot_score === "" ? null : parseFloat(formData.eot_score);
       
       await powerSync.execute(
-        'UPDATE theology_marks SET mot_mark = ?, eot_mark = ? WHERE id = ?',
+        'UPDATE theology_marks SET mot_score = ?, eot_score = ? WHERE id = ?',
         [mot, eot, selectedMark.id]
       );
       
@@ -317,7 +358,22 @@ export default function TheologyClient({
               <label className="text-sm font-medium text-slate-700">Student</label>
               <select
                 value={selectedEnrollmentId}
-                onChange={(e) => setSelectedEnrollmentId(e.target.value)}
+                onChange={(e) => {
+                  const newId = e.target.value;
+                  setSelectedEnrollmentId(newId);
+                  
+                  // Preload existing marks for this student so we UPDATE instead of INSERT
+                  const existingMarks = initialMarks.filter(m => m.enrollment_id === newId);
+                  const newBatch: Record<string, any> = {};
+                  existingMarks.forEach(m => {
+                    newBatch[m.subject_id] = {
+                      id: m.id,
+                      mot_score: m.mot_score ?? "",
+                      eot_score: m.eot_score ?? ""
+                    };
+                  });
+                  setBatchScores(newBatch);
+                }}
                 className="w-full rounded-xl border px-4 py-2.5 outline-none focus:border-[#10B981] transition"
                 style={{ borderColor: "rgba(0,0,0,0.1)", background: "white", color: "#374151" }}
               >

@@ -27,6 +27,7 @@ export default function TheologyMOTReport({ reportData }: any) {
     return String(n)
   }
 
+  const isEOT = reportData?.score_type === 'eot'
   const subjects = reportData?.theology?.subjects ?? []
 
   const renderCard = () => (
@@ -42,7 +43,9 @@ export default function TheologyMOTReport({ reportData }: any) {
           <div className="school">
             مدرسة جدة الإسلامية للروضة والابتدائية _ انساغو واكيسو
           </div>
-          <div className="title">كشف الدرجات لمنتصف الفترة</div>
+          <div className="title">
+            {isEOT ? 'كشف الدرجات لنهاية الفترة' : 'كشف الدرجات لمنتصف الفترة'}
+          </div>
         </div>
 
         <div className="info">
@@ -98,9 +101,9 @@ export default function TheologyMOTReport({ reportData }: any) {
               </tr>
               <tr>
                 {subjects.map((subj: any, index: number) => (
-                  <td key={index}>{toAr(subj.mot_score)}</td>
+                  <td key={index}>{toAr(isEOT ? subj.eot_score : subj.mot_score)}</td>
                 ))}
-                <td>{toAr(reportData?.theology?.mot_total)}</td>
+                <td>{toAr(isEOT ? reportData?.theology?.eot_total : reportData?.theology?.mot_total)}</td>
                 <td className="red">
                   {reportData?.theology?.division ?? '--'}
                 </td>
@@ -128,7 +131,7 @@ export default function TheologyMOTReport({ reportData }: any) {
           <span>تقرير مرب الفصل :</span>
           <div className="line-dots">
             <span className="line-text">
-              {getTheologyComment(reportData?.theology?.mot_total ?? 0)}
+              {getTheologyComment(isEOT ? (reportData?.theology?.eot_total ?? 0) : (reportData?.theology?.mot_total ?? 0))}
             </span>
           </div>
         </div>

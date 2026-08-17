@@ -4,6 +4,7 @@ import React, { useState, useEffect, useTransition } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { usePowerSync } from '@powersync/react'
 import { SharedMarksEntry, ExamType } from './shared-marks-entry'
+import { BYPASS_POWERSYNC_WRITES } from '@/lib/powersync/bypass'
 
 import { TermData, EnrollmentData, CircularMarkRow, TheologyMarkRow } from '@/types/models'
 
@@ -119,16 +120,16 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
             s.id as subject_id, s.subject_name, 'true' as is_core,
             cm.bot_score, cm.mot_score, cm.eot_score
           FROM subjects s
-          LEFT JOIN circular_marks cm ON cm.subject_id = s.id AND cm.enrollment_id = ?
+          LEFT JOIN circular_marks cm ON cm.subject_id = s.id AND cm.enrollment_id = ? AND cm.term_id = ?
           WHERE s.curriculum = 'secular' AND (s.section = ? OR s.section = ? OR s.section IS NULL)
-        `, [selectedEnrollmentId, section, className]);
+        `, [selectedEnrollmentId, selectedTermId, section, className]);
 
         let theology: any[] = []
         if (selectedEnrollment?.theology_class_id) {
           // Fetch theology marks from PowerSync local DB
           const localMarks = await powerSync.getAll(`
-            SELECT subject_id, mot_score, eot_score FROM theology_marks WHERE enrollment_id = ?
-          `, [selectedEnrollmentId]);
+            SELECT subject_id, mot_score, eot_score FROM theology_marks WHERE enrollment_id = ? AND term_id = ?
+          `, [selectedEnrollmentId, selectedTermId]);
           
           const marksMap = new Map(localMarks.map(m => [m.subject_id, m]));
 
@@ -215,44 +216,106 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
 
     startTransition(async () => {
       try {
-        await powerSync.writeTransaction(async (tx) => {
+        if (BYPASS_POWERSYNC_WRITES) {
+          const supabase = createClient();
+          const { data: existingC, error: errC } = await supabase.from('circular_marks').select('id, subject_id').eq('enrollment_id', selectedEnrollmentId).eq('term_id', selectedTermId);
+          if (errC) throw errC;
+          
           for (const mark of circularMarks) {
-            let bot = mark.bot_score;
-            let mot = mark.mot_score;
-            let eot = mark.eot_score;
+            const bot = mark.bot_score ?? null;
+            const mot = mark.mot_score ?? null;
+            const eot = mark.eot_score ?? null;
+            const existing = existingC?.find(e => e.subject_id === mark.subject_id);
             
-            // Upsert for circular marks
-            const checkC = await tx.execute('SELECT id FROM circular_marks WHERE enrollment_id = ? AND subject_id = ?', [selectedEnrollmentId, mark.subject_id]);
-            if (checkC.rows?.length && checkC.rows.length > 0) {
-              await tx.execute(`
-                UPDATE circular_marks SET bot_score = ?, mot_score = ?, eot_score = ?, updated_by = 'local_user' WHERE id = ?
-              `, [bot ?? null, mot ?? null, eot ?? null, checkC.rows.item(0).id]);
+            if (existing) {
+              const { error } = await supabase.from('circular_marks').update({
+                bot_score: bot,
+                mot_score: mot,
+                eot_score: eot,
+                updated_by: 'local_user_bypass'
+              }).eq('id', existing.id);
+              if (error) throw error;
             } else {
-              await tx.execute(`
-                INSERT INTO circular_marks (id, enrollment_id, subject_id, bot_score, mot_score, eot_score, updated_by)
-                VALUES (uuid(), ?, ?, ?, ?, ?, 'local_user')
-              `, [selectedEnrollmentId, mark.subject_id, bot ?? null, mot ?? null, eot ?? null]);
+              const { error } = await supabase.from('circular_marks').insert({
+                enrollment_id: selectedEnrollmentId,
+                term_id: selectedTermId,
+                subject_id: mark.subject_id,
+                bot_score: bot,
+                mot_score: mot,
+                eot_score: eot,
+                updated_by: 'local_user_bypass'
+              });
+              if (error) throw error;
             }
           }
-
+          
+          const { data: existingT, error: errT } = await supabase.from('theology_marks').select('id, subject_id').eq('enrollment_id', selectedEnrollmentId).eq('term_id', selectedTermId);
+          if (errT) throw errT;
+          
           for (const mark of theologyMarks) {
-            let mot = mark.mot_score;
-            let eot = mark.eot_score;
+            const mot = mark.mot_score ?? null;
+            const eot = mark.eot_score ?? null;
+            const existing = existingT?.find(e => e.subject_id === mark.subject_id);
             
-            // Upsert for theology marks
-            const checkT = await tx.execute('SELECT id FROM theology_marks WHERE enrollment_id = ? AND subject_id = ?', [selectedEnrollmentId, mark.subject_id]);
-            if (checkT.rows?.length && checkT.rows.length > 0) {
-              await tx.execute(`
-                UPDATE theology_marks SET mot_score = ?, eot_score = ?, updated_by = 'local_user' WHERE id = ?
-              `, [mot ?? null, eot ?? null, checkT.rows.item(0).id]);
+            if (existing) {
+              const { error } = await supabase.from('theology_marks').update({
+                mot_score: mot,
+                eot_score: eot,
+                updated_by: 'local_user_bypass'
+              }).eq('id', existing.id);
+              if (error) throw error;
             } else {
-              await tx.execute(`
-                INSERT INTO theology_marks (id, enrollment_id, subject_id, bot_score, mot_score, eot_score, updated_by)
-                VALUES (uuid(), ?, ?, NULL, ?, ?, 'local_user')
-              `, [selectedEnrollmentId, mark.subject_id, mot ?? null, eot ?? null]);
+              const { error } = await supabase.from('theology_marks').insert({
+                enrollment_id: selectedEnrollmentId,
+                term_id: selectedTermId,
+                subject_id: mark.subject_id,
+                mot_score: mot,
+                eot_score: eot,
+                updated_by: 'local_user_bypass'
+              });
+              if (error) throw error;
             }
           }
-        });
+        } else {
+          await powerSync.writeTransaction(async (tx) => {
+            for (const mark of circularMarks) {
+              let bot = mark.bot_score;
+              let mot = mark.mot_score;
+              let eot = mark.eot_score;
+              
+              // Upsert for circular marks
+              const checkC = await tx.execute('SELECT id FROM circular_marks WHERE enrollment_id = ? AND subject_id = ? AND term_id = ?', [selectedEnrollmentId, mark.subject_id, selectedTermId]);
+              if (checkC.rows?.length && checkC.rows.length > 0) {
+                await tx.execute(`
+                  UPDATE circular_marks SET bot_score = ?, mot_score = ?, eot_score = ?, updated_by = 'local_user' WHERE id = ?
+                `, [bot ?? null, mot ?? null, eot ?? null, checkC.rows.item(0).id]);
+              } else {
+                await tx.execute(`
+                  INSERT INTO circular_marks (id, enrollment_id, subject_id, term_id, bot_score, mot_score, eot_score, updated_by)
+                  VALUES (uuid(), ?, ?, ?, ?, ?, ?, 'local_user')
+                `, [selectedEnrollmentId, mark.subject_id, selectedTermId, bot ?? null, mot ?? null, eot ?? null]);
+              }
+            }
+
+            for (const mark of theologyMarks) {
+              let mot = mark.mot_score;
+              let eot = mark.eot_score;
+              
+              // Upsert for theology marks
+              const checkT = await tx.execute('SELECT id FROM theology_marks WHERE enrollment_id = ? AND subject_id = ? AND term_id = ?', [selectedEnrollmentId, mark.subject_id, selectedTermId]);
+              if (checkT.rows?.length && checkT.rows.length > 0) {
+                await tx.execute(`
+                  UPDATE theology_marks SET mot_score = ?, eot_score = ?, updated_by = 'local_user' WHERE id = ?
+                `, [mot ?? null, eot ?? null, checkT.rows.item(0).id]);
+              } else {
+                await tx.execute(`
+                  INSERT INTO theology_marks (id, enrollment_id, subject_id, term_id, mot_score, eot_score, updated_by)
+                  VALUES (uuid(), ?, ?, ?, ?, ?, 'local_user')
+                `, [selectedEnrollmentId, mark.subject_id, selectedTermId, mot ?? null, eot ?? null]);
+              }
+            }
+          });
+        }
 
         setSuccess(true)
         setTimeout(() => setSuccess(false), 3500)

@@ -113,6 +113,16 @@ export default function TheologyHubClient({
     router.replace(`${pathname}?${params.toString()}`, { scroll: false })
   }, [activeTermId, activeClassId, activeLevel, activeTab, examPhase, pathname, router, searchParams])
 
+  // Sync activeLevel with selected class in Assessment tab
+  useEffect(() => {
+    if (activeClassId && activeTab === 'assessment') {
+      const cls = theologyClasses.find(c => c.id === activeClassId)
+      if (cls && cls.level !== activeLevel) {
+        setActiveLevel(cls.level)
+      }
+    }
+  }, [activeClassId, theologyClasses, activeTab, activeLevel])
+
   // Process data for the Assessment Form
   const assessmentData = useMemo(() => {
     if (!data || !activeClassId) return { students: [], orderedSubjects: [] }
@@ -140,7 +150,7 @@ export default function TheologyHubClient({
       
       orderedSubjects.forEach(sub => {
         const mark = eMarks.find(m => m.subject_id === sub.id)
-        const score = mark?.[`${examPhase}_mark`] ?? null
+        const score = mark?.[`${examPhase}_score`] ?? null
         subjectScores[sub.id] = score
         if (score != null) total += score
       })
@@ -196,7 +206,7 @@ export default function TheologyHubClient({
         let hasMarks = false
         orderedSubjects.forEach(sub => {
           const mark = eMarks.find(m => m.subject_id === sub.id)
-          const score = mark?.[`${examPhase}_mark`] ?? null
+          const score = mark?.[`${examPhase}_score`] ?? null
           if (score != null) {
             total += score
             hasMarks = true
@@ -252,7 +262,7 @@ export default function TheologyHubClient({
         let total = 0
         orderedSubjects.forEach(sub => {
           const mark = eMarks.find(m => m.subject_id === sub.id)
-          const score = mark?.[`${examPhase}_mark`] ?? null
+          const score = mark?.[`${examPhase}_score`] ?? null
           if (score != null) total += score
         })
         return {
@@ -366,10 +376,10 @@ export default function TheologyHubClient({
             className="overflow-hidden bg-white dark:bg-[#1e293b] border-b border-slate-200/60 dark:border-slate-800 shadow-sm print:hidden shrink-0"
           >
             <div className="p-4 md:p-6 bg-slate-50/50 dark:bg-slate-900/50">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-4 md:gap-6">
                 
                 {/* Term Selector */}
-                <div className="flex flex-col">
+                <div className="flex flex-col lg:col-span-3">
                   <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Term / Year</label>
                   <select
                     className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium"
@@ -383,43 +393,43 @@ export default function TheologyHubClient({
                 </div>
 
                 {/* View Type */}
-                <div className="flex flex-col">
+                <div className="flex flex-col lg:col-span-5">
                   <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">View Type</label>
                   <div className="flex p-1 bg-slate-200/50 dark:bg-slate-800 rounded-xl ring-1 ring-slate-200/50 dark:ring-slate-700">
                     <button
                       onClick={() => setActiveTab('assessment')}
-                      className={`flex-1 py-1.5 px-2 text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 ${activeTab === 'assessment' ? 'bg-white dark:bg-slate-700 shadow-sm text-emerald-700 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'}`}
+                      className={`flex-1 py-1.5 px-1 sm:px-2 text-xs sm:text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-1 sm:gap-1.5 ${activeTab === 'assessment' ? 'bg-white dark:bg-slate-700 shadow-sm text-emerald-700 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'}`}
                     >
-                      <BookOpen size={14} /> Assessment
+                      <BookOpen size={14} className="hidden xl:block" /> <span className="whitespace-nowrap">Assessment</span>
                     </button>
                     <button
                       onClick={() => setActiveTab('analysis')}
-                      className={`flex-1 py-1.5 px-2 text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 ${activeTab === 'analysis' ? 'bg-white dark:bg-slate-700 shadow-sm text-emerald-700 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'}`}
+                      className={`flex-1 py-1.5 px-1 sm:px-2 text-xs sm:text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-1 sm:gap-1.5 ${activeTab === 'analysis' ? 'bg-white dark:bg-slate-700 shadow-sm text-emerald-700 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'}`}
                     >
-                      <ScrollText size={14} /> Analysis
+                      <ScrollText size={14} className="hidden xl:block" /> <span className="whitespace-nowrap">Analysis</span>
                     </button>
                     <button
                       onClick={() => setActiveTab('top_students')}
-                      className={`flex-1 py-1.5 px-2 text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 ${activeTab === 'top_students' ? 'bg-white dark:bg-slate-700 shadow-sm text-emerald-700 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'}`}
+                      className={`flex-1 py-1.5 px-1 sm:px-2 text-xs sm:text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-1 sm:gap-1.5 ${activeTab === 'top_students' ? 'bg-white dark:bg-slate-700 shadow-sm text-emerald-700 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'}`}
                     >
-                      <Award size={14} /> Top Students
+                      <Award size={14} className="hidden xl:block" /> <span className="whitespace-nowrap">Top Students</span>
                     </button>
                   </div>
                 </div>
 
                 {/* Exam Phase */}
-                <div className="flex flex-col">
+                <div className="flex flex-col lg:col-span-2">
                   <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Exam Phase</label>
                   <div className="flex p-1 bg-slate-200/50 dark:bg-slate-800 rounded-xl ring-1 ring-slate-200/50 dark:ring-slate-700">
                     <button
                       onClick={() => setExamPhase('mot')}
-                      className={`flex-1 py-1.5 px-3 text-sm font-semibold rounded-lg transition-all flex items-center justify-center ${examPhase === 'mot' ? 'bg-white dark:bg-slate-700 shadow-sm text-blue-700 dark:text-blue-400' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'}`}
+                      className={`flex-1 py-1.5 px-2 text-xs sm:text-sm font-semibold rounded-lg transition-all flex items-center justify-center ${examPhase === 'mot' ? 'bg-white dark:bg-slate-700 shadow-sm text-blue-700 dark:text-blue-400' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'}`}
                     >
                       MOT
                     </button>
                     <button
                       onClick={() => setExamPhase('eot')}
-                      className={`flex-1 py-1.5 px-3 text-sm font-semibold rounded-lg transition-all flex items-center justify-center ${examPhase === 'eot' ? 'bg-white dark:bg-slate-700 shadow-sm text-blue-700 dark:text-blue-400' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'}`}
+                      className={`flex-1 py-1.5 px-2 text-xs sm:text-sm font-semibold rounded-lg transition-all flex items-center justify-center ${examPhase === 'eot' ? 'bg-white dark:bg-slate-700 shadow-sm text-blue-700 dark:text-blue-400' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'}`}
                     >
                       EOT
                     </button>
@@ -427,7 +437,7 @@ export default function TheologyHubClient({
                 </div>
 
                 {/* Context Selector (Class / Level) */}
-                <div className="flex flex-col">
+                <div className="flex flex-col lg:col-span-2">
                   {activeTab === 'assessment' ? (
                     <>
                       <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 text-right" dir="rtl">الصف (Class)</label>

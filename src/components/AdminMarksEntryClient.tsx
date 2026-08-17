@@ -78,8 +78,8 @@ export function AdminMarksEntryClient({ terms }: AdminMarksEntryClientProps) {
       try {
         const [subjectsRes, cMarksRes, tMarksRes] = await Promise.all([
           supabase.from('subjects').select('*'),
-          supabase.from('circular_marks').select('*').eq('enrollment_id', selectedEnrollmentId),
-          supabase.from('theology_marks').select('*').eq('enrollment_id', selectedEnrollmentId)
+          supabase.from('circular_marks').select('*').eq('enrollment_id', selectedEnrollmentId).eq('term_id', selectedTermId),
+          supabase.from('theology_marks').select('*').eq('enrollment_id', selectedEnrollmentId).eq('term_id', selectedTermId)
         ])
 
         if (subjectsRes.error) throw subjectsRes.error
@@ -158,7 +158,7 @@ export function AdminMarksEntryClient({ terms }: AdminMarksEntryClientProps) {
         // Save circular marks
         const cToSave = circularMarks.filter(m => m.bot_score !== null || m.mot_score !== null || m.eot_score !== null)
         if (cToSave.length > 0) {
-          const { data: existingC } = await supabase.from('circular_marks').select('id, subject_id').eq('enrollment_id', selectedEnrollmentId)
+          const { data: existingC } = await supabase.from('circular_marks').select('id, subject_id').eq('enrollment_id', selectedEnrollmentId).eq('term_id', selectedTermId)
           for (const m of cToSave) {
             const existing = existingC?.find(e => e.subject_id === m.subject_id)
             if (existing) {
@@ -185,7 +185,7 @@ export function AdminMarksEntryClient({ terms }: AdminMarksEntryClientProps) {
         // Save theology marks
         const tToSave = theologyMarks.filter(m => m.mot_score !== null || m.eot_score !== null)
         if (tToSave.length > 0) {
-          const { data: existingT } = await supabase.from('theology_marks').select('id, subject_id').eq('enrollment_id', selectedEnrollmentId)
+          const { data: existingT } = await supabase.from('theology_marks').select('id, subject_id').eq('enrollment_id', selectedEnrollmentId).eq('term_id', selectedTermId)
           for (const m of tToSave) {
             const existing = existingT?.find(e => e.subject_id === m.subject_id)
             if (existing) {

@@ -346,6 +346,7 @@ export default function P7EOTReport({ reportData }: any) {
   gap: 16px;
   align-items: flex-end;
   margin-top: 12px;
+  position: relative;
 }
 
 .p7-eot-report .footer-left {
@@ -353,6 +354,7 @@ export default function P7EOTReport({ reportData }: any) {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  padding-right: 140px;
 }
 
 .p7-eot-report .comment-card {
@@ -442,6 +444,9 @@ export default function P7EOTReport({ reportData }: any) {
 }
 
 .p7-eot-report .stamp-box {
+  position: absolute;
+  bottom: 0px;
+  right: 0px;
   width: 130px;
   height: 130px;
   border-radius: 50%;
@@ -455,7 +460,6 @@ export default function P7EOTReport({ reportData }: any) {
   font-weight: 800;
   color: #cbd5e1;
   flex-shrink: 0;
-  align-self: flex-end;
 }
           `
         }}

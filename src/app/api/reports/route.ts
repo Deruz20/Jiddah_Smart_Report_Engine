@@ -206,9 +206,9 @@ export async function GET(request: NextRequest) {
       return b.totalScore - a.totalScore
     })
 
-    // Find 1-based position
-    const position = rankingList.findIndex(r => r.id === student_id) + 1
-
+    // Find 1-based position (Standard Competition Ranking)
+    const target = rankingList.find(r => r.id === student_id)
+    const position = target ? rankingList.findIndex(r => r.totalAgg === target.totalAgg && r.totalScore === target.totalScore) + 1 : rankingList.findIndex(r => r.id === student_id) + 1
     return withCors(request, NextResponse.json({
       student,
       term,

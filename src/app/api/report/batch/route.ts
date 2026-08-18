@@ -252,6 +252,22 @@ export async function POST(request: NextRequest) {
     }
     const theologyOrder = ['القرآن الكريم', 'اللغة العربية', 'الفقه', 'التربية الإسلامية']
 
+    const { data: signatureObjects } = await supabase.storage.from('signatures').list('', { limit: 100 })
+    const signatures: Record<string, string | null> = {
+      'head-teacher': null,
+      'principal': null,
+      'class-teacher-p3': null,
+      'class-teacher-p5': null,
+      'school-stamp': null,
+    }
+    for (const object of signatureObjects ?? []) {
+      for (const key of Object.keys(signatures)) {
+        if (object.name.startsWith(`${key}.`)) {
+          signatures[key] = supabase.storage.from('signatures').getPublicUrl(object.name).data.publicUrl
+        }
+      }
+    }
+
     const reports = requestedEnrollments.map(enrollment => {
       const studentData = Array.isArray(enrollment.students) ? enrollment.students[0] : enrollment.students
       const circularClassData = Array.isArray(enrollment.circular_classes) ? enrollment.circular_classes[0] : enrollment.circular_classes
@@ -405,8 +421,8 @@ export async function POST(request: NextRequest) {
            if (rankings.length > 0) {
               const myObj = rankings.find(r => r.id === enrollment.id)
               if (myObj) {
-                const uniqueTotals = Array.from(new Set(rankings.map(r => r.total)))
-                theologyPosition = uniqueTotals.filter(t => t > myObj.total).length + 1
+                // Standard Competition Ranking (1224 ranking)
+                theologyPosition = rankings.findIndex(r => r.total === myObj.total) + 1
               }
            }
         }
@@ -443,6 +459,7 @@ export async function POST(request: NextRequest) {
             position: theologyPosition,
             total_students: totalTheologyStudents,
           },
+          signatures,
           debug: {
             enrollmentId: enrollment.id,
             circularMarksCount: 0,
@@ -498,6 +515,7 @@ export async function POST(request: NextRequest) {
           position,
           total_students,
         },
+        signatures,
         debug: {
           enrollmentId: enrollment.id,
           circularMarksCount: eCircularMarks.length,

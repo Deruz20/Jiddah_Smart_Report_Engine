@@ -456,9 +456,8 @@ export async function GET(request: NextRequest) {
               totals.sort((a, b) => b.total - a.total)
               const myObj = totals.find(r => r.id === enrollment.id)
               if (myObj) {
-                // Dense Ranking: number of strictly higher UNIQUE totals + 1
-                const uniqueTotals = Array.from(new Set(totals.map(r => r.total)))
-                theologyPosition = uniqueTotals.filter(t => t > myObj.total).length + 1
+                // Standard Competition Ranking (1224 ranking)
+                theologyPosition = totals.findIndex(r => r.total === myObj.total) + 1
               }
             }
           }
@@ -503,6 +502,22 @@ export async function GET(request: NextRequest) {
           supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
         }
       }))
+    }
+
+    const { data: signatureObjects } = await supabase.storage.from('signatures').list('', { limit: 100 })
+    const signatures: Record<string, string | null> = {
+      'head-teacher': null,
+      'principal': null,
+      'class-teacher-p3': null,
+      'class-teacher-p5': null,
+      'school-stamp': null,
+    }
+    for (const object of signatureObjects ?? []) {
+      for (const key of Object.keys(signatures)) {
+        if (object.name.startsWith(`${key}.`)) {
+          signatures[key] = supabase.storage.from('signatures').getPublicUrl(object.name).data.publicUrl
+        }
+      }
     }
 
     const studentData = Array.isArray(enrollment.students) ? enrollment.students[0] : enrollment.students
@@ -556,6 +571,7 @@ export async function GET(request: NextRequest) {
         position,
         total_students,
       },
+      signatures,
       debug: {debugInfo},
     }
 

@@ -48,6 +48,7 @@ export default function P7EOTReport({ reportData }: any) {
         dangerouslySetInnerHTML={{
           __html: `
 @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Poppins:wght@400;500;600;700;800&family=Cairo:wght@600;700;800&display=swap');
+import { formatDateWithOrdinal } from '@/utils/dateHelpers';
 
 .p7-eot-report,
 .p7-eot-report * {

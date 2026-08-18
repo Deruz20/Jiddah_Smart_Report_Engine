@@ -275,7 +275,13 @@ export default function TheologyHubClient({
         }
       }).filter(s => s.total > 0).sort((a, b) => b.total - a.total).slice(0, 5)
 
-      students.forEach((s, i) => s.rank = i + 1)
+      let currentRank = 1;
+      for (let i = 0; i < students.length; i++) {
+        if (i > 0 && students[i].total < students[i - 1].total) {
+          currentRank = i + 1;
+        }
+        students[i].rank = currentRank;
+      }
       
       return {
         classId: cls.id,

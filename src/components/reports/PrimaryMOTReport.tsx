@@ -5,6 +5,7 @@ import {
   getTheologyComment,
 } from "@/lib/grading";
 import { ReportContainer } from "@/components/reports/shared/ReportContainer";
+import { formatDateWithOrdinal } from "@/utils/dateHelpers";
 import { transliterateEnglishToArabic } from "@/lib/transliterate";
 
 export default function PrimaryMOTReport({ reportData }: any) {
@@ -577,13 +578,24 @@ export default function PrimaryMOTReport({ reportData }: any) {
             <span>Conduct:</span>
             <div className="line">{conductRemark}</div>
             <span style={{ marginLeft: "20px" }}>Signature:</span>
-            <div className="line" style={{ minWidth: "150px" }}></div>
+            <div className="line" style={{ minWidth: "150px", position: "relative" }}>
+              {(reportData?.student?.class_name?.includes('P.3') || reportData?.student?.class_name?.includes('P.1') || reportData?.student?.class_name?.includes('P.2')) && reportData?.signatures?.['class-teacher-p3'] && (
+                <img src={reportData.signatures['class-teacher-p3']} alt="Signature" style={{ position: 'absolute', bottom: 0, height: '40px', left: '50%', transform: 'translateX(-50%)' }} />
+              )}
+              {(reportData?.student?.class_name?.includes('P.4') || reportData?.student?.class_name?.includes('P.5') || reportData?.student?.class_name?.includes('P.6')) && reportData?.signatures?.['class-teacher-p5'] && (
+                <img src={reportData.signatures['class-teacher-p5']} alt="Signature" style={{ position: 'absolute', bottom: 0, height: '40px', left: '50%', transform: 'translateX(-50%)' }} />
+              )}
+  </div>
           </div>
           <div className="comment-row">
             <span>Head teacher's Comment:</span>
             <div className="line">{headComment}</div>
             <span style={{ marginLeft: "20px" }}>Signature:</span>
-            <div className="line" style={{ minWidth: "150px" }}></div>
+            <div className="line" style={{ minWidth: "150px", position: "relative" }}>
+              {reportData?.signatures?.['head-teacher'] && (
+                <img src={reportData.signatures['head-teacher']} alt="Signature" style={{ position: 'absolute', bottom: 0, height: '40px', left: '50%', transform: 'translateX(-50%)' }} />
+              )}
+</div>
           </div>
 
           <div className="dates-row">
@@ -601,8 +613,13 @@ export default function PrimaryMOTReport({ reportData }: any) {
             </div>
           </div>
 
-          <div className="validity-text">
+          <div className="validity-text" style={{ position: 'relative' }}>
             This Report Form Is Not Valid Without The Official Stamp
+
+            {reportData?.signatures?.['school-stamp'] && (
+              <img src={reportData.signatures['school-stamp']} alt="Stamp" style={{ position: 'absolute', right: '10%', bottom: '-10px', height: '70px', opacity: 0.85 }} />
+            )}
+
           </div>
         </footer>
       </div>

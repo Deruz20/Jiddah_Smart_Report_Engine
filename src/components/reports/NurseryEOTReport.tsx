@@ -1,5 +1,6 @@
 import { getNurseryGrade, getNurseryTeacherComment, getConductRemark } from '@/lib/grading'
 import { ReportContainer } from '@/components/reports/shared/ReportContainer'
+import { formatDateWithOrdinal } from '@/utils/dateHelpers';
 
 export default function NurseryEOTReport({ reportData }: any) {
   const grades = reportData?.circular?.subjects
@@ -393,9 +394,7 @@ export default function NurseryEOTReport({ reportData }: any) {
               
               <div style={{ marginTop: '16px', display: 'flex', gap: '16px' }}>
                 <div className="info-row" style={{ flex: 1 }}><span className="label">Next Term Begins</span><div className="line" style={{ fontSize: '11px', color: '#64748b' }}>
-                  {reportData?.term?.next_term_start
-                    ? new Date(reportData.term.next_term_start).toLocaleDateString('en-UG', {weekday:'long', day:'numeric', month:'long', year:'numeric'})
-                    : '____________________'}
+                  {reportData?.term?.next_term_start ? formatDateWithOrdinal(reportData.term.next_term_start) : '______________________'}
                 </div></div>
               </div>
             </div>

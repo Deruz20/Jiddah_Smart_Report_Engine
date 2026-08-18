@@ -9,6 +9,7 @@
     "lint": "echo 'Skipping lint for Vercel deployment'"
   },
   "dependencies": {
+    "@google/genai": "^2.17.1",
     "@hookform/resolvers": "^5.4.0",
     "@journeyapps/wa-sqlite": "^2.0.1",
     "@powersync/react": "^2.0.0",

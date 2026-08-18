@@ -27,7 +27,7 @@ interface TheologyClass {
 
 interface FormData {
   name: string;
-  name_arabic: string;
+  arabic_name: string;
   gender: 'Male' | 'Female' | '';
   admission_number: string;
   section: SectionType;
@@ -40,7 +40,7 @@ interface FormData {
 
 const initialForm: FormData = {
   name: '',
-  name_arabic: '',
+  arabic_name: '',
   gender: '',
   admission_number: '',
   section: '',
@@ -122,9 +122,10 @@ function Step1({ form, setField }: { form: FormData; setField: (k: keyof FormDat
             dir="rtl"
             className={cn(inputClass, 'text-right flex-1')}
             placeholder="e.g. يوسف موتيبي"
-            value={form.name_arabic}
-            onChange={(e) => setField('name_arabic', e.target.value)}
+            value={form.arabic_name}
+            onChange={(e) => setField('arabic_name', e.target.value)}
           />
+          {/* TRANSLITERATION DISABLED BY USER REQUEST
           <button
             type="button"
             onClick={async () => {
@@ -142,7 +143,7 @@ function Step1({ form, setField }: { form: FormData; setField: (k: keyof FormDat
                 if (res.ok) {
                   const data = await res.json();
                   if (data.transliterated?.[0]) {
-                    setField('name_arabic', data.transliterated[0]);
+                    setField('arabic_name', data.transliterated[0]);
                     toast.success('Transliterated successfully', { id: 'transliterate-wiz' });
                   } else {
                     toast.error('Failed to transliterate', { id: 'transliterate-wiz' });
@@ -159,6 +160,7 @@ function Step1({ form, setField }: { form: FormData; setField: (k: keyof FormDat
             <RefreshCw size={14} />
             Auto
           </button>
+          */}
         </div>
       </div>
 
@@ -530,7 +532,7 @@ export function CreateStudentWizard() {
         body: JSON.stringify({
           name: form.name,
           gender: form.gender.toLowerCase(),
-          arabic_name: form.name_arabic || null,
+          arabic_name: form.arabic_name,
           admission_number: form.admission_number,
           circular_class_id: form.circular_class_id,
           theology_class_id: form.theology_class_id || null,

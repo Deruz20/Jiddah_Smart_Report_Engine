@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from 'react'
 export type EnrollmentData = {
   id: string
   name: string
+  arabic_name?: string | null
   admission_number: string
   circular_class: string
   section: string | null

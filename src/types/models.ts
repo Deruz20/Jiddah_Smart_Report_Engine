@@ -10,6 +10,7 @@ export type EnrollmentData = {
   id: string
   student_id?: string | null
   name: string
+  arabic_name?: string | null
   admission_number: string
   circular_class: string
   section: string | null

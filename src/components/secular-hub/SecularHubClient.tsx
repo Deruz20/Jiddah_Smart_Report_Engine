@@ -6,6 +6,7 @@ import { Loader2, ScrollText, BookOpen, Award, LayoutDashboard, SearchX } from '
 import { toast } from 'sonner'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { generateAssessmentCSV, generateAnalysisCSV, generateTopStudentsCSV } from '@/utils/csvExport'
+import { computeStandardRankings } from '@/lib/ranking'
 import { TopToolbar } from '../figma-ui/TopToolbar'
 
 type TermData = {
@@ -162,20 +163,21 @@ export default function SecularHubClient({
       return {
         id: enrollment.id,
         name: enrollment.students?.name || 'Unknown Student',
-        total,
+        total: total > 0 ? total : null,
         subjectScores,
+        rank: 0 as number | string,
         position: '-' as number | string
       }
     })
 
-    processed.sort((a, b) => b.total - a.total)
-    const uniqueTotals = Array.from(new Set(processed.map(p => p.total)))
+    const ranked = computeStandardRankings(processed)
     
     return {
       orderedSubjects,
-      students: processed.map((p) => ({
+      students: ranked.map((p) => ({
         ...p,
-        position: p.total > 0 ? uniqueTotals.filter(x => x > p.total).length + 1 : '-'
+        total: p.total ?? 0,
+        position: p.rank
       }))
     }
   }, [data, activeClassId, circularClasses, examPhase])
@@ -252,34 +254,43 @@ export default function SecularHubClient({
       const students = classEnrollments.map(e => {
         const eMarks = data.marks.filter(m => m.enrollment_id === e.id)
         let total = 0
+        const subjectScores: Record<string, number> = {}
         orderedSubjects.forEach(sub => {
           const mark = eMarks.find(m => m.subject_id === sub.id)
           const scoreKey = `${examPhase}_score` as 'bot_score' | 'mot_score' | 'eot_score'
           const score = mark?.[scoreKey]
-          if (score != null) total += score
+          if (score != null) {
+            total += score
+            subjectScores[sub.id] = score
+          }
         })
         return {
           id: e.id,
           className: cls.class_name,
-          studentName: e.students.name || e.students.name,
-          total,
-          avg: total / (orderedSubjects.length || 1),
-          rank: 0
+          name: e.students.name || 'Unknown Student',
+          total: total > 0 ? total : null,
+          subjectScores,
+          rank: 0 as number | string
         }
-      }).filter(s => s.total > 0).sort((a, b) => b.total - a.total).slice(0, 5)
+      })
 
-      let currentRank = 1;
-      for (let i = 0; i < students.length; i++) {
-        if (i > 0 && students[i].total < students[i - 1].total) {
-          currentRank = i + 1;
-        }
-        students[i].rank = currentRank;
-      }
+      const ranked = computeStandardRankings(students)
+      const topStudents = ranked
+        .filter(s => typeof s.rank === 'number')
+        .slice(0, 10)
+        .map(s => ({
+          id: s.id,
+          className: cls.class_name,
+          studentName: s.name,
+          total: s.total ?? 0,
+          avg: s.total ? parseFloat((s.total / Object.keys(s.subjectScores).length).toFixed(1)) : 0,
+          rank: s.rank as number
+        }))
       
       return {
         classId: cls.id,
         className: cls.class_name,
-        students
+        students: topStudents
       }
     }).filter(group => group.students.length > 0)
   }, [data, activeLevel, circularClasses, examPhase])

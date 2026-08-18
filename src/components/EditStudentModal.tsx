@@ -180,6 +180,7 @@ export function EditStudentModal({ isOpen, onClose, student, onSaved }: EditStud
                         value={formData.arabic_name}
                         onChange={(e) => setFormData({ ...formData, arabic_name: e.target.value })}
                       />
+                      {/* TRANSLITERATION DISABLED BY USER REQUEST
                       <button
                         type="button"
                         onClick={async () => {
@@ -214,6 +215,7 @@ export function EditStudentModal({ isOpen, onClose, student, onSaved }: EditStud
                         <RefreshCw size={14} />
                         Auto
                       </button>
+                      */}
                     </div>
                   </div>
                 </div>

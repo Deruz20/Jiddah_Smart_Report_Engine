@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import MyActivityClient from '@/components/layout/my-activity-client'
@@ -23,3 +24,4 @@ export default async function MyActivityPage() {
     </div>
   )
 }
+

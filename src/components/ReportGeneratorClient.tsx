@@ -246,6 +246,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
         return
       }
 
+      {/* TRANSLITERATION DISABLED BY USER REQUEST
       // Add Smart Transliteration step
       const namesToTransliterate = generatedReportsData
         .filter(r => !r.student.arabic_name)
@@ -276,6 +277,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
           toast.dismiss('transliterate-toast');
         }
       }
+      */}
 
       setRawReports(generatedReportsData)
       setActiveReportId(generatedReportsData[0].id)

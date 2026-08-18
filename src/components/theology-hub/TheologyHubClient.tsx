@@ -2,13 +2,14 @@
 
 import React, { useState, useEffect, useMemo, memo } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
-import { Loader2, ScrollText, BookOpen, Award } from 'lucide-react'
+import { Loader2, ScrollText, BookOpen, Award, Download, LayoutGrid, Users } from 'lucide-react'
 import { toast } from 'sonner'
 import { createClient } from "@/utils/supabase/client"
 import { TheologyHubEmptyState } from './TheologyHubEmptyState'
 import { TopToolbar } from '../figma-ui/TopToolbar'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { generateAssessmentCSV, generateAnalysisCSV, generateTopStudentsCSV } from '@/utils/csvExport'
+import { computeStandardRankings } from '@/lib/ranking'
 
 type TermData = {
   id: string
@@ -159,20 +160,21 @@ export default function TheologyHubClient({
         id: enrollment.id,
         name: enrollment.students.name,
         arabic_name: enrollment.students.arabic_name,
-        total,
+        total: total > 0 ? total : null,
         subjectScores,
+        rank: 0 as number | string,
         position: '-' as number | string
       }
     })
 
-    processed.sort((a, b) => b.total - a.total)
-    const uniqueTotals = Array.from(new Set(processed.map(p => p.total)))
+    const ranked = computeStandardRankings(processed)
     
     return {
       orderedSubjects,
-      students: processed.map((p) => ({
+      students: ranked.map((p) => ({
         ...p,
-        position: p.total > 0 ? uniqueTotals.filter(x => x > p.total).length + 1 : '-'
+        total: p.total || 0,
+        position: p.rank
       }))
     }
   }, [data, activeClassId, theologyClasses, examPhase])
@@ -267,26 +269,35 @@ export default function TheologyHubClient({
         })
         return {
           id: e.id,
+          name: e.students.name,
+          arabic_name: e.students.arabic_name,
           className: cls.class_name_arabic,
           studentName: e.students.arabic_name || e.students.name,
-          total,
+          total: total > 0 ? total : null,
+          subjectScores: {},
           avg: total / (orderedSubjects.length || 1),
-          rank: 0
+          rank: 0 as number | string
         }
-      }).filter(s => s.total > 0).sort((a, b) => b.total - a.total).slice(0, 5)
+      })
 
-      let currentRank = 1;
-      for (let i = 0; i < students.length; i++) {
-        if (i > 0 && students[i].total < students[i - 1].total) {
-          currentRank = i + 1;
-        }
-        students[i].rank = currentRank;
-      }
+      const ranked = computeStandardRankings(students)
+      const topStudents = ranked
+        .filter(s => typeof s.rank === 'number')
+        .slice(0, 10)
+        .map(s => ({
+          id: s.id,
+          className: cls.class_name_arabic || cls.class_name_english,
+          studentName: s.arabic_name || s.name,
+          total: s.total ?? 0,
+          avg: s.total ? parseFloat((s.total / Object.keys(orderedSubjects).length).toFixed(1)) : 0,
+          rank: s.rank as number
+        }))
+      
       
       return {
         classId: cls.id,
         className: cls.class_name_arabic,
-        students
+        students: topStudents
       }
     }).filter(group => group.students.length > 0)
   }, [data, activeLevel, theologyClasses, examPhase])

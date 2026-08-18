@@ -363,7 +363,7 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
         <div className="info-grid">
           <div className="info-item" style={{ gridColumn: 'span 2' }}>
             <span>اسم الطفل/ة:</span>
-            <div className="dot-line">{reportData?.student?.arabic_name || transliterateEnglishToArabic(reportData?.student?.name || '')}</div>
+            <div className="dot-line">{reportData?.student?.arabic_name || "___"}</div>
           </div>
           <div className="info-item">
             <span>الروضة:</span>

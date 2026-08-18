@@ -48,7 +48,7 @@ export default function TheologyMOTReport({ reportData }: any) {
             <span>اسم الطالب/ة :</span>
             <div className="line-dots">
               <span className="line-text">
-                {reportData?.student?.arabic_name || transliterateEnglishToArabic(reportData?.student?.name || '')}
+                {reportData?.student?.arabic_name || "___"}
               </span>
             </div>
           </div>

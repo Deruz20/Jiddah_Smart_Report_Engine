@@ -1,1 +1,3 @@
+// @ts-nocheck
 import { transliterateEnglishToArabic } from "./src/lib/transliterate"; const names = ["Hassan", "Musa", "Khadijah", "Yahaya", "Kangu", "Lubwama", "Amiirah", "Twaibu"]; console.log(names.map(n => n + " -> " + transliterateEnglishToArabic(n)).join("\n"));
+

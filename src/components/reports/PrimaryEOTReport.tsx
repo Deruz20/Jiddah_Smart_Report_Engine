@@ -6,7 +6,7 @@ import {
 } from "@/lib/grading";
 import { ReportContainer } from "@/components/reports/shared/ReportContainer";
 import { formatDateWithOrdinal } from "@/utils/dateHelpers";
-import { transliterateEnglishToArabic } from "@/lib/transliterate";
+
 
 export default function PrimaryEOTReport({ reportData }: any) {
   const className =
@@ -301,10 +301,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
                     borderBottomStyle: "dotted",
                   }}
                 >
-                  {reportData?.student?.arabic_name ||
-                    transliterateEnglishToArabic(
-                      reportData?.student?.name || "",
-                    )}
+                  {reportData?.student?.arabic_name || "_________"}
                 </div>
               </div>
               <div className="info-row">

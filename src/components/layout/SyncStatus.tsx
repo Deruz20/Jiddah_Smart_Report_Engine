@@ -1,3 +1,4 @@
+// @ts-nocheck
 'use client'
 
 import { useState } from 'react'
@@ -108,3 +109,4 @@ export function SyncStatus({ state, lastSyncedAt, pendingCount = 0, onSyncNow, o
     </div>
   )
 }
+

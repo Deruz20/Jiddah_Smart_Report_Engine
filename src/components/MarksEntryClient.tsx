@@ -69,6 +69,8 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
           JOIN students s ON e.student_id = s.id
           LEFT JOIN circular_classes cc ON e.circular_class_id = cc.id
           LEFT JOIN theology_classes tc ON e.theology_class_id = tc.id
+          WHERE (s.is_archived IS NULL OR s.is_archived = 0 OR s.is_archived = 'false')
+            AND (e.is_active IS NULL OR e.is_active = 1 OR e.is_active = 'true')
         `)
         
         const mappedEnrollments: EnrollmentData[] = data.map((e: any) => ({
@@ -214,13 +216,12 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
 
     setIsSaving(true)
 
-    startTransition(async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser()
-        const userId = user?.id
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser()
+      const userId = user?.id
 
         if (BYPASS_POWERSYNC_WRITES) {
-          const supabase = createClient();
           const { data: existingC, error: errC } = await supabase.from('circular_marks').select('id, subject_id').eq('enrollment_id', selectedEnrollmentId).eq('term_id', selectedTermId);
           if (errC) throw errC;
           
@@ -328,7 +329,6 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
       } finally {
         setIsSaving(false)
       }
-    })
   }
 
   return (

@@ -654,9 +654,7 @@ export default function P7EOTReport({ reportData }: any) {
                     </th>
                   </tr>
                   {reportData?.theology?.subjects?.map((subject: any) => {
-                    const arabicName = subject.subject_name_arabic === 'التاريخ والسيرة' 
-                      ? 'التربية' 
-                      : subject.subject_name_arabic;
+                    const arabicName = subject.subject_name_arabic || subject.subject_name;
                       
                     return (
                     <tr key={subject.subject_name_arabic}>

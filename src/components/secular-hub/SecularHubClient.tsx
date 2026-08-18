@@ -88,6 +88,7 @@ export default function SecularHubClient({
   const [activeClassId, setActiveClassId] = useState<string>(searchParams.get('class_id') || '')
   const [activeLevel, setActiveLevel] = useState<string>(searchParams.get('level') || 'nursery')
   const [activeTab, setActiveTab] = useState<'assessment' | 'analysis' | 'top_students'>((searchParams.get('tab') as any) || 'assessment')
+  const [examPhase, setExamPhase] = useState<'bot' | 'mot' | 'eot'>((searchParams.get('exam_phase') as any) || 'eot')
   
   const [filtersOpen, setFiltersOpen] = useState(true)
   const [isLoading, setIsLoading] = useState(false)
@@ -126,9 +127,10 @@ export default function SecularHubClient({
     if (activeClassId) params.set('class_id', activeClassId)
     if (activeLevel) params.set('level', activeLevel)
     if (activeTab) params.set('tab', activeTab)
+    if (examPhase) params.set('exam_phase', examPhase)
     
     router.replace(`${pathname}?${params.toString()}`, { scroll: false })
-  }, [activeTermId, activeClassId, activeLevel, activeTab, pathname, router, searchParams])
+  }, [activeTermId, activeClassId, activeLevel, activeTab, examPhase, pathname, router, searchParams])
 
   // Process data for the Assessment Form
   const assessmentData = useMemo(() => {
@@ -151,7 +153,8 @@ export default function SecularHubClient({
       
       orderedSubjects.forEach(sub => {
         const mark = eMarks.find(m => m.subject_id === sub.id)
-        const score = mark?.mot_score != null ? mark.mot_score : (mark?.eot_score != null ? mark.eot_score : null)
+        const scoreKey = `${examPhase}_score` as 'bot_score' | 'mot_score' | 'eot_score'
+        const score = mark?.[scoreKey] != null ? mark[scoreKey] : null
         subjectScores[sub.id] = score
         if (score != null) total += score
       })
@@ -175,7 +178,7 @@ export default function SecularHubClient({
         position: p.total > 0 ? uniqueTotals.filter(x => x > p.total).length + 1 : '-'
       }))
     }
-  }, [data, activeClassId, circularClasses])
+  }, [data, activeClassId, circularClasses, examPhase])
 
   // Process data for the Analysis Form
   const analysisData = useMemo(() => {
@@ -200,7 +203,8 @@ export default function SecularHubClient({
         let hasMarks = false
         orderedSubjects.forEach(sub => {
           const mark = eMarks.find(m => m.subject_id === sub.id)
-          const score = mark?.mot_score != null ? mark.mot_score : mark?.eot_score
+          const scoreKey = `${examPhase}_score` as 'bot_score' | 'mot_score' | 'eot_score'
+          const score = mark?.[scoreKey]
           if (score != null) {
             total += score
             hasMarks = true
@@ -233,7 +237,7 @@ export default function SecularHubClient({
         passRate
       }
     })
-  }, [data, activeLevel, circularClasses])
+  }, [data, activeLevel, circularClasses, examPhase])
 
   // Process data for Top Students Form
   const topStudentsData = useMemo(() => {
@@ -250,7 +254,8 @@ export default function SecularHubClient({
         let total = 0
         orderedSubjects.forEach(sub => {
           const mark = eMarks.find(m => m.subject_id === sub.id)
-          const score = mark?.mot_score != null ? mark.mot_score : mark?.eot_score
+          const scoreKey = `${examPhase}_score` as 'bot_score' | 'mot_score' | 'eot_score'
+          const score = mark?.[scoreKey]
           if (score != null) total += score
         })
         return {
@@ -271,7 +276,7 @@ export default function SecularHubClient({
         students
       }
     }).filter(group => group.students.length > 0)
-  }, [data, activeLevel, circularClasses])
+  }, [data, activeLevel, circularClasses, examPhase])
 
   const handlePrint = () => window.print()
 
@@ -360,7 +365,7 @@ export default function SecularHubClient({
                 </div>
 
                 {/* View Toggle */}
-                <div className="flex-1">
+                <div className="flex-col lg:col-span-5 min-w-[300px]">
                   <label className="block text-xs font-semibold text-slate-600 uppercase mb-2">Dashboard View</label>
                   <div className="flex overflow-x-auto no-scrollbar p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
                     <button
@@ -380,6 +385,31 @@ export default function SecularHubClient({
                       className={`flex-1 min-w-[120px] py-1.5 px-3 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 ${activeTab === 'top_students' ? 'bg-white shadow-sm text-blue-700' : 'text-slate-500 hover:text-slate-700'}`}
                     >
                       <Award size={14} /> Top Students
+                    </button>
+                  </div>
+                </div>
+
+                {/* Exam Phase Toggle */}
+                <div className="flex-col lg:col-span-2 min-w-[200px]">
+                  <label className="block text-xs font-semibold text-slate-600 uppercase mb-2">Exam Phase</label>
+                  <div className="flex p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+                    <button
+                      onClick={() => setExamPhase('bot')}
+                      className={`flex-1 py-1.5 px-2 text-sm font-medium rounded-lg transition-all flex items-center justify-center ${examPhase === 'bot' ? 'bg-white shadow-sm text-blue-700' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                      BOT
+                    </button>
+                    <button
+                      onClick={() => setExamPhase('mot')}
+                      className={`flex-1 py-1.5 px-2 text-sm font-medium rounded-lg transition-all flex items-center justify-center ${examPhase === 'mot' ? 'bg-white shadow-sm text-blue-700' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                      MOT
+                    </button>
+                    <button
+                      onClick={() => setExamPhase('eot')}
+                      className={`flex-1 py-1.5 px-2 text-sm font-medium rounded-lg transition-all flex items-center justify-center ${examPhase === 'eot' ? 'bg-white shadow-sm text-blue-700' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                      EOT
                     </button>
                   </div>
                 </div>
@@ -464,6 +494,10 @@ export default function SecularHubClient({
                   <div>
                     <span className="uppercase text-[11px] tracking-wider text-slate-500 mr-2">Class:</span>
                     <span className="text-blue-800 print:text-black font-bold">{circularClasses.find(c => c.id === activeClassId)?.class_name}</span>
+                  </div>
+                  <div>
+                    <span className="uppercase text-[11px] tracking-wider text-slate-500 mr-2">Phase:</span>
+                    <span className="text-blue-800 print:text-black font-bold uppercase">{examPhase}</span>
                   </div>
                   <div>
                     <span className="uppercase text-[11px] tracking-wider text-slate-500 mr-2">Year:</span>
@@ -573,6 +607,10 @@ export default function SecularHubClient({
                   <div>
                     <span className="uppercase text-[11px] tracking-wider text-slate-500 mr-2">Term:</span>
                     <span className="text-blue-800 print:text-black font-bold">{terms.find(t => t.id === activeTermId)?.label}</span>
+                  </div>
+                  <div>
+                    <span className="uppercase text-[11px] tracking-wider text-slate-500 mr-2">Phase:</span>
+                    <span className="text-blue-800 print:text-black font-bold uppercase">{examPhase}</span>
                   </div>
                   <div>
                     <span className="uppercase text-[11px] tracking-wider text-slate-500 mr-2">Year:</span>

@@ -91,8 +91,11 @@ export default function PrimaryBOTReport({ reportData }: any) {
             color: #000;
             
             /* Decorative border using repeating linear gradient or svg */
-            border: 12px solid transparent;
-            border-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cpolygon points='20,5 25,20 40,20 28,28 32,40 20,32 8,40 12,28 0,20 15,20' fill='%23dc2626'/%3E%3Cpolygon points='20,10 25,20 20,30 15,20' fill='%23881337'/%3E%3C/svg%3E") 15 round;
+            /* Premium Frame Border */
+            border: 6px double var(--dark-maroon);
+            outline: 2px solid var(--primary-green);
+            outline-offset: 2px;
+            margin: 4px; /* Space for outline */
         }
 
         /* HEADER */
@@ -165,14 +168,15 @@ export default function PrimaryBOTReport({ reportData }: any) {
         table { width: 100%; border-collapse: collapse; table-layout: fixed; border: 3px solid var(--primary-green); }
         th, td { border: 2px solid var(--primary-green); text-align: center; font-size: 12px; }
         th { font-weight: 800; padding: 4px 2px; }
-        td { height: 26px; font-weight: 600; }
+        td { height: 20px; font-weight: 600; }
         
         .table-title { background: var(--primary-green); color: white; font-size: 14px; letter-spacing: 1px; padding: 4px; }
         
         .academic-table th { background: #f0fdf4; color: #000; font-size: 11px; }
         .academic-table .table-title { color: white; }
 
-        .theology-table th { font-family: 'Amiri', serif; font-size: 15px; background: #f0fdf4; color: #000; }
+        .theology-table table { height: 100%; }
+          .theology-table th { font-family: 'Amiri', serif; font-size: 15px; background: #f0fdf4; color: #000; }
         .theology-table td { font-family: 'Amiri', serif; font-size: 16px; }
         .theology-table .table-title { color: white; font-size: 18px; }
 
@@ -385,7 +389,7 @@ export default function PrimaryBOTReport({ reportData }: any) {
                   <th colSpan={2} rowSpan={2} style={{ width: "22%" }}>
                     SUBJECTS
                   </th>
-                  <th colSpan={5} className="table-title">
+                  <th colSpan={6} className="table-title">
                     COMPARATIVE PERFORMANCE
                   </th>
                 </tr>
@@ -503,16 +507,11 @@ export default function PrimaryBOTReport({ reportData }: any) {
                 <tbody>
                   {arabicSubjects.map((arabicName) => {
                     const subject = reportData?.theology?.subjects?.find(
-                      (s: any) => {
-                        const dbName =
-                          s.subject_name_arabic === "التاريخ والسيرة"
-                            ? "التربية"
-                            : s.subject_name_arabic || "";
-                        return (
-                          arabicName.includes(dbName) ||
-                          dbName.includes(arabicName.split(" ")[0])
-                        );
-                      },
+                      (s: any) =>
+                        s.subject_name_arabic === arabicName ||
+                        s.subject_name === arabicName ||
+                        (s.subject_name || "").includes(arabicName.split(" ")[0]) ||
+                        (s.subject_name_arabic || "").includes(arabicName.split(" ")[0])
                     );
                     return (
                       <tr key={arabicName}>

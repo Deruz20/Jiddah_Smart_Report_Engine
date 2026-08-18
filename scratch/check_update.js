@@ -9,10 +9,12 @@ const supabase = createClient(
 async function check() {
   const { data, error } = await supabase
       .from('students')
-      .select('*')
-      .eq('id', '2bac385f-c603-4205-b298-617df0b5afbe')
+      .update({
+        name: 'TAMUSUZA ABDUL-HAQQ',
+      })
+      .eq('id', '566b146b-743f-4a67-b454-07fec898f140')
 
-  console.log('Student:', data);
+  console.log('Update Error:', error);
 }
 
 check();

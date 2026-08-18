@@ -31,6 +31,11 @@ export async function PUT(
 
     const cookieStore = await cookies()
     const supabase = createClient(cookieStore)
+    const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
+    const supabaseAdmin = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
 
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
@@ -107,13 +112,13 @@ export async function PUT(
 
       if (circularChanged || theologyChanged) {
         // Mark old enrollment inactive
-        await supabase
+        await supabaseAdmin
           .from('enrollments')
           .update({ is_active: false })
           .eq('id', currentEnrollment.id)
 
         // Create new enrollment
-        const { error: newEnrollmentError } = await supabase
+        const { error: newEnrollmentError } = await supabaseAdmin
           .from('enrollments')
           .insert([{
             student_id: studentId,
@@ -130,7 +135,7 @@ export async function PUT(
       }
     } else {
       // No active enrollment found, just create one
-      await supabase
+      await supabaseAdmin
         .from('enrollments')
         .insert([{
           student_id: studentId,
@@ -163,6 +168,11 @@ export async function DELETE(
     
     const cookieStore = await cookies()
     const supabase = createClient(cookieStore)
+    const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
+    const supabaseAdmin = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
 
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
@@ -213,15 +223,15 @@ export async function DELETE(
         const enrollmentIds = enrollments.map(e => e.id)
         
         // Delete circular marks
-        await supabase.from('circular_marks').delete().in('enrollment_id', enrollmentIds)
+        await supabaseAdmin.from('circular_marks').delete().in('enrollment_id', enrollmentIds)
         // Delete theology marks
-        await supabase.from('theology_marks').delete().in('enrollment_id', enrollmentIds)
+        await supabaseAdmin.from('theology_marks').delete().in('enrollment_id', enrollmentIds)
         // Delete enrollments
-        await supabase.from('enrollments').delete().eq('student_id', studentId)
+        await supabaseAdmin.from('enrollments').delete().eq('student_id', studentId)
       }
 
       // Finally, delete the student
-      const { error: deleteError } = await supabase
+      const { error: deleteError } = await supabaseAdmin
         .from('students')
         .delete()
         .eq('id', studentId)

@@ -4,7 +4,7 @@ import React, { useState, useMemo } from "react";
 import Link from 'next/link';
 import { FileText, Download, Printer, RefreshCw, Check, ChevronDown, Eye, Zap, BarChart2, Search } from "lucide-react";
 import { HeroSection } from "@/components/HeroSection";
-import { PageState } from "@/components/PageState";
+import { SchoolStamp } from "@/components/reports/SchoolStamp";
 
 interface ReportsClientProps {
   initialHistory: any[];
@@ -27,6 +27,7 @@ export default function ReportsClient({
   
   const [selectedClass, setSelectedClass] = useState("All Classes");
   const [selectedTermId, setSelectedTermId] = useState(currentTerm?.id ?? "");
+  const [stampDate, setStampDate] = useState(currentTerm?.end_date ? new Date(currentTerm.end_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]);
   const [reportType, setReportType] = useState("individual");
   const [generating, setGenerating] = useState(false);
   const [generationProgress, setGenerationProgress] = useState(0);
@@ -44,6 +45,7 @@ export default function ReportsClient({
       term_id: termId,
       score_type: scoreType,
     });
+    if (stampDate) params.set("stamp_date", stampDate);
     if (print) params.set("print", "1");
     return `${baseUrl}/admin/reports?${params.toString()}`;
   };
@@ -223,6 +225,21 @@ export default function ReportsClient({
                     </select>
                     <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500 pointer-events-none" />
                   </div>
+                </div>
+              </div>
+
+              <div className="mb-5 p-4 rounded-xl border border-slate-200 bg-slate-50">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-800">Stamp Configuration</h3>
+                    <p className="text-xs text-slate-500">Preview and approve the official school stamp date</p>
+                  </div>
+                  <div>
+                    <input type="date" value={stampDate} onChange={e => setStampDate(e.target.value)} className="px-3 py-2 border rounded-lg text-sm bg-white outline-none focus:border-emerald-500 text-slate-700" />
+                  </div>
+                </div>
+                <div className="flex justify-center bg-white p-4 rounded-lg border border-slate-200" style={{ transform: 'scale(0.9)', transformOrigin: 'top center' }}>
+                  <SchoolStamp date={stampDate} />
                 </div>
               </div>
 

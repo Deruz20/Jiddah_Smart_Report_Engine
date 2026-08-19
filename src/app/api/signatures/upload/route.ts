@@ -4,16 +4,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { getAuthenticatedUser, recordActivity } from '@/lib/api-server'
 
+import { getDynamicSignatureSlots } from '@/utils/signatures'
 const BUCKET = 'signatures'
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp']
 const MAX_FILE_SIZE = 5 * 1024 * 1024
-const SLOT_KEYS = new Set([
-  'head-teacher',
-  'principal',
-  'class-teacher-p3',
-  'class-teacher-p5',
-  'school-stamp',
-])
 
 export async function OPTIONS(request: NextRequest) {
   return apiOptions(request)
@@ -40,7 +34,13 @@ export async function POST(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'No file provided' }, { status: 400 }))
     }
 
-    if (typeof slotKey !== 'string' || !SLOT_KEYS.has(slotKey)) {
+    if (typeof slotKey !== 'string') {
+      return withCors(request, NextResponse.json({ error: 'Invalid signature slot' }, { status: 400 }))
+    }
+
+    const SIGNATURE_SLOTS = await getDynamicSignatureSlots(supabase)
+    const isValidSlot = SIGNATURE_SLOTS.some(slot => slot.slot_key === slotKey)
+    if (!isValidSlot) {
       return withCors(request, NextResponse.json({ error: 'Invalid signature slot' }, { status: 400 }))
     }
 

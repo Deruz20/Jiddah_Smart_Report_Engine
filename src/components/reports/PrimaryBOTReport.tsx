@@ -3,8 +3,11 @@ import {
   getHeadTeacherComment,
   getConductRemark,
   getTheologyComment,
+  getSubjectGradeNumber,
 } from "@/lib/grading";
 import { ReportContainer } from "@/components/reports/shared/ReportContainer";
+import { SchoolStamp } from "./SchoolStamp";
+import { getClassTeacherSignatureKey } from "@/utils/signatures";
 import { formatDateWithOrdinal } from "@/utils/dateHelpers";
 
 
@@ -576,13 +579,10 @@ export default function PrimaryBOTReport({ reportData }: any) {
             <div className="line">{conductRemark}</div>
             <span style={{ marginLeft: "20px" }}>Signature:</span>
             <div className="line" style={{ minWidth: "150px", position: "relative" }}>
-              {(reportData?.student?.class_name?.includes('P.3') || reportData?.student?.class_name?.includes('P.1') || reportData?.student?.class_name?.includes('P.2')) && reportData?.signatures?.['class-teacher-p3'] && (
-                <img src={reportData.signatures['class-teacher-p3']} alt="Signature" style={{ position: 'absolute', bottom: 0, height: '40px', left: '50%', transform: 'translateX(-50%)' }} />
+              {reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.class_name) ?? ''] && (
+                <img src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} alt="Signature" style={{ position: 'absolute', bottom: 0, height: '40px', left: '50%', transform: 'translateX(-50%)' }} />
               )}
-              {(reportData?.student?.class_name?.includes('P.4') || reportData?.student?.class_name?.includes('P.5') || reportData?.student?.class_name?.includes('P.6')) && reportData?.signatures?.['class-teacher-p5'] && (
-                <img src={reportData.signatures['class-teacher-p5']} alt="Signature" style={{ position: 'absolute', bottom: 0, height: '40px', left: '50%', transform: 'translateX(-50%)' }} />
-              )}
-  </div>
+            </div>
           </div>
           <div className="comment-row">
             <span>Head teacher's Comment:</span>
@@ -610,12 +610,11 @@ export default function PrimaryBOTReport({ reportData }: any) {
             </div>
           </div>
 
-          <div className="validity-text" style={{ position: 'relative' }}>
-            This Report Form Is Not Valid Without The Official Stamp
-
-            {reportData?.signatures?.['school-stamp'] && (
-              <img src={reportData.signatures['school-stamp']} alt="Stamp" style={{ position: 'absolute', right: '10%', bottom: '-10px', height: '70px', opacity: 0.85 }} />
-            )}
+          <div className="validity-text" style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>This Report Form Is Not Valid Without The Official Stamp</div>
+            <div style={{ transform: 'scale(0.8)', transformOrigin: 'right center' }}>
+              <SchoolStamp date={reportData?.term?.end_date} />
+            </div>
 
           </div>
         </footer>

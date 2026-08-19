@@ -1,6 +1,8 @@
 import { getNurseryGrade, getNurseryTeacherComment, getConductRemark } from '@/lib/grading'
 import { ReportContainer } from '@/components/reports/shared/ReportContainer'
 import { formatDateWithOrdinal } from '@/utils/dateHelpers';
+import { SchoolStamp } from "./SchoolStamp";
+import { getClassTeacherSignatureKey } from "@/utils/signatures";
 
 export default function NurseryMOTReport({ reportData }: any) {
   const grades = reportData?.circular?.subjects
@@ -344,9 +346,24 @@ export default function NurseryMOTReport({ reportData }: any) {
           <div className="report-footer">
             <div className="remarks-box">
               <div className="info-row"><span className="label" style={{ minWidth: '100px' }}>Conduct</span><div className="line">{reportData?.circular?.conduct_remark ?? getConductRemark(null)}</div></div>
-              <div className="info-row" style={{ marginTop: '12px' }}><span className="label" style={{ minWidth: '100px' }}>Class Teacher</span><div className="line">{getNurseryTeacherComment(grades)}</div></div>
-              <div className="info-row" style={{ marginTop: '12px' }}><span className="label" style={{ minWidth: '100px' }}>Head Teacher</span><div className="line">{getNurseryTeacherComment(grades)}</div></div>
-              
+              <div className="info-row" style={{ marginTop: '12px' }}>
+                <span className="label" style={{ minWidth: '100px' }}>Class Teacher</span>
+                <div className="line" style={{ position: 'relative' }}>
+                  {getNurseryTeacherComment(grades)}
+                  {reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.class_name) ?? ''] && (
+                    <img src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} alt="Signature" style={{ position: 'absolute', bottom: 0, height: '40px', right: 0 }} />
+                  )}
+                </div>
+              </div>
+              <div className="info-row" style={{ marginTop: '12px' }}>
+                <span className="label" style={{ minWidth: '100px' }}>Head Teacher</span>
+                <div className="line" style={{ position: 'relative' }}>
+                  {getNurseryTeacherComment(grades)}
+                  {reportData?.signatures?.['head-teacher'] && (
+                    <img src={reportData.signatures['head-teacher']} alt="Signature" style={{ position: 'absolute', bottom: 0, height: '40px', right: 0 }} />
+                  )}
+                </div>
+              </div>
               <div style={{ marginTop: '16px', display: 'flex', gap: '16px' }}>
                 <div className="info-row" style={{ flex: 1 }}><span className="label">Next Term Begins</span><div className="line" style={{ fontSize: '11px', color: '#64748b' }}>
                   {reportData?.term?.next_term_start ? formatDateWithOrdinal(reportData.term.next_term_start) : '______________________'}
@@ -354,9 +371,10 @@ export default function NurseryMOTReport({ reportData }: any) {
               </div>
             </div>
 
-            <div className="stamp-box">
-              <div>OFFICIAL</div>
-              <div>STAMP</div>
+            <div className="stamp-box" style={{ padding: 0, border: 'none', background: 'none' }}>
+              <div style={{ transform: 'scale(0.8)', transformOrigin: 'top right' }}>
+                <SchoolStamp date={reportData?.term?.end_date} />
+              </div>
             </div>
           </div>
           

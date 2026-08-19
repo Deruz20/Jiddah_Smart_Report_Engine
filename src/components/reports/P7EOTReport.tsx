@@ -1,5 +1,7 @@
 import { getClassTeacherComment, getHeadTeacherComment, getConductRemark, getTheologyComment } from '@/lib/grading'
 import { ReportContainer } from '@/components/reports/shared/ReportContainer'
+import { SchoolStamp } from './SchoolStamp'
+import { getClassTeacherSignatureKey } from '@/utils/signatures'
 
 export default function P7EOTReport({ reportData }: any) {
   const teacherComment =
@@ -726,7 +728,11 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
                 </div>
                 <div className="c-field" style={{ width: '200px' }}>
                   <span>Signature:</span>
-                  <div className="w-line"></div>
+                  <div className="w-line" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end' }}>
+                    {reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.class_name) ?? ''] && (
+                      <img src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} alt="Signature" style={{ maxHeight: '24px' }} />
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -739,7 +745,11 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
                 </div>
                 <div className="c-field" style={{ width: '200px' }}>
                   <span>Signature:</span>
-                  <div className="w-line"></div>
+                  <div className="w-line" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end' }}>
+                    {reportData?.signatures?.['head-teacher'] && (
+                      <img src={reportData.signatures['head-teacher']} alt="Signature" style={{ maxHeight: '24px' }} />
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -782,12 +792,10 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
             </div>
           </div>
 
-          <div className="stamp-box">
-            OFFICIAL
-            <br />
-            SCHOOL
-            <br />
-            STAMP
+          <div className="stamp-box" style={{ padding: 0, border: 'none', background: 'none' }}>
+            <div style={{ transform: 'scale(0.8)', transformOrigin: 'top right' }}>
+              <SchoolStamp date={reportData?.term?.end_date} />
+            </div>
           </div>
         </footer>
         </div>

@@ -6,43 +6,7 @@ export const dynamic = "force-dynamic";
 
 const BUCKET = 'signatures'
 
-const SIGNATURE_SLOTS = [
-  {
-    slot_key: 'head-teacher',
-    label: 'Head Teacher Signature',
-    role: 'Head Teacher',
-    description: 'Used on all student report cards. Must be a clear scan or photo.',
-    required: true,
-  },
-  {
-    slot_key: 'principal',
-    label: 'Principal Signature',
-    role: 'Principal',
-    description: 'Authority signature for official reports and certificates.',
-    required: true,
-  },
-  {
-    slot_key: 'class-teacher-p3',
-    label: 'Class Teacher — Primary 3',
-    role: 'Class Teacher',
-    description: 'Signature for Primary 3 report cards.',
-    required: true,
-  },
-  {
-    slot_key: 'class-teacher-p5',
-    label: 'Class Teacher — Primary 5',
-    role: 'Class Teacher',
-    description: 'Signature for Primary 5 report cards.',
-    required: false,
-  },
-  {
-    slot_key: 'school-stamp',
-    label: 'Official School Stamp',
-    role: 'Stamp',
-    description: 'School stamp image used on reports and official documents.',
-    required: true,
-  },
-]
+import { getDynamicSignatureSlots } from '@/utils/signatures'
 
 function buildPublicUrl(supabase: ReturnType<typeof createClient>, filePath: string) {
   const { data } = supabase.storage.from(BUCKET).getPublicUrl(filePath)
@@ -52,6 +16,8 @@ function buildPublicUrl(supabase: ReturnType<typeof createClient>, filePath: str
 export default async function SignaturesPage() {
   const cookieStore = await cookies()
   const supabase = createClient(cookieStore)
+
+  const SIGNATURE_SLOTS = await getDynamicSignatureSlots(supabase)
 
   const { data: objects, error } = await supabase.storage.from(BUCKET).list('', { limit: 1000 })
   

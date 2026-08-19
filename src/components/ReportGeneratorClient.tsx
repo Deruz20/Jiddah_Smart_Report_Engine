@@ -241,7 +241,8 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
           enrollment_ids: targets,
           term_id: termObj.id,
           score_type: phase.toLowerCase(),
-          curriculum: effectiveCurriculum
+          curriculum: effectiveCurriculum,
+          stamp_date: filterState.stampDate
         })
       })
       const data = await response.json()

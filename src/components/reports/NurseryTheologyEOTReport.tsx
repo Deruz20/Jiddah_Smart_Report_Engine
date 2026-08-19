@@ -1,6 +1,8 @@
 import { getTheologyComment } from '@/lib/grading'
 import { ReportContainer } from '@/components/reports/shared/ReportContainer'
 import { transliterateEnglishToArabic } from '@/lib/transliterate'
+import { SchoolStamp } from './SchoolStamp'
+import { getClassTeacherSignatureKey } from '@/utils/signatures'
 
 export default function NurseryTheologyEOTReport({ reportData }: any) {
   const getTheologyRemark = (score: number | null): string => {
@@ -432,14 +434,24 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
         <div className="signature-row">
           <div className="sign-field">
             <div>تقرير مرب الفصل</div>
-            <div className="sign-line"></div>
+            <div className="sign-line" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', height: '40px' }}>
+              {reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.class_name) ?? ''] && (
+                <img src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} alt="Signature" style={{ maxHeight: '30px' }} />
+              )}
+            </div>
           </div>
-          <div className="footer-stamp">
-            الختم الرسمي للمدرسة
+          <div className="footer-stamp" style={{ padding: 0, border: 'none', background: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ transform: 'scale(0.8)' }}>
+              <SchoolStamp date={reportData?.term?.end_date} />
+            </div>
           </div>
           <div className="sign-field">
             <div>تقرير مدير المدرسة</div>
-            <div className="sign-line"></div>
+            <div className="sign-line" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', height: '40px' }}>
+              {reportData?.signatures?.['head-teacher'] && (
+                <img src={reportData.signatures['head-teacher']} alt="Signature" style={{ maxHeight: '30px' }} />
+              )}
+            </div>
           </div>
         </div>
       </div>

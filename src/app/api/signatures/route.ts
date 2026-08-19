@@ -6,43 +6,7 @@ import { getAuthenticatedUser, recordActivity } from '@/lib/api-server'
 
 const BUCKET = 'signatures'
 
-const SIGNATURE_SLOTS = [
-  {
-    slot_key: 'head-teacher',
-    label: 'Head Teacher Signature',
-    role: 'Head Teacher',
-    description: 'Used on all student report cards. Must be a clear scan or photo.',
-    required: true,
-  },
-  {
-    slot_key: 'principal',
-    label: 'Principal Signature',
-    role: 'Principal',
-    description: 'Authority signature for official reports and certificates.',
-    required: true,
-  },
-  {
-    slot_key: 'class-teacher-p3',
-    label: 'Class Teacher — Primary 3',
-    role: 'Class Teacher',
-    description: 'Signature for Primary 3 report cards.',
-    required: true,
-  },
-  {
-    slot_key: 'class-teacher-p5',
-    label: 'Class Teacher — Primary 5',
-    role: 'Class Teacher',
-    description: 'Signature for Primary 5 report cards.',
-    required: false,
-  },
-  {
-    slot_key: 'school-stamp',
-    label: 'Official School Stamp',
-    role: 'Stamp',
-    description: 'School stamp image used on reports and official documents.',
-    required: true,
-  },
-]
+import { getDynamicSignatureSlots } from '@/utils/signatures'
 
 function buildPublicUrl(supabase: ReturnType<typeof createClient>, filePath: string) {
   const { data } = supabase.storage.from(BUCKET).getPublicUrl(filePath)
@@ -71,6 +35,8 @@ export async function GET(request: NextRequest) {
       console.error('signatures GET list error:', error.message)
       return withCors(request, NextResponse.json({ error: error.message }, { status: 500 }))
     }
+
+    const SIGNATURE_SLOTS = await getDynamicSignatureSlots(supabase)
 
     const uploadedBySlot = new Map<string, string>()
     for (const object of objects ?? []) {
@@ -115,6 +81,7 @@ export async function PATCH(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Invalid payload' }, { status: 400 }))
     }
 
+    const SIGNATURE_SLOTS = await getDynamicSignatureSlots(supabase)
     const slotExists = SIGNATURE_SLOTS.some((slot) => slot.slot_key === body.slot_key)
     if (!slotExists) {
       return withCors(request, NextResponse.json({ error: 'Unknown signature slot' }, { status: 400 }))

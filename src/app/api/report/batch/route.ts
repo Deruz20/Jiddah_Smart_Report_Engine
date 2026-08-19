@@ -26,7 +26,8 @@ const batchReportSchema = z.object({
   enrollment_ids: z.array(z.string().uuid()).min(1, 'At least one student is required'),
   term_id: z.string().uuid('Invalid term ID'),
   score_type: z.enum(['bot', 'mot', 'eot']).default('mot'),
-  curriculum: z.enum(['secular', 'theology', 'combined']).default('secular')
+  curriculum: z.enum(['secular', 'theology', 'combined']).default('secular'),
+  stamp_date: z.string().optional()
 })
 
 export const dynamic = 'force-dynamic'
@@ -56,7 +57,7 @@ export async function POST(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Invalid payload', details: parsed.error.format() }, { status: 400 }))
     }
 
-    const { enrollment_ids, term_id, score_type, curriculum } = parsed.data
+    const { enrollment_ids, term_id, score_type, curriculum, stamp_date } = parsed.data
 
     const cookieStore = await cookies()
     const supabase = createClient(cookieStore)
@@ -122,6 +123,10 @@ export async function POST(request: NextRequest) {
 
     if (termError || !term) {
       return withCors(request, NextResponse.json({ error: 'Term not found' }, { status: 404 }))
+    }
+
+    if (stamp_date) {
+      term.end_date = stamp_date;
     }
 
     const isTerm3 = term.term_number === 3

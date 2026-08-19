@@ -7,6 +7,8 @@ import {
   getSubjectGradeNumber,
 } from '@/lib/grading'
 import { ReportContainer } from '@/components/reports/shared/ReportContainer'
+import { SchoolStamp } from './SchoolStamp'
+import { getClassTeacherSignatureKey } from '@/utils/signatures'
 import { transliterateEnglishToArabic } from '@/lib/transliterate'
 
 export default function PrimaryEOTReport({ reportData }: any) {
@@ -760,7 +762,9 @@ export default function PrimaryEOTReport({ reportData }: any) {
                         <div className="c-value" style={{ textTransform: 'uppercase' }}>{teacherComment}</div>
                         <span className="c-label">SIGNATURE:</span>
                         <div className="c-sig" style={{ display: 'flex', justifyContent: 'center' }}>
-                          {reportData?.signatures?.['class-teacher-p5'] ? <img src={reportData.signatures['class-teacher-p5']} style={{maxHeight: '24px'}} alt="" /> : null}
+                          {reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.class_name) ?? ''] ? (
+                            <img src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} style={{maxHeight: '24px'}} alt="" />
+                          ) : null}
                         </div>
                       </div>
                       <div className="comment-line">
@@ -773,8 +777,8 @@ export default function PrimaryEOTReport({ reportData }: any) {
                       </div>
                     </div>
 
-                    <div className="stamp-circle">
-                      OFFICIAL<br />SCHOOL<br />STAMP
+                    <div className="stamp-wrapper" style={{ flexShrink: 0, paddingLeft: '10px' }}>
+                      <SchoolStamp date={reportData?.term?.end_date} />
                     </div>
                   </div>
 

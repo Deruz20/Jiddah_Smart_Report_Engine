@@ -103,4 +103,5 @@ export interface FilterState {
   phase: Phase | '';
   curriculum: 'secular' | 'theology' | 'combined';
   layout: 'single' | 'grid';
+  stampDate?: string;
 }

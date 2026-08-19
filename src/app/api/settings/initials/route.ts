@@ -14,7 +14,7 @@ export async function GET(request: Request) {
 
     const { data, error } = await supabase
       .from('teacher_initials')
-      .select('id, level, subject_id, initials')
+      .select('id, level, subject_id, class_id, initials')
 
     if (error) throw error
 
@@ -35,28 +35,39 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const { level, subject_id, initials } = body
+    const { level, subject_id, class_id, initials } = body
 
     if (!level || !subject_id) {
       return NextResponse.json({ error: 'Missing level or subject_id' }, { status: 400 })
     }
 
-    // Admins only (handled by RLS implicitly, but we can just run the upsert)
-    // Upsert using the unique constraint on (level, subject_id)
+    const queryMatch = class_id ? { level, subject_id, class_id } : { level, subject_id }
+
+    // Admins only (handled by RLS implicitly)
     if (!initials) {
-       // if empty, we could delete it, but an empty update is fine too or we delete it
-       const { error } = await supabase
-         .from('teacher_initials')
-         .delete()
-         .match({ level, subject_id })
+       const deleteQuery = supabase.from('teacher_initials').delete().match(queryMatch)
+       // If class_id is not provided, we explicitly match class_id IS NULL to avoid deleting class-specific overrides accidentally
+       if (!class_id) {
+          deleteQuery.is('class_id', null)
+       }
+       const { error } = await deleteQuery
          
        if (error) throw error
        return NextResponse.json({ success: true, action: 'deleted' })
     }
 
+    // Since upsert with NULL relies on the constraint, we must ensure class_id is passed as null if undefined
+    const upsertPayload = { 
+      level, 
+      subject_id, 
+      class_id: class_id || null, 
+      initials 
+    }
+    
+    // In Supabase/Postgres 15+ with NULLS NOT DISTINCT, onConflict should explicitly name the constraint
     const { error } = await supabase
       .from('teacher_initials')
-      .upsert({ level, subject_id, initials }, { onConflict: 'level, subject_id' })
+      .upsert(upsertPayload, { onConflict: 'teacher_initials_level_subject_class_unique' })
 
     if (error) throw error
 

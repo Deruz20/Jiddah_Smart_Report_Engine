@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 
 export function TeacherInitialsConfig() {
   const [subjects, setSubjects] = useState<any[]>([])
+  const [classes, setClasses] = useState<any[]>([])
   const [initials, setInitials] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   
@@ -14,24 +15,30 @@ export function TeacherInitialsConfig() {
     { id: 'upper_primary', label: 'Upper Primary' }
   ]
   const [activeLevel, setActiveLevel] = useState('nursery')
+  const [targetScope, setTargetScope] = useState<'section' | 'class'>('section')
+  const [activeClassId, setActiveClassId] = useState<string>('')
 
   useEffect(() => {
     async function loadData() {
       setLoading(true)
       try {
-        const [subRes, initRes] = await Promise.all([
+        const [subRes, initRes, classRes] = await Promise.all([
           fetch('/api/subjects'),
-          fetch('/api/settings/initials')
+          fetch('/api/settings/initials'),
+          fetch('/api/classes')
         ])
         const subData = await subRes.json()
         const initData = await initRes.json()
+        const classData = await classRes.json()
         
         if (subRes.ok) setSubjects(subData.data || [])
+        if (classRes.ok) setClasses(classData.data || [])
         
         if (initRes.ok) {
           const map: Record<string, string> = {}
           initData.data?.forEach((item: any) => {
-            map[`${item.level}_${item.subject_id}`] = item.initials
+            const classKey = item.class_id ? `_${item.class_id}` : ''
+            map[`${item.level}_${item.subject_id}${classKey}`] = item.initials
           })
           setInitials(map)
         }
@@ -44,7 +51,27 @@ export function TeacherInitialsConfig() {
     loadData()
   }, [])
 
+  const availableClasses = classes.filter(c => c.section === activeLevel)
+
+  useEffect(() => {
+    if (targetScope === 'class' && availableClasses.length > 0) {
+      if (!activeClassId || !availableClasses.find(c => c.id === activeClassId)) {
+        setActiveClassId(availableClasses[0].id)
+      }
+    }
+  }, [targetScope, activeLevel, availableClasses, activeClassId])
+
+  // subjects might have section = null for theology, or might just have section matching activeLevel
+  const visibleSubjects = subjects.filter(s => s.section === activeLevel || s.curriculum === 'theology')
+
   const handleSave = async (subjectId: string, value: string) => {
+    const classIdPayload = targetScope === 'class' ? activeClassId : null
+    
+    if (targetScope === 'class' && !activeClassId) {
+      toast.error('Please select a class first')
+      return
+    }
+
     try {
       const res = await fetch('/api/settings/initials', {
         method: 'POST',
@@ -52,12 +79,14 @@ export function TeacherInitialsConfig() {
         body: JSON.stringify({
           level: activeLevel,
           subject_id: subjectId,
+          class_id: classIdPayload,
           initials: value
         })
       })
       if (!res.ok) throw new Error("Failed to save")
-      toast.success("Saved")
-      setInitials(prev => ({ ...prev, [`${activeLevel}_${subjectId}`]: value }))
+      // Only show success if they actually typed something, deletions (clearing) are fine too
+      const classKey = classIdPayload ? `_${classIdPayload}` : ''
+      setInitials(prev => ({ ...prev, [`${activeLevel}_${subjectId}${classKey}`]: value }))
     } catch (err: any) {
       toast.error(err.message)
     }
@@ -86,6 +115,46 @@ export function TeacherInitialsConfig() {
         ))}
       </div>
 
+      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center bg-slate-50 p-4 rounded-xl border border-slate-100">
+        <div className="flex gap-2 bg-white p-1 rounded-lg border border-slate-200 shadow-sm">
+          <button
+            onClick={() => setTargetScope('section')}
+            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+              targetScope === 'section' ? 'bg-emerald-50 text-emerald-700' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            Entire Section
+          </button>
+          <button
+            onClick={() => setTargetScope('class')}
+            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+              targetScope === 'class' ? 'bg-emerald-50 text-emerald-700' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            Specific Class
+          </button>
+        </div>
+
+        {targetScope === 'class' && (
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-slate-600">Select Class:</span>
+            <select
+              value={activeClassId}
+              onChange={(e) => setActiveClassId(e.target.value)}
+              className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+            >
+              {availableClasses.length === 0 ? (
+                <option value="">No classes found</option>
+              ) : (
+                availableClasses.map(c => (
+                  <option key={c.id} value={c.id}>{c.class_name}</option>
+                ))
+              )}
+            </select>
+          </div>
+        )}
+      </div>
+
       <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
         <table className="w-full text-left border-collapse">
           <thead>
@@ -95,25 +164,38 @@ export function TeacherInitialsConfig() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
-            {subjects.map(sub => (
-              <tr key={sub.id} className="hover:bg-slate-50/50 transition-colors">
-                <td className="px-4 py-3 text-sm text-slate-700 font-medium">{sub.name}</td>
-                <td className="px-4 py-2">
-                  <input
-                    type="text"
-                    defaultValue={initials[`${activeLevel}_${sub.id}`] || ''}
-                    onBlur={(e) => {
-                      if (e.target.value !== (initials[`${activeLevel}_${sub.id}`] || '')) {
-                        handleSave(sub.id, e.target.value)
-                      }
-                    }}
-                    placeholder="e.g. MK"
-                    className="w-full max-w-[120px] rounded-lg border border-slate-200 px-3 py-1.5 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 uppercase"
-                    maxLength={5}
-                  />
+            {visibleSubjects.length === 0 ? (
+              <tr>
+                <td colSpan={2} className="px-4 py-8 text-center text-slate-500 text-sm">
+                  No subjects found for this section.
                 </td>
               </tr>
-            ))}
+            ) : visibleSubjects.map(sub => {
+              const classKey = (targetScope === 'class' && activeClassId) ? `_${activeClassId}` : ''
+              const currentVal = initials[`${activeLevel}_${sub.id}${classKey}`] || ''
+              
+              return (
+                <tr key={sub.id} className="hover:bg-slate-50/50 transition-colors">
+                  <td className="px-4 py-3 text-sm text-slate-700 font-medium">{sub.subject_name}</td>
+                  <td className="px-4 py-2">
+                    <input
+                      type="text"
+                      defaultValue={currentVal}
+                      key={`${activeLevel}_${sub.id}${classKey}_${currentVal}`} // Force re-render on scope change to properly show defaultValue
+                      onBlur={(e) => {
+                        if (e.target.value !== currentVal) {
+                          handleSave(sub.id, e.target.value)
+                        }
+                      }}
+                      placeholder={targetScope === 'class' ? "Override Initials..." : "e.g. MK"}
+                      className="w-full max-w-[140px] rounded-lg border border-slate-200 px-3 py-1.5 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 uppercase placeholder:normal-case"
+                      maxLength={5}
+                      disabled={targetScope === 'class' && !activeClassId}
+                    />
+                  </td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>

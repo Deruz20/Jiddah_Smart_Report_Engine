@@ -285,7 +285,8 @@ export async function POST(request: NextRequest) {
     const teacherInitialsMap: Record<string, string> = {}
     if (initialsData) {
       initialsData.forEach(item => {
-        teacherInitialsMap[`${item.level}_${item.subject_id}`] = item.initials
+        const classKey = item.class_id ? `_${item.class_id}` : ''
+        teacherInitialsMap[`${item.level}_${item.subject_id}${classKey}`] = item.initials
       })
     }
 
@@ -351,6 +352,10 @@ export async function POST(request: NextRequest) {
           remark: overrideEotRemark || defaultEotRemark
         }
 
+        const cId = enrollment.circular_class_id;
+        const specificInitials = teacherInitialsMap[`${sectionType}_${subject.id}_${cId}`];
+        const generalInitials = teacherInitialsMap[`${sectionType}_${subject.id}`];
+
         return {
           subject_name: subject.subject_name,
           bot_score: existing?.bot_score ?? null,
@@ -363,7 +368,7 @@ export async function POST(request: NextRequest) {
           grade_display: gradeInfo.grade,
           remark: gradeInfo.remark,
           is_core: isCoreSubject(subject.subject_name, sectionType),
-          teacher_initials: teacherInitialsMap[`${sectionType}_${subject.id}`] || '',
+          teacher_initials: specificInitials || generalInitials || '',
         }
       })
 
@@ -440,6 +445,10 @@ export async function POST(request: NextRequest) {
           const defaultRemark = existing?.eot_score != null ? getTheologySubjectRemark(getSubjectGradeNumber(existing.eot_score)) : existing?.mot_score != null ? getTheologySubjectRemark(getSubjectGradeNumber(existing.mot_score)) : null
           const overrideRemark = evaluateCriteria(numericScore, 'subject_score', 'theology', enrollment.theology_class_id, gradingCriteria, 'comment')
 
+          const tId = enrollment.theology_class_id;
+          const specificInitials = teacherInitialsMap[`${theologyLevel}_${sub.id}_${tId}`];
+          const generalInitials = teacherInitialsMap[`${theologyLevel}_${sub.id}`];
+
           return {
             subject_name_arabic: sub.subject_name_arabic,
             mot_score: existing?.mot_score ?? null,
@@ -449,7 +458,7 @@ export async function POST(request: NextRequest) {
             score: numericScore,
             grade_display,
             theology_remark: overrideRemark || defaultRemark,
-            teacher_initials: teacherInitialsMap[`${theologyLevel}_${sub.id}`] || '',
+            teacher_initials: specificInitials || generalInitials || '',
           }
         })
         

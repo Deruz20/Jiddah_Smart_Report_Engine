@@ -326,7 +326,7 @@ export default function NurseryMOTReport({ reportData }: any) {
                       </td>
                       <td className="data-cell">{g?.grade ?? '--'}</td>
                       <td className="data-cell">{g?.remark ?? '--'}</td>
-                      <td className="data-cell" style={{ textTransform: 'uppercase', fontFamily: '"Caveat", cursive', fontWeight: 'bold', fontSize: '1.2em', color: '#047857' }}>{subject.teacher_initials ?? ''}</td>
+                      <td className="data-cell" style={{ textTransform: 'uppercase', fontFamily: '"Caveat", cursive', fontWeight: 'bold', fontSize: '1.2em', color: '#047857' }}>{(subject.teacher_initials || '').toUpperCase()}</td>
                     </tr>
                   )
                 })}

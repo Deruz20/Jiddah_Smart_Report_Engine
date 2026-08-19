@@ -54,7 +54,7 @@ export default function PrimaryMOTReport({ reportData }: any) {
       <td style={{ textAlign: "left", paddingLeft: "4px" }}>
         {subject.remark ?? ""}
       </td>
-      <td style={{ textTransform: 'uppercase', fontFamily: '"Caveat", cursive', fontWeight: 'bold', fontSize: '1.2em', color: '#047857' }}>{subject.teacher_initials ?? ''}</td>
+      <td style={{ textTransform: 'uppercase', fontFamily: '"Caveat", cursive', fontWeight: 'bold', fontSize: '1.2em', color: '#047857' }}>{(subject.teacher_initials || '').toUpperCase()}</td>
     </tr>
   );
 

@@ -87,7 +87,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
       <td className="remark-cell" style={{ color: remarkColor(subject.remark) }}>
         {subject.remark || (subject.eot_score != null ? getSubjectRemark(getSubjectGradeNumber(subject.eot_score)) : subject.mot_score != null ? getSubjectRemark(getSubjectGradeNumber(subject.mot_score)) : "")}
       </td>
-      <td style={{ textTransform: 'uppercase', fontFamily: '"Caveat", cursive', fontWeight: 'bold', fontSize: '1.2em', color: '#047857' }}>{subject.teacher_initials ?? ''}</td>
+      <td style={{ textTransform: 'uppercase', fontFamily: '"Caveat", cursive', fontWeight: 'bold', fontSize: '1.2em', color: '#047857' }}>{(subject.teacher_initials || '').toUpperCase()}</td>
     </tr>
   )
 

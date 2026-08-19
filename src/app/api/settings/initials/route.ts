@@ -64,10 +64,10 @@ export async function POST(request: Request) {
       initials 
     }
     
-    // In Supabase/Postgres 15+ with NULLS NOT DISTINCT, onConflict should explicitly name the constraint
+    // In Supabase/Postgres 15+ with NULLS NOT DISTINCT, onConflict works perfectly with column lists
     const { error } = await supabase
       .from('teacher_initials')
-      .upsert(upsertPayload, { onConflict: 'teacher_initials_level_subject_class_unique' })
+      .upsert(upsertPayload, { onConflict: 'level, subject_id, class_id' })
 
     if (error) throw error
 

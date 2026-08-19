@@ -41,7 +41,7 @@ export default function P7EOTReport({ reportData }: any) {
       <td className="remarks-cell">
         {subject.remark ?? ''}
       </td>
-      <td className="data-cell">{subject.teacher_initials ?? ''}</td>
+      <td className="data-cell" style={{ textTransform: 'uppercase', fontFamily: '"Caveat", cursive', fontWeight: 'bold', fontSize: '1.2em', color: '#047857' }}>{subject.teacher_initials ?? ''}</td>
     </tr>
   )
 
@@ -50,7 +50,8 @@ export default function P7EOTReport({ reportData }: any) {
       <style
         dangerouslySetInnerHTML={{
           __html: `
-@import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Poppins:wght@400;500;600;700;800&family=Cairo:wght@600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Poppins:wght@400;500;600;700;800&family=Cairo:wght@600;700;800&display=swap');
 import { formatDateWithOrdinal } from '@/utils/dateHelpers';
 
 .p7-eot-report,

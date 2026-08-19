@@ -234,10 +234,10 @@ export function TeacherInitialsConfig() {
                       type="text"
                       value={currentVal}
                       onChange={(e) => {
-                        setPendingChanges(prev => ({ ...prev, [sub.id]: e.target.value }))
+                        setPendingChanges(prev => ({ ...prev, [sub.id]: e.target.value.toUpperCase() }))
                       }}
                       placeholder={targetScope === 'class' ? "Override Initials..." : "e.g. MK"}
-                      className="w-full max-w-[140px] rounded-lg border border-slate-200 px-3 py-1.5 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 uppercase placeholder:normal-case"
+                      className="w-full max-w-[140px] rounded-lg border border-slate-200 px-3 py-1.5 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 uppercase placeholder:normal-case font-bold text-emerald-900"
                       maxLength={5}
                       disabled={targetScope === 'class' && !activeClassId}
                     />

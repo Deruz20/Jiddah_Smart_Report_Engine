@@ -87,7 +87,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
       <td className="remark-cell" style={{ color: remarkColor(subject.remark) }}>
         {subject.remark || (subject.eot_score != null ? getSubjectRemark(getSubjectGradeNumber(subject.eot_score)) : subject.mot_score != null ? getSubjectRemark(getSubjectGradeNumber(subject.mot_score)) : "")}
       </td>
-      <td>{subject.teacher_initials ?? ''}</td>
+      <td style={{ textTransform: 'uppercase', fontFamily: '"Caveat", cursive', fontWeight: 'bold', fontSize: '1.2em', color: '#047857' }}>{subject.teacher_initials ?? ''}</td>
     </tr>
   )
 
@@ -96,6 +96,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
       <style
         dangerouslySetInnerHTML={{
           __html: `
+        @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@700&display=swap');
         @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Montserrat:wght@500;600;700;800;900&display=swap');
 
         /* ── RESPONSIVE & PRINT ARCHITECTURE ── */

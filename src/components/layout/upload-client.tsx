@@ -30,7 +30,21 @@ export default function UploadClient({ initialFiles }: { initialFiles: UploadedF
   const [files, setFiles] = useState<UploadedFile[]>(initialFiles.map(f => ({ ...f, status: 'done', progress: 100, category: 'Documents' })))
   const [dragOver, setDragOver] = useState(false)
   const [category, setCategory] = useState('Documents')
+  const [signatureSlots, setSignatureSlots] = useState<any[]>([])
+  const [selectedSlot, setSelectedSlot] = useState<string>('')
   const fileRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    fetch('/api/signatures')
+      .then(r => r.json())
+      .then(res => {
+        if (res.data) {
+          setSignatureSlots(res.data)
+          if (res.data.length > 0) setSelectedSlot(res.data[0].slot_key)
+        }
+      })
+      .catch(console.error)
+  }, [])
 
   const loadUploadedFiles = async () => {
     try {
@@ -44,13 +58,23 @@ export default function UploadClient({ initialFiles }: { initialFiles: UploadedF
     }
   }
 
-  const uploadFile = async (file: File, localId: string) => {
+  const uploadFile = async (file: File, localId: string, currentCategory: string) => {
+    const isSignature = currentCategory === 'Signatures'
     const formData = new FormData()
     formData.append('file', file)
 
+    if (isSignature) {
+      if (!selectedSlot) {
+        alert("Please select a signature role first.")
+        setFiles(current => current.filter(f => f.id !== localId))
+        return Promise.reject(new Error("No signature role selected"))
+      }
+      formData.append('slot_key', selectedSlot)
+    }
+
     return new Promise<void>(async (resolve, reject) => {
       const xhr = new XMLHttpRequest()
-      xhr.open('POST', '/api/documents/upload', true)
+      xhr.open('POST', isSignature ? '/api/signatures/upload' : '/api/documents/upload', true)
 
       xhr.upload.onprogress = (event) => {
         if (!event.lengthComputable) return
@@ -61,7 +85,16 @@ export default function UploadClient({ initialFiles }: { initialFiles: UploadedF
       xhr.onload = async () => {
         if (xhr.status >= 200 && xhr.status < 300) {
           setFiles((current) => current.filter((item) => item.id !== localId))
-          await loadUploadedFiles()
+          // For now, if it's a signature we don't list it in the general documents table, 
+          // or we can refresh documents anyway.
+          if (!isSignature) {
+            await loadUploadedFiles()
+          } else {
+             // Refresh signature slots to show "uploaded: true" if needed
+             fetch('/api/signatures').then(r => r.json()).then(res => {
+               if (res.data) setSignatureSlots(res.data)
+             }).catch(console.error)
+          }
           resolve()
           return
         }
@@ -115,7 +148,7 @@ export default function UploadClient({ initialFiles }: { initialFiles: UploadedF
         ...current,
       ])
 
-      uploadFile(file, localId).catch((err) => {
+      uploadFile(file, localId, category).catch((err) => {
         alert(err instanceof Error ? err.message : 'Upload failed.')
       })
     })
@@ -159,7 +192,7 @@ export default function UploadClient({ initialFiles }: { initialFiles: UploadedF
           {[
             { label: 'Total Files', value: files.length, color: '#10B981', bg: 'rgba(16,185,129,0.08)' },
             { label: 'Storage Used', value: formatSize(totalSize), color: '#6366F1', bg: 'rgba(99,102,241,0.08)' },
-            { label: 'Signatures', value: files.filter((f) => f.category === 'Signatures').length, color: '#F59E0B', bg: 'rgba(245,158,11,0.08)' },
+            { label: 'Signatures', value: signatureSlots.filter(s => s.uploaded).length, color: '#F59E0B', bg: 'rgba(245,158,11,0.08)' },
             { label: 'Documents', value: files.filter((f) => f.category === 'Documents').length, color: '#EC4899', bg: 'rgba(236,72,153,0.08)' },
           ].map(({ label, value, color, bg }) => (
             <div key={label} className="rounded-2xl p-5 bg-white border border-slate-200 shadow-sm">
@@ -190,6 +223,24 @@ export default function UploadClient({ initialFiles }: { initialFiles: UploadedF
                 </button>
               ))}
             </div>
+
+            {category === 'Signatures' && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
+                <label className="block text-sm font-semibold text-amber-900 mb-2">Select Signature Role:</label>
+                <select 
+                  value={selectedSlot}
+                  onChange={e => setSelectedSlot(e.target.value)}
+                  className="w-full bg-white border border-amber-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500"
+                >
+                  {signatureSlots.map(slot => (
+                    <option key={slot.slot_key} value={slot.slot_key}>
+                      {slot.label} {slot.uploaded ? '(Uploaded ✓)' : ''}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-amber-700 mt-2">Any image dropped below will be assigned to this role and appear on the corresponding report cards.</p>
+              </div>
+            )}
 
             <div
               className={`rounded-2xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all min-h-[200px] ${

@@ -54,7 +54,7 @@ export default function PrimaryMOTReport({ reportData }: any) {
       <td style={{ textAlign: "left", paddingLeft: "4px" }}>
         {subject.remark ?? ""}
       </td>
-      <td>{subject.teacher_initials ?? ""}</td>
+      <td style={{ textTransform: 'uppercase', fontFamily: '"Caveat", cursive', fontWeight: 'bold', fontSize: '1.2em', color: '#047857' }}>{subject.teacher_initials ?? ''}</td>
     </tr>
   );
 
@@ -70,6 +70,7 @@ export default function PrimaryMOTReport({ reportData }: any) {
       <style
         dangerouslySetInnerHTML={{
           __html: `
+        @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@700&display=swap');
         @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Inter:wght@400;500;600;700;800;900&display=swap');
 
         .report-page,

@@ -147,7 +147,8 @@ export default function TheologyMOTReport({ reportData }: any) {
         dangerouslySetInnerHTML={{
           __html: `
 @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap');
 
 .theology-mot-report-page {
     --primary-green: #064e3b;

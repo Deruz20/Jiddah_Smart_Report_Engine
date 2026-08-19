@@ -445,10 +445,6 @@ export async function POST(request: NextRequest) {
           const defaultRemark = existing?.eot_score != null ? getTheologySubjectRemark(getSubjectGradeNumber(existing.eot_score)) : existing?.mot_score != null ? getTheologySubjectRemark(getSubjectGradeNumber(existing.mot_score)) : null
           const overrideRemark = evaluateCriteria(numericScore, 'subject_score', 'theology', enrollment.theology_class_id, gradingCriteria, 'comment')
 
-          const tId = enrollment.theology_class_id;
-          const specificInitials = teacherInitialsMap[`${theologyLevel}_${sub.id}_${tId}`];
-          const generalInitials = teacherInitialsMap[`${theologyLevel}_${sub.id}`];
-
           return {
             subject_name_arabic: sub.subject_name_arabic,
             mot_score: existing?.mot_score ?? null,
@@ -458,7 +454,6 @@ export async function POST(request: NextRequest) {
             score: numericScore,
             grade_display,
             theology_remark: overrideRemark || defaultRemark,
-            teacher_initials: specificInitials || generalInitials || '',
           }
         })
         

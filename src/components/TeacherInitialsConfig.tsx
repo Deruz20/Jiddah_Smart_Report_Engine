@@ -61,8 +61,8 @@ export function TeacherInitialsConfig() {
     }
   }, [targetScope, activeLevel, availableClasses, activeClassId])
 
-  // subjects might have section = null for theology, or might just have section matching activeLevel
-  const visibleSubjects = subjects.filter(s => s.section === activeLevel || s.curriculum === 'theology')
+  // teacher initials ONLY apply to secular subjects
+  const visibleSubjects = subjects.filter(s => s.section === activeLevel && s.curriculum === 'secular')
 
   const handleSave = async (subjectId: string, value: string) => {
     const classIdPayload = targetScope === 'class' ? activeClassId : null

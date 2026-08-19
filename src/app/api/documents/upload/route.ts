@@ -1,4 +1,4 @@
-import { createClient } from '@/utils/supabase/server'
+import { createClient, createAdminClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
@@ -51,7 +51,8 @@ export async function POST(request: NextRequest) {
     const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
     const filePath = `${Date.now()}-${sanitizedName}`
 
-    const { error } = await supabase.storage.from(BUCKET).upload(filePath, file, {
+    const supabaseAdmin = createAdminClient()
+    const { error } = await supabaseAdmin.storage.from(BUCKET).upload(filePath, file, {
       upsert: true,
     })
 

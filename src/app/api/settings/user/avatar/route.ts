@@ -1,4 +1,4 @@
-import { createClient } from '@/utils/supabase/server'
+import { createClient, createAdminClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
@@ -43,7 +43,8 @@ export async function POST(request: NextRequest) {
     const extension = file.name.split('.').pop()?.toLowerCase() ?? 'png'
     const filePath = `avatars/${user.id}.${extension}`
 
-    const { error: uploadError } = await supabase.storage.from(AVATAR_BUCKET).upload(filePath, file, {
+    const supabaseAdmin = createAdminClient()
+    const { error: uploadError } = await supabaseAdmin.storage.from(AVATAR_BUCKET).upload(filePath, file, {
       upsert: true,
     })
 

@@ -1,4 +1,4 @@
-import { createClient } from '@/utils/supabase/server'
+import { createClient, createAdminClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
@@ -7,7 +7,7 @@ import { getAuthenticatedUser, recordActivity } from '@/lib/api-server'
 import { getDynamicSignatureSlots } from '@/utils/signatures'
 const BUCKET = 'signatures'
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp']
-const MAX_FILE_SIZE = 5 * 1024 * 1024
+const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB limit for signatures
 
 export async function OPTIONS(request: NextRequest) {
   return apiOptions(request)
@@ -34,8 +34,8 @@ export async function POST(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'No file provided' }, { status: 400 }))
     }
 
-    if (typeof slotKey !== 'string') {
-      return withCors(request, NextResponse.json({ error: 'Invalid signature slot' }, { status: 400 }))
+    if (!slotKey || typeof slotKey !== 'string') {
+      return withCors(request, NextResponse.json({ error: 'Slot key is required' }, { status: 400 }))
     }
 
     const SIGNATURE_SLOTS = await getDynamicSignatureSlots(supabase)
@@ -45,18 +45,21 @@ export async function POST(request: NextRequest) {
     }
 
     if (!ACCEPTED_TYPES.includes(file.type)) {
-      return withCors(request, NextResponse.json({ error: 'Unsupported image type' }, { status: 400 }))
+      return withCors(request, NextResponse.json({ error: 'Unsupported file type. Use PNG, JPG, or WEBP' }, { status: 400 }))
     }
 
     if (file.size > MAX_FILE_SIZE) {
-      return withCors(request, NextResponse.json({ error: 'Signature must be smaller than 5MB', status: 400 }))
+      return withCors(request, NextResponse.json({ error: 'File must be smaller than 5MB', status: 400 }))
     }
 
     const extension = file.name.split('.').pop()?.toLowerCase() ?? 'png'
+    // Format: slot_key.extension to overwrite existing
     const filePath = `${slotKey}.${extension}`
 
-    const { error: uploadError } = await supabase.storage.from(BUCKET).upload(filePath, file, {
+    const supabaseAdmin = createAdminClient()
+    const { error: uploadError } = await supabaseAdmin.storage.from(BUCKET).upload(filePath, file, {
       upsert: true,
+      cacheControl: '3600' // 1 hour cache
     })
 
     if (uploadError) {

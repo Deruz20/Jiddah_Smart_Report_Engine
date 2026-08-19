@@ -215,8 +215,8 @@ export async function POST(request: NextRequest) {
         requestedTheologyMarks = await fetchInChunks('theology_marks', '*', 'enrollment_id', enrollment_ids, (q) => q.eq('term_id', term_id))
       }
 
-      // If we are in theology mode, we need theology class rankings.
-      if (curriculum === 'theology') {
+      // If we are in theology mode or dual mode, we need theology class rankings.
+      if (curriculum !== 'secular') {
         const theologyClassIds = [...new Set(requestedEnrollments.map(e => e.theology_class_id).filter(Boolean))]
         if (theologyClassIds.length > 0) {
           const { data: theoClassmates } = await supabase
@@ -462,21 +462,22 @@ export async function POST(request: NextRequest) {
       const theologyClassArabic = Array.isArray(enrollment.theology_classes) ? enrollment.theology_classes[0]?.class_name_arabic : (enrollment.theology_classes as any)?.class_name_arabic
       const theologyClassEnglish = Array.isArray(enrollment.theology_classes) ? enrollment.theology_classes[0]?.class_name_english : (enrollment.theology_classes as any)?.class_name_english
 
-      if (curriculum === 'theology') {
-        let theologyPosition = null;
-        let totalTheologyStudents = null;
-        if (enrollment.theology_class_id && theologyRankings[enrollment.theology_class_id] && theologySectionData) {
-           const rankings = theologyRankings[enrollment.theology_class_id]
-           totalTheologyStudents = theologyClassSizes[enrollment.theology_class_id]
-           if (rankings.length > 0) {
-              const myObj = rankings.find(r => r.id === enrollment.id)
-              if (myObj) {
-                // Standard Competition Ranking (1224 ranking)
-                theologyPosition = rankings.findIndex(r => r.total === myObj.total) + 1
-              }
-           }
-        }
+      let theologyPosition = null;
+      let totalTheologyStudents = null;
+      if (curriculum !== 'secular' && enrollment.theology_class_id && theologyRankings[enrollment.theology_class_id] && theologySectionData) {
+         const rankings = theologyRankings[enrollment.theology_class_id]
+         totalTheologyStudents = theologyClassSizes[enrollment.theology_class_id]
+         if (rankings.length > 0) {
+            const myObj = rankings.find(r => r.id === enrollment.id)
+            if (myObj) {
+              theologyPosition = rankings.findIndex(r => r.total === myObj.total) + 1
+            }
+         }
+         theologySectionData.position = theologyPosition;
+         theologySectionData.total_students = totalTheologyStudents;
+      }
 
+      if (curriculum === 'theology') {
         return {
           id: enrollment.id,
           status: 'success',

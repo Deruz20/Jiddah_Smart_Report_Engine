@@ -52,8 +52,12 @@ export async function POST(request: NextRequest) {
     const filePath = `${Date.now()}-${sanitizedName}`
 
     const supabaseAdmin = createAdminClient()
-    const { error } = await supabaseAdmin.storage.from(BUCKET).upload(filePath, file, {
+    const arrayBuffer = await file.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
+    
+    const { error } = await supabaseAdmin.storage.from(BUCKET).upload(filePath, buffer, {
       upsert: true,
+      contentType: file.type
     })
 
     if (error) {

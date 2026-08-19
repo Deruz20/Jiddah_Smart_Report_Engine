@@ -57,9 +57,13 @@ export async function POST(request: NextRequest) {
     const filePath = `${slotKey}.${extension}`
 
     const supabaseAdmin = createAdminClient()
-    const { error: uploadError } = await supabaseAdmin.storage.from(BUCKET).upload(filePath, file, {
+    const arrayBuffer = await file.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
+
+    const { error: uploadError } = await supabaseAdmin.storage.from(BUCKET).upload(filePath, buffer, {
       upsert: true,
-      cacheControl: '3600' // 1 hour cache
+      cacheControl: '3600', // 1 hour cache
+      contentType: file.type
     })
 
     if (uploadError) {

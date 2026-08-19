@@ -44,8 +44,12 @@ export async function POST(request: NextRequest) {
     const filePath = `avatars/${user.id}.${extension}`
 
     const supabaseAdmin = createAdminClient()
-    const { error: uploadError } = await supabaseAdmin.storage.from(AVATAR_BUCKET).upload(filePath, file, {
+    const arrayBuffer = await file.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
+    
+    const { error: uploadError } = await supabaseAdmin.storage.from(AVATAR_BUCKET).upload(filePath, buffer, {
       upsert: true,
+      contentType: file.type
     })
 
     if (uploadError) {

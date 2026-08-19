@@ -5,13 +5,13 @@ export type PromotionStatus = 'Promote' | 'Probation' | 'Repeat' | 'Try Next Cla
 
 // UNEB subject grade (1-9) from mark
 export function getSubjectGradeNumber(mark: number): number {
-  if (mark >= 85) return 1
-  if (mark >= 75) return 2
+  if (mark >= 90) return 1
+  if (mark >= 80) return 2
   if (mark >= 70) return 3
-  if (mark >= 65) return 4
-  if (mark >= 60) return 5
-  if (mark >= 55) return 6
-  if (mark >= 50) return 7
+  if (mark >= 60) return 4
+  if (mark >= 55) return 5
+  if (mark >= 50) return 6
+  if (mark >= 45) return 7
   if (mark >= 40) return 8
   return 9
 }
@@ -148,13 +148,36 @@ export function getNurseryGrade(mark: number): { grade: NurseryGrade; remark: st
   return { grade: 'E', remark: 'Poor' }
 }
 
-// Subject remarks for circular (primary)
+// Subject remarks for secular (primary)
 export function getSubjectRemark(gradeNum: number): string {
-  if (gradeNum <= 2) return 'Excellent'
-  if (gradeNum <= 4) return 'Very Good'
-  if (gradeNum <= 6) return 'Good'
-  if (gradeNum <= 8) return 'Pass'
-  return 'Fail'
+  switch(gradeNum) {
+    case 1: return 'Excellent'
+    case 2: return 'Very Good'
+    case 3: return 'Good'
+    case 4: return 'Fairly Good'
+    case 5: return 'Fair'
+    case 6: return 'Average'
+    case 7: return 'Below Average'
+    case 8: return 'Poor'
+    case 9: return 'Failed'
+    default: return 'Failed'
+  }
+}
+
+// Subject remarks for theology (IPLE)
+export function getTheologySubjectRemark(gradeNum: number): string {
+  switch(gradeNum) {
+    case 1: return 'ممتاز' // Excellent
+    case 2: return 'جيد جداً' // Very Good
+    case 3: return 'جيد' // Good
+    case 4: return 'جيد' // Good (or Fairly Good)
+    case 5: return 'مقبول' // Acceptable / Fair
+    case 6: return 'مقبول' // Acceptable / Fair
+    case 7: return 'ضعيف' // Weak / Below Average
+    case 8: return 'ضعيف جداً' // Very Weak / Poor
+    case 9: return 'راسب' // Failed
+    default: return 'راسب'
+  }
 }
 
 export function getClassTeacherComment(division: string | null): string {

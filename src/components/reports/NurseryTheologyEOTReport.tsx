@@ -8,9 +8,10 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
   const getTheologyRemark = (score: number | null): string => {
     if (score == null) return '--'
     if (score >= 90) return 'ممتاز'
-    if (score >= 80) return 'جيد جدا'
+    if (score >= 80) return 'جيد جداً'
     if (score >= 70) return 'جيد'
-    if (score >= 60) return 'مقبول'
+    if (score >= 60) return 'جيد'
+    if (score >= 50) return 'مقبول'
     return 'ضعيف'
   }
 

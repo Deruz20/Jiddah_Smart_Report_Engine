@@ -87,10 +87,11 @@ export const generateAssessmentCSV = (
   ]
 
   const getRemark = (score: number) => {
-    if (score >= 75) return 'ممتاز'
-    if (score >= 65) return 'جيد جداً'
-    if (score >= 50) return 'جيد'
-    if (score >= 40) return 'مقبول'
+    if (score >= 90) return 'ممتاز'
+    if (score >= 80) return 'جيد جداً'
+    if (score >= 70) return 'جيد'
+    if (score >= 60) return 'جيد'
+    if (score >= 50) return 'مقبول'
     return 'ضعيف'
   }
 
@@ -233,11 +234,11 @@ export const generateReportBroadsheetCSV = (
     const subjectScores = subjectIds.map(id => scores[id] || '-')
     const avg = count > 0 ? Math.round(total / count) : 0
     
-    let remark = 'Weak'
-    if (avg >= 75) remark = 'Excellent / ممتاز'
-    else if (avg >= 65) remark = 'Very Good / جيد جداً'
-    else if (avg >= 50) remark = 'Good / جيد'
-    else if (avg >= 40) remark = 'Fair / مقبول'
+    let remark = 'Weak / ضعيف'
+    if (avg >= 90) remark = 'Excellent / ممتاز'
+    else if (avg >= 80) remark = 'Very Good / جيد جداً'
+    else if (avg >= 60) remark = 'Good / جيد'
+    else if (avg >= 50) remark = 'Fair / مقبول'
 
     return [
       idx + 1,

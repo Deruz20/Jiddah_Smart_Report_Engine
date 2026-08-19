@@ -116,8 +116,8 @@ function makeTheologySubjects(seed: number, scoreType: 'bot' | 'mot' | 'eot'): T
       eot_score: scoreType === 'eot' ? eotScore : null,
       mot_grade_display: scoreType !== 'bot' ? grade(motScore).grade : null,
       theology_remark: scoreType === 'eot'
-        ? (eotScore >= 80 ? 'ممتاز' : eotScore >= 70 ? 'جيد جدا' : 'جيد')
-        : (motScore >= 80 ? 'ممتاز' : motScore >= 70 ? 'جيد جدا' : 'جيد'),
+        ? (eotScore >= 90 ? 'ممتاز' : eotScore >= 80 ? 'جيد جداً' : eotScore >= 70 ? 'جيد' : 'مقبول')
+        : (motScore >= 90 ? 'ممتاز' : motScore >= 80 ? 'جيد جداً' : motScore >= 70 ? 'جيد' : 'مقبول'),
       score: scoreType === 'eot' ? eotScore : motScore,
     };
   });

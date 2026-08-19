@@ -5,6 +5,7 @@ import {
   getSubjectGradeNumber,
   getGradeDisplay,
   getSubjectRemark,
+  getTheologySubjectRemark,
   getNurseryGrade,
   isCoreSubject,
   isGradableSubject,
@@ -388,15 +389,9 @@ export async function GET(request: NextRequest) {
         const eot_grade_display = overrideEotGrade || defaultEotGrade
 
         const defaultRemark = existing?.eot_score != null ? (
-          existing.eot_score >= 75 ? 'ممتاز' :
-          existing.eot_score >= 65 ? 'جيد جداً' :
-          existing.eot_score >= 50 ? 'جيد' :
-          existing.eot_score >= 40 ? 'مقبول' : 'ضعيف'
+          getTheologySubjectRemark(getSubjectGradeNumber(existing.eot_score))
         ) : existing?.mot_score != null ? (
-          existing.mot_score >= 75 ? 'ممتاز' :
-          existing.mot_score >= 65 ? 'جيد جداً' :
-          existing.mot_score >= 50 ? 'جيد' :
-          existing.mot_score >= 40 ? 'مقبول' : 'ضعيف'
+          getTheologySubjectRemark(getSubjectGradeNumber(existing.mot_score))
         ) : null
         const overrideRemark = evaluateCriteria(numericScore, 'subject_score', 'theology', enrollment.theology_class_id, gradingCriteria, 'comment')
 

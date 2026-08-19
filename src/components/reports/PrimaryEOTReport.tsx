@@ -51,8 +51,9 @@ export default function PrimaryEOTReport({ reportData }: any) {
     const r = remark.toLowerCase()
     if (r.includes("excellent") || r.includes("outstanding") || r.includes("ممتاز")) return "#1d4ed8"
     if (r.includes("very good") || r.includes("جيد جداً")) return "#16a34a"
-    if (r.includes("good") || r.includes("جيد")) return "#0e7490"
-    if (r.includes("fair") || r.includes("needs") || r.includes("مقبول") || r.includes("ضعيف")) return "#ea580c"
+    if (r.includes("good") || r.includes("fairly") || r.includes("جيد")) return "#0e7490"
+    if (r.includes("fair") || r.includes("average") || r.includes("مقبول")) return "#ea580c"
+    if (r.includes("poor") || r.includes("fail") || r.includes("weak") || r.includes("ضعيف") || r.includes("راسب")) return "#dc2626"
     return "#1d4ed8"
   }
 

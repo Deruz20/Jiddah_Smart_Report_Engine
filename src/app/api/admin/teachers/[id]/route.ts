@@ -102,7 +102,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     
     if (teacherData?.email) {
        const { data: usersData } = await supabaseAdmin.auth.admin.listUsers();
-       const userToDelete = usersData.users.find(u => u.email === teacherData.email);
+       const userToDelete = usersData.users.find((u: any) => u.email === teacherData.email);
        if (userToDelete) {
          await supabaseAdmin.auth.admin.deleteUser(userToDelete.id);
        }

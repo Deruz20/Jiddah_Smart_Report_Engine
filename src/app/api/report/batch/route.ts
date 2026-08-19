@@ -7,6 +7,7 @@ import {
   getSubjectRemark,
   getNurseryGrade,
   isCoreSubject,
+  isGradableSubject,
   calculateAggregate,
   calculateTheologyAggregate,
   getDivision,
@@ -73,6 +74,8 @@ export async function POST(request: NextRequest) {
 
     const { data: gradingCriteriaData } = await supabase.from('grading_criteria').select('*')
     const gradingCriteria = (gradingCriteriaData as GradingCriterion[]) || []
+
+    const { data: schoolSettings } = await supabase.from('school_settings').select('*').limit(1).single()
 
     // Helper to fetch in chunks to avoid URL length limits and timeouts
     const fetchInChunks = async (table: string, select: string, column: string, ids: string[], extraBuilder?: (query: any) => any) => {
@@ -371,9 +374,15 @@ export async function POST(request: NextRequest) {
       const division = reportAggregate !== null ? getDivision(reportAggregate) : null
       const promotion_status = isTerm3 && division ? getPromotionStatus(division) : null
 
-      const bot_total = sortedCircularSubjects.reduce((sum, r) => sum + (typeof r.bot_score === 'number' ? r.bot_score : 0), 0)
-      const mot_total = sortedCircularSubjects.reduce((sum, r) => sum + (typeof r.mot_score === 'number' ? r.mot_score : 0), 0)
-      const eot_total = sortedCircularSubjects.reduce((sum, r) => sum + (typeof r.eot_score === 'number' ? r.eot_score : 0), 0)
+      const bot_total = sortedCircularSubjects
+        .filter((r) => isGradableSubject(r.subject_name, className))
+        .reduce((sum, r) => sum + (typeof r.bot_score === 'number' ? r.bot_score : 0), 0)
+      const mot_total = sortedCircularSubjects
+        .filter((r) => isGradableSubject(r.subject_name, className))
+        .reduce((sum, r) => sum + (typeof r.mot_score === 'number' ? r.mot_score : 0), 0)
+      const eot_total = sortedCircularSubjects
+        .filter((r) => isGradableSubject(r.subject_name, className))
+        .reduce((sum, r) => sum + (typeof r.eot_score === 'number' ? r.eot_score : 0), 0)
       const targetTotal = score_type === 'mot' ? mot_total : (score_type === 'bot' ? bot_total : eot_total)
 
       let position: number | null = null
@@ -501,6 +510,7 @@ export async function POST(request: NextRequest) {
             total_students: totalTheologyStudents,
           },
           signatures,
+          settings: schoolSettings,
           debug: {
             enrollmentId: enrollment.id,
             circularMarksCount: 0,
@@ -559,6 +569,7 @@ export async function POST(request: NextRequest) {
           total_students,
         },
         signatures,
+        settings: schoolSettings,
         debug: {
           enrollmentId: enrollment.id,
           circularMarksCount: eCircularMarks.length,

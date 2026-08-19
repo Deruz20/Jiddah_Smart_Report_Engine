@@ -53,6 +53,10 @@ export type SchoolSettingsForm = {
   current_term?: string;
   current_year?: number;
   motto?: string;
+  primary_font?: string;
+  arabic_font?: string;
+  theme_color?: string;
+  report_theme_preset?: string;
 }
 
 export default function SettingsClient({ terms }: { terms: Term[] }) {
@@ -86,6 +90,10 @@ export default function SettingsClient({ terms }: { terms: Term[] }) {
     current_term: "Term 1",
     current_year: 2025,
     motto: "Excellence in Faith & Knowledge",
+    primary_font: "Montserrat",
+    arabic_font: "Amiri",
+    theme_color: "#0f4d25",
+    report_theme_preset: "emerald-gold",
   }
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<SchoolSettingsForm>({
@@ -114,6 +122,10 @@ export default function SettingsClient({ terms }: { terms: Term[] }) {
         current_term: payload.current_term || defaultSchoolValues.current_term,
         current_year: payload.current_year || defaultSchoolValues.current_year,
         motto: payload.motto || defaultSchoolValues.motto,
+        primary_font: payload.primary_font || defaultSchoolValues.primary_font,
+        arabic_font: payload.arabic_font || defaultSchoolValues.arabic_font,
+        theme_color: payload.theme_color || defaultSchoolValues.theme_color,
+        report_theme_preset: payload.report_theme_preset || defaultSchoolValues.report_theme_preset,
       }
       reset(loadedValues)
       setInitialSchoolSettings(loadedValues)
@@ -125,8 +137,14 @@ export default function SettingsClient({ terms }: { terms: Term[] }) {
     }
   }
 
+  const [autoTransliterate, setAutoTransliterate] = useState(false)
+
   useEffect(() => {
     fetchSchoolSettings()
+    
+    // Load local toggle state
+    const savedAutoTrans = localStorage.getItem('auto_transliterate') === 'true'
+    setAutoTransliterate(savedAutoTrans)
   }, [])
 
   const handleSave = handleSubmit(async (values) => {
@@ -143,6 +161,10 @@ export default function SettingsClient({ terms }: { terms: Term[] }) {
         current_term: values.current_term,
         current_year: values.current_year,
         motto: values.motto || null,
+        primary_font: values.primary_font,
+        arabic_font: values.arabic_font,
+        theme_color: values.theme_color,
+        report_theme_preset: values.report_theme_preset,
       }
 
       const res = await fetch('/api/settings/school', {
@@ -401,7 +423,7 @@ export default function SettingsClient({ terms }: { terms: Term[] }) {
                  The grading system has been upgraded to support smart, self-learning remarks that automatically adapt based on student scores.
                </p>
                <button
-                 onClick={() => router.push('/admin/settings/remarks')}
+                 onClick={() => router.push('/admin/settings/grading-standards')}
                  className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold transition-colors shadow-sm inline-flex items-center gap-2"
                >
                  Open Remarks Configurator <ArrowRight className="w-4 h-4" />
@@ -471,6 +493,149 @@ export default function SettingsClient({ terms }: { terms: Term[] }) {
           </div>
         )
 
+      case "branding":
+        return (
+          <div className="space-y-6">
+            <div>
+              <h2 style={{ fontSize: "18px", fontWeight: 700, color: "#374151" }}>Branding & Theme</h2>
+              <p style={{ fontSize: "13px", color: "#9CA3AF" }}>Customize your school's visual identity, report card themes, and typographies.</p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+              {/* Primary Font Selection */}
+              <div className="space-y-1.5">
+                <label className="block text-sm font-semibold text-gray-700">Primary Font (English)</label>
+                <p className="text-xs text-gray-500 mb-2">Used for secular subjects, UI, and default English text.</p>
+                <select
+                  {...register("primary_font")}
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 outline-none text-sm text-gray-700 bg-white"
+                >
+                  <option value="Montserrat">Montserrat (Default)</option>
+                  <option value="Inter">Inter (Clean & Modern)</option>
+                  <option value="Poppins">Poppins (Friendly)</option>
+                  <option value="Roboto">Roboto (Standard)</option>
+                </select>
+              </div>
+
+              {/* Arabic Font Selection */}
+              <div className="space-y-1.5">
+                <label className="block text-sm font-semibold text-gray-700">Arabic Font</label>
+                <p className="text-xs text-gray-500 mb-2">Used for theology subjects, student Arabic names, and Islamic studies.</p>
+                <select
+                  {...register("arabic_font")}
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 outline-none text-sm text-gray-700 bg-white"
+                >
+                  <option value="Amiri">Amiri (Traditional)</option>
+                  <option value="Cairo">Cairo (Modern)</option>
+                  <option value="Tajawal">Tajawal (Elegant)</option>
+                  <option value="Almarai">Almarai (Clean)</option>
+                  <option value="Changa">Changa (Display)</option>
+                  <option value="Kufam">Kufam (Geometric)</option>
+                </select>
+              </div>
+
+              {/* Admin Theme Color */}
+              <div className="space-y-1.5">
+                <label className="block text-sm font-semibold text-gray-700">Admin Dashboard Theme Color</label>
+                <p className="text-xs text-gray-500 mb-2">Primary accent color for the administration dashboard.</p>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="color"
+                    {...register("theme_color")}
+                    className="w-12 h-10 rounded-lg cursor-pointer border-0 p-0 overflow-hidden"
+                  />
+                  <input
+                    type="text"
+                    {...register("theme_color")}
+                    className="flex-1 px-4 py-2 rounded-xl border border-gray-200 outline-none text-sm text-gray-700 font-mono bg-white"
+                    placeholder="#0f4d25"
+                  />
+                </div>
+              </div>
+
+              {/* Report Card Preset */}
+              <div className="space-y-1.5">
+                <label className="block text-sm font-semibold text-gray-700">Report Card Preset Theme</label>
+                <p className="text-xs text-gray-500 mb-2">Vetted color scheme and aesthetics for printed reports.</p>
+                <select
+                  {...register("report_theme_preset")}
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 outline-none text-sm text-gray-700 bg-white"
+                >
+                  <option value="emerald-gold">Emerald & Gold (Official)</option>
+                  <option value="navy-silver">Navy & Silver (Corporate)</option>
+                  <option value="maroon-cream">Maroon & Cream (Classic)</option>
+                  <option value="charcoal-teal">Charcoal & Teal (Modern)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        )
+
+      case "language":
+        return (
+          <div className="space-y-6">
+            <div>
+              <h2 style={{ fontSize: "18px", fontWeight: 700, color: "#374151" }}>Language & Translation</h2>
+              <p style={{ fontSize: "13px", color: "#9CA3AF" }}>Manage Arabic transliteration and language settings.</p>
+            </div>
+            
+            <div className="grid grid-cols-1 gap-6 mt-6">
+              <div className="p-6 rounded-2xl bg-white border shadow-sm" style={{ borderColor: "rgba(0,0,0,0.07)" }}>
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-800">Auto-Transliterate Names</h3>
+                    <p className="text-xs text-gray-500 mt-1">Automatically translate student names to Arabic during report generation.</p>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      const next = !autoTransliterate
+                      setAutoTransliterate(next)
+                      localStorage.setItem('auto_transliterate', next.toString())
+                      toast.success(`Auto-transliteration ${next ? 'enabled' : 'disabled'}`)
+                    }}
+                    className="relative w-11 h-6 rounded-full transition-all duration-200 cursor-pointer" 
+                    style={{ background: autoTransliterate ? "#059669" : "#E5E7EB" }}
+                  >
+                    <span 
+                      className="absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-all duration-200 shadow-sm" 
+                      style={{ transform: autoTransliterate ? "translateX(20px)" : "translateX(0)" }} 
+                    />
+                  </button>
+                </div>
+                
+                <hr className="my-4 border-gray-100" />
+                
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-800">Batch Update Arabic Names</h3>
+                    <p className="text-xs text-gray-500 mt-1">Translate all missing Arabic names for students in the database.</p>
+                  </div>
+                  <button 
+                    onClick={async () => {
+                      if (!confirm('This will find all students missing an Arabic name and translate them. Proceed?')) return;
+                      toast.loading('Batch translating names...', { id: 'batch-trans' });
+                      try {
+                        const res = await fetch('/api/settings/transliterate/batch', { method: 'POST' });
+                        const data = await res.json();
+                        if (res.ok) {
+                          toast.success(`Successfully translated ${data.count} names`, { id: 'batch-trans' });
+                        } else {
+                          throw new Error(data.error || 'Failed');
+                        }
+                      } catch (e: any) {
+                        toast.error(e.message, { id: 'batch-trans' });
+                      }
+                    }}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold transition-colors shadow-sm"
+                  >
+                    Run Batch Update
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+
       default:
         return (
           <div className="flex flex-col items-center justify-center py-20">
@@ -527,7 +692,7 @@ export default function SettingsClient({ terms }: { terms: Term[] }) {
             {renderSection()}
 
             {/* Save Bar - Only show for sections with forms */}
-            {activeSection === "school" && (
+            {(activeSection === "school" || activeSection === "branding") && (
               <div className="flex items-center justify-between mt-8 pt-6 border-t" style={{ borderColor: "rgba(0,0,0,0.07)" }}>
                 <button
                   onClick={(e) => {
@@ -557,3 +722,4 @@ export default function SettingsClient({ terms }: { terms: Term[] }) {
     </div>
   )
 }
+

@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { generateAssessmentCSV, generateAnalysisCSV, generateTopStudentsCSV } from '@/utils/csvExport'
 import { computeStandardRankings } from '@/lib/ranking'
+import { isGradableSubject } from '@/lib/grading'
 import { TopToolbar } from '../figma-ui/TopToolbar'
 
 type TermData = {
@@ -157,7 +158,9 @@ export default function SecularHubClient({
         const scoreKey = `${examPhase}_score` as 'bot_score' | 'mot_score' | 'eot_score'
         const score = mark?.[scoreKey] != null ? mark[scoreKey] : null
         subjectScores[sub.id] = score
-        if (score != null) total += score
+        if (score != null && isGradableSubject(sub.subject_name, classInfo?.class_name)) {
+          total += score
+        }
       })
 
       return {

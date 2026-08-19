@@ -59,6 +59,26 @@ export function isCoreSubject(subjectName: string, section?: string): boolean {
   return variants.some(group => group.some(v => v.toLowerCase() === name))
 }
 
+export function isGradableSubject(subjectName: string, className?: string): boolean {
+  // Configurable non-gradable subjects via env variable
+  const nonGradableEnv = process.env.NEXT_PUBLIC_NON_GRADABLE_SUBJECTS 
+    ? JSON.parse(process.env.NEXT_PUBLIC_NON_GRADABLE_SUBJECTS) 
+    : ['Computer'];
+    
+  const name = subjectName.trim().toLowerCase();
+  
+  if (nonGradableEnv.map((s: string) => s.toLowerCase()).includes(name)) {
+    return false;
+  }
+  
+  // Specific exception for "Top Class" and "Writing"
+  if (className?.toLowerCase().includes('top') && name === 'writing') {
+    return false;
+  }
+  
+  return true;
+}
+
 export function getSubjectGradeNumberForAggregate(
   subjectName: string,
   marks: { subject_name: string; score: number }[]

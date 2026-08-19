@@ -158,8 +158,8 @@ export default function TheologyHubClient({
 
       return {
         id: enrollment.id,
-        name: enrollment.students.name,
-        arabic_name: enrollment.students.arabic_name,
+        name: enrollment.students?.name || 'Unknown',
+        arabic_name: enrollment.students?.arabic_name,
         total: total > 0 ? total : null,
         subjectScores,
         rank: 0 as number | string,
@@ -269,10 +269,10 @@ export default function TheologyHubClient({
         })
         return {
           id: e.id,
-          name: e.students.name,
-          arabic_name: e.students.arabic_name,
+          name: e.students?.name || 'Unknown',
+          arabic_name: e.students?.arabic_name,
           className: cls.class_name_arabic,
-          studentName: e.students.arabic_name || e.students.name,
+          studentName: e.students?.arabic_name || e.students?.name || 'Unknown',
           total: total > 0 ? total : null,
           subjectScores: {},
           avg: total / (orderedSubjects.length || 1),

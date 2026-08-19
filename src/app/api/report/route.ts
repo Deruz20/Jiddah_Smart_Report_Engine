@@ -7,6 +7,7 @@ import {
   getSubjectRemark,
   getNurseryGrade,
   isCoreSubject,
+  isGradableSubject,
   calculateAggregate,
   calculateTheologyAggregate,
   getDivision,
@@ -78,6 +79,8 @@ export async function GET(request: NextRequest) {
 
     const { data: gradingCriteriaData } = await supabase.from('grading_criteria').select('*')
     const gradingCriteria = (gradingCriteriaData as GradingCriterion[]) || []
+
+    const { data: schoolSettings } = await supabase.from('school_settings').select('*').limit(1).single()
 
     const { data: enrollment, error: enrollmentError } = await supabase
       .from('enrollments')
@@ -253,19 +256,27 @@ export async function GET(request: NextRequest) {
     const isTerm3 = term.term_number === 3
     const promotion_status = isTerm3 && division ? getPromotionStatus(division) : null
 
-    const circularTotal = sortedCircularSubjects.reduce(
+    const circularTotal = sortedCircularSubjects
+      .filter((row) => isGradableSubject(row.subject_name, className))
+      .reduce(
       (sum, row) => sum + (typeof row.score === 'number' ? row.score : 0),
       0
     )
-    const bot_total = sortedCircularSubjects.reduce(
+    const bot_total = sortedCircularSubjects
+      .filter((row) => isGradableSubject(row.subject_name, className))
+      .reduce(
       (sum, row) => sum + (typeof row.bot_score === 'number' ? row.bot_score : 0),
       0
     )
-    const mot_total = sortedCircularSubjects.reduce(
+    const mot_total = sortedCircularSubjects
+      .filter((row) => isGradableSubject(row.subject_name, className))
+      .reduce(
       (sum, row) => sum + (typeof row.mot_score === 'number' ? row.mot_score : 0),
       0
     )
-    const eot_total = sortedCircularSubjects.reduce(
+    const eot_total = sortedCircularSubjects
+      .filter((row) => isGradableSubject(row.subject_name, className))
+      .reduce(
       (sum, row) => sum + (typeof row.eot_score === 'number' ? row.eot_score : 0),
       0
     )
@@ -614,6 +625,7 @@ export async function GET(request: NextRequest) {
         total_students,
       },
       signatures,
+      settings: schoolSettings,
       debug: {debugInfo},
     }
 

@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { getAuthenticatedUser, isValidEmail, normalizePhone, normalizeString, recordActivity } from '@/lib/api-server'
 
-const allowedKeys = ['name', 'address', 'email', 'phone', 'website', 'timezone', 'logo_url']
+const allowedKeys = ['name', 'address', 'email', 'phone', 'phone_2', 'pay_code', 'current_term', 'current_year', 'motto', 'website', 'timezone', 'logo_url', 'primary_font', 'arabic_font', 'theme_color', 'report_theme_preset']
 
 export async function OPTIONS(request: NextRequest) {
   return apiOptions(request)

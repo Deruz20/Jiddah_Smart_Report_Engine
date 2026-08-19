@@ -222,6 +222,18 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
     )
 
     try {
+      // Smart Curriculum Detection: Primary EOT templates inherently require both 
+      // secular and theology data to populate the dual-sided layout.
+      const isPrimaryClass = figmaClasses.some(c => classIds.includes(c.id) && (c.section_type === 'lower_primary' || c.section_type === 'upper_primary'));
+      const isPrimaryStudent = figmaEnrollments.some(e => studentIds.includes(e.enrollment_id) && (e.section_type === 'lower_primary' || e.section_type === 'upper_primary'));
+      const isPrimary = section === 'lower_primary' || section === 'upper_primary' || (mode === 'class' ? isPrimaryClass : isPrimaryStudent);
+      const isEOT = phase.toLowerCase() === 'eot';
+      
+      let effectiveCurriculum = filterState.curriculum;
+      if (isPrimary && isEOT) {
+        effectiveCurriculum = 'combined';
+      }
+
       const response = await fetch('/api/report/batch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -229,7 +241,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
           enrollment_ids: targets,
           term_id: termObj.id,
           score_type: phase.toLowerCase(),
-          curriculum: filterState.curriculum === 'combined' ? 'secular' : filterState.curriculum
+          curriculum: effectiveCurriculum
         })
       })
       const data = await response.json()
@@ -246,38 +258,38 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
         return
       }
 
-      {/* TRANSLITERATION DISABLED BY USER REQUEST
-      // Add Smart Transliteration step
-      const namesToTransliterate = generatedReportsData
-        .filter(r => !r.student.arabic_name)
-        .map(r => r.student.name);
+      if (typeof window !== 'undefined' && localStorage.getItem('auto_transliterate') === 'true') {
+        // Add Smart Transliteration step
+        const namesToTransliterate = generatedReportsData
+          .filter(r => r.student && !r.student.arabic_name)
+          .map(r => r.student.name);
 
-      if (namesToTransliterate.length > 0) {
-        toast.loading('Transliterating names...', { id: 'transliterate-toast' });
-        try {
-          const transRes = await fetch('/api/transliterate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ names: namesToTransliterate })
-          });
-          if (transRes.ok) {
-            const transData = await transRes.json();
-            if (transData.transliterated && transData.transliterated.length === namesToTransliterate.length) {
-              let i = 0;
-              generatedReportsData.forEach(r => {
-                if (!r.student.arabic_name) {
-                  r.student.arabic_name = transData.transliterated[i++];
-                }
-              });
+        if (namesToTransliterate.length > 0) {
+          toast.loading('Transliterating names...', { id: 'transliterate-toast' });
+          try {
+            const transRes = await fetch('/api/transliterate', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ names: namesToTransliterate })
+            });
+            if (transRes.ok) {
+              const transData = await transRes.json();
+              if (transData.transliterated && transData.transliterated.length === namesToTransliterate.length) {
+                let i = 0;
+                generatedReportsData.forEach(r => {
+                  if (r.student && !r.student.arabic_name) {
+                    r.student.arabic_name = transData.transliterated[i++];
+                  }
+                });
+              }
             }
+          } catch (e) {
+            console.error('Transliteration failed', e);
+          } finally {
+            toast.dismiss('transliterate-toast');
           }
-        } catch (e) {
-          console.error('Transliteration failed', e);
-        } finally {
-          toast.dismiss('transliterate-toast');
         }
       }
-      */}
 
       setRawReports(generatedReportsData)
       setActiveReportId(generatedReportsData[0].id)
@@ -291,7 +303,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
       // Post-generation alerts
       setTimeout(() => {
         const missingTheology = generatedReportsData.filter(r => 
-          r.section_type !== 'nursery' && r.score_type === 'eot' && !r.theology && r.student.theology_class_arabic
+          r.section_type !== 'nursery' && r.score_type === 'eot' && !r.theology && r.student?.theology_class_arabic
         );
         if (missingTheology.length > 0) {
           toast.warning(`${missingTheology.length} students are missing theology EOT marks`, {

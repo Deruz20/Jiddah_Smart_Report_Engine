@@ -21,6 +21,17 @@ export default function NurseryEOTReport({ reportData }: any) {
     return '✏️'
   }
 
+  const formatDate = (dateString: string) => {
+    if (!dateString) return "_________________"
+    try {
+      const d = new Date(dateString)
+      if (isNaN(d.getTime())) return dateString
+      return d.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).toUpperCase()
+    } catch (error) {
+      return dateString
+    }
+  }
+
   return (
     <ReportContainer reportType="NurseryEOTReport">
       <style dangerouslySetInnerHTML={{
@@ -300,7 +311,7 @@ export default function NurseryEOTReport({ reportData }: any) {
             </div>
             <div className="info-box">
               <div className="info-row"><span className="label">Class</span><div className="line">{reportData?.student?.class_name}</div></div>
-              <div className="info-row"><span className="label">Date</span><div className="line">{new Date().toLocaleDateString('en-GB')}</div></div>
+              <div className="info-row"><span className="label">Date</span><div className="line">{reportData?.term?.end_date ? formatDate(reportData.term.end_date) : '_________________'}</div></div>
             </div>
           </div>
 
@@ -327,7 +338,7 @@ export default function NurseryEOTReport({ reportData }: any) {
                       </td>
                       <td className="data-cell">{eotGrade?.grade ?? '--'}</td>
                       <td className="data-cell">{eotGrade?.remark ?? '--'}</td>
-                      <td className="data-cell"></td>
+                      <td className="data-cell">{subject.teacher_initials ?? ''}</td>
                     </tr>
                   )
                 })}

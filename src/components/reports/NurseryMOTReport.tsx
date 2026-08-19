@@ -21,6 +21,17 @@ export default function NurseryMOTReport({ reportData }: any) {
     return '✏️'
   }
 
+  const formatDate = (dateString: string) => {
+    if (!dateString) return "_________________"
+    try {
+      const d = new Date(dateString)
+      if (isNaN(d.getTime())) return dateString
+      return d.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).toUpperCase()
+    } catch (error) {
+      return dateString
+    }
+  }
+
   return (
     <ReportContainer reportType="NurseryMOTReport">
       <style dangerouslySetInnerHTML={{
@@ -288,7 +299,7 @@ export default function NurseryMOTReport({ reportData }: any) {
             </div>
             <div className="info-box">
               <div className="info-row"><span className="label">Class</span><div className="line">{reportData?.student?.class_name}</div></div>
-              <div className="info-row"><span className="label">Date</span><div className="line">{new Date().toLocaleDateString('en-GB')}</div></div>
+              <div className="info-row"><span className="label">Date</span><div className="line">{reportData?.term?.end_date ? formatDate(reportData.term.end_date) : '_________________'}</div></div>
             </div>
           </div>
 

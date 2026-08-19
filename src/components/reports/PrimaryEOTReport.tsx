@@ -86,7 +86,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
       <td className="remark-cell" style={{ color: remarkColor(subject.remark) }}>
         {subject.remark || (subject.eot_score != null ? getSubjectRemark(getSubjectGradeNumber(subject.eot_score)) : subject.mot_score != null ? getSubjectRemark(getSubjectGradeNumber(subject.mot_score)) : "")}
       </td>
-      <td></td>
+      <td>{subject.teacher_initials ?? ''}</td>
     </tr>
   )
 

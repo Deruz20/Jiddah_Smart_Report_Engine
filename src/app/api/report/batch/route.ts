@@ -280,6 +280,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const { data: initialsData } = await supabase.from('teacher_initials').select('*')
+    const teacherInitialsMap: Record<string, string> = {}
+    if (initialsData) {
+      initialsData.forEach(item => {
+        teacherInitialsMap[`${item.level}_${item.subject_id}`] = item.initials
+      })
+    }
+
     const reports = requestedEnrollments.map(enrollment => {
       const studentData = Array.isArray(enrollment.students) ? enrollment.students[0] : enrollment.students
       const circularClassData = Array.isArray(enrollment.circular_classes) ? enrollment.circular_classes[0] : enrollment.circular_classes
@@ -354,6 +362,7 @@ export async function POST(request: NextRequest) {
           grade_display: gradeInfo.grade,
           remark: gradeInfo.remark,
           is_core: isCoreSubject(subject.subject_name, sectionType),
+          teacher_initials: teacherInitialsMap[`${sectionType}_${subject.id}`] || '',
         }
       })
 
@@ -438,7 +447,8 @@ export async function POST(request: NextRequest) {
             eot_grade_display,
             score: numericScore,
             grade_display,
-            theology_remark: overrideRemark || defaultRemark
+            theology_remark: overrideRemark || defaultRemark,
+            teacher_initials: teacherInitialsMap[`${theologyLevel}_${sub.id}`] || '',
           }
         })
         

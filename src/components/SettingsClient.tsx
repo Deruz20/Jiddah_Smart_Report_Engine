@@ -8,6 +8,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
+import { TeacherInitialsConfig } from "./TeacherInitialsConfig"
 
 type Term = {
   id: string
@@ -23,6 +24,7 @@ type Term = {
 const settingsSections = [
   { id: "school", label: "School Profile", icon: School },
   { id: "academic", label: "Academic Terms", icon: BookOpen },
+  { id: "initials", label: "Teacher Initials", icon: Users },
   { id: "grading", label: "Grading Defaults", icon: Star },
   { id: "print", label: "Print Preferences", icon: Printer },
   { id: "branding", label: "Branding & Theme", icon: Palette },
@@ -431,6 +433,9 @@ export default function SettingsClient({ terms }: { terms: Term[] }) {
             </div>
           </div>
         )
+
+      case "initials":
+        return <TeacherInitialsConfig />
 
       case "notifications":
         return (

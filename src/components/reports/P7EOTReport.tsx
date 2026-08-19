@@ -41,6 +41,7 @@ export default function P7EOTReport({ reportData }: any) {
       <td className="remarks-cell">
         {subject.remark ?? ''}
       </td>
+      <td className="data-cell">{subject.teacher_initials ?? ''}</td>
     </tr>
   )
 
@@ -557,10 +558,11 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
 
                 <tr>
                   <th rowSpan={2} style={{ width: '22%' }}>SUBJECTS</th>
-                  <th colSpan={2} style={{ width: '18%' }}>BEGINNING OF TERM</th>
-                  <th colSpan={2} style={{ width: '18%' }}>MIDTERM</th>
-                  <th colSpan={2} style={{ width: '18%' }}>END OF TERM</th>
-                  <th rowSpan={2} style={{ width: '24%' }}>TEACHER'S REMARKS</th>
+                  <th colSpan={2} style={{ width: '15%' }}>BEGINNING OF TERM</th>
+                  <th colSpan={2} style={{ width: '15%' }}>MIDTERM</th>
+                  <th colSpan={2} style={{ width: '15%' }}>END OF TERM</th>
+                  <th rowSpan={2} style={{ width: '22%' }}>TEACHER'S REMARKS</th>
+                  <th rowSpan={2} style={{ width: '11%' }}>INITIALS</th>
                 </tr>
 
                 <tr>
@@ -589,7 +591,7 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
                   <td className="data-cell">{reportData?.circular?.mot_aggregate ?? '--'}</td>
                   <td className="data-cell">{reportData?.circular?.eot_total ?? '--'}</td>
                   <td className="data-cell">{reportData?.circular?.aggregate ?? '--'}</td>
-                  <td></td>
+                  <td colSpan={2}></td>
                 </tr>
               </tbody>
             </table>

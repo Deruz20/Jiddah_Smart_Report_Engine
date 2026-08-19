@@ -326,7 +326,7 @@ export default function NurseryMOTReport({ reportData }: any) {
                       </td>
                       <td className="data-cell">{g?.grade ?? '--'}</td>
                       <td className="data-cell">{g?.remark ?? '--'}</td>
-                      <td className="data-cell"></td>
+                      <td className="data-cell">{subject.teacher_initials ?? ''}</td>
                     </tr>
                   )
                 })}

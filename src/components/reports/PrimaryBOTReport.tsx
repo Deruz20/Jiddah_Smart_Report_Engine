@@ -51,10 +51,10 @@ export default function PrimaryBOTReport({ reportData }: any) {
       <td>{subject.mot_score ?? ""}</td>
       <td>{subject.mot_grade_display ?? ""}</td>
       <td>{subject.eot_score ?? ""}</td>
-      <td>{subject.eot_grade_display ?? ""}</td>
       <td style={{ textAlign: "left", paddingLeft: "4px" }}>
         {subject.remark ?? ""}
       </td>
+      <td>{subject.teacher_initials ?? ""}</td>
     </tr>
   );
 
@@ -402,12 +402,15 @@ export default function PrimaryBOTReport({ reportData }: any) {
                   </th>
                   <th colSpan={2}>MIDTERM</th>
                   <th colSpan={2}>END OF TERM</th>
-                  <th rowSpan={2} style={{ width: "25%" }}>
+                  <th rowSpan={2} style={{ width: "20%" }}>
                     SUBJECT
                     <br />
                     TEACHER'S
                     <br />
                     COMMENT
+                  </th>
+                  <th rowSpan={2} style={{ width: "5%" }}>
+                    INITIALS
                   </th>
                 </tr>
                 <tr>
@@ -439,7 +442,7 @@ export default function PrimaryBOTReport({ reportData }: any) {
                   <td>{reportData?.circular?.mot_total_aggregates ?? ""}</td>
                   <td>{reportData?.circular?.eot_total_score ?? ""}</td>
                   <td>{reportData?.circular?.eot_total_aggregates ?? ""}</td>
-                  <td></td>
+                  <td colSpan={2}></td>
                 </tr>
               </tbody>
             </table>

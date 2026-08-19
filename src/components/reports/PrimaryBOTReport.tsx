@@ -6,7 +6,7 @@ import {
   getSubjectGradeNumber,
 } from "@/lib/grading";
 import { ReportContainer } from "@/components/reports/shared/ReportContainer";
-import { SchoolStamp } from "./SchoolStamp";
+
 import { getClassTeacherSignatureKey } from "@/utils/signatures";
 import { formatDateWithOrdinal } from "@/utils/dateHelpers";
 
@@ -610,12 +610,8 @@ export default function PrimaryBOTReport({ reportData }: any) {
             </div>
           </div>
 
-          <div className="validity-text" style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div>This Report Form Is Not Valid Without The Official Stamp</div>
-            <div style={{ transform: 'scale(0.8)', transformOrigin: 'right center' }}>
-              <SchoolStamp date={reportData?.term?.end_date} />
-            </div>
-
+          <div className="validity-text">
+            This Report Form Is Not Valid Without The Official Stamp
           </div>
         </footer>
       </div>

@@ -4,7 +4,6 @@ import React, { useState, useMemo } from "react";
 import Link from 'next/link';
 import { FileText, Download, Printer, RefreshCw, Check, ChevronDown, Eye, Zap, BarChart2, Search } from "lucide-react";
 import { HeroSection } from "@/components/HeroSection";
-import { SchoolStamp } from "@/components/reports/SchoolStamp";
 
 interface ReportsClientProps {
   initialHistory: any[];
@@ -228,20 +227,7 @@ export default function ReportsClient({
                 </div>
               </div>
 
-              <div className="mb-5 p-4 rounded-xl border border-slate-200 bg-slate-50">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h3 className="text-sm font-semibold text-slate-800">Stamp Configuration</h3>
-                    <p className="text-xs text-slate-500">Preview and approve the official school stamp date</p>
-                  </div>
-                  <div>
-                    <input type="date" value={stampDate} onChange={e => setStampDate(e.target.value)} className="px-3 py-2 border rounded-lg text-sm bg-white outline-none focus:border-emerald-500 text-slate-700" />
-                  </div>
-                </div>
-                <div className="flex justify-center bg-white p-4 rounded-lg border border-slate-200" style={{ transform: 'scale(0.9)', transformOrigin: 'top center' }}>
-                  <SchoolStamp date={stampDate} />
-                </div>
-              </div>
+
 
               {generating && (
                 <div className="mb-5 p-4 rounded-xl border border-emerald-200 bg-emerald-50">

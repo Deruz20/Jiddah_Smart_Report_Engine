@@ -1,7 +1,7 @@
 import { getTheologyComment } from '@/lib/grading'
 import { ReportContainer } from '@/components/reports/shared/ReportContainer'
 import { transliterateEnglishToArabic } from '@/lib/transliterate'
-import { SchoolStamp } from './SchoolStamp'
+
 import { getClassTeacherSignatureKey } from '@/utils/signatures'
 
 export default function NurseryTheologyEOTReport({ reportData }: any) {
@@ -440,10 +440,8 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
               )}
             </div>
           </div>
-          <div className="footer-stamp" style={{ padding: 0, border: 'none', background: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div style={{ transform: 'scale(0.8)' }}>
-              <SchoolStamp date={reportData?.term?.end_date} />
-            </div>
+          <div className="footer-stamp">
+            الختم الرسمي للمدرسة
           </div>
           <div className="sign-field">
             <div>تقرير مدير المدرسة</div>

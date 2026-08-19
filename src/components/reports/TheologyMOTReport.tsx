@@ -1,7 +1,7 @@
 import { getTheologyComment } from '@/lib/grading'
 import { ReportContainer } from '@/components/reports/shared/ReportContainer'
 import { transliterateEnglishToArabic } from '@/lib/transliterate'
-import { SchoolStamp } from './SchoolStamp'
+
 
 export default function TheologyMOTReport({ reportData }: any) {
   const getTheologyRemark = (score: number | null): string => {
@@ -132,10 +132,8 @@ export default function TheologyMOTReport({ reportData }: any) {
               </span>
             </div>
           </div>
-          <div className="stamp-box" style={{ padding: 0, border: 'none', background: 'none' }}>
-            <div style={{ transform: 'scale(0.8)', transformOrigin: 'top right' }}>
-              <SchoolStamp date={reportData?.term?.end_date} />
-            </div>
+          <div className="stamp-box">
+            الختم الرسمي للمدرسة
           </div>
         </div>
       </div>

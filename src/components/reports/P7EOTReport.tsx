@@ -1,6 +1,6 @@
 import { getClassTeacherComment, getHeadTeacherComment, getConductRemark, getTheologyComment } from '@/lib/grading'
 import { ReportContainer } from '@/components/reports/shared/ReportContainer'
-import { SchoolStamp } from './SchoolStamp'
+
 import { getClassTeacherSignatureKey } from '@/utils/signatures'
 
 export default function P7EOTReport({ reportData }: any) {
@@ -792,10 +792,8 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
             </div>
           </div>
 
-          <div className="stamp-box" style={{ padding: 0, border: 'none', background: 'none' }}>
-            <div style={{ transform: 'scale(0.8)', transformOrigin: 'top right' }}>
-              <SchoolStamp date={reportData?.term?.end_date} />
-            </div>
+          <div className="stamp-box">
+            OFFICIAL STAMP
           </div>
         </footer>
         </div>

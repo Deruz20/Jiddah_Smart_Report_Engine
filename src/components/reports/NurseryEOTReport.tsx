@@ -1,7 +1,7 @@
 import { getNurseryGrade, getNurseryTeacherComment, getConductRemark } from '@/lib/grading'
 import { ReportContainer } from '@/components/reports/shared/ReportContainer'
 import { formatDateWithOrdinal } from '@/utils/dateHelpers';
-import { SchoolStamp } from "./SchoolStamp";
+
 import { getClassTeacherSignatureKey } from "@/utils/signatures";
 
 export default function NurseryEOTReport({ reportData }: any) {
@@ -416,10 +416,8 @@ export default function NurseryEOTReport({ reportData }: any) {
               </div>
             </div>
 
-            <div className="stamp-box" style={{ padding: 0, border: 'none', background: 'none' }}>
-              <div style={{ transform: 'scale(0.8)', transformOrigin: 'top right' }}>
-                <SchoolStamp date={reportData?.term?.end_date} />
-              </div>
+            <div className="stamp-box">
+              OFFICIAL STAMP
             </div>
           </div>
           

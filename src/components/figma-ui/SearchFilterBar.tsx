@@ -1,8 +1,7 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sparkles, Users, User, Check, Search, ChevronDown, Calendar } from 'lucide-react';
+import { Sparkles, Users, User, Check, Search, ChevronDown } from 'lucide-react';
 import type { FilterState, Term, Phase, EnrollmentItem, ClassGroup } from './types';
-import { SchoolStamp } from '../reports/SchoolStamp';
 
 interface SearchFilterBarProps {
   open: boolean;
@@ -411,24 +410,7 @@ export function SearchFilterBar({
               {/* Spacer */}
               <div style={{ flex: 1 }} />
 
-              {/* Stamp Preview */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'rgba(255,255,255,0.6)', padding: '6px 12px', borderRadius: 8, border: '1px solid #e2e8f0' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <label style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Stamp Date (Optional)</label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <Calendar size={14} color="#64748b" />
-                    <input
-                      type="date"
-                      value={filterState.stampDate || ''}
-                      onChange={(e) => onChange({ stampDate: e.target.value })}
-                      style={{ fontSize: 12, border: 'none', background: 'transparent', outline: 'none', color: '#334155', fontWeight: 600, width: '110px' }}
-                    />
-                  </div>
-                </div>
-                <div style={{ width: 50, height: 50, position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', transform: 'scale(0.5)', transformOrigin: 'center' }}>
-                  <SchoolStamp date={filterState.stampDate || 'YYYY-MM-DD'} />
-                </div>
-              </div>
+
 
               {/* Generate button */}
               <motion.button

@@ -7,7 +7,7 @@ import {
   getSubjectGradeNumber,
 } from '@/lib/grading'
 import { ReportContainer } from '@/components/reports/shared/ReportContainer'
-import { SchoolStamp } from './SchoolStamp'
+
 import { getClassTeacherSignatureKey } from '@/utils/signatures'
 import { transliterateEnglishToArabic } from '@/lib/transliterate'
 
@@ -777,8 +777,8 @@ export default function PrimaryEOTReport({ reportData }: any) {
                       </div>
                     </div>
 
-                    <div className="stamp-wrapper" style={{ flexShrink: 0, paddingLeft: '10px' }}>
-                      <SchoolStamp date={reportData?.term?.end_date} />
+                    <div className="stamp-wrapper" style={{ flexShrink: 0, paddingLeft: '10px', minWidth: '100px', minHeight: '60px', border: '2px dashed #cbd5e1', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <span style={{ fontSize: '9px', color: '#94a3b8', fontWeight: 600, textAlign: 'center' }}>OFFICIAL<br/>STAMP</span>
                     </div>
                   </div>
 

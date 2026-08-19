@@ -120,7 +120,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
           }
           html, body {
             width: 297mm !important;
-            height: 210mm !important;
+            height: 209mm !important;
             margin: 0 !important;
             padding: 0 !important;
             -webkit-print-color-adjust: exact !important;
@@ -134,7 +134,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
           }
           .landscape-page {
             width: 297mm !important;
-            height: 209mm !important;
+            height: 205mm !important;
             margin: 0 !important;
             padding: 3mm !important;
             box-shadow: none !important;
@@ -147,7 +147,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
         /* ── PAGE CONTAINER ── */
         .landscape-page {
           width: 297mm;
-          height: 209mm;
+          height: 205mm;
           background: white;
           padding: 4mm;
           margin: 0 auto;

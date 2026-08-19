@@ -17,6 +17,8 @@ export function TeacherInitialsConfig() {
   const [activeLevel, setActiveLevel] = useState('nursery')
   const [targetScope, setTargetScope] = useState<'section' | 'class'>('section')
   const [activeClassId, setActiveClassId] = useState<string>('')
+  const [pendingChanges, setPendingChanges] = useState<Record<string, string>>({})
+  const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
     async function loadData() {
@@ -64,7 +66,7 @@ export function TeacherInitialsConfig() {
   // teacher initials ONLY apply to secular subjects
   const visibleSubjects = subjects.filter(s => s.section === activeLevel && s.curriculum === 'secular')
 
-  const handleSave = async (subjectId: string, value: string) => {
+  const handleSaveAll = async () => {
     const classIdPayload = targetScope === 'class' ? activeClassId : null
     
     if (targetScope === 'class' && !activeClassId) {
@@ -72,23 +74,51 @@ export function TeacherInitialsConfig() {
       return
     }
 
+    const updates = Object.entries(pendingChanges).map(([key, value]) => {
+      // key is like `${activeLevel}_${sub.id}${classKey}`
+      // but we actually need to know the subject_id
+      // It's easier to just parse the subject ID out of the key, but we know the activeLevel and classKey.
+      // A better way: just pass the subject_id directly in pendingChanges.
+      return { key, value }
+    })
+
+    if (updates.length === 0) {
+      toast.info('No changes to save')
+      return
+    }
+
+    setIsSaving(true)
+    let hasError = false
     try {
-      const res = await fetch('/api/settings/initials', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          level: activeLevel,
-          subject_id: subjectId,
-          class_id: classIdPayload,
-          initials: value
+      await Promise.all(
+        Object.entries(pendingChanges).map(async ([subjectId, value]) => {
+          const res = await fetch('/api/settings/initials', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              level: activeLevel,
+              subject_id: subjectId,
+              class_id: classIdPayload,
+              initials: value
+            })
+          })
+          if (!res.ok) throw new Error("Failed to save")
         })
-      })
-      if (!res.ok) throw new Error("Failed to save")
-      // Only show success if they actually typed something, deletions (clearing) are fine too
+      )
+      
       const classKey = classIdPayload ? `_${classIdPayload}` : ''
-      setInitials(prev => ({ ...prev, [`${activeLevel}_${subjectId}${classKey}`]: value }))
+      const newInitials = { ...initials }
+      for (const [subjectId, value] of Object.entries(pendingChanges)) {
+        newInitials[`${activeLevel}_${subjectId}${classKey}`] = value
+      }
+      setInitials(newInitials)
+      setPendingChanges({})
+      toast.success('Changes saved successfully')
     } catch (err: any) {
-      toast.error(err.message)
+      toast.error('Failed to save some changes')
+      hasError = true
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -101,24 +131,39 @@ export function TeacherInitialsConfig() {
         <p style={{ fontSize: "13px", color: "#9CA3AF" }}>Configure the initials that appear on report cards per subject.</p>
       </div>
       
-      <div className="flex gap-2">
-        {levels.map(lvl => (
-          <button
-            key={lvl.id}
-            onClick={() => setActiveLevel(lvl.id)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              activeLevel === lvl.id ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
-            }`}
-          >
-            {lvl.label}
-          </button>
-        ))}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex gap-2">
+          {levels.map(lvl => (
+            <button
+              key={lvl.id}
+              onClick={() => {
+                setActiveLevel(lvl.id)
+                setPendingChanges({}) // clear pending changes when switching level
+              }}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                activeLevel === lvl.id ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              {lvl.label}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={handleSaveAll}
+          disabled={isSaving || Object.keys(pendingChanges).length === 0}
+          className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg shadow-sm transition-colors"
+        >
+          {isSaving ? 'Saving...' : 'Save Changes'}
+        </button>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center bg-slate-50 p-4 rounded-xl border border-slate-100">
         <div className="flex gap-2 bg-white p-1 rounded-lg border border-slate-200 shadow-sm">
           <button
-            onClick={() => setTargetScope('section')}
+            onClick={() => {
+              setTargetScope('section')
+              setPendingChanges({}) // clear pending on scope change
+            }}
             className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
               targetScope === 'section' ? 'bg-emerald-50 text-emerald-700' : 'text-slate-600 hover:text-slate-900'
             }`}
@@ -126,7 +171,10 @@ export function TeacherInitialsConfig() {
             Entire Section
           </button>
           <button
-            onClick={() => setTargetScope('class')}
+            onClick={() => {
+              setTargetScope('class')
+              setPendingChanges({}) // clear pending on scope change
+            }}
             className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
               targetScope === 'class' ? 'bg-emerald-50 text-emerald-700' : 'text-slate-600 hover:text-slate-900'
             }`}
@@ -140,7 +188,10 @@ export function TeacherInitialsConfig() {
             <span className="text-sm font-medium text-slate-600">Select Class:</span>
             <select
               value={activeClassId}
-              onChange={(e) => setActiveClassId(e.target.value)}
+              onChange={(e) => {
+                setActiveClassId(e.target.value)
+                setPendingChanges({}) // clear pending on class change
+              }}
               className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
             >
               {availableClasses.length === 0 ? (
@@ -172,7 +223,8 @@ export function TeacherInitialsConfig() {
               </tr>
             ) : visibleSubjects.map(sub => {
               const classKey = (targetScope === 'class' && activeClassId) ? `_${activeClassId}` : ''
-              const currentVal = initials[`${activeLevel}_${sub.id}${classKey}`] || ''
+              const savedVal = initials[`${activeLevel}_${sub.id}${classKey}`] || ''
+              const currentVal = pendingChanges[sub.id] !== undefined ? pendingChanges[sub.id] : savedVal
               
               return (
                 <tr key={sub.id} className="hover:bg-slate-50/50 transition-colors">
@@ -180,12 +232,9 @@ export function TeacherInitialsConfig() {
                   <td className="px-4 py-2">
                     <input
                       type="text"
-                      defaultValue={currentVal}
-                      key={`${activeLevel}_${sub.id}${classKey}_${currentVal}`} // Force re-render on scope change to properly show defaultValue
-                      onBlur={(e) => {
-                        if (e.target.value !== currentVal) {
-                          handleSave(sub.id, e.target.value)
-                        }
+                      value={currentVal}
+                      onChange={(e) => {
+                        setPendingChanges(prev => ({ ...prev, [sub.id]: e.target.value }))
                       }}
                       placeholder={targetScope === 'class' ? "Override Initials..." : "e.g. MK"}
                       className="w-full max-w-[140px] rounded-lg border border-slate-200 px-3 py-1.5 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 uppercase placeholder:normal-case"

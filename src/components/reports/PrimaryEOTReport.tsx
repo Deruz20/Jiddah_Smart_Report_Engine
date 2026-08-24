@@ -77,7 +77,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
 
   const renderSubjectRow = (subject: any, i: number) => (
     <tr key={subject.subject_name} className={i % 2 === 0 ? "row-even" : "row-odd"}>
-      <td className="subj-name">{subject.subject_name}</td>
+      <td className="subj-name">{subject.subject_name === 'MATH' ? 'MTC' : subject.subject_name === 'SCI' ? 'SCIE' : subject.subject_name}</td>
       <td>{subject.bot_score ?? "--"}</td>
       <td className="grade-cell">{subject.bot_grade_display ?? "--"}</td>
       <td>{subject.mot_score ?? "--"}</td>

@@ -63,7 +63,7 @@ export function isGradableSubject(subjectName: string, className?: string): bool
   // Configurable non-gradable subjects via env variable
   const nonGradableEnv = process.env.NEXT_PUBLIC_NON_GRADABLE_SUBJECTS 
     ? JSON.parse(process.env.NEXT_PUBLIC_NON_GRADABLE_SUBJECTS) 
-    : ['Computer'];
+    : ['Computer', 'COMP'];
     
   const name = subjectName.trim().toLowerCase();
   

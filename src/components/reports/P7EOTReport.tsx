@@ -26,7 +26,7 @@ export default function P7EOTReport({ reportData }: any) {
   const renderSubjectRow = (subject: any) => (
     <tr key={subject.subject_name}>
       <td style={{ textAlign: 'left', paddingLeft: '8px' }}>
-        {subject.subject_name}
+        {subject.subject_name === 'MATH' ? 'MTC' : subject.subject_name === 'SCI' ? 'SCIE' : subject.subject_name}
       </td>
 
       <td className="data-cell">{subject.bot_score ?? '--'}</td>

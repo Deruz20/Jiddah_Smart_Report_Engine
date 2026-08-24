@@ -146,7 +146,7 @@ export default function SecularHubClient({
     
     const subjectOrder = {
       'lower_primary': ['ENG', 'MATH', 'LIT I', 'LIT II', 'I.R.E'],
-      'upper_primary': ['MATH', 'SST', 'SCI', 'ENG', 'COMP']
+      'upper_primary': ['ENG', 'MATH', 'SCI', 'SST', 'COMP'] // Math is MTC, Sci is SCIE
     }
     const correctOrder = subjectOrder[classInfo.section?.toLowerCase() as keyof typeof subjectOrder] || []
 
@@ -569,7 +569,9 @@ export default function SecularHubClient({
                           <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-semibold text-xs uppercase tracking-wider w-12 text-center print:border print:border-black print:text-black">#</th>
                           <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-semibold text-xs uppercase tracking-wider w-64 print:border print:border-black print:text-black">Student Name</th>
                           {assessmentData.orderedSubjects?.map(s => (
-                            <th key={s.id} className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-semibold text-xs uppercase tracking-wider text-center print:border print:border-black print:text-black">{s.subject_name}</th>
+                            <th key={s.id} className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-semibold text-xs uppercase tracking-wider text-center print:border print:border-black print:text-black">
+                              {s.subject_name === 'MATH' ? 'MTC' : s.subject_name === 'SCI' ? 'SCIE' : s.subject_name}
+                            </th>
                           ))}
                           <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-semibold text-xs uppercase tracking-wider text-center w-24 print:border print:border-black print:text-black">Total</th>
                           <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-semibold text-xs uppercase tracking-wider text-center w-24 print:border print:border-black print:text-black">Rank</th>

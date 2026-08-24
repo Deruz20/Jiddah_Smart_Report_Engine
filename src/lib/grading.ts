@@ -5,14 +5,14 @@ export type PromotionStatus = 'Promote' | 'Probation' | 'Repeat' | 'Try Next Cla
 
 // UNEB subject grade (1-9) from mark
 export function getSubjectGradeNumber(mark: number): number {
-  if (mark >= 90) return 1
-  if (mark >= 80) return 2
+  if (mark >= 85) return 1
+  if (mark >= 75) return 2
   if (mark >= 70) return 3
   if (mark >= 60) return 4
   if (mark >= 55) return 5
   if (mark >= 50) return 6
-  if (mark >= 45) return 7
-  if (mark >= 40) return 8
+  if (mark >= 40) return 7
+  if (mark >= 35) return 8
   return 9
 }
 

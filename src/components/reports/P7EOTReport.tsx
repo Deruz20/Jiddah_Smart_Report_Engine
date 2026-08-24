@@ -279,7 +279,7 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
   color: white;
   font-size: 14px;
   letter-spacing: 2px;
-  padding: 6px;
+  padding: 4px;
   text-align: center;
   text-transform: uppercase;
   font-weight: 800;
@@ -287,7 +287,7 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
 }
 
 .p7-eot-report td {
-  padding: 8px 4px;
+  padding: 4px 2px;
   font-size: 11px;
   color: var(--data-navy);
   font-weight: 600;
@@ -382,14 +382,14 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
 .p7-eot-report .comment-card {
   border: 2px dashed var(--border-light);
   border-radius: 8px;
-  padding: 14px 18px;
+  padding: 8px 12px;
   background: white;
 }
 
 .p7-eot-report .comment-row {
   display: flex;
   gap: 16px;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .p7-eot-report .comment-row:last-child {
@@ -526,6 +526,23 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
             <span className="label">Year:</span>
             <div className="line" style={{ flex: 0.5 }}>
               {reportData?.term?.academic_year}
+            </div>
+          </div>
+
+          <div className="info-row">
+            <span className="label">Position:</span>
+            <div className="line">
+              {reportData?.circular?.position ?? '--'}
+            </div>
+            <span className="label">Out Of:</span>
+            <div className="line">
+              {reportData?.circular?.total_students ??
+                reportData?.circular?.total ??
+                '--'}
+            </div>
+            <span className="label">Division:</span>
+            <div className="line" style={{ flex: 0.3 }}>
+              {reportData?.circular?.division ?? '--'}
             </div>
           </div>
 

@@ -43,7 +43,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
     reportData?.circular?.head_teacher_comment ||
     getHeadTeacherComment(reportData?.circular?.division ?? null)
   const conductRemark =
-    reportData?.circular?.conduct_remark ??
+    reportData?.circular?.conduct_remark ||
     getConductRemark(reportData?.circular?.division ?? null)
 
   const remarkColor = (remark: string | undefined): string => {
@@ -149,16 +149,14 @@ export default function PrimaryEOTReport({ reportData }: any) {
         /* ── PAGE CONTAINER ── */
         .landscape-page {
           width: 297mm;
-          height: 205mm;
+          min-height: 200mm;
           background: white;
-          padding: 4mm;
+          padding: 2mm;
           margin: 0 auto;
           box-shadow: 0 4px 12px rgba(0,0,0,0.1);
           border: 1px solid #e2e8f0;
           position: relative;
-          overflow: hidden;
           page-break-after: always;
-          page-break-inside: avoid;
           display: flex;
           flex-direction: column;
           box-sizing: border-box;
@@ -178,7 +176,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
         
         .inner-border {
           border: 1.5px solid #0f4d25;
-          padding: 6px 16px;
+          padding: 4px 12px;
           flex: 1; 
           position: relative;
           display: flex;
@@ -366,7 +364,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
 
         .table-container th, .table-container td {
           border: 1px solid #cbd5e1;
-          padding: 3px 4px; /* Internal cell padding */
+          padding: 2px 4px; /* Internal cell padding */
           text-align: center;
           font-size: 10px;
           vertical-align: middle;
@@ -580,12 +578,8 @@ export default function PrimaryEOTReport({ reportData }: any) {
                       <div className="info-value" style={{ flex: 0.5 }}>{reportData?.term?.academic_year}</div>
                     </div>
                     <div className="info-row">
-                      <span className="info-label">POSITION:</span>
-                      <div className="info-value" style={{ flex: 0.5 }}>{reportData?.circular?.position ?? '--'}</div>
-                      <span className="info-label">OUT OF:</span>
-                      <div className="info-value" style={{ flex: 0.5 }}>{reportData?.circular?.total_students ?? '--'}</div>
                       <span className="info-label">DIVISION:</span>
-                      <div className="info-value" style={{ flex: 0.5 }}>{reportData?.circular?.division ?? '--'}</div>
+                      <div className="info-value" style={{ flex: 1 }}>{reportData?.circular?.division ?? '--'}</div>
                     </div>
                   </div>
 
@@ -610,12 +604,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
                         <span className="info-label" style={{ marginRight: '4px' }}>ه‍</span>
                         <div className="info-value" style={{ flex: 0.4 }}>{toAr(toHijri(Number(reportData?.term?.academic_year)))}</div>
                       </div>
-                      <div className="info-row">
-                        <span className="info-label">الترتيب :</span>
-                        <div className="info-value" style={{ flex: 0.5 }}>{toAr(reportData?.theology?.position)}</div>
-                        <span className="info-label">عدد الطلبة :</span>
-                        <div className="info-value" style={{ flex: 0.5 }}>{toAr(reportData?.theology?.total_students)}</div>
-                      </div>
+                      {/* Position removed */}
                     </div>
                   )}
                 </section>

@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { generateAssessmentCSV, generateAnalysisCSV, generateTopStudentsCSV } from '@/utils/csvExport'
 import { computeStandardRankings } from '@/lib/ranking'
-import { isGradableSubject } from '@/lib/grading'
+import { isGradableSubject, getSubjectGradeNumber, calculateAggregate, getDivision } from '@/lib/grading'
 import { TopToolbar } from '../figma-ui/TopToolbar'
 
 type TermData = {
@@ -144,8 +144,27 @@ export default function SecularHubClient({
     
     const levelSubjects = data.subjects.filter(s => s.section?.toLowerCase() === classInfo.section?.toLowerCase())
     
-    // Sort subjects alphabetically. No slicing or hardcoding.
-    const orderedSubjects = [...levelSubjects].sort((a, b) => a.subject_name.localeCompare(b.subject_name))
+    const subjectOrder = {
+      'lower_primary': ['ENG', 'MATH', 'LIT I', 'LIT II', 'I.R.E'],
+      'upper_primary': ['MATH', 'SST', 'SCI', 'ENG', 'COMP']
+    }
+    const correctOrder = subjectOrder[classInfo.section?.toLowerCase() as keyof typeof subjectOrder] || []
+
+    const orderedSubjects = [...levelSubjects].sort((a, b) => {
+      const aName = a.subject_name.toUpperCase()
+      const bName = b.subject_name.toUpperCase()
+      
+      const aAlias = correctOrder.find(alias => aName.includes(alias)) || aName
+      const bAlias = correctOrder.find(alias => bName.includes(alias)) || bName
+
+      const aIndex = correctOrder.indexOf(aAlias)
+      const bIndex = correctOrder.indexOf(bAlias)
+
+      if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex
+      if (aIndex !== -1) return -1
+      if (bIndex !== -1) return 1
+      return aName.localeCompare(bName)
+    })
 
     const processed = classEnrollments.map(enrollment => {
       const eMarks = data.marks.filter(m => m.enrollment_id === enrollment.id)
@@ -190,56 +209,72 @@ export default function SecularHubClient({
     if (!data || !activeLevel) return []
     const classes = circularClasses.filter(c => c.section === activeLevel)
     const levelSubjects = data.subjects.filter(s => s.section === activeLevel)
-    
     const orderedSubjects = [...levelSubjects].sort((a, b) => a.subject_name.localeCompare(b.subject_name))
 
     return classes.map(cls => {
       const classEnrollments = data.enrollments.filter(e => e.circular_class_id === cls.id)
       let numStudents = 0
-      let excellent = 0
-      let vGood = 0
-      let good = 0
-      let fair = 0
-      let weak = 0
+      let totalAvgMarks = 0
+      let highestAvg = 0
+      let lowestAvg = 100
+      
+      const divCounts: Record<string, number> = { I: 0, II: 0, III: 0, IV: 0, U: 0, X: 0 }
+      const gradeCounts: Record<string, number> = { D1: 0, D2: 0, C3: 0, C4: 0, C5: 0, C6: 0, P7: 0, P8: 0, F9: 0 }
 
       classEnrollments.forEach(e => {
         const eMarks = data.marks.filter(m => m.enrollment_id === e.id)
-        let total = 0
-        let hasMarks = false
-        orderedSubjects.forEach(sub => {
+        
+        const subjectScoresForAgg = orderedSubjects.map(sub => {
           const mark = eMarks.find(m => m.subject_id === sub.id)
           const scoreKey = `${examPhase}_score` as 'bot_score' | 'mot_score' | 'eot_score'
           const score = mark?.[scoreKey]
-          if (score != null) {
-            total += score
-            hasMarks = true
-          }
-        })
-        
-        if (hasMarks) {
+          return { subject_name: sub.subject_name, score: score }
+        }).filter(s => s.score != null) as { subject_name: string; score: number }[]
+
+        if (subjectScoresForAgg.length > 0) {
           numStudents++
-          const avg = total / (orderedSubjects.length || 1)
-          if (avg >= 75) excellent++
-          else if (avg >= 65) vGood++
-          else if (avg >= 50) good++
-          else if (avg >= 40) fair++
-          else weak++
+          let totalScore = 0
+          
+          subjectScoresForAgg.forEach(s => {
+            totalScore += s.score
+            const gradeNum = getSubjectGradeNumber(s.score)
+            if (gradeNum === 1) gradeCounts.D1++
+            else if (gradeNum === 2) gradeCounts.D2++
+            else if (gradeNum === 3) gradeCounts.C3++
+            else if (gradeNum === 4) gradeCounts.C4++
+            else if (gradeNum === 5) gradeCounts.C5++
+            else if (gradeNum === 6) gradeCounts.C6++
+            else if (gradeNum === 7) gradeCounts.P7++
+            else if (gradeNum === 8) gradeCounts.P8++
+            else if (gradeNum === 9) gradeCounts.F9++
+          })
+          
+          const avgScore = totalScore / subjectScoresForAgg.length
+          totalAvgMarks += avgScore
+          if (avgScore > highestAvg) highestAvg = avgScore
+          if (avgScore < lowestAvg) lowestAvg = avgScore
+
+          const aggregate = calculateAggregate(subjectScoresForAgg, activeLevel)
+          if (aggregate !== null) {
+            const div = getDivision(aggregate)
+            divCounts[div] = (divCounts[div] || 0) + 1
+          } else {
+            divCounts['X'] = (divCounts['X'] || 0) + 1
+          }
         }
       })
 
-      const passed = excellent + vGood + good + fair
-      const passRate = numStudents > 0 ? Math.round((passed / numStudents) * 100) : 0
-      
+      if (lowestAvg === 100 && numStudents === 0) lowestAvg = 0
+
       return {
         id: cls.id,
         className: cls.class_name,
         numStudents,
-        excellent,
-        vGood,
-        good,
-        fair,
-        weak,
-        passRate
+        highestAvg: highestAvg.toFixed(1),
+        lowestAvg: lowestAvg.toFixed(1),
+        classAvg: numStudents > 0 ? (totalAvgMarks / numStudents).toFixed(1) : 0,
+        divCounts,
+        gradeCounts
       }
     })
   }, [data, activeLevel, circularClasses, examPhase])
@@ -639,46 +674,107 @@ export default function SecularHubClient({
                 </div>
 
                 <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-200/60 dark:border-slate-800/60 overflow-hidden print:bg-transparent print:border-none print:shadow-none print:rounded-none">
-                  <div className="overflow-x-auto shadow-inner print:shadow-none print:overflow-visible">
-                    <table className="w-full text-left border-collapse print:border-2 print:border-black">
-                      <thead className="bg-slate-50/90 dark:bg-slate-800/90 backdrop-blur-md sticky top-0 z-10 print:bg-slate-100 print:static">
-                        <tr>
-                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-semibold text-xs uppercase tracking-wider w-40 print:border print:border-black print:text-black">Class Segment</th>
-                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-semibold text-xs uppercase tracking-wider text-center print:border print:border-black print:text-black">Capacity</th>
-                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-emerald-600 font-semibold text-xs uppercase tracking-wider text-center print:border print:border-black print:text-black">Excellent</th>
-                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-indigo-600 font-semibold text-xs uppercase tracking-wider text-center print:border print:border-black print:text-black">V. Good</th>
-                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-blue-600 font-semibold text-xs uppercase tracking-wider text-center print:border print:border-black print:text-black">Good</th>
-                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-amber-600 font-semibold text-xs uppercase tracking-wider text-center print:border print:border-black print:text-black">Fair</th>
-                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-rose-600 font-semibold text-xs uppercase tracking-wider text-center print:border print:border-black print:text-black">Poor</th>
-                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-700 font-semibold text-xs uppercase tracking-wider text-center print:border print:border-black print:text-black">Pass Index</th>
-                        </tr>
-                      </thead>
-                      <motion.tbody 
-                        initial="hidden" 
-                        animate="visible" 
-                        variants={tableVariants}
-                        className="print:!opacity-100 print:!transform-none"
-                      >
-                        {analysisData.map((cls) => {
-                          return (
-                            <motion.tr 
-                              variants={rowVariants}
-                              key={cls.id}
-                              className="hover:bg-slate-50/80 transition-colors duration-200 border-b border-slate-100 last:border-0 print:border print:border-black print:hover:bg-transparent print:!opacity-100 print:!transform-none"
-                            >
-                              <td className="px-4 py-3 font-bold text-slate-800 bg-slate-50/30 print:border print:border-black print:text-black">{cls.className}</td>
-                              <td className="px-4 py-3 text-center font-medium text-slate-600 print:border print:border-black print:text-black">{cls.numStudents}</td>
-                              <td className="px-4 py-3 text-center font-semibold text-emerald-700 print:border print:border-black print:text-black">{cls.excellent}</td>
-                              <td className="px-4 py-3 text-center font-semibold text-indigo-700 print:border print:border-black print:text-black">{cls.vGood}</td>
-                              <td className="px-4 py-3 text-center font-semibold text-blue-700 print:border print:border-black print:text-black">{cls.good}</td>
-                              <td className="px-4 py-3 text-center font-semibold text-amber-700 print:border print:border-black print:text-black">{cls.fair}</td>
-                              <td className="px-4 py-3 text-center font-semibold text-rose-700 print:border print:border-black print:text-black">{cls.weak}</td>
-                              <td className="px-4 py-3 text-center font-extrabold text-blue-600 print:border print:border-black print:text-black">{cls.passRate}%</td>
-                            </motion.tr>
-                          )
-                        })}
-                      </motion.tbody>
-                    </table>
+                  <div className="p-6 space-y-8">
+                    {/* 1. Exam Analysis Table */}
+                    <div>
+                      <h4 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-3">1. Exam Analysis</h4>
+                      <div className="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm">
+                        <table className="w-full text-left border-collapse print:border-2 print:border-black">
+                          <thead className="bg-slate-50/90 dark:bg-slate-800/90 print:bg-slate-100">
+                            <tr>
+                              <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 font-semibold text-xs uppercase tracking-wider">Class Segment</th>
+                              <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 font-semibold text-xs uppercase tracking-wider text-center">Capacity</th>
+                              <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-blue-600 font-semibold text-xs uppercase tracking-wider text-center">Highest Avg</th>
+                              <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-rose-600 font-semibold text-xs uppercase tracking-wider text-center">Lowest Avg</th>
+                              <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-emerald-600 font-semibold text-xs uppercase tracking-wider text-center">Class Avg</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {analysisData.map((cls) => (
+                              <tr key={`exam-${cls.id}`} className="hover:bg-slate-50/80 border-b border-slate-100 last:border-0 print:border-black">
+                                <td className="px-4 py-3 font-bold text-slate-800">{cls.className}</td>
+                                <td className="px-4 py-3 text-center font-medium text-slate-600">{cls.numStudents}</td>
+                                <td className="px-4 py-3 text-center font-bold text-blue-700">{cls.highestAvg}</td>
+                                <td className="px-4 py-3 text-center font-bold text-rose-700">{cls.lowestAvg}</td>
+                                <td className="px-4 py-3 text-center font-extrabold text-emerald-700">{cls.classAvg}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* 2. Division Breakdown Table */}
+                    <div>
+                      <h4 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-3">2. Division Breakdown</h4>
+                      <div className="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm">
+                        <table className="w-full text-left border-collapse print:border-2 print:border-black">
+                          <thead className="bg-slate-50/90 dark:bg-slate-800/90 print:bg-slate-100">
+                            <tr>
+                              <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 font-semibold text-xs uppercase tracking-wider">Class Segment</th>
+                              <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-emerald-600 font-semibold text-xs uppercase tracking-wider text-center">Div I</th>
+                              <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-blue-600 font-semibold text-xs uppercase tracking-wider text-center">Div II</th>
+                              <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-indigo-600 font-semibold text-xs uppercase tracking-wider text-center">Div III</th>
+                              <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-amber-600 font-semibold text-xs uppercase tracking-wider text-center">Div IV</th>
+                              <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-rose-600 font-semibold text-xs uppercase tracking-wider text-center">Div U</th>
+                              <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-400 font-semibold text-xs uppercase tracking-wider text-center">Div X</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {analysisData.map((cls) => (
+                              <tr key={`div-${cls.id}`} className="hover:bg-slate-50/80 border-b border-slate-100 last:border-0 print:border-black">
+                                <td className="px-4 py-3 font-bold text-slate-800">{cls.className}</td>
+                                <td className="px-4 py-3 text-center font-bold text-emerald-700">{cls.divCounts.I}</td>
+                                <td className="px-4 py-3 text-center font-bold text-blue-700">{cls.divCounts.II}</td>
+                                <td className="px-4 py-3 text-center font-bold text-indigo-700">{cls.divCounts.III}</td>
+                                <td className="px-4 py-3 text-center font-bold text-amber-700">{cls.divCounts.IV}</td>
+                                <td className="px-4 py-3 text-center font-bold text-rose-700">{cls.divCounts.U}</td>
+                                <td className="px-4 py-3 text-center font-bold text-slate-400">{cls.divCounts.X}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* 3. Grade Distribution Table */}
+                    <div>
+                      <h4 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-3">3. Grade Distribution</h4>
+                      <div className="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm">
+                        <table className="w-full text-left border-collapse print:border-2 print:border-black">
+                          <thead className="bg-slate-50/90 dark:bg-slate-800/90 print:bg-slate-100">
+                            <tr>
+                              <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 font-semibold text-xs uppercase tracking-wider">Class Segment</th>
+                              <th className="px-3 py-3 border-b border-slate-200 text-emerald-600 font-bold text-xs text-center">D1</th>
+                              <th className="px-3 py-3 border-b border-slate-200 text-emerald-600 font-bold text-xs text-center">D2</th>
+                              <th className="px-3 py-3 border-b border-slate-200 text-blue-600 font-bold text-xs text-center">C3</th>
+                              <th className="px-3 py-3 border-b border-slate-200 text-blue-600 font-bold text-xs text-center">C4</th>
+                              <th className="px-3 py-3 border-b border-slate-200 text-blue-600 font-bold text-xs text-center">C5</th>
+                              <th className="px-3 py-3 border-b border-slate-200 text-blue-600 font-bold text-xs text-center">C6</th>
+                              <th className="px-3 py-3 border-b border-slate-200 text-amber-600 font-bold text-xs text-center">P7</th>
+                              <th className="px-3 py-3 border-b border-slate-200 text-amber-600 font-bold text-xs text-center">P8</th>
+                              <th className="px-3 py-3 border-b border-slate-200 text-rose-600 font-bold text-xs text-center">F9</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {analysisData.map((cls) => (
+                              <tr key={`grade-${cls.id}`} className="hover:bg-slate-50/80 border-b border-slate-100 last:border-0 print:border-black">
+                                <td className="px-4 py-3 font-bold text-slate-800">{cls.className}</td>
+                                <td className="px-3 py-3 text-center font-bold text-emerald-700">{cls.gradeCounts.D1}</td>
+                                <td className="px-3 py-3 text-center font-bold text-emerald-700">{cls.gradeCounts.D2}</td>
+                                <td className="px-3 py-3 text-center font-bold text-blue-700">{cls.gradeCounts.C3}</td>
+                                <td className="px-3 py-3 text-center font-bold text-blue-700">{cls.gradeCounts.C4}</td>
+                                <td className="px-3 py-3 text-center font-bold text-blue-700">{cls.gradeCounts.C5}</td>
+                                <td className="px-3 py-3 text-center font-bold text-blue-700">{cls.gradeCounts.C6}</td>
+                                <td className="px-3 py-3 text-center font-bold text-amber-700">{cls.gradeCounts.P7}</td>
+                                <td className="px-3 py-3 text-center font-bold text-amber-700">{cls.gradeCounts.P8}</td>
+                                <td className="px-3 py-3 text-center font-bold text-rose-700">{cls.gradeCounts.F9}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

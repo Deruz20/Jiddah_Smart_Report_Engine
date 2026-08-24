@@ -157,10 +157,10 @@ export function getSubjectRemark(gradeNum: number): string {
     case 4: return 'Fairly Good'
     case 5: return 'Fair'
     case 6: return 'Average'
-    case 7: return 'Below Average'
-    case 8: return 'Poor'
-    case 9: return 'Failed'
-    default: return 'Failed'
+    case 7: return 'Trying'
+    case 8: return 'More Effort Needed'
+    case 9: return 'Requires Assistance'
+    default: return 'Requires Assistance'
   }
 }
 
@@ -173,42 +173,42 @@ export function getTheologySubjectRemark(gradeNum: number): string {
     case 4: return 'جيد' // Good (or Fairly Good)
     case 5: return 'مقبول' // Acceptable / Fair
     case 6: return 'مقبول' // Acceptable / Fair
-    case 7: return 'ضعيف' // Weak / Below Average
-    case 8: return 'ضعيف جداً' // Very Weak / Poor
-    case 9: return 'راسب' // Failed
-    default: return 'راسب'
+    case 7: return 'يحتاج للتركيز' // Needs focus
+    case 8: return 'يحتاج مساعدة' // Needs help
+    case 9: return 'ينصح بالمراجعة' // Advised to review
+    default: return 'يحتاج للتركيز'
   }
 }
 
 export function getClassTeacherComment(division: string | null): string {
   switch(division) {
-    case 'I':   return 'Excellent performance. Keep it up!'
-    case 'II':  return 'Very good performance. Aim higher!'
-    case 'III': return 'Good performance. Work harder.'
-    case 'IV':  return 'Fair performance. More effort needed.'
-    case 'U':   return 'Below standard. Seek extra support.'
+    case 'I':   return 'An outstanding performance. Keep it up!'
+    case 'II':  return 'Very good performance. Aim higher.'
+    case 'III': return 'Good performance. More effort will yield better results.'
+    case 'IV':  return 'Fairly good performance. Put in more effort.'
+    case 'U':   return 'We encourage you to put in more effort next term.'
     default:    return 'Keep working hard.'
   }
 }
 
 export function getHeadTeacherComment(division: string | null): string {
   switch(division) {
-    case 'I':   return 'Outstanding. Well done!'
-    case 'II':  return 'Good work. Strive for excellence.'
-    case 'III': return 'Satisfactory. Push yourself further.'
-    case 'IV':  return 'Needs improvement. Stay focused.'
-    case 'U':   return 'Requires significant improvement.'
+    case 'I':   return 'An excellent result. Well done!'
+    case 'II':  return 'A commendable performance. Keep aiming higher.'
+    case 'III': return 'Satisfactory work. You have potential for more.'
+    case 'IV':  return 'Fair effort. Stay focused on your studies.'
+    case 'U':   return 'You can do better with more focus and hard work.'
     default:    return 'Continue to work diligently.'
   }
 }
 
 export function getConductRemark(division: string | null): string {
   switch(division) {
-    case 'I':   return 'Excellent conduct. Very impressive!'
+    case 'I':   return 'Excellent conduct. A very well-behaved student.'
     case 'II':  return 'Very good conduct. Well done!'
     case 'III': return 'Good conduct. Keep it up.'
-    case 'IV':  return 'Fair conduct. Be more disciplined.'
-    case 'U':   return 'Poor conduct. Needs serious improvement.'
+    case 'IV':  return 'Fairly good conduct.'
+    case 'U':   return 'We encourage better discipline next term.'
     default:    return 'Good conduct.'
   }
 }
@@ -217,18 +217,18 @@ export function getNurseryTeacherComment(grades: string[]): string {
   const gradeScore = (g: string) =>
     ({A:5,B:4,C:3,D:2,E:1}[g] ?? 3)
   const avg = grades.reduce((s,g) => s + gradeScore(g), 0) / (grades.length || 1)
-  if (avg >= 4.5) return 'Excellent learner. Very impressive!'
-  if (avg >= 3.5) return 'Very good progress. Keep it up!'
-  if (avg >= 2.5) return 'Good effort. Room for improvement.'
-  if (avg >= 1.5) return 'Fair progress. Needs more practice.'
+  if (avg >= 4.5) return 'A bright star! Keep exploring and growing.'
+  if (avg >= 3.5) return 'A wonderful learner, doing very well.'
+  if (avg >= 2.5) return 'Showing great promise, let us keep learning together.'
+  if (avg >= 1.5) return 'Making lovely progress, keep playing and learning.'
   return 'Needs significant support at home.'
 }
 
 export function getTheologyComment(total: number | null): string {
   if (total == null) return ''
-  if (total >= 360) return 'ممتاز جداً. استمر في التفوق!'
-  if (total >= 320) return 'جيد جداً. واصل الاجتهاد.'
-  if (total >= 280) return 'جيد. يحتاج إلى مزيد من الجهد.'
-  if (total >= 240) return 'مقبول. عليك الاجتهاد أكثر.'
-  return 'ضعيف. يحتاج إلى دعم إضافي.'
+  if (total >= 360) return 'أداء ممتاز، بارك الله فيك.'
+  if (total >= 320) return 'أداء جيد جداً، استمر في التقدم.'
+  if (total >= 280) return 'أداء جيد، بمزيد من الجهد ستصل للأفضل.'
+  if (total >= 200) return 'أداء مقبول، نرجو بذل المزيد من الجهد.'
+  return 'نشجعك على المراجعة المستمرة لتحسين مستواك.'
 }

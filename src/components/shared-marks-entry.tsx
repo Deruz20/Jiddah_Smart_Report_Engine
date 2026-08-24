@@ -64,6 +64,21 @@ export function SharedMarksEntry({
   
   const selectedEnrollment = enrollments.find((e) => e.id === selectedEnrollmentId) || null
 
+  const getSubjectOrder = (name: string) => {
+    const n = name.toUpperCase()
+    if (n.includes('ENG')) return 1
+    if (n.includes('MATH') || n.includes('MTC')) return 2
+    if (n.includes('LIT 1') || n.includes('LIT I')) return 3 // Lower
+    if (n.includes('LIT 2') || n.includes('LIT II')) return 4 // Lower
+    if (n.includes('SCI')) return 5 // Upper
+    if (n.includes('SST') || n.includes('SOCIAL')) return 6 // Upper
+    if (n.includes('COMP')) return 7
+    if (n.includes('IRE')) return 8
+    return 99
+  }
+
+  const sortedCircularMarks = [...circularMarks].sort((a, b) => getSubjectOrder(a.subject_name) - getSubjectOrder(b.subject_name))
+
   const handleCircularScoreChange = (subject_id: string, type: ExamType, value: string) => {
     if (value !== '' && isNaN(Number(value))) return
     if (value !== '') {
@@ -324,7 +339,7 @@ export function SharedMarksEntry({
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-slate-50 block sm:table-row-group">
-                        {circularMarks.map((mark, idx) => (
+                        {sortedCircularMarks.map((mark, idx) => (
                           <tr key={mark.subject_id} className="transition-colors hover:bg-slate-50/50 group flex flex-wrap sm:table-row p-4 sm:p-0">
                             <td className="w-full sm:w-auto px-0 sm:px-6 pb-3 sm:pb-4 pt-0 sm:pt-4 text-sm font-semibold text-slate-700 whitespace-nowrap flex items-center justify-between sm:table-cell border-b border-slate-100 sm:border-0 mb-3 sm:mb-0">
                               <span>{mark.subject_name}</span>

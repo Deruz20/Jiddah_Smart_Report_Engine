@@ -10,6 +10,7 @@ import { TopToolbar } from '../figma-ui/TopToolbar'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { generateAssessmentCSV, generateAnalysisCSV, generateTopStudentsCSV } from '@/utils/csvExport'
 import { computeStandardRankings } from '@/lib/ranking'
+import { isGradableSubject, getSubjectGradeNumber, calculateTheologyAggregate, getDivision } from '@/lib/grading'
 
 type TermData = {
   id: string
@@ -183,8 +184,9 @@ export default function TheologyHubClient({
   const analysisData = useMemo(() => {
     if (!data || !activeLevel) return []
     const classes = theologyClasses.filter(c => c.level === activeLevel)
-    const targetSubjects = ['القرآن', 'اللغة العربية', 'الفقه', 'التربية', 'التوحيد', 'السيرة']
     const levelSubjects = data.subjects.filter(s => s.level === activeLevel)
+    
+    const targetSubjects = ['القرآن', 'اللغة العربية', 'الفقه', 'التربية', 'التوحيد', 'السيرة']
     const orderedSubjects = [...levelSubjects].sort((a, b) => {
       let aIdx = targetSubjects.findIndex(t => a.subject_name_arabic.includes(t))
       let bIdx = targetSubjects.findIndex(t => b.subject_name_arabic.includes(t))

@@ -5,15 +5,15 @@ import { getClassTeacherSignatureKey } from '@/utils/signatures'
 
 export default function P7EOTReport({ reportData }: any) {
   const teacherComment =
-    reportData?.circular?.class_teacher_comment ??
+    reportData?.circular?.class_teacher_comment ||
     getClassTeacherComment(reportData?.circular?.division ?? null)
 
   const headComment =
-    reportData?.circular?.head_teacher_comment ??
+    reportData?.circular?.head_teacher_comment ||
     getHeadTeacherComment(reportData?.circular?.division ?? null)
 
   const conductRemark =
-    reportData?.circular?.conduct_remark ??
+    reportData?.circular?.conduct_remark ||
     getConductRemark(reportData?.circular?.division ?? null)
 
   const hasTheology = reportData?.theology?.subjects && reportData?.theology?.subjects.length > 0;

@@ -260,3 +260,49 @@ export const generateReportBroadsheetCSV = (
 
   downloadCSV(csvString, filename)
 }
+
+export const generateSecularAssessmentCSV = (
+  students: any[],
+  orderedSubjects: any[],
+  filename: string,
+  getGradeDisplayStr: (val: number | null) => string
+) => {
+  const headers = [
+    'No',
+    'Student Name',
+    ...orderedSubjects.flatMap(s => [
+      s.subject_name === 'MATH' ? 'MTC' : s.subject_name === 'SCI' ? 'SCIE' : s.subject_name,
+      'AGG'
+    ]),
+    'TOTAL',
+    'T/L AGG.',
+    'DIV',
+    'PSN'
+  ]
+
+  const rows = students.map((student, idx) => {
+    const scoresAndAggs = orderedSubjects.flatMap(s => {
+      const score = student.subjectScores[s.id] !== undefined ? student.subjectScores[s.id] : '-'
+      const aggNum = student.subjectAggregates[s.id]
+      const aggStr = aggNum != null ? getGradeDisplayStr(aggNum) : '-'
+      return [score, aggStr]
+    })
+    
+    return [
+      idx + 1,
+      student.name,
+      ...scoresAndAggs,
+      student.total > 0 ? student.total : '-',
+      student.totalAggregate > 0 ? student.totalAggregate : '-',
+      student.division,
+      student.total > 0 ? student.position : '-'
+    ]
+  })
+
+  const csvString = [
+    headers.map(escapeCSV).join(','),
+    ...rows.map(row => row.map(escapeCSV).join(','))
+  ].join('\n')
+
+  downloadCSV(csvString, filename)
+}

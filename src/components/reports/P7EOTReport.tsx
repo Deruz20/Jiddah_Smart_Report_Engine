@@ -5,15 +5,15 @@ import { getClassTeacherSignatureKey } from '@/utils/signatures'
 
 export default function P7EOTReport({ reportData }: any) {
   const teacherComment =
-    reportData?.circular?.class_teacher_comment ||
+    reportData?.circular?.class_teacher_comment ??
     getClassTeacherComment(reportData?.circular?.division ?? null)
 
   const headComment =
-    reportData?.circular?.head_teacher_comment ||
+    reportData?.circular?.head_teacher_comment ??
     getHeadTeacherComment(reportData?.circular?.division ?? null)
 
   const conductRemark =
-    reportData?.circular?.conduct_remark ||
+    reportData?.circular?.conduct_remark ??
     getConductRemark(reportData?.circular?.division ?? null)
 
   const hasTheology = reportData?.theology?.subjects && reportData?.theology?.subjects.length > 0;
@@ -26,7 +26,7 @@ export default function P7EOTReport({ reportData }: any) {
   const renderSubjectRow = (subject: any) => (
     <tr key={subject.subject_name}>
       <td style={{ textAlign: 'left', paddingLeft: '8px' }}>
-        {subject.subject_name === 'MATH' ? 'MTC' : subject.subject_name === 'SCI' ? 'SCIE' : subject.subject_name}
+        {subject.subject_name}
       </td>
 
       <td className="data-cell">{subject.bot_score ?? '--'}</td>
@@ -279,7 +279,7 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
   color: white;
   font-size: 14px;
   letter-spacing: 2px;
-  padding: 4px;
+  padding: 6px;
   text-align: center;
   text-transform: uppercase;
   font-weight: 800;
@@ -287,7 +287,7 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
 }
 
 .p7-eot-report td {
-  padding: 4px 2px;
+  padding: 8px 4px;
   font-size: 11px;
   color: var(--data-navy);
   font-weight: 600;
@@ -382,14 +382,14 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
 .p7-eot-report .comment-card {
   border: 2px dashed var(--border-light);
   border-radius: 8px;
-  padding: 8px 12px;
+  padding: 14px 18px;
   background: white;
 }
 
 .p7-eot-report .comment-row {
   display: flex;
   gap: 16px;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 }
 
 .p7-eot-report .comment-row:last-child {
@@ -510,276 +510,260 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
             </div>
           </div>
         </header>
-        
+
         <div className="report-body">
-        <section className="info-box">
-          <div className="info-row">
-            <span className="label">Pupil's Name:</span>
-            <div className="line">{reportData?.student?.name}</div>
-          </div>
-
-          <div className="info-row">
-            <span className="label">Class:</span>
-            <div className="line">{reportData?.student?.class_name}</div>
-            <span className="label">Term:</span>
-            <div className="line">{reportData?.term?.label}</div>
-            <span className="label">Year:</span>
-            <div className="line" style={{ flex: 0.5 }}>
-              {reportData?.term?.academic_year}
+          <section className="info-box">
+            <div className="info-row">
+              <span className="label">Pupil's Name:</span>
+              <div className="line">{reportData?.student?.name}</div>
             </div>
-          </div>
 
-          <div className="info-row">
-            <span className="label">Position:</span>
-            <div className="line">
-              {reportData?.circular?.position ?? '--'}
+            <div className="info-row">
+              <span className="label">Class:</span>
+              <div className="line">{reportData?.student?.class_name}</div>
+              <span className="label">Term:</span>
+              <div className="line">{reportData?.term?.label}</div>
+              <span className="label">Year:</span>
+              <div className="line" style={{ flex: 0.5 }}>
+                {reportData?.term?.academic_year}
+              </div>
             </div>
-            <span className="label">Out Of:</span>
-            <div className="line">
-              {reportData?.circular?.total_students ??
-                reportData?.circular?.total ??
-                '--'}
+
+            <div className="info-row">
+              <span className="label">Position:</span>
+              <div className="line">
+                {reportData?.circular?.position ?? '--'}
+              </div>
+              <span className="label">Out Of:</span>
+              <div className="line">
+                {reportData?.circular?.total_students ??
+                  reportData?.circular?.total ??
+                  '--'}
+              </div>
+              <span className="label">Division:</span>
+              <div className="line" style={{ flex: 0.3 }}>
+                {reportData?.circular?.division ?? '--'}
+              </div>
             </div>
-            <span className="label">Division:</span>
-            <div className="line" style={{ flex: 0.3 }}>
-              {reportData?.circular?.division ?? '--'}
-            </div>
-          </div>
+          </section>
 
-          <div className="info-row">
-            <span className="label">Position:</span>
-            <div className="line">
-              {reportData?.circular?.position ?? '--'}
-            </div>
-            <span className="label">Out Of:</span>
-            <div className="line">
-              {reportData?.circular?.total_students ??
-                reportData?.circular?.total ??
-                '--'}
-            </div>
-            <span className="label">Division:</span>
-            <div className="line" style={{ flex: 0.3 }}>
-              {reportData?.circular?.division ?? '--'}
-            </div>
-          </div>
-        </section>
-
-        <div className="tables-container">
-          <div>
-            <table>
-              <tbody>
-                <tr>
-                  <th colSpan={8} className="table-banner">
-                    COMPARATIVE PERFORMANCE
-                  </th>
-                </tr>
-
-                <tr>
-                  <th rowSpan={2} style={{ width: '22%' }}>SUBJECTS</th>
-                  <th colSpan={2} style={{ width: '15%' }}>BEGINNING OF TERM</th>
-                  <th colSpan={2} style={{ width: '15%' }}>MIDTERM</th>
-                  <th colSpan={2} style={{ width: '15%' }}>END OF TERM</th>
-                  <th rowSpan={2} style={{ width: '22%' }}>TEACHER'S REMARKS</th>
-                  <th rowSpan={2} style={{ width: '11%' }}>INITIALS</th>
-                </tr>
-
-                <tr>
-                  <th style={{ width: '9%' }}>MARK</th>
-                  <th style={{ width: '9%' }}>AGG</th>
-                  <th style={{ width: '9%' }}>MARK</th>
-                  <th style={{ width: '9%' }}>AGG</th>
-                  <th style={{ width: '9%' }}>MARK</th>
-                  <th style={{ width: '9%' }}>AGG</th>
-                </tr>
-
-                {reportData?.circular?.subjects?.map(renderSubjectRow)}
-
-                <tr
-                  style={{
-                    background: 'rgba(226, 216, 184, 0.25)',
-                    fontWeight: 800,
-                  }}
-                >
-                  <td style={{ textAlign: 'left', paddingLeft: '8px' }}>
-                    TOTAL
-                  </td>
-                  <td className="data-cell">{reportData?.circular?.bot_total ?? '--'}</td>
-                  <td className="data-cell">{reportData?.circular?.bot_aggregate ?? '--'}</td>
-                  <td className="data-cell">{reportData?.circular?.mot_total ?? '--'}</td>
-                  <td className="data-cell">{reportData?.circular?.mot_aggregate ?? '--'}</td>
-                  <td className="data-cell">{reportData?.circular?.eot_total ?? '--'}</td>
-                  <td className="data-cell">{reportData?.circular?.aggregate ?? '--'}</td>
-                  <td colSpan={2}></td>
-                </tr>
-              </tbody>
-            </table>
-
-            <table className="grading-key">
-              <tbody>
-                <tr>
-                  <th>Grade</th>
-                  <td>D1</td>
-                  <td>D2</td>
-                  <td>C3</td>
-                  <td>C4</td>
-                  <td>C5</td>
-                  <td>C6</td>
-                  <td>P7</td>
-                  <td>P8</td>
-                  <td>F9</td>
-                </tr>
-                <tr>
-                  <td>
-                    <b>Marks</b>
-                  </td>
-                  <td>85-100</td>
-                  <td>75-84</td>
-                  <td>70-74</td>
-                  <td>60-69</td>
-                  <td>55-59</td>
-                  <td>50-54</td>
-                  <td>40-49</td>
-                  <td>35-39</td>
-                  <td>0-34</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          {/* DUAL CANDIDATE (WAWOGA) THEOLOGY SECTION */}
-          {hasTheology && (
-            <div style={{ marginTop: 'auto' }}>
-              <table className="theology-table">
+          <div className="tables-container">
+            <div>
+              <table>
                 <tbody>
                   <tr>
-                    <th colSpan={6} className="table-banner">
-                      نتائج المواد الشرعية
+                    <th colSpan={8} className="table-banner">
+                      COMPARATIVE PERFORMANCE
                     </th>
                   </tr>
+
                   <tr>
-                    <th rowSpan={2} style={{ width: '22%' }}>المواد</th>
-                    <th colSpan={2} style={{ width: '26%' }}>منتصف الفترة</th>
-                    <th colSpan={2} style={{ width: '26%' }}>نهاية الفترة</th>
-                    <th rowSpan={2} style={{ width: '26%' }}>الملاحظات</th>
+                    <th rowSpan={2} style={{ width: '22%' }}>SUBJECTS</th>
+                    <th colSpan={2} style={{ width: '15%' }}>BEGINNING OF TERM</th>
+                    <th colSpan={2} style={{ width: '15%' }}>MIDTERM</th>
+                    <th colSpan={2} style={{ width: '15%' }}>END OF TERM</th>
+                    <th rowSpan={2} style={{ width: '22%' }}>TEACHER'S REMARKS</th>
+                    <th rowSpan={2} style={{ width: '11%' }}>INITIALS</th>
                   </tr>
+
                   <tr>
-                    <th className="th-subhead" style={{ width: '13%' }}>
-                      الدرجة الكبرى
-                    </th>
-                    <th className="th-subhead" style={{ width: '13%' }}>
-                      الدرجة الصغرى
-                    </th>
-                    <th className="th-subhead" style={{ width: '13%' }}>
-                      الدرجة الكبرى
-                    </th>
-                    <th className="th-subhead" style={{ width: '13%' }}>
-                      الدرجة الصغرى
-                    </th>
+                    <th style={{ width: '9%' }}>MARK</th>
+                    <th style={{ width: '9%' }}>AGG</th>
+                    <th style={{ width: '9%' }}>MARK</th>
+                    <th style={{ width: '9%' }}>AGG</th>
+                    <th style={{ width: '9%' }}>MARK</th>
+                    <th style={{ width: '9%' }}>AGG</th>
                   </tr>
-                  {reportData?.theology?.subjects?.map((subject: any) => {
-                    const arabicName = subject.subject_name_arabic || subject.subject_name;
-                      
-                    return (
-                    <tr key={subject.subject_name_arabic}>
-                      <td>{arabicName}</td>
-                      <td className="data-cell">{toAr(100)}</td>
-                      <td className="data-cell">{toAr(subject.mot_score)}</td>
-                      <td className="data-cell">{toAr(100)}</td>
-                      <td className="data-cell">{toAr(subject.eot_score)}</td>
-                      <td className="remarks-cell" style={{ textAlign: 'right' }}>
-                        {subject.theology_remark ?? ''}
-                      </td>
-                    </tr>
-                  )})}
-                  <tr style={{ background: 'rgba(226, 216, 184, 0.25)', fontWeight: 800 }}>
-                    <td>
-                      <b>المجموع</b>
+
+                  {reportData?.circular?.subjects?.map(renderSubjectRow)}
+
+                  <tr
+                    style={{
+                      background: 'rgba(226, 216, 184, 0.25)',
+                      fontWeight: 800,
+                    }}
+                  >
+                    <td style={{ textAlign: 'left', paddingLeft: '8px' }}>
+                      TOTAL
                     </td>
-                    <td>
-                      {toAr(
-                        reportData?.theology?.subjects?.length
-                          ? reportData.theology.subjects.length * 100
-                          : 400
-                      )}
-                    </td>
-                    <td>{toAr(reportData?.theology?.mot_total)}</td>
-                    <td>
-                      {toAr(
-                        reportData?.theology?.subjects?.length
-                          ? reportData.theology.subjects.length * 100
-                          : 400
-                      )}
-                    </td>
-                    <td>{toAr(reportData?.theology?.eot_total)}</td>
-                    <td></td>
+                    <td className="data-cell">{reportData?.circular?.bot_total ?? '--'}</td>
+                    <td className="data-cell">{reportData?.circular?.bot_aggregate ?? '--'}</td>
+                    <td className="data-cell">{reportData?.circular?.mot_total ?? '--'}</td>
+                    <td className="data-cell">{reportData?.circular?.mot_aggregate ?? '--'}</td>
+                    <td className="data-cell">{reportData?.circular?.eot_total ?? '--'}</td>
+                    <td className="data-cell">{reportData?.circular?.aggregate ?? '--'}</td>
+                    <td colSpan={2}></td>
                   </tr>
                 </tbody>
               </table>
-              <div className="t-comment">
+
+              <table className="grading-key">
+                <tbody>
+                  <tr>
+                    <th>Grade</th>
+                    <td>D1</td>
+                    <td>D2</td>
+                    <td>C3</td>
+                    <td>C4</td>
+                    <td>C5</td>
+                    <td>C6</td>
+                    <td>P7</td>
+                    <td>P8</td>
+                    <td>F9</td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <b>Marks</b>
+                    </td>
+                    <td>85-100</td>
+                    <td>75-84</td>
+                    <td>70-74</td>
+                    <td>60-69</td>
+                    <td>55-59</td>
+                    <td>50-54</td>
+                    <td>40-49</td>
+                    <td>35-39</td>
+                    <td>0-34</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* DUAL CANDIDATE (WAWOGA) THEOLOGY SECTION */}
+            {hasTheology && (
+              <div style={{ marginTop: 'auto' }}>
+                <table className="theology-table">
+                  <tbody>
+                    <tr>
+                      <th colSpan={6} className="table-banner">
+                        نتائج المواد الشرعية
+                      </th>
+                    </tr>
+                    <tr>
+                      <th rowSpan={2} style={{ width: '22%' }}>المواد</th>
+                      <th colSpan={2} style={{ width: '26%' }}>منتصف الفترة</th>
+                      <th colSpan={2} style={{ width: '26%' }}>نهاية الفترة</th>
+                      <th rowSpan={2} style={{ width: '26%' }}>الملاحظات</th>
+                    </tr>
+                    <tr>
+                      <th className="th-subhead" style={{ width: '13%' }}>
+                        الدرجة الكبرى
+                      </th>
+                      <th className="th-subhead" style={{ width: '13%' }}>
+                        الدرجة الصغرى
+                      </th>
+                      <th className="th-subhead" style={{ width: '13%' }}>
+                        الدرجة الكبرى
+                      </th>
+                      <th className="th-subhead" style={{ width: '13%' }}>
+                        الدرجة الصغرى
+                      </th>
+                    </tr>
+                    {reportData?.theology?.subjects?.map((subject: any) => {
+                      const arabicName = subject.subject_name_arabic || subject.subject_name;
+
+                      return (
+                        <tr key={subject.subject_name_arabic}>
+                          <td>{arabicName}</td>
+                          <td className="data-cell">{toAr(100)}</td>
+                          <td className="data-cell">{toAr(subject.mot_score)}</td>
+                          <td className="data-cell">{toAr(100)}</td>
+                          <td className="data-cell">{toAr(subject.eot_score)}</td>
+                          <td className="remarks-cell" style={{ textAlign: 'right' }}>
+                            {subject.theology_remark ?? ''}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                    <tr style={{ background: 'rgba(226, 216, 184, 0.25)', fontWeight: 800 }}>
+                      <td>
+                        <b>المجموع</b>
+                      </td>
+                      <td>
+                        {toAr(
+                          reportData?.theology?.subjects?.length
+                            ? reportData.theology.subjects.length * 100
+                            : 400
+                        )}
+                      </td>
+                      <td>{toAr(reportData?.theology?.mot_total)}</td>
+                      <td>
+                        {toAr(
+                          reportData?.theology?.subjects?.length
+                            ? reportData.theology.subjects.length * 100
+                            : 400
+                        )}
+                      </td>
+                      <td>{toAr(reportData?.theology?.eot_total)}</td>
+                      <td></td>
+                    </tr>
+                  </tbody>
+                </table>
+                <div className="t-comment">
                   <span style={{ fontWeight: 700 }}>ملاحظة مشرف الفصل: </span>
                   <span style={{ fontStyle: 'italic', color: '#334155', fontWeight: 600 }}>
                     {getTheologyComment(
                       reportData?.theology?.eot_total ?? null
                     )}
                   </span>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <footer className="premium-footer">
-          <div className="footer-left">
-            <div className="comment-card">
-              <div className="comment-row">
-                <div className="c-field" style={{ flex: 1 }}>
-                  <span>Conduct:</span>
-                  <div className="w-line">
-                    <span className="line-text">{conductRemark}</span>
-                  </div>
                 </div>
               </div>
+            )}
+          </div>
 
-              <div className="comment-row">
-                <div className="c-field" style={{ flex: 1 }}>
-                  <span>Class Teacher's Comment:</span>
-                  <div className="w-line">
-                    <span className="line-text">{teacherComment}</span>
+          <footer className="premium-footer">
+            <div className="footer-left">
+              <div className="comment-card">
+                <div className="comment-row">
+                  <div className="c-field" style={{ flex: 1 }}>
+                    <span>Conduct:</span>
+                    <div className="w-line">
+                      <span className="line-text">{conductRemark}</span>
+                    </div>
                   </div>
                 </div>
-                <div className="c-field" style={{ width: '200px' }}>
-                  <span>Signature:</span>
-                  <div className="w-line" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end' }}>
-                    {reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.class_name) ?? ''] && (
-                      <img src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} alt="Signature" style={{ maxHeight: '24px' }} />
-                    )}
+
+                <div className="comment-row">
+                  <div className="c-field" style={{ flex: 1 }}>
+                    <span>Class Teacher's Comment:</span>
+                    <div className="w-line">
+                      <span className="line-text">{teacherComment}</span>
+                    </div>
+                  </div>
+                  <div className="c-field" style={{ width: '200px' }}>
+                    <span>Signature:</span>
+                    <div className="w-line" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end' }}>
+                      {reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.class_name) ?? ''] && (
+                        <img src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} alt="Signature" style={{ maxHeight: '24px' }} />
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="comment-row">
+                  <div className="c-field" style={{ flex: 1 }}>
+                    <span>Head Teacher's Comment:</span>
+                    <div className="w-line">
+                      <span className="line-text">{headComment}</span>
+                    </div>
+                  </div>
+                  <div className="c-field" style={{ width: '200px' }}>
+                    <span>Signature:</span>
+                    <div className="w-line" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end' }}>
+                      {reportData?.signatures?.['head-teacher'] && (
+                        <img src={reportData.signatures['head-teacher']} alt="Signature" style={{ maxHeight: '24px' }} />
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div className="comment-row">
-                <div className="c-field" style={{ flex: 1 }}>
-                  <span>Head Teacher's Comment:</span>
-                  <div className="w-line">
-                    <span className="line-text">{headComment}</span>
-                  </div>
-                </div>
-                <div className="c-field" style={{ width: '200px' }}>
-                  <span>Signature:</span>
-                  <div className="w-line" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end' }}>
-                    {reportData?.signatures?.['head-teacher'] && (
-                      <img src={reportData.signatures['head-teacher']} alt="Signature" style={{ maxHeight: '24px' }} />
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="term-dates-bar">
-              <div className="date-item red-date">
-                <span>This Term Ends On:</span>
-                <span>
-                  {reportData?.term?.end_date
-                    ? new Date(reportData.term.end_date).toLocaleDateString(
+              <div className="term-dates-bar">
+                <div className="date-item red-date">
+                  <span>This Term Ends On:</span>
+                  <span>
+                    {reportData?.term?.end_date
+                      ? new Date(reportData.term.end_date).toLocaleDateString(
                         'en-UG',
                         {
                           day: 'numeric',
@@ -787,35 +771,35 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
                           year: 'numeric',
                         }
                       )
-                    : ''}
-                </span>
-              </div>
+                      : ''}
+                  </span>
+                </div>
 
-              <div className="date-item blue-date">
-                <span>Next Term Begins On:</span>
-                <span>
-                  {reportData?.term?.next_term_start
-                    ? new Date(
+                <div className="date-item blue-date">
+                  <span>Next Term Begins On:</span>
+                  <span>
+                    {reportData?.term?.next_term_start
+                      ? new Date(
                         reportData.term.next_term_start
                       ).toLocaleDateString('en-UG', {
                         day: 'numeric',
                         month: 'short',
                         year: 'numeric',
                       })
-                    : ''}
-                </span>
+                      : ''}
+                  </span>
+                </div>
+              </div>
+
+              <div className="validity-strip">
+                THIS REPORT FORM IS NOT VALID WITHOUT THE OFFICIAL SCHOOL STAMP
               </div>
             </div>
 
-            <div className="validity-strip">
-              THIS REPORT FORM IS NOT VALID WITHOUT THE OFFICIAL SCHOOL STAMP
+            <div className="stamp-box">
+              OFFICIAL STAMP
             </div>
-          </div>
-
-          <div className="stamp-box">
-            OFFICIAL STAMP
-          </div>
-        </footer>
+          </footer>
         </div>
       </div>
     </ReportContainer>

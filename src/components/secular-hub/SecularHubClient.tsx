@@ -5,10 +5,38 @@ import { motion, AnimatePresence } from 'motion/react'
 import { Loader2, ScrollText, BookOpen, Award, LayoutDashboard, SearchX } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { generateAssessmentCSV, generateAnalysisCSV, generateTopStudentsCSV } from '@/utils/csvExport'
+import { generateSecularAssessmentCSV, generateAnalysisCSV, generateTopStudentsCSV } from '@/utils/csvExport'
 import { computeStandardRankings } from '@/lib/ranking'
-import { isGradableSubject, getSubjectGradeNumber, calculateAggregate, getDivision } from '@/lib/grading'
+import { isGradableSubject, getSubjectGradeNumber, calculateAggregate, getDivision, getGradeDisplay, isCoreSubject } from '@/lib/grading'
 import { TopToolbar } from '../figma-ui/TopToolbar'
+
+// Theme configuration for systematic color coding (Leaderboard style)
+const THEME = {
+  gold: 'text-amber-700 bg-amber-50 border-amber-200/80 dark:text-amber-400 dark:bg-amber-500/10 dark:border-amber-500/20 shadow-[0_2px_10px_rgba(245,158,11,0.15)]',
+  silver: 'text-indigo-700 bg-indigo-50 border-indigo-200/80 dark:text-indigo-400 dark:bg-indigo-500/10 dark:border-indigo-500/20 shadow-[0_2px_10px_rgba(99,102,241,0.12)]',
+  bronze: 'text-orange-700 bg-orange-50 border-orange-200/80 dark:text-orange-400 dark:bg-orange-500/10 dark:border-orange-500/20 shadow-[0_2px_10px_rgba(249,115,22,0.12)]',
+  neutral: 'text-slate-600 bg-slate-100 border-slate-200/80 dark:text-slate-400 dark:bg-slate-800/50 dark:border-slate-700/50',
+  danger: 'text-rose-700 bg-rose-50 border-rose-200/80 dark:text-rose-400 dark:bg-rose-500/10 dark:border-rose-500/20 shadow-[0_2px_10px_rgba(225,29,72,0.12)]',
+}
+
+const getAchievementTier = (val: string | null | undefined): keyof typeof THEME => {
+  if (!val || val === '-') return 'neutral'
+  if (val.startsWith('D') || val === 'I') return 'gold' // Distinctions / Div I
+  if (val.startsWith('C') || val === 'II') return 'silver' // Credits / Div II
+  if (val.startsWith('P') || val === 'III') return 'bronze' // Passes / Div III
+  if (val === 'IV') return 'neutral' // Div IV
+  return 'danger' // F9, U, X
+}
+
+const getBadgeStyles = (val: string | null | undefined) => THEME[getAchievementTier(val)]
+
+const getPositionStyles = (pos: number | string | null | undefined) => {
+  if (pos === 1 || pos === '1') return 'text-amber-500 dark:text-amber-400 font-extrabold text-[16px]' // Gold
+  if (pos === 2 || pos === '2') return 'text-slate-400 dark:text-slate-300 font-extrabold text-[15px]' // Silver
+  if (pos === 3 || pos === '3') return 'text-orange-600 dark:text-orange-400 font-extrabold text-[15px]' // Bronze
+  return 'text-slate-600 dark:text-slate-400 font-bold text-[14px]'
+}
+
 
 type TermData = {
   id: string
@@ -91,7 +119,7 @@ export default function SecularHubClient({
   const [activeLevel, setActiveLevel] = useState<string>(searchParams.get('level') || 'nursery')
   const [activeTab, setActiveTab] = useState<'assessment' | 'analysis' | 'top_students'>((searchParams.get('tab') as any) || 'assessment')
   const [examPhase, setExamPhase] = useState<'bot' | 'mot' | 'eot'>((searchParams.get('exam_phase') as any) || 'eot')
-  
+
   const [filtersOpen, setFiltersOpen] = useState(true)
   const [isLoading, setIsLoading] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
@@ -118,7 +146,7 @@ export default function SecularHubClient({
         setIsLoading(false)
       }
     }
-    
+
     fetchData()
   }, [activeTermId])
 
@@ -130,70 +158,67 @@ export default function SecularHubClient({
     if (activeLevel) params.set('level', activeLevel)
     if (activeTab) params.set('tab', activeTab)
     if (examPhase) params.set('exam_phase', examPhase)
-    
+
     router.replace(`${pathname}?${params.toString()}`, { scroll: false })
   }, [activeTermId, activeClassId, activeLevel, activeTab, examPhase, pathname, router, searchParams])
 
   // Process data for the Assessment Form
   const assessmentData = useMemo(() => {
     if (!data || !activeClassId) return { students: [], orderedSubjects: [] }
-    
+
     const classEnrollments = data.enrollments.filter(e => e.circular_class_id === activeClassId)
     const classInfo = circularClasses.find(c => c.id === activeClassId)
     if (!classInfo) return { students: [], orderedSubjects: [] }
-    
+
+    const assessmentLevel = classInfo.section?.toLowerCase().replace(/\s+/g, '_') || ''
     const levelSubjects = data.subjects.filter(s => s.section?.toLowerCase() === classInfo.section?.toLowerCase())
-    
-    const subjectOrder = {
-      'lower_primary': ['ENG', 'MATH', 'LIT I', 'LIT II', 'I.R.E'],
-      'upper_primary': ['ENG', 'MATH', 'SCI', 'SST', 'COMP'] // Math is MTC, Sci is SCIE
-    }
-    const correctOrder = subjectOrder[classInfo.section?.toLowerCase() as keyof typeof subjectOrder] || []
 
-    const orderedSubjects = [...levelSubjects].sort((a, b) => {
-      const aName = a.subject_name.toUpperCase()
-      const bName = b.subject_name.toUpperCase()
-      
-      const aAlias = correctOrder.find(alias => aName.includes(alias)) || aName
-      const bAlias = correctOrder.find(alias => bName.includes(alias)) || bName
-
-      const aIndex = correctOrder.indexOf(aAlias)
-      const bIndex = correctOrder.indexOf(bAlias)
-
-      if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex
-      if (aIndex !== -1) return -1
-      if (bIndex !== -1) return 1
-      return aName.localeCompare(bName)
-    })
+    // Sort subjects alphabetically. No slicing or hardcoding.
+    const orderedSubjects = [...levelSubjects].sort((a, b) => a.subject_name.localeCompare(b.subject_name))
 
     const processed = classEnrollments.map(enrollment => {
       const eMarks = data.marks.filter(m => m.enrollment_id === enrollment.id)
-      
+
       let total = 0
       const subjectScores: Record<string, number | null> = {}
-      
+      const subjectAggregates: Record<string, number | null> = {}
+      const scoresForAgg: { subject_name: string; score: number }[] = []
+
       orderedSubjects.forEach(sub => {
         const mark = eMarks.find(m => m.subject_id === sub.id)
         const scoreKey = `${examPhase}_score` as 'bot_score' | 'mot_score' | 'eot_score'
         const score = mark?.[scoreKey] != null ? mark[scoreKey] : null
         subjectScores[sub.id] = score
-        if (score != null && isGradableSubject(sub.subject_name, classInfo?.class_name)) {
-          total += score
+        if (score != null) {
+          const gradeNum = getSubjectGradeNumber(score)
+          subjectAggregates[sub.id] = gradeNum
+          if (isCoreSubject(sub.subject_name, assessmentLevel)) {
+            total += score
+            scoresForAgg.push({ subject_name: sub.subject_name, score: score })
+          }
+        } else {
+          subjectAggregates[sub.id] = null
         }
       })
+
+      const agg = calculateAggregate(scoresForAgg, assessmentLevel)
+      const div = agg !== null ? getDivision(agg) : 'X'
 
       return {
         id: enrollment.id,
         name: enrollment.students?.name || 'Unknown Student',
         total: total > 0 ? total : null,
         subjectScores,
+        subjectAggregates,
+        totalAggregate: agg ?? 0,
+        division: div,
         rank: 0 as number | string,
         position: '-' as number | string
       }
     })
 
     const ranked = computeStandardRankings(processed)
-    
+
     return {
       orderedSubjects,
       students: ranked.map((p) => ({
@@ -217,13 +242,13 @@ export default function SecularHubClient({
       let totalAvgMarks = 0
       let highestAvg = 0
       let lowestAvg = 100
-      
+
       const divCounts: Record<string, number> = { I: 0, II: 0, III: 0, IV: 0, U: 0, X: 0 }
       const gradeCounts: Record<string, number> = { D1: 0, D2: 0, C3: 0, C4: 0, C5: 0, C6: 0, P7: 0, P8: 0, F9: 0 }
 
       classEnrollments.forEach(e => {
         const eMarks = data.marks.filter(m => m.enrollment_id === e.id)
-        
+
         const subjectScoresForAgg = orderedSubjects.map(sub => {
           const mark = eMarks.find(m => m.subject_id === sub.id)
           const scoreKey = `${examPhase}_score` as 'bot_score' | 'mot_score' | 'eot_score'
@@ -234,7 +259,7 @@ export default function SecularHubClient({
         if (subjectScoresForAgg.length > 0) {
           numStudents++
           let totalScore = 0
-          
+
           subjectScoresForAgg.forEach(s => {
             totalScore += s.score
             const gradeNum = getSubjectGradeNumber(s.score)
@@ -248,7 +273,7 @@ export default function SecularHubClient({
             else if (gradeNum === 8) gradeCounts.P8++
             else if (gradeNum === 9) gradeCounts.F9++
           })
-          
+
           const avgScore = totalScore / subjectScoresForAgg.length
           totalAvgMarks += avgScore
           if (avgScore > highestAvg) highestAvg = avgScore
@@ -284,7 +309,7 @@ export default function SecularHubClient({
     if (!data || !activeLevel) return []
     const classes = circularClasses.filter(c => c.section === activeLevel)
     const levelSubjects = data.subjects.filter(s => s.section === activeLevel)
-    
+
     const orderedSubjects = [...levelSubjects].sort((a, b) => a.subject_name.localeCompare(b.subject_name))
 
     return classes.map(cls => {
@@ -324,7 +349,7 @@ export default function SecularHubClient({
           avg: s.total ? parseFloat((s.total / Object.keys(s.subjectScores).length).toFixed(1)) : 0,
           rank: s.rank as number
         }))
-      
+
       return {
         classId: cls.id,
         className: cls.class_name,
@@ -348,12 +373,12 @@ export default function SecularHubClient({
     setIsDownloading(true)
     const dateStr = new Date().toISOString().split('T')[0]
     const filename = `secularhub-${activeTab}-${dateStr}.csv`
-    
+
     setTimeout(() => {
       try {
         if (activeTab === 'assessment') {
           if (!assessmentData.students?.length) return toast.error("No assessment data to download.")
-          generateAssessmentCSV(assessmentData.students as any, assessmentData.orderedSubjects, filename)
+          generateSecularAssessmentCSV(assessmentData.students as any, assessmentData.orderedSubjects, filename, (val) => getGradeDisplay(val))
         } else if (activeTab === 'analysis') {
           if (!analysisData.length) return toast.error("No analysis data to download.")
           generateAnalysisCSV(analysisData, filename)
@@ -372,10 +397,10 @@ export default function SecularHubClient({
 
   return (
     <div className="flex flex-col h-full bg-slate-50 dark:bg-[#0f172a] print:bg-white text-slate-900 dark:text-slate-100 font-sans">
-      
+
       {/* Enterprise Top Navigation using Theology Hub Component */}
       <div className="print:hidden relative z-40 border-b border-slate-200/60 shadow-sm shrink-0">
-        <TopToolbar 
+        <TopToolbar
           onPrint={handlePrint}
           onShare={handleShare}
           onDownload={handleDownload}
@@ -404,7 +429,7 @@ export default function SecularHubClient({
           >
             <div className="px-4 py-3 max-w-7xl mx-auto">
               <div className="flex flex-wrap items-center gap-4">
-                
+
                 {/* Term Selector */}
                 <div className="flex-1 min-w-[200px]">
                   <label className="block text-xs font-semibold text-slate-600 uppercase mb-2">Academic Term</label>
@@ -514,7 +539,7 @@ export default function SecularHubClient({
             <p className="text-slate-500 font-medium">Loading secular data...</p>
           </div>
         ) : (!data || (!activeClassId && activeTab === 'assessment') || (!activeLevel && (activeTab === 'analysis' || activeTab === 'top_students'))) ? (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             className="flex flex-col items-center justify-center h-full text-center p-8 max-w-md mx-auto"
@@ -529,11 +554,11 @@ export default function SecularHubClient({
           </motion.div>
         ) : (
           <div className="w-full max-w-7xl mx-auto print:max-w-[210mm] print:m-0 min-h-[297mm]">
-            
+
             {/* Assessment Tab */}
             {activeTab === 'assessment' && activeClassId && (
               <div className="print:p-10 text-left">
-                
+
                 {/* Print Header */}
                 <div className="text-center mb-8 hidden print:block">
                   <h1 className="text-2xl font-extrabold text-slate-800 print:text-black mb-1 uppercase tracking-wide">Jiddah Islamic Nursery & Primary School</h1>
@@ -564,53 +589,75 @@ export default function SecularHubClient({
                 <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-200/60 dark:border-slate-800/60 overflow-hidden print:bg-transparent print:border-none print:shadow-none print:rounded-none">
                   <div className="overflow-x-auto shadow-inner print:shadow-none print:overflow-visible">
                     <table className="w-full text-left border-collapse print:border-2 print:border-black">
-                      <thead className="bg-slate-50/90 dark:bg-slate-800/90 backdrop-blur-md sticky top-0 z-10 print:bg-slate-100 print:static">
+                      <thead className="bg-gradient-to-r from-slate-50 to-slate-100/50 dark:from-slate-800/90 dark:to-slate-800/50 backdrop-blur-md sticky top-0 z-10 print:bg-slate-100 print:static shadow-sm border-b border-slate-200 dark:border-slate-700/50">
                         <tr>
-                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-semibold text-xs uppercase tracking-wider w-12 text-center print:border print:border-black print:text-black">#</th>
-                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-semibold text-xs uppercase tracking-wider w-64 print:border print:border-black print:text-black">Student Name</th>
-                          {assessmentData.orderedSubjects?.map(s => (
-                            <th key={s.id} className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-semibold text-xs uppercase tracking-wider text-center print:border print:border-black print:text-black">
+                          <th className="px-4 py-3 text-slate-500 dark:text-slate-400 font-bold text-[11px] uppercase tracking-wider w-12 text-center print:border print:border-black print:text-black">#</th>
+                          <th className="px-4 py-3 text-slate-600 dark:text-slate-300 font-bold text-[11px] uppercase tracking-wider w-64 print:border print:border-black print:text-black">Student Name</th>
+                          {assessmentData.orderedSubjects?.flatMap(s => [
+                            <th key={`${s.id}-score`} className="px-2 py-3 text-slate-600 dark:text-slate-300 font-bold text-[11px] uppercase tracking-wider text-center print:border print:border-black print:text-black">
                               {s.subject_name === 'MATH' ? 'MTC' : s.subject_name === 'SCI' ? 'SCIE' : s.subject_name}
+                            </th>,
+                            <th key={`${s.id}-agg`} className="px-2 py-3 text-slate-400 dark:text-slate-500 font-bold text-[10px] uppercase tracking-wider text-center print:border print:border-black print:text-black">
+                              AGG
                             </th>
-                          ))}
-                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-semibold text-xs uppercase tracking-wider text-center w-24 print:border print:border-black print:text-black">Total</th>
-                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-semibold text-xs uppercase tracking-wider text-center w-24 print:border print:border-black print:text-black">Rank</th>
-                          <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-semibold text-xs uppercase tracking-wider text-center w-32 print:border print:border-black print:text-black">Remarks</th>
+                          ])}
+                          <th className="px-4 py-3 text-slate-600 dark:text-slate-300 font-bold text-[11px] uppercase tracking-wider text-center w-20 print:border print:border-black print:text-black">TOTAL</th>
+                          <th className="px-4 py-3 text-slate-600 dark:text-slate-300 font-bold text-[11px] uppercase tracking-wider text-center w-20 print:border print:border-black print:text-black">T/L AGG.</th>
+                          <th className="px-4 py-3 text-slate-600 dark:text-slate-300 font-bold text-[11px] uppercase tracking-wider text-center w-20 print:border print:border-black print:text-black">DIV</th>
+                          <th className="px-4 py-3 text-slate-600 dark:text-slate-300 font-bold text-[11px] uppercase tracking-wider text-center w-20 print:border print:border-black print:text-black">PSN</th>
                         </tr>
                       </thead>
-                      <motion.tbody 
-                        initial="hidden" 
-                        animate="visible" 
+                      <motion.tbody
+                        initial="hidden"
+                        animate="visible"
                         variants={tableVariants}
                         className="print:!opacity-100 print:!transform-none"
                       >
                         {assessmentData.students?.map((student, idx) => (
-                          <motion.tr 
+                          <motion.tr
                             variants={rowVariants}
-                            key={student.id} 
+                            key={student.id}
                             className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors duration-200 border-b border-slate-100 dark:border-slate-800 last:border-0 print:border print:border-black print:hover:bg-transparent print:!opacity-100 print:!transform-none"
                           >
                             <td className="px-4 py-3 text-center text-slate-400 font-medium print:border print:border-black print:text-black">{idx + 1}</td>
                             <td className="px-4 py-3 font-semibold text-slate-800 dark:text-slate-200 whitespace-nowrap print:border print:border-black print:text-black">{student.name}</td>
-                            
-                            {assessmentData.orderedSubjects?.map(s => (
-                              <td key={s.id} className="px-4 py-3 text-center font-medium text-slate-700 dark:text-slate-300 print:border print:border-black print:text-black">
-                                {student.subjectScores[s.id] !== undefined ? student.subjectScores[s.id] : '-'}
-                              </td>
-                            ))}
-                            
-                            <td className="px-4 py-3 text-center font-bold text-slate-800 dark:text-white print:border print:border-black print:text-black">
-                              {student.total > 0 ? student.total : '-'}
+
+                            {assessmentData.orderedSubjects?.flatMap(s => {
+                              const gradeStr = student.subjectAggregates[s.id] != null ? getGradeDisplay(student.subjectAggregates[s.id]!) : '-'
+                              return [
+                                <td key={`${s.id}-score`} className="px-2 py-3 text-center font-bold text-[13px] text-slate-700 dark:text-slate-300 print:border print:border-black print:text-black">
+                                  {student.subjectScores[s.id] !== undefined ? student.subjectScores[s.id] : '-'}
+                                </td>,
+                                <td key={`${s.id}-agg`} className="px-2 py-3 text-center print:border print:border-black">
+                                  <span className={`inline-flex items-center justify-center min-w-[32px] h-[26px] px-2 rounded font-bold text-[11px] border ${getBadgeStyles(gradeStr)} print:border-none print:shadow-none print:bg-transparent print:text-black`}>
+                                    {gradeStr}
+                                  </span>
+                                </td>
+                              ]
+                            })}
+
+                            <td className="px-4 py-3 text-center print:border print:border-black">
+                               <div className="inline-flex items-center justify-center h-8 px-3 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 font-extrabold text-[13px] shadow-sm border border-slate-200/50 dark:border-slate-700/50 print:border-none print:bg-transparent print:text-black print:shadow-none">
+                                 {student.total > 0 ? student.total : '-'}
+                               </div>
                             </td>
-                            
-                            <td className="px-4 py-3 text-center font-bold text-blue-600 dark:text-blue-400 print:border print:border-black print:text-black">
-                              {student.total > 0 ? <RankBadge rank={student.position} /> : '-'}
+
+                            <td className="px-4 py-3 text-center print:border print:border-black">
+                               <div className={`inline-flex items-center justify-center h-8 w-10 rounded-lg font-extrabold text-[13px] border ${getBadgeStyles(student.division)} print:border-none print:bg-transparent print:text-black print:shadow-none`}>
+                                 {student.totalAggregate > 0 ? student.totalAggregate : '-'}
+                               </div>
                             </td>
-                            
-                            <td className="px-4 py-3 text-center font-medium print:border print:border-black print:text-black">
-                              {student.total > 0 ? (
-                                <RemarkBadge score={student.total / (assessmentData.orderedSubjects.length || 1)} />
-                              ) : '-'}
+
+                            <td className="px-4 py-3 text-center print:border print:border-black">
+                               <div className={`inline-flex items-center justify-center h-8 w-10 rounded-lg font-extrabold text-[14px] border ${getBadgeStyles(student.division)} print:border-none print:bg-transparent print:text-black print:shadow-none`}>
+                                 {student.division}
+                               </div>
+                            </td>
+
+                            <td className="px-4 py-3 text-center print:border print:border-black">
+                              <span className={`print:text-black ${getPositionStyles(student.position)}`}>
+                                {student.total > 0 ? student.position : '-'}
+                              </span>
                             </td>
                           </motion.tr>
                         ))}
@@ -620,7 +667,11 @@ export default function SecularHubClient({
                           <tr key={`empty-${i}`} className="border-b border-slate-100 dark:border-slate-800/50 last:border-0 print:border print:border-black print:h-10">
                             <td className="px-4 py-3 print:border print:border-black">&nbsp;</td>
                             <td className="px-4 py-3 print:border print:border-black">&nbsp;</td>
-                            {assessmentData.orderedSubjects?.map(s => <td key={`empty-${s.id}`} className="px-4 py-3 print:border print:border-black">&nbsp;</td>)}
+                            {assessmentData.orderedSubjects?.flatMap(s => [
+                              <td key={`empty-${s.id}-score`} className="px-4 py-3 print:border print:border-black">&nbsp;</td>,
+                              <td key={`empty-${s.id}-agg`} className="px-4 py-3 print:border print:border-black">&nbsp;</td>
+                            ])}
+                            <td className="px-4 py-3 print:border print:border-black">&nbsp;</td>
                             <td className="px-4 py-3 print:border print:border-black">&nbsp;</td>
                             <td className="px-4 py-3 print:border print:border-black">&nbsp;</td>
                             <td className="px-4 py-3 print:border print:border-black">&nbsp;</td>
@@ -644,11 +695,11 @@ export default function SecularHubClient({
                 </div>
               </div>
             )}
-            
+
             {/* Analysis Tab */}
             {activeTab === 'analysis' && activeLevel && (
               <div className="print:p-10 text-left">
-                
+
                 {/* Print Header */}
                 <div className="text-center mb-8 hidden print:block">
                   <h1 className="text-2xl font-extrabold text-slate-800 print:text-black mb-1 uppercase tracking-wide">Jiddah Islamic Nursery & Primary School</h1>
@@ -785,7 +836,7 @@ export default function SecularHubClient({
             {/* Top Students Tab */}
             {activeTab === 'top_students' && activeLevel && (
               <div className="print:p-10 text-left">
-                
+
                 {/* Print Header */}
                 <div className="text-center mb-10 hidden print:block">
                   <h1 className="text-2xl font-extrabold text-slate-800 print:text-black mb-1 uppercase tracking-wide">Jiddah Islamic Nursery & Primary School</h1>
@@ -795,11 +846,11 @@ export default function SecularHubClient({
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                   {topStudentsData.map((cls) => {
                     return (
-                      <motion.div 
+                      <motion.div
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ duration: 0.3 }}
-                        key={cls.classId} 
+                        key={cls.classId}
                         className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-200/60 dark:border-slate-800/60 overflow-hidden print:bg-transparent print:border-none print:shadow-none print:rounded-none"
                       >
                         <div className="bg-slate-50/90 backdrop-blur-md p-4 border-b border-slate-200/60 text-center print:border print:border-black print:bg-slate-100 flex items-center justify-between">

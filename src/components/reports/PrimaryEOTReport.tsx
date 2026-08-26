@@ -43,7 +43,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
     reportData?.circular?.head_teacher_comment ||
     getHeadTeacherComment(reportData?.circular?.division ?? null)
   const conductRemark =
-    reportData?.circular?.conduct_remark ||
+    reportData?.circular?.conduct_remark ??
     getConductRemark(reportData?.circular?.division ?? null)
 
   const remarkColor = (remark: string | undefined): string => {
@@ -77,7 +77,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
 
   const renderSubjectRow = (subject: any, i: number) => (
     <tr key={subject.subject_name} className={i % 2 === 0 ? "row-even" : "row-odd"}>
-      <td className="subj-name">{subject.subject_name === 'MATH' ? 'MTC' : subject.subject_name === 'SCI' ? 'SCIE' : subject.subject_name}</td>
+      <td className="subj-name">{subject.subject_name}</td>
       <td>{subject.bot_score ?? "--"}</td>
       <td className="grade-cell">{subject.bot_grade_display ?? "--"}</td>
       <td>{subject.mot_score ?? "--"}</td>
@@ -149,9 +149,9 @@ export default function PrimaryEOTReport({ reportData }: any) {
         /* ── PAGE CONTAINER ── */
         .landscape-page {
           width: 297mm;
-          min-height: 200mm;
+          min-height: 205mm;
           background: white;
-          padding: 2mm;
+          padding: 4mm;
           margin: 0 auto;
           box-shadow: 0 4px 12px rgba(0,0,0,0.1);
           border: 1px solid #e2e8f0;
@@ -176,7 +176,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
         
         .inner-border {
           border: 1.5px solid #0f4d25;
-          padding: 4px 12px;
+          padding: 6px 16px;
           flex: 1; 
           position: relative;
           display: flex;
@@ -364,7 +364,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
 
         .table-container th, .table-container td {
           border: 1px solid #cbd5e1;
-          padding: 2px 4px; /* Internal cell padding */
+          padding: 3px 4px; /* Internal cell padding */
           text-align: center;
           font-size: 10px;
           vertical-align: middle;
@@ -754,7 +754,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
                         <span className="c-label">SIGNATURE:</span>
                         <div className="c-sig" style={{ display: 'flex', justifyContent: 'center' }}>
                           {reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.class_name) ?? ''] ? (
-                            <img src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} style={{maxHeight: '24px'}} alt="" />
+                            <img src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} style={{ maxHeight: '24px' }} alt="" />
                           ) : null}
                         </div>
                       </div>
@@ -763,13 +763,13 @@ export default function PrimaryEOTReport({ reportData }: any) {
                         <div className="c-value" style={{ textTransform: 'uppercase' }}>{headComment}</div>
                         <span className="c-label">SIGNATURE:</span>
                         <div className="c-sig" style={{ display: 'flex', justifyContent: 'center' }}>
-                          {reportData?.signatures?.['head-teacher'] ? <img src={reportData.signatures['head-teacher']} style={{maxHeight: '24px'}} alt="" /> : null}
+                          {reportData?.signatures?.['head-teacher'] ? <img src={reportData.signatures['head-teacher']} style={{ maxHeight: '24px' }} alt="" /> : null}
                         </div>
                       </div>
                     </div>
 
                     <div className="stamp-wrapper" style={{ flexShrink: 0, paddingLeft: '10px', minWidth: '100px', minHeight: '60px', border: '2px dashed #cbd5e1', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <span style={{ fontSize: '9px', color: '#94a3b8', fontWeight: 600, textAlign: 'center' }}>OFFICIAL<br/>STAMP</span>
+                      <span style={{ fontSize: '9px', color: '#94a3b8', fontWeight: 600, textAlign: 'center' }}>OFFICIAL<br />STAMP</span>
                     </div>
                   </div>
 

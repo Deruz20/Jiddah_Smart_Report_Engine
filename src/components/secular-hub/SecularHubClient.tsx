@@ -589,7 +589,7 @@ export default function SecularHubClient({
             </p>
           </motion.div>
         ) : (
-          <div className="w-full max-w-7xl mx-auto print:max-w-[210mm] print:m-0 min-h-[297mm] report-container" data-report-orientation="portrait">
+          <div className="w-full max-w-7xl mx-auto print:max-w-[210mm] print:m-0 min-h-[297mm] print:min-h-0 report-container" data-report-orientation="portrait">
 
             {/* Assessment Tab */}
             {activeTab === 'assessment' && (isBatchPrinting || activeClassId) && (
@@ -725,14 +725,14 @@ export default function SecularHubClient({
                 </div>
 
                 {/* Footer Signatures */}
-                <div className="flex justify-between items-center mt-12 px-8 text-slate-700 print:text-black hidden print:flex">
+                <div className="flex justify-between items-center mt-16 px-8 text-slate-700 print:text-black hidden print:flex">
                   <div className="text-center">
-                    <p className="font-bold mb-6 text-sm uppercase tracking-wider">Class Teacher's Signature</p>
-                    <div className="border-b-2 border-dotted border-slate-400 print:border-black w-48"></div>
+                    <p className="font-bold mb-8 text-sm uppercase tracking-wider">Class Teacher's Signature</p>
+                    <div className="border-b-[1.5px] border-slate-800 print:border-black w-56 mx-auto">&nbsp;</div>
                   </div>
                   <div className="text-center">
-                    <p className="font-bold mb-6 text-sm uppercase tracking-wider">Head of Academics Signature</p>
-                    <div className="border-b-2 border-dotted border-slate-400 print:border-black w-48"></div>
+                    <p className="font-bold mb-8 text-sm uppercase tracking-wider">Head of Academics Signature</p>
+                    <div className="border-b-[1.5px] border-slate-800 print:border-black w-56 mx-auto">&nbsp;</div>
                   </div>
                 </div>
               </div>

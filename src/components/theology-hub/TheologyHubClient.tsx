@@ -527,7 +527,7 @@ export default function TheologyHubClient({
         ) : !data || (!activeClassId && activeTab === 'assessment') || (!activeLevel && (activeTab === 'analysis' || activeTab === 'top_students')) ? (
           <TheologyHubEmptyState />
         ) : (
-          <div className="w-full max-w-7xl mx-auto print:max-w-[210mm] print:m-0 min-h-[297mm]">
+          <div className="w-full max-w-7xl mx-auto print:max-w-[210mm] print:m-0 min-h-[297mm] print:min-h-0">
             
             {/* Assessment Tab */}
             {activeTab === 'assessment' && activeClassId && (
@@ -637,14 +637,14 @@ export default function TheologyHubClient({
                 </div>
 
                 {/* Footer Signatures */}
-                <div className="flex justify-between items-center mt-12 px-8 text-slate-700 print:text-black">
+                <div className="flex justify-between items-center mt-16 px-8 text-slate-700 print:text-black">
                   <div className="text-center">
-                    <p className="font-bold mb-6 text-sm">توقيع مربي الفصل:</p>
-                    <div className="border-b-2 border-dotted border-slate-400 print:border-black w-48"></div>
+                    <p className="font-bold mb-8 text-sm">توقيع مربي الفصل:</p>
+                    <div className="border-b-[1.5px] border-slate-800 print:border-black w-56 mx-auto">&nbsp;</div>
                   </div>
                   <div className="text-center">
-                    <p className="font-bold mb-6 text-sm">توقيع مشرف التعليم:</p>
-                    <div className="border-b-2 border-dotted border-slate-400 print:border-black w-48"></div>
+                    <p className="font-bold mb-8 text-sm">توقيع مشرف التعليم:</p>
+                    <div className="border-b-[1.5px] border-slate-800 print:border-black w-56 mx-auto">&nbsp;</div>
                   </div>
                 </div>
               </div>

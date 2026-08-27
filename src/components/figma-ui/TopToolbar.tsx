@@ -142,6 +142,7 @@ export function TopToolbar({
               <DropdownMenu.Content
                 align="end"
                 sideOffset={6}
+                className="print:hidden"
                 style={{
                   background: 'white',
                   borderRadius: 8,
@@ -191,6 +192,7 @@ export function TopToolbar({
               <DropdownMenu.Content
                 align="end"
                 sideOffset={6}
+                className="print:hidden"
                 style={{
                   background: 'white',
                   borderRadius: 8,

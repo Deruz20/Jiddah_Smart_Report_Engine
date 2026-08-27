@@ -13,6 +13,8 @@ interface TopToolbarProps {
   onDownload?: () => void;
   downloadOptions?: { label: string, onClick: () => void, icon?: React.ReactNode }[];
   onPrint?: () => void;
+  printOptions?: { label: string, onClick: () => void, icon?: React.ReactNode }[];
+  onBatchPrint?: () => void;
   onShare?: () => void;
   reportCount?: number;
   layout?: 'single' | 'grid';
@@ -29,6 +31,8 @@ export function TopToolbar({
   onDownload,
   downloadOptions,
   onPrint,
+  printOptions,
+  onBatchPrint,
   onShare,
   reportCount = 0,
   layout = 'single',
@@ -171,14 +175,70 @@ export function TopToolbar({
         ) : null}
 
         {/* ── Print ─────────────────────── */}
-        {onPrint && (
-          <IconBtn
-            icon={<Printer size={16} />}
-            tooltip="Print"
-            onClick={onPrint}
-            disabled={reportCount === 0 && !title}
-          />
-        )}
+        {printOptions && printOptions.length > 0 ? (
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger asChild>
+              <div className="flex-shrink-0">
+                <IconBtn
+                  icon={<Printer size={16} />}
+                  tooltip="Print Options"
+                  onClick={() => {}}
+                  disabled={reportCount === 0 && !title}
+                />
+              </div>
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Portal>
+              <DropdownMenu.Content
+                align="end"
+                sideOffset={6}
+                style={{
+                  background: 'white',
+                  borderRadius: 8,
+                  padding: 4,
+                  minWidth: 200,
+                  boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
+                  border: '1px solid rgba(0,0,0,0.08)',
+                  zIndex: 300,
+                }}
+              >
+                {printOptions.map((opt, i) => (
+                  <DropdownMenu.Item
+                    key={i}
+                    onClick={opt.onClick}
+                    className="flex items-center gap-3 px-3 py-2 text-sm text-slate-700 font-medium cursor-pointer rounded-md outline-none focus:bg-emerald-50 focus:text-emerald-700 transition-colors"
+                  >
+                    {opt.icon}
+                    {opt.label}
+                  </DropdownMenu.Item>
+                ))}
+              </DropdownMenu.Content>
+            </DropdownMenu.Portal>
+          </DropdownMenu.Root>
+        ) : onPrint || onBatchPrint ? (
+          <div className="flex gap-1.5 md:gap-2">
+            {onPrint && (
+              <IconBtn
+                icon={<Printer size={16} />}
+                tooltip="Print Current"
+                onClick={onPrint}
+                disabled={reportCount === 0 && !title}
+              />
+            )}
+            {onBatchPrint && (
+              <IconBtn
+                icon={
+                  <div className="relative flex items-center justify-center">
+                    <Printer size={16} />
+                    <div className="absolute -bottom-1 -right-1 bg-amber-500 rounded-full text-white" style={{ fontSize: '9px', padding: '1px 3px', fontWeight: 'bold', lineHeight: 1 }}>All</div>
+                  </div>
+                }
+                tooltip="Batch Print All Classes"
+                onClick={onBatchPrint}
+                disabled={reportCount === 0 && !title}
+              />
+            )}
+          </div>
+        ) : null}
 
         {/* ── Share ─────────────────────── */}
         {onShare && (

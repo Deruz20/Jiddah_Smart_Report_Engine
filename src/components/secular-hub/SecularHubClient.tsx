@@ -1,8 +1,8 @@
 'use client'
 
-import React, { useState, useEffect, useMemo, memo } from 'react'
+import React, { useState, useEffect, useMemo, memo, useCallback } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
-import { Loader2, ScrollText, BookOpen, Award, LayoutDashboard, SearchX } from 'lucide-react'
+import { Loader2, ScrollText, BookOpen, Award, LayoutDashboard, SearchX, Printer, FileSpreadsheet, Download, Layers } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { generateSecularAssessmentCSV, generateAnalysisCSV, generateTopStudentsCSV } from '@/utils/csvExport'
@@ -123,6 +123,7 @@ export default function SecularHubClient({
   const [filtersOpen, setFiltersOpen] = useState(true)
   const [isLoading, setIsLoading] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
+  const [isBatchPrinting, setIsBatchPrinting] = useState(false)
   const [data, setData] = useState<{
     enrollments: any[]
     marks: any[]
@@ -163,11 +164,11 @@ export default function SecularHubClient({
   }, [activeTermId, activeClassId, activeLevel, activeTab, examPhase, pathname, router, searchParams])
 
   // Process data for the Assessment Form
-  const assessmentData = useMemo(() => {
-    if (!data || !activeClassId) return { students: [], orderedSubjects: [] }
+  const computeAssessmentDataForClass = useCallback((classId: string) => {
+    if (!data || !classId) return { students: [], orderedSubjects: [] }
 
-    const classEnrollments = data.enrollments.filter(e => e.circular_class_id === activeClassId)
-    const classInfo = circularClasses.find(c => c.id === activeClassId)
+    const classEnrollments = data.enrollments.filter(e => e.circular_class_id === classId)
+    const classInfo = circularClasses.find(c => c.id === classId)
     if (!classInfo) return { students: [], orderedSubjects: [] }
 
     const assessmentLevel = classInfo.section?.toLowerCase().replace(/\s+/g, '_') || ''
@@ -227,7 +228,9 @@ export default function SecularHubClient({
         position: p.rank
       }))
     }
-  }, [data, activeClassId, circularClasses, examPhase])
+  }, [data, circularClasses, examPhase])
+
+  const assessmentData = useMemo(() => computeAssessmentDataForClass(activeClassId), [computeAssessmentDataForClass, activeClassId])
 
   // Process data for the Analysis Form
   const analysisData = useMemo(() => {
@@ -360,6 +363,16 @@ export default function SecularHubClient({
 
   const handlePrint = () => window.print()
 
+  const handleBatchPrint = () => {
+    setIsBatchPrinting(true);
+    // Allow React time to render all the off-screen tables before opening the print dialog
+    setTimeout(() => {
+      window.print();
+      // Remove the off-screen tables after printing
+      setIsBatchPrinting(false);
+    }, 1000);
+  }
+
   const handleShare = async () => {
     try {
       await navigator.clipboard.writeText(window.location.href)
@@ -381,7 +394,7 @@ export default function SecularHubClient({
           generateSecularAssessmentCSV(assessmentData.students as any, assessmentData.orderedSubjects, filename, (val) => getGradeDisplay(val))
         } else if (activeTab === 'analysis') {
           if (!analysisData.length) return toast.error("No analysis data to download.")
-          generateAnalysisCSV(analysisData, filename)
+          generateAnalysisCSV(analysisData as any, filename)
         } else if (activeTab === 'top_students') {
           if (!topStudentsData.length) return toast.error("No top students data to download.")
           generateTopStudentsCSV(topStudentsData.flatMap(g => g.students), filename)
@@ -401,9 +414,32 @@ export default function SecularHubClient({
       {/* Enterprise Top Navigation using Theology Hub Component */}
       <div className="print:hidden relative z-40 border-b border-slate-200/60 shadow-sm shrink-0">
         <TopToolbar
-          onPrint={handlePrint}
+          printOptions={[
+            { label: 'Print Current View', onClick: handlePrint, icon: <Printer size={14} /> },
+            { label: 'Batch Print All Classes', onClick: handleBatchPrint, icon: <Layers size={14} /> }
+          ]}
+          downloadOptions={[
+            { label: 'Download Current View (CSV)', onClick: handleDownload, icon: <Download size={14} /> },
+            { label: 'Download Assessment Sheet (CSV)', onClick: () => {
+                const dateStr = new Date().toISOString().split('T')[0]
+                if (!assessmentData.students?.length) return toast.error("No assessment data to download.")
+                generateSecularAssessmentCSV(assessmentData.students as any, assessmentData.orderedSubjects, `secularhub-assessment-${dateStr}.csv`, (val) => getGradeDisplay(val))
+                toast.success("Assessment CSV generated successfully!")
+            }, icon: <FileSpreadsheet size={14} /> },
+            { label: 'Download Subject Analysis (CSV)', onClick: () => {
+                const dateStr = new Date().toISOString().split('T')[0]
+                if (!analysisData.length) return toast.error("No analysis data to download.")
+                generateAnalysisCSV(analysisData as any, `secularhub-analysis-${dateStr}.csv`)
+                toast.success("Analysis CSV generated successfully!")
+            }, icon: <FileSpreadsheet size={14} /> },
+            { label: 'Download Top Students (CSV)', onClick: () => {
+                const dateStr = new Date().toISOString().split('T')[0]
+                if (!topStudentsData.length) return toast.error("No top students data to download.")
+                generateTopStudentsCSV(topStudentsData.flatMap(g => g.students), `secularhub-top_students-${dateStr}.csv`)
+                toast.success("Top Students CSV generated successfully!")
+            }, icon: <FileSpreadsheet size={14} /> },
+          ]}
           onShare={handleShare}
-          onDownload={handleDownload}
           isGenerating={isDownloading}
           searchOpen={filtersOpen}
           onSearchToggle={() => setFiltersOpen(!filtersOpen)}
@@ -553,11 +589,17 @@ export default function SecularHubClient({
             </p>
           </motion.div>
         ) : (
-          <div className="w-full max-w-7xl mx-auto print:max-w-[210mm] print:m-0 min-h-[297mm]">
+          <div className="w-full max-w-7xl mx-auto print:max-w-[210mm] print:m-0 min-h-[297mm] report-container" data-report-orientation="portrait">
 
             {/* Assessment Tab */}
-            {activeTab === 'assessment' && activeClassId && (
-              <div className="print:p-10 text-left">
+            {activeTab === 'assessment' && (isBatchPrinting || activeClassId) && (
+              <>
+                {(isBatchPrinting ? circularClasses : circularClasses.filter(c => c.id === activeClassId)).map((cls, classIdx, arr) => {
+                  const currentAssessmentData = isBatchPrinting ? computeAssessmentDataForClass(cls.id) : assessmentData;
+                  if (!currentAssessmentData || !currentAssessmentData.orderedSubjects) return null;
+                  
+                  return (
+                    <div key={cls.id} className={isBatchPrinting ? 'hidden print:block print:p-10 text-left' : 'print:p-10 text-left'} style={{ pageBreakAfter: isBatchPrinting && classIdx < arr.length - 1 ? 'always' : 'auto' }}>
 
                 {/* Print Header */}
                 <div className="text-center mb-8 hidden print:block">
@@ -573,7 +615,7 @@ export default function SecularHubClient({
                   </div>
                   <div>
                     <span className="uppercase text-[11px] tracking-wider text-slate-500 mr-2">Class:</span>
-                    <span className="text-blue-800 print:text-black font-bold">{circularClasses.find(c => c.id === activeClassId)?.class_name}</span>
+                    <span className="text-blue-800 print:text-black font-bold">{cls.class_name}</span>
                   </div>
                   <div>
                     <span className="uppercase text-[11px] tracking-wider text-slate-500 mr-2">Phase:</span>
@@ -586,25 +628,25 @@ export default function SecularHubClient({
                 </div>
 
                 {/* Glassmorphic Table Container */}
-                <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-200/60 dark:border-slate-800/60 overflow-hidden print:bg-transparent print:border-none print:shadow-none print:rounded-none">
+                <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-3xl rounded-[2rem] shadow-[0_8px_40px_-12px_rgba(0,0,0,0.08)] border border-slate-200/60 dark:border-slate-800/60 overflow-hidden print:bg-transparent print:border-none print:shadow-none print:rounded-none">
                   <div className="overflow-x-auto shadow-inner print:shadow-none print:overflow-visible">
-                    <table className="w-full text-left border-collapse print:border-2 print:border-black">
-                      <thead className="bg-gradient-to-r from-slate-50 to-slate-100/50 dark:from-slate-800/90 dark:to-slate-800/50 backdrop-blur-md sticky top-0 z-10 print:bg-slate-100 print:static shadow-sm border-b border-slate-200 dark:border-slate-700/50">
+                    <table className="w-full text-left border-collapse">
+                      <thead className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-md sticky top-0 z-10 print:bg-transparent print:static border-b-2 border-slate-900/5 dark:border-white/5 print:border-b-[1.5px] print:border-black">
                         <tr>
-                          <th className="px-4 py-3 text-slate-500 dark:text-slate-400 font-bold text-[11px] uppercase tracking-wider w-12 text-center print:border print:border-black print:text-black">#</th>
-                          <th className="px-4 py-3 text-slate-600 dark:text-slate-300 font-bold text-[11px] uppercase tracking-wider w-64 print:border print:border-black print:text-black">Student Name</th>
-                          {assessmentData.orderedSubjects?.flatMap(s => [
-                            <th key={`${s.id}-score`} className="px-2 py-3 text-slate-600 dark:text-slate-300 font-bold text-[11px] uppercase tracking-wider text-center print:border print:border-black print:text-black">
+                          <th className="px-6 py-5 text-slate-500 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-[0.2em] w-12 text-center print:w-auto print:text-slate-800 print:px-1 print:py-1 print:text-[8px] print:tracking-normal">#</th>
+                          <th className="px-6 py-5 text-slate-500 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-[0.2em] w-64 print:w-auto print:text-slate-800 print:px-1 print:py-1 print:text-[8px] print:tracking-normal">Student Name</th>
+                          {currentAssessmentData.orderedSubjects?.flatMap(s => [
+                            <th key={`${s.id}-score`} className="px-2 py-5 text-slate-500 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-[0.2em] text-center print:text-slate-800 print:px-1 print:py-1 print:text-[8px] print:tracking-normal">
                               {s.subject_name === 'MATH' ? 'MTC' : s.subject_name === 'SCI' ? 'SCIE' : s.subject_name}
                             </th>,
-                            <th key={`${s.id}-agg`} className="px-2 py-3 text-slate-400 dark:text-slate-500 font-bold text-[10px] uppercase tracking-wider text-center print:border print:border-black print:text-black">
+                            <th key={`${s.id}-agg`} className="px-2 py-5 text-slate-400 dark:text-slate-500 font-extrabold text-[10px] uppercase tracking-[0.2em] text-center print:text-slate-800 print:px-1 print:py-1 print:text-[8px] print:tracking-normal">
                               AGG
                             </th>
                           ])}
-                          <th className="px-4 py-3 text-slate-600 dark:text-slate-300 font-bold text-[11px] uppercase tracking-wider text-center w-20 print:border print:border-black print:text-black">TOTAL</th>
-                          <th className="px-4 py-3 text-slate-600 dark:text-slate-300 font-bold text-[11px] uppercase tracking-wider text-center w-20 print:border print:border-black print:text-black">T/L AGG.</th>
-                          <th className="px-4 py-3 text-slate-600 dark:text-slate-300 font-bold text-[11px] uppercase tracking-wider text-center w-20 print:border print:border-black print:text-black">DIV</th>
-                          <th className="px-4 py-3 text-slate-600 dark:text-slate-300 font-bold text-[11px] uppercase tracking-wider text-center w-20 print:border print:border-black print:text-black">PSN</th>
+                          <th className="px-6 py-5 text-slate-500 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-[0.2em] text-center w-auto print:text-slate-800 print:px-1 print:py-1 print:text-[8px] print:tracking-normal">TOTAL</th>
+                          <th className="px-6 py-5 text-slate-500 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-[0.2em] text-center w-auto print:text-slate-800 print:px-1 print:py-1 print:text-[8px] print:tracking-normal">T/L AGG.</th>
+                          <th className="px-6 py-5 text-slate-500 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-[0.2em] text-center w-auto print:text-slate-800 print:px-1 print:py-1 print:text-[8px] print:tracking-normal">DIV</th>
+                          <th className="px-6 py-5 text-slate-500 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-[0.2em] text-center w-auto print:text-slate-800 print:px-1 print:py-1 print:text-[8px] print:tracking-normal">PSN</th>
                         </tr>
                       </thead>
                       <motion.tbody
@@ -613,48 +655,48 @@ export default function SecularHubClient({
                         variants={tableVariants}
                         className="print:!opacity-100 print:!transform-none"
                       >
-                        {assessmentData.students?.map((student, idx) => (
+                        {currentAssessmentData.students?.map((student, idx) => (
                           <motion.tr
                             variants={rowVariants}
                             key={student.id}
-                            className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors duration-200 border-b border-slate-100 dark:border-slate-800 last:border-0 print:border print:border-black print:hover:bg-transparent print:!opacity-100 print:!transform-none"
+                            className="group hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-all duration-300 border-b border-slate-100 dark:border-slate-800/50 last:border-0 print:border-b print:border-slate-300 print:hover:bg-transparent print:!opacity-100 print:!transform-none print:even:bg-slate-50/40"
                           >
-                            <td className="px-4 py-3 text-center text-slate-400 font-medium print:border print:border-black print:text-black">{idx + 1}</td>
-                            <td className="px-4 py-3 font-semibold text-slate-800 dark:text-slate-200 whitespace-nowrap print:border print:border-black print:text-black">{student.name}</td>
+                            <td className="px-6 py-4 text-center text-slate-400 font-medium print:text-slate-800 print:px-1 print:py-1 print:text-[9px]">{idx + 1}</td>
+                            <td className="px-6 py-4 font-bold text-[13px] text-slate-900 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors whitespace-nowrap print:text-slate-800 print:px-1 print:py-1 print:text-[9px]">{student.name}</td>
 
-                            {assessmentData.orderedSubjects?.flatMap(s => {
+                            {currentAssessmentData.orderedSubjects?.flatMap(s => {
                               const gradeStr = student.subjectAggregates[s.id] != null ? getGradeDisplay(student.subjectAggregates[s.id]!) : '-'
                               return [
-                                <td key={`${s.id}-score`} className="px-2 py-3 text-center font-bold text-[13px] text-slate-700 dark:text-slate-300 print:border print:border-black print:text-black">
+                                <td key={`${s.id}-score`} className="px-2 py-4 text-center font-bold text-[13px] text-slate-600 dark:text-slate-300 print:text-slate-800 print:px-1 print:py-1 print:text-[9px]">
                                   {student.subjectScores[s.id] !== undefined ? student.subjectScores[s.id] : '-'}
                                 </td>,
-                                <td key={`${s.id}-agg`} className="px-2 py-3 text-center print:border print:border-black">
-                                  <span className={`inline-flex items-center justify-center min-w-[32px] h-[26px] px-2 rounded font-bold text-[11px] border ${getBadgeStyles(gradeStr)} print:border-none print:shadow-none print:bg-transparent print:text-black`}>
+                                <td key={`${s.id}-agg`} className="px-2 py-4 text-center print:px-1 print:py-1">
+                                  <span className={`inline-flex items-center justify-center min-w-[32px] h-[26px] px-2 rounded font-bold text-[11px] border ${getBadgeStyles(gradeStr)} print:!shadow-none print:!scale-90 print:transform-gpu`}>
                                     {gradeStr}
                                   </span>
                                 </td>
                               ]
                             })}
 
-                            <td className="px-4 py-3 text-center print:border print:border-black">
-                               <div className="inline-flex items-center justify-center h-8 px-3 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 font-extrabold text-[13px] shadow-sm border border-slate-200/50 dark:border-slate-700/50 print:border-none print:bg-transparent print:text-black print:shadow-none">
+                            <td className="px-6 py-4 text-center print:px-1 print:py-1">
+                               <div className="inline-flex items-center justify-center h-8 px-3 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 font-extrabold text-[13px] shadow-sm border border-slate-200/50 dark:border-slate-700/50 print:!shadow-none print:!scale-90 print:transform-gpu">
                                  {student.total > 0 ? student.total : '-'}
                                </div>
                             </td>
 
-                            <td className="px-4 py-3 text-center print:border print:border-black">
-                               <div className={`inline-flex items-center justify-center h-8 w-10 rounded-lg font-extrabold text-[13px] border ${getBadgeStyles(student.division)} print:border-none print:bg-transparent print:text-black print:shadow-none`}>
+                            <td className="px-6 py-4 text-center print:px-1 print:py-1">
+                               <div className={`inline-flex items-center justify-center h-8 w-10 rounded-lg font-extrabold text-[13px] border ${getBadgeStyles(student.division)} print:!shadow-none print:!scale-90 print:transform-gpu`}>
                                  {student.totalAggregate > 0 ? student.totalAggregate : '-'}
                                </div>
                             </td>
 
-                            <td className="px-4 py-3 text-center print:border print:border-black">
-                               <div className={`inline-flex items-center justify-center h-8 w-10 rounded-lg font-extrabold text-[14px] border ${getBadgeStyles(student.division)} print:border-none print:bg-transparent print:text-black print:shadow-none`}>
+                            <td className="px-6 py-4 text-center print:px-1 print:py-1">
+                               <div className={`inline-flex items-center justify-center h-8 w-10 rounded-lg font-extrabold text-[14px] border ${getBadgeStyles(student.division)} print:!shadow-none print:!scale-90 print:transform-gpu`}>
                                  {student.division}
                                </div>
                             </td>
 
-                            <td className="px-4 py-3 text-center print:border print:border-black">
+                            <td className="px-6 py-4 text-center print:px-1 print:py-1">
                               <span className={`print:text-black ${getPositionStyles(student.position)}`}>
                                 {student.total > 0 ? student.position : '-'}
                               </span>
@@ -663,18 +705,18 @@ export default function SecularHubClient({
                         ))}
 
                         {/* Empty Rows Padding for Print/Visual Balance */}
-                        {Array.from({ length: Math.max(0, 10 - (assessmentData.students?.length || 0)) }).map((_, i) => (
-                          <tr key={`empty-${i}`} className="border-b border-slate-100 dark:border-slate-800/50 last:border-0 print:border print:border-black print:h-10">
-                            <td className="px-4 py-3 print:border print:border-black">&nbsp;</td>
-                            <td className="px-4 py-3 print:border print:border-black">&nbsp;</td>
-                            {assessmentData.orderedSubjects?.flatMap(s => [
-                              <td key={`empty-${s.id}-score`} className="px-4 py-3 print:border print:border-black">&nbsp;</td>,
-                              <td key={`empty-${s.id}-agg`} className="px-4 py-3 print:border print:border-black">&nbsp;</td>
+                        {Array.from({ length: Math.max(0, 10 - (currentAssessmentData.students?.length || 0)) }).map((_, i) => (
+                          <tr key={`empty-${i}`} className="border-b border-slate-100 dark:border-slate-800/50 last:border-0 print:border-b print:border-slate-300 print:h-10 print:even:bg-slate-50/40">
+                            <td className="px-6 py-4 print:border-none print:px-1 print:py-1">&nbsp;</td>
+                            <td className="px-6 py-4 print:border-none print:px-1 print:py-1">&nbsp;</td>
+                            {currentAssessmentData.orderedSubjects?.flatMap(s => [
+                              <td key={`empty-${s.id}-score`} className="px-6 py-4 print:border-none print:px-1 print:py-1">&nbsp;</td>,
+                              <td key={`empty-${s.id}-agg`} className="px-6 py-4 print:border-none print:px-1 print:py-1">&nbsp;</td>
                             ])}
-                            <td className="px-4 py-3 print:border print:border-black">&nbsp;</td>
-                            <td className="px-4 py-3 print:border print:border-black">&nbsp;</td>
-                            <td className="px-4 py-3 print:border print:border-black">&nbsp;</td>
-                            <td className="px-4 py-3 print:border print:border-black">&nbsp;</td>
+                            <td className="px-6 py-4 print:border-none print:px-1 print:py-1">&nbsp;</td>
+                            <td className="px-6 py-4 print:border-none print:px-1 print:py-1">&nbsp;</td>
+                            <td className="px-6 py-4 print:border-none print:px-1 print:py-1">&nbsp;</td>
+                            <td className="px-6 py-4 print:border-none print:px-1 print:py-1">&nbsp;</td>
                           </tr>
                         ))}
                       </motion.tbody>
@@ -694,10 +736,13 @@ export default function SecularHubClient({
                   </div>
                 </div>
               </div>
-            )}
+            )
+          })}
+        </>
+      )}
 
-            {/* Analysis Tab */}
-            {activeTab === 'analysis' && activeLevel && (
+      {/* Analysis Tab */}
+      {activeTab === 'analysis' && activeLevel && (
               <div className="print:p-10 text-left">
 
                 {/* Print Header */}
@@ -732,7 +777,7 @@ export default function SecularHubClient({
                     <div>
                       <h4 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-3">1. Exam Analysis</h4>
                       <div className="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm">
-                        <table className="w-full text-left border-collapse print:border-2 print:border-black">
+                        <table className="w-full text-left border-collapse print:border print:border-slate-300">
                           <thead className="bg-slate-50/90 dark:bg-slate-800/90 print:bg-slate-100">
                             <tr>
                               <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 font-semibold text-xs uppercase tracking-wider">Class Segment</th>
@@ -761,7 +806,7 @@ export default function SecularHubClient({
                     <div>
                       <h4 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-3">2. Division Breakdown</h4>
                       <div className="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm">
-                        <table className="w-full text-left border-collapse print:border-2 print:border-black">
+                        <table className="w-full text-left border-collapse print:border print:border-slate-300">
                           <thead className="bg-slate-50/90 dark:bg-slate-800/90 print:bg-slate-100">
                             <tr>
                               <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 font-semibold text-xs uppercase tracking-wider">Class Segment</th>
@@ -794,7 +839,7 @@ export default function SecularHubClient({
                     <div>
                       <h4 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-3">3. Grade Distribution</h4>
                       <div className="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm">
-                        <table className="w-full text-left border-collapse print:border-2 print:border-black">
+                        <table className="w-full text-left border-collapse print:border print:border-slate-300">
                           <thead className="bg-slate-50/90 dark:bg-slate-800/90 print:bg-slate-100">
                             <tr>
                               <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 font-semibold text-xs uppercase tracking-wider">Class Segment</th>
@@ -853,29 +898,29 @@ export default function SecularHubClient({
                         key={cls.classId}
                         className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-200/60 dark:border-slate-800/60 overflow-hidden print:bg-transparent print:border-none print:shadow-none print:rounded-none"
                       >
-                        <div className="bg-slate-50/90 backdrop-blur-md p-4 border-b border-slate-200/60 text-center print:border print:border-black print:bg-slate-100 flex items-center justify-between">
+                        <div className="bg-slate-50/90 backdrop-blur-md p-4 border-b border-slate-200/60 text-center print:border print:border-slate-300 print:px-1 print:py-1 print:bg-slate-100 flex items-center justify-between">
                           <h4 className="font-extrabold text-slate-800 print:text-black text-lg">{cls.className} Rankings</h4>
                           <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 print:text-black">Top {cls.students.length}</span>
                         </div>
                         <div className="overflow-x-auto print:overflow-visible p-2">
-                          <table className="w-full border-collapse print:border-2 print:border-black">
+                          <table className="w-full border-collapse print:border print:border-slate-300">
                             <thead className="bg-slate-50/50 print:bg-slate-100 hidden">
                               <tr>
-                                <th className="px-4 py-2 text-slate-500 font-semibold text-sm border-b border-slate-200/60 w-12 text-center print:border print:border-black print:text-black">#</th>
-                                <th className="px-4 py-2 text-slate-500 font-semibold text-sm border-b border-slate-200/60 text-left print:border print:border-black print:text-black">Name</th>
-                                <th className="px-4 py-2 text-slate-500 font-semibold text-sm border-b border-slate-200/60 text-right w-28 print:border print:border-black print:text-black">Average</th>
+                                <th className="px-4 py-2 text-slate-500 font-semibold text-sm border-b border-slate-200/60 w-12 text-center print:w-auto print:border print:border-slate-300 print:text-slate-800 print:px-1 print:py-1 print:text-[9px]">#</th>
+                                <th className="px-4 py-2 text-slate-500 font-semibold text-sm border-b border-slate-200/60 text-left print:border print:border-slate-300 print:text-slate-800 print:px-1 print:py-1 print:text-[9px]">Name</th>
+                                <th className="px-4 py-2 text-slate-500 font-semibold text-sm border-b border-slate-200/60 text-right w-28 print:border print:border-slate-300 print:text-slate-800 print:px-1 print:py-1 print:text-[9px]">Average</th>
                               </tr>
                             </thead>
                             <tbody>
                               {cls.students.map((student, idx) => (
-                                <tr key={student.id} className="hover:bg-slate-50/50 transition-colors duration-200 border-b border-slate-100 last:border-0 print:border print:border-black">
-                                  <td className="px-4 py-3 text-center w-12 print:border print:border-black">
+                                <tr key={student.id} className="hover:bg-slate-50/50 transition-colors duration-200 border-b border-slate-100 last:border-0 print:border print:border-slate-300 print:px-1 print:py-1">
+                                  <td className="px-4 py-3 text-center w-12 print:border print:border-slate-300 print:px-1 print:py-1">
                                     <RankBadge rank={idx + 1} />
                                   </td>
-                                  <td className="px-4 py-3 font-bold text-slate-800 print:border print:border-black print:text-black">
+                                  <td className="px-4 py-3 font-bold text-slate-800 print:border print:border-slate-300 print:text-slate-800 print:px-1 print:py-1 print:text-[9px]">
                                     {student.studentName}
                                   </td>
-                                  <td className="px-4 py-3 text-right print:border print:border-black print:text-black">
+                                  <td className="px-4 py-3 text-right print:border print:border-slate-300 print:text-slate-800 print:px-1 print:py-1 print:text-[9px]">
                                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5 print:hidden">Avg</p>
                                     <p className="font-extrabold text-blue-700 print:text-black text-lg leading-none">{Math.round(student.avg)}</p>
                                   </td>

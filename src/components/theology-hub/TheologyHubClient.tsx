@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, memo } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
-import { Loader2, ScrollText, BookOpen, Award, Download, LayoutGrid, Users } from 'lucide-react'
+import { Loader2, ScrollText, BookOpen, Award, Download, LayoutGrid, Users, Printer, FileSpreadsheet } from 'lucide-react'
 import { toast } from 'sonner'
 import { createClient } from "@/utils/supabase/client"
 import { TheologyHubEmptyState } from './TheologyHubEmptyState'
@@ -344,7 +344,7 @@ export default function TheologyHubClient({
             toast.error("No analysis data to download.")
             return
           }
-          generateAnalysisCSV(analysisData, filename)
+          generateAnalysisCSV(analysisData as any, filename)
         } else if (activeTab === 'top_students') {
           if (topStudentsData.length === 0) {
             toast.error("No top students data to download.")
@@ -368,9 +368,31 @@ export default function TheologyHubClient({
       {/* TopToolbar */}
       <div className="print:hidden relative z-40 border-b border-slate-200/60 shadow-sm shrink-0">
         <TopToolbar 
-          onPrint={handlePrint}
+          printOptions={[
+            { label: 'Print Current View', onClick: handlePrint, icon: <Printer size={14} /> }
+          ]}
+          downloadOptions={[
+            { label: 'Download Current View (CSV)', onClick: handleDownload, icon: <Download size={14} /> },
+            { label: 'Download Assessment Sheet (CSV)', onClick: () => {
+                const dateStr = new Date().toISOString().split('T')[0]
+                if (!assessmentData.students?.length) return toast.error("No assessment data to download.")
+                generateAssessmentCSV(assessmentData.students as any, assessmentData.orderedSubjects, `theologyhub-assessment-${dateStr}.csv`)
+                toast.success("Assessment CSV generated successfully!")
+            }, icon: <FileSpreadsheet size={14} /> },
+            { label: 'Download Subject Analysis (CSV)', onClick: () => {
+                const dateStr = new Date().toISOString().split('T')[0]
+                if (!analysisData.length) return toast.error("No analysis data to download.")
+                generateAnalysisCSV(analysisData as any, `theologyhub-analysis-${dateStr}.csv`)
+                toast.success("Analysis CSV generated successfully!")
+            }, icon: <FileSpreadsheet size={14} /> },
+            { label: 'Download Top Students (CSV)', onClick: () => {
+                const dateStr = new Date().toISOString().split('T')[0]
+                if (!topStudentsData.length) return toast.error("No top students data to download.")
+                generateTopStudentsCSV(topStudentsData.flatMap(g => g.students), `theologyhub-top_students-${dateStr}.csv`)
+                toast.success("Top Students CSV generated successfully!")
+            }, icon: <FileSpreadsheet size={14} /> },
+          ]}
           onShare={handleShare}
-          onDownload={handleDownload}
           isGenerating={isDownloading}
           searchOpen={filtersOpen}
           onSearchToggle={() => setFiltersOpen(!filtersOpen)}

@@ -634,6 +634,7 @@ export default function SecularHubClient({
                   <div className="overflow-x-auto shadow-inner print:shadow-none print:overflow-visible">
                     <table className="w-full text-left border-collapse">
                       <thead className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-md sticky top-0 z-10 print:bg-transparent print:static border-b-2 border-slate-900/5 dark:border-white/5 print:border-b-[1.5px] print:border-black">
+                        <tr className="hidden print:table-row"><th colSpan={100} className="h-6 p-0 border-none"></th></tr>
                         <tr>
                           <th className="px-6 py-5 text-slate-500 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-[0.2em] w-12 text-center print:w-auto print:text-slate-800 print:px-1 print:py-1 print:text-[8px] print:tracking-normal">#</th>
                           <th className="px-6 py-5 text-slate-500 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-[0.2em] w-64 print:w-auto print:text-slate-800 print:px-1 print:py-1 print:text-[8px] print:tracking-normal">Student Name</th>
@@ -719,7 +720,7 @@ export default function SecularHubClient({
                             )}
 
                             <td className="px-6 py-4 text-center print:px-1 print:py-1">
-                              <span className={`print:text-black ${getPositionStyles(student.position)}`}>
+                              <span className={`${getPositionStyles(student.position)}`}>
                                 {student.total > 0 ? student.position : '-'}
                               </span>
                             </td>
@@ -742,18 +743,21 @@ export default function SecularHubClient({
                           </tr>
                         ))}
                       </motion.tbody>
+                      <tfoot className="hidden print:table-footer-group">
+                        <tr className="hidden print:table-row"><td colSpan={100} className="h-6 p-0 border-none"></td></tr>
+                      </tfoot>
                     </table>
                   </div>
                 </div>
 
                 {/* Footer Signatures */}
-                <div className="flex justify-between items-center mt-8 px-8 text-slate-700 print:text-black hidden print:flex">
+                <div className="flex justify-between items-center mt-8 px-8 text-slate-700 print:text-black hidden print:flex print:break-inside-avoid">
                   <div className="text-center w-64">
-                    <p className="font-bold mb-12 text-sm uppercase tracking-wider text-black">Class Teacher's Signature</p>
+                    <p className="font-serif font-bold mb-12 text-sm uppercase tracking-wider text-black">Class Teacher's Signature</p>
                     <hr className="border-t-[3px] border-dotted border-black w-full" />
                   </div>
                   <div className="text-center w-64">
-                    <p className="font-bold mb-12 text-sm uppercase tracking-wider text-black">Head of Academics Signature</p>
+                    <p className="font-serif font-bold mb-12 text-sm uppercase tracking-wider text-black">Head of Academics Signature</p>
                     <hr className="border-t-[3px] border-dotted border-black w-full" />
                   </div>
                 </div>

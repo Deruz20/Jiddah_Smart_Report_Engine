@@ -599,7 +599,7 @@ export default function SecularHubClient({
                   if (!currentAssessmentData || !currentAssessmentData.orderedSubjects) return null;
                   
                   return (
-                    <div key={cls.id} className={isBatchPrinting ? 'hidden print:block print:p-4 text-left' : 'print:p-4 text-left'} style={{ pageBreakAfter: isBatchPrinting && classIdx < arr.length - 1 ? 'always' : 'auto' }}>
+                    <div key={cls.id} className={isBatchPrinting ? 'hidden print:block print:py-0 print:px-2 text-left' : 'print:py-0 print:px-2 text-left'} style={{ pageBreakAfter: isBatchPrinting && classIdx < arr.length - 1 ? 'always' : 'auto' }}>
 
                 {/* Print Header */}
                 <div className="text-center mb-8 hidden print:block">
@@ -747,7 +747,7 @@ export default function SecularHubClient({
                 </div>
 
                 {/* Footer Signatures */}
-                <div className="flex justify-between items-center mt-20 px-8 text-slate-700 print:text-black hidden print:flex">
+                <div className="flex justify-between items-center mt-8 px-8 text-slate-700 print:text-black hidden print:flex">
                   <div className="text-center w-64">
                     <p className="font-bold mb-12 text-sm uppercase tracking-wider text-black">Class Teacher's Signature</p>
                     <hr className="border-t-[3px] border-dotted border-black w-full" />
@@ -765,7 +765,7 @@ export default function SecularHubClient({
 
       {/* Analysis Tab */}
       {activeTab === 'analysis' && activeLevel && (
-              <div className="print:p-4 text-left">
+              <div className="print:py-0 print:px-2 text-left">
 
                 {/* Print Header */}
                 <div className="text-center mb-8 hidden print:block">
@@ -902,7 +902,7 @@ export default function SecularHubClient({
 
             {/* Top Students Tab */}
             {activeTab === 'top_students' && activeLevel && (
-              <div className="print:p-4 text-left">
+              <div className="print:py-0 print:px-2 text-left">
 
                 {/* Print Header */}
                 <div className="text-center mb-10 hidden print:block">

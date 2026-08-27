@@ -531,7 +531,7 @@ export default function TheologyHubClient({
             
             {/* Assessment Tab */}
             {activeTab === 'assessment' && activeClassId && (
-              <div className="font-arabic text-right print:p-4" dir="rtl">
+              <div className="font-arabic text-right print:py-0 print:px-2" dir="rtl">
                 
                 {/* Header (Print-optimized) */}
                 <div className="text-center mb-8">
@@ -639,7 +639,7 @@ export default function TheologyHubClient({
                 </div>
 
                 {/* Footer Signatures */}
-                <div className="flex justify-between items-center mt-20 px-8 text-slate-700 print:text-black">
+                <div className="flex justify-between items-center mt-8 px-8 text-slate-700 print:text-black">
                   <div className="text-center w-64">
                     <p className="font-bold mb-12 text-sm text-black">توقيع مربي الفصل:</p>
                     <hr className="border-t-[3px] border-dotted border-black w-full" />
@@ -654,7 +654,7 @@ export default function TheologyHubClient({
             
             {/* Analysis Tab */}
             {activeTab === 'analysis' && activeLevel && (
-              <div className="font-arabic text-right print:p-4" dir="rtl">
+              <div className="font-arabic text-right print:py-0 print:px-2" dir="rtl">
                 <div className="text-center mb-8">
                   <h2 className="text-lg font-bold mb-1 text-slate-800 print:text-black">بسم الله الرحمن الرحيم</h2>
                   <h1 className="text-2xl font-extrabold text-emerald-800 mb-2 print:text-black">مدرسة جدة الإسلامية للروضة والابتدائية</h1>
@@ -732,7 +732,7 @@ export default function TheologyHubClient({
 
             {/* Top Students Tab */}
             {activeTab === 'top_students' && activeLevel && (
-              <div className="font-arabic text-right print:p-4" dir="rtl">
+              <div className="font-arabic text-right print:py-0 print:px-2" dir="rtl">
                 <div className="text-center mb-8">
                   <h3 className="text-2xl font-extrabold underline underline-offset-8 text-emerald-800 print:text-black mb-10 mt-6">أسماء المتفوقين من كل مرحلة مع ذكر المعدل التراكمي لكل منهم</h3>
                 </div>

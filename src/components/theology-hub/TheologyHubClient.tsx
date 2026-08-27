@@ -570,7 +570,7 @@ export default function TheologyHubClient({
                 </div>
 
                 {/* Modern Glassmorphic Table Container */}
-                <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-200/60 dark:border-slate-800/60 overflow-hidden print:bg-transparent print:border-none print:shadow-none print:rounded-none">
+                <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-200/60 dark:border-slate-800/60 overflow-hidden print:bg-transparent print:border-none print:shadow-none print:rounded-none print:overflow-visible">
                   <div className="overflow-x-auto shadow-inner print:shadow-none print:overflow-visible">
                     <table className="w-full text-right border-collapse print:border-2 print:border-black">
                       <thead className="bg-slate-50/90 dark:bg-slate-800/90 backdrop-blur-md sticky top-0 z-10 print:bg-slate-100 print:static">
@@ -634,23 +634,26 @@ export default function TheologyHubClient({
                             <td className="px-4 py-3 print:border print:border-black">&nbsp;</td>
                           </tr>
                         ))}
+                        {/* Footer Signatures as last row */}
+                        <tr className="print:table-row border-none print:break-inside-avoid">
+                          <td colSpan={100} className="border-none p-0">
+                            <div className="flex justify-between items-center mt-12 mb-8 px-8 text-slate-700 print:text-black w-full" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+                              <div className="text-center w-64">
+                                <p className="font-serif font-bold mb-12 text-sm text-black">توقيع مربي الفصل:</p>
+                                <hr className="border-t-[3px] border-dotted border-black w-full" />
+                              </div>
+                              <div className="text-center w-64">
+                                <p className="font-serif font-bold mb-12 text-sm text-black">توقيع مشرف التعليم:</p>
+                                <hr className="border-t-[3px] border-dotted border-black w-full" />
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
                       </motion.tbody>
                       <tfoot className="hidden print:table-footer-group">
                         <tr className="hidden print:table-row"><td colSpan={100} className="h-6 p-0 border-none"></td></tr>
                       </tfoot>
                     </table>
-                  </div>
-                </div>
-
-                {/* Footer Signatures */}
-                <div className="flex justify-between items-center mt-12 mb-8 px-8 text-slate-700 print:text-black print:break-inside-avoid w-full">
-                  <div className="text-center w-64">
-                    <p className="font-serif font-bold mb-12 text-sm text-black">توقيع مربي الفصل:</p>
-                    <hr className="border-t-[3px] border-dotted border-black w-full" />
-                  </div>
-                  <div className="text-center w-64">
-                    <p className="font-serif font-bold mb-12 text-sm text-black">توقيع مشرف التعليم:</p>
-                    <hr className="border-t-[3px] border-dotted border-black w-full" />
                   </div>
                 </div>
               </div>
@@ -688,7 +691,7 @@ export default function TheologyHubClient({
                   </div>
                 </div>
 
-                <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-200/60 dark:border-slate-800/60 overflow-hidden print:bg-transparent print:border-none print:shadow-none print:rounded-none">
+                <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-200/60 dark:border-slate-800/60 overflow-hidden print:bg-transparent print:border-none print:shadow-none print:rounded-none print:overflow-visible">
                   <div className="overflow-x-auto shadow-inner print:shadow-none print:overflow-visible">
                     <table className="w-full text-right border-collapse print:border-2 print:border-black">
                       <thead className="bg-slate-50/90 dark:bg-slate-800/90 backdrop-blur-md sticky top-0 z-10 print:bg-slate-100 print:static">
@@ -752,7 +755,7 @@ export default function TheologyHubClient({
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ duration: 0.3 }}
                         key={cls.classId} 
-                        className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-200/60 dark:border-slate-800/60 overflow-hidden print:bg-transparent print:border-none print:shadow-none print:rounded-none"
+                        className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-200/60 dark:border-slate-800/60 overflow-hidden print:bg-transparent print:border-none print:shadow-none print:rounded-none print:overflow-visible"
                       >
                         <div className="bg-slate-50/90 backdrop-blur-md p-4 border-b border-slate-200/60 text-center print:border print:border-black print:bg-slate-100">
                           <h4 className="font-extrabold text-slate-800 print:text-black text-lg">{cls.className}</h4>

@@ -630,7 +630,7 @@ export default function SecularHubClient({
                 </div>
 
                 {/* Glassmorphic Table Container */}
-                <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-3xl rounded-[2rem] shadow-[0_8px_40px_-12px_rgba(0,0,0,0.08)] border border-slate-200/60 dark:border-slate-800/60 overflow-hidden print:bg-transparent print:border-none print:shadow-none print:rounded-none">
+                <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-3xl rounded-[2rem] shadow-[0_8px_40px_-12px_rgba(0,0,0,0.08)] border border-slate-200/60 dark:border-slate-800/60 overflow-hidden print:bg-transparent print:border-none print:shadow-none print:rounded-none print:overflow-visible">
                   <div className="overflow-x-auto shadow-inner print:shadow-none print:overflow-visible">
                     <table className="w-full text-left border-collapse">
                       <thead className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-md sticky top-0 z-10 print:bg-transparent print:static border-b-2 border-slate-900/5 dark:border-white/5 print:border-b-[1.5px] print:border-black">
@@ -742,23 +742,26 @@ export default function SecularHubClient({
                             <td className="px-6 py-4 print:border-none print:px-1 print:py-1">&nbsp;</td>
                           </tr>
                         ))}
+                        {/* Footer Signatures as last row */}
+                        <tr className="print:table-row border-none print:break-inside-avoid">
+                          <td colSpan={100} className="border-none p-0">
+                            <div className="flex justify-between items-center mt-12 mb-8 px-8 text-slate-700 print:text-black w-full" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+                              <div className="text-center w-64">
+                                <p className="font-serif font-bold mb-12 text-sm uppercase tracking-wider text-black">Class Teacher's Signature</p>
+                                <hr className="border-t-[3px] border-dotted border-black w-full" />
+                              </div>
+                              <div className="text-center w-64">
+                                <p className="font-serif font-bold mb-12 text-sm uppercase tracking-wider text-black">D.O.S Signature</p>
+                                <hr className="border-t-[3px] border-dotted border-black w-full" />
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
                       </motion.tbody>
                       <tfoot className="hidden print:table-footer-group">
                         <tr className="hidden print:table-row"><td colSpan={100} className="h-6 p-0 border-none"></td></tr>
                       </tfoot>
                     </table>
-                  </div>
-                </div>
-
-                {/* Footer Signatures */}
-                <div className="flex justify-between items-center mt-12 mb-8 px-8 text-slate-700 print:text-black print:break-inside-avoid w-full">
-                  <div className="text-center w-64">
-                    <p className="font-serif font-bold mb-12 text-sm uppercase tracking-wider text-black">Class Teacher's Signature</p>
-                    <hr className="border-t-[3px] border-dotted border-black w-full" />
-                  </div>
-                  <div className="text-center w-64">
-                    <p className="font-serif font-bold mb-12 text-sm uppercase tracking-wider text-black">D.O.S Signature</p>
-                    <hr className="border-t-[3px] border-dotted border-black w-full" />
                   </div>
                 </div>
               </div>
@@ -797,7 +800,7 @@ export default function SecularHubClient({
                   </div>
                 </div>
 
-                <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-200/60 dark:border-slate-800/60 overflow-hidden print:bg-transparent print:border-none print:shadow-none print:rounded-none">
+                <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-200/60 dark:border-slate-800/60 overflow-hidden print:bg-transparent print:border-none print:shadow-none print:rounded-none print:overflow-visible print:overflow-visible">
                   <div className="p-6 space-y-8">
                     {/* 1. Exam Analysis Table */}
                     <div>
@@ -922,7 +925,7 @@ export default function SecularHubClient({
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ duration: 0.3 }}
                         key={cls.classId}
-                        className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-200/60 dark:border-slate-800/60 overflow-hidden print:bg-transparent print:border-none print:shadow-none print:rounded-none"
+                        className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-200/60 dark:border-slate-800/60 overflow-hidden print:bg-transparent print:border-none print:shadow-none print:rounded-none print:overflow-visible"
                       >
                         <div className="bg-slate-50/90 backdrop-blur-md p-4 border-b border-slate-200/60 text-center print:border print:border-slate-300 print:px-1 print:py-1 print:bg-slate-100 flex items-center justify-between">
                           <h4 className="font-extrabold text-slate-800 print:text-black text-lg">{cls.className} Rankings</h4>

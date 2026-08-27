@@ -751,13 +751,13 @@ export default function SecularHubClient({
                 </div>
 
                 {/* Footer Signatures */}
-                <div className="flex justify-between items-center mt-8 px-8 text-slate-700 print:text-black hidden print:flex print:break-inside-avoid">
+                <div className="flex justify-between items-center mt-12 mb-8 px-8 text-slate-700 print:text-black print:break-inside-avoid w-full">
                   <div className="text-center w-64">
                     <p className="font-serif font-bold mb-12 text-sm uppercase tracking-wider text-black">Class Teacher's Signature</p>
                     <hr className="border-t-[3px] border-dotted border-black w-full" />
                   </div>
                   <div className="text-center w-64">
-                    <p className="font-serif font-bold mb-12 text-sm uppercase tracking-wider text-black">Head of Academics Signature</p>
+                    <p className="font-serif font-bold mb-12 text-sm uppercase tracking-wider text-black">D.O.S Signature</p>
                     <hr className="border-t-[3px] border-dotted border-black w-full" />
                   </div>
                 </div>

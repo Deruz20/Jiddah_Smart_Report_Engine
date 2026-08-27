@@ -643,7 +643,7 @@ export default function TheologyHubClient({
                 </div>
 
                 {/* Footer Signatures */}
-                <div className="flex justify-between items-center mt-8 px-8 text-slate-700 print:text-black print:break-inside-avoid">
+                <div className="flex justify-between items-center mt-12 mb-8 px-8 text-slate-700 print:text-black print:break-inside-avoid w-full">
                   <div className="text-center w-64">
                     <p className="font-serif font-bold mb-12 text-sm text-black">توقيع مربي الفصل:</p>
                     <hr className="border-t-[3px] border-dotted border-black w-full" />

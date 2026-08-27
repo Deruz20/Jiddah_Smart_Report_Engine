@@ -34,17 +34,17 @@ body {
 }
 
 @page {
-  margin: 0mm !important;
+  margin: 10mm !important;
 }
 
 @page portrait-page {
   size: A4 portrait;
-  margin: 0mm !important;
+  margin: 10mm !important;
 }
 
 @page landscape-page {
   size: A4 landscape;
-  margin: 0mm !important;
+  margin: 10mm !important;
 }
 
 body.print-orientation-portrait {

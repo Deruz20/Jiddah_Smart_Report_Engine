@@ -604,7 +604,9 @@ export default function SecularHubClient({
                 {/* Print Header */}
                 <div className="text-center mb-8 hidden print:block">
                   <h1 className="text-2xl font-extrabold text-slate-800 print:text-black mb-1 uppercase tracking-wide">Jiddah Islamic Nursery & Primary School</h1>
-                  <h3 className="text-xl font-bold mb-4 underline underline-offset-4 text-slate-700 print:text-black uppercase">Mid-Term Assessment Report</h3>
+                  <h3 className="text-xl font-bold mb-4 underline underline-offset-4 text-slate-700 print:text-black uppercase">
+                    {examPhase === 'bot' ? 'Beginning of Term Assessment Report' : examPhase === 'eot' ? 'End of Term Assessment Report' : 'Mid-Term Assessment Report'}
+                  </h3>
                 </div>
 
                 {/* Context Bar */}
@@ -635,17 +637,28 @@ export default function SecularHubClient({
                         <tr>
                           <th className="px-6 py-5 text-slate-500 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-[0.2em] w-12 text-center print:w-auto print:text-slate-800 print:px-1 print:py-1 print:text-[8px] print:tracking-normal">#</th>
                           <th className="px-6 py-5 text-slate-500 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-[0.2em] w-64 print:w-auto print:text-slate-800 print:px-1 print:py-1 print:text-[8px] print:tracking-normal">Student Name</th>
-                          {currentAssessmentData.orderedSubjects?.flatMap(s => [
-                            <th key={`${s.id}-score`} className="px-2 py-5 text-slate-500 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-[0.2em] text-center print:text-slate-800 print:px-1 print:py-1 print:text-[8px] print:tracking-normal">
-                              {s.subject_name === 'MATH' ? 'MTC' : s.subject_name === 'SCI' ? 'SCIE' : s.subject_name}
-                            </th>,
-                            <th key={`${s.id}-agg`} className="px-2 py-5 text-slate-400 dark:text-slate-500 font-extrabold text-[10px] uppercase tracking-[0.2em] text-center print:text-slate-800 print:px-1 print:py-1 print:text-[8px] print:tracking-normal">
-                              AGG
-                            </th>
-                          ])}
+                          {currentAssessmentData.orderedSubjects?.flatMap(s => {
+                            const cols = [
+                              <th key={`${s.id}-score`} className="px-2 py-5 text-slate-500 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-[0.2em] text-center print:text-slate-800 print:px-1 print:py-1 print:text-[8px] print:tracking-normal">
+                                {s.subject_name === 'MATH' ? 'MTC' : s.subject_name === 'SCI' ? 'SCIE' : s.subject_name}
+                              </th>
+                            ]
+                            if (cls.section !== 'nursery') {
+                              cols.push(
+                                <th key={`${s.id}-agg`} className="px-2 py-5 text-slate-400 dark:text-slate-500 font-extrabold text-[10px] uppercase tracking-[0.2em] text-center print:text-slate-800 print:px-1 print:py-1 print:text-[8px] print:tracking-normal">
+                                  AGG
+                                </th>
+                              )
+                            }
+                            return cols
+                          })}
                           <th className="px-6 py-5 text-slate-500 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-[0.2em] text-center w-auto print:text-slate-800 print:px-1 print:py-1 print:text-[8px] print:tracking-normal">TOTAL</th>
-                          <th className="px-6 py-5 text-slate-500 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-[0.2em] text-center w-auto print:text-slate-800 print:px-1 print:py-1 print:text-[8px] print:tracking-normal">T/L AGG.</th>
-                          <th className="px-6 py-5 text-slate-500 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-[0.2em] text-center w-auto print:text-slate-800 print:px-1 print:py-1 print:text-[8px] print:tracking-normal">DIV</th>
+                          {cls.section !== 'nursery' && (
+                            <>
+                              <th className="px-6 py-5 text-slate-500 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-[0.2em] text-center w-auto print:text-slate-800 print:px-1 print:py-1 print:text-[8px] print:tracking-normal">T/L AGG.</th>
+                              <th className="px-6 py-5 text-slate-500 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-[0.2em] text-center w-auto print:text-slate-800 print:px-1 print:py-1 print:text-[8px] print:tracking-normal">DIV</th>
+                            </>
+                          )}
                           <th className="px-6 py-5 text-slate-500 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-[0.2em] text-center w-auto print:text-slate-800 print:px-1 print:py-1 print:text-[8px] print:tracking-normal">PSN</th>
                         </tr>
                       </thead>
@@ -666,16 +679,21 @@ export default function SecularHubClient({
 
                             {currentAssessmentData.orderedSubjects?.flatMap(s => {
                               const gradeStr = student.subjectAggregates[s.id] != null ? getGradeDisplay(student.subjectAggregates[s.id]!) : '-'
-                              return [
+                              const cells = [
                                 <td key={`${s.id}-score`} className="px-2 py-4 text-center font-bold text-[13px] text-slate-600 dark:text-slate-300 print:text-slate-800 print:px-1 print:py-1 print:text-[9px]">
                                   {student.subjectScores[s.id] !== undefined ? student.subjectScores[s.id] : '-'}
-                                </td>,
-                                <td key={`${s.id}-agg`} className="px-2 py-4 text-center print:px-1 print:py-1">
-                                  <span className={`inline-flex items-center justify-center min-w-[32px] h-[26px] px-2 rounded font-bold text-[11px] border ${getBadgeStyles(gradeStr)} print:!shadow-none print:!scale-90 print:transform-gpu`}>
-                                    {gradeStr}
-                                  </span>
                                 </td>
                               ]
+                              if (cls.section !== 'nursery') {
+                                cells.push(
+                                  <td key={`${s.id}-agg`} className="px-2 py-4 text-center print:px-1 print:py-1">
+                                    <span className={`inline-flex items-center justify-center min-w-[32px] h-[26px] px-2 rounded font-bold text-[11px] border ${getBadgeStyles(gradeStr)} print:!shadow-none print:!scale-90 print:transform-gpu`}>
+                                      {gradeStr}
+                                    </span>
+                                  </td>
+                                )
+                              }
+                              return cells
                             })}
 
                             <td className="px-6 py-4 text-center print:px-1 print:py-1">
@@ -684,17 +702,21 @@ export default function SecularHubClient({
                                </div>
                             </td>
 
-                            <td className="px-6 py-4 text-center print:px-1 print:py-1">
-                               <div className={`inline-flex items-center justify-center h-8 w-10 rounded-lg font-extrabold text-[13px] border ${getBadgeStyles(student.division)} print:!shadow-none print:!scale-90 print:transform-gpu`}>
-                                 {student.totalAggregate > 0 ? student.totalAggregate : '-'}
-                               </div>
-                            </td>
+                            {cls.section !== 'nursery' && (
+                              <td className="px-6 py-4 text-center print:px-1 print:py-1">
+                                 <div className={`inline-flex items-center justify-center h-8 w-10 rounded-lg font-extrabold text-[13px] border ${getBadgeStyles(student.division)} print:!shadow-none print:!scale-90 print:transform-gpu`}>
+                                   {student.totalAggregate > 0 ? student.totalAggregate : '-'}
+                                 </div>
+                              </td>
+                            )}
 
-                            <td className="px-6 py-4 text-center print:px-1 print:py-1">
-                               <div className={`inline-flex items-center justify-center h-8 w-10 rounded-lg font-extrabold text-[14px] border ${getBadgeStyles(student.division)} print:!shadow-none print:!scale-90 print:transform-gpu`}>
-                                 {student.division}
-                               </div>
-                            </td>
+                            {cls.section !== 'nursery' && (
+                              <td className="px-6 py-4 text-center print:px-1 print:py-1">
+                                 <div className={`inline-flex items-center justify-center h-8 w-10 rounded-lg font-extrabold text-[14px] border ${getBadgeStyles(student.division)} print:!shadow-none print:!scale-90 print:transform-gpu`}>
+                                   {student.division}
+                                 </div>
+                              </td>
+                            )}
 
                             <td className="px-6 py-4 text-center print:px-1 print:py-1">
                               <span className={`print:text-black ${getPositionStyles(student.position)}`}>
@@ -725,14 +747,14 @@ export default function SecularHubClient({
                 </div>
 
                 {/* Footer Signatures */}
-                <div className="flex justify-between items-center mt-12 px-8 text-slate-700 print:text-black hidden print:flex">
+                <div className="flex justify-between items-center mt-20 px-8 text-slate-700 print:text-black hidden print:flex">
                   <div className="text-center w-64">
-                    <p className="font-bold mb-4 text-sm uppercase tracking-wider text-black">Class Teacher's Signature</p>
-                    <hr className="border-t-2 border-black w-full" />
+                    <p className="font-bold mb-12 text-sm uppercase tracking-wider text-black">Class Teacher's Signature</p>
+                    <hr className="border-t-[3px] border-dotted border-black w-full" />
                   </div>
                   <div className="text-center w-64">
-                    <p className="font-bold mb-4 text-sm uppercase tracking-wider text-black">Head of Academics Signature</p>
-                    <hr className="border-t-2 border-black w-full" />
+                    <p className="font-bold mb-12 text-sm uppercase tracking-wider text-black">Head of Academics Signature</p>
+                    <hr className="border-t-[3px] border-dotted border-black w-full" />
                   </div>
                 </div>
               </div>

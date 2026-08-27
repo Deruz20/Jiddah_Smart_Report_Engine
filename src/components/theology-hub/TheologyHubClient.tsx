@@ -537,7 +537,9 @@ export default function TheologyHubClient({
                 <div className="text-center mb-8">
                   <h2 className="text-lg font-bold mb-1 text-slate-800 print:text-black">بسم الله الرحمن الرحيم</h2>
                   <h1 className="text-2xl font-extrabold text-emerald-800 mb-2 print:text-black">مدرسة جدة الإسلامية للروضة والابتدائية _ انساغو واكيسو</h1>
-                  <h3 className="text-xl font-bold mb-4 underline underline-offset-4 text-slate-700 print:text-black">كشف الدرجات لمنتصف الفترة</h3>
+                  <h3 className="text-xl font-bold mb-4 underline underline-offset-4 text-slate-700 print:text-black">
+                    {examPhase === 'bot' ? 'كشف الدرجات لبداية الفترة' : examPhase === 'eot' ? 'كشف الدرجات لنهاية الفترة' : 'كشف الدرجات لمنتصف الفترة'}
+                  </h3>
                 </div>
 
                 <div className="flex justify-between items-center mb-6 font-semibold text-slate-700 print:text-black bg-white/50 print:bg-transparent px-4 py-3 rounded-xl border border-slate-200/50 print:border-none shadow-sm print:shadow-none">
@@ -637,14 +639,14 @@ export default function TheologyHubClient({
                 </div>
 
                 {/* Footer Signatures */}
-                <div className="flex justify-between items-center mt-12 px-8 text-slate-700 print:text-black">
+                <div className="flex justify-between items-center mt-20 px-8 text-slate-700 print:text-black">
                   <div className="text-center w-64">
-                    <p className="font-bold mb-4 text-sm text-black">توقيع مربي الفصل:</p>
-                    <hr className="border-t-2 border-black w-full" />
+                    <p className="font-bold mb-12 text-sm text-black">توقيع مربي الفصل:</p>
+                    <hr className="border-t-[3px] border-dotted border-black w-full" />
                   </div>
                   <div className="text-center w-64">
-                    <p className="font-bold mb-4 text-sm text-black">توقيع مشرف التعليم:</p>
-                    <hr className="border-t-2 border-black w-full" />
+                    <p className="font-bold mb-12 text-sm text-black">توقيع مشرف التعليم:</p>
+                    <hr className="border-t-[3px] border-dotted border-black w-full" />
                   </div>
                 </div>
               </div>
@@ -656,7 +658,9 @@ export default function TheologyHubClient({
                 <div className="text-center mb-8">
                   <h2 className="text-lg font-bold mb-1 text-slate-800 print:text-black">بسم الله الرحمن الرحيم</h2>
                   <h1 className="text-2xl font-extrabold text-emerald-800 mb-2 print:text-black">مدرسة جدة الإسلامية للروضة والابتدائية</h1>
-                  <h3 className="text-xl font-bold mb-4 underline underline-offset-4 text-slate-700 print:text-black">النظرة الأولى الدقيقة لنتائج منتصف الفترة</h3>
+                  <h3 className="text-xl font-bold mb-4 underline underline-offset-4 text-slate-700 print:text-black">
+                    {examPhase === 'bot' ? 'النظرة الأولى الدقيقة لنتائج بداية الفترة' : examPhase === 'eot' ? 'النظرة الأولى الدقيقة لنتائج نهاية الفترة' : 'النظرة الأولى الدقيقة لنتائج منتصف الفترة'}
+                  </h3>
                 </div>
 
                 <div className="flex justify-between items-center mb-6 font-semibold text-slate-700 print:text-black bg-white/50 print:bg-transparent px-4 py-3 rounded-xl border border-slate-200/50 print:border-none shadow-sm print:shadow-none">

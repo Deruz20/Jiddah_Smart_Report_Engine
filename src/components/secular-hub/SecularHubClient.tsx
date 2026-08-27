@@ -599,7 +599,7 @@ export default function SecularHubClient({
                   if (!currentAssessmentData || !currentAssessmentData.orderedSubjects) return null;
                   
                   return (
-                    <div key={cls.id} className={isBatchPrinting ? 'hidden print:block print:p-10 text-left' : 'print:p-10 text-left'} style={{ pageBreakAfter: isBatchPrinting && classIdx < arr.length - 1 ? 'always' : 'auto' }}>
+                    <div key={cls.id} className={isBatchPrinting ? 'hidden print:block print:p-4 text-left' : 'print:p-4 text-left'} style={{ pageBreakAfter: isBatchPrinting && classIdx < arr.length - 1 ? 'always' : 'auto' }}>
 
                 {/* Print Header */}
                 <div className="text-center mb-8 hidden print:block">
@@ -725,14 +725,14 @@ export default function SecularHubClient({
                 </div>
 
                 {/* Footer Signatures */}
-                <div className="flex justify-between items-center mt-16 px-8 text-slate-700 print:text-black hidden print:flex">
-                  <div className="text-center">
-                    <p className="font-bold mb-8 text-sm uppercase tracking-wider">Class Teacher's Signature</p>
-                    <div className="border-b-[1.5px] border-slate-800 print:border-black w-56 mx-auto">&nbsp;</div>
+                <div className="flex justify-between items-center mt-12 px-8 text-slate-700 print:text-black hidden print:flex">
+                  <div className="text-center w-64">
+                    <p className="font-bold mb-4 text-sm uppercase tracking-wider text-black">Class Teacher's Signature</p>
+                    <hr className="border-t-2 border-black w-full" />
                   </div>
-                  <div className="text-center">
-                    <p className="font-bold mb-8 text-sm uppercase tracking-wider">Head of Academics Signature</p>
-                    <div className="border-b-[1.5px] border-slate-800 print:border-black w-56 mx-auto">&nbsp;</div>
+                  <div className="text-center w-64">
+                    <p className="font-bold mb-4 text-sm uppercase tracking-wider text-black">Head of Academics Signature</p>
+                    <hr className="border-t-2 border-black w-full" />
                   </div>
                 </div>
               </div>
@@ -743,7 +743,7 @@ export default function SecularHubClient({
 
       {/* Analysis Tab */}
       {activeTab === 'analysis' && activeLevel && (
-              <div className="print:p-10 text-left">
+              <div className="print:p-4 text-left">
 
                 {/* Print Header */}
                 <div className="text-center mb-8 hidden print:block">
@@ -880,7 +880,7 @@ export default function SecularHubClient({
 
             {/* Top Students Tab */}
             {activeTab === 'top_students' && activeLevel && (
-              <div className="print:p-10 text-left">
+              <div className="print:p-4 text-left">
 
                 {/* Print Header */}
                 <div className="text-center mb-10 hidden print:block">

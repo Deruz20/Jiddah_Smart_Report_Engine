@@ -5,9 +5,16 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
 import { getClassTeacherSignatureKey } from "@/utils/signatures";
 
 export default function NurseryMOTReport({ reportData }: any) {
-  const grades = reportData?.circular?.subjects
-    ?.map((s: any) => s.score != null ? getNurseryGrade(s.score).grade : null)
-    .filter(Boolean) || []
+  const subjects = (reportData?.circular?.subjects || []).filter((s: any) => {
+    if (reportData?.student?.class_name?.toLowerCase().includes('top') && s.subject_name.toLowerCase().includes('writing')) {
+      return false;
+    }
+    return true;
+  });
+
+  const grades = subjects
+    .map((s: any) => s.score != null ? getNurseryGrade(s.score).grade : null)
+    .filter(Boolean)
 
   const getSubjectIcon = (name: string) => {
     const lower = name.toLowerCase()
@@ -316,7 +323,7 @@ export default function NurseryMOTReport({ reportData }: any) {
                 </tr>
               </thead>
               <tbody>
-                {reportData?.circular?.subjects?.map((subject: any) => {
+                {subjects.map((subject: any) => {
                   const g = subject.score != null ? getNurseryGrade(subject.score) : null
                   return (
                     <tr key={subject.subject_name}>

@@ -174,8 +174,16 @@ export default function SecularHubClient({
     const assessmentLevel = classInfo.section?.toLowerCase().replace(/\s+/g, '_') || ''
     const levelSubjects = data.subjects.filter(s => s.section?.toLowerCase() === classInfo.section?.toLowerCase())
 
+    // Filter out "Writing" for Top Class.
+    const filteredSubjects = levelSubjects.filter(sub => {
+      if (classInfo.class_name?.toLowerCase().includes('top') && sub.subject_name.toLowerCase().includes('writing')) {
+        return false;
+      }
+      return true;
+    });
+
     // Sort subjects alphabetically. No slicing or hardcoding.
-    const orderedSubjects = [...levelSubjects].sort((a, b) => a.subject_name.localeCompare(b.subject_name))
+    const orderedSubjects = [...filteredSubjects].sort((a, b) => a.subject_name.localeCompare(b.subject_name))
 
     const processed = classEnrollments.map(enrollment => {
       const eMarks = data.marks.filter(m => m.enrollment_id === enrollment.id)
@@ -266,10 +274,18 @@ export default function SecularHubClient({
         ? { A: 0, B: 0, C: 0, D: 0, E: 0 }
         : { D1: 0, D2: 0, C3: 0, C4: 0, C5: 0, C6: 0, P7: 0, P8: 0, F9: 0 }
 
+      // Filter out "Writing" for Top Class.
+      const clsOrderedSubjects = orderedSubjects.filter(sub => {
+        if (cls.class_name?.toLowerCase().includes('top') && sub.subject_name.toLowerCase().includes('writing')) {
+          return false;
+        }
+        return true;
+      });
+
       classEnrollments.forEach(e => {
         const eMarks = data.marks.filter(m => m.enrollment_id === e.id)
 
-        const subjectScoresForAgg = orderedSubjects.map(sub => {
+        const subjectScoresForAgg = clsOrderedSubjects.map(sub => {
           const mark = eMarks.find(m => m.subject_id === sub.id)
           const scoreKey = `${examPhase}_score` as 'bot_score' | 'mot_score' | 'eot_score'
           const score = mark?.[scoreKey]
@@ -340,12 +356,20 @@ export default function SecularHubClient({
     const orderedSubjects = [...levelSubjects].sort((a, b) => a.subject_name.localeCompare(b.subject_name))
 
     return classes.map(cls => {
+      // Filter out "Writing" for Top Class.
+      const clsOrderedSubjects = orderedSubjects.filter(sub => {
+        if (cls.class_name?.toLowerCase().includes('top') && sub.subject_name.toLowerCase().includes('writing')) {
+          return false;
+        }
+        return true;
+      });
+
       const classEnrollments = data.enrollments.filter(e => e.circular_class_id === cls.id)
       const students = classEnrollments.map(e => {
         const eMarks = data.marks.filter(m => m.enrollment_id === e.id)
         let total = 0
         const subjectScores: Record<string, number> = {}
-        orderedSubjects.forEach(sub => {
+        clsOrderedSubjects.forEach(sub => {
           const mark = eMarks.find(m => m.subject_id === sub.id)
           const scoreKey = `${examPhase}_score` as 'bot_score' | 'mot_score' | 'eot_score'
           const score = mark?.[scoreKey]

@@ -123,6 +123,71 @@ export const generateAssessmentCSV = (
 }
 
 
+export const generateSecularAnalysisCSV = (
+  analysisRows: any[],
+  filename: string,
+  isNursery: boolean
+) => {
+  const headers = isNursery
+    ? [
+        'Class',
+        'Total Students',
+        'Highest Avg',
+        'Lowest Avg',
+        'Class Avg',
+        'Grade A',
+        'Grade B',
+        'Grade C',
+        'Grade D',
+        'Grade E'
+      ]
+    : [
+        'Class',
+        'Total Students',
+        'Highest Avg',
+        'Lowest Avg',
+        'Class Avg',
+        'Div I', 'Div II', 'Div III', 'Div IV', 'Div U', 'Div X',
+        'D1', 'D2', 'C3', 'C4', 'C5', 'C6', 'P7', 'P8', 'F9'
+      ]
+
+  const rows = analysisRows.map(row => {
+    const base = [
+      row.className,
+      row.numStudents,
+      row.highestAvg,
+      row.lowestAvg,
+      row.classAvg
+    ]
+
+    if (isNursery) {
+      return [
+        ...base,
+        row.gradeCounts.A,
+        row.gradeCounts.B,
+        row.gradeCounts.C,
+        row.gradeCounts.D,
+        row.gradeCounts.E
+      ]
+    }
+
+    return [
+      ...base,
+      row.divCounts.I, row.divCounts.II, row.divCounts.III, row.divCounts.IV, row.divCounts.U, row.divCounts.X,
+      row.gradeCounts.D1, row.gradeCounts.D2, row.gradeCounts.C3, row.gradeCounts.C4,
+      row.gradeCounts.C5, row.gradeCounts.C6, row.gradeCounts.P7, row.gradeCounts.P8, row.gradeCounts.F9
+    ]
+  })
+
+  const csvString = [
+    headers.map(escapeCSV).join(','),
+    ...rows.map(row => row.map(escapeCSV).join(','))
+  ].join('\n')
+
+  downloadCSV(csvString, filename)
+}
+
+
 export const generateAnalysisCSV = (
   analysisRows: AnalysisRow[],
   filename: string
@@ -157,6 +222,34 @@ export const generateAnalysisCSV = (
   downloadCSV(csvString, filename)
 }
 
+
+export const generateSecularTopStudentsCSV = (
+  topStudentsRows: any[],
+  filename: string
+) => {
+  const headers = [
+    'Class',
+    'Rank',
+    'Student Name',
+    'Total Score',
+    'Average'
+  ]
+
+  const rows = topStudentsRows.map(row => [
+    row.className,
+    row.rank,
+    row.studentName,
+    row.total,
+    row.avg
+  ])
+
+  const csvString = [
+    headers.map(escapeCSV).join(','),
+    ...rows.map(row => row.map(escapeCSV).join(','))
+  ].join('\n')
+
+  downloadCSV(csvString, filename)
+}
 
 export const generateTopStudentsCSV = (
   topStudentsRows: TopStudentRow[],

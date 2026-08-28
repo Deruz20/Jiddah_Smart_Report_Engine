@@ -5,9 +5,9 @@ import { motion, AnimatePresence } from 'motion/react'
 import { Loader2, ScrollText, BookOpen, Award, LayoutDashboard, SearchX, Printer, FileSpreadsheet, Download, Layers } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { generateSecularAssessmentCSV, generateAnalysisCSV, generateTopStudentsCSV } from '@/utils/csvExport'
+import { generateSecularAssessmentCSV, generateAnalysisCSV, generateTopStudentsCSV, generateSecularAnalysisCSV, generateSecularTopStudentsCSV } from '@/utils/csvExport'
 import { computeStandardRankings } from '@/lib/ranking'
-import { isGradableSubject, getSubjectGradeNumber, calculateAggregate, getDivision, getGradeDisplay, isCoreSubject } from '@/lib/grading'
+import { isGradableSubject, getSubjectGradeNumber, calculateAggregate, getDivision, getGradeDisplay, isCoreSubject, getNurseryGrade } from '@/lib/grading'
 import { TopToolbar } from '../figma-ui/TopToolbar'
 
 // Theme configuration for systematic color coding (Leaderboard style)
@@ -191,18 +191,30 @@ export default function SecularHubClient({
         const score = mark?.[scoreKey] != null ? mark[scoreKey] : null
         subjectScores[sub.id] = score
         if (score != null) {
-          const gradeNum = getSubjectGradeNumber(score)
-          subjectAggregates[sub.id] = gradeNum
-          if (isCoreSubject(sub.subject_name, assessmentLevel)) {
-            total += score
-            scoresForAgg.push({ subject_name: sub.subject_name, score: score })
+          if (assessmentLevel === 'nursery') {
+            const nGrade = getNurseryGrade(score)
+            // Store a numeric equivalent or just logic.
+            // In secular hub, aggregate isn't shown for nursery, but grade logic could be stored if needed.
+            // Using a dummy aggregate for compatibility
+            subjectAggregates[sub.id] = nGrade.grade === 'A' ? 1 : nGrade.grade === 'B' ? 2 : nGrade.grade === 'C' ? 3 : nGrade.grade === 'D' ? 5 : 9
+            if (isGradableSubject(sub.subject_name, 'nursery')) {
+              total += score
+              scoresForAgg.push({ subject_name: sub.subject_name, score: score })
+            }
+          } else {
+            const gradeNum = getSubjectGradeNumber(score)
+            subjectAggregates[sub.id] = gradeNum
+            if (isCoreSubject(sub.subject_name, assessmentLevel)) {
+              total += score
+              scoresForAgg.push({ subject_name: sub.subject_name, score: score })
+            }
           }
         } else {
           subjectAggregates[sub.id] = null
         }
       })
 
-      const agg = calculateAggregate(scoresForAgg, assessmentLevel)
+      const agg = assessmentLevel === 'nursery' ? null : calculateAggregate(scoresForAgg, assessmentLevel)
       const div = agg !== null ? getDivision(agg) : 'X'
 
       return {
@@ -247,7 +259,9 @@ export default function SecularHubClient({
       let lowestAvg = 100
 
       const divCounts: Record<string, number> = { I: 0, II: 0, III: 0, IV: 0, U: 0, X: 0 }
-      const gradeCounts: Record<string, number> = { D1: 0, D2: 0, C3: 0, C4: 0, C5: 0, C6: 0, P7: 0, P8: 0, F9: 0 }
+      const gradeCounts: Record<string, number> = activeLevel === 'nursery'
+        ? { A: 0, B: 0, C: 0, D: 0, E: 0 }
+        : { D1: 0, D2: 0, C3: 0, C4: 0, C5: 0, C6: 0, P7: 0, P8: 0, F9: 0 }
 
       classEnrollments.forEach(e => {
         const eMarks = data.marks.filter(m => m.enrollment_id === e.id)
@@ -265,16 +279,23 @@ export default function SecularHubClient({
 
           subjectScoresForAgg.forEach(s => {
             totalScore += s.score
-            const gradeNum = getSubjectGradeNumber(s.score)
-            if (gradeNum === 1) gradeCounts.D1++
-            else if (gradeNum === 2) gradeCounts.D2++
-            else if (gradeNum === 3) gradeCounts.C3++
-            else if (gradeNum === 4) gradeCounts.C4++
-            else if (gradeNum === 5) gradeCounts.C5++
-            else if (gradeNum === 6) gradeCounts.C6++
-            else if (gradeNum === 7) gradeCounts.P7++
-            else if (gradeNum === 8) gradeCounts.P8++
-            else if (gradeNum === 9) gradeCounts.F9++
+            if (activeLevel === 'nursery') {
+              const nGrade = getNurseryGrade(s.score).grade
+              if (gradeCounts[nGrade] !== undefined) {
+                gradeCounts[nGrade]++
+              }
+            } else {
+              const gradeNum = getSubjectGradeNumber(s.score)
+              if (gradeNum === 1) gradeCounts.D1++
+              else if (gradeNum === 2) gradeCounts.D2++
+              else if (gradeNum === 3) gradeCounts.C3++
+              else if (gradeNum === 4) gradeCounts.C4++
+              else if (gradeNum === 5) gradeCounts.C5++
+              else if (gradeNum === 6) gradeCounts.C6++
+              else if (gradeNum === 7) gradeCounts.P7++
+              else if (gradeNum === 8) gradeCounts.P8++
+              else if (gradeNum === 9) gradeCounts.F9++
+            }
           })
 
           const avgScore = totalScore / subjectScoresForAgg.length
@@ -326,7 +347,13 @@ export default function SecularHubClient({
           const scoreKey = `${examPhase}_score` as 'bot_score' | 'mot_score' | 'eot_score'
           const score = mark?.[scoreKey]
           if (score != null) {
-            total += score
+            if (activeLevel === 'nursery') {
+               if (isGradableSubject(sub.subject_name, 'nursery')) {
+                 total += score
+               }
+            } else {
+               total += score
+            }
             subjectScores[sub.id] = score
           }
         })
@@ -394,10 +421,10 @@ export default function SecularHubClient({
           generateSecularAssessmentCSV(assessmentData.students as any, assessmentData.orderedSubjects, filename, (val) => getGradeDisplay(val))
         } else if (activeTab === 'analysis') {
           if (!analysisData.length) return toast.error("No analysis data to download.")
-          generateAnalysisCSV(analysisData as any, filename)
+          generateSecularAnalysisCSV(analysisData as any, filename, activeLevel === 'nursery')
         } else if (activeTab === 'top_students') {
           if (!topStudentsData.length) return toast.error("No top students data to download.")
-          generateTopStudentsCSV(topStudentsData.flatMap(g => g.students), filename)
+          generateSecularTopStudentsCSV(topStudentsData.flatMap(g => g.students), filename)
         }
         toast.success("Download generated successfully!")
       } catch {
@@ -429,13 +456,13 @@ export default function SecularHubClient({
             { label: 'Download Subject Analysis (CSV)', onClick: () => {
                 const dateStr = new Date().toISOString().split('T')[0]
                 if (!analysisData.length) return toast.error("No analysis data to download.")
-                generateAnalysisCSV(analysisData as any, `secularhub-analysis-${dateStr}.csv`)
+                generateSecularAnalysisCSV(analysisData as any, `secularhub-analysis-${dateStr}.csv`, activeLevel === 'nursery')
                 toast.success("Analysis CSV generated successfully!")
             }, icon: <FileSpreadsheet size={14} /> },
             { label: 'Download Top Students (CSV)', onClick: () => {
                 const dateStr = new Date().toISOString().split('T')[0]
                 if (!topStudentsData.length) return toast.error("No top students data to download.")
-                generateTopStudentsCSV(topStudentsData.flatMap(g => g.students), `secularhub-top_students-${dateStr}.csv`)
+                generateSecularTopStudentsCSV(topStudentsData.flatMap(g => g.students), `secularhub-top_students-${dateStr}.csv`)
                 toast.success("Top Students CSV generated successfully!")
             }, icon: <FileSpreadsheet size={14} /> },
           ]}
@@ -832,70 +859,96 @@ export default function SecularHubClient({
                     </div>
 
                     {/* 2. Division Breakdown Table */}
-                    <div>
-                      <h4 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-3">2. Division Breakdown</h4>
-                      <div className="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm">
-                        <table className="w-full text-left border-collapse print:border print:border-slate-300">
-                          <thead className="bg-slate-50/90 dark:bg-slate-800/90 print:bg-slate-100">
-                            <tr>
-                              <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 font-semibold text-xs uppercase tracking-wider">Class Segment</th>
-                              <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-emerald-600 font-semibold text-xs uppercase tracking-wider text-center">Div I</th>
-                              <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-blue-600 font-semibold text-xs uppercase tracking-wider text-center">Div II</th>
-                              <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-indigo-600 font-semibold text-xs uppercase tracking-wider text-center">Div III</th>
-                              <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-amber-600 font-semibold text-xs uppercase tracking-wider text-center">Div IV</th>
-                              <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-rose-600 font-semibold text-xs uppercase tracking-wider text-center">Div U</th>
-                              <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-400 font-semibold text-xs uppercase tracking-wider text-center">Div X</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {analysisData.map((cls) => (
-                              <tr key={`div-${cls.id}`} className="hover:bg-slate-50/80 border-b border-slate-100 last:border-0 print:border-black">
-                                <td className="px-4 py-3 font-bold text-slate-800">{cls.className}</td>
-                                <td className="px-4 py-3 text-center font-bold text-emerald-700">{cls.divCounts.I}</td>
-                                <td className="px-4 py-3 text-center font-bold text-blue-700">{cls.divCounts.II}</td>
-                                <td className="px-4 py-3 text-center font-bold text-indigo-700">{cls.divCounts.III}</td>
-                                <td className="px-4 py-3 text-center font-bold text-amber-700">{cls.divCounts.IV}</td>
-                                <td className="px-4 py-3 text-center font-bold text-rose-700">{cls.divCounts.U}</td>
-                                <td className="px-4 py-3 text-center font-bold text-slate-400">{cls.divCounts.X}</td>
+                    {activeLevel !== 'nursery' && (
+                      <div>
+                        <h4 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-3">2. Division Breakdown</h4>
+                        <div className="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm">
+                          <table className="w-full text-left border-collapse print:border print:border-slate-300">
+                            <thead className="bg-slate-50/90 dark:bg-slate-800/90 print:bg-slate-100">
+                              <tr>
+                                <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 font-semibold text-xs uppercase tracking-wider">Class Segment</th>
+                                <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-emerald-600 font-semibold text-xs uppercase tracking-wider text-center">Div I</th>
+                                <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-blue-600 font-semibold text-xs uppercase tracking-wider text-center">Div II</th>
+                                <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-indigo-600 font-semibold text-xs uppercase tracking-wider text-center">Div III</th>
+                                <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-amber-600 font-semibold text-xs uppercase tracking-wider text-center">Div IV</th>
+                                <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-rose-600 font-semibold text-xs uppercase tracking-wider text-center">Div U</th>
+                                <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-400 font-semibold text-xs uppercase tracking-wider text-center">Div X</th>
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                            </thead>
+                            <tbody>
+                              {analysisData.map((cls) => (
+                                <tr key={`div-${cls.id}`} className="hover:bg-slate-50/80 border-b border-slate-100 last:border-0 print:border-black">
+                                  <td className="px-4 py-3 font-bold text-slate-800">{cls.className}</td>
+                                  <td className="px-4 py-3 text-center font-bold text-emerald-700">{cls.divCounts.I}</td>
+                                  <td className="px-4 py-3 text-center font-bold text-blue-700">{cls.divCounts.II}</td>
+                                  <td className="px-4 py-3 text-center font-bold text-indigo-700">{cls.divCounts.III}</td>
+                                  <td className="px-4 py-3 text-center font-bold text-amber-700">{cls.divCounts.IV}</td>
+                                  <td className="px-4 py-3 text-center font-bold text-rose-700">{cls.divCounts.U}</td>
+                                  <td className="px-4 py-3 text-center font-bold text-slate-400">{cls.divCounts.X}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
-                    </div>
+                    )}
 
                     {/* 3. Grade Distribution Table */}
                     <div>
-                      <h4 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-3">3. Grade Distribution</h4>
+                      <h4 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-3">{activeLevel === 'nursery' ? '2. Grade Distribution' : '3. Grade Distribution'}</h4>
                       <div className="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm">
                         <table className="w-full text-left border-collapse print:border print:border-slate-300">
                           <thead className="bg-slate-50/90 dark:bg-slate-800/90 print:bg-slate-100">
                             <tr>
                               <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 font-semibold text-xs uppercase tracking-wider">Class Segment</th>
-                              <th className="px-3 py-3 border-b border-slate-200 text-emerald-600 font-bold text-xs text-center">D1</th>
-                              <th className="px-3 py-3 border-b border-slate-200 text-emerald-600 font-bold text-xs text-center">D2</th>
-                              <th className="px-3 py-3 border-b border-slate-200 text-blue-600 font-bold text-xs text-center">C3</th>
-                              <th className="px-3 py-3 border-b border-slate-200 text-blue-600 font-bold text-xs text-center">C4</th>
-                              <th className="px-3 py-3 border-b border-slate-200 text-blue-600 font-bold text-xs text-center">C5</th>
-                              <th className="px-3 py-3 border-b border-slate-200 text-blue-600 font-bold text-xs text-center">C6</th>
-                              <th className="px-3 py-3 border-b border-slate-200 text-amber-600 font-bold text-xs text-center">P7</th>
-                              <th className="px-3 py-3 border-b border-slate-200 text-amber-600 font-bold text-xs text-center">P8</th>
-                              <th className="px-3 py-3 border-b border-slate-200 text-rose-600 font-bold text-xs text-center">F9</th>
+                              {activeLevel === 'nursery' ? (
+                                <>
+                                  <th className="px-3 py-3 border-b border-slate-200 text-emerald-600 font-bold text-xs text-center">A</th>
+                                  <th className="px-3 py-3 border-b border-slate-200 text-emerald-600 font-bold text-xs text-center">B</th>
+                                  <th className="px-3 py-3 border-b border-slate-200 text-blue-600 font-bold text-xs text-center">C</th>
+                                  <th className="px-3 py-3 border-b border-slate-200 text-amber-600 font-bold text-xs text-center">D</th>
+                                  <th className="px-3 py-3 border-b border-slate-200 text-rose-600 font-bold text-xs text-center">E</th>
+                                </>
+                              ) : (
+                                <>
+                                  <th className="px-3 py-3 border-b border-slate-200 text-emerald-600 font-bold text-xs text-center">D1</th>
+                                  <th className="px-3 py-3 border-b border-slate-200 text-emerald-600 font-bold text-xs text-center">D2</th>
+                                  <th className="px-3 py-3 border-b border-slate-200 text-blue-600 font-bold text-xs text-center">C3</th>
+                                  <th className="px-3 py-3 border-b border-slate-200 text-blue-600 font-bold text-xs text-center">C4</th>
+                                  <th className="px-3 py-3 border-b border-slate-200 text-blue-600 font-bold text-xs text-center">C5</th>
+                                  <th className="px-3 py-3 border-b border-slate-200 text-blue-600 font-bold text-xs text-center">C6</th>
+                                  <th className="px-3 py-3 border-b border-slate-200 text-amber-600 font-bold text-xs text-center">P7</th>
+                                  <th className="px-3 py-3 border-b border-slate-200 text-amber-600 font-bold text-xs text-center">P8</th>
+                                  <th className="px-3 py-3 border-b border-slate-200 text-rose-600 font-bold text-xs text-center">F9</th>
+                                </>
+                              )}
                             </tr>
                           </thead>
                           <tbody>
                             {analysisData.map((cls) => (
                               <tr key={`grade-${cls.id}`} className="hover:bg-slate-50/80 border-b border-slate-100 last:border-0 print:border-black">
                                 <td className="px-4 py-3 font-bold text-slate-800">{cls.className}</td>
-                                <td className="px-3 py-3 text-center font-bold text-emerald-700">{cls.gradeCounts.D1}</td>
-                                <td className="px-3 py-3 text-center font-bold text-emerald-700">{cls.gradeCounts.D2}</td>
-                                <td className="px-3 py-3 text-center font-bold text-blue-700">{cls.gradeCounts.C3}</td>
-                                <td className="px-3 py-3 text-center font-bold text-blue-700">{cls.gradeCounts.C4}</td>
-                                <td className="px-3 py-3 text-center font-bold text-blue-700">{cls.gradeCounts.C5}</td>
-                                <td className="px-3 py-3 text-center font-bold text-blue-700">{cls.gradeCounts.C6}</td>
-                                <td className="px-3 py-3 text-center font-bold text-amber-700">{cls.gradeCounts.P7}</td>
-                                <td className="px-3 py-3 text-center font-bold text-amber-700">{cls.gradeCounts.P8}</td>
-                                <td className="px-3 py-3 text-center font-bold text-rose-700">{cls.gradeCounts.F9}</td>
+                                {activeLevel === 'nursery' ? (
+                                  <>
+                                    <td className="px-3 py-3 text-center font-bold text-emerald-700">{cls.gradeCounts.A}</td>
+                                    <td className="px-3 py-3 text-center font-bold text-emerald-700">{cls.gradeCounts.B}</td>
+                                    <td className="px-3 py-3 text-center font-bold text-blue-700">{cls.gradeCounts.C}</td>
+                                    <td className="px-3 py-3 text-center font-bold text-amber-700">{cls.gradeCounts.D}</td>
+                                    <td className="px-3 py-3 text-center font-bold text-rose-700">{cls.gradeCounts.E}</td>
+                                  </>
+                                ) : (
+                                  <>
+                                    <td className="px-3 py-3 text-center font-bold text-emerald-700">{cls.gradeCounts.D1}</td>
+                                    <td className="px-3 py-3 text-center font-bold text-emerald-700">{cls.gradeCounts.D2}</td>
+                                    <td className="px-3 py-3 text-center font-bold text-blue-700">{cls.gradeCounts.C3}</td>
+                                    <td className="px-3 py-3 text-center font-bold text-blue-700">{cls.gradeCounts.C4}</td>
+                                    <td className="px-3 py-3 text-center font-bold text-blue-700">{cls.gradeCounts.C5}</td>
+                                    <td className="px-3 py-3 text-center font-bold text-blue-700">{cls.gradeCounts.C6}</td>
+                                    <td className="px-3 py-3 text-center font-bold text-amber-700">{cls.gradeCounts.P7}</td>
+                                    <td className="px-3 py-3 text-center font-bold text-amber-700">{cls.gradeCounts.P8}</td>
+                                    <td className="px-3 py-3 text-center font-bold text-rose-700">{cls.gradeCounts.F9}</td>
+                                  </>
+                                )}
                               </tr>
                             ))}
                           </tbody>

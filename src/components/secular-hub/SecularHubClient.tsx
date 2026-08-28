@@ -791,8 +791,12 @@ export default function SecularHubClient({
                               <td key={`empty-${s.id}-agg`} className="px-6 py-4 print:border-none print:px-1 print:py-1">&nbsp;</td>
                             ])}
                             <td className="px-6 py-4 print:border-none print:px-1 print:py-1">&nbsp;</td>
-                            <td className="px-6 py-4 print:border-none print:px-1 print:py-1">&nbsp;</td>
-                            <td className="px-6 py-4 print:border-none print:px-1 print:py-1">&nbsp;</td>
+                            {cls.section !== 'nursery' && (
+                              <>
+                                <td className="px-6 py-4 print:border-none print:px-1 print:py-1">&nbsp;</td>
+                                <td className="px-6 py-4 print:border-none print:px-1 print:py-1">&nbsp;</td>
+                              </>
+                            )}
                             <td className="px-6 py-4 print:border-none print:px-1 print:py-1">&nbsp;</td>
                           </tr>
                         ))}

@@ -355,7 +355,7 @@ export default function NurseryEOTReport({ reportData }: any) {
             <table>
               <thead>
                 <tr>
-                  <th colSpan={7} style={{ background: '#0f172a', textAlign: 'left', letterSpacing: '0.1em' }}>Learner's Competence (Progressive Records)</th>
+                  <th colSpan={reportData?.student?.class_name?.toLowerCase().includes('top') ? 6 : 7} style={{ background: '#0f172a', textAlign: 'left', letterSpacing: '0.1em' }}>Learner's Competence (Progressive Records)</th>
                 </tr>
                 <tr>
                   <th style={{ background: '#f8fafc', color: '#1e40af', borderBottom: '1px solid #e2e8f0' }}>Assessment</th>
@@ -364,7 +364,9 @@ export default function NurseryEOTReport({ reportData }: any) {
                   <th style={{ background: '#f8fafc', color: '#1e40af', borderBottom: '1px solid #e2e8f0' }}>LA3</th>
                   <th style={{ background: '#f8fafc', color: '#1e40af', borderBottom: '1px solid #e2e8f0' }}>LA4</th>
                   <th style={{ background: '#f8fafc', color: '#1e40af', borderBottom: '1px solid #e2e8f0' }}>LA5</th>
-                  <th style={{ background: '#f8fafc', color: '#1e40af', borderBottom: '1px solid #e2e8f0' }}>Writing</th>
+                  {!reportData?.student?.class_name?.toLowerCase().includes('top') && (
+                    <th style={{ background: '#f8fafc', color: '#1e40af', borderBottom: '1px solid #e2e8f0' }}>Writing</th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -378,7 +380,7 @@ export default function NurseryEOTReport({ reportData }: any) {
                     </td>
                   ))}
                   {/* Fill empty cells if fewer than 6 subjects */}
-                  {Array.from({ length: Math.max(0, 6 - subjects.slice(0, 6).length) }).map((_, i) => (
+                  {Array.from({ length: Math.max(0, (!reportData?.student?.class_name?.toLowerCase().includes('top') ? 6 : 5) - subjects.slice(0, 6).length) }).map((_, i) => (
                     <td key={'empty-'+i} className="data-cell">--</td>
                   ))}
                 </tr>

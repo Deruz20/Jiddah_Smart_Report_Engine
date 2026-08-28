@@ -358,38 +358,47 @@ export const generateSecularAssessmentCSV = (
   students: any[],
   orderedSubjects: any[],
   filename: string,
-  getGradeDisplayStr: (val: number | null) => string
+  isNursery: boolean
 ) => {
   const headers = [
     'No',
     'Student Name',
     ...orderedSubjects.flatMap(s => [
       s.subject_name === 'MATH' ? 'MTC' : s.subject_name === 'SCI' ? 'SCIE' : s.subject_name,
-      'AGG'
+      isNursery ? 'GRD' : 'AGG'
     ]),
-    'TOTAL',
-    'T/L AGG.',
-    'DIV',
-    'PSN'
+    'TOTAL'
   ]
+
+  if (!isNursery) {
+    headers.push('T/L AGG.', 'DIV')
+  }
+  headers.push('PSN')
 
   const rows = students.map((student, idx) => {
     const scoresAndAggs = orderedSubjects.flatMap(s => {
       const score = student.subjectScores[s.id] !== undefined ? student.subjectScores[s.id] : '-'
-      const aggNum = student.subjectAggregates[s.id]
-      const aggStr = aggNum != null ? getGradeDisplayStr(aggNum) : '-'
-      return [score, aggStr]
+      const gradeStr = student.subjectGrades?.[s.id] || '-'
+      return [score, gradeStr]
     })
     
-    return [
+    const baseRow = [
       idx + 1,
       student.name,
       ...scoresAndAggs,
-      student.total > 0 ? student.total : '-',
-      student.totalAggregate > 0 ? student.totalAggregate : '-',
-      student.division,
-      student.total > 0 ? student.position : '-'
+      student.total > 0 ? student.total : '-'
     ]
+
+    if (!isNursery) {
+      baseRow.push(
+        student.totalAggregate > 0 ? student.totalAggregate : '-',
+        student.division
+      )
+    }
+
+    baseRow.push(student.total > 0 ? student.position : '-')
+
+    return baseRow
   })
 
   const csvString = [

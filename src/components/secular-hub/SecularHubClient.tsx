@@ -21,11 +21,11 @@ const THEME = {
 
 const getAchievementTier = (val: string | null | undefined): keyof typeof THEME => {
   if (!val || val === '-') return 'neutral'
-  if (val.startsWith('D') || val === 'I') return 'gold' // Distinctions / Div I
-  if (val.startsWith('C') || val === 'II') return 'silver' // Credits / Div II
-  if (val.startsWith('P') || val === 'III') return 'bronze' // Passes / Div III
-  if (val === 'IV') return 'neutral' // Div IV
-  return 'danger' // F9, U, X
+  if (val.startsWith('D') || val === 'I' || val === 'A') return 'gold' // Distinctions / Div I / Nursery A
+  if (val.startsWith('C') || val === 'II' || val === 'B') return 'silver' // Credits / Div II / Nursery B
+  if (val.startsWith('P') || val === 'III' || val === 'C') return 'bronze' // Passes / Div III / Nursery C
+  if (val === 'IV' || val === 'D') return 'neutral' // Div IV / Nursery D
+  return 'danger' // F9, U, X, Nursery E
 }
 
 const getBadgeStyles = (val: string | null | undefined) => THEME[getAchievementTier(val)]
@@ -183,6 +183,7 @@ export default function SecularHubClient({
       let total = 0
       const subjectScores: Record<string, number | null> = {}
       const subjectAggregates: Record<string, number | null> = {}
+      const subjectGrades: Record<string, string | null> = {}
       const scoresForAgg: { subject_name: string; score: number }[] = []
 
       orderedSubjects.forEach(sub => {
@@ -193,8 +194,7 @@ export default function SecularHubClient({
         if (score != null) {
           if (assessmentLevel === 'nursery') {
             const nGrade = getNurseryGrade(score)
-            // Store a numeric equivalent or just logic.
-            // In secular hub, aggregate isn't shown for nursery, but grade logic could be stored if needed.
+            subjectGrades[sub.id] = nGrade.grade
             // Using a dummy aggregate for compatibility
             subjectAggregates[sub.id] = nGrade.grade === 'A' ? 1 : nGrade.grade === 'B' ? 2 : nGrade.grade === 'C' ? 3 : nGrade.grade === 'D' ? 5 : 9
             if (isGradableSubject(sub.subject_name, 'nursery')) {
@@ -204,6 +204,7 @@ export default function SecularHubClient({
           } else {
             const gradeNum = getSubjectGradeNumber(score)
             subjectAggregates[sub.id] = gradeNum
+            subjectGrades[sub.id] = getGradeDisplay(gradeNum)
             if (isCoreSubject(sub.subject_name, assessmentLevel)) {
               total += score
               scoresForAgg.push({ subject_name: sub.subject_name, score: score })
@@ -211,6 +212,7 @@ export default function SecularHubClient({
           }
         } else {
           subjectAggregates[sub.id] = null
+          subjectGrades[sub.id] = null
         }
       })
 
@@ -223,6 +225,7 @@ export default function SecularHubClient({
         total: total > 0 ? total : null,
         subjectScores,
         subjectAggregates,
+        subjectGrades,
         totalAggregate: agg ?? 0,
         division: div,
         rank: 0 as number | string,
@@ -418,7 +421,7 @@ export default function SecularHubClient({
       try {
         if (activeTab === 'assessment') {
           if (!assessmentData.students?.length) return toast.error("No assessment data to download.")
-          generateSecularAssessmentCSV(assessmentData.students as any, assessmentData.orderedSubjects, filename, (val) => getGradeDisplay(val))
+          generateSecularAssessmentCSV(assessmentData.students as any, assessmentData.orderedSubjects, filename, circularClasses.find(c => c.id === activeClassId)?.section === 'nursery')
         } else if (activeTab === 'analysis') {
           if (!analysisData.length) return toast.error("No analysis data to download.")
           generateSecularAnalysisCSV(analysisData as any, filename, activeLevel === 'nursery')
@@ -450,7 +453,7 @@ export default function SecularHubClient({
             { label: 'Download Assessment Sheet (CSV)', onClick: () => {
                 const dateStr = new Date().toISOString().split('T')[0]
                 if (!assessmentData.students?.length) return toast.error("No assessment data to download.")
-                generateSecularAssessmentCSV(assessmentData.students as any, assessmentData.orderedSubjects, `secularhub-assessment-${dateStr}.csv`, (val) => getGradeDisplay(val))
+                generateSecularAssessmentCSV(assessmentData.students as any, assessmentData.orderedSubjects, `secularhub-assessment-${dateStr}.csv`, circularClasses.find(c => c.id === activeClassId)?.section === 'nursery')
                 toast.success("Assessment CSV generated successfully!")
             }, icon: <FileSpreadsheet size={14} /> },
             { label: 'Download Subject Analysis (CSV)', onClick: () => {
@@ -671,13 +674,13 @@ export default function SecularHubClient({
                                 {s.subject_name === 'MATH' ? 'MTC' : s.subject_name === 'SCI' ? 'SCIE' : s.subject_name}
                               </th>
                             ]
-                            if (cls.section !== 'nursery') {
-                              cols.push(
-                                <th key={`${s.id}-agg`} className="px-2 py-5 text-slate-400 dark:text-slate-500 font-extrabold text-[10px] uppercase tracking-[0.2em] text-center print:text-slate-800 print:px-1 print:py-1 print:text-[8px] print:tracking-normal">
-                                  AGG
-                                </th>
-                              )
-                            }
+
+                            cols.push(
+                              <th key={`${s.id}-agg`} className="px-2 py-5 text-slate-400 dark:text-slate-500 font-extrabold text-[10px] uppercase tracking-[0.2em] text-center print:text-slate-800 print:px-1 print:py-1 print:text-[8px] print:tracking-normal">
+                                {cls.section === 'nursery' ? 'GRD' : 'AGG'}
+                              </th>
+                            )
+
                             return cols
                           })}
                           <th className="px-6 py-5 text-slate-500 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-[0.2em] text-center w-auto print:text-slate-800 print:px-1 print:py-1 print:text-[8px] print:tracking-normal">TOTAL</th>
@@ -706,21 +709,21 @@ export default function SecularHubClient({
                             <td className="px-6 py-4 font-bold text-[13px] text-slate-900 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors whitespace-nowrap print:text-slate-800 print:px-1 print:py-1 print:text-[9px]">{student.name}</td>
 
                             {currentAssessmentData.orderedSubjects?.flatMap(s => {
-                              const gradeStr = student.subjectAggregates[s.id] != null ? getGradeDisplay(student.subjectAggregates[s.id]!) : '-'
+                              const gradeStr = student.subjectGrades?.[s.id] || '-'
                               const cells = [
                                 <td key={`${s.id}-score`} className="px-2 py-4 text-center font-bold text-[13px] text-slate-600 dark:text-slate-300 print:text-slate-800 print:px-1 print:py-1 print:text-[9px]">
                                   {student.subjectScores[s.id] !== undefined ? student.subjectScores[s.id] : '-'}
                                 </td>
                               ]
-                              if (cls.section !== 'nursery') {
-                                cells.push(
-                                  <td key={`${s.id}-agg`} className="px-2 py-4 text-center print:px-1 print:py-1">
-                                    <span className={`inline-flex items-center justify-center min-w-[32px] h-[26px] px-2 rounded font-bold text-[11px] border ${getBadgeStyles(gradeStr)} print:!shadow-none print:!scale-90 print:transform-gpu`}>
-                                      {gradeStr}
-                                    </span>
-                                  </td>
-                                )
-                              }
+
+                              cells.push(
+                                <td key={`${s.id}-agg`} className="px-2 py-4 text-center print:px-1 print:py-1">
+                                  <span className={`inline-flex items-center justify-center min-w-[32px] h-[26px] px-2 rounded font-bold text-[11px] border ${getBadgeStyles(gradeStr)} print:!shadow-none print:!scale-90 print:transform-gpu`}>
+                                    {gradeStr}
+                                  </span>
+                                </td>
+                              )
+
                               return cells
                             })}
 

@@ -28,8 +28,7 @@ export const SchoolStamp: React.FC<SchoolStampProps> = ({ date }) => {
 
       <div style={stampStyles.centerContent}>
         <div style={stampStyles.schoolName}>
-          JIDDAH ISLAMIC NURSERY &<br />
-          PRIMARY SCHOOL
+          JIDDAH ISLAMIC SCHOOLS
         </div>
         <div style={stampStyles.dateText}>{formattedDate}</div>
         <div style={stampStyles.headteacher}>HEADTEACHER</div>

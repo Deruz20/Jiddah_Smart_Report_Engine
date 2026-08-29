@@ -489,9 +489,7 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
         <header className="header">
           <div className="school-left">
             <h1>
-              JIDDAH ISLAMIC NURSERY
-              <br />
-              AND PRIMARY SCHOOL - Nsaggu
+              JIDDAH ISLAMIC SCHOOLS
             </h1>
             <p>P.O.Box 34008 Kampala (U)</p>
             <p>Tel: +256 744950042 / 0705316961</p>

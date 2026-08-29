@@ -415,13 +415,21 @@ export default function SecularHubClient({
     }).filter(group => group.students.length > 0)
   }, [data, activeLevel, circularClasses, examPhase])
 
-  const handlePrint = () => window.print()
+  const handlePrint = () => {
+    const originalTitle = document.title;
+    document.title = `Secular_Hub_${activeLevel}_${activeTab}_${new Date().toISOString().split('T')[0]}`.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_');
+    window.print();
+    document.title = originalTitle;
+  }
 
   const handleBatchPrint = () => {
     setIsBatchPrinting(true);
     // Allow React time to render all the off-screen tables before opening the print dialog
     setTimeout(() => {
+      const originalTitle = document.title;
+      document.title = `Secular_Hub_${activeLevel}_Batch_${new Date().toISOString().split('T')[0]}`.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_');
       window.print();
+      document.title = originalTitle;
       // Remove the off-screen tables after printing
       setIsBatchPrinting(false);
     }, 1000);
@@ -657,7 +665,7 @@ export default function SecularHubClient({
 
                 {/* Print Header */}
                 <div className="text-center mb-8 hidden print:block">
-                  <h1 className="text-2xl font-extrabold text-slate-800 print:text-black mb-1 uppercase tracking-wide">Jiddah Islamic Nursery & Primary School</h1>
+                  <h1 className="text-2xl font-extrabold text-slate-800 print:text-black mb-1 uppercase tracking-wide">Jiddah Islamic Schools</h1>
                   <h3 className="text-xl font-bold mb-4 underline underline-offset-4 text-slate-700 print:text-black uppercase">
                     {examPhase === 'bot' ? 'Beginning of Term Assessment Report' : examPhase === 'eot' ? 'End of Term Assessment Report' : 'Mid-Term Assessment Report'}
                   </h3>
@@ -684,8 +692,9 @@ export default function SecularHubClient({
                 </div>
 
                 {/* Glassmorphic Table Container */}
-                <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-3xl rounded-[2rem] shadow-[0_8px_40px_-12px_rgba(0,0,0,0.08)] border border-slate-200/60 dark:border-slate-800/60 overflow-hidden print:bg-transparent print:border-none print:shadow-none print:rounded-none print:overflow-visible">
-                  <div className="overflow-x-auto shadow-inner print:shadow-none print:overflow-visible">
+                <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-3xl rounded-[2rem] shadow-[0_8px_40px_-12px_rgba(0,0,0,0.08)] border border-slate-200/60 dark:border-slate-800/60 overflow-hidden print:bg-transparent print:border-none print:shadow-none print:rounded-none print:overflow-visible relative">
+                  <div className="hidden print:block absolute inset-0 opacity-[0.03] pointer-events-none z-0" style={{ backgroundImage: "url('/school_budge.jpeg')", backgroundPosition: 'center', backgroundRepeat: 'no-repeat', backgroundSize: '60%' }}></div>
+                  <div className="overflow-x-auto shadow-inner print:shadow-none print:overflow-visible relative z-10">
                     <table className="w-full text-left border-collapse">
                       <thead className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-md sticky top-0 z-10 print:bg-transparent print:static border-b-2 border-slate-900/5 dark:border-white/5 print:border-b-[1.5px] print:border-black">
                         <tr className="hidden print:table-row"><th colSpan={100} className="h-6 p-0 border-none"></th></tr>
@@ -834,8 +843,8 @@ export default function SecularHubClient({
 
                 {/* Print Header */}
                 <div className="text-center mb-8 hidden print:block">
-                  <h1 className="text-2xl font-extrabold text-slate-800 print:text-black mb-1 uppercase tracking-wide">Jiddah Islamic Nursery & Primary School</h1>
-                  <h3 className="text-xl font-bold mb-4 underline underline-offset-4 text-slate-700 print:text-black uppercase">Mid-Term Analytics Overview</h3>
+                  <h1 className="text-2xl font-extrabold text-slate-800 print:text-black mb-1 uppercase tracking-wide">Jiddah Islamic Schools</h1>
+                  <h3 className="text-xl font-bold mb-4 underline underline-offset-4 text-slate-700 print:text-black uppercase">{examPhase === "bot" ? "Beginning of Term" : examPhase === "eot" ? "End of Term" : "Mid-Term"} Analytics Overview</h3>
                 </div>
 
                 {/* Context Bar */}
@@ -858,8 +867,9 @@ export default function SecularHubClient({
                   </div>
                 </div>
 
-                <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-200/60 dark:border-slate-800/60 overflow-hidden print:bg-transparent print:border-none print:shadow-none print:rounded-none print:overflow-visible print:overflow-visible">
-                  <div className="p-6 space-y-8">
+                <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-200/60 dark:border-slate-800/60 overflow-hidden print:bg-transparent print:border-none print:shadow-none print:rounded-none print:overflow-visible relative print:overflow-visible relative">
+                  <div className="hidden print:block absolute inset-0 opacity-[0.03] pointer-events-none z-0" style={{ backgroundImage: "url('/school_budge.jpeg')", backgroundPosition: 'center', backgroundRepeat: 'no-repeat', backgroundSize: '60%' }}></div>
+                  <div className="p-6 space-y-8 relative z-10">
                     {/* 1. Exam Analysis Table */}
                     <div>
                       <h4 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-3">1. Exam Analysis</h4>
@@ -997,7 +1007,7 @@ export default function SecularHubClient({
 
                 {/* Print Header */}
                 <div className="text-center mb-10 hidden print:block">
-                  <h1 className="text-2xl font-extrabold text-slate-800 print:text-black mb-1 uppercase tracking-wide">Jiddah Islamic Nursery & Primary School</h1>
+                  <h1 className="text-2xl font-extrabold text-slate-800 print:text-black mb-1 uppercase tracking-wide">Jiddah Islamic Schools</h1>
                   <h3 className="text-xl font-bold mb-4 underline underline-offset-4 text-slate-700 print:text-black uppercase">Top Performers Leaderboard</h3>
                 </div>
 
@@ -1009,13 +1019,14 @@ export default function SecularHubClient({
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ duration: 0.3 }}
                         key={cls.classId}
-                        className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-200/60 dark:border-slate-800/60 overflow-hidden print:bg-transparent print:border-none print:shadow-none print:rounded-none print:overflow-visible"
+                        className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-200/60 dark:border-slate-800/60 overflow-hidden print:bg-transparent print:border-none print:shadow-none print:rounded-none print:overflow-visible relative"
                       >
                         <div className="bg-slate-50/90 backdrop-blur-md p-4 border-b border-slate-200/60 text-center print:border print:border-slate-300 print:px-1 print:py-1 print:bg-slate-100 flex items-center justify-between">
                           <h4 className="font-extrabold text-slate-800 print:text-black text-lg">{cls.className} Rankings</h4>
                           <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 print:text-black">Top {cls.students.length}</span>
                         </div>
-                        <div className="overflow-x-auto print:overflow-visible p-2">
+                        <div className="hidden print:block absolute inset-0 opacity-[0.03] pointer-events-none z-0" style={{ backgroundImage: "url('/school_budge.jpeg')", backgroundPosition: 'center', backgroundRepeat: 'no-repeat', backgroundSize: '60%' }}></div>
+                        <div className="overflow-x-auto print:overflow-visible relative z-10 p-2">
                           <table className="w-full border-collapse print:border print:border-slate-300">
                             <thead className="bg-slate-50/50 print:bg-slate-100 hidden">
                               <tr>

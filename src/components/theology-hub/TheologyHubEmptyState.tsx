@@ -67,7 +67,7 @@ export function TheologyHubEmptyState() {
           letterSpacing: '0.05em',
         }}
       >
-        JIDDAH ISLAMIC NURSERY &amp; PRIMARY SCHOOL
+        JIDDAH ISLAMIC SCHOOLS
       </div>
 
       <h2

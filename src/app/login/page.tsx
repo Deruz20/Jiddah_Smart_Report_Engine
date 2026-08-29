@@ -279,13 +279,13 @@ function LoginContent() {
             <div className="absolute inset-0 bg-emerald-500/30 blur-2xl rounded-full" />
             <img
               src="/school_budge.jpeg"
-              alt="Jiddah Islamic School"
+              alt="Jiddah Islamic Schools"
               className="relative w-32 h-32 rounded-[2rem] object-cover border border-white/10 shadow-2xl"
             />
           </div>
           
           <h1 className="text-4xl lg:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-br from-white via-slate-200 to-slate-400 mb-6 tracking-tight leading-tight">
-            Jiddah Islamic <br /> Nursery & Primary
+            Jiddah Islamic <br /> Schools
           </h1>
           <p className="text-lg text-slate-400 font-medium leading-relaxed mb-12">
             Smart Report Engine — Enterprise Academic Management Platform
@@ -553,7 +553,7 @@ function LoginContent() {
                 </div>
                 <h2 className="text-3xl font-bold text-white tracking-tight mb-2">Assalamu Alaikum</h2>
                 <p className="text-lg text-slate-200 mb-1">Welcome back, verified user</p>
-                <p className="text-sm text-slate-400 mb-8">Jiddah Islamic Nursery & Primary School</p>
+                <p className="text-sm text-slate-400 mb-8">Jiddah Islamic Schools</p>
                 
                 <button
                   onClick={() => router.push("/admin")}

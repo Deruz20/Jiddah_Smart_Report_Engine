@@ -541,7 +541,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
                 {/* ── HEADER ── */}
                 <header className="header-section">
                   <div className="header-left">
-                    <h1>JIDDAH ISLAMIC NURSERY<br />AND PRIMARY SCHOOL – Nsaggu</h1>
+                    <h1>JIDDAH ISLAMIC SCHOOLS</h1>
                     <p>P.O.Box 34008 Kampala (u)</p>
                     <p>Tel: +256 744950042 / 0705316961</p>
                     <p style={{ textTransform: 'lowercase' }}>jiddahislamicnurseryandpri@gmail.com</p>

@@ -23,7 +23,7 @@ export function AppFooter() {
               Jiddah Smart Report Engine
             </p>
             <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
-              © {new Date().getFullYear()} Jiddah Islamic School.
+              © {new Date().getFullYear()} Jiddah Islamic Schools.
             </p>
           </div>
         </div>

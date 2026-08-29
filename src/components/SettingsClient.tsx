@@ -82,7 +82,7 @@ export default function SettingsClient({ terms }: { terms: Term[] }) {
   })
 
   const defaultSchoolValues: SchoolSettingsForm = {
-    school_name: "Jiddah Islamic Nursery & Primary School",
+    school_name: "Jiddah Islamic Schools",
     address: "Wakiso, Uganda",
     district: "Wakiso",
     phone_1: "+256 752 123456",

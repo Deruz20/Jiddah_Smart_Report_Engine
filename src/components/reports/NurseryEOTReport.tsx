@@ -289,8 +289,7 @@ export default function NurseryEOTReport({ reportData }: any) {
       <div className="nursery-eot-report">
         <div className="header-banner">
           <div className="school-left">
-            <h1>JIDDAH ISLAMIC</h1>
-            <h1 style={{ fontSize: '14px', marginTop: '2px', color: '#bfdbfe' }}>NURSERY AND PRIMARY SCHOOL</h1>
+            <h1>JIDDAH ISLAMIC SCHOOLS</h1>
             <p>P.O. BOX 34008 Kampala (U)</p>
             <p>Tel: +256 744950042 / 787779909</p>
           </div>

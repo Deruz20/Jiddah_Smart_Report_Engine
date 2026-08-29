@@ -119,7 +119,7 @@ export function JiddahReport({ data }: JiddahReportProps) {
             <div style={{
               fontSize: 17, fontWeight: 800, color: 'white', lineHeight: 1.25, marginBottom: 2,
             }}>
-              Jiddah Islamic Nursery &amp; Primary School
+              Jiddah Islamic Schools
             </div>
             <div style={{
               fontSize: 13, fontFamily: "'Cairo', sans-serif",
@@ -374,7 +374,7 @@ export function JiddahReport({ data }: JiddahReportProps) {
           <div style={{ fontFamily: "'Cairo', sans-serif", direction: 'rtl', fontSize: 13, fontWeight: 700, color: EMERALD }}>
             بالتوفيق
           </div>
-          <div style={{ color: '#94a3b8', fontSize: 10 }}>Jiddah Islamic School</div>
+          <div style={{ color: '#94a3b8', fontSize: 10 }}>Jiddah Islamic Schools</div>
         </div>
       </div>
     </div>

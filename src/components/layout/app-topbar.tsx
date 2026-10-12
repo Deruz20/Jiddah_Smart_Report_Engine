@@ -3,9 +3,11 @@
 import * as React from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
+import Link from "next/link";
 import {
   Search,
   Bell,
+  CheckCheck,
   ChevronRight,
   ChevronDown,
   ChevronUp,
@@ -265,24 +267,108 @@ function TermBadge() {
 
 /* ─── Notification Bell ───────────────────────────────────────────────────── */
 
+interface BellNotification {
+  id: string | number;
+  title: string;
+  message: string;
+  time: string;
+  read: boolean;
+  priority: string;
+  type: string;
+}
+
 function NotificationBell({ size = "default" }: { size?: "default" | "mobile" }) {
   const [open, setOpen] = React.useState(false);
+  const [unreadCount, setUnreadCount] = React.useState<number>(0);
+  const [notifications, setNotifications] = React.useState<BellNotification[]>([]);
+  const [loading, setLoading] = React.useState(false);
   const ref = React.useRef<HTMLDivElement>(null);
+
+  const fetchUnreadCount = React.useCallback(async () => {
+    try {
+      const res = await fetch("/api/notifications/unread-count");
+      if (res.ok) {
+        const data = await res.json();
+        setUnreadCount(Number(data.count) || 0);
+      }
+    } catch {
+      // ignore network errors
+    }
+  }, []);
+
+  const fetchNotifications = React.useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/notifications");
+      if (res.ok) {
+        const json = await res.json();
+        setNotifications((json.data ?? []).slice(0, 5));
+      }
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    fetchUnreadCount();
+    const interval = setInterval(fetchUnreadCount, 45000); // lightweight poll
+    return () => clearInterval(interval);
+  }, [fetchUnreadCount]);
+
+  React.useEffect(() => {
+    if (open) {
+      fetchNotifications();
+    }
+  }, [open, fetchNotifications]);
 
   React.useEffect(() => {
     function handler(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     }
+    function keyHandler(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
     document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    document.addEventListener("keydown", keyHandler);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      document.removeEventListener("keydown", keyHandler);
+    };
   }, []);
+
+  const handleMarkRead = async (id: string | number) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+    );
+    setUnreadCount((prev) => Math.max(0, prev - 1));
+    try {
+      await fetch(`/api/notifications/${id}/mark-read`, { method: "POST" });
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    setUnreadCount(0);
+    try {
+      await fetch("/api/notifications/mark-all-read", { method: "POST" });
+    } catch {
+      // ignore
+    }
+  };
 
   return (
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`}
         className={cn(
-          "relative flex items-center justify-center rounded-xl text-slate-500 transition-all duration-200",
+          "relative flex items-center justify-center rounded-xl text-slate-500 transition-all duration-200 cursor-pointer",
           size === "mobile"
             ? "size-11 hover:bg-slate-100 active:bg-slate-100"
             : "size-9 hover:text-slate-700 hover:bg-slate-100",
@@ -290,7 +376,9 @@ function NotificationBell({ size = "default" }: { size?: "default" | "mobile" })
         style={{ WebkitTapHighlightColor: "transparent" }}
       >
         <Bell className={size === "mobile" ? "size-5" : "size-[1.1rem]"} strokeWidth={1.8} />
-        <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-orange-500 border-2 border-white shadow-sm" />
+        {unreadCount > 0 && (
+          <span className="absolute top-1.5 right-1.5 min-w-[0.55rem] h-[0.55rem] rounded-full bg-emerald-600 border-2 border-white shadow-sm flex items-center justify-center" />
+        )}
       </button>
 
       <AnimatePresence>
@@ -300,26 +388,79 @@ function NotificationBell({ size = "default" }: { size?: "default" | "mobile" })
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.97 }}
             transition={{ duration: 0.15, ease: "easeOut" }}
-            className="absolute right-0 top-full mt-2 w-72 rounded-2xl bg-white border border-slate-200/60 overflow-hidden z-50"
-            style={{ boxShadow: "0 8px 32px rgba(0,0,0,0.12)" }}
+            className="fixed right-3 left-3 top-16 sm:absolute sm:right-0 sm:left-auto sm:top-full sm:mt-2 sm:w-80 rounded-2xl bg-white border border-slate-200/80 overflow-hidden z-50 shadow-xl"
+            style={{ boxShadow: "0 12px 36px rgba(0,0,0,0.12)" }}
           >
-            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
-              <span className="text-slate-800" style={{ fontSize: "0.85rem", fontWeight: 600 }}>Notifications</span>
-              <span className="px-2 py-0.5 rounded-full bg-orange-100 text-orange-600" style={{ fontSize: "0.7rem", fontWeight: 600 }}>3 new</span>
-            </div>
-            {[
-              { title: "3 reports pending review", time: "5 min ago", dot: "bg-orange-400" },
-              { title: "Marks entry deadline: Friday", time: "2 hr ago", dot: "bg-emerald-400" },
-              { title: "Grade 8B results uploaded", time: "Yesterday", dot: "bg-emerald-400" },
-            ].map((n) => (
-              <div key={n.title} className="flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0 cursor-pointer">
-                <div className={`mt-1.5 size-2 rounded-full shrink-0 ${n.dot}`} />
-                <div>
-                  <p className="text-slate-700" style={{ fontSize: "0.8rem" }}>{n.title}</p>
-                  <p className="text-slate-400 mt-0.5" style={{ fontSize: "0.72rem" }}>{n.time}</p>
-                </div>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50/60">
+              <div className="flex items-center gap-2">
+                <span className="text-slate-800 text-sm font-semibold">Notifications</span>
+                {unreadCount > 0 && (
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-xs font-semibold">
+                    {unreadCount} new
+                  </span>
+                )}
               </div>
-            ))}
+              {unreadCount > 0 && (
+                <button
+                  type="button"
+                  onClick={handleMarkAllRead}
+                  className="flex items-center gap-1 text-[11px] font-medium text-emerald-700 hover:text-emerald-900 transition cursor-pointer"
+                >
+                  <CheckCheck className="size-3.5" /> Mark all read
+                </button>
+              )}
+            </div>
+
+            <div className="max-h-72 overflow-y-auto divide-y divide-slate-100">
+              {loading ? (
+                <div className="px-4 py-6 text-center text-xs text-slate-400">Loading notifications...</div>
+              ) : notifications.length === 0 ? (
+                <div className="px-4 py-6 text-center text-xs text-slate-400">No recent notifications</div>
+              ) : (
+                notifications.map((n) => (
+                  <div
+                    key={String(n.id)}
+                    onClick={() => handleMarkRead(n.id)}
+                    className={cn(
+                      "flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition-colors cursor-pointer",
+                      !n.read ? "bg-emerald-50/30" : ""
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        "mt-1.5 size-2 rounded-full shrink-0",
+                        n.priority === "high"
+                          ? "bg-rose-500"
+                          : n.priority === "medium"
+                          ? "bg-amber-500"
+                          : !n.read
+                          ? "bg-emerald-500"
+                          : "bg-slate-300"
+                      )}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className={cn("text-xs text-slate-800 truncate", !n.read ? "font-semibold" : "font-normal")}>
+                        {n.title}
+                      </p>
+                      <p className="text-[11px] text-slate-500 line-clamp-2 mt-0.5">{n.message}</p>
+                      <p className="text-[10px] text-slate-400 mt-1">
+                        {n.time ? new Date(n.time).toLocaleDateString() : ""}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="p-2 border-t border-slate-100 bg-slate-50/50 text-center">
+              <Link
+                href="/admin/notifications"
+                onClick={() => setOpen(false)}
+                className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 block py-1"
+              >
+                View all notifications &rarr;
+              </Link>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

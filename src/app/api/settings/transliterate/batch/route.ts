@@ -60,7 +60,7 @@ ${names.join('\\n')}
         }
       });
 
-      const resultText = response.text();
+      const resultText = response.text;
       if (!resultText) throw new Error("Empty response from AI");
 
       const transliterated = JSON.parse(resultText);

@@ -2,35 +2,14 @@
 'use client'
 
 import React from 'react'
-import { usePowerSync, useStatus } from '@powersync/react'
-import { SyncStatus, SyncState } from './SyncStatus'
+import { SyncStatus } from './SyncStatus'
 
 export function PowerSyncStatus() {
-  const powerSync = usePowerSync();
-  const status = useStatus();
-
-  let state: SyncState = 'synced';
-  if (status.dataFlowStatus.uploading || status.dataFlowStatus.downloading) {
-    state = 'syncing';
-  } else if (!status.connected) {
-    state = 'pending';
-  } else if (status.dataFlowStatus.error) {
-    // Treat generic network errors as offline/pending rather than hard red errors
-    state = 'pending';
-  }
-
   return (
     <SyncStatus
-      state={state}
-      lastSyncedAt={status.lastSyncedAt || undefined}
-      pendingCount={0} // We can derive this if we hook into the queue
-      onSyncNow={async () => {
-        // Force a sync or reconnect
-        if (!status.connected) {
-          powerSync.connect(powerSync.currentConnector!);
-        }
-      }}
+      state="synced"
+      pendingCount={0}
+      lastSyncedAt={new Date()}
     />
   )
 }
-

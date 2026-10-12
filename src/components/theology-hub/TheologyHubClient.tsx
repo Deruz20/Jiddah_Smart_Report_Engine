@@ -71,7 +71,7 @@ export default function TheologyHubClient({
   const [activeClassId, setActiveClassId] = useState<string>(searchParams.get('class_id') || '')
   const [activeLevel, setActiveLevel] = useState<string>(searchParams.get('level') || 'raudha')
   const [activeTab, setActiveTab] = useState<'assessment' | 'analysis' | 'top_students'>((searchParams.get('tab') as any) || 'assessment')
-  const [examPhase, setExamPhase] = useState<'mot' | 'eot'>((searchParams.get('exam_phase') as any) || 'eot')
+  const [examPhase, setExamPhase] = useState<'bot' | 'mot' | 'eot'>((searchParams.get('exam_phase') as any) || 'eot')
   const [filtersOpen, setFiltersOpen] = useState(true)
   
   const [isLoading, setIsLoading] = useState(false)

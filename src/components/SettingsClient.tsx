@@ -669,15 +669,15 @@ export default function SettingsClient({ terms }: { terms: Term[] }) {
       <div className="flex flex-col md:flex-row gap-6">
         {/* Settings Nav */}
         <div className="w-full md:w-64 flex-shrink-0 md:sticky md:top-8 self-start">
-          <div className="rounded-2xl overflow-hidden bg-white border shadow-sm" style={{ borderColor: "rgba(0,0,0,0.07)" }}>
+          <div className="rounded-2xl bg-white border shadow-sm p-1.5 md:p-0 flex md:flex-col overflow-x-auto md:overflow-x-visible gap-1 md:gap-0 no-scrollbar" style={{ borderColor: "rgba(0,0,0,0.07)" }}>
             {settingsSections.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
                 onClick={() => setActiveSection(id)}
-                className="w-full flex items-center gap-3 px-4 py-3.5 text-left border-b transition-all hover:bg-gray-50 active:scale-[0.98] cursor-pointer"
+                className="whitespace-nowrap shrink-0 md:shrink md:w-full flex items-center gap-2.5 px-3.5 py-2.5 md:px-4 md:py-3.5 text-left rounded-xl md:rounded-none md:border-b transition-all hover:bg-gray-50 active:scale-[0.98] cursor-pointer"
                 style={{
                   borderColor: "rgba(0,0,0,0.04)",
-                  background: activeSection === id ? "rgba(16,185,129,0.07)" : "white",
+                  background: activeSection === id ? "rgba(16,185,129,0.08)" : "transparent",
                   borderLeft: activeSection === id ? "3px solid #10B981" : "3px solid transparent",
                 }}
               >
@@ -685,7 +685,7 @@ export default function SettingsClient({ terms }: { terms: Term[] }) {
                 <span style={{ fontSize: "13px", fontWeight: activeSection === id ? 600 : 400, color: activeSection === id ? "#065F46" : "#374151" }}>
                   {label}
                 </span>
-                {activeSection === id && <ChevronRight className="w-3.5 h-3.5 ml-auto" style={{ color: "#10B981" }} />}
+                {activeSection === id && <ChevronRight className="hidden md:block w-3.5 h-3.5 ml-auto" style={{ color: "#10B981" }} />}
               </button>
             ))}
           </div>

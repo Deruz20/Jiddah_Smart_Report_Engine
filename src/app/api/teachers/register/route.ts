@@ -69,6 +69,7 @@ export async function POST(req: Request) {
       .insert([
         {
           id: userId,
+          auth_user_id: userId,
           email: invite.email,
           role: finalRole,
           subject: finalSubject,

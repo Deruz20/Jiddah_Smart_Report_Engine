@@ -154,6 +154,15 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: circularError.message }, { status: 500 }))
     }
 
+    const { data: initialsData } = await supabase.from('teacher_initials').select('*')
+    const teacherInitialsMap: Record<string, string> = {}
+    if (initialsData) {
+      initialsData.forEach((item: any) => {
+        const classKey = item.class_id ? `_${item.class_id}` : ''
+        teacherInitialsMap[`${item.level}_${item.subject_id}${classKey}`] = item.initials
+      })
+    }
+
     const circularRows = (circularSubjects || []).map((subject: any) => {
       const existing = (circularMarks || []).find((m: any) => m.subject_id === subject.id)
       
@@ -201,6 +210,10 @@ export async function GET(request: NextRequest) {
         remark: overrideEotRemark || defaultEotRemark
       }
 
+      const cId = enrollment.circular_class_id;
+      const specificInitials = teacherInitialsMap[`${sectionType}_${subject.id}_${cId}`];
+      const generalInitials = teacherInitialsMap[`${sectionType}_${subject.id}`];
+
       return {
         subject_name: subject.subject_name,
         bot_score: existing?.bot_score ?? null,
@@ -213,6 +226,7 @@ export async function GET(request: NextRequest) {
         grade_display: gradeInfo.grade,
         remark: gradeInfo.remark,
         is_core: isCoreSubject(subject.subject_name, sectionType),
+        teacher_initials: specificInitials || generalInitials || '',
       }
     })
 
@@ -446,6 +460,21 @@ export async function GET(request: NextRequest) {
         division: theologyAggregate !== null ? getDivision(theologyAggregate) : null,
       }
     }
+    const { data: signatureObjects } = await supabase.storage.from('signatures').list('', { limit: 100 })
+    const signatures: Record<string, string | null> = {
+      'head-teacher': null,
+      'principal': null,
+      'class-teacher-p3': null,
+      'class-teacher-p5': null,
+      'school-stamp': null,
+    }
+    for (const object of signatureObjects ?? []) {
+      for (const key of Object.keys(signatures)) {
+        if (object.name.startsWith(`${key}.`)) {
+          signatures[key] = supabase.storage.from('signatures').getPublicUrl(object.name).data.publicUrl
+        }
+      }
+    }
 
     // Only return data for the requested curriculum
     if (curriculum === 'theology') {
@@ -510,62 +539,50 @@ export async function GET(request: NextRequest) {
         }
       }
 
+
       return withCors(request, NextResponse.json({
-        id: enrollment.id,
-        status: 'success',
-        student: {
-          name: studentData?.name ?? '—',
-          admission_number: studentData?.admission_number ?? '—',
-          arabic_name: studentData?.arabic_name ?? null,
-          religion: studentData?.is_muslim === false ? 'Non-Muslim' : 'Muslim',
-          class_name: '—',
-          theology_class_arabic: theologyClassArabic ?? null,
-          theology_class_english: theologyClassEnglish ?? null,
-          section: null,
-          academic_year: enrollment.academic_year,
-        },
-        term: {
-          label: term.label,
-          term_number: term.term_number,
-          academic_year: term.academic_year,
-          start_date: term.start_date,
-          end_date: term.end_date,
-          next_term_start: term.next_term_start,
-        },
-        score_type,
-        section_type: sectionType,
-        circular: null,
-        theology: theologySectionData,
-        meta: {
-          is_term_3: isTerm3,
-          promotion_status: isTerm3 && theologySectionData?.division ? getPromotionStatus(theologySectionData.division as any) : null,
-          position: theologyPosition,
-          total_students: totalTheologyStudents,
-        },
-        debug: {
-          enrollmentId: enrollment.id,
-          circularMarksCount: 0,
-          supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
-        }
-      }))
+          id: enrollment.id,
+          status: 'success',
+          student: {
+            name: studentData?.name ?? '—',
+            admission_number: studentData?.admission_number ?? '—',
+            arabic_name: studentData?.arabic_name ?? null,
+            religion: studentData?.is_muslim === false ? 'Non-Muslim' : 'Muslim',
+            class_name: '—',
+            theology_class_arabic: theologyClassArabic ?? null,
+            theology_class_english: theologyClassEnglish ?? null,
+            section: null,
+            academic_year: enrollment.academic_year,
+          },
+          term: {
+            label: term.label,
+            term_number: term.term_number,
+            academic_year: term.academic_year,
+            start_date: term.start_date,
+            end_date: term.end_date,
+            next_term_start: term.next_term_start,
+          },
+          score_type,
+          section_type: sectionType,
+          circular: null,
+          theology: theologySectionData,
+          meta: {
+            is_term_3: isTerm3,
+            promotion_status: isTerm3 && theologySectionData?.division ? getPromotionStatus(theologySectionData.division as any) : null,
+            position: theologyPosition,
+            total_students: totalTheologyStudents,
+          },
+          signatures,
+          settings: schoolSettings,
+          debug: {
+            enrollmentId: enrollment.id,
+            circularMarksCount: 0,
+            supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+          }
+        }))
     }
 
-    const { data: signatureObjects } = await supabase.storage.from('signatures').list('', { limit: 100 })
-    const signatures: Record<string, string | null> = {
-      'head-teacher': null,
-      'principal': null,
-      'class-teacher-p3': null,
-      'class-teacher-p5': null,
-      'school-stamp': null,
-    }
-    for (const object of signatureObjects ?? []) {
-      for (const key of Object.keys(signatures)) {
-        if (object.name.startsWith(`${key}.`)) {
-          signatures[key] = supabase.storage.from('signatures').getPublicUrl(object.name).data.publicUrl
-        }
-      }
-    }
-
+    // -- Secular report path ----------------------------------------------------
     const studentData = Array.isArray(enrollment.students) ? enrollment.students[0] : enrollment.students
     const circularClass = Array.isArray(enrollment.circular_classes) ? enrollment.circular_classes[0] : enrollment.circular_classes
     const theologyClass = Array.isArray(enrollment.theology_classes) ? enrollment.theology_classes[0] : enrollment.theology_classes

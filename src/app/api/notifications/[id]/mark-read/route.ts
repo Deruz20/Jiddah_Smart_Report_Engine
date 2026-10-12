@@ -17,7 +17,7 @@ export async function PUT(
   if (preflight) return preflight
 
   const notificationId = params?.id
-  if (!notificationId || !isNumericId(notificationId)) {
+  if (!notificationId) {
     return withCors(request, NextResponse.json({ error: 'Invalid notification ID' }, { status: 400 }))
   }
 
@@ -30,10 +30,13 @@ export async function PUT(
       return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
+    const idValue = isNumericId(notificationId) ? Number(notificationId) : notificationId
+
     const result = await supabase
       .from('notifications')
       .update({ read: true, read_at: new Date().toISOString(), read_by: user.id })
-      .eq('id', Number(notificationId))
+      .eq('id', idValue)
+      .select()
 
     const data = result.data as any
     const error = result.error
@@ -48,7 +51,7 @@ export async function PUT(
     }
 
     await recordActivity(supabase, user.id, 'mark_notification_read', {
-      notificationId: Number(notificationId),
+      notificationId: idValue,
     })
 
     return withCors(request, NextResponse.json({ success: true }))
@@ -59,6 +62,13 @@ export async function PUT(
       NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 })
     )
   }
+}
+
+export async function POST(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  return PUT(request, context)
 }
 
 export async function PATCH(

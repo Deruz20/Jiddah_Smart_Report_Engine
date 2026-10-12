@@ -54,3 +54,71 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
+export async function POST(request: NextRequest) {
+  const preflight = corsPreflight(request)
+  if (preflight) return preflight
+
+  try {
+    const cookieStore = await cookies()
+    const supabase = createClient(cookieStore)
+    const user = await getAuthenticatedUser(supabase)
+
+    if (!user) {
+      return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+    }
+
+    const body = await request.json()
+    const title = typeof body?.title === 'string' ? body.title.trim() : ''
+    const message = typeof body?.message === 'string' ? body.message.trim() : ''
+    const priority = ['high', 'medium', 'normal'].includes(body?.priority) ? body.priority : 'normal'
+    const type = typeof body?.type === 'string' ? body.type.trim() : 'info'
+    const recipientId = body?.recipient_id || null
+
+    if (!title || !message) {
+      return withCors(request, NextResponse.json({ error: 'Title and message are required' }, { status: 400 }))
+    }
+
+    // Deduplication check: avoid exact duplicate notification within last 5 minutes
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
+    let dupQuery = supabase
+      .from('notifications')
+      .select('id')
+      .eq('title', title)
+      .eq('message', message)
+      .gte('created_at', fiveMinutesAgo)
+
+    if (recipientId) {
+      dupQuery = dupQuery.eq('recipient_id', recipientId)
+    }
+
+    const { data: existingDup } = await dupQuery.limit(1)
+    if (existingDup && existingDup.length > 0) {
+      return withCors(request, NextResponse.json({ success: true, deduplicated: true, id: existingDup[0].id }))
+    }
+
+    const insertData: any = {
+      title,
+      message,
+      priority,
+      type,
+      recipient_id: recipientId,
+      read: false,
+      created_at: new Date().toISOString()
+    }
+
+    const { data, error } = await supabase.from('notifications').insert([insertData]).select()
+    if (error) {
+      console.error('notifications POST error:', error.message)
+      return withCors(request, NextResponse.json({ error: error.message }, { status: 500 }))
+    }
+
+    return withCors(request, NextResponse.json({ success: true, data: data?.[0] }, { status: 201 }))
+  } catch (err: any) {
+    console.error('notifications POST exception:', err)
+    return withCors(
+      request,
+      NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 })
+    )
+  }
+}

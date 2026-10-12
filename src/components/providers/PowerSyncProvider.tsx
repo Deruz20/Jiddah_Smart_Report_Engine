@@ -6,7 +6,6 @@ import { PowerSyncDatabase } from "@powersync/web";
 import { PowerSyncContext } from "@powersync/react";
 import { AppSchema } from "../../lib/powersync/AppSchema";
 import { SupabaseConnector } from "../../lib/powersync/SupabaseConnector";
-import { createClient } from "@/utils/supabase/client";
 
 export const powerSync = new PowerSyncDatabase({
   schema: AppSchema,
@@ -24,47 +23,25 @@ export function PowerSyncProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let isMounted = true;
-    const supabase = createClient();
 
-    const syncAuthState = async () => {
-      if (!isMounted) return;
-
-      const { data: { session } } = await supabase.auth.getSession();
-
-      if (session) {
-        powerSync.connect(connector);
-      } else {
-        powerSync.disconnect();
-      }
-    };
-
-    const subscription = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!isMounted) return;
-
-      if (session) {
-        powerSync.connect(connector);
-      } else {
-        powerSync.disconnect();
-      }
-    });
-
+    // PowerSync network sync is paused/disabled in favor of direct Supabase connection.
     powerSync.init()
       .then(() => {
         if (typeof navigator !== "undefined" && navigator.storage && navigator.storage.persist) {
           navigator.storage.persist().catch(console.error);
         }
-
-        return syncAuthState();
-      })
-      .then(() => {
         if (isMounted) setIsInitialized(true);
       })
-      .catch(console.error);
+      .catch((err) => {
+        console.warn("PowerSync local init skipped:", err);
+        if (isMounted) setIsInitialized(true);
+      });
 
     return () => {
       isMounted = false;
-      subscription.data.subscription.unsubscribe();
-      powerSync.disconnect();
+      try {
+        powerSync.disconnect();
+      } catch (e) {}
     };
   }, []);
 
@@ -80,4 +57,3 @@ export function PowerSyncProvider({ children }: { children: ReactNode }) {
     </PowerSyncContext.Provider>
   );
 }
-

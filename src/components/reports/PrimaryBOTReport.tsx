@@ -297,7 +297,7 @@ export default function PrimaryBOTReport({ reportData }: any) {
           </div>
 
           <div className="bot-logo">
-            <img src="/school_budge.jpeg" alt="Logo" />
+            <img src={reportData?.settings?.logo_url || "/school_budge.jpeg"} alt="Logo" />
           </div>
 
           <div className="bot-school-right">

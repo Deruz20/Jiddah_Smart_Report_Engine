@@ -134,6 +134,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: result.error.message }, { status: 400 })
     }
 
+    // Dispatch event-driven system notification for user
+    const { createSystemNotification } = await import('@/lib/notifications')
+    await createSystemNotification(supabase, {
+      title: 'Marks Saved',
+      message: `Marks recorded for enrollment #${enrollment_id.slice(0, 8)}.`,
+      recipientId: user.id,
+      priority: 'normal',
+      type: 'marks',
+    })
+
     return NextResponse.json({ data: result.data }, { status: existing ? 200 : 201 })
   } catch (err) {
     console.error('API error:', err)

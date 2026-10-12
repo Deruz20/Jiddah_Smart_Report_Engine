@@ -22,8 +22,9 @@ interface PrintPortalProps {
 
 export function PrintPortal({ children }: PrintPortalProps) {
   return (
-    <div id="print-portal" aria-hidden="true">
+    <div id="print-portal" aria-hidden="true" inert={true}>
       {children}
     </div>
   )
 }
+

@@ -32,23 +32,17 @@ export async function verifyDataAccess(
   // Always fetch fresh from the teachers table. NEVER trust user_metadata.
   const { data: profile } = await supabase
     .from('teachers')
-    .select('role, subject, classes')
+    .select('role, subject, classes, status')
     .eq('email', user.email)
     .single();
 
   if (!profile) {
-    // If they aren't in the teachers table, check if they are the hardcoded superadmin
-    // (In local dev / initial setup, sometimes the first admin isn't in teachers yet)
-    // But to be strictly safe, we fail closed unless they are explicitly seeded.
-    // However, we'll allow "admin" fallback ONLY IF it's the exact owner email.
-    // Let's keep it strictly fail-closed. If not in teachers table -> DENY.
-    // Wait, the original code had: user.user_metadata?.role === 'admin'
-    // To not break the absolute root admin, let's check user_metadata ONLY if role is exactly 'Administrator'
-    // and even then, let's be careful. Let's just return false if not in teachers table, UNLESS we explicitly 
-    // want to allow a root admin. I'll check user_metadata ONLY for 'Administrator', but prompt says:
-    // "never reads user.user_metadata or any session/token claim for this decision."
-    // Okay, strict compliance: if not in `teachers` table, YOU HAVE NO ACCESS.
     return { isAuthorized: false, message: 'User profile not found in teachers directory.' };
+  }
+
+  // Reject inactive / suspended accounts immediately
+  if (profile.status === 'inactive') {
+    return { isAuthorized: false, message: 'Account is suspended or inactive.' };
   }
 
   const role = profile.role as string;
@@ -58,8 +52,8 @@ export async function verifyDataAccess(
     return { isAuthorized: true, role };
   }
 
-  // 2. Head Teacher & Deputy Head Teacher
-  if (role === 'Head Teacher' || role === 'Deputy Head Teacher') {
+  // 2. Head Teacher & Deputy Head Teacher (including HM alias)
+  if (role === 'Head Teacher' || role === 'Deputy Head Teacher' || role === 'HM') {
     if (action === 'write') {
       return { isAuthorized: false, message: 'Unauthorized: Read-only access across departments.' };
     }
@@ -73,13 +67,18 @@ export async function verifyDataAccess(
     return { isAuthorized: false, message: 'Unauthorized: Support Staff do not have access to academic records.' };
   }
 
-  // 4. DOS
+  // 4. DOS (Director of Studies)
   if (role === 'DOS Secular' || role === 'DOS Theology' || role === 'DOS') {
-    const isTheology = role === 'DOS Theology' || (role === 'DOS' && profile.subject?.toLowerCase().includes('theology'));
-    
-    const myDepartment: Department = isTheology ? 'theology' : 'secular';
+    let myDepartment: Department = 'secular';
+    const sub = profile.subject?.toLowerCase() || '';
 
-    if (targetDepartment && targetDepartment !== myDepartment) {
+    if (role === 'DOS Theology' || (role === 'DOS' && sub.includes('theology'))) {
+      myDepartment = 'theology';
+    } else if (role === 'DOS' && (!profile.subject || sub.includes('both') || sub.includes('all'))) {
+      myDepartment = 'both';
+    }
+
+    if (targetDepartment && myDepartment !== 'both' && targetDepartment !== myDepartment) {
       return { isAuthorized: false, message: `Unauthorized: You only have access to the ${myDepartment} department.` };
     }
 

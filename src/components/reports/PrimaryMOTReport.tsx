@@ -300,7 +300,7 @@ export default function PrimaryMOTReport({ reportData }: any) {
           </div>
 
           <div className="mot-logo">
-            <img src="/school_budge.jpeg" alt="Logo" />
+            <img src={reportData?.settings?.logo_url || "/school_budge.jpeg"} alt="Logo" />
           </div>
 
           <div className="mot-school-right">

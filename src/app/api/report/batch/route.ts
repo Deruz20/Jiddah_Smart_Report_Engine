@@ -597,7 +597,19 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    return withCors(request, NextResponse.json({ reports: reports.filter(r => r !== null) }))
+    const filteredReports = reports.filter(r => r !== null)
+
+    // Dispatch event-driven system notification for generating user
+    const { createSystemNotification } = await import('@/lib/notifications')
+    await createSystemNotification(supabase, {
+      title: 'Batch Reports Generated',
+      message: `Generated ${filteredReports.length} report cards for ${term.label} (${score_type.toUpperCase()}).`,
+      recipientId: user.id,
+      priority: 'normal',
+      type: 'report'
+    })
+
+    return withCors(request, NextResponse.json({ reports: filteredReports }))
   } catch (err: any) {
     console.error('Batch Report API POST error:', err)
     return withCors(request, NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 }))

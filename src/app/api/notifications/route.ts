@@ -79,7 +79,36 @@ export async function POST(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Title and message are required' }, { status: 400 }))
     }
 
-    // Deduplication check: avoid exact duplicate notification within last 5 minutes
+    // Role verification: Ordinary staff cannot broadcast or spoof notifications to other users
+    const { data: callerProfile } = await supabase
+      .from('teachers')
+      .select('role')
+      .eq('email', user.email)
+      .single()
+
+    const callerRole = callerProfile?.role || ''
+    const isPrivileged = [
+      'Administrator',
+      'admin',
+      'Head Teacher',
+      'HM',
+      'Deputy Head Teacher',
+      'DOS',
+      'DOS Secular',
+      'DOS Theology',
+    ].includes(callerRole)
+
+    if (!isPrivileged && (recipientId === null || recipientId !== user.id)) {
+      return withCors(
+        request,
+        NextResponse.json(
+          { error: 'Forbidden: Ordinary users cannot send broadcast or cross-user notifications' },
+          { status: 403 }
+        )
+      )
+    }
+
+    // Deduplication check: avoid exact duplicate notification (same title AND message AND recipient) within last 5 minutes
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
     let dupQuery = supabase
       .from('notifications')
@@ -90,6 +119,8 @@ export async function POST(request: NextRequest) {
 
     if (recipientId) {
       dupQuery = dupQuery.eq('recipient_id', recipientId)
+    } else {
+      dupQuery = dupQuery.is('recipient_id', null)
     }
 
     const { data: existingDup } = await dupQuery.limit(1)

@@ -509,7 +509,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
 
                   <div className="header-center">
                     <div className="bismillah">بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْم</div>
-                    <img src="/school_budge.jpeg" alt="School Badge" className="school-logo" />
+                    <img src={reportData?.settings?.logo_url || "/school_budge.jpeg"} alt="School Badge" className="school-logo" />
                     <div className="report-badge">
                       {isLower ? 'LOWER' : 'UPPER'} REPORT FORM – END OF TERM
                     </div>

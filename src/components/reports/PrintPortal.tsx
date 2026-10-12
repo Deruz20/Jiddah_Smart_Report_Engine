@@ -14,36 +14,16 @@
  * Usage: Mount in ReportGeneratorClient, pass in the reports to print.
  */
 
-import React, { useEffect, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
+import React from 'react'
 
 interface PrintPortalProps {
   children: React.ReactNode
 }
 
 export function PrintPortal({ children }: PrintPortalProps) {
-  const containerRef = useRef<HTMLDivElement | null>(null)
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    // Find or create the #print-portal div attached directly to document.body
-    let portal = document.getElementById('print-portal') as HTMLDivElement | null
-    if (!portal) {
-      portal = document.createElement('div')
-      portal.id = 'print-portal'
-      document.body.appendChild(portal)
-    }
-    containerRef.current = portal
-    setMounted(true)
-
-    return () => {
-      if (containerRef.current) {
-        containerRef.current.innerHTML = ''
-      }
-    }
-  }, [])
-
-  if (!mounted || !containerRef.current) return null
-
-  return createPortal(children, containerRef.current)
+  return (
+    <div id="print-portal" aria-hidden="true">
+      {children}
+    </div>
+  )
 }

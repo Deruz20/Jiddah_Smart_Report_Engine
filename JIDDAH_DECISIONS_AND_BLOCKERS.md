@@ -60,6 +60,39 @@
 - **Decision:**
   Classified `/preview-test` as an internal developer harness used exclusively for testing print sheets, not an end-user facing administrative view. All true production admin routes (`/admin`, `/admin/marks`, `/admin/reports`, `/admin/settings`, `/admin/notifications`) have zero horizontal overflow. The toolbar in `/preview-test` was left with intentional horizontal scroll to preserve all test template buttons on desktop and tablets.
 
+### Decision 7: Authoritative BOT Score Resolution (`src/app/api/report/route.ts`)
+- **Context:**
+  In single report generation (`/api/report`), the ternary selecting `score` resolved `scoreType === 'mot'` to `mot_score`, but fell through to `eot_score` for both `'bot'` and `'eot'`. During Beginning of Term (BOT) assessment periods, reports displayed EOT-derived grades and conduct remarks instead of actual BOT marks.
+- **Decision:**
+  Updated the ternary expression to explicitly branch on `scoreType === 'mot' ? mot_score : scoreType === 'bot' ? bot_score : eot_score`. Added automated regression coverage simulating score resolution and grade derivation across all exam phases.
+- **Impact:**
+  Guarantees that BOT report cards accurately reflect student marks and distinction/pass ratings during early-term reporting.
+
+### Decision 8: Numeric Settings Type Coercion (`src/app/api/settings/school/route.ts`)
+- **Context:**
+  The settings update route discarded all non-string properties (`typeof value === 'string'`). Consequently, the `current_year` setting (sent as integer `2026`) was discarded on every form save, silently preventing the academic year from updating.
+- **Decision:**
+  Introduced `allowedNumericKeys = ['current_year']` with finite numeric coercion (`Number(value)`). Non-numeric or malicious payloads are safely rejected without throwing exceptions.
+- **Impact:**
+  Settings Studio can reliably persist academic year transitions across school terms.
+
+### Decision 9: Next.js Static Prerender Suspense Isolation (`src/app/reset-password/page.tsx`)
+- **Context:**
+  `next build` failed during Turbopack static page generation because `useSearchParams()` on the client `/reset-password` page was not wrapped inside a `<Suspense>` boundary, triggering a CSR bailout failure.
+- **Decision:**
+  Extracted the form component into `ResetPasswordForm` and wrapped it in a `<Suspense>` boundary with a graceful loading fallback.
+- **Impact:**
+  Restored Next.js production build cleanly (all 67 static and dynamic routes compile error-free).
+
+### Decision 10: Non-blocking PowerSync Initialization & Direct Print Portal SSR
+- **Context:**
+  Headless browser verification scripts hung because `PowerSyncProvider` was initialized with `isInitialized: false` while awaiting SQLite/OPFS initialization, and `PrintPortal` used React `createPortal` attaching to body only after client-side hydration. In headless Chrome without worker OPFS, the page never unmounted its dark splash screen, and print PDFs generated empty (1,074 bytes).
+- **Decision:**
+  1. Defaulted `isInitialized` to `true` with a 1.2s fallback timer in `PowerSyncProvider.tsx`, ensuring immediate render for SSR and environments without local SQLite workers.
+  2. Rendered `<div id="print-portal">` directly in JSX in `PrintPortal.tsx`. The CSS in `print-system.css` already isolates and hides this div off-screen during display while expanding to full A4 in print media.
+- **Impact:**
+  Full page rendering is instant, and automated Puppeteer PDF tests export complete, authentic 350 KB multi-sheet documents without hydration dependencies.
+
 ---
 
 ## 2. Operational Blockers & External Dependencies

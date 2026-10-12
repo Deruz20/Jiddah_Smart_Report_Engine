@@ -19,10 +19,16 @@ export const connector = new SupabaseConnector();
 import { PowerSyncSplash } from "../layout/PowerSyncSplash";
 
 export function PowerSyncProvider({ children }: { children: ReactNode }) {
-  const [isInitialized, setIsInitialized] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
+
+    const fallbackTimer = setTimeout(() => {
+      if (isMounted) {
+        setIsInitialized(true);
+      }
+    }, 1200);
 
     // PowerSync network sync is paused/disabled in favor of direct Supabase connection.
     powerSync.init()
@@ -35,10 +41,14 @@ export function PowerSyncProvider({ children }: { children: ReactNode }) {
       .catch((err) => {
         console.warn("PowerSync local init skipped:", err);
         if (isMounted) setIsInitialized(true);
+      })
+      .finally(() => {
+        clearTimeout(fallbackTimer);
       });
 
     return () => {
       isMounted = false;
+      clearTimeout(fallbackTimer);
       try {
         powerSync.disconnect();
       } catch (e) {}

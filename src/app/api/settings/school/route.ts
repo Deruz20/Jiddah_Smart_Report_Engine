@@ -5,6 +5,7 @@ import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { getAuthenticatedUser, isValidEmail, normalizePhone, normalizeString, recordActivity } from '@/lib/api-server'
 
 const allowedKeys = ['name', 'address', 'district', 'email', 'phone', 'phone_2', 'pay_code', 'current_term', 'current_year', 'motto', 'website', 'timezone', 'logo_url', 'primary_font', 'arabic_font', 'theme_color', 'report_theme_preset']
+const allowedNumericKeys = ['current_year']
 
 export async function OPTIONS(request: NextRequest) {
   return apiOptions(request)
@@ -71,6 +72,11 @@ export async function PATCH(request: NextRequest) {
       if (!allowedKeys.includes(key)) return
       if (typeof value === 'string') {
         updatePayload[key] = normalizeString(value)
+      } else if (allowedNumericKeys.includes(key) && (typeof value === 'number' || (typeof value === 'string' && value !== ''))) {
+        const numVal = Number(value)
+        if (!Number.isNaN(numVal) && Number.isFinite(numVal)) {
+          updatePayload[key] = numVal
+        }
       }
     })
 

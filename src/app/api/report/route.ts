@@ -168,7 +168,9 @@ export async function GET(request: NextRequest) {
       
       const score = scoreType === 'mot'
         ? existing?.mot_score ?? null
-        : existing?.eot_score ?? null
+        : scoreType === 'bot'
+          ? existing?.bot_score ?? null
+          : existing?.eot_score ?? null
 
       const numericScore = typeof score === 'number' ? score : null
 
@@ -590,6 +592,8 @@ export async function GET(request: NextRequest) {
     const theologyClassEnglish = theologyClass?.class_name_english
 
     const reportData = {
+      id: enrollment.id,
+      status: 'success',
       student: {
         name: studentData?.name ?? '—',
         admission_number: studentData?.admission_number ?? '—',

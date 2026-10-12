@@ -10,8 +10,12 @@ async function verifyTwoSheets() {
   });
 
   const page = await browser.newPage();
+  page.on('console', msg => console.log('PAGE LOG:', msg.text()));
+  page.on('pageerror', err => console.log('PAGE ERROR:', err.message));
   await page.setViewport({ width: 1440, height: 900 });
-  await page.goto('http://localhost:3000/preview-test', { waitUntil: 'networkidle2' });
+  console.log('Navigating to http://127.0.0.1:3000/preview-test ...');
+  await page.goto('http://127.0.0.1:3000/preview-test', { waitUntil: 'load', timeout: 15000 });
+  await page.waitForSelector('#print-portal', { timeout: 15000 });
   await new Promise(r => setTimeout(r, 1000));
 
   // Verify elements in print portal

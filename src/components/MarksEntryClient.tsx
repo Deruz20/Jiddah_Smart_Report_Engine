@@ -76,7 +76,7 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
             AND (e.is_active IS NULL OR e.is_active = 1 OR e.is_active = 'true')
         `)
         
-        const mappedEnrollments: EnrollmentData[] = data.map((e: any) => ({
+        let mappedEnrollments: EnrollmentData[] = (data || []).map((e: any) => ({
           id: e.enrollment_id,
           student_id: e.student_id ?? null,
           name: e.name || 'Unknown Student',
@@ -88,6 +88,39 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
           theology_class_level: e.theology_class_level || null,
           theology_status: e.theology_class_arabic ? 'active' : 'inactive',
         }))
+
+        // Cloud fallback: if local database has 0 enrollments, fetch directly from Supabase
+        if (mappedEnrollments.length === 0) {
+          const supabase = createClient()
+          const { data: cloudData, error: cloudErr } = await supabase
+            .from('enrollments')
+            .select(`
+              id,
+              student_id,
+              students ( id, name, arabic_name, admission_number, is_archived ),
+              circular_classes ( id, class_name, section ),
+              theology_classes ( id, class_name_arabic, class_name_english )
+            `)
+            .eq('is_active', true)
+
+          if (!cloudErr && cloudData) {
+            mappedEnrollments = cloudData
+              .filter((e: any) => !e.students?.is_archived)
+              .map((e: any) => ({
+                id: e.id,
+                student_id: e.student_id ?? null,
+                name: e.students?.name || 'Unknown Student',
+                arabic_name: e.students?.arabic_name || null,
+                admission_number: e.students?.admission_number || '',
+                circular_class: e.circular_classes?.class_name || '',
+                section: e.circular_classes?.section || null,
+                theology_class_arabic: e.theology_classes?.class_name_arabic || null,
+                theology_class_level: e.theology_classes?.class_name_english || null,
+                theology_status: e.theology_classes?.class_name_arabic ? 'active' : 'inactive',
+              }))
+          }
+        }
+
         setEnrollments(mappedEnrollments)
       } catch (err: any) {
         if (err.message && err.message.includes('no such column')) {

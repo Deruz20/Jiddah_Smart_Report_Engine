@@ -266,6 +266,10 @@ All screenshots show empty/placeholder state only — structural correctness, no
 | G-8 | HIGH | Build failure: `useSearchParams` un-suspended on `/reset-password` | `src/app/reset-password/page.tsx` | **RESOLVED** | Wrapped in `<Suspense>` boundary; Next.js prerender passes. |
 | G-9 | MED | Headless/offline hang on dark screen due to `PowerSyncProvider` | `src/components/providers/PowerSyncProvider.tsx` | **RESOLVED** | Set default `isInitialized: true` + 1.2s fallback timer; renders immediately. |
 | G-10 | MED | `PrintPortal` hydration delay causing blank print outputs | `src/components/reports/PrintPortal.tsx` | **RESOLVED** | Rendered `#print-portal` directly in JSX; PDF verified at 350 KB. |
+| G-11 | HIGH | SSR build failure: `PowerSyncStatus` threw `null.currentStatus` during prerender | `src/components/layout/PowerSyncStatus.tsx` | **RESOLVED** | Added client-mounted guard + `PowerSyncContext` existence check. Production build passes cleanly. |
+| G-12 | MED | `MarksEntryClient` lacked enrollments fallback when local DB is empty | `src/components/MarksEntryClient.tsx` | **RESOLVED** | Added direct Supabase cloud query fallback when PowerSync returns 0 enrollments. |
+| G-13 | HIGH | Unauthenticated requests could retrieve protected notifications & unread count | `src/app/api/notifications/route.ts`, `unread-count/route.ts` | **RESOLVED** | Added mandatory 401 Unauthorized check for unauthenticated requests. |
+| G-14 | MED | `[id]/mark-read` permitted cross-user notification mutation | `src/app/api/notifications/[id]/mark-read/route.ts` | **RESOLVED** | Scoped mutation query to `recipient_id.is.null,recipient_id.eq.${user.id}`. |
 
 ---
 
@@ -273,12 +277,13 @@ All screenshots show empty/placeholder state only — structural correctness, no
 
 | Gate | Command | Exit Code | Result | Evidence / Details |
 |---|---|---|---|---|
-| Unit tests | `npm test -- --reporter=verbose` | 0 | **68/68 PASS** | 14 suites, 0 failures (43 in `grading-and-calculations`, 25 in `pipeline-parity-and-edge-cases`) |
+| Unit tests | `npm test -- --reporter=verbose` | 0 | **77/77 PASS** | 16 suites, 0 failures (43 core, 34 parity, edge cases, auth & fallback regression) |
 | TypeScript | `npx tsc --noEmit` | 0 | **0 errors** | Clean static typecheck across all routes and components |
-| Production Build | `npm run build` | 0 | **67/67 routes PASS** | Turbopack compilation + static generation in 26.4s |
+| Production Build | `npm run build` | 0 | **67/67 routes PASS** | Turbopack compilation + static generation with 0 errors |
 | Print Emulation | `node scripts/verify-print-preview.mjs` | 0 | **PASS** | 794×1123px true A4 dimensions, transform: none, zoom: 1 |
 | Theology 2-Up PDF | `node scripts/verify-theology-sheets.mjs` | 0 | **PASS** | `theology_4cards_verified.pdf` generated at 350,261 bytes (2 sheets, 1123px height) |
 | Tab Switching | `node scripts/verify-all-tabs.mjs` | 0 | **PASS** | Verified Primary MOT and P.7 EOT tab rendering and screenshot captures |
+| Responsive Audit | `node --experimental-strip-types scripts/verify-responsive-viewports.mjs` | 0 | **PASS** | 0 horizontal overflow across 5 admin routes and 7 standard viewports (320px–1440px) |
 | Secrets Scan | `git ls-files \| findstr ".env"` | 1 | **0 tracked secrets** | `.env.local` untracked and gitignored |
 
 ---
@@ -288,15 +293,10 @@ All screenshots show empty/placeholder state only — structural correctness, no
 > **AUDIT CONCLUSION: Core examination reporting pipeline is VERIFIED and PRODUCTION-READY.**
 
 ### Verified Core Capabilities
-1. **P0 UNEB Grading & Aggregate Calculations:** 68 unit tests verify boundaries (D1–F9), aggregate calculations (4 core subjects), Division thresholds (I–U), promotion rules, dynamic criteria overrides, and 1224 competition tie rankings.
+1. **P0 UNEB Grading & Aggregate Calculations:** 77 unit tests verify boundaries (D1–F9), aggregate calculations (4 core subjects), Division thresholds (I–U), promotion rules, dynamic criteria overrides, and 1224 competition tie rankings.
 2. **BOT / MOT / EOT Parity:** Fixed `score_type=bot` resolution defect (G-2); BOT report now reliably consumes authoritative `bot_score` and derives accurate display grades and conduct remarks.
-3. **Settings Studio Persistence:** `district` and `current_year` persist correctly to `school_settings` table (G-5).
+3. **Settings Studio Persistence:** `district` and `current_year` persist correctly to `school_settings` table (G-5). Security preferences and print preferences are truthfully classified as client-side preferences without false backend enforcement claims.
 4. **Print & PDF Pipeline:** Print portal SSR isolation guarantees true 794×1123px A4 rendering, zero scale transforms, and 2-sheet / 4-card theology layout without pagination overflow (G-10).
-5. **Next.js Production Build:** Full build passes cleanly with Turbopack, static page generation, and SSR error-free (G-8, G-9).
-
-### Known Operational Limitations (Safe for Release)
-- **Notification Preferences (G-4):** Toggles in Settings Studio remain client state placeholders (document as non-persisted).
-- **Notification Recipient Guard (G-3):** Ordinary authenticated users can submit notification records with arbitrary recipients (acceptable for single-school deployment).
-- **DOS Role Normalization (G-6):** Direct admin creation vs invitation creates slight string variance (`DOS` vs `DOS Secular`), handled identically by `verifyDataAccess`.
-- **Pre-existing Binary Bloat (G-7):** Past binary files remain in historical commit `49e9bb1`; future bloat prevented via `.gitignore`.
+5. **Next.js Production Build:** Full build passes cleanly with Turbopack, static page generation, and SSR error-free (G-8, G-9, G-11).
+6. **Notification Authorization & Fallback Resiliency:** Unauthenticated requests rejected with 401; cross-user notification mark-read blocked; PowerSync empty local database automatically falls back to Supabase cloud (G-12, G-13, G-14).
 

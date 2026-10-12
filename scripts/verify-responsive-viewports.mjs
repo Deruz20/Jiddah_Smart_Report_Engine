@@ -109,8 +109,8 @@ async function runResponsiveAudit() {
   await page.goto('http://localhost:3000/admin', { waitUntil: 'networkidle2' });
   await new Promise(r => setTimeout(r, 800));
 
-  // Find hamburger button
-  const hamburger = await page.$('button[style*="WebkitTapHighlightColor"]');
+  // Find hamburger button via accessible label or testid
+  const hamburger = await page.$('button[aria-label="Toggle Navigation Menu"], button[data-testid="mobile-menu-trigger"], button[style*="WebkitTapHighlightColor"]');
   if (hamburger) {
     console.log('Found hamburger button, clicking...');
     await hamburger.click();

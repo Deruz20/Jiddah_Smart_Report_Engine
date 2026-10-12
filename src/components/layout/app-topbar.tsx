@@ -643,6 +643,8 @@ export function AppTopbar({ breadcrumbs = ["Admin", "Dashboard"], currentPage = 
           {/* Left: hamburger */}
           <button
             onClick={toggleSidebar}
+            aria-label="Toggle Navigation Menu"
+            data-testid="mobile-menu-trigger"
             className="flex items-center justify-center size-11 rounded-xl text-slate-600 active:bg-slate-100 transition-colors"
             style={{ WebkitTapHighlightColor: "transparent" }}
           >

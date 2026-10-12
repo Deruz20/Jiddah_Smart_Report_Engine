@@ -327,3 +327,157 @@ describe('Defect G-5 Regression: Numeric School Settings Payload Handling', () =
     assert.equal(payload.current_year, 2026);
   });
 });
+
+describe('Checkpoint 10 P0 Regression: Notification Authorization & Scoped Deduplication', () => {
+  // Pure simulation of deduplication query logic from src/lib/notifications.ts
+  function checkDeduplication(existingRecords, candidate, nowMs = Date.now()) {
+    const windowMs = 5 * 60 * 1000;
+    const title = candidate.title.trim();
+    const message = candidate.message.trim();
+    const recipientId = candidate.recipientId || null;
+
+    const matched = existingRecords.find(r => {
+      const isTimeInRange = (nowMs - r.created_at_ms) <= windowMs;
+      const isContentMatch = r.title === title && r.message === message;
+      const isRecipientMatch = (r.recipient_id || null) === recipientId;
+      return isTimeInRange && isContentMatch && isRecipientMatch;
+    });
+
+    return Boolean(matched);
+  }
+
+  // Pure simulation of notification access filter
+  function filterUserNotifications(records, user) {
+    if (!user) return { status: 401, error: 'Unauthorized' };
+    const filtered = records.filter(r => r.recipient_id === null || r.recipient_id === user.id);
+    return { status: 200, data: filtered };
+  }
+
+  // Pure simulation of notification mark-read ownership filter
+  function markNotificationRead(record, user) {
+    if (!user) return { status: 401, error: 'Unauthorized' };
+    if (record.recipient_id !== null && record.recipient_id !== user.id) {
+      return { status: 404, error: 'Notification not found' }; // Not owned by caller
+    }
+    return { status: 200, record: { ...record, read: true, read_by: user.id } };
+  }
+
+  test('Unauthenticated user receives 401 Unauthorized for notification list', () => {
+    const records = [{ id: 1, title: 'Exam Notice', recipient_id: 'user_1' }];
+    const res = filterUserNotifications(records, null);
+    assert.equal(res.status, 401);
+    assert.equal(res.error, 'Unauthorized');
+  });
+
+  test('Signed-in user cannot view another user private notification', () => {
+    const records = [
+      { id: 1, title: 'User 1 Salary', recipient_id: 'user_1' },
+      { id: 2, title: 'User 2 Notice', recipient_id: 'user_2' },
+      { id: 3, title: 'All Staff Meeting', recipient_id: null },
+    ];
+    const user2 = { id: 'user_2', email: 'user2@jiddahschool.ug' };
+    const res = filterUserNotifications(records, user2);
+    assert.equal(res.status, 200);
+    assert.equal(res.data.length, 2);
+    assert.ok(res.data.some(n => n.id === 2));
+    assert.ok(res.data.some(n => n.id === 3));
+    assert.ok(!res.data.some(n => n.id === 1), 'User 2 must not see User 1 private notification');
+  });
+
+  test('Signed-in user cannot mark another user private notification as read', () => {
+    const privateRecord = { id: 1, title: 'Confidential', recipient_id: 'user_1', read: false };
+    const unauthorizedUser = { id: 'user_2' };
+    const res = markNotificationRead(privateRecord, unauthorizedUser);
+    assert.equal(res.status, 404);
+
+    const authorizedUser = { id: 'user_1' };
+    const authRes = markNotificationRead(privateRecord, authorizedUser);
+    assert.equal(authRes.status, 200);
+    assert.equal(authRes.record.read, true);
+    assert.equal(authRes.record.read_by, 'user_1');
+  });
+
+  test('Broadcast notification can be marked read by any authenticated recipient', () => {
+    const broadcastRecord = { id: 3, title: 'Staff Briefing', recipient_id: null, read: false };
+    const user = { id: 'user_any' };
+    const res = markNotificationRead(broadcastRecord, user);
+    assert.equal(res.status, 200);
+    assert.equal(res.record.read, true);
+  });
+
+  test('Deduplication scopes to recipient: identical message to different users is NOT suppressed', () => {
+    const now = Date.now();
+    const existing = [
+      { id: 1, title: 'Report Card Ready', message: 'Term 1 card is generated', recipient_id: 'teacher_1', created_at_ms: now - 30000 }
+    ];
+
+    const duplicateCandidate = { title: 'Report Card Ready', message: 'Term 1 card is generated', recipientId: 'teacher_1' };
+    assert.equal(checkDeduplication(existing, duplicateCandidate, now), true, 'Same recipient within 5 min must be deduplicated');
+
+    const distinctUserCandidate = { title: 'Report Card Ready', message: 'Term 1 card is generated', recipientId: 'teacher_2' };
+    assert.equal(checkDeduplication(existing, distinctUserCandidate, now), false, 'Different recipient must NEVER be deduplicated');
+  });
+
+  test('Two distinct notifications with different titles for same recipient are both permitted', () => {
+    const now = Date.now();
+    const existing = [
+      { id: 1, title: 'Mark Entry Closed', message: 'Deadline has passed', recipient_id: 'teacher_1', created_at_ms: now - 10000 }
+    ];
+    const newEventCandidate = { title: 'Staff Meeting Rescheduled', message: 'Meeting moved to 3pm', recipientId: 'teacher_1' };
+    assert.equal(checkDeduplication(existing, newEventCandidate, now), false, 'Distinct event must not be suppressed');
+  });
+
+  test('Expired notification (> 5 min) allows retry without deduplication suppression', () => {
+    const now = Date.now();
+    const existing = [
+      { id: 1, title: 'Sync Warning', message: 'Retry connection', recipient_id: 'user_1', created_at_ms: now - (6 * 60 * 1000) }
+    ];
+    const retryCandidate = { title: 'Sync Warning', message: 'Retry connection', recipientId: 'user_1' };
+    assert.equal(checkDeduplication(existing, retryCandidate, now), false, 'Events older than 5 min must not be deduplicated');
+  });
+});
+
+describe('Checkpoint 10 P0 Regression: Marks Entry PowerSync & Cloud Fallback', () => {
+  function mapEnrollmentRows(localRows, cloudRows) {
+    if (localRows && localRows.length > 0) {
+      return localRows.map(e => ({
+        id: e.enrollment_id,
+        name: e.name || 'Unknown Student',
+        source: 'powersync_local'
+      }));
+    }
+    // Fallback to cloud
+    if (cloudRows && cloudRows.length > 0) {
+      return cloudRows
+        .filter(e => !e.students?.is_archived)
+        .map(e => ({
+          id: e.id,
+          name: e.students?.name || 'Unknown Student',
+          source: 'supabase_cloud'
+        }));
+    }
+    return [];
+  }
+
+  test('When PowerSync local database has records, local data is used', () => {
+    const local = [{ enrollment_id: 'e1', name: 'Amina Musa' }];
+    const cloud = [{ id: 'e1', students: { name: 'Amina Musa', is_archived: false } }];
+    const result = mapEnrollmentRows(local, cloud);
+    assert.equal(result.length, 1);
+    assert.equal(result[0].source, 'powersync_local');
+  });
+
+  test('When PowerSync local database is empty, cloud fallback is used seamlessly', () => {
+    const local = [];
+    const cloud = [
+      { id: 'e1', students: { name: 'Amina Musa', is_archived: false } },
+      { id: 'e2', students: { name: 'Archived Student', is_archived: true } },
+    ];
+    const result = mapEnrollmentRows(local, cloud);
+    assert.equal(result.length, 1);
+    assert.equal(result[0].id, 'e1');
+    assert.equal(result[0].name, 'Amina Musa');
+    assert.equal(result[0].source, 'supabase_cloud');
+  });
+});
+

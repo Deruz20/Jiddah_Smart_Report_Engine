@@ -17,11 +17,16 @@ export async function GET(request: NextRequest) {
     const supabase = createClient(cookieStore)
     const user = await getAuthenticatedUser(supabase)
 
-    let query = supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(100)
-
-    if (user?.id) {
-      query = query.or(`recipient_id.is.null,recipient_id.eq.${user.id}`)
+    if (!user) {
+      return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
+
+    const query = supabase
+      .from('notifications')
+      .select('*')
+      .or(`recipient_id.is.null,recipient_id.eq.${user.id}`)
+      .order('created_at', { ascending: false })
+      .limit(100)
 
     const { data, error } = await query
     if (error) {

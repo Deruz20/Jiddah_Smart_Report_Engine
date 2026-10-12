@@ -93,6 +93,25 @@
 - **Impact:**
   Full page rendering is instant, and automated Puppeteer PDF tests export complete, authentic 350 KB multi-sheet documents without hydration dependencies.
 
+### Decision 11: PowerSync SSR-Prerender Context Guard & Direct Cloud Fallback
+- **Context:**
+  During static site generation (`next build`), components inside the admin layout call `PowerSyncStatus`. Because `@powersync/react`'s provider only wraps children on the client, SSR prerendering threw `TypeError: Cannot read properties of null (reading 'currentStatus')`. Additionally, if local PowerSync SQLite is empty on first load, student enrollments were unrendered.
+- **Decision:**
+  1. Wrapped `PowerSyncStatus.tsx` in a client-mount guard (`mounted`) and context existence check (`PowerSyncContext`), preventing SSR prerender crashes.
+  2. Implemented direct Supabase cloud fallback in `MarksEntryClient.tsx`: if local SQLite returns 0 enrollments, the client seamlessly fetches active student enrollments directly from Supabase.
+- **Impact:**
+  Achieved 100% clean production builds (67/67 routes); guaranteed students list populates immediately even before initial offline synchronization completes.
+
+### Decision 12: Notification Isolation and Recipient-Scoped Deduplication
+- **Context:**
+  `GET /api/notifications` and `/api/notifications/unread-count` previously lacked explicit `if (!user)` checks, permitting unauthenticated visitors to query notifications. Furthermore, single-identifier deduplication could suppress notifications destined for different users.
+- **Decision:**
+  1. Secured `GET /api/notifications` and `unread-count` with 401 Unauthorized guards for unauthenticated requests.
+  2. Scoped notification `[id]/mark-read` mutations to require ownership (`recipient_id.is.null,recipient_id.eq.${user.id}`).
+  3. Scoped deduplication in `createSystemNotification` and `/api/notifications` by both content and `recipient_id`.
+- **Impact:**
+  Guarantees multi-user notification privacy; prevents cross-user mark-read mutations; ensures distinct users receive identical announcements without suppression.
+
 ---
 
 ## 2. Operational Blockers & External Dependencies

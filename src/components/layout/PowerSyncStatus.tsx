@@ -1,11 +1,11 @@
 // @ts-nocheck
 'use client'
 
-import React, { useEffect, useState } from 'react'
-import { useStatus } from '@powersync/react'
+import React, { useContext, useEffect, useState } from 'react'
+import { PowerSyncContext, useStatus } from '@powersync/react'
 import { SyncStatus, SyncState } from './SyncStatus'
 
-export function PowerSyncStatus() {
+function PowerSyncStatusContent() {
   const status = useStatus()
   const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true)
   const [lastSynced, setLastSynced] = useState<Date>(new Date())
@@ -54,5 +54,21 @@ export function PowerSyncStatus() {
       }}
     />
   )
+}
+
+export function PowerSyncStatus() {
+  const [mounted, setMounted] = useState(false)
+  const context = useContext(PowerSyncContext)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Guard against SSR prerender and missing PowerSyncContext
+  if (!mounted || !context) {
+    return null
+  }
+
+  return <PowerSyncStatusContent />
 }
 

@@ -36,6 +36,7 @@ export async function PUT(
       .from('notifications')
       .update({ read: true, read_at: new Date().toISOString(), read_by: user.id })
       .eq('id', idValue)
+      .or(`recipient_id.is.null,recipient_id.eq.${user.id}`)
       .select()
 
     const data = result.data as any

@@ -106,32 +106,36 @@ async function runResponsiveAudit() {
   // Mobile navigation drawer test on 390x844
   console.log('\n=== Testing Mobile Drawer & Escape behavior ===');
   await page.setViewport({ width: 390, height: 844 });
-  await page.goto('http://localhost:3000/admin', { waitUntil: 'networkidle2' });
-  await new Promise(r => setTimeout(r, 800));
+  await page.goto('http://localhost:3000/preview-shell', { waitUntil: 'domcontentloaded', timeout: 15000 });
+  await new Promise(r => setTimeout(r, 1500));
 
   // Find hamburger button via accessible label or testid
-  const hamburger = await page.$('button[aria-label="Toggle Navigation Menu"], button[data-testid="mobile-menu-trigger"], button[style*="WebkitTapHighlightColor"]');
+  const hamburger = await page.$('button[data-testid="mobile-menu-trigger"], button[aria-label="Toggle Navigation Menu"]');
   if (hamburger) {
     console.log('Found hamburger button, clicking...');
     await hamburger.click();
     await new Promise(r => setTimeout(r, 600));
     await page.screenshot({ path: path.join(scratchDir, 'mobile_drawer_open_390.png') });
 
-    // Check if drawer sheet is visible
-    const isSheetVisible = await page.evaluate(() => {
+    // Check if drawer sheet is visible and contains expected navigation items
+    const drawerState = await page.evaluate(() => {
       const sheet = document.querySelector('[data-slot="sheet-content"], [data-sidebar="sidebar"][data-mobile="true"]');
-      return sheet !== null && window.getComputedStyle(sheet).visibility !== 'hidden';
+      const isVisible = sheet !== null && window.getComputedStyle(sheet).visibility !== 'hidden';
+      const navLinks = Array.from(document.querySelectorAll('[data-sidebar="sidebar"] a, [data-slot="sheet-content"] a')).map(a => a.textContent.trim());
+      return { isVisible, navLinksCount: navLinks.length, navLinks: navLinks.slice(0, 5) };
     });
-    console.log('Mobile Drawer open check:', isSheetVisible ? 'PASSED' : 'FAILED');
+    console.log('Mobile Drawer open check:', drawerState.isVisible ? 'PASSED' : 'FAILED');
+    console.log(`Exposed navigation links (${drawerState.navLinksCount}):`, drawerState.navLinks.join(', '));
 
     // Press Escape to test keyboard dismiss
     await page.keyboard.press('Escape');
     await new Promise(r => setTimeout(r, 600));
     const isSheetClosed = await page.evaluate(() => {
       const sheet = document.querySelector('[data-slot="sheet-content"], [data-sidebar="sidebar"][data-mobile="true"]');
-      return sheet === null || window.getComputedStyle(sheet).visibility === 'hidden';
+      return sheet === null || window.getComputedStyle(sheet).visibility === 'hidden' || sheet.getAttribute('data-state') === 'closed';
     });
     console.log('Mobile Drawer Escape dismiss check:', isSheetClosed ? 'PASSED' : 'FAILED');
+    await page.screenshot({ path: path.join(scratchDir, 'mobile_drawer_closed_390.png') });
   } else {
     console.log('No hamburger button found on topbar');
   }

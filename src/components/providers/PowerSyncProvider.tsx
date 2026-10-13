@@ -6,7 +6,6 @@ import { PowerSyncDatabase } from "@powersync/web";
 import { PowerSyncContext } from "@powersync/react";
 import { AppSchema } from "../../lib/powersync/AppSchema";
 import { SupabaseConnector } from "../../lib/powersync/SupabaseConnector";
-import { PowerSyncSplash } from "../layout/PowerSyncSplash";
 
 export const powerSync = new PowerSyncDatabase({
   schema: AppSchema,

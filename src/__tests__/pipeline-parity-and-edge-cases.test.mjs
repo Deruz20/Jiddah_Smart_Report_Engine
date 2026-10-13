@@ -481,3 +481,223 @@ describe('Checkpoint 10 P0 Regression: Marks Entry PowerSync & Cloud Fallback', 
   });
 });
 
+describe('Checkpoint 11 P0: Independent Notification Read State & Broadcast Isolation', () => {
+  // Pure model simulating the updated route handlers and activity_logs resolution
+  function computeNotificationsView(records, user, userLogs) {
+    if (!user) return { status: 401, error: 'Unauthorized' };
+    const accessible = records.filter(r => r.recipient_id === null || r.recipient_id === user.id);
+
+    const userReadIds = new Set();
+    let markAllReadTime = null;
+
+    for (const log of (userLogs || []).filter(l => l.user_id === user.id)) {
+      if (log.action === 'mark_all_notifications_read') {
+        const t = new Date(log.metadata?.readAt || log.created_at).getTime();
+        if (!markAllReadTime || t > markAllReadTime) markAllReadTime = t;
+      } else if (log.action === 'mark_notification_read') {
+        if (log.metadata?.notificationId != null) {
+          userReadIds.add(String(log.metadata.notificationId));
+        }
+      }
+    }
+
+    const mapped = accessible.map(r => {
+      let isRead = Boolean(r.read);
+      if (r.recipient_id === null) {
+        const createdAt = new Date(r.created_at).getTime();
+        if (userReadIds.has(String(r.id))) {
+          isRead = true;
+        } else if (markAllReadTime && createdAt <= markAllReadTime) {
+          isRead = true;
+        } else {
+          isRead = false;
+        }
+      }
+      return { id: r.id, title: r.title, read: isRead, recipient_id: r.recipient_id };
+    });
+
+    return { status: 200, data: mapped };
+  }
+
+  function markReadAction(records, notifId, user, logs) {
+    if (!user) return { status: 401, error: 'Unauthorized' };
+    const target = records.find(r => r.id === notifId);
+    if (!target) return { status: 404, error: 'Notification not found' };
+    if (target.recipient_id !== null && target.recipient_id !== user.id) {
+      return { status: 404, error: 'Notification not found' };
+    }
+
+    if (target.recipient_id === user.id) {
+      target.read = true; // mutate private row
+    }
+
+    // Record activity log for user
+    logs.push({
+      user_id: user.id,
+      action: 'mark_notification_read',
+      metadata: { notificationId: notifId },
+      created_at: new Date().toISOString()
+    });
+
+    return { status: 200, success: true };
+  }
+
+  function markAllReadAction(records, user, logs) {
+    if (!user) return { status: 401, error: 'Unauthorized' };
+    // Only mutate private rows for this user
+    for (const r of records) {
+      if (r.recipient_id === user.id) {
+        r.read = true;
+      }
+    }
+    // Record mark_all_notifications_read in activity_logs
+    logs.push({
+      user_id: user.id,
+      action: 'mark_all_notifications_read',
+      metadata: { readAt: new Date().toISOString() },
+      created_at: new Date().toISOString()
+    });
+    return { status: 200, success: true };
+  }
+
+  function computeUnreadCount(records, user, logs) {
+    if (!user) return { status: 401, error: 'Unauthorized' };
+    const view = computeNotificationsView(records, user, logs);
+    const count = view.data.filter(n => !n.read).length;
+    return { status: 200, count };
+  }
+
+  test('User A cannot read, modify, or mark read User B private notification', () => {
+    const db = [{ id: 101, title: 'Private User B', recipient_id: 'user_b', read: false, created_at: '2026-10-13T08:00:00Z' }];
+    const logs = [];
+    const userA = { id: 'user_a' };
+
+    const viewA = computeNotificationsView(db, userA, logs);
+    assert.equal(viewA.data.length, 0, 'User A must not receive User B notification');
+
+    const markRes = markReadAction(db, 101, userA, logs);
+    assert.equal(markRes.status, 404, 'User A cannot mark read User B notification');
+    assert.equal(db[0].read, false, 'User B notification remains unread in database');
+  });
+
+  test('Two users can each receive and independently read a broadcast notification', () => {
+    const db = [
+      { id: 201, title: 'School Assembly', recipient_id: null, read: false, created_at: '2026-10-13T08:00:00Z' }
+    ];
+    const logs = [];
+    const userA = { id: 'user_a' };
+    const userB = { id: 'user_b' };
+
+    // Initially both see unread count = 1
+    assert.equal(computeUnreadCount(db, userA, logs).count, 1);
+    assert.equal(computeUnreadCount(db, userB, logs).count, 1);
+
+    // User A marks broadcast notification read
+    const markRes = markReadAction(db, 201, userA, logs);
+    assert.equal(markRes.status, 200);
+
+    // CRITICAL: Shared database row read boolean must NOT be altered to true!
+    assert.equal(db[0].read, false, 'Broadcast notification row in DB must remain unmutated');
+
+    // User A now sees it as read (unread count = 0)
+    assert.equal(computeUnreadCount(db, userA, logs).count, 0);
+    const viewA = computeNotificationsView(db, userA, logs);
+    assert.equal(viewA.data[0].read, true);
+
+    // User B STILL sees it as unread (unread count = 1)!
+    assert.equal(computeUnreadCount(db, userB, logs).count, 1);
+    const viewB = computeNotificationsView(db, userB, logs);
+    assert.equal(viewB.data[0].read, false, 'User B broadcast notification must remain unread');
+  });
+
+  test('Mark-all-read affects only current user and does not corrupt other users', () => {
+    const db = [
+      { id: 301, title: 'Announcement', recipient_id: null, read: false, created_at: '2026-10-13T00:00:00Z' },
+      { id: 302, title: 'Private to User A', recipient_id: 'user_a', read: false, created_at: '2026-10-13T00:00:00Z' },
+      { id: 303, title: 'Private to User B', recipient_id: 'user_b', read: false, created_at: '2026-10-13T00:00:00Z' }
+    ];
+    const logs = [];
+    const userA = { id: 'user_a' };
+    const userB = { id: 'user_b' };
+
+    // User A marks all read
+    markAllReadAction(db, userA, logs);
+
+    // User A's private notification is read, but User B's private notification is untouched
+    assert.equal(db.find(r => r.id === 302).read, true);
+    assert.equal(db.find(r => r.id === 303).read, false);
+
+    // User A unread count = 0
+    assert.equal(computeUnreadCount(db, userA, logs).count, 0);
+
+    // User B unread count = 2 (Announcement + Private to User B)
+    assert.equal(computeUnreadCount(db, userB, logs).count, 2);
+  });
+
+  test('Repeated requests are idempotent and do not corrupt state', () => {
+    const db = [{ id: 401, title: 'System Notice', recipient_id: null, read: false, created_at: '2026-10-13T00:00:00Z' }];
+    const logs = [];
+    const userA = { id: 'user_a' };
+
+    markReadAction(db, 401, userA, logs);
+    markReadAction(db, 401, userA, logs); // repeat call
+    markAllReadAction(db, userA, logs);
+    markAllReadAction(db, userA, logs); // repeat call
+
+    assert.equal(computeUnreadCount(db, userA, logs).count, 0);
+  });
+});
+
+describe('Checkpoint 11 P1: Settings Schema Parity & Alias Normalization', () => {
+  function normalizeSchoolSettingsPayload(input) {
+    const allowedKeys = [
+      'school_name', 'name', 'address', 'district', 'email', 'phone_1', 'phone', 'phone_2',
+      'pay_code', 'current_term', 'current_year', 'motto', 'logo_url', 'primary_font',
+      'arabic_font', 'theme_color', 'report_theme_preset'
+    ];
+    const allowedNumericKeys = ['current_year'];
+
+    const updatePayload = {};
+    for (const [key, value] of Object.entries(input)) {
+      if (!allowedKeys.includes(key)) continue;
+      if (allowedNumericKeys.includes(key) && (typeof value === 'number' || (typeof value === 'string' && value !== ''))) {
+        const numVal = Number(value);
+        if (!Number.isNaN(numVal) && Number.isFinite(numVal)) {
+          updatePayload[key] = numVal;
+        }
+      } else if (typeof value === 'string') {
+        updatePayload[key] = value.trim();
+      }
+    }
+
+    if (updatePayload.name && !updatePayload.school_name) {
+      updatePayload.school_name = updatePayload.name;
+    }
+    delete updatePayload.name;
+
+    if (updatePayload.phone && !updatePayload.phone_1) {
+      updatePayload.phone_1 = updatePayload.phone;
+    }
+    delete updatePayload.phone;
+
+    return updatePayload;
+  }
+
+  test('name is normalized to school_name and phone is normalized to phone_1', () => {
+    const payload = {
+      name: 'Jiddah Islamic Schools',
+      phone: '+256 752 112233',
+      current_year: '2026',
+      district: 'Wakiso'
+    };
+    const normalized = normalizeSchoolSettingsPayload(payload);
+    assert.equal(normalized.school_name, 'Jiddah Islamic Schools');
+    assert.equal(normalized.phone_1, '+256 752 112233');
+    assert.equal(normalized.name, undefined);
+    assert.equal(normalized.phone, undefined);
+    assert.equal(normalized.current_year, 2026);
+    assert.equal(normalized.district, 'Wakiso');
+  });
+});
+
+

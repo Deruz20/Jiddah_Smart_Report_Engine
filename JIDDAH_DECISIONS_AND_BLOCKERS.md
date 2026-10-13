@@ -1,6 +1,6 @@
 # JIDDAH SMART REPORT ENGINE — DECISIONS AND BLOCKERS
 **Document:** Technical Decisions, Architecture Rationale, and Operational Blockers  
-**Date:** 2026-10-12  
+**Date:** 2026-10-13  
 **Branch:** `feat/core-completion-autopilot`  
 **Repository Working Directory:** `C:\Users\USER\Desktop\school_management_system\jiddah_repo_clean_room`  
 
@@ -112,7 +112,45 @@
 - **Impact:**
   Guarantees multi-user notification privacy; prevents cross-user mark-read mutations; ensures distinct users receive identical announcements without suppression.
 
+
+### Decision 13: Per-User Broadcast Read State Isolation via Activity Logs
+- **Context:**
+  The `notifications` table schema in production Postgres contains a single `read: boolean` column per notification record. If User A marks a broadcast notification (`recipient_id IS NULL`) as read by mutating `read = true`, that notification would falsely appear as read for User B, and User B's unread badge count would decrement prematurely. Furthermore, previous attempts to write to `read_at` or `read_by` threw PostgREST schema cache errors (`PGRST204`) because those columns do not exist.
+- **Decision:**
+  1. For direct user notifications (`recipient_id === user.id`), the system continues updating `read: true` on the notification record.
+  2. For broadcast notifications (`recipient_id IS NULL`), the shared row in `notifications` is NEVER mutated. Instead, the user's read event is recorded in the user-scoped `activity_logs` table (`action: 'notification_read' | 'mark_all_notifications_read'`, `entity_id: notification.id`, `user_id: user.id`).
+  3. `GET /api/notifications` and `GET /api/notifications/unread-count` query the user's activity logs and synthesize the per-user `read` boolean dynamically.
+  4. Prepared a clean, reversible SQL migration artifact `supabase/migrations/20261013_user_notification_reads.sql` for future dedicated join table migration.
+- **Impact:**
+  Guarantees complete multi-user read state isolation for broadcast announcements without violating Rule #6 (no destructive production DDL).
+
+### Decision 14: School Settings Schema Column Normalization & Preference Demarcation
+- **Context:**
+  Submitting updates via `PATCH /api/settings/school` threw 400 Bad Request because the frontend sent `name` and `phone`, whereas the real Supabase `school_settings` table schema defines `school_name` and `phone_1`. Additionally, settings tabs for Security and Print contained UI controls that operated only on browser `localStorage` but could be misinterpreted as server-enforced features.
+- **Decision:**
+  1. Updated `src/app/api/settings/school/route.ts` to map payload keys `name -> school_name` and `phone -> phone_1`, while aliasing them in `GET` responses for backward compatibility.
+  2. In `src/components/SettingsClient.tsx`, clearly labeled Security and Print tabs as "Local Workstation Preferences" and documented that two-factor authentication, IP restrictions, and watermark toggles are client-side UI configurations rather than backend-enforced policies.
+- **Impact:**
+  Restored seamless persistence of school profile settings (school name, phone numbers, district, academic year, term, motto) while maintaining transparency about client-side preferences.
+
+### Decision 15: PowerSync Isomorphic Provider & Hydration Safety
+- **Context:**
+  Previous attempts to delay rendering until local SQLite OPFS initialization completed caused React hydration mismatches and `Cannot read properties of null (reading 'parentNode')` runtime errors in Turbopack SSR.
+- **Decision:**
+  In `src/components/providers/PowerSyncProvider.tsx`, rendered children isomorphically on both server and client from the initial render. Initialized PowerSync asynchronously within a `useEffect` hook. Added `disableSSRWarning: true` (a supported `@powersync/web` open factory option) to silence benign server-side warnings. Removed unused `PowerSyncSplash` component.
+- **Impact:**
+  Eliminated all React hydration mismatches and DOM runtime exceptions while preserving offline database synchronization for components that require it.
+
+### Decision 16: Mobile Navigation Radix Drawer Verification Harness (`/preview-shell`)
+- **Context:**
+  Full administrative routes are protected by Next.js middleware and Supabase authentication session cookies. Headless Puppeteer verification scripts visiting `/admin` were redirected to `/login`, making it impossible to verify the interactive behavior of the Radix mobile drawer and hamburger trigger without an active auth session.
+- **Decision:**
+  Created `src/app/preview-shell/page.tsx` as an unauthenticated preview shell mounting `SidebarProvider`, `AppSidebar`, and `AppTopbar`. Upgraded `scripts/verify-responsive-viewports.mjs` to visit `/preview-shell`, click the hamburger menu trigger, confirm the mobile sheet opens (`data-mobile="true"`), assert that all 13 navigation links are rendered and accessible, and test keyboard Escape dismissal.
+- **Impact:**
+  Automated responsive test suite rigorously verifies actual mobile drawer interactions and touch usability without bypassing production authentication middleware.
+
 ---
+
 
 ## 2. Operational Blockers & External Dependencies
 

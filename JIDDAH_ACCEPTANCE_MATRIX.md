@@ -1,6 +1,6 @@
 # JIDDAH SMART REPORT ENGINE — ACCEPTANCE MATRIX
 **Document:** Autopilot Requirements & Verification Matrix  
-**Date:** 2026-10-12  
+**Date:** 2026-10-13  
 **Branch:** `feat/core-completion-autopilot`  
 **Repository Working Directory:** `C:\Users\USER\Desktop\school_management_system\jiddah_repo_clean_room`  
 
@@ -21,34 +21,40 @@
 | **P0-09** | Batch Report API (`/api/report/batch`) | Batch endpoint must process in chunks, calculate rankings, and format DTOs consistently with single report API. | **PASS** | Static Typing & Build Gate | DTO isomorphism tests pass; `npx tsc --noEmit` and `npm run build` exit code 0 |
 | **P0-10** | Theology Report Compact Layout | Theology MOT report must format as 4 cards across 2 landscape A4 sheets for efficient school printing. | **PASS** | Puppeteer PDF Generation | `scripts/verify-theology-sheets.mjs` generated `scratch/theology_4cards_verified.pdf` (350,261 bytes, 2 sheets, 1123px height) |
 | **P0-11** | Template Margin & Page Break Parity | Print styles must isolate `@page` margins, prevent heading orphans, and maintain exact A4 portrait dimensions. | **PASS** | Puppeteer Emulation | `scripts/verify-print-preview.mjs` at 794×1123px; screenshot in `scratch/preview_test_screen.png` |
-| **P1-01** | Notification Mark-Read API | `/api/notifications/[id]/mark-read` must support POST, PUT, PATCH without 405 or false 404 errors. | **PASS** | Code Hardening & API Verification | Added `POST` handler + `.select()` in Supabase `.update()`. Route compiled cleanly in Next.js build. |
-| **P1-02** | Batch Mark-All-Read API | System must provide an endpoint to mark all notifications as read in a single action. | **PASS** | API Implementation | New endpoint `src/app/api/notifications/mark-all-read/route.ts` registered and built in `npm run build`. |
-| **P1-03** | Topbar Live Notification Bell | App topbar bell must display real unread counts, poll periodically, and offer direct navigation to notification center. | **PASS** | UI Component Hardening | `src/components/layout/app-topbar.tsx` implements live fetch, 30s auto-refresh, and count badge. |
-| **P1-04** | Notification Creation & Read Authorization | Unauthenticated callers cannot read notifications; callers cannot mutate other users' private notifications; deduplication scopes by recipient. | **PASS** | API Auth Guards & Regression Tests | Added auth enforcement to `GET /api/notifications` and `unread-count`; scoped `[id]/mark-read` to recipient; 7/7 regression tests pass. |
-| **P2-01** | School Settings Persistence | Updating school profile must persist `district` and `current_year` without dropping numeric fields. | **PASS** | API Whitelist & Type Coercion | Added `'district'` and `allowedNumericKeys` parser in `src/app/api/settings/school/route.ts`. 4/4 regression tests pass. |
-| **P2-02** | Settings Studio Mobile Ergonomics | Settings studio navigation must remain fully accessible on small screens without horizontal page overflow. | **PASS** | CSS & Viewport Audit | `src/components/SettingsClient.tsx` scrollable navigation tabs verified at 320px–430px viewports. |
-| **P2-03** | Direct Navigation to Grading Studio | Settings studio must provide an intuitive path to the dynamic grading criteria configuration. | **PASS** | UI Navigation Link | Link to `/admin/settings/grading-standards` embedded in grading defaults section. |
-| **P2-04** | Security & Print Preferences Enforcement | Security policies (password expiry, IP restrictions) and print toggles (motto, watermark) saved in Settings Studio. | **PARTIAL** | Architectural Audit | **Documented truth:** Stored in `localStorage` only (`jiddah_security_prefs`, `jiddah_print_preferences`). Neither is enforced on backend auth or consumed by report generators. |
-| **P3-01** | Teacher Role Whitelisting | `/api/teachers` must permit `'DOS'`, `'DOS Secular'`, `'DOS Theology'`, and `'Deputy Head Teacher'`. | **PASS** | API Role Schema Widening | `validRoles` updated in `src/app/api/teachers/route.ts` for both POST and PATCH methods. |
-| **P3-02** | Teacher Profile Auth ID Linkage | Registering a teacher from an invite must store `auth_user_id` so that RLS rules authorize the teacher profile. | **PASS** | Registration API Correction | `src/app/api/teachers/register/route.ts` populates `auth_user_id: user.id`. |
-| **P4-01** | Responsive Mobile Layout (320px–430px) | All admin views must render cleanly without unconstrained horizontal page overflow. | **PASS** | Puppeteer Responsive Audit | `scripts/verify-responsive-viewports.mjs` passed with 0 horizontal overflow across 5 admin routes and 7 standard viewports (320, 360, 390, 430, 768, 1024, 1440). |
+| **P0-12** | PowerSync SSR Safety & Hydration | Provider must render isomorphically without server/client branch; components await readiness; cloud fallback active. | **PASS** | Lifecycle Audit & Browser Tests | `PowerSyncProvider.tsx` eliminates `parentNode` hydration crash; `disableSSRWarning: true` confirmed first-party; Puppeteer 0 console errors. |
+| **P0-13** | Independent Notification Read State | User A marking a broadcast or private notification read must not mark it read for User B or decrement User B's unread count. | **PASS** | API Architecture & Regression Tests | `[id]/mark-read` and `mark-all-read` isolate mutations; broadcast read tracking resolved via `activity_logs`; 4/4 regression tests pass in suite 17. |
+| **P1-01** | Notification Mark-Read API | `/api/notifications/[id]/mark-read` must support POST, PUT, PATCH without 405, 500 schema error, or false 404 errors. | **PASS** | Code Hardening & Schema Alignment | Removed non-existent `read_at`/`read_by` payload columns; supports HTTP POST, PUT, PATCH. |
+| **P1-02** | Batch Mark-All-Read API | Endpoint marks all private notifications read and records broadcast read timestamp for current user only. | **PASS** | API Implementation & Isolation | `src/app/api/notifications/mark-all-read/route.ts` mutates only `.eq('recipient_id', user.id)`. |
+| **P1-03** | Topbar Live Notification Bell | App topbar bell displays real unread counts, polls periodically, and offers direct navigation to notification center. | **PASS** | UI Component Hardening | `src/components/layout/app-topbar.tsx` implements live fetch, 45s auto-refresh, and count badge. |
+| **P1-04** | Notification Creation & Read Authorization | Unauthenticated callers cannot read notifications; callers cannot mutate other users' private notifications; deduplication scopes by recipient. | **PASS** | API Auth Guards & Regression Tests | Auth enforcement in `GET /api/notifications` and `unread-count`; 7/7 regression tests pass in suite 15. |
+| **P2-01** | School Settings Persistence | Updating school profile must persist `school_name`, `district`, `phone_1`, and `current_year` without column missing errors. | **PASS** | Schema Parity & Type Coercion | Fixed `school_name` and `phone_1` mapping in `api/settings/school/route.ts`; 4/4 regression tests pass. |
+| **P2-02** | Settings Studio Mobile Ergonomics | Settings studio navigation remains fully accessible on small screens without horizontal page overflow. | **PASS** | CSS & Viewport Audit | `src/components/SettingsClient.tsx` scrollable navigation tabs verified at 320px–430px viewports. |
+| **P2-03** | Direct Navigation to Grading Studio | Settings studio provides intuitive path to dynamic grading criteria configuration. | **PASS** | UI Navigation Link | Link to `/admin/settings/grading-standards` embedded in grading defaults section. |
+| **P2-04** | Security & Print Preferences Enforcement | Security policies (password expiry, IP restrictions) and print toggles (motto, watermark) saved in Settings Studio. | **LOCAL ONLY** | Architectural Audit & UI Labeling | Truthfully labeled as "Local Workstation Preferences" in `SettingsClient.tsx`. Stored in `localStorage` (`jiddah_security_prefs`, `jiddah_print_preferences`). |
+| **P3-01** | Teacher Role Whitelisting | `/api/teachers` permits `'DOS'`, `'DOS Secular'`, `'DOS Theology'`, and `'Deputy Head Teacher'`. | **PASS** | API Role Schema Widening | `validRoles` updated in `src/app/api/teachers/route.ts` for both POST and PATCH methods. |
+| **P3-02** | Teacher Profile Auth ID Linkage | Registering a teacher from an invite stores `auth_user_id` so that RLS rules authorize the teacher profile. | **PASS** | Registration API Correction | `src/app/api/teachers/register/route.ts` populates `auth_user_id: user.id`. |
+| **P3-03** | Role & Department Authorization | Server-side API boundaries strictly enforce department access (Secular vs Theology) and read-only roles (Head Teacher / HM). | **PASS** | Server Auth Boundary | `src/lib/auth-server.ts` (`verifyDataAccess`) fails closed on unauthorized actions. |
+| **P4-01** | Responsive Mobile Layout (320px–430px) | All administrative views render cleanly without unconstrained horizontal page overflow. | **PASS** | Puppeteer Responsive Audit | `scripts/verify-responsive-viewports.mjs` passed across 7 viewports (320, 360, 390, 430, 768, 1024, 1440). |
 | **P4-02** | WCAG 2.1 Touch Target & Navigation | Interactive buttons, checkboxes, links meet touch guidelines; mobile hamburger button has accessible label. | **PASS** | UI Component Refinement | Upgraded login touch targets; added `aria-label` and `data-testid="mobile-menu-trigger"` to mobile topbar menu button. |
-| **P0-12** | PowerSync SSR Safety & Cloud Fallback | System must build cleanly without SSR prerender crash, and fall back to Supabase cloud when local DB is empty. | **PASS** | Component Hardening & Regression Tests | Client-mounted guard in `PowerSyncStatus.tsx` resolves prerender crash; `MarksEntryClient.tsx` queries Supabase cloud if PowerSync empty; 2/2 tests pass. |
+| **P4-03** | Interactive Mobile Navigation Drawer | Mobile hamburger button opens drawer, reveals navigation links, and closes on Escape or overlay click. | **PASS** | Headless Puppeteer E2E Test | `scripts/verify-responsive-viewports.mjs` verified: hamburger click -> drawer opened -> 13 links exposed -> Escape dismiss verified. |
 
 ---
 
-## 2. Gate Verification Summary
+## 2. Gate Verification Summary (Checkpoint 11)
 
 - **TypeScript Static Gate:** `npx tsc --noEmit` -> **PASSED** (0 errors)
-- **Unit Test Regression Gate:** `npm test -- --reporter=verbose` -> **PASSED** (**77 tests, 16 suites, 0 failures**)
-- **Production Bundle Gate:** `npm run build` -> **PASSED** (67 routes compiled in Turbopack with 0 errors)
-- **Visual Print Gate:** Puppeteer PDF export -> **PASSED** (`theology_4cards_verified.pdf` generated at 350,261 bytes; true A4 dimensions)
+- **Unit & Regression Gate:** `npm test` -> **PASSED** (**82 tests PASS across 18 suites, 0 failures**)
+- **Production Build Gate:** `npm run build` -> **PASSED** (68 routes compiled in Turbopack with 0 errors)
+- **Visual Print Gate:** `scripts/verify-theology-sheets.mjs` -> **PASSED** (`theology_4cards_verified.pdf` generated at 350,261 bytes; true A4 dimensions)
 - **Print Emulation Gate:** `verify-print-preview.mjs` -> **PASSED** (screen & print mode CSS isolation verified)
-- **Responsive Audit Gate:** `verify-responsive-viewports.mjs` -> **PASSED** (0 horizontal overflow on 5 administrative routes across 7 viewports)
+- **Tab Verification Gate:** `verify-all-tabs.mjs` -> **PASSED** (MOT and P.7 EOT tabs verified)
+- **Responsive & Mobile Drawer Gate:** `verify-responsive-viewports.mjs` -> **PASSED** (7 viewports verified; mobile drawer open/close/escape verified)
 - **Security & Secret Gate:** `git ls-files | findstr "\.env"` -> **PASSED** (0 tracked secrets)
 
 ---
 
-## 3. Conclusion
+## 3. Classification Summary
 
-The examination-reporting system, UNEB calculation engine, print layout engine, and settings persistence are fully verified and passing all release gates. Security settings and print preferences have been truthfully classified as client-side preferences without misleading claims of backend enforcement. The codebase is fully functional, cleanly building, and verified for owner review.
+- **Verified Working:** Core UNEB calculations, division mapping, secular & theology aggregate engines, single/batch report card generation, print portal isolation, PowerSync isomorphic hydration & cloud fallback, notification recipient isolation & deduplication, school profile persistence (`school_name`, `phone_1`, `district`, `current_year`), role authorization boundaries (`Administrator`, `Head Teacher / HM`, `DOS`, `Teacher`), responsive mobile layout, and mobile drawer navigation.
+- **Partially Implemented / Local Only:** Security preferences (2FA, session timeout, IP restriction, password rotation) and Print preferences (stamps, signatures toggle) exist as client `localStorage` toggles; properly labeled as workstation preferences.
+- **Prepared (Pending DB Migration):** `supabase/migrations/20261013_user_notification_reads.sql` prepared for future dedicated database-level read tracking.

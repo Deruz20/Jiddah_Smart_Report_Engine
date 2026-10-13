@@ -521,8 +521,11 @@ export default function SettingsClient({ terms }: { terms: Term[] }) {
         return (
           <div className="space-y-5">
             <div>
-              <h2 style={{ fontSize: "18px", fontWeight: 700, color: "#374151" }}>Security & Access Control</h2>
-              <p style={{ fontSize: "13px", color: "#9CA3AF" }}>Manage authentication policies, session timeouts, and operational safeguards.</p>
+              <div className="flex items-center gap-2">
+                <h2 style={{ fontSize: "18px", fontWeight: 700, color: "#374151" }}>Security & Access Control</h2>
+                <span className="text-[11px] px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 font-medium">Local Workstation Preferences</span>
+              </div>
+              <p style={{ fontSize: "13px", color: "#9CA3AF" }}>Workstation safeguards. Note: Server-enforced 2FA and IP policy require enterprise Supabase Auth provider configuration.</p>
             </div>
             {[
               { key: "twoFactor", label: "Two-Factor Authentication", desc: "Require 2FA for all administrative accounts" },
@@ -702,8 +705,11 @@ export default function SettingsClient({ terms }: { terms: Term[] }) {
         return (
           <div className="space-y-6">
             <div>
-              <h2 style={{ fontSize: "18px", fontWeight: 700, color: "#374151" }}>Print & PDF Preferences</h2>
-              <p style={{ fontSize: "13px", color: "#9CA3AF" }}>Configure layout dimensions, watermarks, stamps, and default rendering for printed report cards.</p>
+              <div className="flex items-center gap-2">
+                <h2 style={{ fontSize: "18px", fontWeight: 700, color: "#374151" }}>Print & PDF Preferences</h2>
+                <span className="text-[11px] px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200 font-medium">Workstation Settings</span>
+              </div>
+              <p style={{ fontSize: "13px", color: "#9CA3AF" }}>Workstation print overlays. (Core watermark and badge graphics are centrally governed by the School Profile.)</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">

@@ -21,23 +21,22 @@ export async function POST(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
-    let query = supabase
+    // 1. Mark all private notifications for this user as read
+    const { error } = await supabase
       .from('notifications')
-      .update({ read: true, read_at: new Date().toISOString(), read_by: user.id })
+      .update({ read: true })
+      .eq('recipient_id', user.id)
       .eq('read', false)
-
-    if (user.id) {
-      query = query.or(`recipient_id.is.null,recipient_id.eq.${user.id}`)
-    }
-
-    const { error } = await query
 
     if (error) {
       console.error('mark-all-read error:', error.message)
       return withCors(request, NextResponse.json({ error: error.message }, { status: 500 }))
     }
 
-    await recordActivity(supabase, user.id, 'mark_all_notifications_read', {})
+    // 2. Record mark_all_notifications_read event in activity_logs for this user
+    await recordActivity(supabase, user.id, 'mark_all_notifications_read', {
+      readAt: new Date().toISOString(),
+    })
 
     return withCors(request, NextResponse.json({ success: true }))
   } catch (err: any) {

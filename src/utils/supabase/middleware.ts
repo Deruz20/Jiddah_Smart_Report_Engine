@@ -73,6 +73,13 @@ export async function updateSession(request: NextRequest) {
 
   const path = request.nextUrl.pathname;
 
+  // Protect internal testing harnesses from public access in production environments
+  if (process.env.NODE_ENV === 'production' && (path.startsWith('/preview-shell') || path.startsWith('/preview-test'))) {
+    const url = request.nextUrl.clone();
+    url.pathname = role === 'guest' ? '/login' : '/admin';
+    return NextResponse.redirect(url);
+  }
+
   if (role === 'guest') {
     // Protect authenticated routes
     if (path.startsWith('/admin') || path.startsWith('/dos') || path.startsWith('/teacher') || path.startsWith('/pending') || path === '/') {

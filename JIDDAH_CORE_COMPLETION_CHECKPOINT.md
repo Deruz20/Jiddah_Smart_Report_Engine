@@ -1,18 +1,18 @@
 # JIDDAH SMART REPORT ENGINE — CHECKPOINT 11 AUDIT & RELEASE GATE RECORD
 **Document:** Checkpoint 11 — PowerSync Lifecycle, Notification Isolation, and Mobile Navigation Audit  
-**Audit Date:** 2026-10-13T10:35:00+03:00  
+**Audit Date:** 2026-10-14T08:15:00+03:00  
 **Branch:** `feat/core-completion-autopilot`  
-**Starting Commit:** `ba4726655d29a0be04367b35ee1cee3412ce1cc4`  
-**Prior Verified Commits:** `c51c48f`, `ae1cee5`, `196d360`, `49e9bb1`  
+**Starting Commit:** `6daa5b29be42c302b670effd58a099b183fae23c`  
+**Prior Verified Commits:** `ba47266`, `c51c48f`, `ae1cee5`, `196d360`, `49e9bb1`  
 **Working Directory:** `C:\Users\USER\Desktop\school_management_system\jiddah_repo_clean_room`  
 
 ---
 
 ## 1. Executive Summary
 
-Checkpoint 11 independently audited the PowerSync hydration fix, investigated notification ownership and broadcast read state isolation under the actual Supabase schema, resolved school settings schema parity bugs, classified local preferences vs server-enforced features, and verified real mobile navigation interactions in a headless browser harness.
+Checkpoint 11 independently audited the PowerSync hydration fix, investigated notification ownership and broadcast read state isolation under the actual Supabase schema, resolved school settings schema parity bugs, classified local preferences vs server-enforced features, protected internal preview routes in production environments, and verified real mobile navigation interactions in a headless browser harness.
 
-All 7 release gates were executed with recorded exit codes and zero errors. The test suite expanded from 77 to 82 passing tests across 18 suites.
+All 7 release gates were executed with recorded exit codes and zero errors. The test suite expanded from 77 to 88 passing tests across 19 suites.
 
 ---
 
@@ -65,6 +65,7 @@ All 7 release gates were executed with recorded exit codes and zero errors. The 
     - Cross-reference broadcast notifications with the calling user's entries in `activity_logs`.
     - Return isolated per-user read state and unread count. User A's actions have zero effect on User B.
 - **Migration Prepared:** Created clean, reversible migration `supabase/migrations/20261013_user_notification_reads.sql` for a future dedicated join table `notification_reads(notification_id, user_id, read_at)`.
+- **Multi-User Lifecycle Verification:** Added unit and integration tests covering the complete sequence: User A reading broadcast notifications, User B retaining independent unread status, mark-all-read isolation, and subsequent list re-queries maintaining accurate state.
 
 ---
 
@@ -80,15 +81,21 @@ Delivery model: In-app polling via `src/components/layout/app-topbar.tsx` (polls
 
 ---
 
-## 5. P1: Settings Persistence vs Local Preferences
+## 5. P1: Settings Persistence, Validation, & Report Parity
 
-### 5.1 School Profile Persistence (Bug Resolved)
+### 5.1 School Profile Persistence & Error Handling
 - **Investigation:** In Supabase `school_settings`, columns are `school_name` and `phone_1` (not `name` and `phone`). Calling `PATCH /api/settings/school` with `name` caused `Could not find the 'name' column in schema cache`.
 - **Correction:**
-  - `src/app/api/settings/school/route.ts`: added schema normalization mapping `name -> school_name` and `phone -> phone_1`. Provided bidirectional aliases in GET.
+  - `src/app/api/settings/school/route.ts`: added schema normalization mapping `name -> school_name` and `phone -> phone_1`. Provided bidirectional aliases in GET. Added validation rejecting invalid emails and empty update payloads.
   - `src/components/SettingsClient.tsx`: updated form keys and save payload.
 
-### 5.2 Truthful Classification of Settings
+### 5.2 Single vs Batch Report Parity & 1224 Competition Ties
+- Both `/api/report` (single) and `/api/report/batch` (bulk) utilize identical calculation engines from `src/lib/grading.ts`:
+  - 4 core subjects in Upper Primary (ENG, MATH, SCI, SST) and Lower Primary (ENG, MATH, LIT I, LIT II) calculate identical aggregates and division classifications.
+  - Missing any core subject mark immediately returns null aggregate in both pipelines to avoid partial score distortion.
+  - Competition ranking strictly implements the standard 1224 algorithm (tied students share the same rank; subsequent positions skip accordingly).
+
+### 5.3 Truthful Classification of Settings
 | Setting / Group | Persisted to Backend | Enforced on Server | Consumed by Features | Current Classification |
 |---|---|---|---|---|
 | `school_name`, `address`, `district`, `current_year`, `current_term`, `motto`, `logo_url` | **YES (Supabase)** | **YES (Auth & API)** | **YES (Report Cards)** | **VERIFIED WORKING** |
@@ -116,18 +123,21 @@ Updated `SettingsClient.tsx` UI to clearly label Security and Print tabs as "Loc
 
 ---
 
-## 7. P1: Mobile Navigation Verification
+## 7. P1: Mobile Navigation Verification & Test Harness Edge Security
 
 - **Investigation:** Previous responsive tests did not find the hamburger button on `/admin` because unauthenticated sessions were redirected by `src/proxy.ts` / `middleware.ts` to `/login`.
 - **Harness & Verification:**
   - Created unauthenticated test shell `src/app/preview-shell/page.tsx` rendering `SidebarProvider`, `AppSidebar`, and `AppTopbar`.
-  - Upgraded `scripts/verify-responsive-viewports.mjs`.
+  - Added edge middleware protection in `src/utils/supabase/middleware.ts`: when `process.env.NODE_ENV === 'production'`, requests to `/preview-shell` and `/preview-test` are strictly redirected to `/login` (guests) or `/admin` (authenticated users), preventing any public exposure in production deployments.
+  - Added defense-in-depth client-side `useEffect` redirect in `src/app/preview-shell/page.tsx`.
+  - Upgraded `scripts/verify-responsive-viewports.mjs` to explicitly track and log when protected routes are redirected by auth middleware.
   - Puppeteer automated test output:
     - Hamburger button (`data-testid="mobile-menu-trigger"`): Found and clicked.
     - Mobile drawer sheet (`data-slot="sheet-content"`): **PASSED** (visible).
     - Exposed navigation items: **13 links** (`Dashboard`, `Students`, `Teachers & Staff`, `Classes`, `Subjects`, etc.).
     - Keyboard interaction: Pressing Escape dismissed the drawer (**PASSED**).
     - Touch targets on login and topbar meet WCAG 2.1 standards.
+  - **Honest Differentiation:** Audits of `/admin/*` routes without session cookies verify the unauthenticated auth gateway (`/login`), while `/preview-shell` verifies the layout chrome and drawer interaction.
 
 ---
 
@@ -136,13 +146,13 @@ Updated `SettingsClient.tsx` UI to clearly label Security and Print tabs as "Loc
 | Gate | Command | Exit Code | Result | Scope / Evidence |
 |---|---|---|---|---|
 | **TypeScript Static Gate** | `npx tsc --noEmit` | **0** | **PASS** | 0 type errors across all client & server components |
-| **Unit & Regression Suite** | `npm test` | **0** | **PASS** | **82 tests PASS across 18 suites** (0 fail, 0 skipped) |
+| **Unit & Regression Suite** | `npm test` | **0** | **PASS** | **88 tests PASS across 19 suites** (0 fail, 0 skipped) |
 | **Production Build Gate** | `npm run build` | **0** | **PASS** | 68 routes statically generated & dynamic endpoints compiled |
 | **Visual Print Gate** | `node scripts/verify-theology-sheets.mjs` | **0** | **PASS** | 2 landscape A4 sheets, 1123px height each, 350KB PDF generated |
 | **Print Emulation Gate** | `node scripts/verify-print-preview.mjs` | **0** | **PASS** | `@media print` isolation verified; 794×1123px container |
 | **Tab Verification Gate** | `node scripts/verify-all-tabs.mjs` | **0** | **PASS** | Primary MOT and P.7 EOT tabs verified |
-| **Responsive Viewports Gate** | `node scripts/verify-responsive-viewports.mjs` | **0** | **PASS** | 7 viewports tested; mobile drawer open/close/escape verified |
-| **Secret Gate** | `git ls-files \| findstr "\.env"` | **0** | **PASS** | 0 tracked secret files |
+| **Responsive Viewports Gate** | `node scripts/verify-responsive-viewports.mjs` | **0** | **PASS** | 7 viewports tested; mobile drawer open/close/escape verified; auth redirect logging active |
+| **Secret Gate** | `git ls-files \| findstr "\.env"` | **1** | **PASS** | 0 tracked secret files |
 
 ---
 

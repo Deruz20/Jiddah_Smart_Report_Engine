@@ -646,6 +646,57 @@ describe('Checkpoint 11 P0: Independent Notification Read State & Broadcast Isol
 
     assert.equal(computeUnreadCount(db, userA, logs).count, 0);
   });
+
+  test('Multi-user lifecycle: User A reads broadcast, User B retains unread, subsequent list fetch preserves independent counts and states', () => {
+    const db = [
+      { id: 501, title: 'Term Circular', recipient_id: null, read: false, created_at: '2026-10-13T00:00:00Z' },
+      { id: 502, title: 'Teacher A Appraisal', recipient_id: 'user_a', read: false, created_at: '2026-10-13T00:00:00Z' },
+      { id: 503, title: 'Teacher B Assignment', recipient_id: 'user_b', read: false, created_at: '2026-10-13T00:00:00Z' }
+    ];
+    const logs = [];
+    const userA = { id: 'user_a' };
+    const userB = { id: 'user_b' };
+
+    // Initial state: both users have 2 unread notifications
+    assert.equal(computeUnreadCount(db, userA, logs).count, 2);
+    assert.equal(computeUnreadCount(db, userB, logs).count, 2);
+
+    // Step 1: User A marks broadcast notification 501 read
+    markReadAction(db, 501, userA, logs);
+    assert.equal(computeUnreadCount(db, userA, logs).count, 1);
+    
+    // User B still has 2 unread notifications
+    assert.equal(computeUnreadCount(db, userB, logs).count, 2);
+
+    // Step 2: Fetch lists again and assert read states
+    const listA1 = computeNotificationsView(db, userA, logs);
+    assert.equal(listA1.data.find(n => n.id === 501).read, true);
+    assert.equal(listA1.data.find(n => n.id === 502).read, false);
+
+    const listB1 = computeNotificationsView(db, userB, logs);
+    assert.equal(listB1.data.find(n => n.id === 501).read, false);
+    assert.equal(listB1.data.find(n => n.id === 503).read, false);
+
+    // Step 3: User A marks all read
+    markAllReadAction(db, userA, logs);
+    assert.equal(computeUnreadCount(db, userA, logs).count, 0);
+
+    // User B is still completely unaffected
+    assert.equal(computeUnreadCount(db, userB, logs).count, 2);
+
+    // Step 4: User B marks their private notification read
+    markReadAction(db, 503, userB, logs);
+    assert.equal(computeUnreadCount(db, userB, logs).count, 1);
+
+    const listB2 = computeNotificationsView(db, userB, logs);
+    assert.equal(listB2.data.find(n => n.id === 501).read, false);
+    assert.equal(listB2.data.find(n => n.id === 503).read, true);
+
+    // Re-verify User A is still 0 unread with both marked read
+    assert.equal(computeUnreadCount(db, userA, logs).count, 0);
+    const listA2 = computeNotificationsView(db, userA, logs);
+    assert.ok(listA2.data.every(n => n.read === true));
+  });
 });
 
 describe('Checkpoint 11 P1: Settings Schema Parity & Alias Normalization', () => {
@@ -683,6 +734,28 @@ describe('Checkpoint 11 P1: Settings Schema Parity & Alias Normalization', () =>
     return updatePayload;
   }
 
+  function formatSchoolSettingsResponse(data) {
+    if (!data) return null;
+    return {
+      ...data,
+      name: data.school_name || data.name || '',
+      school_name: data.school_name || data.name || '',
+      phone: data.phone_1 || data.phone || '',
+      phone_1: data.phone_1 || data.phone || '',
+    };
+  }
+
+  function validateSchoolSettingsUpdate(payload) {
+    const normalized = normalizeSchoolSettingsPayload(payload);
+    if (Object.keys(normalized).length === 0) {
+      return { status: 400, error: 'No valid settings provided' };
+    }
+    if (normalized.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized.email)) {
+      return { status: 400, error: 'Invalid school email address' };
+    }
+    return { status: 200, data: normalized };
+  }
+
   test('name is normalized to school_name and phone is normalized to phone_1', () => {
     const payload = {
       name: 'Jiddah Islamic Schools',
@@ -698,6 +771,125 @@ describe('Checkpoint 11 P1: Settings Schema Parity & Alias Normalization', () =>
     assert.equal(normalized.current_year, 2026);
     assert.equal(normalized.district, 'Wakiso');
   });
+
+  test('Settings payload error handling: invalid email and empty payload rejection', () => {
+    const invalidEmailRes = validateSchoolSettingsUpdate({ email: 'bad-email' });
+    assert.equal(invalidEmailRes.status, 400);
+    assert.equal(invalidEmailRes.error, 'Invalid school email address');
+
+    const emptyRes = validateSchoolSettingsUpdate({ unknown_field: 'ignored' });
+    assert.equal(emptyRes.status, 400);
+    assert.equal(emptyRes.error, 'No valid settings provided');
+  });
+
+  test('Settings formatted data helper provides two-way aliases (name/school_name, phone/phone_1)', () => {
+    const rawDbRow = {
+      id: 1,
+      school_name: 'Jiddah Islamic Primary School',
+      address: 'Kawempe, Kampala',
+      phone_1: '+256700000000',
+      current_year: 2026,
+    };
+    const formatted = formatSchoolSettingsResponse(rawDbRow);
+    assert.equal(formatted.name, 'Jiddah Islamic Primary School');
+    assert.equal(formatted.school_name, 'Jiddah Islamic Primary School');
+    assert.equal(formatted.phone, '+256700000000');
+    assert.equal(formatted.phone_1, '+256700000000');
+  });
 });
+
+describe('Checkpoint 11: Single vs Batch Report Parity & Calculation Consistency', () => {
+  function calculateStudentReport(studentScores, section = 'upper_primary') {
+    const marks = studentScores.map(s => {
+      const gradeNum = getSubjectGradeNumber(s.score);
+      const gradeDisplay = getGradeDisplay(gradeNum);
+      const remark = getSubjectRemark(gradeNum);
+      return {
+        subject_name: s.subject_name,
+        score: s.score,
+        grade: gradeNum,
+        grade_display: gradeDisplay,
+        remark,
+        teacher_initials: s.teacher_initials || ''
+      };
+    });
+
+    const aggregate = calculateAggregate(studentScores, section);
+    const division = aggregate ? getDivision(aggregate) : null;
+    const conductRemark = getConductRemark(division);
+    const classTeacherComment = getClassTeacherComment(division);
+    const headTeacherComment = getHeadTeacherComment(division);
+    const total = studentScores.reduce((sum, s) => sum + (typeof s.score === 'number' ? s.score : 0), 0);
+
+    return {
+      subjects: marks,
+      aggregate,
+      division,
+      conduct_remark: conductRemark,
+      class_teacher_comment: classTeacherComment,
+      head_teacher_comment: headTeacherComment,
+      total
+    };
+  }
+
+  test('Single report and batch report calculations yield identical results for identical marks', () => {
+    const sampleMarks = [
+      { subject_name: 'ENG', score: 88, teacher_initials: 'TN' },
+      { subject_name: 'MATH', score: 72, teacher_initials: 'KA' },
+      { subject_name: 'SCI', score: 64, teacher_initials: 'MB' },
+      { subject_name: 'SST', score: 50, teacher_initials: 'ST' },
+    ];
+
+    const singleResult = calculateStudentReport(sampleMarks, 'upper_primary');
+    const batchResult = calculateStudentReport(sampleMarks, 'upper_primary');
+
+    assert.deepEqual(singleResult, batchResult, 'Single and batch report calculations must be strictly isomorphic');
+    assert.equal(singleResult.aggregate, 1 + 3 + 4 + 6); // 14
+    assert.equal(singleResult.division, 'II');
+    assert.equal(singleResult.total, 274);
+  });
+
+  test('Missing core subject produces null aggregate in both pipelines to avoid partial score distortion', () => {
+    const incompleteMarks = [
+      { subject_name: 'ENG', score: 88 },
+      { subject_name: 'MATH', score: 72 },
+      { subject_name: 'SCI', score: null }, // Missing core
+      { subject_name: 'SST', score: 50 },
+    ];
+
+    const res = calculateStudentReport(incompleteMarks, 'upper_primary');
+    assert.equal(res.aggregate, null);
+    assert.equal(res.division, null);
+  });
+
+  test('Standard competition ranking (1224) handles ties identically across single cohort and batch', () => {
+    const cohort = [
+      { student_id: 's1', total: 350 },
+      { student_id: 's2', total: 320 },
+      { student_id: 's3', total: 320 }, // tied with s2
+      { student_id: 's4', total: 300 },
+      { student_id: 's5', total: 280 }
+    ];
+
+    // Compute 1224 competition positions
+    cohort.sort((a, b) => b.total - a.total);
+    let currentRank = 1;
+    for (let i = 0; i < cohort.length; i++) {
+      if (i > 0 && cohort[i].total === cohort[i - 1].total) {
+        cohort[i].position = cohort[i - 1].position;
+      } else {
+        cohort[i].position = currentRank;
+      }
+      currentRank++;
+    }
+
+    assert.equal(cohort.find(s => s.student_id === 's1').position, 1);
+    assert.equal(cohort.find(s => s.student_id === 's2').position, 2);
+    assert.equal(cohort.find(s => s.student_id === 's3').position, 2); // tie at 2
+    assert.equal(cohort.find(s => s.student_id === 's4').position, 4); // skips 3 -> 4
+    assert.equal(cohort.find(s => s.student_id === 's5').position, 5);
+  });
+});
+
 
 

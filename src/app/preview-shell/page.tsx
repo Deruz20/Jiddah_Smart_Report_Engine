@@ -1,11 +1,20 @@
 'use client'
 
-import React from 'react'
+import React, { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { SidebarProvider, SidebarInset } from '@/components/figma-ui/ui/sidebar'
 import { AppSidebar } from '@/components/layout/app-sidebar'
 import { AppTopbar } from '@/components/layout/app-topbar'
 
 export default function PreviewShellPage() {
+  const router = useRouter()
+
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'production') {
+      router.replace('/login')
+    }
+  }, [router])
+
   return (
     <SidebarProvider defaultOpen={true}>
       <AppSidebar />

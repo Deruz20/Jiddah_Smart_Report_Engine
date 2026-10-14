@@ -79,7 +79,11 @@ async function runResponsiveAudit() {
         const screenshotFile = path.join(scratchDir, `${route.name}_${vp.width}x${vp.height}.png`);
         await page.screenshot({ path: screenshotFile, fullPage: false });
 
-        console.log(`  Route: ${route.name} -> Overflow: ${metrics.hasHorizontalOverflow ? `YES (+${metrics.overflowDiff}px)` : 'NO'}, Undersized targets (<24px): ${metrics.undersizedTargets}/${metrics.totalInteractive}`);
+        const actualUrl = page.url();
+        const wasRedirected = !actualUrl.endsWith(route.path);
+        const redirectNote = wasRedirected ? ` [Redirected -> ${actualUrl}]` : '';
+
+        console.log(`  Route: ${route.name} (${route.path}${redirectNote}) -> Overflow: ${metrics.hasHorizontalOverflow ? `YES (+${metrics.overflowDiff}px)` : 'NO'}, Undersized targets (<24px): ${metrics.undersizedTargets}/${metrics.totalInteractive}`);
 
         results.push({
           viewport: vp.name,
@@ -87,6 +91,8 @@ async function runResponsiveAudit() {
           height: vp.height,
           route: route.name,
           path: route.path,
+          actualUrl,
+          wasRedirected,
           overflow: metrics.hasHorizontalOverflow,
           overflowDiff: metrics.overflowDiff,
           undersizedTargets: metrics.undersizedTargets,

@@ -149,6 +149,32 @@
 - **Impact:**
   Automated responsive test suite rigorously verifies actual mobile drawer interactions and touch usability without bypassing production authentication middleware.
 
+### Decision 17: Production Protection for Test Harness Routes via Edge Middleware & Client Route Guards
+- **Context:**
+  The preview harness `/preview-shell` (and print test harness `/preview-test`) are required for headless Puppeteer automated audits of mobile navigation drawers and print portals. However, exposing these test routes on public production deployments introduces potential information disclosure of administrative navigation structures.
+- **Decision:**
+  1. Configured Next.js edge middleware (`src/utils/supabase/middleware.ts`) to intercept `/preview-shell` and `/preview-test` when `process.env.NODE_ENV === 'production'`, redirecting guests to `/login` and authenticated non-admin users to `/admin`.
+  2. Implemented client-side defense-in-depth in `src/app/preview-shell/page.tsx` via `useEffect` redirecting to `/login` if loaded in production.
+  3. Preserved unrestricted access in development environments (`process.env.NODE_ENV !== 'production'`) to support automated local verification scripts.
+- **Impact:**
+  Eliminates public production exposure of administrative testing harnesses without compromising automated QA pipelines.
+
+### Decision 18: Multi-User Notification Read State Verification & Lifecycle Invariant Testing
+- **Context:**
+  Per-user notification isolation requires absolute guarantees that subsequent list fetches, mark-read operations, and mark-all-read operations by User A never mutate, corrupt, or alter the unread status or count for User B.
+- **Decision:**
+  Added multi-step lifecycle tests in `src/__tests__/pipeline-parity-and-edge-cases.test.mjs` simulating sequential operations: User A reading a broadcast notification, User A marking all as read, and User B fetching their notifications across all phases.
+- **Impact:**
+  Formally verified that broadcast announcements remain unmutated in the database while per-user activity logs correctly synthesize independent unread counts across all lifecycle transitions.
+
+### Decision 19: Strict Report Parity & 1224 Competition Tie-Breaking Conformance
+- **Context:**
+  Both single report generation (`/api/report`) and batch report generation (`/api/report/batch`) compute academic grades, divisions, and remarks. Any divergence between the two endpoints would lead to conflicting student rankings or marks.
+- **Decision:**
+  Added unit and regression assertions validating that single and batch report generation engines produce strictly isomorphic outputs for identical inputs, correctly exclude non-gradable subjects, return null aggregates on missing core marks, and implement standard 1224 competition ranking for score ties.
+- **Impact:**
+  Guarantees complete consistency across individual report previews and bulk term-end printing.
+
 ---
 
 

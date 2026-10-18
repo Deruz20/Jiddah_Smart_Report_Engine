@@ -18,6 +18,7 @@ USING (
     JOIN public.theology_classes tc ON tc.id = e.theology_class_id
     JOIN public.teachers t ON t.auth_user_id = auth.uid()
     WHERE e.id = theology_marks.enrollment_id
+      AND t.status = 'active'
       AND (
         -- 1. Subject/theology teacher assigned to student's theology class
         EXISTS (
@@ -51,6 +52,7 @@ WITH CHECK (
     JOIN public.theology_classes tc ON tc.id = e.theology_class_id
     JOIN public.teachers t ON t.auth_user_id = auth.uid()
     WHERE e.id = theology_marks.enrollment_id
+      AND t.status = 'active'
       AND (
         EXISTS (
           SELECT 1 FROM public.teacher_class_assignments tca 

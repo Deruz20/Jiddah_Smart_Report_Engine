@@ -61,3 +61,26 @@ LEFT JOIN information_schema.constraint_column_usage ccu
 WHERE tc.table_schema = 'public'
   AND tc.table_name IN ('teachers', 'theology_marks')
 ORDER BY tc.table_name, tc.constraint_type, tc.constraint_name;
+
+-- 5. Orphaned teachers rows whose auth_user_id does not exist in auth.users
+SELECT 
+  t.id AS teacher_id, 
+  t.name, 
+  t.email, 
+  t.role, 
+  t.status, 
+  t.auth_user_id
+FROM public.teachers t
+LEFT JOIN auth.users u ON u.id = t.auth_user_id
+WHERE t.auth_user_id IS NOT NULL 
+  AND u.id IS NULL;
+
+-- 6. Orphaned auth.users rows with no corresponding teachers row
+SELECT 
+  u.id AS auth_user_id, 
+  u.email, 
+  u.created_at, 
+  u.last_sign_in_at
+FROM auth.users u
+LEFT JOIN public.teachers t ON t.auth_user_id = u.id OR t.email = u.email
+WHERE t.id IS NULL;

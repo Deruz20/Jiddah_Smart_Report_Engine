@@ -40,8 +40,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# scratch generated test artifacts
-scratch/*.pdf
-scratch/**/*.png
-scratch/*.png
-scratch/test_*.mjs
+# scratch directory and test artifacts
+scratch/
+scratch/*
+

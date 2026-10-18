@@ -211,16 +211,44 @@ Execute these 3 smoke tests against your preview or production domain:
 
 ---
 
-### STEP 9: Phase 1 Item D Rollout Order & Failure Mode Analysis
+### STEP 9: Phase 1 Item D Rollout Order & Failure Mode Analysis (Class Teacher Theology Marks)
 
 **Governing Precondition:** Everything remains strictly blocked on Owner Gate 1 approval and completed CSV export (Step 1). Production is hosted on Supabase Free Plan with NO automated backups or PITR.
 
-#### Deploy Order Strategy: Migration First vs Code First
+#### Deploy Order Strategy: Code Only vs Migration Only vs Both
 | Deployment Scenario | State Description | Failure Mode & User Experience | Recovery / Mitigation |
 |---|---|---|---|
 | **Case 1: Code Only** (Vercel code deployed; SQL migration omitted) | API server (`auth-server.ts` & `marks/route.ts`) authorizes assigned Class Teacher for theology marks. | **FAIL-CLOSED:** Database RLS policy on `theology_marks` still rejects the write with PostgreSQL error `42501` (`new row violates row-level security policy for table "theology_marks"`). API returns 500/403. Teacher sees save failure alert. **Zero data corruption occurs.** | Apply migration `20261018_class_teacher_theology_marks_policy.sql` via Supabase SQL Editor. |
 | **Case 2: Migration Only** (SQL migration applied; Vercel code omitted) | Database RLS allows assigned Class Teacher to write to `theology_marks`. | **FAIL-CLOSED:** API layer middleware (`src/lib/auth-server.ts`) evaluates Class Teacher as `secular` department and rejects request before it reaches database with HTTP `403 Forbidden` (`{"error":"Unauthorized: You only have access to the secular department."}`). Teacher sees 403 error. **Zero data corruption occurs.** | Deploy updated application code to Vercel, or revert migration using rollback script. |
-| **Case 3: Recommended Order** (Migration first, then Vercel deploy) | Migration applied first; then application code deployed. | **ZERO DOWNTIME / ZERO ANOMALY:** The database migration is additive and backward compatible (it preserves full existing access for Administrator, DOS, and Theology Instructor while adding assigned Class Teachers). Existing production roles experience zero degradation during rollout window. Once Vercel build deploys, Class Teachers immediately gain save access. | Standard operational path. |
+| **Case 3: Both (Migration First, then Code Deploy)** *(Recommended)* | Migration applied first; then application code deployed. | **ZERO DOWNTIME / ZERO ANOMALY:** The database migration is additive and backward compatible (it preserves full existing access for Administrator, DOS, and Theology Instructor while adding assigned active Class Teachers). Existing production roles experience zero degradation during rollout window. Once Vercel build deploys, Class Teachers immediately gain save access. | Standard operational path. |
+| **Case 4: Both (Code Deploy First, then Migration)** | Vercel code deployed first; then migration applied. | **TEMPORARY FAIL-CLOSED WINDOW:** During the window between Vercel deployment and SQL execution, Class Teachers attempting to save theology marks encounter the Case 1 fail-closed error (`42501`). All other roles continue normally. As soon as the SQL migration executes, saves immediately succeed without requiring another code deploy. | Apply migration immediately after code release. |
+
+---
+
+### STEP 10: Phase 1 Item E Rollout Order & Behavior Change Analysis (Teacher Deactivation & Access Revocation)
+
+#### 1. Core Behavior Change: DELETE Now Soft-Deactivates Instead of Hard Deleting
+- **Legacy Behavior (Dangerous):** Previously, `DELETE /api/admin/teachers/[id]` called `supabaseAdmin.auth.admin.deleteUser(id)` and then executed `DELETE FROM public.teachers WHERE id = id`. Whenever a teacher authored any historical student marks, comments, or report cards, PostgreSQL rejected the deletion with foreign key violation `23503 (violates foreign key constraint "theology_marks_updated_by_fkey")`. Worse, because the auth user was deleted *before* the database rollback, the system was left with an orphaned database teacher row whose auth account was gone.
+- **Hardened Behavior (Safe & Reversible):**
+  - **Soft Deactivation:** `public.teachers.status` is set to `'inactive'`. The database row is preserved, ensuring 100% referential integrity for all historical marks, remarks, initials, and assignments.
+  - **Session & Auth Revocation:** Resolves authoritative `teachers.auth_user_id` (immune to email page truncation) and bans the auth user via `supabaseAdmin.auth.admin.updateUserById(uid, { ban_duration: '876600h' })`. Banned users cannot authenticate or refresh tokens.
+  - **Gateway Enforcement:** Every API route verifies `verifyDataAccess()`, which immediately terminates any caller with `status !== 'active'` with HTTP `403 Forbidden` (`{"error":"Unauthorized: Inactive account"}`).
+  - **Database RLS Defense:** The forward migration `20261018_class_teacher_theology_marks_policy.sql` adds `AND t.status = 'active'` to both `USING` and `WITH CHECK` clauses on `theology_marks`. Even if an unexpired JWT is presented directly to PostgREST, PostgreSQL RLS rejects any write.
+  - **Guards:** Self-deactivation is blocked with HTTP `400` (`Cannot deactivate own account`). Deactivating the last active Administrator is blocked with HTTP `409` (`Cannot deactivate the last active administrator`).
+  - **Audit Logging:** Every deactivation is recorded in `public.activity_logs` with actor ID, target teacher details, and timestamp.
+  - **UI Label:** The destructive button in the administrative UI is explicitly renamed **"Deactivate"**.
+
+#### 2. Rollout Permutations for Item E
+| Deployment Scenario | State Description | Failure Mode & User Experience | Recovery / Mitigation |
+|---|---|---|---|
+| **Case 1: Code Only** (Vercel code deployed; SQL migration omitted) | DELETE endpoint switches to soft-deactivation and auth user ban. API gateway enforces `status === 'active'`. | **SAFE:** Teacher deactivation succeeds without 23503 foreign key errors. Banned auth users cannot log in. API rejects existing tokens. Minimal edge: if a deactivated teacher held an unexpired JWT and bypassed the API to make direct PostgREST calls to `theology_marks`, RLS would allow writes until JWT expiry. | Apply migration `20261018_class_teacher_theology_marks_policy.sql` to enforce `t.status = 'active'` directly in PostgreSQL. |
+| **Case 2: Migration Only** (SQL migration applied; Vercel code omitted) | Database RLS on `theology_marks` checks `status = 'active'`. API endpoint still runs legacy hard-delete code. | **LEGACY FAILURE MODE:** Deleting any teacher with existing marks continues to fail with PostgreSQL error `23503`. | Deploy updated application code to Vercel. |
+| **Case 3: Both (Migration First, then Code Deploy)** *(Recommended)* | Migration applied first; then application code deployed. | **ZERO DOWNTIME / ZERO VULNERABILITY:** Database RLS enforces `status = 'active'` immediately. As soon as Vercel deploys, deactivations cleanly soft-delete and ban accounts. | Standard operational path. |
+| **Case 4: Both (Code Deploy First, then Migration)** | Vercel code deployed first; then migration applied. | **SAFE:** Deactivations immediately work without 23503 errors. API gateway and Auth ban enforce lockout. Migration applied shortly after seals the database RLS layer. | Apply migration immediately following Vercel release. |
+
+#### 3. Production Orphan-Row Risk from R5 Schema Probe
+- **Historical Production Risk:** Query 5 in `scripts/prod-schema-probe.sql` (`SELECT ... FROM teachers t LEFT JOIN auth.users u ON u.id = t.auth_user_id WHERE t.auth_user_id IS NOT NULL AND u.id IS NULL`) probes for orphaned teacher records that may have been created by the old hard-delete path if an auth user was deleted prior to a database foreign key abort.
+- **Risk Mitigation:** Orphaned teachers cannot log in because they possess no auth credentials in GoTrue. However, their profiles remain visible in staff tables. The owner should inspect Query 5 output from `prod-schema-probe.sql`. Any historical orphan records identified can safely have their status set to `'inactive'` via SQL. Moving forward, the new soft-deactivation path makes it structurally impossible to create orphan rows.
 
 ---
 
@@ -231,4 +259,5 @@ If any unexpected failure or regression occurs:
 3. Run [`supabase/migrations/stage1_security_rollback.sql`](file:///c:/Users/USER/Desktop/school_management_system/jiddah_repo_clean_room/supabase/migrations/stage1_security_rollback.sql) (Single transaction; restores exact prior catalog policies).
 4. Run [`supabase/migrations/stage2_legacy_rollback.sql`](file:///c:/Users/USER/Desktop/school_management_system/jiddah_repo_clean_room/supabase/migrations/stage2_legacy_rollback.sql) (Restores legacy grants and policies).
 5. Revert code via: `git checkout main`.
+
 

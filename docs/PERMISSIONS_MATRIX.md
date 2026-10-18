@@ -38,7 +38,7 @@
 | **Register / Edit Student Profile** | ❌ Blocked (401) | ❌ Blocked (403) | ❌ Blocked (403) | ❌ Blocked (403) | ✅ Allowed | ✅ Allowed | ✅ Allowed |
 | **Read Active Term (`GET /api/settings/terms/active`)** | ❌ Blocked (401) | ✅ Allowed | ✅ Allowed | ✅ Allowed | ✅ Allowed | ✅ Allowed | ✅ Allowed |
 | **Set Active Term (`POST /api/settings/terms/active`)** | ❌ Blocked (401) | ❌ Blocked (403) | ❌ Blocked (403) | ❌ Blocked (403) | ❌ Blocked (403) | ❌ Blocked (403) | ✅ Allowed |
-| **Enter Marks (Assigned Class & Subjects)** | ❌ Blocked (401) | ❌ Blocked (403) | ✅ Theology Only | ✅ Circular Only | ✅ Dept Moderation | ❌ Read Only | ✅ Full Write |
+| **Enter Marks (Assigned Class & Subjects)** | ❌ Blocked (401) | ❌ Blocked (403) | ✅ Theology Only | ✅ Assigned Classes (Secular & Theology) | ✅ Dept Moderation | ❌ Read Only | ✅ Full Write |
 | **Enter Marks (Cross-Class / Unassigned)** | ❌ Blocked (401) | ❌ Blocked (403) | ❌ Blocked (403) | ❌ Blocked (403) | ❌ Blocked (403) | ❌ Blocked (403) | ✅ Admin Override |
 | **Generate Report Card (`/api/report`)** | ❌ Blocked (401) | ❌ Blocked (403) | ❌ Blocked (403) | 🔍 Assigned Class | ✅ Dept Wide | ✅ All Classes | ✅ All Classes |
 | **View Global Activity Logs (`/api/activity`)** | ❌ Blocked (401) | ❌ Blocked (403) | ❌ Blocked (403) | ❌ Blocked (403) | ✅ Dept Logs | ✅ Full Read | ✅ Full Read |
@@ -47,7 +47,9 @@
 | **Change Own Role (Self-Promotion)** | ❌ Blocked | ❌ Blocked (Trigger) | ❌ Blocked (Trigger) | ❌ Blocked (Trigger) | ❌ Blocked (Trigger) | ❌ Blocked (Trigger) | ❌ Blocked (Trigger) |
 | **Upload Institutional Signatures & Stamps** | ❌ Blocked (401) | ❌ Blocked (403) | ❌ Blocked (403) | ❌ Blocked (403) | ❌ Blocked (403) | ❌ Blocked (403) | ✅ Allowed |
 
-> **Active Term Access Rule (`/api/settings/terms/active`):** GET: any authenticated staff; POST: Administrator only. Status: PENDING GATE 1.
+> **Active Term Access Rule (`/api/settings/terms/active`):** GET: any authenticated staff; POST: Administrator only. Status: PENDING GATE 1.  
+> **Theology Marks Access Rule for Class Teachers:** Class Teachers can access and enter theology marks strictly for students in their assigned classes (via `teacher_class_assignments` or `circular_classes.class_teacher_id`). Access to unassigned classes is blocked at both API (403) and Database RLS (42501). Status: PENDING GATE 1.  
+> **Teacher Deactivation Rule (`/api/admin/teachers/[id]`):** DELETE: Administrator only; performs soft-delete (`status = 'inactive'`) preserving historical marks/remarks referential integrity. Blocked for all non-admin roles (403). Status: PENDING GATE 1.
 
 ---
 

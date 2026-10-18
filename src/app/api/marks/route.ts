@@ -310,7 +310,7 @@ export async function POST(request: NextRequest) {
           
         if (subjErr) return withCors(request, NextResponse.json({ error: subjErr.message }, { status: 500 }))
         
-        const invalidSubjects = subjects?.filter((s: any) => s.level !== expectedTheologyLevel) || []
+        const invalidSubjects = subjects?.filter((s: any) => String(s.level) !== String(expectedTheologyLevel)) || []
         if (invalidSubjects.length > 0) {
           return withCors(request, NextResponse.json({ 
             error: `Level mismatch for theology subjects: ${invalidSubjects.map((s: any) => s.id).join(', ')}` 

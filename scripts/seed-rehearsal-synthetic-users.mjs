@@ -1,17 +1,32 @@
 import { createClient } from '@supabase/supabase-js';
+import { execSync } from 'child_process';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321';
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'sb_secret_N7UND0UgjKTVK-Uodkm0Hg_xSvEMPvz';
+let serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
+if (!serviceKey) {
+  try {
+    const statusOutput = execSync('npx supabase status --workdir scratch/rehearsal_isolated_supabase -o json', { encoding: 'utf8' });
+    const parsed = JSON.parse(statusOutput);
+    serviceKey = parsed.SECRET_KEY || parsed.SERVICE_ROLE_KEY;
+  } catch (err) {
+    console.warn('Could not read service key from supabase status:', err.message);
+  }
+}
+
+if (!serviceKey) {
+  throw new Error('SUPABASE_SERVICE_ROLE_KEY environment variable is required');
+}
+
+const supabase = createClient(SUPABASE_URL, serviceKey);
 
 const ROLES_TO_SEED = [
-  { email: 'admin@test.local', password: 'Password123!', role: 'Administrator', name: 'Synthetic Admin' },
-  { email: 'head@test.local', password: 'Password123!', role: 'Head Teacher', name: 'Synthetic Head Teacher' },
-  { email: 'dos@test.local', password: 'Password123!', role: 'DOS', name: 'Synthetic DOS' },
-  { email: 'teacher@test.local', password: 'Password123!', role: 'Class Teacher', name: 'Synthetic Class Teacher' },
-  { email: 'theology@test.local', password: 'Password123!', role: 'Theology Instructor', name: 'Synthetic Theology' },
-  { email: 'staff@test.local', password: 'Password123!', role: 'Support Staff', name: 'Synthetic Support Staff' }
+  { id: '972af107-555f-4289-9357-5c14119328e5', email: 'admin@test.local', password: 'Password123!', role: 'Administrator', name: 'Synthetic Admin' },
+  { id: '47ccf9d7-f514-4e4b-a765-536e29deed84', email: 'head@test.local', password: 'Password123!', role: 'Head Teacher', name: 'Synthetic Head Teacher' },
+  { id: '0811a4f1-efab-442e-8f17-dad3adbb82ee', email: 'dos@test.local', password: 'Password123!', role: 'DOS', name: 'Synthetic DOS' },
+  { id: 'c599cb13-fb3d-4e5d-8e27-253cb7e5ac1a', email: 'teacher@test.local', password: 'Password123!', role: 'Class Teacher', name: 'Synthetic Class Teacher' },
+  { id: '806118f0-3385-47f7-8858-ea4f66f846a6', email: 'theology@test.local', password: 'Password123!', role: 'Theology Instructor', name: 'Synthetic Theology' },
+  { id: 'df597ee0-b400-4e46-8d25-2860e07da95b', email: 'staff@test.local', password: 'Password123!', role: 'Support Staff', name: 'Synthetic Support Staff' }
 ];
 
 export async function seedRehearsalDatabase() {
@@ -66,12 +81,14 @@ export async function seedRehearsalDatabase() {
     {
       id: 'c1000000-0000-0000-0000-000000000001',
       class_name: 'Primary 1',
-      section: 'lower_primary'
+      section: 'lower_primary',
+      class_teacher_id: 'c599cb13-fb3d-4e5d-8e27-253cb7e5ac1a'
     },
     {
       id: 'c1000000-0000-0000-0000-000000000002',
       class_name: 'Primary 2',
-      section: 'lower_primary'
+      section: 'lower_primary',
+      class_teacher_id: null
     }
   ]);
 
@@ -91,33 +108,57 @@ export async function seedRehearsalDatabase() {
     }
   ]);
 
-  // 5. Subjects
+  // 5. Subjects & Theology Subjects
   await supabase.from('subjects').upsert([
     {
       id: 'b0000000-0000-0000-0000-000000000001',
       subject_name: 'القرآن الكريم (Quran)',
       curriculum: 'theology',
       section: '1'
+    },
+    {
+      id: 'b0000000-0000-0000-0000-000000000002',
+      subject_name: 'الفقه والإسلامية (Fiqh)',
+      curriculum: 'theology',
+      section: '2'
     }
   ]);
 
-  // 6. Seed users & teacher records
-  let teacherId = null;
+  await supabase.from('theology_subjects').upsert([
+    {
+      id: 'b0000000-0000-0000-0000-000000000001',
+      subject_name: 'القرآن الكريم (Quran)',
+      name_arabic: 'القرآن الكريم',
+      section: '1',
+      level: '1',
+      sort_order: 1
+    },
+    {
+      id: 'b0000000-0000-0000-0000-000000000002',
+      subject_name: 'الفقه والإسلامية (Fiqh)',
+      name_arabic: 'الفقه والإسلامية',
+      section: '2',
+      level: '2',
+      sort_order: 2
+    }
+  ]);
+
+  // 6. Seed users & teacher records with deterministic UUID parity
   const { data: userList } = await supabase.auth.admin.listUsers();
   const existingUsers = userList?.users || [];
 
   for (const item of ROLES_TO_SEED) {
-    let authUserId = null;
     const existing = existingUsers.find(u => u.email === item.email);
-    if (existing) {
-      authUserId = existing.id;
-      // Ensure password and metadata match
-      await supabase.auth.admin.updateUserById(authUserId, {
-        password: item.password,
-        user_metadata: { role: item.role, name: item.name, onboarding_completed: true }
-      });
-    } else {
-      const { data: created, error: createErr } = await supabase.auth.admin.createUser({
+    if (existing && existing.id !== item.id) {
+      await supabase.auth.admin.deleteUser(existing.id);
+    }
+
+    const { data: refreshedUsers } = await supabase.auth.admin.listUsers();
+    const current = refreshedUsers?.users?.find(u => u.email === item.email);
+
+    if (!current) {
+      const { error: createErr } = await supabase.auth.admin.createUser({
+        id: item.id,
         email: item.email,
         password: item.password,
         email_confirm: true,
@@ -127,16 +168,16 @@ export async function seedRehearsalDatabase() {
         console.error(`Error creating user ${item.email}:`, createErr.message);
         continue;
       }
-      authUserId = created.user.id;
-    }
-
-    if (item.email === 'teacher@test.local') {
-      teacherId = authUserId;
+    } else {
+      await supabase.auth.admin.updateUserById(item.id, {
+        password: item.password,
+        user_metadata: { role: item.role, name: item.name, onboarding_completed: true }
+      });
     }
 
     await supabase.from('teachers').upsert({
-      id: authUserId,
-      auth_user_id: authUserId,
+      id: item.id,
+      auth_user_id: item.id,
       email: item.email,
       role: item.role,
       name: item.name,
@@ -147,42 +188,43 @@ export async function seedRehearsalDatabase() {
   }
 
   // 7. Teacher class assignment (Assign Class Teacher to circular class Primary 1)
-  if (teacherId) {
-    await supabase.from('teacher_class_assignments').delete().eq('teacher_id', teacherId);
-    await supabase.from('teacher_class_assignments').insert({
-      teacher_id: teacherId,
-      class_id: 'c1000000-0000-0000-0000-000000000001',
-      class_type: 'circular'
-    });
-  }
+  const teacherId = 'c599cb13-fb3d-4e5d-8e27-253cb7e5ac1a';
+  await supabase.from('teacher_class_assignments').delete().eq('teacher_id', teacherId);
+  await supabase.from('teacher_class_assignments').insert({
+    teacher_id: teacherId,
+    class_id: 'c1000000-0000-0000-0000-000000000001',
+    class_type: 'circular'
+  });
 
   // 8. Students
-  await supabase.from('students').upsert([
+  const { error: studentErr } = await supabase.from('students').upsert([
     {
       id: 'a0000000-0000-0000-0000-000000000001',
       name: 'Test Student',
       admission_number: 'ADM-001',
       gender: 'male',
-      status: 'active'
+      is_archived: false
     },
     {
       id: 'a0000000-0000-0000-0000-000000000002',
       name: 'Unassigned Test Student',
       admission_number: 'ADM-002',
       gender: 'female',
-      status: 'active'
+      is_archived: false
     }
   ]);
+  if (studentErr) {
+    console.error('Error seeding students:', studentErr.message);
+  }
 
   // 9. Enrollments
-  await supabase.from('enrollments').upsert([
+  const { error: enrollErr } = await supabase.from('enrollments').upsert([
     {
       id: 'e0000000-0000-0000-0000-000000000001',
       student_id: 'a0000000-0000-0000-0000-000000000001',
       circular_class_id: 'c1000000-0000-0000-0000-000000000001',
       theology_class_id: 'c0000000-0000-0000-0000-000000000002',
-      term_id: 'a1b2c3d4-e5f6-4a1b-8c2d-111111111111',
-      academic_year: '2026',
+      academic_year: 2026,
       is_active: true
     },
     {
@@ -190,26 +232,26 @@ export async function seedRehearsalDatabase() {
       student_id: 'a0000000-0000-0000-0000-000000000002',
       circular_class_id: 'c1000000-0000-0000-0000-000000000002',
       theology_class_id: 'c0000000-0000-0000-0000-000000000003',
-      term_id: 'a1b2c3d4-e5f6-4a1b-8c2d-111111111111',
-      academic_year: '2026',
+      academic_year: 2026,
       is_active: true
     }
   ]);
+  if (enrollErr) {
+    console.error('Error seeding enrollments:', enrollErr.message);
+  }
 
   // 10. Initial mark for assigned student (so updates succeed)
-  if (teacherId) {
-    await supabase.from('theology_marks').upsert([
-      {
-        id: '20da181d-93fe-4b45-b899-70ec5314b4e7',
-        enrollment_id: 'e0000000-0000-0000-0000-000000000001',
-        subject_id: 'b0000000-0000-0000-0000-000000000001',
-        term_id: 'a1b2c3d4-e5f6-4a1b-8c2d-111111111111',
-        mot_score: 89,
-        eot_score: 91,
-        updated_by: teacherId
-      }
-    ]);
-  }
+  await supabase.from('theology_marks').upsert([
+    {
+      id: '20da181d-93fe-4b45-b899-70ec5314b4e7',
+      enrollment_id: 'e0000000-0000-0000-0000-000000000001',
+      subject_id: 'b0000000-0000-0000-0000-000000000001',
+      term_id: 'a1b2c3d4-e5f6-4a1b-8c2d-111111111111',
+      mot_score: 89,
+      eot_score: 91,
+      updated_by: teacherId
+    }
+  ]);
 
   // Ensure unassigned student has NO mark initially
   await supabase.from('theology_marks').delete().eq('enrollment_id', 'e0000000-0000-0000-0000-000000000002');

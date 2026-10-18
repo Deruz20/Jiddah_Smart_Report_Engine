@@ -3,9 +3,22 @@ import { createClient } from '@supabase/supabase-js';
 import fs from 'node:fs';
 import path from 'node:path';
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321';
-const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH';
+import { execSync } from 'node:child_process';
+
+let SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321';
+let ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const BASE_URL = 'http://localhost:3000';
+
+if (!ANON_KEY) {
+  try {
+    const statusOutput = execSync('npx supabase status --workdir scratch/rehearsal_isolated_supabase -o json', { encoding: 'utf8' });
+    const parsed = JSON.parse(statusOutput);
+    ANON_KEY = parsed.PUBLISHABLE_KEY || parsed.ANON_KEY;
+    SUPABASE_URL = parsed.API_URL || SUPABASE_URL;
+  } catch (err) {
+    console.warn('Could not read ANON_KEY from supabase status:', err.message);
+  }
+}
 
 const supabase = createClient(SUPABASE_URL, ANON_KEY);
 
@@ -164,7 +177,7 @@ async function runSweep() {
   // Synthetic Class Teacher assigned ONLY to Primary 1 attempting to mutate marks for Primary 4
   const teacherHeaders = await getAuthHeaders({ email: 'teacher@test.local', password: 'Password123!' });
   const crossClassPayload = {
-    enrollment_id: 'e0000000-0000-0000-0000-000000000001', // enrolled in P.8
+    enrollment_id: 'e0000000-0000-0000-0000-000000000002', // unassigned Primary 2 student
     term_id: 'a1b2c3d4-e5f6-4a1b-8c2d-111111111111',
     score_type: 'mot',
     circular_marks: [{ subject_id: '00000000-0000-0000-0000-000000000001', mot_score: 90 }],
@@ -180,7 +193,12 @@ async function runSweep() {
   console.log(`Cross-class mutation response:`, crossClassBody);
 
   const crossClassBlocked = crossClassRes.status === 403 || crossClassRes.status === 404;
-  console.log(`[PASS] Cross-class mutation blocked: status = ${crossClassRes.status} (Forbidden/Not Found)`);
+  if (!crossClassBlocked) {
+    console.error(`[FAIL] Cross-class mutation was NOT blocked! Status: ${crossClassRes.status}`);
+    defects++;
+  } else {
+    console.log(`[PASS] Cross-class mutation blocked: status = ${crossClassRes.status} (Forbidden/Not Found)`);
+  }
 
   // Write full matrix to scratch/api_sweep_matrix.json
   const scratchDir = path.resolve('scratch');

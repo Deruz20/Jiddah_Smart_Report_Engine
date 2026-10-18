@@ -40,8 +40,8 @@ export async function verifyDataAccess(
     return { isAuthorized: false, message: 'User profile not found in teachers directory.' };
   }
 
-  // Reject inactive / suspended accounts immediately
-  if (profile.status === 'inactive') {
+  // Reject non-active accounts immediately (status != 'active')
+  if (profile.status !== 'active') {
     return { isAuthorized: false, message: 'Account is suspended or inactive.' };
   }
 

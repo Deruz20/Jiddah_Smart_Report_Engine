@@ -161,10 +161,6 @@ describe('Wave 3: RBAC & Permission Matrix Data-Driven Suite [MOCK - In-Memory P
   });
 
   describe('3. Anti-ID-Swapping (IDOR) & Cohort Isolation', () => {
-    it('N/A (SINGLE SCHOOL): Multi-tenant cross-school isolation is not applicable to single-deployment architecture', () => {
-      // Contract: Jiddah is deployed as one database/app per school. No school_id column exists.
-      assert.ok(true, 'Single-school deployment architecture; cross-school tenant ID isolation is N/A.');
-    });
 
     it('asserts that Teacher A cannot edit marks for Teacher B assigned class without DOS/Admin role', () => {
       const teacher = { id: 't-01', role: 'class_teacher', assignedClasses: ['cls-p6'] };

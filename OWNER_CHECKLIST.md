@@ -211,9 +211,24 @@ Execute these 3 smoke tests against your preview or production domain:
 
 ---
 
+### STEP 9: Phase 1 Item D Rollout Order & Failure Mode Analysis
+
+**Governing Precondition:** Everything remains strictly blocked on Owner Gate 1 approval and completed CSV export (Step 1). Production is hosted on Supabase Free Plan with NO automated backups or PITR.
+
+#### Deploy Order Strategy: Migration First vs Code First
+| Deployment Scenario | State Description | Failure Mode & User Experience | Recovery / Mitigation |
+|---|---|---|---|
+| **Case 1: Code Only** (Vercel code deployed; SQL migration omitted) | API server (`auth-server.ts` & `marks/route.ts`) authorizes assigned Class Teacher for theology marks. | **FAIL-CLOSED:** Database RLS policy on `theology_marks` still rejects the write with PostgreSQL error `42501` (`new row violates row-level security policy for table "theology_marks"`). API returns 500/403. Teacher sees save failure alert. **Zero data corruption occurs.** | Apply migration `20261018_class_teacher_theology_marks_policy.sql` via Supabase SQL Editor. |
+| **Case 2: Migration Only** (SQL migration applied; Vercel code omitted) | Database RLS allows assigned Class Teacher to write to `theology_marks`. | **FAIL-CLOSED:** API layer middleware (`src/lib/auth-server.ts`) evaluates Class Teacher as `secular` department and rejects request before it reaches database with HTTP `403 Forbidden` (`{"error":"Unauthorized: You only have access to the secular department."}`). Teacher sees 403 error. **Zero data corruption occurs.** | Deploy updated application code to Vercel, or revert migration using rollback script. |
+| **Case 3: Recommended Order** (Migration first, then Vercel deploy) | Migration applied first; then application code deployed. | **ZERO DOWNTIME / ZERO ANOMALY:** The database migration is additive and backward compatible (it preserves full existing access for Administrator, DOS, and Theology Instructor while adding assigned Class Teachers). Existing production roles experience zero degradation during rollout window. Once Vercel build deploys, Class Teachers immediately gain save access. | Standard operational path. |
+
+---
+
 ### EMERGENCY ROLLBACK RUNBOOK
 If any unexpected failure or regression occurs:
 1. Open Supabase Dashboard -> **SQL Editor**.
-2. Run [`supabase/migrations/stage1_security_rollback.sql`](file:///c:/Users/USER/Desktop/school_management_system/jiddah_repo_clean_room/supabase/migrations/stage1_security_rollback.sql) (Single transaction; restores exact prior catalog policies).
-3. Run [`supabase/migrations/stage2_legacy_rollback.sql`](file:///c:/Users/USER/Desktop/school_management_system/jiddah_repo_clean_room/supabase/migrations/stage2_legacy_rollback.sql) (Restores legacy grants and policies).
-4. Revert code via: `git checkout main`.
+2. Run [`supabase/migrations/20261018_class_teacher_theology_marks_policy_rollback.sql`](file:///c:/Users/USER/Desktop/school_management_system/jiddah_repo_clean_room/supabase/migrations/20261018_class_teacher_theology_marks_policy_rollback.sql) (Single transaction; restores exact prior theology marks policy).
+3. Run [`supabase/migrations/stage1_security_rollback.sql`](file:///c:/Users/USER/Desktop/school_management_system/jiddah_repo_clean_room/supabase/migrations/stage1_security_rollback.sql) (Single transaction; restores exact prior catalog policies).
+4. Run [`supabase/migrations/stage2_legacy_rollback.sql`](file:///c:/Users/USER/Desktop/school_management_system/jiddah_repo_clean_room/supabase/migrations/stage2_legacy_rollback.sql) (Restores legacy grants and policies).
+5. Revert code via: `git checkout main`.
+

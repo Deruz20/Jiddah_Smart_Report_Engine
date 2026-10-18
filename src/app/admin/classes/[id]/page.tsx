@@ -42,7 +42,7 @@ export default async function ClassDetailsPage(props: { params: Promise<{ id: st
   const { data: teachersData } = await supabase
     .from('teachers')
     .select('*')
-    .eq('status', 'active')
+    .neq('status', 'inactive')
     .order('name')
 
   // Calculate some KPIs

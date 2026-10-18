@@ -124,9 +124,9 @@ export async function GET(request: NextRequest) {
         : (enrollment.theology_classes as any)?.level
       const { data: theologySubjects, error: theologySubjectsError } = await supabase
         .from('theology_subjects')
-        .select('id, subject_name, level')
-        .eq('level', String(theologyClassLevel))
-        .order('subject_name', { ascending: true })
+        .select('id, subject_name_arabic')
+        .eq('level', theologyClassLevel)
+        .order('sort_order', { ascending: true })
 
       if (theologySubjectsError) {
         console.error('theology_subjects DB error:', theologySubjectsError.message)
@@ -153,7 +153,7 @@ export async function GET(request: NextRequest) {
         const existingMark = theologyMarkMap.get(subject.id)
         return {
           subject_id: subject.id,
-          subject_name_arabic: subject.subject_name,
+          subject_name_arabic: subject.subject_name_arabic,
           mot_score: existingMark?.mot_score ?? null,
           eot_score: existingMark?.eot_score ?? null,
         }
@@ -310,7 +310,7 @@ export async function POST(request: NextRequest) {
           
         if (subjErr) return withCors(request, NextResponse.json({ error: subjErr.message }, { status: 500 }))
         
-        const invalidSubjects = subjects?.filter((s: any) => String(s.level) !== String(expectedTheologyLevel)) || []
+        const invalidSubjects = subjects?.filter((s: any) => s.level !== expectedTheologyLevel) || []
         if (invalidSubjects.length > 0) {
           return withCors(request, NextResponse.json({ 
             error: `Level mismatch for theology subjects: ${invalidSubjects.map((s: any) => s.id).join(', ')}` 

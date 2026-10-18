@@ -228,4 +228,77 @@ test('Item D: Class Teacher Theology Marks Save & Strict RLS Boundary Suite', as
     assert.equal(res.status, 403, `API must reject unassigned class mark entry with HTTP 403 Forbidden. Observed: ${res.status}`);
     assert.ok(body.error?.includes("You do not have access to this student's classes"), 'API error must state access denied');
   });
+
+  await t.test('5. F4.c: LEFT JOIN permits enrollments with NULL circular_class_id or NULL theology_class_id', async () => {
+    // Authenticate Admin client
+    const { data: adminAuth } = await supabase.auth.signInWithPassword({
+      email: 'admin@test.local',
+      password: 'Password123!'
+    });
+    assert.ok(adminAuth.session, 'Admin must authenticate');
+    const adminClient = createClient(SUPABASE_URL, ANON_KEY, {
+      global: { headers: { Authorization: `Bearer ${adminAuth.session.access_token}` } }
+    });
+
+    // 1. Enrollment with NULL circular_class_id (valid theology class)
+    const nullCircularStudentId = 'a0000000-0000-0000-0000-000000000098';
+    const nullCircularEnrollmentId = 'e0000000-0000-0000-0000-000000000098';
+    execSync('docker exec -i supabase_db_rehearsal_isolated_supabase psql -U postgres -d postgres', {
+      input: `
+        INSERT INTO public.students (id, admission_number, name) VALUES ('${nullCircularStudentId}', 'ADM-098', 'Null Circular Student') ON CONFLICT (id) DO NOTHING;
+        INSERT INTO public.enrollments (id, student_id, theology_class_id, circular_class_id, academic_year, is_active)
+        VALUES ('${nullCircularEnrollmentId}', '${nullCircularStudentId}', 'c0000000-0000-0000-0000-000000000002', null, 2026, true)
+        ON CONFLICT (id) DO UPDATE SET theology_class_id = EXCLUDED.theology_class_id, circular_class_id = null;
+      `,
+      encoding: 'utf8'
+    });
+
+    const { error: err1 } = await adminClient.from('theology_marks').upsert({
+      enrollment_id: nullCircularEnrollmentId,
+      term_id: 'a1b2c3d4-e5f6-4a1b-8c2d-111111111111',
+      subject_id: 'b0000000-0000-0000-0000-000000000001',
+      mot_score: 85,
+      eot_score: 90,
+      updated_by: adminAuth.user.id
+    });
+    console.log('  [NULL CIRCULAR JOIN ASSERTION] Error:', err1?.message);
+    assert.equal(err1, null, 'Administrator must be able to insert mark for enrollment with NULL circular_class_id');
+
+    // 2. Enrollment with NULL theology_class_id (testing RLS query visibility)
+    const nullTheologyStudentId = 'a0000000-0000-0000-0000-000000000099';
+    const nullTheologyEnrollmentId = 'e0000000-0000-0000-0000-000000000099';
+    execSync('docker exec -i supabase_db_rehearsal_isolated_supabase psql -U postgres -d postgres', {
+      input: `
+        INSERT INTO public.students (id, admission_number, name) VALUES ('${nullTheologyStudentId}', 'ADM-099', 'Null Theology Student') ON CONFLICT (id) DO NOTHING;
+        INSERT INTO public.enrollments (id, student_id, theology_class_id, circular_class_id, academic_year, is_active)
+        VALUES ('${nullTheologyEnrollmentId}', '${nullTheologyStudentId}', null, 'c1000000-0000-0000-0000-000000000001', 2026, true)
+        ON CONFLICT (id) DO UPDATE SET theology_class_id = null, circular_class_id = EXCLUDED.circular_class_id;
+        ALTER TABLE public.theology_marks DISABLE TRIGGER trg_enforce_theology_mark_level;
+        INSERT INTO public.theology_marks (id, enrollment_id, term_id, subject_id, mot_score, eot_score, updated_by)
+        VALUES ('d0000000-0000-0000-0000-000000000099', '${nullTheologyEnrollmentId}', 'a1b2c3d4-e5f6-4a1b-8c2d-111111111111', 'b0000000-0000-0000-0000-000000000001', 88, 92, '${adminAuth.user.id}')
+        ON CONFLICT (enrollment_id, subject_id, term_id) DO NOTHING;
+        ALTER TABLE public.theology_marks ENABLE TRIGGER trg_enforce_theology_mark_level;
+      `,
+      encoding: 'utf8'
+    });
+
+    const { data: readData, error: err2 } = await adminClient
+      .from('theology_marks')
+      .select('id, mot_score')
+      .eq('enrollment_id', nullTheologyEnrollmentId);
+
+    console.log('  [NULL THEOLOGY JOIN ASSERTION] Read rows:', readData?.length, 'Error:', err2?.message);
+    assert.equal(err2, null, 'Administrator must be able to select mark for enrollment with NULL theology_class_id');
+    assert.equal(readData?.length, 1, 'LEFT JOIN must include enrollment even when theology_class_id is NULL');
+
+    // Cleanup temporary test fixtures
+    execSync('docker exec -i supabase_db_rehearsal_isolated_supabase psql -U postgres -d postgres', {
+      input: `
+        DELETE FROM public.theology_marks WHERE enrollment_id IN ('${nullCircularEnrollmentId}', '${nullTheologyEnrollmentId}');
+        DELETE FROM public.enrollments WHERE id IN ('${nullCircularEnrollmentId}', '${nullTheologyEnrollmentId}');
+        DELETE FROM public.students WHERE id IN ('${nullCircularStudentId}', '${nullTheologyStudentId}');
+      `,
+      encoding: 'utf8'
+    });
+  });
 });

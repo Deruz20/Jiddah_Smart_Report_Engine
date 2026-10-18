@@ -82,7 +82,7 @@ export async function seedRehearsalDatabase() {
       id: 'c1000000-0000-0000-0000-000000000001',
       class_name: 'Primary 1',
       section: 'lower_primary',
-      class_teacher_id: 'c599cb13-fb3d-4e5d-8e27-253cb7e5ac1a'
+      class_teacher_id: null
     },
     {
       id: 'c1000000-0000-0000-0000-000000000002',
@@ -128,17 +128,19 @@ export async function seedRehearsalDatabase() {
     {
       id: 'b0000000-0000-0000-0000-000000000001',
       subject_name: 'القرآن الكريم (Quran)',
+      subject_name_arabic: 'القرآن الكريم',
       name_arabic: 'القرآن الكريم',
       section: '1',
-      level: '1',
+      level: 1,
       sort_order: 1
     },
     {
       id: 'b0000000-0000-0000-0000-000000000002',
       subject_name: 'الفقه والإسلامية (Fiqh)',
+      subject_name_arabic: 'الفقه والإسلامية',
       name_arabic: 'الفقه والإسلامية',
       section: '2',
-      level: '2',
+      level: 2,
       sort_order: 2
     }
   ]);
@@ -189,6 +191,7 @@ export async function seedRehearsalDatabase() {
 
   // 7. Teacher class assignment (Assign Class Teacher to circular class Primary 1)
   const teacherId = 'c599cb13-fb3d-4e5d-8e27-253cb7e5ac1a';
+  await supabase.from('circular_classes').update({ class_teacher_id: teacherId }).eq('id', 'c1000000-0000-0000-0000-000000000001');
   await supabase.from('teacher_class_assignments').delete().eq('teacher_id', teacherId);
   await supabase.from('teacher_class_assignments').insert({
     teacher_id: teacherId,
@@ -197,6 +200,11 @@ export async function seedRehearsalDatabase() {
   });
 
   // 8. Students
+  // Clean up any extraneous students and enrollments from prior failed tests
+  await supabase.from('theology_marks').delete().not('enrollment_id', 'in', '("e0000000-0000-0000-0000-000000000001","e0000000-0000-0000-0000-000000000002")');
+  await supabase.from('enrollments').delete().not('id', 'in', '("e0000000-0000-0000-0000-000000000001","e0000000-0000-0000-0000-000000000002")');
+  await supabase.from('students').delete().not('id', 'in', '("a0000000-0000-0000-0000-000000000001","a0000000-0000-0000-0000-000000000002")');
+
   const { error: studentErr } = await supabase.from('students').upsert([
     {
       id: 'a0000000-0000-0000-0000-000000000001',
@@ -240,7 +248,10 @@ export async function seedRehearsalDatabase() {
     console.error('Error seeding enrollments:', enrollErr.message);
   }
 
-  // 10. Initial mark for assigned student (so updates succeed)
+  // 10. Initial marks for assigned student and unassigned student
+  const { data: adminUser } = await supabase.from('teachers').select('id').eq('email', 'admin@test.local').single();
+  const adminId = adminUser?.id || teacherId;
+
   await supabase.from('theology_marks').upsert([
     {
       id: '20da181d-93fe-4b45-b899-70ec5314b4e7',
@@ -250,11 +261,17 @@ export async function seedRehearsalDatabase() {
       mot_score: 89,
       eot_score: 91,
       updated_by: teacherId
+    },
+    {
+      id: '30da181d-93fe-4b45-b899-70ec5314b4e8',
+      enrollment_id: 'e0000000-0000-0000-0000-000000000002',
+      subject_id: 'b0000000-0000-0000-0000-000000000002',
+      term_id: 'a1b2c3d4-e5f6-4a1b-8c2d-111111111111',
+      mot_score: 75,
+      eot_score: 80,
+      updated_by: adminId
     }
   ]);
-
-  // Ensure unassigned student has NO mark initially
-  await supabase.from('theology_marks').delete().eq('enrollment_id', 'e0000000-0000-0000-0000-000000000002');
 
   console.log('✔ Complete rehearsal fixture dataset seeded successfully.');
 }

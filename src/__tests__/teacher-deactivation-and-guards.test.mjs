@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createClient } from '@supabase/supabase-js';
 import { chromium } from 'playwright';
+import { verifyDataAccess } from '../lib/auth-server.ts';
 import { enforceLocalSafeEnvironment } from '../lib/test-guard.mjs';
 
 // Enforce local-only execution
@@ -183,6 +184,53 @@ test('Item E: Teacher Deactivation, Session Revocation, Guards & Audit Suite', a
     }
   });
 
+  // F2.b: Status value permutations test (explicit allow-list vs deny-list verification)
+  await t.test('F2.b: Status gate explicitly tests each status value including NULL', async (st) => {
+    const mockUser = { id: 'test-user', email: 'status-test@test.local' };
+    
+    const allowedStatuses = ['active', 'Active', 'approved', 'pending', null];
+    const deniedStatuses = ['inactive', 'suspended', 'deactivated', 'banned'];
+
+    for (const status of allowedStatuses) {
+      await st.test(`Status "${status}" must be permitted through gateway`, async () => {
+        const mockSupabase = {
+          from: () => ({
+            select: () => ({
+              eq: () => ({
+                single: async () => ({
+                  data: { id: 't1', role: 'Administrator', status },
+                  error: null
+                })
+              })
+            })
+          })
+        };
+        const result = await verifyDataAccess(mockSupabase, mockUser, 'read');
+        assert.equal(result.isAuthorized, true, `Status "${status}" must be authorized`);
+      });
+    }
+
+    for (const status of deniedStatuses) {
+      await st.test(`Status "${status}" must be strictly blocked by gateway`, async () => {
+        const mockSupabase = {
+          from: () => ({
+            select: () => ({
+              eq: () => ({
+                single: async () => ({
+                  data: { id: 't1', role: 'Administrator', status },
+                  error: null
+                })
+              })
+            })
+          })
+        };
+        const result = await verifyDataAccess(mockSupabase, mockUser, 'read');
+        assert.equal(result.isAuthorized, false, `Status "${status}" must be blocked`);
+        assert.equal(result.message, 'Account is suspended or inactive.');
+      });
+    }
+  });
+
   // E-D & E-E: Playwright UI test verifies button is renamed "Deactivate" BEFORE deactivation
   await t.test('E-D & E-E: Playwright UI test verifies button is renamed "Deactivate"', async () => {
     const browser = await chromium.launch({
@@ -229,6 +277,31 @@ test('Item E: Teacher Deactivation, Session Revocation, Guards & Audit Suite', a
     } finally {
       await browser.close();
     }
+  });
+
+  // E-A Pre-Control: Before deactivation, teacher gets HTTP 200 from API and writes 1 row via direct PostgREST
+  await t.test('E-A Pre-Control: Before deactivation, active teacher gets HTTP 200 and writes 1 row via direct PostgREST', async () => {
+    // 1. API route access
+    const res = await fetch(`${BASE_URL}/api/marks?enrollment_id=e0000000-0000-0000-0000-000000000001&term_id=a1b2c3d4-e5f6-4a1b-8c2d-111111111111`, {
+      method: 'GET',
+      headers: getHeaders(disposableSession)
+    });
+    console.log('  [PRE-DEACT POSITIVE API] Status:', res.status);
+    assert.equal(res.status, 200, `Active teacher must receive HTTP 200 from API. Observed: ${res.status}`);
+
+    // 2. Direct PostgREST write
+    const userClient = createClient(SUPABASE_URL, ANON_KEY, {
+      global: { headers: { Authorization: `Bearer ${disposableSession.access_token}` } }
+    });
+    const { data, error } = await userClient
+      .from('theology_marks')
+      .update({ mot_score: 77, eot_score: 83 })
+      .eq('id', HISTORICAL_MARK_ID)
+      .select();
+
+    console.log('  [PRE-DEACT POSITIVE RLS] Updated rows:', data?.length ?? 0, 'Error:', error?.message);
+    assert.equal(error, null, 'Active teacher must write to theology_marks without RLS error');
+    assert.equal(data?.length, 1, 'Active teacher must update exactly 1 row in theology_marks');
   });
 
   // E-A & E-C: Admin successfully deactivates disposable teacher; audit log is written

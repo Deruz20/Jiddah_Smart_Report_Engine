@@ -9,8 +9,18 @@ enforceLocalSafeEnvironment();
 test('Phase 1c: /api/settings/terms/active Role Authorization & Invariant Suite', async (t) => {
   const BASE_URL = process.env.TEST_BASE_URL || 'http://localhost:3000';
   const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321';
-  const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH';
-  const supabase = createClient(SUPABASE_URL, ANON_KEY);
+  let ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!ANON_KEY) {
+    try {
+      const { execSync } = await import('node:child_process');
+      const statusOutput = execSync('npx supabase status --workdir scratch/rehearsal_isolated_supabase -o json', { encoding: 'utf8' });
+      const parsed = JSON.parse(statusOutput);
+      ANON_KEY = parsed.PUBLISHABLE_KEY || parsed.ANON_KEY;
+    } catch {
+      // Fallback handled by test runner
+    }
+  }
+  const supabase = createClient(SUPABASE_URL, ANON_KEY || '');
 
   function getCookieHeaders(session) {
     const urlObj = new URL(SUPABASE_URL);

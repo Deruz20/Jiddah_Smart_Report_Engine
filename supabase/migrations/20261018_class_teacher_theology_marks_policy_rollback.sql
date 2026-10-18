@@ -1,8 +1,9 @@
--- Rollback Migration: 20261018_class_teacher_theology_marks_policy_rollback.sql
--- Purpose: Revert theology_marks_access_policy to previous baseline state (20260804000001_rls_policies.sql).
+-- DRAFT: finalize against production probe output
+-- Purpose: Revert theology marks policy to previous baseline state (20260804000001_rls_policies.sql).
 
 BEGIN;
 
+DROP POLICY IF EXISTS "theology_marks_manage_authorized_staff" ON public.theology_marks;
 DROP POLICY IF EXISTS "theology_marks_access_policy" ON public.theology_marks;
 
 CREATE POLICY "theology_marks_access_policy"
@@ -12,46 +13,49 @@ TO authenticated
 USING (
   EXISTS (
     SELECT 1
-    FROM enrollments e
-    JOIN theology_classes tc ON tc.id = e.theology_class_id
-    JOIN teachers t ON t.auth_user_id = auth.uid()
+    FROM public.enrollments e
+    JOIN public.theology_classes tc ON tc.id = e.theology_class_id
+    JOIN public.teachers t ON t.auth_user_id = auth.uid()
     WHERE e.id = theology_marks.enrollment_id
       AND (
+        -- Subject teacher assigned to this class
         EXISTS (
-          SELECT 1 FROM teacher_class_assignments tca 
+          SELECT 1 FROM public.teacher_class_assignments tca 
           WHERE tca.teacher_id = t.id 
             AND tca.class_id = tc.id 
             AND tca.class_type = 'theology'
         )
+        -- Theology does not have a class_teacher_id on its table, but circular homeroom teachers need access
         OR EXISTS (
-          SELECT 1 FROM circular_classes cc
+          SELECT 1 FROM public.circular_classes cc
           WHERE cc.id = e.circular_class_id
             AND cc.class_teacher_id = t.id
         )
-        OR t.role in ('DOS Theology','Administrator','admin','Head Teacher','Deputy Head Teacher')
+        -- Admin / DOS Theology role
+        OR t.role IN ('DOS Theology', 'Administrator', 'admin', 'Head Teacher', 'Deputy Head Teacher')
       )
   )
 )
 WITH CHECK (
   EXISTS (
     SELECT 1
-    FROM enrollments e
-    JOIN theology_classes tc ON tc.id = e.theology_class_id
-    JOIN teachers t ON t.auth_user_id = auth.uid()
+    FROM public.enrollments e
+    JOIN public.theology_classes tc ON tc.id = e.theology_class_id
+    JOIN public.teachers t ON t.auth_user_id = auth.uid()
     WHERE e.id = theology_marks.enrollment_id
       AND (
         EXISTS (
-          SELECT 1 FROM teacher_class_assignments tca 
+          SELECT 1 FROM public.teacher_class_assignments tca 
           WHERE tca.teacher_id = t.id 
             AND tca.class_id = tc.id 
             AND tca.class_type = 'theology'
         )
         OR EXISTS (
-          SELECT 1 FROM circular_classes cc
+          SELECT 1 FROM public.circular_classes cc
           WHERE cc.id = e.circular_class_id
             AND cc.class_teacher_id = t.id
         )
-        OR t.role in ('DOS Theology','Administrator','admin','Head Teacher','Deputy Head Teacher')
+        OR t.role IN ('DOS Theology', 'Administrator', 'admin', 'Head Teacher', 'Deputy Head Teacher')
       )
   )
 );

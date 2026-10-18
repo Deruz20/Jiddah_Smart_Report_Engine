@@ -1,8 +1,8 @@
 # OWNER CHECKLIST — JIDDAH SMART REPORT ENGINE
 
-**Governing Hard Limits:** Zero production database connection strings in tooling; no automated CLI scripts executed against production; all owner actions are reviewed and executed directly by the owner.  
+**Governing Hard Limits:** Zero production database connection strings in tooling; no automated CLI scripts executed against production; all owner actions are reviewed and executed directly by the owner. NEVER run `supabase db push` against production (it pushes local schema unconditionally; all changes must be applied via SQL Editor transactions).  
 **Plan Tier Constraint:** Supabase Free Tier (no automated PITR backups). Manual CSV export fallback mandatory.  
-**Execution Gate Status:** OWNER GATE 1 IS NOT APPROVED. No migrations are applied anywhere. Production changes happen only from this checklist after staging verification.
+**Execution Gate Status:** OWNER GATE 1 IS NOT APPROVED. Gate 1 is the owner's review and sign-off of PERMISSIONS_MATRIX.md against the school's actual operating rules (it is NOT deployment approval). No migrations are applied anywhere. Production changes happen only from this checklist after staging verification.
 
 ---
 
@@ -246,9 +246,9 @@ Execute these 3 smoke tests against your preview or production domain:
 | **Case 3: Both (Migration First, then Code Deploy)** *(Recommended)* | Migration applied first; then application code deployed. | **ZERO DOWNTIME / ZERO VULNERABILITY:** Database RLS enforces `status = 'active'` immediately. As soon as Vercel deploys, deactivations cleanly soft-delete and ban accounts. | Standard operational path. |
 | **Case 4: Both (Code Deploy First, then Migration)** | Vercel code deployed first; then migration applied. | **SAFE:** Deactivations immediately work without 23503 errors. API gateway and Auth ban enforce lockout. Migration applied shortly after seals the database RLS layer. | Apply migration immediately following Vercel release. |
 
-#### 3. Production Orphan-Row Risk from R5 Schema Probe
-- **Historical Production Risk:** Query 5 in `scripts/prod-schema-probe.sql` (`SELECT ... FROM teachers t LEFT JOIN auth.users u ON u.id = t.auth_user_id WHERE t.auth_user_id IS NOT NULL AND u.id IS NULL`) probes for orphaned teacher records that may have been created by the old hard-delete path if an auth user was deleted prior to a database foreign key abort.
-- **Risk Mitigation:** Orphaned teachers cannot log in because they possess no auth credentials in GoTrue. However, their profiles remain visible in staff tables. The owner should inspect Query 5 output from `prod-schema-probe.sql`. Any historical orphan records identified can safely have their status set to `'inactive'` via SQL. Moving forward, the new soft-deactivation path makes it structurally impossible to create orphan rows.
+#### 3. Production Orphan-Row Inspection from Schema Probe
+- **Historical Production Risk:** Query 9 and Query 10 in `scripts/prod-schema-probe.sql` probe for orphaned teacher records and orphaned auth users created by earlier hard-delete attempts.
+- **Protocol:** The owner should paste the probe output. **Do NOT run any manual UPDATE or DELETE queries.** Orphan cleanup decisions will be formulated by engineering after the probe results are reviewed. Moving forward, the new soft-deactivation path makes it structurally impossible to create orphan rows.
 
 ---
 

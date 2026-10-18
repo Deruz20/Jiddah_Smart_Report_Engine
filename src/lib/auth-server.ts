@@ -1,4 +1,4 @@
-import { SupabaseClient, User } from '@supabase/supabase-js'
+import type { SupabaseClient, User } from '@supabase/supabase-js'
 
 export type ActionType = 'read' | 'write';
 export type Department = 'secular' | 'theology' | 'both';
@@ -40,8 +40,10 @@ export async function verifyDataAccess(
     return { isAuthorized: false, message: 'User profile not found in teachers directory.' };
   }
 
-  // Reject non-active accounts immediately (status != 'active')
-  if (profile.status !== 'active') {
+  // Deny explicitly deactivated or suspended accounts (allow 'active', 'Active', 'approved', NULL, etc.)
+  const normalizedStatus = profile.status ? String(profile.status).toLowerCase().trim() : 'active';
+  const INACTIVE_STATUSES = ['inactive', 'suspended', 'deactivated', 'banned'];
+  if (INACTIVE_STATUSES.includes(normalizedStatus)) {
     return { isAuthorized: false, message: 'Account is suspended or inactive.' };
   }
 

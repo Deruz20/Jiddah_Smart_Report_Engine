@@ -24,8 +24,8 @@ export async function GET(request: NextRequest) {
 
     const { verifyDataAccess } = await import('@/lib/auth-server')
     const authRes = await verifyDataAccess(supabase, user, 'read')
-    if (!authRes.isAuthorized || (authRes.role !== 'Administrator' && authRes.role !== 'admin')) {
-      return withCors(request, NextResponse.json({ error: 'Access Denied: Administrator only' }, { status: 403 }))
+    if (!authRes.isAuthorized) {
+      return withCors(request, NextResponse.json({ error: authRes.message || 'Access Denied' }, { status: 403 }))
     }
 
     const { data, error } = await supabase

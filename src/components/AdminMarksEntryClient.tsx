@@ -169,14 +169,7 @@ export function AdminMarksEntryClient({ terms }: AdminMarksEntryClientProps) {
           }
         }
 
-        if (updatedById) {
-          console.log('--- BEFORE WRITE LOGS ---')
-          console.log('Value being sent as updated_by:', updatedById)
-          console.log('Type of updated_by:', typeof updatedById, '| First 8 chars:', updatedById.substring(0, 8))
-        } else {
-           console.log('--- BEFORE WRITE LOGS ---')
-           console.log('No teacher record found for auth user. Omitting updated_by.')
-        }
+
 
         // Save circular marks
         const cToSave = circularMarks.filter(m => m.bot_score !== null || m.mot_score !== null || m.eot_score !== null)

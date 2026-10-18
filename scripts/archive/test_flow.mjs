@@ -10,8 +10,9 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const supabaseAdmin = createClient(supabaseUrl, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
 function getCookieHeader(session) {
+  const projectRef = new URL(supabaseUrl).hostname.split('.')[0];
   const tokenData = [session.access_token, session.refresh_token, null, null, null];
-  return 'sb-vismrobdsdsaxmqegcay-auth-token=' + encodeURIComponent(JSON.stringify(tokenData));
+  return `sb-${projectRef}-auth-token=` + encodeURIComponent(JSON.stringify(tokenData));
 }
 
 async function doFetch(url, payload, session) {

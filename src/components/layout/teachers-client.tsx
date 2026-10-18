@@ -373,9 +373,10 @@ export default function TeachersClient({
                     <AnimatedButton
                       type="button"
                       onClick={() => handleDeactivate(teacher)}
+                      aria-label={`Deactivate ${teacher.name}`}
                       className="rounded-xl bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-100 transition-colors"
                     >
-                      <Trash2 className="mr-1 inline-block h-3.5 w-3.5" /> Delete
+                      <Trash2 className="mr-1 inline-block h-3.5 w-3.5" /> Deactivate
                     </AnimatedButton>
                   </div>
                 </div>

@@ -8,9 +8,22 @@ import { seedRehearsalDatabase } from '../../scripts/seed-rehearsal-synthetic-us
 // Enforce local-only execution
 enforceLocalSafeEnvironment();
 
+import { execSync } from 'node:child_process';
+
 const BASE_URL = process.env.TEST_BASE_URL || 'http://localhost:3000';
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321';
-const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH';
+let SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321';
+let ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+if (!ANON_KEY) {
+  try {
+    const statusOutput = execSync('npx supabase status --workdir scratch/rehearsal_isolated_supabase -o json', { encoding: 'utf8' });
+    const parsed = JSON.parse(statusOutput);
+    ANON_KEY = parsed.PUBLISHABLE_KEY || parsed.ANON_KEY;
+    SUPABASE_URL = parsed.API_URL || SUPABASE_URL;
+  } catch (err) {
+    console.warn('Could not read ANON_KEY from supabase status:', err.message);
+  }
+}
 
 test('Item D: Class Teacher Theology Marks Save & Strict RLS Boundary Suite', async (t) => {
   const supabase = createClient(SUPABASE_URL, ANON_KEY);
@@ -64,8 +77,12 @@ test('Item D: Class Teacher Theology Marks Save & Strict RLS Boundary Suite', as
 
       // Dismiss tour if present
       const closeTour = page.locator('button[aria-label="Close Product Tour"]');
-      if (await closeTour.isVisible({ timeout: 3000 }).catch(() => false)) {
+      try {
+        await closeTour.waitFor({ state: 'visible', timeout: 5000 });
         await closeTour.click();
+        await closeTour.waitFor({ state: 'hidden', timeout: 5000 });
+      } catch {
+        // tour did not appear
       }
 
       // Step B: Select Term
@@ -83,11 +100,14 @@ test('Item D: Class Teacher Theology Marks Save & Strict RLS Boundary Suite', as
       await studentOption.waitFor({ state: 'visible', timeout: 20000 });
       await studentOption.click();
 
-      // Step D: Enter Theology MOT mark
+      // Step D: Enter Theology MOT mark (toggle between 88 and 85 to guarantee onChange fires)
       const theologyMotInput = page.locator('input[data-table="theology"][data-col="MOT"]').first();
       await theologyMotInput.waitFor({ state: 'visible', timeout: 15000 });
       await theologyMotInput.click();
-      await theologyMotInput.fill('88');
+      const currentVal = await theologyMotInput.inputValue();
+      const targetScore = currentVal === '88' ? '85' : '88';
+      await theologyMotInput.fill('');
+      await theologyMotInput.fill(targetScore);
 
       // Step E: Click Save button
       const saveButton = page.locator('button[type="submit"]').filter({ hasText: /Save/i }).first();
@@ -110,7 +130,7 @@ test('Item D: Class Teacher Theology Marks Save & Strict RLS Boundary Suite', as
         .single();
 
       assert.equal(dbErr, null, 'Direct DB probe must succeed');
-      assert.equal(Number(dbMarks.mot_score), 88, 'Database must store exactly the score saved via browser UI');
+      assert.equal(Number(dbMarks.mot_score), Number(targetScore), 'Database must store exactly the score saved via browser UI');
       console.log('  [E2E DB PROBE] Verified stored score:', dbMarks.mot_score);
     } finally {
       await browser.close();
@@ -161,7 +181,7 @@ test('Item D: Class Teacher Theology Marks Save & Strict RLS Boundary Suite', as
     const unassignedPayload = {
       enrollment_id: 'e0000000-0000-0000-0000-000000000002',
       term_id: 'a1b2c3d4-e5f6-4a1b-8c2d-111111111111',
-      subject_id: 'b0000000-0000-0000-0000-000000000001',
+      subject_id: 'b0000000-0000-0000-0000-000000000002',
       mot_score: 55,
       eot_score: 65,
       updated_by: auth.user.id
@@ -195,7 +215,7 @@ test('Item D: Class Teacher Theology Marks Save & Strict RLS Boundary Suite', as
         term_id: 'a1b2c3d4-e5f6-4a1b-8c2d-111111111111',
         score_type: 'mot',
         theology_marks: [{
-          subject_id: 'b0000000-0000-0000-0000-000000000001',
+          subject_id: 'b0000000-0000-0000-0000-000000000002',
           mot_score: 55
         }]
       })

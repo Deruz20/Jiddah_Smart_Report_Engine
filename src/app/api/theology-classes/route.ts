@@ -39,11 +39,14 @@ export async function GET(request: NextRequest) {
 
     let allowedTheologyClassIds: string[] | null = null
 
-    if (user) {
-      const authRes = await verifyDataAccess(supabase, user, 'read')
-      if (!authRes.isAuthorized) {
-        return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
-      }
+    if (!user) {
+      return withCors(request, NextResponse.json({ error: 'Unauthorized: Authentication required.' }, { status: 401 }))
+    }
+
+    const authRes = await verifyDataAccess(supabase, user, 'read')
+    if (!authRes.isAuthorized) {
+      return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
+    }
 
       if (authRes.filterByClasses) {
         const assignedClasses = authRes.filterByClasses
@@ -68,7 +71,6 @@ export async function GET(request: NextRequest) {
 
         allowedTheologyClassIds = Array.from(new Set([...directIds, ...cohortIds]))
       }
-    }
 
     let query = supabase
       .from('theology_classes')

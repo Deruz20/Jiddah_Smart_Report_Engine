@@ -9,18 +9,8 @@ enforceLocalSafeEnvironment();
 test('Phase 1c: /api/settings/terms/active Role Authorization & Invariant Suite', async (t) => {
   const BASE_URL = process.env.TEST_BASE_URL || 'http://localhost:3000';
   const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321';
-  let ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!ANON_KEY) {
-    try {
-      const { execSync } = await import('node:child_process');
-      const statusOutput = execSync('npx supabase status --workdir scratch/rehearsal_isolated_supabase -o json', { encoding: 'utf8' });
-      const parsed = JSON.parse(statusOutput);
-      ANON_KEY = parsed.PUBLISHABLE_KEY || parsed.ANON_KEY;
-    } catch {
-      // Fallback handled by test runner
-    }
-  }
-  const supabase = createClient(SUPABASE_URL, ANON_KEY || '');
+  const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const supabase = createClient(SUPABASE_URL, ANON_KEY);
 
   function getCookieHeaders(session) {
     const urlObj = new URL(SUPABASE_URL);
@@ -82,6 +72,40 @@ test('Phase 1c: /api/settings/terms/active Role Authorization & Invariant Suite'
       body: JSON.stringify({ termId: 'dummy-id' })
     });
     assert.equal(res.status, 403, 'Class Teacher must receive HTTP 403 when attempting to mutate active term');
+    const body = await res.json();
+    assert.ok(body.error.includes('Administrator only'), 'Error message must specify Administrator only');
+  });
+
+  await t.test('4. Support Staff receives HTTP 200 and can read active term', async () => {
+    const { data: sData, error: sErr } = await supabase.auth.signInWithPassword({
+      email: 'staff@test.local',
+      password: 'Password123!'
+    });
+    assert.equal(sErr, null, `Local Support Staff authentication failed: ${sErr?.message}`);
+    assert.ok(sData.session, 'Support Staff session must be established');
+
+    const headers = getCookieHeaders(sData.session);
+    const res = await fetch(`${BASE_URL}/api/settings/terms/active`, { headers });
+    assert.equal(res.status, 200, 'Support Staff must receive HTTP 200 when reading active term');
+    const body = await res.json();
+    assert.ok(body.data, 'Active term data object must be present');
+    assert.equal(body.data.is_current, true, 'Returned term must have is_current=true');
+  });
+
+  await t.test('5. Support Staff attempting mutation receives HTTP 403 Forbidden', async () => {
+    const { data: sData, error: sErr } = await supabase.auth.signInWithPassword({
+      email: 'staff@test.local',
+      password: 'Password123!'
+    });
+    assert.equal(sErr, null, `Local Support Staff authentication failed: ${sErr?.message}`);
+
+    const headers = getCookieHeaders(sData.session);
+    const res = await fetch(`${BASE_URL}/api/settings/terms/active`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ termId: 'dummy-id' })
+    });
+    assert.equal(res.status, 403, 'Support Staff must receive HTTP 403 when attempting to mutate active term');
     const body = await res.json();
     assert.ok(body.error.includes('Administrator only'), 'Error message must specify Administrator only');
   });

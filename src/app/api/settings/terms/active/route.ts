@@ -22,10 +22,21 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
-    const { verifyDataAccess } = await import('@/lib/auth-server')
-    const authRes = await verifyDataAccess(supabase, user, 'read')
-    if (!authRes.isAuthorized) {
-      return withCors(request, NextResponse.json({ error: authRes.message || 'Access Denied' }, { status: 403 }))
+    // Verify caller is an authenticated staff member in teachers directory and not deactivated
+    const { data: profile } = await supabase
+      .from('teachers')
+      .select('id, role, status')
+      .eq('email', user.email)
+      .single()
+
+    if (!profile) {
+      return withCors(request, NextResponse.json({ error: 'User profile not found in teachers directory.' }, { status: 403 }))
+    }
+
+    const normalizedStatus = profile.status ? String(profile.status).toLowerCase().trim() : 'active'
+    const INACTIVE_STATUSES = ['inactive', 'suspended', 'deactivated', 'banned']
+    if (INACTIVE_STATUSES.includes(normalizedStatus)) {
+      return withCors(request, NextResponse.json({ error: 'Account is suspended or inactive.' }, { status: 403 }))
     }
 
     const { data, error } = await supabase

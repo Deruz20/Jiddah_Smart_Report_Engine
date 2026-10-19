@@ -11,19 +11,8 @@ enforceLocalSafeEnvironment();
 import { execSync } from 'node:child_process';
 
 const BASE_URL = process.env.TEST_BASE_URL || 'http://localhost:3000';
-let SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321';
-let ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-if (!ANON_KEY) {
-  try {
-    const statusOutput = execSync('npx supabase status --workdir scratch/rehearsal_isolated_supabase -o json', { encoding: 'utf8' });
-    const parsed = JSON.parse(statusOutput);
-    ANON_KEY = parsed.PUBLISHABLE_KEY || parsed.ANON_KEY;
-    SUPABASE_URL = parsed.API_URL || SUPABASE_URL;
-  } catch (err) {
-    console.warn('Could not read ANON_KEY from supabase status:', err.message);
-  }
-}
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321';
+const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 test('Item D: Class Teacher Theology Marks Save & Strict RLS Boundary Suite', async (t) => {
   const supabase = createClient(SUPABASE_URL, ANON_KEY);

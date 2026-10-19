@@ -52,13 +52,26 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
 
+    // If status is being set to active, unban the auth user
+    if (status === 'active') {
+      const { data: currentTeacher } = await supabaseAdmin.from('teachers').select('auth_user_id').eq('id', id).single();
+      const authUserId = currentTeacher?.auth_user_id || id;
+      try {
+        await supabaseAdmin.auth.admin.updateUserById(authUserId, {
+          ban_duration: 'none'
+        });
+      } catch (err: any) {
+        console.warn('Could not unban auth user:', err.message);
+      }
+    }
+
     // Also update auth user metadata if email or name changed
     await supabaseAdmin.auth.admin.updateUserById(id, {
       email: email || undefined,
       user_metadata: { name, role, subject }
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, message: 'Teacher updated successfully' });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 });
   }

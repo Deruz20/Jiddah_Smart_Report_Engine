@@ -1,5 +1,6 @@
--- DRAFT: finalize against production probe output
--- Purpose: Revert theology marks policy to previous baseline state (20260804000001_rls_policies.sql).
+-- REHEARSAL-DERIVED ROLLBACK BASELINE
+-- DRAFT: Final production rollback must be generated via scripts/generate-rollback-from-probe.mjs using production probe v3 output.
+-- Purpose: Revert theology marks policy to rehearsal baseline state.
 
 BEGIN;
 
@@ -9,7 +10,6 @@ DROP POLICY IF EXISTS "theology_marks_access_policy" ON public.theology_marks;
 CREATE POLICY "theology_marks_access_policy"
 ON public.theology_marks
 FOR ALL
-TO authenticated
 USING (
   EXISTS (
     SELECT 1

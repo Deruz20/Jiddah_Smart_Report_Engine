@@ -9,19 +9,8 @@ import { execSync } from 'node:child_process';
 enforceLocalSafeEnvironment();
 
 const BASE_URL = process.env.TEST_BASE_URL || 'http://localhost:3000';
-let SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321';
-let ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-if (!ANON_KEY) {
-  try {
-    const statusOutput = execSync('npx supabase status --workdir scratch/rehearsal_isolated_supabase -o json', { encoding: 'utf8' });
-    const parsed = JSON.parse(statusOutput);
-    ANON_KEY = parsed.PUBLISHABLE_KEY || parsed.ANON_KEY;
-    SUPABASE_URL = parsed.API_URL || SUPABASE_URL;
-  } catch (err) {
-    console.warn('Could not read ANON_KEY from supabase status:', err.message);
-  }
-}
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321';
+const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 const supabase = createClient(SUPABASE_URL, ANON_KEY);
 
@@ -44,6 +33,19 @@ test('F5 Data Scoping & Row-Count Verification Suite (with unassigned fixture)',
     console.log('[F5 Setup] Seeding deterministic rehearsal database...');
     await seedRehearsalDatabase();
     console.log('[F5 Setup] Deterministic rehearsal fixtures seeded.');
+  });
+
+  // 0. Anonymous Caller: strictly rejected with HTTP 401
+  await t.test('0. Anonymous Caller receives HTTP 401 on /api/theology-classes, /api/students, /api/theology-marks', async () => {
+    const resTheologyClasses = await fetch(`${BASE_URL}/api/theology-classes`);
+    assert.equal(resTheologyClasses.status, 401, `Anonymous caller must receive 401 on /api/theology-classes. Got: ${resTheologyClasses.status}`);
+
+    const resStudents = await fetch(`${BASE_URL}/api/students`);
+    assert.ok(resStudents.status === 401 || resStudents.status === 403, `Anonymous caller must receive 401/403 on /api/students. Got: ${resStudents.status}`);
+
+    const resTheologyMarks = await fetch(`${BASE_URL}/api/theology-marks`);
+    assert.equal(resTheologyMarks.status, 401, `Anonymous caller must receive 401 on /api/theology-marks. Got: ${resTheologyMarks.status}`);
+    console.log('  [PASS] Anonymous caller 401 verified across data endpoints.');
   });
 
   // 1. Support Staff: strictly blocked from data endpoints with HTTP 403

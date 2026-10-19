@@ -5,23 +5,39 @@
 
 ---
 
-## 1. Mandatory Pre-Migration Tables
+## 1. Mandatory Pre-Migration Tables (Complete Public Schema & Auth Snapshot)
 
-Before applying any migration or cleanup script, the following tables **MUST** be backed up without exception:
+Because the database size is small, export of **EVERY public table** plus an **auth.users snapshot** is mandatory before executing any migration:
 
-| Table Name | Criticality | Rationale |
+| Table / Relation | Scope | Rationale |
 |---|---|---|
-| `teachers` | **CRITICAL** | Contains teacher identities, roles, auth links, and active/inactive status. |
-| `theology_marks` | **CRITICAL** | Target relation for Phase 1 Item D RLS policy changes. Contains all religious assessment marks. |
-| `circular_marks` | **CRITICAL** | Primary academic scores and grades. |
-| `students` | **CRITICAL** | Core student enrollment master roster. |
-| `enrollments` | **CRITICAL** | Student-to-class linkage and academic history. |
-| `teacher_class_assignments` | **HIGH** | Maps teachers to classes for authorization and grading. |
-| `circular_classes` | **HIGH** | Secular cohort definitions. |
-| `theology_classes` | **HIGH** | Islamic studies cohort definitions. |
-| `terms` | **HIGH** | Academic calendar terms and active term indicators. |
-| `school_settings` | **MEDIUM** | Institution metadata, branding, grading configuration. |
-| `grading_remarks` | **MEDIUM** | Head teacher and class teacher student remarks. |
+| `teachers` | Public Schema | Teacher identities, roles, auth links, active/inactive status. |
+| `theology_marks` | Public Schema | Target relation for Phase 1 Item D RLS policy changes. |
+| `circular_marks` | Public Schema | Primary academic scores and grades. |
+| `students` | Public Schema | Core student enrollment master roster. |
+| `enrollments` | Public Schema | Student-to-class linkage and academic history. |
+| `teacher_class_assignments` | Public Schema | Teacher-to-class mapping junction table. |
+| `circular_classes` | Public Schema | Secular cohort definitions. |
+| `theology_classes` | Public Schema | Islamic studies cohort definitions. |
+| `theology_subjects` | Public Schema | Theology subject roster and level definitions. |
+| `subjects` | Public Schema | Secular subject roster. |
+| `terms` | Public Schema | Academic calendar terms and active indicators. |
+| `school_settings` | Public Schema | Institution metadata, branding, grading configuration. |
+| `grading_remarks` | Public Schema | Head teacher and class teacher remarks. |
+| `signatures` | Public Schema | Digital administrative signature slots. |
+| `teacher_initials` | Public Schema | Teacher initial configurations. |
+| `special_exam_marks` | Public Schema | Specialized assessment records. |
+| `activity_logs` | Public Schema | System activity logs. |
+| `activity_log` | Public Schema | Legacy activity log records. |
+| `audit_logs` | Public Schema | Audit trail records. |
+| `auth.users (snapshot)` | Auth Schema | **MANDATORY AUTH SNAPSHOT:** Required because Item E (teacher deactivation) and Item i (synthetic account cleanup) modify `auth.users.banned_until`. |
+
+### Auth Users Snapshot Query (Download CSV via SQL Editor)
+```sql
+SELECT id, email, banned_until, last_sign_in_at, created_at
+FROM auth.users
+ORDER BY created_at ASC;
+```
 
 ---
 

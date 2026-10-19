@@ -1,61 +1,55 @@
--- PROPOSED MIGRATION / CLEANUP SCRIPT
--- TARGET: 16 @jiddah.local Class Teacher synthetic accounts created 22-23 Sep
--- STATUS: PROPOSED DRAFT ONLY - DO NOT EXECUTE WITHOUT PRIOR CSV BACKUP AND OWNER SIGN-OFF
--- RATIONALE: Soft deactivation + Auth ban preserves foreign key historical integrity (marks, remarks).
---            Hard deletion (DROP/DELETE) risks cascading loss of marks authored during testing.
+-- PROPOSED: Soft-deactivate synthetic @jiddah.local Class Teacher accounts
+-- Target: 16 Class Teacher accounts created on production on 22-23 Sep 2026.
+-- SAFETY MECHANISM: Aborts inside DO block unless exactly 16 rows match.
 
-BEGIN;
+DO $$
+DECLARE
+  v_target_ids uuid[];
+  v_count integer;
+  v_updated_teachers integer;
+  v_banned_users integer;
+BEGIN
+  -- 1. Identify target IDs (explicitly matching Class Teacher, @jiddah.local, created between 2026-09-22 and 2026-09-24)
+  SELECT coalesce(array_agg(id), ARRAY[]::uuid[]) INTO v_target_ids
+  FROM public.teachers
+  WHERE role = 'Class Teacher'
+    AND email LIKE '%@jiddah.local'
+    AND created_at >= '2026-09-22 00:00:00+00'
+    AND created_at <  '2026-09-24 00:00:00+00';
 
--- 1. Identify target accounts into a temporary table for transaction isolation
-CREATE TEMPORARY TABLE target_synthetic_teachers AS
-SELECT id, auth_user_id, email, role, status
-FROM public.teachers
-WHERE email LIKE '%@jiddah.local';
+  v_count := coalesce(array_length(v_target_ids, 1), 0);
 
--- 2. Soft deactivate profile in teachers table
-UPDATE public.teachers
-SET status = 'inactive',
-    updated_at = NOW()
-WHERE id IN (SELECT id FROM target_synthetic_teachers);
+  IF v_count <> 16 THEN
+    RAISE EXCEPTION 'SAFETY ABORT: Expected exactly 16 target accounts, found %. Transaction rolled back.', v_count;
+  END IF;
 
--- 3. Revoke active class teacher assignments so active class rosters are clean
--- (Preserves marks and remarks records untouched)
-DELETE FROM public.teacher_class_assignments
-WHERE teacher_id IN (SELECT id FROM target_synthetic_teachers);
+  -- 2. Soft-deactivate in public.teachers
+  UPDATE public.teachers
+  SET status = 'inactive'
+  WHERE id = ANY(v_target_ids);
+  GET DIAGNOSTICS v_updated_teachers = ROW_COUNT;
 
--- Clear circular_classes.class_teacher_id if any target account was set as primary class teacher
-UPDATE public.circular_classes
-SET class_teacher_id = NULL
-WHERE class_teacher_id IN (SELECT id FROM target_synthetic_teachers);
+  -- 3. Ban corresponding auth.users accounts
+  UPDATE auth.users
+  SET banned_until = '2099-01-01 00:00:00+00'
+  WHERE id IN (
+    SELECT auth_user_id FROM public.teachers WHERE id = ANY(v_target_ids) AND auth_user_id IS NOT NULL
+  ) OR id = ANY(v_target_ids);
+  GET DIAGNOSTICS v_banned_users = ROW_COUNT;
 
--- 4. Ban corresponding Supabase Auth accounts to immediately terminate active and future sessions
-UPDATE auth.users
-SET banned_until = '2999-01-01 00:00:00+00'
-WHERE id IN (
-  SELECT auth_user_id 
-  FROM target_synthetic_teachers 
-  WHERE auth_user_id IS NOT NULL
-);
+  -- 4. Record audit entry in public.activity_logs
+  INSERT INTO public.activity_logs (action, metadata, created_at)
+  VALUES (
+    'deactivate_synthetic_jiddah_local_accounts',
+    jsonb_build_object(
+      'target_count', v_count,
+      'updated_teachers', v_updated_teachers,
+      'banned_users', v_banned_users,
+      'target_ids', v_target_ids,
+      'timestamp', now()
+    ),
+    now()
+  );
 
--- 5. Record deactivation event in audit log
-INSERT INTO public.activity_logs (
-  user_id,
-  action,
-  metadata,
-  created_at
-)
-SELECT 
-  auth.uid(),
-  'batch_deactivate_synthetic_accounts',
-  jsonb_build_object(
-    'target_count', (SELECT count(*) FROM target_synthetic_teachers),
-    'target_pattern', '%@jiddah.local',
-    'deactivated_at', NOW()
-  ),
-  NOW()
-WHERE auth.uid() IS NOT NULL;
-
--- Safety output verification
-SELECT id, email, status FROM public.teachers WHERE id IN (SELECT id FROM target_synthetic_teachers);
-
-COMMIT;
+  RAISE NOTICE 'SUCCESS: Deactivated % synthetic teacher accounts and banned sessions.', v_updated_teachers;
+END $$;

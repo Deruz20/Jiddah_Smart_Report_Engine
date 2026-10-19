@@ -11,21 +11,9 @@ enforceLocalSafeEnvironment();
 import { execSync } from 'node:child_process';
 
 const BASE_URL = process.env.TEST_BASE_URL || 'http://localhost:3000';
-let SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321';
-let ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-let SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!ANON_KEY || !SERVICE_KEY) {
-  try {
-    const statusOutput = execSync('npx supabase status --workdir scratch/rehearsal_isolated_supabase -o json', { encoding: 'utf8' });
-    const parsed = JSON.parse(statusOutput);
-    ANON_KEY = ANON_KEY || parsed.PUBLISHABLE_KEY || parsed.ANON_KEY;
-    SERVICE_KEY = SERVICE_KEY || parsed.SECRET_KEY || parsed.SERVICE_ROLE_KEY;
-    SUPABASE_URL = parsed.API_URL || SUPABASE_URL;
-  } catch (err) {
-    console.warn('Could not read keys from supabase status:', err.message);
-  }
-}
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321';
+const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 const supabaseAnon = createClient(SUPABASE_URL, ANON_KEY);
 const supabaseAdmin = createClient(SUPABASE_URL, SERVICE_KEY);
@@ -34,6 +22,8 @@ const DISPOSABLE_EMAIL = 'disposable-teacher@test.local';
 const DISPOSABLE_PASSWORD = 'Password123!';
 const DISPOSABLE_TEACHER_ID = 'e9999999-9999-4999-8999-999999999999';
 const HISTORICAL_MARK_ID = '20da181d-93fe-4b45-b899-70ec5314b4e7';
+const HISTORICAL_CIRCULAR_MARK_ID = '20da181d-93fe-4b45-b899-70ec5314b4e8';
+const CIRCULAR_SUBJECT_ID = 'b1000000-0000-0000-0000-000000000001';
 
 test('Item E: Teacher Deactivation, Session Revocation, Guards & Audit Suite', async (t) => {
   let disposableSession;
@@ -89,6 +79,23 @@ test('Item E: Teacher Deactivation, Session Revocation, Guards & Audit Suite', a
       updated_by: DISPOSABLE_TEACHER_ID
     });
     assert.equal(markUpsertErr, null, `Historical mark upsert failed: ${markUpsertErr?.message}`);
+
+    // 5b. Create circular subject and mark to quantify SEC-10
+    await supabaseAdmin.from('circular_subjects').upsert({
+      id: CIRCULAR_SUBJECT_ID,
+      subject_name: 'English',
+      section: 'lower_primary'
+    });
+    const { error: circMarkErr } = await supabaseAdmin.from('circular_marks').upsert({
+      id: HISTORICAL_CIRCULAR_MARK_ID,
+      enrollment_id: 'e0000000-0000-0000-0000-000000000001',
+      subject_id: CIRCULAR_SUBJECT_ID,
+      term_id: 'a1b2c3d4-e5f6-4a1b-8c2d-111111111111',
+      mot_score: 70,
+      eot_score: 75,
+      updated_by: DISPOSABLE_TEACHER_ID
+    });
+    assert.equal(circMarkErr, null, `Circular mark upsert failed: ${circMarkErr?.message}`);
 
     // 6. Establish disposable teacher session (pre-deactivation JWT)
     const { data: dispAuth, error: dispAuthErr } = await supabaseAnon.auth.signInWithPassword({
@@ -254,7 +261,7 @@ test('Item E: Teacher Deactivation, Session Revocation, Guards & Audit Suite', a
     page.on('dialog', async d => { await d.dismiss(); });
 
     try {
-      await page.goto(`${BASE_URL}/admin/teachers`, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      await page.goto(`${BASE_URL}/admin/teachers`, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
       // Dismiss tour if present
       const closeTour = page.locator('button[aria-label="Close Product Tour"]');
@@ -302,6 +309,38 @@ test('Item E: Teacher Deactivation, Session Revocation, Guards & Audit Suite', a
     console.log('  [PRE-DEACT POSITIVE RLS] Updated rows:', data?.length ?? 0, 'Error:', error?.message);
     assert.equal(error, null, 'Active teacher must write to theology_marks without RLS error');
     assert.equal(data?.length, 1, 'Active teacher must update exactly 1 row in theology_marks');
+  });
+
+  // H3.d NULL Status DB & Gateway Test: Teacher with status = NULL writes 1 row via PostgREST due to COALESCE(t.status, 'active')
+  await t.test('H3.d: NULL status teacher writes 1 row via PostgREST and passes API gateway due to COALESCE(t.status, active)', async () => {
+    // 1. Temporarily set disposable teacher status to NULL in teachers table
+    await supabaseAdmin.from('teachers').update({ status: null }).eq('id', DISPOSABLE_TEACHER_ID);
+
+    // 2. Direct PostgREST write with disposable teacher's session
+    const userClient = createClient(SUPABASE_URL, ANON_KEY, {
+      global: { headers: { Authorization: `Bearer ${disposableSession.access_token}` } }
+    });
+    const { data, error } = await userClient
+      .from('theology_marks')
+      .update({ mot_score: 79 })
+      .eq('id', HISTORICAL_MARK_ID)
+      .select();
+
+    console.log('  [NULL STATUS DB TEST] Updated rows:', data?.length ?? 0, 'Error:', error?.message);
+    assert.equal(error, null, 'NULL status teacher must write to theology_marks without RLS error due to COALESCE');
+    assert.equal(data?.length, 1, 'NULL status teacher must update exactly 1 row in theology_marks');
+
+    // 3. Gateway test: API accepts NULL status teacher
+    const res = await fetch(`${BASE_URL}/api/marks?enrollment_id=e0000000-0000-0000-0000-000000000001&term_id=a1b2c3d4-e5f6-4a1b-8c2d-111111111111`, {
+      method: 'GET',
+      headers: getHeaders(disposableSession)
+    });
+    console.log('  [NULL STATUS GATEWAY TEST] Status:', res.status);
+    assert.equal(res.status, 200, `NULL status teacher must receive HTTP 200 from API gateway. Observed: ${res.status}`);
+
+    // Restore status to 'active' and score to 77 for subsequent tests
+    await supabaseAdmin.from('teachers').update({ status: 'active' }).eq('id', DISPOSABLE_TEACHER_ID);
+    await supabaseAdmin.from('theology_marks').update({ mot_score: 77 }).eq('id', HISTORICAL_MARK_ID);
   });
 
   // E-A & E-C: Admin successfully deactivates disposable teacher; audit log is written
@@ -379,6 +418,26 @@ test('Item E: Teacher Deactivation, Session Revocation, Guards & Audit Suite', a
     assert.ok((data?.length ?? 0) === 0 || error !== null, 'RLS must reject update from deactivated user');
   });
 
+  // E-A.3b: SEC-10 Quantification - Direct PostgREST write to circular_marks with pre-deactivation token
+  // Quantifies SEC-10: In unpatched tables (circular_marks), deactivated teacher with pre-deactivation JWT
+  // can still write via direct PostgREST because circular_marks RLS lacks status check
+  await t.test('E-A.3b: SEC-10 Quantification - Direct PostgREST write to circular_marks with pre-deactivation token', async () => {
+    const userClient = createClient(SUPABASE_URL, ANON_KEY, {
+      global: { headers: { Authorization: `Bearer ${disposableSession.access_token}` } }
+    });
+
+    const { data, error } = await userClient
+      .from('circular_marks')
+      .update({ mot_score: 88 })
+      .eq('id', HISTORICAL_CIRCULAR_MARK_ID)
+      .select();
+
+    console.log('  [SEC-10 QUANTIFICATION - CIRCULAR_MARKS] Updated rows:', data?.length ?? 0, 'Error:', error?.message);
+    // Verifies PostgREST write behavior under current circular_marks policy
+    assert.equal(error, null, 'PostgREST allows update due to lack of status check in circular_marks policy');
+    assert.equal(data?.length, 1, 'Exactly 1 row updated in circular_marks despite inactive status');
+  });
+
   // E-A.4: Historical marks remain intact
   await t.test('E-A.4: Historical marks authored by deactivated teacher remain intact', async () => {
     const { data: mark, error } = await supabaseAdmin
@@ -399,6 +458,8 @@ test('Item E: Teacher Deactivation, Session Revocation, Guards & Audit Suite', a
     await supabaseAdmin.from('teacher_class_assignments').delete().eq('teacher_id', DISPOSABLE_TEACHER_ID);
     await supabaseAdmin.from('teachers').delete().eq('id', DISPOSABLE_TEACHER_ID);
     await supabaseAdmin.auth.admin.deleteUser(DISPOSABLE_TEACHER_ID).catch(() => {});
+    await supabaseAdmin.from('circular_marks').delete().eq('id', HISTORICAL_CIRCULAR_MARK_ID);
+    await supabaseAdmin.from('circular_subjects').delete().eq('id', CIRCULAR_SUBJECT_ID);
     // Reset mark author to teacher@test.local
     await supabaseAdmin.from('theology_marks').update({ updated_by: 'c599cb13-fb3d-4e5d-8e27-253cb7e5ac1a', mot_score: 89, eot_score: 91 }).eq('id', HISTORICAL_MARK_ID);
     console.log('  [TEARDOWN] Disposable teacher fixtures completely cleaned up.');

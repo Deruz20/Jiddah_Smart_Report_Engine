@@ -5,20 +5,12 @@ import path from 'node:path';
 
 import { execSync } from 'node:child_process';
 
-let SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321';
-let ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const BASE_URL = 'http://localhost:3000';
+import { getRehearsalCredentials } from './rehearsal-credentials.mjs';
 
-if (!ANON_KEY) {
-  try {
-    const statusOutput = execSync('npx supabase status --workdir scratch/rehearsal_isolated_supabase -o json', { encoding: 'utf8' });
-    const parsed = JSON.parse(statusOutput);
-    ANON_KEY = parsed.PUBLISHABLE_KEY || parsed.ANON_KEY;
-    SUPABASE_URL = parsed.API_URL || SUPABASE_URL;
-  } catch (err) {
-    console.warn('Could not read ANON_KEY from supabase status:', err.message);
-  }
-}
+const creds = getRehearsalCredentials();
+const SUPABASE_URL = creds.apiUrl;
+const ANON_KEY = creds.anonKey;
+const BASE_URL = process.env.TEST_BASE_URL || 'http://localhost:3000';
 
 const supabase = createClient(SUPABASE_URL, ANON_KEY);
 
@@ -54,7 +46,7 @@ const ENDPOINTS = [
   { path: '/api/terms', method: 'GET', desc: 'Academic terms list', authRequired: true },
   { path: '/api/teachers', method: 'GET', desc: 'Teachers list', authRequired: true },
   { path: '/api/activity', method: 'GET', desc: 'Activity log query', minRole: 'DOS' },
-  { path: '/api/settings/terms/active', method: 'GET', desc: 'Active term query', minRole: 'Class Teacher' },
+  { path: '/api/settings/terms/active', method: 'GET', desc: 'Active term query', minRole: 'Support Staff' },
   { path: '/api/settings/terms/active', method: 'POST', desc: 'Active term modification', minRole: 'Administrator', body: { termId: 'dummy' } },
   { path: '/api/theology-marks', method: 'GET', desc: 'Theology marks query', minRole: 'Class Teacher' },
   { path: '/api/circular-marks', method: 'GET', desc: 'Circular marks query', minRole: 'Class Teacher' },
@@ -203,12 +195,13 @@ async function runSweep() {
   // Write full matrix to scratch/api_sweep_matrix.json
   const scratchDir = path.resolve('scratch');
   if (!fs.existsSync(scratchDir)) fs.mkdirSync(scratchDir, { recursive: true });
+  const outputPath = process.argv[2] ? path.resolve(process.argv[2]) : path.join(scratchDir, 'api_sweep_matrix.json');
   fs.writeFileSync(
-    path.join(scratchDir, 'api_sweep_matrix.json'),
+    outputPath,
     JSON.stringify({ timestamp: new Date().toISOString(), totalTests: results.length, totalDefects: defects, results }, null, 2)
   );
 
-  console.log(`\n=== API SWEEP FINISHED: ${results.length} PROBES, ${defects} DEFECTS RECORDED IN scratch/api_sweep_matrix.json ===`);
+  console.log(`\n=== API SWEEP FINISHED: ${results.length} PROBES, ${defects} DEFECTS RECORDED IN ${outputPath} ===`);
 }
 
 runSweep().catch((err) => {

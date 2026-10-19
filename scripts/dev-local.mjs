@@ -5,21 +5,12 @@ import { enforceLocalSafeEnvironment } from '../src/lib/test-guard.mjs';
 // Enforce fail-closed check that all targets are strictly local
 enforceLocalSafeEnvironment();
 
-let supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321';
-let anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-let serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+import { getRehearsalCredentials } from './rehearsal-credentials.mjs';
 
-if (!anonKey || !serviceKey) {
-  try {
-    const statusOutput = execSync('npx supabase status --workdir scratch/rehearsal_isolated_supabase -o json', { encoding: 'utf8' });
-    const parsed = JSON.parse(statusOutput);
-    anonKey = anonKey || parsed.PUBLISHABLE_KEY || parsed.ANON_KEY;
-    serviceKey = serviceKey || parsed.SECRET_KEY || parsed.SERVICE_ROLE_KEY;
-    supabaseUrl = parsed.API_URL || supabaseUrl;
-  } catch (err) {
-    console.warn('Could not read keys from supabase status:', err.message);
-  }
-}
+const creds = getRehearsalCredentials();
+const supabaseUrl = creds.apiUrl;
+const anonKey = creds.anonKey;
+const serviceKey = creds.serviceRoleKey;
 
 console.log('========================================================================');
 console.log('  STARTING JIDDAH DEV SERVER (REHEARSAL STACK ISOLATED)');

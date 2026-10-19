@@ -69,6 +69,7 @@ if (fs.existsSync(rehearsalDir)) {
 }
 
 // 3. Apply all canonical migrations in strict order
+const isBaselineOnly = process.argv.includes('--baseline-only');
 const migrationsDir = path.resolve('supabase/migrations');
 const migrationFiles = fs.readdirSync(migrationsDir)
   .filter(f => f.endsWith('.sql'))
@@ -76,6 +77,7 @@ const migrationFiles = fs.readdirSync(migrationsDir)
   .filter(f => !f.includes('production_lockdown'))
   .filter(f => !f.includes('stage2_legacy_tables'))
   .filter(f => !f.includes('local_only'))
+  .filter(f => !isBaselineOnly || !f.includes('20261018_class_teacher_theology_marks_policy'))
   .sort();
 
 console.log(`\n[3/4] Applying ${migrationFiles.length} canonical migrations in order...`);

@@ -1,22 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
-import { execSync } from 'child_process';
+import { getRehearsalCredentials } from './rehearsal-credentials.mjs';
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321';
-let serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!serviceKey) {
-  try {
-    const statusOutput = execSync('npx supabase status --workdir scratch/rehearsal_isolated_supabase -o json', { encoding: 'utf8' });
-    const parsed = JSON.parse(statusOutput);
-    serviceKey = parsed.SECRET_KEY || parsed.SERVICE_ROLE_KEY;
-  } catch (err) {
-    console.warn('Could not read service key from supabase status:', err.message);
-  }
-}
-
-if (!serviceKey) {
-  throw new Error('SUPABASE_SERVICE_ROLE_KEY environment variable is required');
-}
+const creds = getRehearsalCredentials();
+const SUPABASE_URL = creds.apiUrl;
+const serviceKey = creds.serviceRoleKey;
 
 const supabase = createClient(SUPABASE_URL, serviceKey);
 

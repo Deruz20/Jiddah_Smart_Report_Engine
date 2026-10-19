@@ -39,10 +39,16 @@ async function seedTeachers() {
     await createTeacher(theologyEmail, theologyName, 'Theology Instructor', className, 'Theology')
   }
   
-  console.log('Seeding complete. Default password for all teachers is: Teacher2026!')
+  console.log('Seeding complete. Initial password configured via INITIAL_TEACHER_SEED_PASSWORD.')
 }
 
 async function createTeacher(email, name, role, assignedClass, subject) {
+  const seedPassword = process.env.INITIAL_TEACHER_SEED_PASSWORD;
+  if (!seedPassword) {
+    console.error('Error: INITIAL_TEACHER_SEED_PASSWORD environment variable is required.');
+    process.exit(1);
+  }
+
   try {
     // Add a delay to avoid rate limits / db locks
     await new Promise(resolve => setTimeout(resolve, 500))
@@ -53,7 +59,7 @@ async function createTeacher(email, name, role, assignedClass, subject) {
     
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email: email,
-      password: 'Teacher2026!',
+      password: seedPassword,
       email_confirm: true,
       user_metadata: { full_name: name, role: authRole }
     })

@@ -15,12 +15,12 @@ const resultsB = dataB.results || [];
 
 const mapA = new Map();
 for (const r of resultsA) {
-  mapA.set(`${r.method} ${r.path} | ${r.role}`, r);
+  mapA.set(`${r.method} ${r.endpoint} | ${r.role}`, r);
 }
 
 const mapB = new Map();
 for (const r of resultsB) {
-  mapB.set(`${r.method} ${r.path} | ${r.role}`, r);
+  mapB.set(`${r.method} ${r.endpoint} | ${r.role}`, r);
 }
 
 const allKeys = Array.from(new Set([...mapA.keys(), ...mapB.keys()])).sort();
@@ -32,8 +32,8 @@ for (const k of allKeys) {
   const itemA = mapA.get(k);
   const itemB = mapB.get(k);
 
-  const statusA = itemA?.status;
-  const statusB = itemB?.status;
+  const statusA = itemA?.statusCode;
+  const statusB = itemB?.statusCode;
 
   if (statusA !== statusB) {
     changeCount++;

@@ -199,3 +199,22 @@ Governing Standard: Autonomous Master Pass Audit & Resolution Protocol
 - **Resolution:** Provided `docs/READONLY_SYNTHETIC_DATA_INSPECTION.sql` and `scripts/cleanup_synthetic_test_data.sql` with dry run and rollback.
 - **Owner Decision Needed:** Run read-only inspection query and review counts before executing cleanup.
 - **Effort:** Awaiting Owner Execution of Read-Only SQL.
+
+---
+
+## 3. Non-Phase-1 Deferred Defects (Pre-existing Uncommitted Invariants)
+
+#### DEF-CSV-01: Local Helper `escapeCSV` Not Exported in `src/utils/csvExport.ts`
+- **Classification:** NOT Phase 1 (Pre-existing uncommitted work from Wave 6 suite)
+- **Evidence:** `TypeError: escapeCSV is not a function` in `src/__tests__/security-hardening-and-invariants.test.mjs:11:18`
+- **Finding:** `src/utils/csvExport.ts` defines `const escapeCSV = (val: any) => ...` as a private module-scoped helper rather than an exported function.
+- **Resolution:** Deferred to Post-Phase 1 hardening. Requires adding `export` to `escapeCSV` in `src/utils/csvExport.ts`.
+- **Status:** Logged & Deferred.
+
+#### DEF-SNIFF-01: Untracked Module `src/lib/image-sniff.ts` Imported by Wave 6 Test
+- **Classification:** NOT Phase 1 (Pre-existing uncommitted experimental security defense)
+- **Evidence:** `ERR_MODULE_NOT_FOUND` in `src/__tests__/security-hardening-and-invariants.test.mjs:68`
+- **Finding:** `src/lib/image-sniff.ts` is an untracked working-tree file implementing magic byte MIME sniffing. The committed test in `security-hardening-and-invariants.test.mjs` imports it dynamically.
+- **Verification:** Proven with `git grep` that no committed app router, component, or library file imports `image-sniff.ts` (0 hits across `src/app`, `src/components`, `src/lib` in committed git tree).
+- **Resolution:** Deferred to Post-Phase 1 hardening.
+- **Status:** Logged & Deferred.

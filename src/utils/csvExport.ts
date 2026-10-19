@@ -3,10 +3,14 @@
  * Includes UTF-8 BOM (\uFEFF) to ensure Microsoft Excel renders Arabic (RTL) characters correctly.
  */
 
-// Helper to escape CSV values (quotes, commas, etc.)
-const escapeCSV = (val: any) => {
+// Helper to escape CSV values (quotes, commas, etc.) and neutralize formula injection (CWE-1236)
+export const escapeCSV = (val: any) => {
   if (val === null || val === undefined) return '"-"'
-  const str = String(val)
+  let str = String(val)
+  // Formula injection mitigation: prepend single quote if starting with formula triggers
+  if (/^[=+\-@\t\r]/.test(str)) {
+    str = `'${str}`
+  }
   if (str.includes(',') || str.includes('"') || str.includes('\n')) {
     return `"${str.replace(/"/g, '""')}"`
   }

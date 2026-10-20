@@ -11,33 +11,29 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const supabase = createServerClient(cookieStore);
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user || !user.email) {
+    if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data: callerProfile } = await supabase
+    const { data: callerProfile, error: callerError } = await supabase
       .from('teachers')
-      .select('id, role, subject')
-      .eq('email', user.email)
-      .single();
+      .select('id, role')
+      .or(`auth_user_id.eq.${user.id},id.eq.${user.id}`)
+      .maybeSingle();
 
-    let callerRole = callerProfile?.role;
-    if (!callerProfile && (user.user_metadata?.role === 'admin' || user.user_metadata?.role === 'Administrator')) {
-      callerRole = 'admin';
+    if (callerError) {
+      console.error('Admin teacher caller lookup failed:', callerError.message);
+      return NextResponse.json({ error: 'Unable to verify administrator' }, { status: 500 });
     }
 
-    if (!callerRole) {
-      return NextResponse.json({ error: 'Caller role not found' }, { status: 403 });
+    if (callerProfile?.role !== 'Administrator') {
+      return NextResponse.json({ error: 'Administrator access required' }, { status: 403 });
     }
 
     const body = await req.json();
     const { name, role, email, phone, subject, classes, status } = body;
 
     // Only Admin can freely update. DOS can only update teachers in their department.
-    if (callerRole !== 'admin' && callerRole !== 'Administrator') {
-      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
-    }
-
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -84,23 +80,23 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     const supabase = createServerClient(cookieStore);
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user || !user.email) {
+    if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data: callerProfile } = await supabase
+    const { data: callerProfile, error: callerError } = await supabase
       .from('teachers')
       .select('id, role')
-      .eq('email', user.email)
-      .single();
+      .or(`auth_user_id.eq.${user.id},id.eq.${user.id}`)
+      .maybeSingle();
 
-    let callerRole = callerProfile?.role;
-    if (!callerProfile && (user.user_metadata?.role === 'admin' || user.user_metadata?.role === 'Administrator')) {
-      callerRole = 'admin';
+    if (callerError) {
+      console.error('Admin teacher caller lookup failed:', callerError.message);
+      return NextResponse.json({ error: 'Unable to verify administrator' }, { status: 500 });
     }
 
-    if (callerRole !== 'admin' && callerRole !== 'Administrator') {
-      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    if (callerProfile?.role !== 'Administrator') {
+      return NextResponse.json({ error: 'Administrator access required' }, { status: 403 });
     }
 
     const supabaseAdmin = createClient(

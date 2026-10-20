@@ -33,6 +33,9 @@ const getSectionLabel = (section: string) => {
     nursery: "Nursery",
     lower_primary: "Lower Primary",
     upper_primary: "Upper Primary",
+    raudha: "Raudha",
+    ibtidaai_lower: "Ibtidaai Lower",
+    ibtidaai_upper: "Ibtidaai Upper",
   };
   return labels[section] || section;
 };
@@ -42,6 +45,7 @@ export type SubjectData = {
   subject_name: string;
   curriculum: string;
   section: string;
+  level?: string;
 };
 
 export default function SubjectsClient({ initialSubjects }: { initialSubjects: SubjectData[] }) {
@@ -55,7 +59,12 @@ export default function SubjectsClient({ initialSubjects }: { initialSubjects: S
   
   // Form states
   const [selectedSubject, setSelectedSubject] = useState<SubjectData | null>(null);
-  const [formData, setFormData] = useState({ subject_name: "", curriculum: "secular", section: "nursery" });
+  const [formData, setFormData] = useState({
+    subject_name: "",
+    curriculum: "secular",
+    section: "nursery",
+    theologyLevel: "raudha",
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
 
@@ -69,11 +78,20 @@ export default function SubjectsClient({ initialSubjects }: { initialSubjects: S
     // We fetch both circular and theology subjects and combine them since the UI manages both
     const supabase = createClient();
     const { data: circular } = await supabase.from('circular_subjects').select('id, subject_name, section');
-    const { data: theology } = await supabase.from('theology_subjects').select('id, subject_name, section');
+    const { data: theology } = await supabase
+      .from('theology_subjects')
+      .select('id, subject_name_arabic, level, sort_order')
+      .order('sort_order', { ascending: true });
     
     const combined = [
       ...(circular || []).map((s: any) => ({ ...s, curriculum: 'secular' })),
-      ...(theology || []).map((s: any) => ({ ...s, curriculum: 'theology' }))
+      ...(theology || []).map((s: any) => ({
+        id: s.id,
+        subject_name: s.subject_name_arabic,
+        section: s.level,
+        level: s.level,
+        curriculum: 'theology'
+      }))
     ];
     setSubjects(combined);
   };
@@ -84,16 +102,15 @@ export default function SubjectsClient({ initialSubjects }: { initialSubjects: S
     const supabase = createClient();
     try {
       const table = formData.curriculum === 'theology' ? 'theology_subjects' : 'circular_subjects';
-      const payload = {
-        subject_name: formData.subject_name,
-        section: formData.curriculum === 'theology' ? null : formData.section
-      };
+      const payload = formData.curriculum === 'theology'
+        ? { subject_name_arabic: formData.subject_name, level: formData.theologyLevel }
+        : { subject_name: formData.subject_name, section: formData.section };
       
       const { error } = await supabase.from(table).insert([payload]);
       if (error) throw error;
       
       setIsCreateOpen(false);
-      setFormData({ subject_name: "", curriculum: "secular", section: "nursery" });
+      setFormData({ subject_name: "", curriculum: "secular", section: "nursery", theologyLevel: "raudha" });
       refetch();
     } catch (err: any) {
       alert(err.message);
@@ -115,10 +132,9 @@ export default function SubjectsClient({ initialSubjects }: { initialSubjects: S
         throw new Error("Changing curriculum after creation is not supported. Delete and recreate.");
       }
 
-      const payload = {
-        subject_name: formData.subject_name,
-        section: formData.curriculum === 'theology' ? null : formData.section
-      };
+      const payload = formData.curriculum === 'theology'
+        ? { subject_name_arabic: formData.subject_name, level: formData.theologyLevel }
+        : { subject_name: formData.subject_name, section: formData.section };
 
       const { error } = await supabase.from(table).update(payload).eq('id', selectedSubject.id);
       if (error) throw error;
@@ -151,7 +167,12 @@ export default function SubjectsClient({ initialSubjects }: { initialSubjects: S
 
   const openEdit = (sub: SubjectData) => {
     setSelectedSubject(sub);
-    setFormData({ subject_name: sub.subject_name, curriculum: sub.curriculum || "secular", section: sub.section || "nursery" });
+    setFormData({
+      subject_name: sub.subject_name,
+      curriculum: sub.curriculum || "secular",
+      section: sub.section || "nursery",
+      theologyLevel: sub.level || (sub.curriculum === 'theology' ? sub.section : "raudha") || "raudha",
+    });
     setIsEditOpen(true);
   };
 
@@ -169,7 +190,7 @@ export default function SubjectsClient({ initialSubjects }: { initialSubjects: S
           <Button
             className="bg-[#065F46] hover:bg-[#047857] text-white shadow-md shadow-[#065F46]/20 transition-all rounded-xl"
             onClick={() => {
-              setFormData({ subject_name: "", curriculum: "secular", section: "nursery" });
+              setFormData({ subject_name: "", curriculum: "secular", section: "nursery", theologyLevel: "raudha" });
               setIsCreateOpen(true);
             }}
           >
@@ -279,7 +300,21 @@ export default function SubjectsClient({ initialSubjects }: { initialSubjects: S
                 </SelectContent>
               </Select>
             </div>
-            {formData.curriculum === 'secular' && (
+            {formData.curriculum === 'theology' ? (
+              <div className="space-y-2">
+                <Label>Level</Label>
+                <Select value={formData.theologyLevel} onValueChange={(v) => setFormData({ ...formData, theologyLevel: v })}>
+                  <SelectTrigger className="rounded-xl">
+                    <SelectValue placeholder="Select level" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="raudha">Raudha</SelectItem>
+                    <SelectItem value="ibtidaai_lower">Ibtidaai Lower</SelectItem>
+                    <SelectItem value="ibtidaai_upper">Ibtidaai Upper</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
               <div className="space-y-2">
                 <Label>Section</Label>
                 <Select value={formData.section} onValueChange={(v) => setFormData({ ...formData, section: v })}>
@@ -332,7 +367,21 @@ export default function SubjectsClient({ initialSubjects }: { initialSubjects: S
                 </SelectContent>
               </Select>
             </div>
-            {formData.curriculum === 'secular' && (
+            {formData.curriculum === 'theology' ? (
+              <div className="space-y-2">
+                <Label>Level</Label>
+                <Select value={formData.theologyLevel} onValueChange={(v) => setFormData({ ...formData, theologyLevel: v })}>
+                  <SelectTrigger className="rounded-xl">
+                    <SelectValue placeholder="Select level" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="raudha">Raudha</SelectItem>
+                    <SelectItem value="ibtidaai_lower">Ibtidaai Lower</SelectItem>
+                    <SelectItem value="ibtidaai_upper">Ibtidaai Upper</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
               <div className="space-y-2">
                 <Label>Section</Label>
                 <Select value={formData.section} onValueChange={(v) => setFormData({ ...formData, section: v })}>

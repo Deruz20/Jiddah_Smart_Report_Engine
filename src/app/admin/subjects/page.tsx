@@ -16,12 +16,18 @@ export default async function SubjectsManagementPage() {
 
   const { data: theology } = await supabase
     .from('theology_subjects')
-    .select('id, subject_name, section')
-    .order('subject_name', { ascending: true })
+    .select('id, subject_name_arabic, level, sort_order')
+    .order('sort_order', { ascending: true })
 
   const combined = [
     ...(circular || []).map((s: any) => ({ ...s, curriculum: 'secular' })),
-    ...(theology || []).map((s: any) => ({ ...s, curriculum: 'theology' }))
+    ...(theology || []).map((s: any) => ({
+      id: s.id,
+      subject_name: s.subject_name_arabic,
+      section: s.level,
+      level: s.level,
+      curriculum: 'theology'
+    }))
   ]
 
   return (

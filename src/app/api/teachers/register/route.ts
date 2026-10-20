@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { email, password, phone } = body;
+    const { email, password, name, phone } = body;
 
     if (!email || !password) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
@@ -24,7 +24,7 @@ export async function POST(req: Request) {
     const { data: invite, error: inviteError } = await supabaseAdmin
       .from('teacher_invites')
       .select('*')
-      .eq('email', email)
+      .eq('email', String(email).trim().toLowerCase())
       .eq('status', 'pending')
       .single();
 
@@ -41,17 +41,25 @@ export async function POST(req: Request) {
     } else if (invite.role === 'DOS Secular') {
       finalRole = 'DOS';
       finalSubject = 'Secular';
+    } else if (invite.role === 'teacher') {
+      finalRole = 'Class Teacher';
     }
+    if (!finalSubject) {
+      finalSubject = finalRole === 'DOS' || finalRole.toLowerCase().includes('theology')
+        ? 'Theology'
+        : 'Secular';
+    }
+    const finalName = invite.name || String(name || '').trim() || String(email).trim().split('@')[0];
 
     // 2. Create the auth.users account
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email,
+      email: String(email).trim().toLowerCase(),
       password,
       email_confirm: true,
       user_metadata: {
         role: finalRole,
         subject: finalSubject,
-        name: invite.name
+        name: finalName
       }
     });
 
@@ -69,12 +77,13 @@ export async function POST(req: Request) {
       .insert([
         {
           id: userId,
-          email: invite.email,
+          email: String(invite.email).trim().toLowerCase(),
           role: finalRole,
           subject: finalSubject,
-          name: invite.name,
+          name: finalName,
           classes: invite.classes || [],
           phone: invite.phone || phone || null,
+          auth_user_id: userId,
           status: 'active'
         }
       ]);

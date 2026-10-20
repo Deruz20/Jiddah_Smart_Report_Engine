@@ -222,8 +222,22 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
 
     try {
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser()
-      const userId = user?.id
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      if (authError) throw authError
+      const authUserId = user?.id
+      let updatedById: string | null = null
+      if (authUserId) {
+        const { data: teacher, error: teacherError } = await supabase
+          .from('teachers')
+          .select('id')
+          .or(`auth_user_id.eq.${authUserId},id.eq.${authUserId}`)
+          .maybeSingle()
+        if (teacherError) throw teacherError
+        if (!teacher?.id) throw new Error('Current user has no teacher profile for mark attribution.')
+        updatedById = teacher.id
+      } else {
+        throw new Error('Authentication required to attribute mark changes.')
+      }
 
         if (BYPASS_POWERSYNC_WRITES) {
           const { data: existingC, error: errC } = await supabase.from('circular_marks').select('id, subject_id').eq('enrollment_id', selectedEnrollmentId).eq('term_id', selectedTermId);
@@ -240,7 +254,7 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
                 bot_score: bot,
                 mot_score: mot,
                 eot_score: eot,
-                updated_by: userId
+                updated_by: updatedById
               }).eq('id', existing.id);
               if (error) throw error;
             } else {
@@ -251,7 +265,7 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
                 bot_score: bot,
                 mot_score: mot,
                 eot_score: eot,
-                updated_by: userId
+                updated_by: updatedById
               });
               if (error) throw error;
             }
@@ -269,7 +283,7 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
               const { error } = await supabase.from('theology_marks').update({
                 mot_score: mot,
                 eot_score: eot,
-                updated_by: userId
+                updated_by: updatedById
               }).eq('id', existing.id);
               if (error) throw error;
             } else {
@@ -279,7 +293,7 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
                 subject_id: mark.subject_id,
                 mot_score: mot,
                 eot_score: eot,
-                updated_by: userId
+                updated_by: updatedById
               });
               if (error) throw error;
             }
@@ -361,4 +375,3 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
     />
   )
 }
-

@@ -47,12 +47,14 @@ export async function GET(request: NextRequest) {
       .order('academic_year', { ascending: false })
 
     if (authRes.filterByClasses) {
-      const assignedClasses = authRes.filterByClasses;
-      if (assignedClasses.length > 0) {
-        query = query.in('circular_class_id', assignedClasses)
-      } else {
-        query = query.eq('circular_class_id', 'UNASSIGNED_DUMMY_VALUE')
+      const assignedClasses = authRes.filterByClasses.filter((classId) =>
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(classId)
+      )
+      if (assignedClasses.length === 0) {
+        return withCors(request, NextResponse.json([]))
       }
+      const classIdList = assignedClasses.join(',')
+      query = query.or(`circular_class_id.in.(${classIdList}),theology_class_id.in.(${classIdList})`)
     } else if (authRes.filterByDepartment) {
       if (authRes.filterByDepartment === 'theology') {
         query = query.not('theology_class_id', 'is', null)

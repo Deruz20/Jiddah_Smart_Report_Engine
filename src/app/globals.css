@@ -1,6 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Amiri:wght@400;700&display=swap');
 @import "tailwindcss";
 @import "../styles/reports/print-system.css";
+@import "../styles/theme-tokens.css";
 
 
 
@@ -68,23 +69,23 @@ body.print-orientation-landscape {
 
 :root {
   --font-size: 16px;
-  --background: #ffffff;
-  --foreground: oklch(0.145 0 0);
-  --card: #ffffff;
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: #030213;
-  --primary-foreground: oklch(1 0 0);
+  --background: var(--ui-canvas);
+  --foreground: var(--ui-text);
+  --card: var(--ui-surface);
+  --card-foreground: var(--ui-text);
+  --popover: var(--ui-surface);
+  --popover-foreground: var(--ui-text);
+  --primary: var(--ui-primary);
+  --primary-foreground: #f8fafc;
   --secondary: oklch(0.95 0.0058 264.53);
-  --secondary-foreground: #030213;
+  --secondary-foreground: var(--ui-text);
   --muted: #ececf0;
-  --muted-foreground: #717182;
-  --accent: #e9ebef;
-  --accent-foreground: #030213;
+  --muted-foreground: var(--ui-muted);
+  --accent: var(--ui-accent-soft);
+  --accent-foreground: var(--ui-primary);
   --destructive: #d4183d;
   --destructive-foreground: #ffffff;
-  --border: rgba(0, 0, 0, 0.1);
+  --border: var(--ui-border);
   --input: transparent;
   --input-background: #f3f3f5;
   --switch-background: #cbced4;
@@ -97,14 +98,14 @@ body.print-orientation-landscape {
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: #030213;
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar: var(--ui-shell-background);
+  --sidebar-foreground: var(--ui-shell-text);
+  --sidebar-primary: var(--ui-accent);
+  --sidebar-primary-foreground: var(--ui-shell-background);
+  --sidebar-accent: var(--ui-shell-raised);
+  --sidebar-accent-foreground: var(--ui-shell-text);
+  --sidebar-border: var(--ui-shell-border);
+  --sidebar-ring: var(--ui-accent);
 }
 
 .dark {
@@ -248,24 +249,24 @@ body.print-orientation-landscape {
 
 /* Brand tokens */
 @theme inline {
-  --color-brand-green: #1a9e5c;
-  --color-brand-green-light: #e8f8ef;
-  --color-brand-green-mid: #d1f0e0;
-  --color-brand-green-dark: #147a46;
+  --color-brand-green: var(--ui-primary);
+  --color-brand-green-light: var(--ui-accent-soft);
+  --color-brand-green-mid: #a7f3d0;
+  --color-brand-green-dark: var(--ui-primary-hover);
   --color-brand-orange: #f07d1a;
   --color-brand-orange-light: #fff3e6;
   --color-brand-orange-mid: #fde6c4;
   --color-brand-orange-dark: #c4610d;
 
-  --color-surface: #f5f7fa;
-  --color-card: #ffffff;
-  --color-border: #e4e9f0;
-  --color-border-strong: #c9d3e0;
+  --color-surface: var(--ui-canvas);
+  --color-card: var(--ui-surface);
+  --color-border: var(--ui-border);
+  --color-border-strong: #a8aaa1;
 
-  --color-text-primary: #111827;
-  --color-text-secondary: #4b5563;
-  --color-text-muted: #9ca3af;
-  --color-text-placeholder: #c4ccd8;
+  --color-text-primary: var(--ui-text);
+  --color-text-secondary: var(--ui-muted);
+  --color-text-muted: #5b6470;
+  --color-text-placeholder: #59636f;
 }
 
 
@@ -297,8 +298,8 @@ body.print-orientation-landscape {
   background-size: 16px;
 }
 .brand-select:focus {
-  border-color: #1a9e5c;
-  box-shadow: 0 0 0 3px rgba(26,158,92,0.12);
+  border-color: var(--ui-primary);
+  box-shadow: 0 0 0 3px rgba(16,185,129,0.18);
 }
 .brand-select option { background: #fff; color: #111827; }
 
@@ -316,8 +317,8 @@ body.print-orientation-landscape {
   transition: border-color 0.18s, box-shadow 0.18s;
 }
 .brand-input:focus {
-  border-color: #1a9e5c;
-  box-shadow: 0 0 0 3px rgba(26,158,92,0.12);
+  border-color: var(--ui-primary);
+  box-shadow: 0 0 0 3px rgba(16,185,129,0.18);
 }
 .brand-input::placeholder { color: #c4ccd8; }
 
@@ -338,7 +339,7 @@ body.print-orientation-landscape {
   transition: border-color 0.18s, box-shadow 0.18s, background 0.18s;
 }
 .score-input:focus {
-  border-color: #f07d1a;
+  border-color: var(--ui-accent);
   background: #fff;
   box-shadow: 0 0 0 3px rgba(240,125,26,0.12);
 }
@@ -359,8 +360,8 @@ body.print-orientation-landscape {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: #1a9e5c;
-  color: #fff;
+  background: var(--ui-primary);
+  color: #f8fafc;
   border: none;
   border-radius: 12px;
   padding: 13px 32px;
@@ -369,11 +370,11 @@ body.print-orientation-landscape {
   font-family: inherit;
   cursor: pointer;
   transition: background 0.18s, box-shadow 0.18s, transform 0.12s;
-  box-shadow: 0 2px 8px rgba(26,158,92,0.18);
+  box-shadow: 0 2px 8px rgba(6,95,70,0.18);
 }
 .save-btn:hover:not(:disabled) {
-  background: #147a46;
-  box-shadow: 0 6px 24px rgba(26,158,92,0.28);
+  background: var(--ui-primary-hover);
+  box-shadow: 0 6px 24px rgba(6,95,70,0.28);
   transform: translateY(-1px);
 }
 .save-btn:active:not(:disabled) { transform: translateY(0); }

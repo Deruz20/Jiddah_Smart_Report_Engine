@@ -46,10 +46,10 @@ export default function AdminLayout({
   return (
     <SidebarProvider defaultOpen={true}>
       <AppSidebar />
-      <SidebarInset className="h-screen print:h-auto print:min-h-screen overflow-hidden print:overflow-visible bg-slate-50 dark:bg-[#0f172a] print:bg-white flex flex-col min-w-0 relative">
+      <SidebarInset className="h-svh min-h-svh print:h-auto print:min-h-screen overflow-hidden print:overflow-visible bg-[var(--ui-canvas)] print:bg-white flex flex-col min-w-0 relative">
         <AppTopbar />
         <div className={cn(
-          "flex-1 flex flex-col print:overflow-visible",
+          "flex-1 flex flex-col pb-[env(safe-area-inset-bottom)] print:overflow-visible",
           isReportsPage ? "overflow-hidden" : "overflow-y-auto"
         )}>
           <div className="flex-1 flex flex-col min-h-0 relative">

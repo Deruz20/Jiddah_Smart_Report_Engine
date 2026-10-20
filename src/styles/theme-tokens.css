@@ -1,0 +1,17 @@
+:root {
+  color-scheme: light;
+  --ui-canvas: #f4f3ed;
+  --ui-surface: #fffdf8;
+  --ui-border: #d6d5cc;
+  --ui-text: #1f2937;
+  --ui-muted: #475569;
+  --ui-shell-background: #12312a;
+  --ui-shell-raised: #1b3d35;
+  --ui-shell-border: #35564e;
+  --ui-shell-text: #f8fafc;
+  --ui-shell-muted: #d1d5db;
+  --ui-primary: #065f46;
+  --ui-primary-hover: #047857;
+  --ui-accent: #10b981;
+  --ui-accent-soft: #d1fae5;
+}

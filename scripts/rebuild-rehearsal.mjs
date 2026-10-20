@@ -1,4 +1,4 @@
-import { execSync } from 'child_process';
+import { execFileSync, execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { seedRehearsalDatabase } from './seed-rehearsal-synthetic-users.mjs';
@@ -15,6 +15,8 @@ if (productionShape && args.has('--baseline-only')) {
   process.exit(1);
 }
 const rebuildMode = productionShape ? 'production-shape' : 'lockdown';
+const generatedProductionShapePath = path.resolve('scratch/evidence/generated-production-shape.sql');
+const productionPolicyManifestPath = path.resolve('scratch/evidence/production-policy-manifest.json');
 
 console.log(`=== REBUILDING REHEARSAL DATABASE (${rebuildMode}) ===`);
 
@@ -41,6 +43,11 @@ if (targetUrl.includes('supabase.co')) {
   process.exit(1);
 }
 console.log(`[Safety Guard PASS] Verified target is local isolated rehearsal (${targetUrl}, container: ${CONTAINER}).`);
+
+if (productionShape) {
+  console.log('\n[Production shape] Validating owner-run v3.3.0 probe and generating local rehearsal SQL...');
+  execFileSync(process.execPath, [path.resolve('scripts/gen-prod-policies.mjs')], { stdio: 'inherit' });
+}
 
 // 1. Reset public schema and clean auth.users
 console.log('\n[1/4] Resetting public schema and auth users in rehearsal container...');
@@ -116,62 +123,77 @@ for (const file of migrationFiles) {
 }
 
 if (productionShape) {
-  console.log('\n[3.5/4] Aligning local rehearsal to owner-provided production table and policy-count facts...');
+  console.log('\n[3.5/4] Aligning local rehearsal to owner-provided production table inventory...');
   const alignSql = fs.readFileSync(path.resolve('supabase/rehearsal/align_to_production_shape.sql'), 'utf8');
   execSync(`docker exec -i ${CONTAINER} psql -U postgres -d ${DB_NAME}`, {
     input: alignSql,
     stdio: ['pipe', 'pipe', 'pipe']
   });
 
-  const expectedPolicyCounts = [
-    "('academic_terms', 4), ('activity_log', 2), ('activity_logs', 2),",
-    "('circular_classes', 1), ('circular_marks', 1), ('circular_results', 1),",
-    "('circular_subjects', 1), ('classes', 2), ('enrollments', 1),",
-    "('grading_criteria', 2), ('grading_remarks', 8), ('marks', 5),",
-    "('marks_audit_log', 0), ('marks_primary', 0), ('notifications', 2),",
-    "('nursery_assessments', 0), ('profiles', 3), ('report_templates', 0),",
-    "('school_settings', 3), ('signatures', 1), ('students', 3),",
-    "('subjects', 2), ('teacher_class_assignments', 0), ('teacher_initials', 2),",
-    "('teacher_invites', 0), ('teachers', 7), ('terms', 1),",
-    "('theology_classes', 1), ('theology_marks', 1), ('theology_results', 1),",
-    "('theology_subjects', 1), ('user_profiles', 3), ('users', 0)"
-  ].join('\n');
-  const policyReportSql = `
-    WITH expected(table_name, production_count) AS (
-      VALUES ${expectedPolicyCounts}
-    ),
-    actual AS (
-      SELECT tablename AS table_name, count(*)::integer AS rehearsal_count
-      FROM pg_policies
-      WHERE schemaname = 'public'
-      GROUP BY tablename
-    )
-    SELECT
-      e.table_name,
-      e.production_count,
-      COALESCE(a.rehearsal_count, 0) AS rehearsal_count,
-      COALESCE(a.rehearsal_count, 0) - e.production_count AS difference,
-      CASE
-        WHEN COALESCE(a.rehearsal_count, 0) = e.production_count THEN 'MATCH'
-        ELSE format(
-          'MISMATCH: baseline migrations produced %s policies; production has %s. No non-theology policy was created by alignment.',
-          COALESCE(a.rehearsal_count, 0),
-          e.production_count
-        )
-      END AS explanation
-    FROM expected e
-    LEFT JOIN actual a USING (table_name)
-    ORDER BY e.table_name;
+  console.log('\n[3.6/4] Applying generated production policies, grants, RLS flags, and teacher checks to rehearsal...');
+  const generatedShapeSql = fs.readFileSync(generatedProductionShapePath, 'utf8');
+  execSync(`docker exec -i ${CONTAINER} psql -v ON_ERROR_STOP=1 -U postgres -d ${DB_NAME}`, {
+    input: generatedShapeSql,
+    stdio: ['pipe', 'pipe', 'pipe']
+  });
+
+  const expectedPolicies = JSON.parse(fs.readFileSync(productionPolicyManifestPath, 'utf8'));
+  const policyExportSql = `
+    SELECT COALESCE(json_agg(json_build_object(
+      'tablename', tablename,
+      'policyname', policyname,
+      'permissive', permissive,
+      'roles', roles,
+      'cmd', cmd,
+      'qual', qual,
+      'with_check', with_check
+    ) ORDER BY tablename, policyname), '[]'::json)::text
+    FROM pg_policies
+    WHERE schemaname = 'public';
   `;
-  const policyReport = execSync(`docker exec -i ${CONTAINER} psql -U postgres -d ${DB_NAME} -X -P pager=off`, {
-    input: policyReportSql,
+  const rehearsalPolicyJson = execSync(`docker exec -i ${CONTAINER} psql -U postgres -d ${DB_NAME} -X -qAt -P pager=off`, {
+    input: policyExportSql,
     encoding: 'utf8',
     stdio: ['pipe', 'pipe', 'pipe']
   });
-  console.log('\nProduction-vs-rehearsal policy count comparison:');
-  console.log(policyReport.trim());
-  if (policyReport.includes('MISMATCH')) {
-    console.warn('Policy-count mismatches are retained and reported: no substitute policies were created because only the theology_marks policy may be authored in this rehearsal.');
+  const actualPolicies = JSON.parse(rehearsalPolicyJson.trim());
+  const normalizeExpression = (expression) => typeof expression === 'string'
+    ? expression
+      .replace(/\(\((ARRAY\[.*?\])\)::text\[\]\)/gs, '($1)')
+      .replace(/\(('(?:[^']|'')*'::character varying)\)::text/g, '$1')
+    : expression;
+  const normalizePolicy = (policy) => ({
+    tablename: policy.tablename,
+    policyname: policy.policyname,
+    permissive: policy.permissive,
+    roles: [...(policy.roles ?? [])].sort(),
+    cmd: policy.cmd,
+    qual: normalizeExpression(policy.qual),
+    with_check: normalizeExpression(policy.with_check),
+  });
+  const expectedByName = new Map(expectedPolicies.map((policy) => [policy.policyname, normalizePolicy(policy)]));
+  const actualByName = new Map(actualPolicies.map((policy) => [policy.policyname, normalizePolicy(policy)]));
+  const policyDiff = [];
+  for (const [name, expected] of expectedByName) {
+    const actual = actualByName.get(name);
+    if (!actual) {
+      policyDiff.push({ policyname: name, difference: 'missing in rehearsal' });
+    } else if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+      policyDiff.push({ policyname: name, production: expected, rehearsal: actual });
+    }
+  }
+  for (const name of actualByName.keys()) {
+    if (!expectedByName.has(name)) policyDiff.push({ policyname: name, difference: 'extra in rehearsal' });
+  }
+
+  console.log(`\nProduction policy definitions: ${expectedPolicies.length}`);
+  console.log(`Rehearsal policy definitions: ${actualPolicies.length}`);
+  if (policyDiff.length === 0) {
+    console.log('Policy-definition diff (name, cmd, roles, qual, with_check): empty');
+  } else {
+    console.log('Policy-definition diff (name, cmd, roles, qual, with_check; normalized PostgreSQL array-cast deparse):');
+    for (const difference of policyDiff) console.log(JSON.stringify(difference));
+    throw new Error('Production and rehearsal policy definitions differ.');
   }
 } else {
   // Preserve the existing lockdown-mode permissions for the local notification_reads fixture.

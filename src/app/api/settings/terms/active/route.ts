@@ -4,6 +4,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { recordActivity } from '@/lib/api-server'
 
+async function findActiveTeacher(supabase: ReturnType<typeof createClient>, userId: string) {
+  return supabase
+    .from('teachers')
+    .select('id, role, status')
+    .or(`auth_user_id.eq.${userId},id.eq.${userId}`)
+    .eq('status', 'active')
+    .maybeSingle()
+}
+
 export async function OPTIONS(request: NextRequest) {
   return apiOptions(request)
 }
@@ -22,10 +31,13 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
-    const { verifyDataAccess } = await import('@/lib/auth-server')
-    const authRes = await verifyDataAccess(supabase, user, 'read')
-    if (!authRes.isAuthorized || (authRes.role !== 'Administrator' && authRes.role !== 'admin')) {
-      return withCors(request, NextResponse.json({ error: 'Access Denied: Administrator only' }, { status: 403 }))
+    const { data: teacher, error: teacherError } = await findActiveTeacher(supabase, user.id)
+    if (teacherError) {
+      console.error('settings/terms/active GET staff lookup error:', teacherError)
+      return withCors(request, NextResponse.json({ error: 'Unable to verify staff access' }, { status: 500 }))
+    }
+    if (!teacher) {
+      return withCors(request, NextResponse.json({ error: 'Active staff access required' }, { status: 403 }))
     }
 
     const { data, error } = await supabase
@@ -60,9 +72,12 @@ export async function POST(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
-    const { verifyDataAccess } = await import('@/lib/auth-server')
-    const authRes = await verifyDataAccess(supabase, user, 'write')
-    if (!authRes.isAuthorized || (authRes.role !== 'Administrator' && authRes.role !== 'admin')) {
+    const { data: teacher, error: teacherError } = await findActiveTeacher(supabase, user.id)
+    if (teacherError) {
+      console.error('settings/terms/active POST staff lookup error:', teacherError)
+      return withCors(request, NextResponse.json({ error: 'Unable to verify staff access' }, { status: 500 }))
+    }
+    if (teacher?.role !== 'Administrator') {
       return withCors(request, NextResponse.json({ error: 'Access Denied: Administrator only' }, { status: 403 }))
     }
 

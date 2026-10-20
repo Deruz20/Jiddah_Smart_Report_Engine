@@ -229,10 +229,10 @@ export function AppSidebar() {
     <Sidebar
       collapsible="icon"
       className="border-r-0 print:hidden z-40"
-      style={{ "--sidebar-width": "15rem", "--sidebar-background": "#0a0f1c", "--sidebar-border": "rgba(30,41,59,0.6)" } as React.CSSProperties}
+      style={{ "--sidebar-width": "15rem", "--sidebar-background": "var(--ui-shell-background)", "--sidebar-border": "var(--ui-shell-border)" } as React.CSSProperties}
     >
       {/* Header */}
-      <SidebarHeader className="px-4 pt-5 pb-4 bg-[#0a0f1c] border-r border-slate-800/60 shadow-xl z-20">
+      <SidebarHeader className="px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-4 bg-[var(--ui-shell-background)] border-r border-[var(--ui-shell-border)] shadow-xl z-20">
         <div className={cn("flex items-center", collapsed ? "justify-center" : "justify-between")}>
           <div 
             className={cn("flex items-center gap-3 min-w-0 cursor-pointer group/logo", collapsed && "flex-col")}
@@ -272,7 +272,7 @@ export function AppSidebar() {
       </SidebarHeader>
 
       {/* Nav items */}
-      <SidebarContent className="px-3 pt-2 overflow-x-hidden bg-[#0a0f1c] border-r border-slate-800/60 shadow-xl z-10 relative">
+      <SidebarContent className="px-3 pt-2 overflow-x-hidden bg-[var(--ui-shell-background)] border-r border-[var(--ui-shell-border)] shadow-xl z-10 relative">
         <SidebarGroup className="p-0">
           <SidebarGroupContent>
             <SidebarMenu className="gap-1">
@@ -299,7 +299,7 @@ export function AppSidebar() {
       </SidebarContent>
 
       {/* Footer - User profile */}
-      <SidebarFooter className="p-3 pb-4 bg-[#0a0f1c] border-r border-slate-800/60 shadow-xl z-20">
+      <SidebarFooter className="p-3 pb-4 bg-[var(--ui-shell-background)] border-r border-[var(--ui-shell-border)] shadow-xl z-20">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <div
@@ -310,16 +310,16 @@ export function AppSidebar() {
             >
               <div className="relative shrink-0">
                 <div
-                  className="flex items-center justify-center size-9 rounded-xl text-emerald-950 font-bold tracking-wider"
+                  className="flex items-center justify-center size-9 rounded-xl text-slate-50 font-bold tracking-wider"
                   style={{
-                    background: "linear-gradient(135deg, #34d399 0%, #059669 100%)",
+                    background: "var(--ui-primary)",
                     fontSize: "0.75rem",
                     boxShadow: "0 2px 10px rgba(16,185,129,0.3)",
                   }}
                 >
                   {userName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || userName.slice(0,2).toUpperCase()}
                 </div>
-                <div className="absolute -bottom-0.5 -right-0.5 size-3 rounded-full bg-emerald-400 border-[2.5px] border-[#0a0f1c]" />
+                <div className="absolute -bottom-0.5 -right-0.5 size-3 rounded-full bg-emerald-400 border-[2.5px] border-[var(--ui-shell-background)]" />
               </div>
               <AnimatePresence>
                 {!collapsed && (
@@ -333,7 +333,7 @@ export function AppSidebar() {
                     <p className="text-slate-100 font-medium truncate" style={{ fontSize: "0.82rem", lineHeight: 1.3 }}>
                       {userName}
                     </p>
-                    <p className="text-emerald-500/80 font-medium truncate" style={{ fontSize: "0.7rem", lineHeight: 1.3 }}>
+                    <p className="text-emerald-300 font-medium truncate" style={{ fontSize: "0.7rem", lineHeight: 1.3 }}>
                       {role}
                     </p>
                   </motion.div>

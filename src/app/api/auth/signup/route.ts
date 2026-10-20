@@ -1,8 +1,16 @@
-import { mapAuthError } from '@/lib/auth-errors'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { corsPreflight, withCors } from '@/lib/api-cors'
+
+function createServiceClient() {
+  return createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false } }
+  )
+}
 
 export async function OPTIONS(request: NextRequest) {
   return corsPreflight(request) ?? new NextResponse(null, { status: 204 })
@@ -13,21 +21,34 @@ export async function POST(request: NextRequest) {
   if (preflight) return preflight
 
   try {
-    const body = await request.json()
-    const { email, password, name, role } = body
-
-    if (!email || !password || !role) {
-      return withCors(
-        request,
-        NextResponse.json({ error: 'Email, password, and role are required' }, { status: 400 })
-      )
+    const cookieStore = await cookies()
+    const supabase = createClient(cookieStore)
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
-    const validRoles = ['Admin', 'Secular DOS', 'Theology DOS']
-    if (!validRoles.includes(role)) {
+    const { data: caller, error: callerError } = await supabase
+      .from('teachers')
+      .select('id, role, status')
+      .or(`auth_user_id.eq.${user.id},id.eq.${user.id}`)
+      .maybeSingle()
+
+    if (callerError) {
+      console.error('Signup caller lookup failed:', callerError.message)
+      return withCors(request, NextResponse.json({ error: 'Unable to verify administrator' }, { status: 500 }))
+    }
+    if (caller?.role !== 'Administrator' || caller.status !== 'active') {
+      return withCors(request, NextResponse.json({ error: 'Administrator access required' }, { status: 403 }))
+    }
+
+    const body = await request.json()
+    const { email, password, name, phone } = body
+
+    if (!email || !password) {
       return withCors(
         request,
-        NextResponse.json({ error: 'Invalid role selected' }, { status: 400 })
+        NextResponse.json({ error: 'Email and password are required' }, { status: 400 })
       )
     }
 
@@ -38,51 +59,107 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const cookieStore = await cookies()
-    const supabase = createClient(cookieStore)
+    const supabaseAdmin = createServiceClient()
+    const normalizedEmail = String(email).trim().toLowerCase()
+    const { data: invite, error: inviteError } = await supabaseAdmin
+      .from('teacher_invites')
+      .select('*')
+      .eq('email', normalizedEmail)
+      .eq('status', 'pending')
+      .maybeSingle()
 
-    const { data, error } = await supabase.auth.signUp({
-      email: String(email).trim(),
+    if (inviteError) {
+      console.error('Signup invite lookup failed:', inviteError.message)
+      return withCors(request, NextResponse.json({ error: 'Unable to verify invitation' }, { status: 500 }))
+    }
+    if (!invite) {
+      return withCors(request, NextResponse.json({ error: 'No pending invitation for this email' }, { status: 404 }))
+    }
+
+    let finalRole = invite.role
+    let finalSubject = invite.subject
+    if (invite.role === 'DOS Theology') {
+      finalRole = 'DOS'
+      finalSubject = 'Theology'
+    } else if (invite.role === 'DOS Secular') {
+      finalRole = 'DOS'
+      finalSubject = 'Secular'
+    } else if (invite.role === 'teacher') {
+      finalRole = 'Class Teacher'
+    }
+    const finalName = invite.name || String(name || '').trim() || normalizedEmail.split('@')[0]
+    if (!finalSubject) {
+      finalSubject = finalRole === 'DOS' || finalRole.toLowerCase().includes('theology')
+        ? 'Theology'
+        : 'Secular'
+    }
+
+    const { data: authData, error: createError } = await supabaseAdmin.auth.admin.createUser({
+      email: normalizedEmail,
       password: String(password),
-      options: {
-        data: {
-          full_name: name ? String(name).trim() : undefined,
-          role: role,
-        },
-        emailRedirectTo: undefined,
+      email_confirm: true,
+      user_metadata: {
+        full_name: finalName,
+        subject: finalSubject,
       },
     })
 
-    if (error) {
-      const mapped = mapAuthError(error)
-      return withCors(request, NextResponse.json({ error: mapped.message }, { status: mapped.status }))
-    }
-
-    const user = data.user
-    if (!user) {
+    if (createError || !authData.user) {
+      console.error('Signup account creation failed:', createError?.message)
       return withCors(
         request,
-        NextResponse.json({ error: 'Sign up failed. Please try again.' }, { status: 500 })
+        NextResponse.json({ error: createError?.message || 'Account creation failed' }, { status: 500 })
       )
+    }
+
+    const newUser = authData.user
+    const { error: profileError } = await supabaseAdmin
+      .from('teachers')
+      .insert([{
+        id: newUser.id,
+        auth_user_id: newUser.id,
+        email: normalizedEmail,
+        role: finalRole,
+        subject: finalSubject,
+        name: finalName,
+        classes: invite.classes || [],
+        phone: invite.phone || phone || null,
+        status: 'active',
+      }])
+
+    if (profileError) {
+      await supabaseAdmin.auth.admin.deleteUser(newUser.id)
+      console.error('Signup teacher profile creation failed:', profileError.message)
+      return withCors(request, NextResponse.json({ error: 'Failed to create teacher profile' }, { status: 500 }))
+    }
+
+    const { error: claimError } = await supabaseAdmin
+      .from('teacher_invites')
+      .update({ status: 'claimed' })
+      .eq('id', invite.id)
+      .eq('status', 'pending')
+
+    if (claimError) {
+      await supabaseAdmin.from('teachers').delete().eq('id', newUser.id)
+      await supabaseAdmin.auth.admin.deleteUser(newUser.id)
+      console.error('Signup invite claim failed:', claimError.message)
+      return withCors(request, NextResponse.json({ error: 'Failed to claim invitation' }, { status: 500 }))
     }
 
     return withCors(
       request,
       NextResponse.json({
         user: {
-          id: user.id,
-          email: user.email,
-          name: user.user_metadata?.full_name ?? user.email?.split('@')[0] ?? 'Admin',
-          role: user.user_metadata?.role ?? 'admin',
+          id: newUser.id,
+          email: newUser.email,
+          name: finalName,
+          role: finalRole,
         },
-        session: Boolean(data.session),
-        message: data.session
-          ? 'Account created successfully'
-          : 'Account created. You can sign in now.',
-      })
+        message: 'Account created successfully',
+      }, { status: 201 })
     )
   } catch (err) {
-    const mapped = mapAuthError(err)
-    return withCors(request, NextResponse.json({ error: mapped.message }, { status: mapped.status }))
+    console.error('Signup request failed:', err)
+    return withCors(request, NextResponse.json({ error: 'Internal server error' }, { status: 500 }))
   }
 }

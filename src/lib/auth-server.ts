@@ -32,7 +32,7 @@ export async function verifyDataAccess(
   // Always fetch fresh from the teachers table. NEVER trust user_metadata.
   const { data: profile } = await supabase
     .from('teachers')
-    .select('role, subject, classes')
+    .select('id, role, subject, classes')
     .eq('email', user.email)
     .single();
 
@@ -86,8 +86,28 @@ export async function verifyDataAccess(
     return { isAuthorized: true, role, filterByDepartment: myDepartment };
   }
 
-  // 5. Class Teacher, Theology Instructor, Teacher
-  if (role === 'Class Teacher' || role === 'Theology Instructor' || role === 'Teacher') {
+  // 5. Class Teacher
+  if (role === 'Class Teacher') {
+    const { data: assignments, error: assignmentError } = await supabase
+      .from('teacher_class_assignments')
+      .select('class_id')
+      .eq('teacher_id', profile.id);
+
+    if (assignmentError) {
+      return { isAuthorized: false, message: 'Unable to verify teacher class assignments.' };
+    }
+
+    const assignedClasses = assignments.map((assignment) => assignment.class_id);
+    return {
+      isAuthorized: true,
+      role,
+      filterByClasses: assignedClasses,
+      filterByDepartment: 'both',
+    };
+  }
+
+  // 6. Theology Instructor, Teacher
+  if (role === 'Theology Instructor' || role === 'Teacher') {
     const assignedClasses: string[] = profile.classes || [];
     
     if (targetClass && !assignedClasses.includes(targetClass)) {

@@ -5,6 +5,10 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const baseUrl = process.env.TEST_BASE_URL || 'http://127.0.0.1:3005';
+const baseOrigin = new URL(baseUrl);
+if (baseOrigin.protocol !== 'http:' || !['127.0.0.1', 'localhost'].includes(baseOrigin.hostname)) {
+  throw new Error('Refusing to run R0 tests against a non-local application server.');
+}
 
 if (!supabaseUrl || !anonKey) throw new Error('Rehearsal Supabase credentials are required.');
 const origin = new URL(supabaseUrl);

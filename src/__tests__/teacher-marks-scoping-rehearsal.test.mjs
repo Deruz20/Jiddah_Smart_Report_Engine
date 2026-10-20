@@ -265,11 +265,11 @@ test('production-shaped rehearsal enforces teacher mark scope and route filterin
     const directCircular = await makeMark(direct.client, 'circular_marks', enrollments.get('direct'), circularSubjectId, user('direct').teacherId);
     assertAllowed(directCircular, 'Class Teacher via circular class_teacher_id writes secular mark');
     const directTheology = await makeMark(direct.client, 'theology_marks', enrollments.get('direct'), theologySubjectId, user('direct').teacherId);
-    assertAllowed(directTheology, 'Class Teacher via circular class_teacher_id writes theology mark (Gate 1 widening)');
+    assertAllowed(directTheology, 'Class Teacher via production circular class_teacher_id policy writes theology mark');
 
     const assignment = await signIn('assignmentCircular');
     assertAllowed(await makeMark(assignment.client, 'circular_marks', enrollments.get('assignment'), circularSubjectId, user('assignmentCircular').teacherId), 'Circular-assignment-only teacher writes circular mark');
-    assertAllowed(await makeMark(assignment.client, 'theology_marks', enrollments.get('assignment'), theologySubjectId, user('assignmentCircular').teacherId), 'Circular-assignment-only teacher writes theology mark (Gate 1 widening)');
+    assertDenied(await makeMark(assignment.client, 'theology_marks', enrollments.get('assignment'), theologySubjectId, user('assignmentCircular').teacherId), 'Circular-assignment-only teacher cannot write theology marks');
 
     const theologyAssignment = await signIn('assignmentTheology');
     assertAllowed(await makeMark(theologyAssignment.client, 'theology_marks', enrollments.get('nullCircular'), theologySubjectId, user('assignmentTheology').teacherId), 'Theology-assignment-only teacher writes theology mark with NULL circular class');

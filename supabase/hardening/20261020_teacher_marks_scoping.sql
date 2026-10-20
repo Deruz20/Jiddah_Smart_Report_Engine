@@ -74,7 +74,6 @@ USING (
         OR (t.role = 'DOS' AND lower(coalesce(t.subject, '')) = 'theology')
         OR cc.class_teacher_id = t.id
         OR public.teacher_assigned(tc.id, 'theology')
-        OR public.teacher_assigned(cc.id, 'circular')
       )
   )
 )
@@ -92,7 +91,6 @@ WITH CHECK (
         OR (t.role = 'DOS' AND lower(coalesce(t.subject, '')) = 'theology')
         OR cc.class_teacher_id = t.id
         OR public.teacher_assigned(tc.id, 'theology')
-        OR public.teacher_assigned(cc.id, 'circular')
       )
   )
 );

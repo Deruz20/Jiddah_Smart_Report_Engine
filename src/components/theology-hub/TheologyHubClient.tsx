@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, memo } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
-import { Loader2, ScrollText, BookOpen, Award, Download, Printer, FileSpreadsheet } from 'lucide-react'
+import { Loader2, ScrollText, BookOpen, Award, Download, Printer, FileSpreadsheet, ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { TheologyHubEmptyState } from './TheologyHubEmptyState'
 import { TopToolbar } from '../figma-ui/TopToolbar'
@@ -402,47 +402,54 @@ export default function TheologyHubClient({
                 {/* Term Selector */}
                 <div>
                   <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1">Term / Year</label>
-                  <select
-                    className="w-full min-h-[42px] px-2.5 py-1.5 border border-stone-200 rounded-xl bg-[#F8FAFC] text-stone-900 text-xs font-semibold outline-none focus:border-[#059669]"
-                    value={activeTermId}
-                    onChange={(e) => setActiveTermId(e.target.value)}
-                  >
-                    {terms.map(t => (
-                      <option key={t.id} value={t.id}>{t.label} ({t.academic_year})</option>
-                    ))}
-                  </select>
+                  <div className="relative flex items-center">
+                    <select
+                      className="w-full min-h-[42px] appearance-none pl-3 pr-8 py-2 border border-stone-200 hover:border-emerald-500/60 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/15 rounded-xl bg-slate-50/70 hover:bg-white text-stone-900 text-xs font-semibold outline-none transition cursor-pointer shadow-xs"
+                      value={activeTermId}
+                      onChange={(e) => setActiveTermId(e.target.value)}
+                    >
+                      {terms.map(t => (
+                        <option key={t.id} value={t.id}>{t.label} ({t.academic_year})</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="w-4 h-4 text-stone-400 absolute right-2.5 pointer-events-none" />
+                  </div>
                 </div>
 
                 {/* Context Selector (Class / Level) */}
                 <div>
                   {activeTab === 'assessment' ? (
                     <>
-                      <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1 text-right" dir="rtl">الصف (Class)</label>
-                      <select
-                        className="w-full min-h-[42px] px-2.5 py-1.5 border border-stone-200 rounded-xl bg-[#F8FAFC] text-stone-900 text-xs font-semibold outline-none focus:border-[#059669] text-right font-arabic"
-                        dir="rtl"
-                        value={activeClassId}
-                        onChange={(e) => setActiveClassId(e.target.value)}
-                      >
-                        <option value="">-- اختر الصف --</option>
-                        {theologyClasses.map(t => (
-                          <option key={t.id} value={t.id}>{t.class_name_arabic} ({t.class_name_english})</option>
-                        ))}
-                      </select>
+                      <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1">الصف / Class</label>
+                      <div className="relative flex items-center">
+                        <select
+                          className="w-full min-h-[42px] appearance-none pl-3 pr-8 py-2 border border-stone-200 hover:border-emerald-500/60 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/15 rounded-xl bg-slate-50/70 hover:bg-white text-stone-900 text-xs font-semibold outline-none transition cursor-pointer shadow-xs truncate"
+                          value={activeClassId}
+                          onChange={(e) => setActiveClassId(e.target.value)}
+                        >
+                          <option value="">-- اختر الصف / Select Class --</option>
+                          {theologyClasses.map(t => (
+                            <option key={t.id} value={t.id}>{t.class_name_arabic} — {t.class_name_english}</option>
+                          ))}
+                        </select>
+                        <ChevronDown className="w-4 h-4 text-stone-400 absolute right-2.5 pointer-events-none" />
+                      </div>
                     </>
                   ) : (
                     <>
-                      <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1 text-right" dir="rtl">المرحلة (Level)</label>
-                      <select
-                        className="w-full min-h-[42px] px-2.5 py-1.5 border border-stone-200 rounded-xl bg-[#F8FAFC] text-stone-900 text-xs font-semibold outline-none focus:border-[#059669] text-right font-arabic"
-                        dir="rtl"
-                        value={activeLevel}
-                        onChange={(e) => setActiveLevel(e.target.value)}
-                      >
-                        <option value="raudha">الروضة (Nursery)</option>
-                        <option value="ibtidaai_lower">الابتدائية السفلى (Lower Primary)</option>
-                        <option value="ibtidaai_upper">الابتدائية العليا (Upper Primary)</option>
-                      </select>
+                      <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1">المرحلة / Level</label>
+                      <div className="relative flex items-center">
+                        <select
+                          className="w-full min-h-[42px] appearance-none pl-3 pr-8 py-2 border border-stone-200 hover:border-emerald-500/60 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/15 rounded-xl bg-slate-50/70 hover:bg-white text-stone-900 text-xs font-semibold outline-none transition cursor-pointer shadow-xs truncate"
+                          value={activeLevel}
+                          onChange={(e) => setActiveLevel(e.target.value)}
+                        >
+                          <option value="raudha">الروضة (Nursery)</option>
+                          <option value="ibtidaai_lower">الابتدائية السفلى (Lower Primary)</option>
+                          <option value="ibtidaai_upper">الابتدائية العليا (Upper Primary)</option>
+                        </select>
+                        <ChevronDown className="w-4 h-4 text-stone-400 absolute right-2.5 pointer-events-none" />
+                      </div>
                     </>
                   )}
                 </div>
@@ -454,21 +461,21 @@ export default function TheologyHubClient({
                     <button
                       type="button"
                       onClick={() => setActiveTab('assessment')}
-                      className={`flex-1 min-h-[34px] px-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer ${activeTab === 'assessment' ? 'bg-[#059669] text-white shadow-xs' : 'text-stone-600 hover:text-stone-900'}`}
+                      className={`flex-1 min-h-[34px] px-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer ${activeTab === 'assessment' ? 'bg-[#059669] text-white shadow-xs' : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'}`}
                     >
                       <BookOpen size={12} /> Sheet
                     </button>
                     <button
                       type="button"
                       onClick={() => setActiveTab('analysis')}
-                      className={`flex-1 min-h-[34px] px-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer ${activeTab === 'analysis' ? 'bg-[#059669] text-white shadow-xs' : 'text-stone-600 hover:text-stone-900'}`}
+                      className={`flex-1 min-h-[34px] px-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer ${activeTab === 'analysis' ? 'bg-[#059669] text-white shadow-xs' : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'}`}
                     >
                       <ScrollText size={12} /> Analysis
                     </button>
                     <button
                       type="button"
                       onClick={() => setActiveTab('top_students')}
-                      className={`flex-1 min-h-[34px] px-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer ${activeTab === 'top_students' ? 'bg-[#059669] text-white shadow-xs' : 'text-stone-600 hover:text-stone-900'}`}
+                      className={`flex-1 min-h-[34px] px-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer ${activeTab === 'top_students' ? 'bg-[#059669] text-white shadow-xs' : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'}`}
                     >
                       <Award size={12} /> Top 10
                     </button>
@@ -482,14 +489,14 @@ export default function TheologyHubClient({
                     <button
                       type="button"
                       onClick={() => setExamPhase('mot')}
-                      className={`flex-1 min-h-[34px] px-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center cursor-pointer ${examPhase === 'mot' ? 'bg-[#0F172A] text-white shadow-xs' : 'text-stone-600 hover:text-stone-900'}`}
+                      className={`flex-1 min-h-[34px] px-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center cursor-pointer ${examPhase === 'mot' ? 'bg-amber-500 text-stone-950 font-bold shadow-xs' : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'}`}
                     >
                       MOT
                     </button>
                     <button
                       type="button"
                       onClick={() => setExamPhase('eot')}
-                      className={`flex-1 min-h-[34px] px-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center cursor-pointer ${examPhase === 'eot' ? 'bg-[#0F172A] text-white shadow-xs' : 'text-stone-600 hover:text-stone-900'}`}
+                      className={`flex-1 min-h-[34px] px-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center cursor-pointer ${examPhase === 'eot' ? 'bg-[#059669] text-white font-bold shadow-xs' : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'}`}
                     >
                       EOT
                     </button>

@@ -50,6 +50,20 @@ export async function verifyDataAccess(
   targetClass?: string | null,
   targetDepartment?: Department | null
 ): Promise<AuthAccessResult> {
+  // 1. Fast-path: Check explicit Administrator role in Auth metadata immediately.
+  // This bypasses unnecessary database round-trips and prevents AbortErrors from locking out Admins.
+  const metaRole = user.app_metadata?.role || user.user_metadata?.role;
+  if (isAdministratorRole(metaRole)) {
+    return {
+      isAuthorized: true,
+      role: 'Administrator',
+      canonicalRole: 'Administrator',
+      filterByDepartment: 'both',
+      teacherId: user.id,
+      specialPermissions: ['write_marks', 'cross_department_access'],
+    };
+  }
+
   const directory = process.env.SUPABASE_SERVICE_ROLE_KEY ? createAdminClient() : _supabase;
 
   let { data: profiles, error: profileError } = await directory
@@ -71,8 +85,19 @@ export async function verifyDataAccess(
 
   const profileLookupDenied = accessDeniedForLookupError(profileError, 'Unable to verify staff identity.');
   if (profileLookupDenied) {
-    console.error('Teacher access profile lookup failed:', profileError?.message);
-    return profileLookupDenied;
+    // If the database query timed out or aborted, but the user has a recognized role in JWT metadata, fall back to it
+    if (metaRole) {
+      profiles = [{
+        id: user.id,
+        auth_user_id: user.id,
+        email: user.email || '',
+        role: metaRole,
+        status: 'active',
+      }] as any;
+    } else {
+      console.error('Teacher access profile lookup failed:', profileError?.message);
+      return profileLookupDenied;
+    }
   }
 
   let profile = resolveTeacherProfile((profiles ?? []) as TeacherProfile[], user.id);

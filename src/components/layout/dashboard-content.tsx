@@ -84,6 +84,7 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
   const isAdmin = role === 'admin';
 
   const [stageFilter, setStageFilter] = useState<'all' | 'needs_action' | 'ready'>('all');
+  const [showAllClasses, setShowAllClasses] = useState(false);
 
   const accentColor = themeSettings?.safeThemeColor || '#0F4D25';
 
@@ -157,6 +158,11 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
     }
     return classStatuses;
   }, [classStatuses, stageFilter]);
+
+  const displayedClasses = useMemo(() => {
+    if (showAllClasses || filteredClasses.length <= 5) return filteredClasses;
+    return filteredClasses.slice(0, 5);
+  }, [filteredClasses, showAllClasses]);
 
   return (
     <div className="w-full min-h-screen bg-[#FFFDF9] text-[#1C1917] p-3 sm:p-6 lg:p-8 pb-28 sm:pb-12 font-sans tabular-nums">
@@ -441,7 +447,7 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
               </div>
             ) : (
               <div className="space-y-3">
-                {filteredClasses.map((c) => (
+                {displayedClasses.map((c) => (
                   <div
                     key={c.className}
                     className="p-3.5 sm:p-4 rounded-xl border border-[#EFE9DF] bg-[#FAF8F5]/60 hover:bg-[#FAF8F5] transition-colors"
@@ -504,6 +510,18 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
                     </div>
                   </div>
                 ))}
+
+                {filteredClasses.length > 5 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllClasses(!showAllClasses)}
+                    className="w-full min-h-[42px] py-2.5 px-4 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 rounded-xl border border-emerald-200 transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    {showAllClasses
+                      ? "Summarize view (Show fewer cohorts)"
+                      : `Show all ${filteredClasses.length} cohorts (${filteredClasses.length - 5} more)`}
+                  </button>
+                )}
               </div>
             )}
           </div>

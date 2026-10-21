@@ -139,7 +139,7 @@ export default function AdminLayout({
         <AppTopbar />
         <div
           className={cn(
-            "flex-1 flex flex-col min-h-0 min-w-0 w-full overflow-x-hidden pb-14 md:pb-0 relative",
+            "flex-1 flex flex-col min-h-0 min-w-0 w-full overflow-x-hidden pb-24 md:pb-0 relative",
             isReportsPage ? "overflow-y-hidden" : "overflow-y-auto"
           )}
         >

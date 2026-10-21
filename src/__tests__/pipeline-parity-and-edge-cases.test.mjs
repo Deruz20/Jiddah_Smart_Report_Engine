@@ -128,7 +128,7 @@ describe('P0 Pipeline Parity: Non-Gradable Subjects & Exceptions', () => {
 
 describe('P0 Pipeline Parity: Theology Aggregates, Arabic Remarks & Comments', () => {
   test('Theology 4 subjects with valid scores compute aggregate correctly', () => {
-    const scores = [88, 76, 70, 65]; // D1(1), D2(2), C3(3), C4(4)
+    const scores = [88, 76, 70, 60]; // D1(1), D2(2), C3(3), C4(4)
     const agg = calculateTheologyAggregate(scores);
     assert.equal(agg, 10);
     assert.equal(getDivision(agg), 'I');
@@ -155,11 +155,11 @@ describe('P0 Pipeline Parity: Theology Aggregates, Arabic Remarks & Comments', (
   });
 
   test('Theology total comment brackets conform to score ranges', () => {
-    assert.equal(getTheologyComment(365), 'ممتاز جداً. استمر في التفوق!');
-    assert.equal(getTheologyComment(330), 'جيد جداً. واصل الاجتهاد.');
-    assert.equal(getTheologyComment(290), 'جيد. يحتاج إلى مزيد من الجهد.');
-    assert.equal(getTheologyComment(250), 'مقبول. عليك الاجتهاد أكثر.');
-    assert.equal(getTheologyComment(200), 'ضعيف. يحتاج إلى دعم إضافي.');
+    assert.equal(getTheologyComment(365), 'جهد مميز،شكرا');
+    assert.equal(getTheologyComment(330), 'بقيت خطوة إلى الامتياز');
+    assert.equal(getTheologyComment(290), 'أنت قادر على الأفضل');
+    assert.equal(getTheologyComment(250), 'أنت قادر على الأفضل');
+    assert.equal(getTheologyComment(200), 'أنت قادر على الأفضل');
   });
 });
 

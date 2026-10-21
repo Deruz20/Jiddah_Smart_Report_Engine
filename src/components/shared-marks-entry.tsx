@@ -964,13 +964,13 @@ export function SharedMarksEntry({
           ) : null
         )}
 
-        {/* Sticky Bottom Save Bar */}
+        {/* Integrated Form Footer Action Bar */}
         {selectedEnrollment && (
           <div
             data-testid="sticky-save-bar"
             className="pt-3 pb-2"
           >
-            <div className="bg-white/95 backdrop-blur-md border border-stone-300 rounded-2xl p-2.5 sm:px-4 shadow-lg flex flex-wrap items-center justify-between gap-2.5">
+            <div className="bg-white border border-stone-200/90 rounded-2xl p-2.5 sm:px-4 shadow-xs flex flex-wrap items-center justify-between gap-2.5">
               <div className="flex items-center gap-2 min-w-0">
                 <span
                   className={`w-2.5 h-2.5 rounded-full shrink-0 ${

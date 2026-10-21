@@ -30,6 +30,22 @@ export async function initializePowerSyncNonBlocking(
           await client.disconnect?.().catch(() => {})
           return { connected: false, fallbackToSupabase: true }
         }
+
+        // Lightweight probe to verify endpoint is actually reachable before launching the streaming worker.
+        // If unreachable, stay in direct Supabase mode without running background worker loop.
+        try {
+          const controller = new AbortController()
+          const probeTimer = setTimeout(() => controller.abort(), 1000)
+          const probeRes = await fetch(creds.endpoint, { method: 'HEAD', signal: controller.signal }).catch(() => null)
+          clearTimeout(probeTimer)
+          if (!probeRes) {
+            await client.disconnect?.().catch(() => {})
+            return { connected: false, fallbackToSupabase: true }
+          }
+        } catch {
+          await client.disconnect?.().catch(() => {})
+          return { connected: false, fallbackToSupabase: true }
+        }
       }
 
       await client.init()

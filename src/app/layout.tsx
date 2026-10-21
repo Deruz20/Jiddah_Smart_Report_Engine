@@ -11,12 +11,22 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Jiddah Smart Report Engine",
-  description: "Smart Report Engine for Jiddah",
+  title: "JIDDAH ISLAMIC SCHOOLS - Management & Reporting Engine",
+  description: "Official Management & Smart Reporting Engine for Jiddah Islamic Schools",
+  icons: {
+    icon: [
+      { url: '/school_logo.svg', type: 'image/svg+xml' },
+      { url: '/favicon.ico', sizes: 'any' },
+    ],
+    apple: [
+      { url: '/school_logo.svg' },
+      { url: '/apple-touch-icon.png' },
+    ],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Jiddah",
+    title: "JIDDAH ISLAMIC SCHOOLS",
   },
 };
 

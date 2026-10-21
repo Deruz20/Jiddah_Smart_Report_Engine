@@ -78,19 +78,19 @@ export const ROLE_GATED_NAV_ITEMS: NavItemConfig[] = [
     roles: ["Administrator", "Head Teacher", "DOS Secular", "DOS Theology", "Class Teacher"],
   },
   {
-    icon: ClipboardEdit,
-    label: "Marks Entry",
-    teacherLabel: "Marks Entry",
-    id: "marks",
-    href: "/admin/marks",
-    roles: ["Administrator", "Head Teacher", "DOS Secular", "DOS Theology", "Class Teacher"],
-  },
-  {
     icon: Users,
     label: "Students",
     teacherLabel: "Students",
     id: "students",
     href: "/admin/students",
+    roles: ["Administrator", "Head Teacher", "DOS Secular", "DOS Theology", "Class Teacher"],
+  },
+  {
+    icon: ClipboardEdit,
+    label: "Marks Entry",
+    teacherLabel: "Marks Entry",
+    id: "marks",
+    href: "/admin/marks",
     roles: ["Administrator", "Head Teacher", "DOS Secular", "DOS Theology", "Class Teacher"],
   },
   {
@@ -102,34 +102,6 @@ export const ROLE_GATED_NAV_ITEMS: NavItemConfig[] = [
     roles: ["Administrator", "Head Teacher", "DOS Secular", "DOS Theology", "Class Teacher"],
   },
   {
-    icon: Bell,
-    label: "Notifications",
-    id: "notifications",
-    href: "/admin/notifications",
-    roles: ["Administrator", "Head Teacher", "DOS Secular", "DOS Theology", "Class Teacher"],
-  },
-  {
-    icon: UserCheck,
-    label: "Teachers & Staff",
-    id: "teachers",
-    href: "/admin/teachers",
-    roles: ["Administrator", "Head Teacher", "DOS Secular", "DOS Theology"],
-  },
-  {
-    icon: BookMarked,
-    label: "Classes",
-    id: "classes",
-    href: "/admin/classes",
-    roles: ["Administrator", "Head Teacher", "DOS Secular", "DOS Theology"],
-  },
-  {
-    icon: Library,
-    label: "Subjects",
-    id: "subjects",
-    href: "/admin/subjects",
-    roles: ["Administrator", "Head Teacher", "DOS Secular", "DOS Theology"],
-  },
-  {
     icon: ScrollText,
     label: "Secular Hub",
     id: "secular-hub",
@@ -138,7 +110,7 @@ export const ROLE_GATED_NAV_ITEMS: NavItemConfig[] = [
     department: "secular",
   },
   {
-    icon: ScrollText,
+    icon: BookOpen,
     label: "Theology Hub",
     id: "theology-hub",
     href: "/admin/theology-hub",
@@ -146,31 +118,10 @@ export const ROLE_GATED_NAV_ITEMS: NavItemConfig[] = [
     department: "theology",
   },
   {
-    icon: Shield,
-    label: "Activity Log",
-    id: "activity",
-    href: "/admin/activity",
-    roles: ["Administrator", "Head Teacher", "DOS Secular", "DOS Theology"],
-  },
-  {
     icon: UserCheck,
-    label: "Invites",
-    id: "invites",
-    href: "/admin/invites",
-    roles: ["Administrator", "Head Teacher", "DOS Secular", "DOS Theology"],
-  },
-  {
-    icon: Upload,
-    label: "Uploads",
-    id: "uploads",
-    href: "/admin/upload",
-    roles: ["Administrator", "Head Teacher"],
-  },
-  {
-    icon: Settings,
-    label: "Settings",
-    id: "settings",
-    href: "/admin/settings",
+    label: "Teachers & Staff",
+    id: "teachers",
+    href: "/admin/teachers",
     roles: ["Administrator", "Head Teacher", "DOS Secular", "DOS Theology"],
   },
 ];
@@ -325,7 +276,7 @@ export function AppSidebar() {
   const [rawSubject, setRawSubject] = React.useState<string>("");
   const [userName, setUserName] = React.useState<string>("Staff");
   const [accentColor, setAccentColor] = React.useState<string>("#059669");
-  const [schoolName, setSchoolName] = React.useState<string>("Jiddah Smart");
+  const [schoolName, setSchoolName] = React.useState<string>("JIDDAH ISLAMIC SCHOOLS");
   const [sidebarDark, setSidebarDark] = React.useState<boolean>(true);
 
   React.useEffect(() => {
@@ -362,7 +313,8 @@ export function AppSidebar() {
           setAccentColor(data.theme_color);
         }
         if (data.school_name || data.name) {
-          setSchoolName(data.school_name || data.name);
+          const raw = data.school_name || data.name;
+          setSchoolName(raw && !raw.toLowerCase().includes('nursery and primary') ? String(raw).toUpperCase() : 'JIDDAH ISLAMIC SCHOOLS');
         }
       })
       .catch(() => {});
@@ -420,18 +372,18 @@ export function AppSidebar() {
             <div className="relative shrink-0">
               <div
                 className={cn(
-                  "flex items-center justify-center size-9 rounded-xl overflow-hidden bg-white shadow-xs",
-                  sidebarDark ? "ring-1 ring-white/15" : "ring-1 ring-stone-200"
+                  "flex items-center justify-center size-9 rounded-xl overflow-hidden bg-transparent shadow-xs",
+                  sidebarDark ? "ring-1 ring-white/10" : "ring-1 ring-stone-200"
                 )}
               >
                 <img
-                  src="/school_budge.jpeg"
+                  src="/school_logo.svg"
                   alt="School Badge"
                   width="36"
                   height="36"
                   loading="lazy"
                   decoding="async"
-                  className="object-contain w-full h-full p-0.5"
+                  className="object-contain w-full h-full"
                 />
               </div>
             </div>
@@ -446,10 +398,10 @@ export function AppSidebar() {
                 >
                   <p
                     className={cn(
-                      "font-bold tracking-tight truncate max-w-[165px]",
+                      "font-extrabold tracking-tight truncate max-w-[165px] uppercase",
                       sidebarDark ? "text-white" : "text-[#1C1917]"
                     )}
-                    style={{ fontSize: "0.86rem", lineHeight: 1.2 }}
+                    style={{ fontSize: "0.78rem", lineHeight: 1.2 }}
                   >
                     {schoolName}
                   </p>
@@ -506,130 +458,128 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      {/* Footer - User profile */}
+      {/* Footer - User profile with Gemini-style Settings Gear */}
       <SidebarFooter
         className={cn(
-          "p-3 pb-4 border-r border-t shadow-none z-20 transition-colors",
+          "p-2.5 pb-3 border-r border-t shadow-none z-20 transition-colors",
           sidebarDark
             ? "bg-[#0B1120] border-[#1E293B] border-t-[#1E293B]"
             : "bg-[#FAF7F2] border-[#E7E2D7] border-t-[#E7E2D7]/70"
         )}
       >
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              data-testid="sidebar-profile-trigger"
-              aria-label="User profile menu"
-              className={cn(
-                "w-full min-h-[44px] text-left flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-colors duration-200 bg-transparent border-0",
-                sidebarDark ? "hover:bg-[#1E293B]" : "hover:bg-[#F3EFE6]",
-                collapsed && "justify-center"
-              )}
-            >
-              <div className="relative shrink-0">
-                <div
-                  className="flex items-center justify-center size-9 rounded-xl text-white font-bold tracking-wider"
-                  style={{
-                    backgroundColor: sidebarDark ? "#059669" : accentColor,
-                    fontSize: "0.75rem",
-                  }}
-                >
-                  {userName
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")
-                    .slice(0, 2)
-                    .toUpperCase() || userName.slice(0, 2).toUpperCase()}
-                </div>
-                <div
-                  className={cn(
-                    "absolute -bottom-0.5 -right-0.5 size-3 rounded-full bg-emerald-500 border-2",
-                    sidebarDark ? "border-[#0B1120]" : "border-[#FAF7F2]"
-                  )}
-                />
-              </div>
-              <AnimatePresence>
-                {!collapsed && (
-                  <motion.div
-                    initial={{ opacity: 0, width: 0 }}
-                    animate={{ opacity: 1, width: "auto" }}
-                    exit={{ opacity: 0, width: 0 }}
-                    transition={{ duration: 0.15 }}
-                    className="flex-1 min-w-0 text-left overflow-hidden whitespace-nowrap"
+        <div className="flex items-center gap-1.5 w-full">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                data-testid="sidebar-profile-trigger"
+                aria-label="User profile menu"
+                className={cn(
+                  "flex-1 min-w-0 min-h-[44px] text-left flex items-center gap-2.5 p-1.5 rounded-xl cursor-pointer transition-colors duration-200 bg-transparent border-0",
+                  sidebarDark ? "hover:bg-[#1E293B]" : "hover:bg-[#F3EFE6]",
+                  collapsed && "justify-center"
+                )}
+              >
+                <div className="relative shrink-0">
+                  <div
+                    className="flex items-center justify-center size-9 rounded-xl text-white font-bold tracking-wider"
+                    style={{
+                      backgroundColor: sidebarDark ? "#059669" : accentColor,
+                      fontSize: "0.75rem",
+                    }}
                   >
+                    {userName
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")
+                      .slice(0, 2)
+                      .toUpperCase() || userName.slice(0, 2).toUpperCase()}
+                  </div>
+                  <div
+                    className={cn(
+                      "absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full bg-emerald-500 border-2",
+                      sidebarDark ? "border-[#0B1120]" : "border-[#FAF7F2]"
+                    )}
+                  />
+                </div>
+                {!collapsed && (
+                  <div className="flex-1 min-w-0 text-left overflow-hidden">
                     <p
                       className={cn(
-                        "font-bold truncate",
+                        "font-bold truncate text-xs",
                         sidebarDark ? "text-white" : "text-[#1C1917]"
                       )}
-                      style={{ fontSize: "0.82rem", lineHeight: 1.3 }}
                     >
                       {userName}
                     </p>
                     <p
-                      className="font-semibold truncate"
-                      style={{
-                        fontSize: "0.7rem",
-                        lineHeight: 1.3,
-                        color: sidebarDark ? "#34D399" : accentColor,
-                      }}
+                      className="font-medium truncate text-[11px] text-emerald-400"
                     >
                       {rawRoleDisplay || canonicalRole}
                     </p>
-                  </motion.div>
+                  </div>
                 )}
-              </AnimatePresence>
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            side="top"
-            align="center"
-            sideOffset={12}
-            className="w-56 bg-[#FAF7F2] border-[#E7E2D7] text-[#1C1917] z-[100] shadow-xl"
-          >
-            <DropdownMenuLabel className="font-normal p-3">
-              <div className="flex flex-col space-y-1">
-                <p className="text-sm font-bold text-[#1C1917]">{userName}</p>
-                <p className="text-xs text-[#78716C]">{rawRoleDisplay || canonicalRole}</p>
-              </div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator className="bg-[#E7E2D7]" />
-            <DropdownMenuItem asChild>
-              <Link href="/admin/notifications" className="min-h-[40px] cursor-pointer focus:bg-stone-200/70 py-2">
-                <User className="mr-2 h-4 w-4 text-stone-500" />
-                <span>My Profile &amp; Alerts</span>
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={async () => {
-                const supabase = createClient();
-                await supabase.auth.updateUser({ data: { tour_completed: false } });
-                window.location.reload();
-              }}
-              className="min-h-[40px] cursor-pointer focus:bg-stone-200/70 py-2"
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              side={collapsed ? "right" : "top"}
+              align="end"
+              className={cn(
+                "w-56 p-1.5 rounded-xl shadow-2xl border font-sans z-[100]",
+                sidebarDark
+                  ? "bg-[#0F172A] border-[#1E293B] text-white"
+                  : "bg-white border-[#E7E2D7] text-[#1C1917]"
+              )}
             >
-              <BookOpen className="mr-2 h-4 w-4 text-stone-500" />
-              <span>Replay Product Tour</span>
-            </DropdownMenuItem>
-            {!isTeacherOnly && (
+              <DropdownMenuLabel className="px-2.5 py-1.5 text-xs font-bold text-stone-400 uppercase tracking-wider">
+                My Account
+              </DropdownMenuLabel>
               <DropdownMenuItem asChild>
-                <Link href="/admin/settings" className="min-h-[40px] cursor-pointer focus:bg-stone-200/70 py-2">
-                  <Settings className="mr-2 h-4 w-4 text-stone-500" />
-                  <span>Settings</span>
+                <Link
+                  href="/admin/settings"
+                  className="flex items-center gap-2 px-2.5 py-2 text-xs font-semibold rounded-lg hover:bg-emerald-500/10 hover:text-emerald-500 cursor-pointer"
+                >
+                  <Settings className="w-4 h-4 text-emerald-500" />
+                  School Settings
                 </Link>
               </DropdownMenuItem>
-            )}
-            <DropdownMenuSeparator className="bg-[#E7E2D7]" />
-            <DropdownMenuItem
-              onClick={handleLogout}
-              className="min-h-[40px] text-rose-700 focus:text-rose-800 focus:bg-rose-50 cursor-pointer py-2"
+              <DropdownMenuItem asChild>
+                <Link
+                  href="/admin/activity"
+                  className="flex items-center gap-2 px-2.5 py-2 text-xs font-semibold rounded-lg hover:bg-emerald-500/10 hover:text-emerald-500 cursor-pointer"
+                >
+                  <Shield className="w-4 h-4 text-amber-500" />
+                  Activity Log
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className={sidebarDark ? "bg-[#1E293B]" : "bg-[#E7E2D7]"} />
+              <DropdownMenuItem
+                onClick={handleLogout}
+                className="flex items-center gap-2 px-2.5 py-2 text-xs font-semibold rounded-lg text-rose-500 hover:bg-rose-500/10 cursor-pointer"
+              >
+                <LogOut className="w-4 h-4" />
+                Sign Out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Quick Settings Gear Icon (Gemini Style) */}
+          {!collapsed && (
+            <Link
+              href="/admin/settings"
+              title="Settings"
+              aria-label="Settings"
+              className={cn(
+                "size-8 rounded-lg flex items-center justify-center shrink-0 transition-all cursor-pointer",
+                sidebarDark
+                  ? "text-stone-400 hover:text-white hover:bg-white/10"
+                  : "text-stone-500 hover:text-stone-900 hover:bg-stone-200/60"
+              )}
             >
-              <LogOut className="mr-2 h-4 w-4" />
-              <span>Log out</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              <Settings className="w-4 h-4" />
+            </Link>
+          )}
+        </div>
       </SidebarFooter>
     </Sidebar>
   );

@@ -21,7 +21,12 @@ export function FloatingControls({
   activeIndex = 0,
   onNavigate,
 }: FloatingControlsProps) {
-  const [isMinimized, setIsMinimized] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 768;
+    }
+    return false;
+  });
   const canPrev = activeIndex > 0;
   const canNext = activeIndex < totalReports - 1;
 
@@ -30,32 +35,35 @@ export function FloatingControls({
       <motion.button
         type="button"
         onClick={() => setIsMinimized(false)}
-        className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-50 flex items-center gap-1.5 px-3.5 py-2 rounded-full shadow-2xl bg-stone-900/95 text-white border border-white/20 text-xs font-bold backdrop-blur-md cursor-pointer hover:bg-stone-800 transition"
-        title="Expand zoom controls"
-        aria-label="Expand zoom controls"
+        className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-50 flex items-center gap-2 px-3.5 py-2 rounded-full shadow-2xl bg-stone-900/95 text-white border border-white/20 text-xs font-bold backdrop-blur-md cursor-pointer hover:bg-stone-800 active:scale-95 transition"
+        title="Open zoom and page controls"
+        aria-label="Open zoom and page controls"
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
       >
-        <Maximize2 size={13} className="text-amber-400" />
+        <Maximize2 size={13} className="text-amber-400 shrink-0" />
         <span>{Math.round(zoom * 100)}%</span>
+        {totalReports > 1 && (
+          <span className="text-[10px] text-amber-300 font-mono">
+            {activeIndex + 1}/{totalReports}
+          </span>
+        )}
       </motion.button>
     );
   }
 
   return (
     <motion.div
-      className="fixed bottom-20 md:bottom-5 left-1/2 flex items-center gap-1 rounded-2xl shadow-2xl print:hidden tabular-nums max-w-[95vw] overflow-x-auto"
+      className="fixed bottom-20 md:bottom-5 left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-2xl shadow-2xl print:hidden tabular-nums max-w-[94vw] overflow-x-auto z-50"
       style={{
-        transform: 'translateX(-50%)',
         background: 'rgba(28,25,23,0.95)',
         backdropFilter: 'blur(12px)',
-        border: '1px solid rgba(255,255,255,0.12)',
+        border: '1px solid rgba(255,255,255,0.14)',
         padding: '4px 8px',
-        zIndex: 50,
       }}
       initial={{ y: 20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      transition={{ delay: 0.2, type: 'spring', stiffness: 300, damping: 28 }}
+      transition={{ delay: 0.1, type: 'spring', stiffness: 300, damping: 28 }}
     >
       <AnimatePresence>
         {totalReports > 1 && (

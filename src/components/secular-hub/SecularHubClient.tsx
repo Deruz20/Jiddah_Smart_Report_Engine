@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, memo, useCallback } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
-import { Loader2, ScrollText, BookOpen, Award, LayoutDashboard, SearchX, Printer, FileSpreadsheet, Download, Layers } from 'lucide-react'
+import { Loader2, ScrollText, BookOpen, Award, LayoutDashboard, SearchX, Printer, FileSpreadsheet, Download, Layers, ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { generateSecularAssessmentCSV, generateSecularAnalysisCSV, generateSecularTopStudentsCSV } from '@/utils/csvExport'
@@ -487,44 +487,53 @@ export default function SecularHubClient({
                 {/* Term Selector */}
                 <div>
                   <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1">Academic Term</label>
-                  <select
-                    className="w-full min-h-[42px] px-2.5 py-1.5 border border-stone-200 rounded-xl bg-[#F8FAFC] text-stone-900 text-xs font-semibold outline-none focus:border-[#059669]"
-                    value={activeTermId}
-                    onChange={(e) => setActiveTermId(e.target.value)}
-                  >
-                    {terms.map(t => (
-                      <option key={t.id} value={t.id}>{t.label} ({t.academic_year})</option>
-                    ))}
-                  </select>
+                  <div className="relative flex items-center">
+                    <select
+                      className="w-full min-h-[42px] appearance-none pl-3 pr-8 py-2 border border-stone-200 hover:border-emerald-500/60 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/15 rounded-xl bg-slate-50/70 hover:bg-white text-stone-900 text-xs font-semibold outline-none transition cursor-pointer shadow-xs"
+                      value={activeTermId}
+                      onChange={(e) => setActiveTermId(e.target.value)}
+                    >
+                      {terms.map(t => (
+                        <option key={t.id} value={t.id}>{t.label} ({t.academic_year})</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="w-4 h-4 text-stone-400 absolute right-2.5 pointer-events-none" />
+                  </div>
                 </div>
 
                 {/* Contextual Selectors */}
                 {activeTab === 'assessment' ? (
                   <div>
-                    <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1">Class List</label>
-                    <select
-                      className="w-full min-h-[42px] px-2.5 py-1.5 border border-stone-200 rounded-xl bg-[#F8FAFC] text-stone-900 text-xs font-semibold outline-none focus:border-[#059669]"
-                      value={activeClassId}
-                      onChange={(e) => setActiveClassId(e.target.value)}
-                    >
-                      <option value="">-- Select a Class --</option>
-                      {circularClasses.map(t => (
-                        <option key={t.id} value={t.id}>{t.class_name}</option>
-                      ))}
-                    </select>
+                    <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1">Class Cohort</label>
+                    <div className="relative flex items-center">
+                      <select
+                        className="w-full min-h-[42px] appearance-none pl-3 pr-8 py-2 border border-stone-200 hover:border-emerald-500/60 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/15 rounded-xl bg-slate-50/70 hover:bg-white text-stone-900 text-xs font-semibold outline-none transition cursor-pointer shadow-xs truncate"
+                        value={activeClassId}
+                        onChange={(e) => setActiveClassId(e.target.value)}
+                      >
+                        <option value="">-- Select a Class --</option>
+                        {circularClasses.map(t => (
+                          <option key={t.id} value={t.id}>{t.class_name}</option>
+                        ))}
+                      </select>
+                      <ChevronDown className="w-4 h-4 text-stone-400 absolute right-2.5 pointer-events-none" />
+                    </div>
                   </div>
                 ) : (
                   <div>
                     <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1">Academic Level</label>
-                    <select
-                      className="w-full min-h-[42px] px-2.5 py-1.5 border border-stone-200 rounded-xl bg-[#F8FAFC] text-stone-900 text-xs font-semibold outline-none focus:border-[#059669]"
-                      value={activeLevel}
-                      onChange={(e) => setActiveLevel(e.target.value)}
-                    >
-                      <option value="nursery">Nursery Section</option>
-                      <option value="lower_primary">Lower Primary</option>
-                      <option value="upper_primary">Upper Primary</option>
-                    </select>
+                    <div className="relative flex items-center">
+                      <select
+                        className="w-full min-h-[42px] appearance-none pl-3 pr-8 py-2 border border-stone-200 hover:border-emerald-500/60 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/15 rounded-xl bg-slate-50/70 hover:bg-white text-stone-900 text-xs font-semibold outline-none transition cursor-pointer shadow-xs truncate"
+                        value={activeLevel}
+                        onChange={(e) => setActiveLevel(e.target.value)}
+                      >
+                        <option value="nursery">Nursery Section</option>
+                        <option value="lower_primary">Lower Primary</option>
+                        <option value="upper_primary">Upper Primary</option>
+                      </select>
+                      <ChevronDown className="w-4 h-4 text-stone-400 absolute right-2.5 pointer-events-none" />
+                    </div>
                   </div>
                 )}
 
@@ -535,21 +544,21 @@ export default function SecularHubClient({
                     <button
                       type="button"
                       onClick={() => setActiveTab('assessment')}
-                      className={`flex-1 min-h-[34px] px-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer ${activeTab === 'assessment' ? 'bg-[#059669] text-white shadow-xs' : 'text-stone-600 hover:text-stone-900'}`}
+                      className={`flex-1 min-h-[34px] px-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer ${activeTab === 'assessment' ? 'bg-[#059669] text-white shadow-xs' : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'}`}
                     >
                       <BookOpen size={12} /> Sheet
                     </button>
                     <button
                       type="button"
                       onClick={() => setActiveTab('analysis')}
-                      className={`flex-1 min-h-[34px] px-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer ${activeTab === 'analysis' ? 'bg-[#059669] text-white shadow-xs' : 'text-stone-600 hover:text-stone-900'}`}
+                      className={`flex-1 min-h-[34px] px-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer ${activeTab === 'analysis' ? 'bg-[#059669] text-white shadow-xs' : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'}`}
                     >
                       <ScrollText size={12} /> Analysis
                     </button>
                     <button
                       type="button"
                       onClick={() => setActiveTab('top_students')}
-                      className={`flex-1 min-h-[34px] px-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer ${activeTab === 'top_students' ? 'bg-[#059669] text-white shadow-xs' : 'text-stone-600 hover:text-stone-900'}`}
+                      className={`flex-1 min-h-[34px] px-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer ${activeTab === 'top_students' ? 'bg-[#059669] text-white shadow-xs' : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'}`}
                     >
                       <Award size={12} /> Top 10
                     </button>
@@ -560,16 +569,20 @@ export default function SecularHubClient({
                 <div className="col-span-2 sm:col-span-1">
                   <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1">Exam Phase</label>
                   <div className="flex p-1 bg-[#F1F5F9] border border-stone-200/80 rounded-xl">
-                    {(['bot', 'mot', 'eot'] as const).map((phaseKey) => (
-                      <button
-                        key={phaseKey}
-                        type="button"
-                        onClick={() => setExamPhase(phaseKey)}
-                        className={`flex-1 min-h-[34px] px-2 text-xs font-bold uppercase rounded-lg transition-all flex items-center justify-center cursor-pointer ${examPhase === phaseKey ? 'bg-[#0F172A] text-white shadow-xs' : 'text-stone-600 hover:text-stone-900'}`}
-                      >
-                        {phaseKey}
-                      </button>
-                    ))}
+                    {(['bot', 'mot', 'eot'] as const).map((phaseKey) => {
+                      const isActive = examPhase === phaseKey
+                      const activeColor = phaseKey === 'bot' ? 'bg-blue-600 text-white shadow-xs' : phaseKey === 'mot' ? 'bg-amber-500 text-stone-950 font-bold shadow-xs' : 'bg-[#059669] text-white font-bold shadow-xs'
+                      return (
+                        <button
+                          key={phaseKey}
+                          type="button"
+                          onClick={() => setExamPhase(phaseKey)}
+                          className={`flex-1 min-h-[34px] px-2 text-xs font-bold uppercase rounded-lg transition-all flex items-center justify-center cursor-pointer ${isActive ? activeColor : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'}`}
+                        >
+                          {phaseKey}
+                        </button>
+                      )
+                    })}
                   </div>
                 </div>
               </div>

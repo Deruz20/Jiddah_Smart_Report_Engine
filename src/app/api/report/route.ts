@@ -18,8 +18,10 @@ import {
   getHeadTeacherComment,
 } from '@/lib/grading'
 import { resolveSectionType } from '@/lib/section-type'
+import { canAccessClass } from '@/lib/teacher-access'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { evaluateCriteria, GradingCriterion } from '@/lib/grading-engine'
+import { fetchMergedSchoolSettings } from '@/lib/school-settings-helper'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -62,6 +64,9 @@ export async function GET(request: NextRequest) {
   if (!['bot', 'mot', 'eot'].includes(score_type)) {
     return withCors(request, NextResponse.json({ error: 'score_type must be bot, mot, or eot' }, { status: 400 }))
   }
+  if (!['secular', 'theology'].includes(curriculum)) {
+    return withCors(request, NextResponse.json({ error: 'curriculum must be secular or theology' }, { status: 400 }))
+  }
 
   try {
     const cookieStore = await cookies()
@@ -81,7 +86,7 @@ export async function GET(request: NextRequest) {
     const { data: gradingCriteriaData } = await supabase.from('grading_criteria').select('*')
     const gradingCriteria = (gradingCriteriaData as GradingCriterion[]) || []
 
-    const { data: schoolSettings } = await supabase.from('school_settings').select('*').limit(1).single()
+    const schoolSettings = await fetchMergedSchoolSettings(supabase, gradingCriteria)
 
     const { data: enrollment, error: enrollmentError } = await supabase
       .from('enrollments')
@@ -99,6 +104,15 @@ export async function GET(request: NextRequest) {
 
     if (enrollmentError || !enrollment) {
       return withCors(request, NextResponse.json({ error: 'Enrollment not found' }, { status: 404 }))
+    }
+
+    const allowedReportClass = curriculum === 'theology'
+      ? canAccessClass(authRes, 'theology', enrollment.theology_class_id, enrollment.circular_class_id)
+      : curriculum === 'secular'
+        ? canAccessClass(authRes, 'circular', enrollment.circular_class_id)
+        : false
+    if (!allowedReportClass) {
+      return withCors(request, NextResponse.json({ error: 'Unauthorized: Report is outside your assigned classes or curriculum.' }, { status: 403 }))
     }
 
     const section = Array.isArray(enrollment.circular_classes)

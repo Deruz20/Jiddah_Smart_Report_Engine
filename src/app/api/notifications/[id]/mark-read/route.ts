@@ -2,7 +2,8 @@ import { createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
-import { getAuthenticatedUser, isNumericId, recordActivity } from '@/lib/api-server'
+import { getAuthenticatedUser } from '@/lib/api-server'
+import { markNotificationReadForUser } from '@/lib/notifications'
 
 export async function OPTIONS(request: NextRequest) {
   return apiOptions(request)
@@ -30,46 +31,8 @@ export async function PUT(
       return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
-    const idValue = isNumericId(notificationId) ? Number(notificationId) : notificationId
-
-    // 1. Verify notification exists and is accessible to caller
-    const { data: targetNotification, error: fetchError } = await supabase
-      .from('notifications')
-      .select('id, recipient_id')
-      .eq('id', idValue)
-      .or(`recipient_id.is.null,recipient_id.eq.${user.id}`)
-      .maybeSingle()
-
-    if (fetchError) {
-      console.error('notification mark-read fetch error:', fetchError.message)
-      return withCors(request, NextResponse.json({ error: fetchError.message }, { status: 500 }))
-    }
-
-    if (!targetNotification) {
-      return withCors(request, NextResponse.json({ error: 'Notification not found' }, { status: 404 }))
-    }
-
-    // 2. Private notification: mutate read = true on the user's specific row
-    if (targetNotification.recipient_id === user.id) {
-      const { error: updateError } = await supabase
-        .from('notifications')
-        .update({ read: true })
-        .eq('id', idValue)
-        .eq('recipient_id', user.id)
-
-      if (updateError) {
-        console.error('notification mark-read error:', updateError.message)
-        return withCors(request, NextResponse.json({ error: updateError.message }, { status: 500 }))
-      }
-    }
-
-    // 3. For broadcast notifications (recipient_id is null), do NOT mutate the shared row.
-    // Recording the event in activity_logs tracks this user's read state without corrupting other users.
-    await recordActivity(supabase, user.id, 'mark_notification_read', {
-      notificationId: idValue,
-    })
-
-    return withCors(request, NextResponse.json({ success: true }))
+    const result = await markNotificationReadForUser(supabase, user.id, notificationId)
+    return withCors(request, NextResponse.json(result.body, { status: result.status }))
   } catch (err: any) {
     console.error('notification mark-read exception:', err)
     return withCors(

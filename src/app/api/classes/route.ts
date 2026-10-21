@@ -2,6 +2,7 @@ import { createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
+import { classIdsForType } from '@/lib/teacher-access'
 
 export async function OPTIONS(request: NextRequest) {
   return apiOptions(request)
@@ -25,17 +26,23 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
     }
 
+    const allowedClassIds = classIdsForType(authRes, 'circular')
+    if (allowedClassIds !== null && allowedClassIds.length === 0) {
+      return withCors(request, NextResponse.json({ data: [] }))
+    }
+
     let query = supabase
       .from('circular_classes')
       .select('id, class_name, section')
       .order('section', { ascending: true })
       .order('class_name', { ascending: true })
 
-    if (authRes.filterByClasses && authRes.filterByClasses.length > 0) {
-      query = query.in('class_name', authRes.filterByClasses)
-    } else if (authRes.filterByClasses && authRes.filterByClasses.length === 0 && authRes.role !== 'Administrator' && authRes.role !== 'admin') {
-      // If a non-admin has NO classes assigned, they shouldn't see any classes
-      return withCors(request, NextResponse.json({ data: [] }))
+    if (allowedClassIds !== null) {
+      const validUuids = allowedClassIds.filter((c: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(c));
+      if (validUuids.length === 0) {
+        return withCors(request, NextResponse.json({ data: [] }))
+      }
+      query = query.in('id', validUuids)
     }
 
     const { data, error } = await query
@@ -59,12 +66,10 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
 
-    // Validate required fields
     if (!body.class_name || !body.section) {
       return withCors(request, NextResponse.json({ error: 'Class name and section are required' }, { status: 400 }))
     }
 
-    // Validate section
     const validSections = ['nursery', 'lower_primary', 'upper_primary']
     if (!validSections.includes(body.section)) {
       return withCors(request, NextResponse.json({ error: 'Invalid section' }, { status: 400 }))
@@ -73,7 +78,6 @@ export async function POST(request: NextRequest) {
     const cookieStore = await cookies()
     const supabase = createClient(cookieStore)
 
-    // Check for duplicate
     const { data: existingClasses } = await supabase
       .from('circular_classes')
       .select('id')

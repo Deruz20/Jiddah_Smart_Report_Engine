@@ -66,11 +66,18 @@ export default function ReportsClient({
     try {
       let done = 0;
       for (const student of targets) {
-        // Here we could hit /api/report to force generate/validate, 
-        // but for now we simulate validation as the Next.js page generates it on the fly anyway.
-        await new Promise(resolve => setTimeout(resolve, 300));
-        done += 1;
-        setGenerationProgress(Math.round((done / targets.length) * 100));
+        // Query /api/report to validate real report generation pipeline
+        try {
+          const res = await fetch(
+            `/api/report?enrollment_id=${student.enrollmentId}&term_id=${selectedTermId}&score_type=${reportType.toLowerCase()}`
+          );
+          if (res.ok) {
+            done += 1;
+          }
+        } catch {
+          // Continue progress on individual student error
+        }
+        setGenerationProgress(Math.round(((done + 1) / targets.length) * 100));
       }
       setGenerationDone(true);
       setValidatedCount(done);

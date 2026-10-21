@@ -7,11 +7,14 @@ import {
   getSubjectGradeNumber,
 } from '@/lib/grading'
 import { ReportContainer } from '@/components/reports/shared/ReportContainer'
-
+import { resolveReportBranding, resolveReportGradingBands } from '@/lib/school-settings-helper'
 import { getClassTeacherSignatureKey } from '@/utils/signatures'
 import { transliterateEnglishToArabic } from '@/lib/transliterate'
 
 export default function PrimaryEOTReport({ reportData }: any) {
+  const branding = resolveReportBranding(reportData)
+  const gradingBands = resolveReportGradingBands(reportData)
+
   const className =
     reportData?.class_name ||
     reportData?.class ||
@@ -63,7 +66,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
       const d = new Date(dateString)
       if (isNaN(d.getTime())) return dateString
       return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).toUpperCase()
-    } catch (error) {
+    } catch {
       return dateString
     }
   }
@@ -92,7 +95,13 @@ export default function PrimaryEOTReport({ reportData }: any) {
   )
 
   return (
-    <ReportContainer reportType="PrimaryEOTReport">
+    <ReportContainer
+      reportType="PrimaryEOTReport"
+      primaryFont={branding.primaryFont}
+      arabicFont={branding.arabicFont}
+      themePreset={branding.themePreset}
+      themeColor={branding.themeColor}
+    >
       <style
         dangerouslySetInnerHTML={{
           __html: `
@@ -127,7 +136,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
 
         /* ── PREMIUM DOUBLE BORDERS ── */
         .outer-border {
-          border: 4px solid #c2994c;
+          border: 4px solid var(--report-border-color, #c2994c);
           padding: 2px;
           flex: 1; 
           display: flex;
@@ -135,7 +144,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
         }
         
         .inner-border {
-          border: 1.5px solid #0f4d25;
+          border: 1.5px solid var(--report-primary-color, #0f4d25);
           padding: 6px 16px;
           flex: 1; 
           position: relative;
@@ -149,7 +158,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
           content: "";
           position: absolute;
           inset: 0;
-          background: url('/school_budge.jpeg') center center no-repeat;
+          background: url('${branding.logoUrl}') center center no-repeat;
           background-size: 420px;
           opacity: 0.04;
           pointer-events: none;
@@ -199,7 +208,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
         .bismillah {
           font-family: 'Amiri', serif;
           font-size: 24px;
-          color: #0f4d25;
+          color: var(--report-primary-color, #0f4d25);
           line-height: 1;
           margin-bottom: 2px;
         }
@@ -208,7 +217,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
           margin-bottom: 4px;
         }
         .report-badge {
-          background-color: #0f4d25;
+          background-color: var(--report-primary-color, #0f4d25);
           color: #ffffff;
           padding: 4px 18px;
           border-radius: 12px;
@@ -233,7 +242,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
         }
 
         .header-divider {
-          border-top: 1.5px solid #0f4d25;
+          border-top: 1.5px solid var(--report-primary-color, #0f4d25);
           margin: 6px 0;
           flex-shrink: 0;
         }
@@ -245,7 +254,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
           flex-shrink: 0;
         }
         .info-box {
-          border: 1.5px dashed #c2994c;
+          border: 1.5px dashed var(--report-border-color, #c2994c);
           border-radius: 8px;
           padding: 8px 16px; 
           flex: 1;
@@ -293,19 +302,18 @@ export default function PrimaryEOTReport({ reportData }: any) {
           flex: 1.5; 
           display: flex; 
           flex-direction: column; 
-          gap: 10px; /* Space between academic and grading table */
+          gap: 10px;
         }
         .table-col-theology { 
           flex: 1; 
           display: flex; 
           flex-direction: column; 
           direction: rtl; 
-          gap: 10px; /* Space between theology table and notes */
+          gap: 10px;
         }
 
-        /* Flawless Rounded Table Container Hack */
         .table-container {
-          border: 2px solid #c2994c;
+          border: 2px solid var(--report-border-color, #c2994c);
           border-radius: 8px;
           overflow: hidden;
           background: white;
@@ -324,24 +332,24 @@ export default function PrimaryEOTReport({ reportData }: any) {
 
         .table-container th, .table-container td {
           border: 1px solid #cbd5e1;
-          padding: 3px 4px; /* Internal cell padding */
+          padding: 3px 4px;
           text-align: center;
           font-size: 10px;
           vertical-align: middle;
         }
         
         .th-banner {
-          background-color: #c2994c;
+          background-color: var(--report-border-color, #c2994c);
           color: #ffffff;
           font-size: 12px;
           font-weight: 800;
           letter-spacing: 1px;
           text-transform: uppercase;
         }
-        .table-container thead th { border-color: #c2994c; }
+        .table-container thead th { border-color: var(--report-border-color, #c2994c); }
         
         .th-sub {
-          background-color: #0f4d25;
+          background-color: var(--report-primary-color, #0f4d25);
           color: #ffffff;
           font-size: 9.5px;
           font-weight: 700;
@@ -354,7 +362,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
         .subj-name {
           text-align: left;
           font-weight: 800;
-          color: #0f4d25;
+          color: var(--report-primary-color, #0f4d25);
           padding-left: 10px !important;
         }
         .grade-cell { font-weight: 800; color: #1e293b; }
@@ -363,16 +371,16 @@ export default function PrimaryEOTReport({ reportData }: any) {
 
         /* Grading Table */
         .grading-container {
-          flex-shrink: 0; /* Stop grading table from expanding */
+          flex-shrink: 0;
         }
-        .grade-head { background-color: #0f4d25; color: white; font-weight: 800; } 
+        .grade-head { background-color: var(--report-primary-color, #0f4d25); color: white; font-weight: 800; } 
         .marks-head { background-color: #475569; color: white; font-weight: 800; }
         .grade-val { background-color: #f1f5f9; font-weight: 700; }
 
         /* Theology Specifics */
         .theology-table th { font-family: 'Amiri', serif; font-size: 14px; }
         .theology-table td { font-family: 'Amiri', serif; font-size: 14px; font-weight: bold; }
-        .theology-subj { text-align: right; font-weight: 700; padding-right: 12px !important; color: #0f4d25; }
+        .theology-subj { text-align: right; font-weight: 700; padding-right: 12px !important; color: var(--report-primary-color, #0f4d25); }
         
         .theology-notes {
           font-family: 'Amiri', serif;
@@ -501,15 +509,16 @@ export default function PrimaryEOTReport({ reportData }: any) {
                 {/* ── HEADER ── */}
                 <header className="header-section">
                   <div className="header-left">
-                    <h1>JIDDAH ISLAMIC SCHOOLS</h1>
-                    <p>P.O.Box 34008 Kampala (u)</p>
-                    <p>Tel: +256 744950042 / 0705316961</p>
-                    <p style={{ textTransform: 'lowercase' }}>jiddahislamicnurseryandpri@gmail.com</p>
+                    <h1 data-testid="report-school-name">{branding.schoolName}</h1>
+                    <p data-testid="report-school-address">{branding.address}</p>
+                    <p data-testid="report-school-phone">Tel: {branding.phone}</p>
+                    <p style={{ textTransform: 'lowercase' }} data-testid="report-school-email">{branding.email}</p>
+                    {branding.motto ? <p style={{ fontStyle: 'italic' }} data-testid="report-school-motto">&ldquo;{branding.motto}&rdquo;</p> : null}
                   </div>
 
                   <div className="header-center">
                     <div className="bismillah">بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْم</div>
-                    <img src={reportData?.settings?.logo_url || "/school_budge.jpeg"} alt="School Badge" className="school-logo" />
+                    <img src={branding.logoUrl} alt="School Badge" className="school-logo" data-testid="report-school-logo" />
                     <div className="report-badge">
                       {isLower ? 'LOWER' : 'UPPER'} REPORT FORM – END OF TERM
                     </div>
@@ -564,7 +573,6 @@ export default function PrimaryEOTReport({ reportData }: any) {
                         <span className="info-label" style={{ marginRight: '4px' }}>ه‍</span>
                         <div className="info-value" style={{ flex: 0.4 }}>{toAr(toHijri(Number(reportData?.term?.academic_year)))}</div>
                       </div>
-                      {/* Position removed */}
                     </div>
                   )}
                 </section>
@@ -613,16 +621,20 @@ export default function PrimaryEOTReport({ reportData }: any) {
                       </table>
                     </div>
 
-                    <div className="table-container grading-container">
+                    <div className="table-container grading-container" data-testid="report-grading-scale">
                       <table>
                         <tbody>
                           <tr>
                             <th className="grade-head">-- GRADE --</th>
-                            <td className="grade-val">D1</td><td className="grade-val">D2</td><td className="grade-val">C3</td><td className="grade-val">C4</td><td className="grade-val">C5</td><td className="grade-val">C6</td><td className="grade-val">P7</td><td className="grade-val">P8</td><td className="grade-val">F9</td>
+                            {gradingBands.map((b) => (
+                              <td key={b.grade} className="grade-val">{b.grade}</td>
+                            ))}
                           </tr>
                           <tr>
                             <th className="marks-head border-t border-t-[#c2994c]">Marks</th>
-                            <td>85-100</td><td>75-84</td><td>70-74</td><td>60-69</td><td>55-59</td><td>50-54</td><td>40-49</td><td>35-39</td><td>0-34</td>
+                            {gradingBands.map((b) => (
+                              <td key={b.grade}>{b.range}</td>
+                            ))}
                           </tr>
                         </tbody>
                       </table>

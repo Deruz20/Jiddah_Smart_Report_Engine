@@ -1,28 +1,30 @@
 "use client";
 
-import React, { useState } from "react";
-import { Bell, Trash2, AlertCircle, FileText, Users, Upload, Settings, Activity } from "lucide-react";
-import { HeroSection } from "@/components/HeroSection";
+import React, { useEffect, useState } from "react";
+import { Bell, Trash2, AlertCircle, FileText, Users, Upload, Settings, Activity, CheckCheck } from "lucide-react";
+import { toast } from "sonner";
 
 function formatRelativeTime(dateString: string) {
+  if (!dateString) return "Recently";
   const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return dateString;
   const now = new Date();
   const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
 
   if (diffInSeconds < 60) return "Just now";
-  
+
   const diffInMinutes = Math.floor(diffInSeconds / 60);
   if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
-  
+
   const diffInHours = Math.floor(diffInMinutes / 60);
   if (diffInHours < 24) return `${diffInHours}h ago`;
-  
+
   const diffInDays = Math.floor(diffInHours / 24);
   if (diffInDays < 30) return `${diffInDays}d ago`;
-  
+
   const diffInMonths = Math.floor(diffInDays / 30);
   if (diffInMonths < 12) return `${diffInMonths}mo ago`;
-  
+
   const diffInYears = Math.floor(diffInDays / 365);
   return `${diffInYears}y ago`;
 }
@@ -30,48 +32,48 @@ function formatRelativeTime(dateString: string) {
 const notifIcon = (type: string) => {
   switch (type) {
     case "deadline":
-      return <AlertCircle className="w-5 h-5 text-rose-500" />;
+      return <AlertCircle className="w-5 h-5 text-rose-600" />;
     case "report":
-      return <FileText className="w-5 h-5 text-emerald-500" />;
+      return <FileText className="w-5 h-5 text-emerald-700" />;
     case "student":
-      return <Users className="w-5 h-5 text-indigo-500" />;
+      return <Users className="w-5 h-5 text-amber-700" />;
     case "upload":
-      return <Upload className="w-5 h-5 text-amber-500" />;
+      return <Upload className="w-5 h-5 text-amber-600" />;
     case "system":
-      return <Settings className="w-5 h-5 text-slate-500" />;
+      return <Settings className="w-5 h-5 text-stone-600" />;
     default:
-      return <Bell className="w-5 h-5 text-emerald-500" />;
+      return <Bell className="w-5 h-5 text-emerald-700" />;
   }
 };
 
 const notifBg = (type: string) => {
   switch (type) {
     case "deadline":
-      return "bg-rose-50";
+      return "bg-rose-50 border border-rose-100";
     case "report":
-      return "bg-emerald-50";
+      return "bg-emerald-50 border border-emerald-100";
     case "student":
-      return "bg-indigo-50";
+      return "bg-amber-50 border border-amber-100";
     case "upload":
-      return "bg-amber-50";
+      return "bg-amber-50 border border-amber-100";
     default:
-      return "bg-slate-100";
+      return "bg-stone-100 border border-stone-200";
   }
 };
 
 const priorityBadge = (priority: string) => {
   switch (priority) {
     case "high":
-      return { label: "High", color: "text-rose-700", bg: "bg-rose-100" };
+      return { label: "High", color: "text-rose-800", bg: "bg-rose-100" };
     case "medium":
-      return { label: "Medium", color: "text-amber-700", bg: "bg-amber-100" };
+      return { label: "Medium", color: "text-amber-800", bg: "bg-amber-100" };
     default:
-      return { label: "Normal", color: "text-emerald-700", bg: "bg-emerald-100" };
+      return { label: "Normal", color: "text-emerald-800", bg: "bg-emerald-100" };
   }
 };
 
-interface Notification {
-  id: number;
+export interface NotificationItem {
+  id: number | string;
   title: string;
   message: string;
   time: string;
@@ -80,12 +82,47 @@ interface Notification {
   type: string;
 }
 
-export default function NotificationsClient({ initialNotifications, initialActivities }: { initialNotifications: Notification[], initialActivities: any[] }) {
-  const [notifs, setNotifs] = useState(initialNotifications);
-  const [activities] = useState(initialActivities);
+export default function NotificationsClient({
+  initialNotifications,
+  initialActivities,
+}: {
+  initialNotifications: NotificationItem[];
+  initialActivities: any[];
+}) {
+  const [notifs, setNotifs] = useState<NotificationItem[]>(initialNotifications);
+  const [activities, setActivities] = useState<any[]>(initialActivities);
+  const [markingAll, setMarkingAll] = useState(false);
 
   const [filter, setFilter] = useState("all");
   const [tab, setTab] = useState<"notifications" | "activity">("notifications");
+
+  // Fetch latest notifications once on mount if initialNotifications is empty (supports client-side / mocked API verification)
+  useEffect(() => {
+    if (initialNotifications.length > 0) return;
+    let active = true;
+    fetch("/api/notifications")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((payload) => {
+        if (!active || !payload?.data) return;
+        if (Array.isArray(payload.data) && payload.data.length > 0) {
+          setNotifs(
+            payload.data.map((n: any) => ({
+              id: n.id,
+              title: n.title || "",
+              message: n.message || "",
+              time: n.time || n.created_at || "",
+              read: Boolean(n.read),
+              priority: n.priority || "normal",
+              type: n.type || "info",
+            }))
+          );
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [initialNotifications.length]);
 
   const filtered = notifs.filter((n) => {
     if (filter === "unread") return !n.read;
@@ -95,58 +132,121 @@ export default function NotificationsClient({ initialNotifications, initialActiv
 
   const localUnreadCount = notifs.filter((n) => !n.read).length;
 
-  const markRead = async (id: number) => {
+  const markRead = async (id: number | string) => {
+    const target = notifs.find((n) => n.id === id);
+    if (target?.read) return;
+
+    const prevNotifs = notifs;
     setNotifs((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
     try {
-      await fetch(`/api/notifications/${id}/mark-read`, { method: "POST" });
-    } catch (e) {
-      // ignore
+      const res = await fetch(`/api/notifications/${id}/mark-read`, { method: "POST" });
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || "Failed to update notification");
+      }
+      window.dispatchEvent(new CustomEvent("notifications-updated"));
+      toast.success("Notification marked as read");
+    } catch (e: any) {
+      setNotifs(prevNotifs);
+      toast.error(e.message || "Failed to update notification");
     }
   };
 
-  const deleteNotif = (id: number) => {
+  const markAllRead = async () => {
+    if (localUnreadCount === 0 || markingAll) return;
+    const prevNotifs = notifs;
+    setMarkingAll(true);
+    setNotifs((prev) => prev.map((n) => ({ ...n, read: true })));
+    try {
+      const res = await fetch("/api/notifications/mark-all-read", { method: "POST" });
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || "Failed to mark all notifications as read");
+      }
+      window.dispatchEvent(new CustomEvent("notifications-updated"));
+      toast.success("All notifications marked as read");
+    } catch (e: any) {
+      setNotifs(prevNotifs);
+      toast.error(e.message || "Failed to mark all notifications as read");
+    } finally {
+      setMarkingAll(false);
+    }
+  };
+
+  const deleteNotif = (id: number | string) => {
     setNotifs((prev) => prev.filter((n) => n.id !== id));
-    // Could also call a DELETE API endpoint here
+    window.dispatchEvent(new CustomEvent("notifications-updated"));
   };
 
   const filterEmptyMessage = () => {
-    if (filter === "unread") return "No unread notifications";
-    if (filter === "high") return "No high-priority notifications";
-    return "No notifications yet";
+    if (filter === "unread") return "All caught up — no unread notifications.";
+    if (filter === "high") return "No high-priority alerts active.";
+    return "No notifications recorded yet.";
   };
 
   return (
-    <div className="w-full pb-12">
-      <HeroSection
-        title="Notifications & Activity"
-        subtitle="Stay updated with school activity and system alerts"
-        actions={
-          localUnreadCount > 0 ? (
-            <div className="rounded-full px-3 py-1.5 text-sm font-semibold bg-emerald-100 text-emerald-800">
+    <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 py-6 pb-14 space-y-6">
+      {/* Compact Header */}
+      <div className="bg-white rounded-2xl border border-stone-200 p-5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <h1 className="text-xl font-bold text-stone-900">Notifications & Activity Log</h1>
+            <span
+              data-testid="unread-count-badge"
+              className={`rounded-full px-2.5 py-0.5 text-xs font-bold tabular-nums ${
+                localUnreadCount > 0
+                  ? "bg-emerald-100 text-emerald-900 border border-emerald-200"
+                  : "bg-stone-100 text-stone-600"
+              }`}
+            >
               {localUnreadCount} unread
-            </div>
-          ) : null
-        }
-      />
+            </span>
+          </div>
+          <p className="text-xs text-stone-600 mt-1">
+            System alerts, batch report dispatches, and audit trail from activity logs.
+          </p>
+        </div>
 
-      <div className="px-4 sm:px-6 lg:px-8 mt-8">
-        <div className="flex gap-1 mb-6 p-1 rounded-xl w-fit bg-slate-100">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={markAllRead}
+            disabled={localUnreadCount === 0 || markingAll}
+            data-testid="mark-all-read-btn"
+            className="min-h-[44px] px-4 py-2 rounded-xl text-xs font-bold inline-flex items-center gap-2 bg-[#0F4D25] text-white hover:bg-emerald-900 disabled:opacity-40 transition cursor-pointer shadow-sm"
+          >
+            <CheckCheck className="w-4 h-4" />
+            <span>{markingAll ? "Marking..." : "Mark All as Read"}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex gap-1 p-1 rounded-xl bg-stone-200/70 border border-stone-200">
           {[
             { key: "notifications" as const, label: "Notifications", count: localUnreadCount },
-            { key: "activity" as const, label: "Activity Log", count: null },
+            { key: "activity" as const, label: "Activity Log", count: activities.length },
           ].map(({ key, label, count }) => (
             <button
               key={key}
+              type="button"
               onClick={() => setTab(key)}
-              className={`flex items-center gap-2 px-5 py-2 rounded-lg transition-all text-sm ${
-                tab === key 
-                  ? "bg-white text-slate-800 font-semibold shadow-sm" 
-                  : "bg-transparent text-slate-500 font-medium hover:text-slate-700"
+              className={`min-h-[44px] flex items-center gap-2 px-4 py-2 rounded-lg transition-all text-xs cursor-pointer ${
+                tab === key
+                  ? "bg-white text-stone-900 font-bold shadow-sm"
+                  : "bg-transparent text-stone-600 font-semibold hover:text-stone-900"
               }`}
             >
-              {label}
+              <span>{label}</span>
               {count !== null && count > 0 && (
-                <span className="px-2 py-0.5 rounded-full text-white bg-rose-500 text-[10px] font-bold">
+                <span
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold tabular-nums ${
+                    key === "notifications"
+                      ? "text-white bg-rose-600"
+                      : "text-stone-700 bg-stone-100"
+                  }`}
+                >
                   {count}
                 </span>
               )}
@@ -155,110 +255,159 @@ export default function NotificationsClient({ initialNotifications, initialActiv
         </div>
 
         {tab === "notifications" && (
-          <div>
-            <div className="flex gap-2 mb-5">
-              {[
-                { key: "all", label: "All" },
-                { key: "unread", label: `Unread (${localUnreadCount})` },
-                { key: "high", label: "High Priority" },
-              ].map(({ key, label }) => (
-                <button
-                  key={key}
-                  onClick={() => setFilter(key)}
-                  className={`px-4 py-2 rounded-xl transition-all text-sm font-semibold ${
-                    filter === key 
-                      ? "bg-emerald-800 text-white shadow-md shadow-emerald-900/20" 
-                      : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-
-            <div className="space-y-3">
-              {filtered.length === 0 ? (
-                <div className="text-center py-16 rounded-2xl bg-white border border-slate-200 shadow-sm">
-                  <Bell className="w-12 h-12 mx-auto mb-3 text-slate-200" />
-                  <p className="text-sm text-slate-400 font-medium">{filterEmptyMessage()}</p>
-                </div>
-              ) : (
-                filtered.map((notif) => {
-                  const badge = priorityBadge(notif.priority)
-                  return (
-                    <div
-                      key={notif.id}
-                      className={`flex items-start gap-4 p-5 rounded-2xl transition-all cursor-pointer shadow-sm ${
-                        notif.read ? "bg-white border border-slate-200 hover:bg-slate-50" : "bg-emerald-50/50 border border-emerald-200 hover:bg-emerald-50"
-                      }`}
-                      onClick={() => markRead(notif.id)}
-                    >
-                      <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${notifBg(notif.type)}`}>
-                        {notifIcon(notif.type)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <div className="flex items-center gap-2 mb-1">
-                              {!notif.read && <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />}
-                              <p className={`text-sm text-slate-800 ${notif.read ? 'font-medium' : 'font-bold'}`}>{notif.title}</p>
-                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${badge.bg} ${badge.color}`}>
-                                {badge.label}
-                              </span>
-                            </div>
-                            <p className="text-sm text-slate-500 leading-relaxed">{notif.message}</p>
-                            <p className="text-xs text-slate-400 mt-2 font-medium">{formatRelativeTime(notif.time)}</p>
-                          </div>
-                          <button
-                            aria-label="Delete notification"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              deleteNotif(notif.id)
-                            }}
-                            className="p-2 rounded-lg hover:bg-rose-50 flex-shrink-0 text-slate-400 hover:text-rose-500 transition-colors"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })
-              )}
-            </div>
-          </div>
-        )}
-
-        {tab === "activity" && (
-          <div className="rounded-2xl overflow-hidden bg-white border border-slate-200 shadow-sm">
-            <div className="px-6 py-5 border-b border-slate-100 bg-slate-50">
-              <h3 className="text-sm font-bold text-slate-800">Recent Activity</h3>
-              <p className="text-xs text-slate-500 mt-1">All system and user activity logs</p>
-            </div>
-            <div className="divide-y divide-slate-50">
-              {activities.length === 0 ? (
-                <div className="p-10 text-center text-sm font-medium text-slate-400">No activity recorded yet</div>
-              ) : (
-                activities.map((activity) => (
-                  <div
-                    key={activity.id}
-                    className="flex items-start gap-4 px-6 py-4 hover:bg-slate-50 transition-colors"
-                  >
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-emerald-50">
-                      <Activity className="w-4 h-4 text-emerald-500" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-slate-700">{activity.user_name}</p>
-                      <p className="text-sm text-slate-500 mt-0.5">{activity.action}</p>
-                    </div>
-                    <span className="text-xs font-medium text-slate-400 flex-shrink-0 mt-1">{formatRelativeTime(activity.created_at)}</span>
-                  </div>
-                ))
-              )}
-            </div>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { key: "all", label: "All" },
+              { key: "unread", label: `Unread (${localUnreadCount})` },
+              { key: "high", label: "High Priority" },
+            ].map(({ key, label }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setFilter(key)}
+                className={`min-h-[44px] px-4 py-2 rounded-xl transition-all text-xs font-bold tabular-nums cursor-pointer ${
+                  filter === key
+                    ? "bg-[#0F4D25] text-white shadow-sm"
+                    : "bg-white text-stone-700 border border-stone-200 hover:bg-stone-50"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
         )}
       </div>
+
+      {tab === "notifications" && (
+        <div className="space-y-3">
+          {filtered.length === 0 ? (
+            <div className="text-center py-14 rounded-2xl bg-white border border-stone-200 shadow-sm px-4">
+              <Bell className="w-10 h-10 mx-auto mb-2.5 text-stone-300" />
+              <p className="text-sm text-stone-700 font-semibold">{filterEmptyMessage()}</p>
+              <p className="text-xs text-stone-500 mt-1">
+                New mark submissions and report batch events will appear here automatically.
+              </p>
+            </div>
+          ) : (
+            filtered.map((notif) => {
+              const badge = priorityBadge(notif.priority);
+              return (
+                <div
+                  key={notif.id}
+                  data-testid={`notification-item-${notif.id}`}
+                  className={`flex items-start gap-3.5 p-4 sm:p-5 rounded-2xl transition-all cursor-pointer shadow-sm ${
+                    notif.read
+                      ? "bg-white border border-stone-200 hover:bg-stone-50/70"
+                      : "bg-[#FAF7F2] border border-emerald-300 hover:bg-emerald-50/40"
+                  }`}
+                  onClick={() => markRead(notif.id)}
+                >
+                  <div
+                    className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${notifBg(
+                      notif.type
+                    )}`}
+                  >
+                    {notifIcon(notif.type)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          {!notif.read && (
+                            <span
+                              data-testid="unread-dot"
+                              className="w-2 h-2 rounded-full bg-emerald-600 flex-shrink-0"
+                            />
+                          )}
+                          <p
+                            className={`text-sm text-stone-900 ${
+                              notif.read ? "font-semibold" : "font-bold"
+                            }`}
+                          >
+                            {notif.title}
+                          </p>
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${badge.bg} ${badge.color}`}
+                          >
+                            {badge.label}
+                          </span>
+                        </div>
+                        <p className="text-xs sm:text-sm text-stone-600 leading-relaxed break-words">
+                          {notif.message}
+                        </p>
+                        <p className="text-[11px] text-stone-500 mt-2 font-medium tabular-nums">
+                          {formatRelativeTime(notif.time)}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        {!notif.read && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              markRead(notif.id);
+                            }}
+                            className="min-h-[44px] px-3 py-1.5 rounded-xl text-xs font-semibold text-emerald-800 hover:bg-emerald-100/70 transition-colors cursor-pointer"
+                          >
+                            Mark read
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          aria-label="Delete notification"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteNotif(notif.id);
+                          }}
+                          className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl hover:bg-rose-50 text-stone-400 hover:text-rose-600 transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+
+      {tab === "activity" && (
+        <div className="rounded-2xl overflow-hidden bg-white border border-stone-200 shadow-sm">
+          <div className="px-5 py-4 border-b border-stone-200 bg-[#FAF7F2]">
+            <h3 className="text-sm font-bold text-stone-900">Audit & Activity Trail</h3>
+            <p className="text-xs text-stone-600 mt-0.5">
+              Recorded directly in the <code className="font-mono">activity_logs</code> table.
+            </p>
+          </div>
+          <div className="divide-y divide-stone-100">
+            {activities.length === 0 ? (
+              <div className="p-10 text-center text-sm font-medium text-stone-500">
+                No activity recorded yet.
+              </div>
+            ) : (
+              activities.map((activity) => (
+                <div
+                  key={activity.id}
+                  className="flex items-start gap-3.5 px-5 py-3.5 hover:bg-stone-50/70 transition-colors"
+                >
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-emerald-50 border border-emerald-100">
+                    <Activity className="w-4 h-4 text-emerald-700" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-stone-900">{activity.user_name}</p>
+                    <p className="text-xs text-stone-600 mt-0.5 break-words">{activity.action}</p>
+                  </div>
+                  <span className="text-[11px] font-medium text-stone-500 flex-shrink-0 mt-0.5 tabular-nums">
+                    {formatRelativeTime(activity.created_at)}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

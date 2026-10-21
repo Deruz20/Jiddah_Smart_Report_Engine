@@ -2,6 +2,8 @@ import { createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
+import { verifyDataAccess } from '@/lib/auth-server'
+import { classIdsForType } from '@/lib/teacher-access'
 
 export async function OPTIONS(request: NextRequest) {
   return apiOptions(request)
@@ -27,14 +29,17 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
-    const { verifyDataAccess } = await import('@/lib/auth-server')
     const authRes = await verifyDataAccess(supabase, user, 'read', null, 'theology')
     if (!authRes.isAuthorized) {
       return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
     }
 
-    // 1. Fetch active enrollments with their theology class and student details
-    const { data: enrollments, error: enrollmentsError } = await supabase
+    const allowedTheologyIds = classIdsForType(authRes, 'theology')
+    if (allowedTheologyIds !== null && allowedTheologyIds.length === 0) {
+      return withCors(request, NextResponse.json({ enrollments: [], marks: [], subjects: [] }))
+    }
+
+    let enrollmentsQuery = supabase
       .from('enrollments')
       .select(`
         id,
@@ -47,11 +52,25 @@ export async function GET(request: NextRequest) {
       .not('theology_class_id', 'is', null)
       .eq('is_active', true)
 
-    if (enrollmentsError) throw enrollmentsError
+    if (allowedTheologyIds !== null) {
+      enrollmentsQuery = enrollmentsQuery.in('theology_class_id', allowedTheologyIds)
+    }
 
-    const enrollmentIds = enrollments.map(e => e.id)
+    const [enrollmentsRes, subjectsRes] = await Promise.all([
+      enrollmentsQuery,
+      supabase
+        .from('theology_subjects')
+        .select('id, subject_name_arabic, level')
+        .order('sort_order', { ascending: true }),
+    ])
 
-    // 2. Fetch marks for these enrollments for the given term
+    if (enrollmentsRes.error) throw enrollmentsRes.error
+    if (subjectsRes.error) throw subjectsRes.error
+
+    const enrollments = enrollmentsRes.data ?? []
+    const subjects = subjectsRes.data ?? []
+    const enrollmentIds = enrollments.map((e) => e.id)
+
     let marks: any[] = []
     if (enrollmentIds.length > 0) {
       const { data: marksData, error: marksError } = await supabase
@@ -67,22 +86,17 @@ export async function GET(request: NextRequest) {
         .in('enrollment_id', enrollmentIds)
 
       if (marksError) throw marksError
-      marks = marksData
+      marks = marksData ?? []
     }
 
-    // 3. Fetch subjects
-    const { data: subjects, error: subjectsError } = await supabase
-      .from('theology_subjects')
-      .select('id, subject_name_arabic, level')
-
-    if (subjectsError) throw subjectsError
-
-    return withCors(request, NextResponse.json({
-      enrollments,
-      marks,
-      subjects
-    }))
-
+    return withCors(
+      request,
+      NextResponse.json({
+        enrollments,
+        marks,
+        subjects,
+      })
+    )
   } catch (err) {
     console.error('Theology Hub API error:', err)
     return withCors(

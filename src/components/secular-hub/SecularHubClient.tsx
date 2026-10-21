@@ -5,38 +5,36 @@ import { motion, AnimatePresence } from 'motion/react'
 import { Loader2, ScrollText, BookOpen, Award, LayoutDashboard, SearchX, Printer, FileSpreadsheet, Download, Layers } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { generateSecularAssessmentCSV, generateAnalysisCSV, generateTopStudentsCSV, generateSecularAnalysisCSV, generateSecularTopStudentsCSV } from '@/utils/csvExport'
+import { generateSecularAssessmentCSV, generateSecularAnalysisCSV, generateSecularTopStudentsCSV } from '@/utils/csvExport'
 import { computeStandardRankings } from '@/lib/ranking'
 import { isGradableSubject, getSubjectGradeNumber, calculateAggregate, getDivision, getGradeDisplay, isCoreSubject, getNurseryGrade } from '@/lib/grading'
 import { TopToolbar } from '../figma-ui/TopToolbar'
 
-// Theme configuration for systematic color coding (Leaderboard style)
 const THEME = {
-  gold: 'text-amber-700 bg-amber-50 border-amber-200/80 dark:text-amber-400 dark:bg-amber-500/10 dark:border-amber-500/20 shadow-[0_2px_10px_rgba(245,158,11,0.15)]',
-  silver: 'text-indigo-700 bg-indigo-50 border-indigo-200/80 dark:text-indigo-400 dark:bg-indigo-500/10 dark:border-indigo-500/20 shadow-[0_2px_10px_rgba(99,102,241,0.12)]',
-  bronze: 'text-orange-700 bg-orange-50 border-orange-200/80 dark:text-orange-400 dark:bg-orange-500/10 dark:border-orange-500/20 shadow-[0_2px_10px_rgba(249,115,22,0.12)]',
-  neutral: 'text-slate-600 bg-slate-100 border-slate-200/80 dark:text-slate-400 dark:bg-slate-800/50 dark:border-slate-700/50',
-  danger: 'text-rose-700 bg-rose-50 border-rose-200/80 dark:text-rose-400 dark:bg-rose-500/10 dark:border-rose-500/20 shadow-[0_2px_10px_rgba(225,29,72,0.12)]',
+  gold: 'text-amber-800 bg-amber-50 border-amber-200',
+  silver: 'text-emerald-800 bg-emerald-50 border-emerald-200',
+  bronze: 'text-orange-800 bg-orange-50 border-orange-200',
+  neutral: 'text-stone-700 bg-stone-100 border-stone-200',
+  danger: 'text-rose-800 bg-rose-50 border-rose-200',
 }
 
 const getAchievementTier = (val: string | null | undefined): keyof typeof THEME => {
   if (!val || val === '-') return 'neutral'
-  if (val.startsWith('D') || val === 'I' || val === 'A') return 'gold' // Distinctions / Div I / Nursery A
-  if (val.startsWith('C') || val === 'II' || val === 'B') return 'silver' // Credits / Div II / Nursery B
-  if (val.startsWith('P') || val === 'III' || val === 'C') return 'bronze' // Passes / Div III / Nursery C
-  if (val === 'IV' || val === 'D') return 'neutral' // Div IV / Nursery D
-  return 'danger' // F9, U, X, Nursery E
+  if (val.startsWith('D') || val === 'I' || val === 'A') return 'gold'
+  if (val.startsWith('C') || val === 'II' || val === 'B') return 'silver'
+  if (val.startsWith('P') || val === 'III' || val === 'C') return 'bronze'
+  if (val === 'IV' || val === 'D') return 'neutral'
+  return 'danger'
 }
 
 const getBadgeStyles = (val: string | null | undefined) => THEME[getAchievementTier(val)]
 
 const getPositionStyles = (pos: number | string | null | undefined) => {
-  if (pos === 1 || pos === '1') return 'text-amber-500 dark:text-amber-400 font-extrabold text-[16px]' // Gold
-  if (pos === 2 || pos === '2') return 'text-slate-400 dark:text-slate-300 font-extrabold text-[15px]' // Silver
-  if (pos === 3 || pos === '3') return 'text-orange-600 dark:text-orange-400 font-extrabold text-[15px]' // Bronze
-  return 'text-slate-600 dark:text-slate-400 font-bold text-[14px]'
+  if (pos === 1 || pos === '1') return 'text-amber-600 font-extrabold text-[15px]'
+  if (pos === 2 || pos === '2') return 'text-stone-600 font-extrabold text-[15px]'
+  if (pos === 3 || pos === '3') return 'text-orange-700 font-extrabold text-[15px]'
+  return 'text-stone-700 font-bold text-[14px]'
 }
-
 
 type TermData = {
   id: string
@@ -52,9 +50,6 @@ type CircularClassData = {
   section: string
 }
 
-// ----------------------
-// Framer Motion Variants
-// ----------------------
 const tableVariants = {
   hidden: { opacity: 0 },
   visible: {
@@ -68,38 +63,13 @@ const rowVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.2 } }
 }
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.05, delayChildren: 0.1 }
-  }
-}
-
-const itemVariants: any = {
-  hidden: { opacity: 0, y: 15 },
-  visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
-}
-
-// ----------------------
-// Helper Components
-// ----------------------
-const RemarkBadge = memo(({ score }: { score: number }) => {
-  if (score >= 75) return <span className="inline-flex items-center justify-center px-3 py-1 text-[11px] uppercase tracking-wider font-bold rounded-full bg-emerald-100/80 text-emerald-700 border border-emerald-200/50 print:bg-transparent print:border-none print:text-black">Excellent</span>
-  if (score >= 65) return <span className="inline-flex items-center justify-center px-3 py-1 text-[11px] uppercase tracking-wider font-bold rounded-full bg-indigo-100/80 text-indigo-700 border border-indigo-200/50 print:bg-transparent print:border-none print:text-black">Very Good</span>
-  if (score >= 50) return <span className="inline-flex items-center justify-center px-3 py-1 text-[11px] uppercase tracking-wider font-bold rounded-full bg-blue-100/80 text-blue-700 border border-blue-200/50 print:bg-transparent print:border-none print:text-black">Good</span>
-  if (score >= 40) return <span className="inline-flex items-center justify-center px-3 py-1 text-[11px] uppercase tracking-wider font-bold rounded-full bg-amber-100/80 text-amber-700 border border-amber-200/50 print:bg-transparent print:border-none print:text-black">Fair</span>
-  return <span className="inline-flex items-center justify-center px-3 py-1 text-[11px] uppercase tracking-wider font-bold rounded-full bg-rose-100/80 text-rose-700 border border-rose-200/50 print:bg-transparent print:border-none print:text-black">Poor</span>
-})
-RemarkBadge.displayName = 'RemarkBadge'
-
 const RankBadge = memo(({ rank }: { rank: number | string }) => {
-  if (rank === '-') return <span className="text-slate-400 font-medium">-</span>;
-  const numRank = Number(rank);
-  if (numRank === 1) return <span className="inline-flex items-center justify-center w-7 h-7 text-xs font-bold rounded-full bg-amber-100 text-amber-600 ring-2 ring-amber-200/50 shadow-sm print:ring-0 print:bg-transparent print:text-black">1</span>;
-  if (numRank === 2) return <span className="inline-flex items-center justify-center w-7 h-7 text-xs font-bold rounded-full bg-slate-200 text-slate-600 ring-2 ring-slate-300/50 shadow-sm print:ring-0 print:bg-transparent print:text-black">2</span>;
-  if (numRank === 3) return <span className="inline-flex items-center justify-center w-7 h-7 text-xs font-bold rounded-full bg-orange-100 text-orange-700 ring-2 ring-orange-200/50 shadow-sm print:ring-0 print:bg-transparent print:text-black">3</span>;
-  return <span className="inline-flex items-center justify-center w-7 h-7 text-xs font-semibold rounded-full bg-slate-50 text-slate-600 border border-slate-200 print:border-none print:text-black">{rank}</span>;
+  if (rank === '-') return <span className="text-stone-400 font-medium">-</span>
+  const numRank = Number(rank)
+  if (numRank === 1) return <span className="inline-flex items-center justify-center w-7 h-7 text-xs font-bold rounded-full bg-amber-100 text-amber-700 ring-2 ring-amber-200/50 shadow-xs print:ring-0 print:bg-transparent print:text-black">1</span>
+  if (numRank === 2) return <span className="inline-flex items-center justify-center w-7 h-7 text-xs font-bold rounded-full bg-stone-200 text-stone-700 ring-2 ring-stone-300/50 shadow-xs print:ring-0 print:bg-transparent print:text-black">2</span>
+  if (numRank === 3) return <span className="inline-flex items-center justify-center w-7 h-7 text-xs font-bold rounded-full bg-orange-100 text-orange-800 ring-2 ring-orange-200/50 shadow-xs print:ring-0 print:bg-transparent print:text-black">3</span>
+  return <span className="inline-flex items-center justify-center w-7 h-7 text-xs font-semibold rounded-full bg-stone-50 text-stone-700 border border-stone-200 print:border-none print:text-black">{rank}</span>
 })
 RankBadge.displayName = 'RankBadge'
 
@@ -115,8 +85,8 @@ export default function SecularHubClient({
   const searchParams = useSearchParams()
 
   const [activeTermId, setActiveTermId] = useState<string>(searchParams.get('term_id') || terms.find(t => t.is_current)?.id || terms[0]?.id || '')
-  const [activeClassId, setActiveClassId] = useState<string>(searchParams.get('class_id') || '')
-  const [activeLevel, setActiveLevel] = useState<string>(searchParams.get('level') || 'nursery')
+  const [activeClassId, setActiveClassId] = useState<string>(searchParams.get('class_id') || circularClasses[0]?.id || '')
+  const [activeLevel, setActiveLevel] = useState<string>(searchParams.get('level') || circularClasses[0]?.section || 'nursery')
   const [activeTab, setActiveTab] = useState<'assessment' | 'analysis' | 'top_students'>((searchParams.get('tab') as any) || 'assessment')
   const [examPhase, setExamPhase] = useState<'bot' | 'mot' | 'eot'>((searchParams.get('exam_phase') as any) || 'eot')
 
@@ -130,7 +100,6 @@ export default function SecularHubClient({
     subjects: any[]
   } | null>(null)
 
-  // Fetch Data
   useEffect(() => {
     if (!activeTermId) return
 
@@ -138,10 +107,11 @@ export default function SecularHubClient({
       setIsLoading(true)
       try {
         const res = await fetch(`/api/secular-hub?term_id=${activeTermId}`)
-        if (!res.ok) throw new Error('Failed to fetch data')
+        const ct = res.headers.get('content-type') || ''
+        if (!res.ok || !ct.includes('application/json')) throw new Error('Failed to fetch data')
         const json = await res.json()
         setData(json)
-      } catch (err) {
+      } catch {
         toast.error('Failed to load secular data')
       } finally {
         setIsLoading(false)
@@ -151,7 +121,6 @@ export default function SecularHubClient({
     fetchData()
   }, [activeTermId])
 
-  // Sync URL State
   useEffect(() => {
     const params = new URLSearchParams(searchParams.toString())
     if (activeTermId) params.set('term_id', activeTermId)
@@ -163,7 +132,6 @@ export default function SecularHubClient({
     router.replace(`${pathname}?${params.toString()}`, { scroll: false })
   }, [activeTermId, activeClassId, activeLevel, activeTab, examPhase, pathname, router, searchParams])
 
-  // Process data for the Assessment Form
   const computeAssessmentDataForClass = useCallback((classId: string) => {
     if (!data || !classId) return { students: [], orderedSubjects: [] }
 
@@ -174,15 +142,13 @@ export default function SecularHubClient({
     const assessmentLevel = classInfo.section?.toLowerCase().replace(/\s+/g, '_') || ''
     const levelSubjects = data.subjects.filter(s => s.section?.toLowerCase() === classInfo.section?.toLowerCase())
 
-    // Filter out "Writing" for Top Class.
     const filteredSubjects = levelSubjects.filter(sub => {
       if (classInfo.class_name?.toLowerCase().includes('top') && sub.subject_name.toLowerCase().includes('writing')) {
-        return false;
+        return false
       }
-      return true;
-    });
+      return true
+    })
 
-    // Sort subjects alphabetically. No slicing or hardcoding.
     const orderedSubjects = [...filteredSubjects].sort((a, b) => a.subject_name.localeCompare(b.subject_name))
 
     const processed = classEnrollments.map(enrollment => {
@@ -203,7 +169,6 @@ export default function SecularHubClient({
           if (assessmentLevel === 'nursery') {
             const nGrade = getNurseryGrade(score)
             subjectGrades[sub.id] = nGrade.grade
-            // Using a dummy aggregate for compatibility
             subjectAggregates[sub.id] = nGrade.grade === 'A' ? 1 : nGrade.grade === 'B' ? 2 : nGrade.grade === 'C' ? 3 : nGrade.grade === 'D' ? 5 : 9
             if (isGradableSubject(sub.subject_name, 'nursery')) {
               total += score
@@ -255,7 +220,6 @@ export default function SecularHubClient({
 
   const assessmentData = useMemo(() => computeAssessmentDataForClass(activeClassId), [computeAssessmentDataForClass, activeClassId])
 
-  // Process data for the Analysis Form
   const analysisData = useMemo(() => {
     if (!data || !activeLevel) return []
     const classes = circularClasses.filter(c => c.section === activeLevel)
@@ -274,13 +238,12 @@ export default function SecularHubClient({
         ? { A: 0, B: 0, C: 0, D: 0, E: 0 }
         : { D1: 0, D2: 0, C3: 0, C4: 0, C5: 0, C6: 0, P7: 0, P8: 0, F9: 0 }
 
-      // Filter out "Writing" for Top Class.
       const clsOrderedSubjects = orderedSubjects.filter(sub => {
         if (cls.class_name?.toLowerCase().includes('top') && sub.subject_name.toLowerCase().includes('writing')) {
-          return false;
+          return false
         }
-        return true;
-      });
+        return true
+      })
 
       classEnrollments.forEach(e => {
         const eMarks = data.marks.filter(m => m.enrollment_id === e.id)
@@ -347,7 +310,6 @@ export default function SecularHubClient({
     })
   }, [data, activeLevel, circularClasses, examPhase])
 
-  // Process data for Top Students Form
   const topStudentsData = useMemo(() => {
     if (!data || !activeLevel) return []
     const classes = circularClasses.filter(c => c.section === activeLevel)
@@ -356,13 +318,12 @@ export default function SecularHubClient({
     const orderedSubjects = [...levelSubjects].sort((a, b) => a.subject_name.localeCompare(b.subject_name))
 
     return classes.map(cls => {
-      // Filter out "Writing" for Top Class.
       const clsOrderedSubjects = orderedSubjects.filter(sub => {
         if (cls.class_name?.toLowerCase().includes('top') && sub.subject_name.toLowerCase().includes('writing')) {
-          return false;
+          return false
         }
-        return true;
-      });
+        return true
+      })
 
       const classEnrollments = data.enrollments.filter(e => e.circular_class_id === cls.id)
       const students = classEnrollments.map(e => {
@@ -375,11 +336,11 @@ export default function SecularHubClient({
           const score = mark?.[scoreKey]
           if (score != null) {
             if (activeLevel === 'nursery') {
-               if (isGradableSubject(sub.subject_name, 'nursery')) {
-                 total += score
-               }
+              if (isGradableSubject(sub.subject_name, 'nursery')) {
+                total += score
+              }
             } else {
-               total += score
+              total += score
             }
             subjectScores[sub.id] = score
           }
@@ -387,7 +348,7 @@ export default function SecularHubClient({
         return {
           id: e.id,
           className: cls.class_name,
-          name: e.students.name || 'Unknown Student',
+          name: e.students?.name || 'Unknown Student',
           total: total > 0 ? total : null,
           subjectScores,
           rank: 0 as number | string
@@ -416,23 +377,21 @@ export default function SecularHubClient({
   }, [data, activeLevel, circularClasses, examPhase])
 
   const handlePrint = () => {
-    const originalTitle = document.title;
-    document.title = `Secular_Hub_${activeLevel}_${activeTab}_${new Date().toISOString().split('T')[0]}`.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_');
-    window.print();
-    document.title = originalTitle;
+    const originalTitle = document.title
+    document.title = `Secular_Hub_${activeLevel}_${activeTab}_${new Date().toISOString().split('T')[0]}`.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_')
+    window.print()
+    document.title = originalTitle
   }
 
   const handleBatchPrint = () => {
-    setIsBatchPrinting(true);
-    // Allow React time to render all the off-screen tables before opening the print dialog
+    setIsBatchPrinting(true)
     setTimeout(() => {
-      const originalTitle = document.title;
-      document.title = `Secular_Hub_${activeLevel}_Batch_${new Date().toISOString().split('T')[0]}`.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_');
-      window.print();
-      document.title = originalTitle;
-      // Remove the off-screen tables after printing
-      setIsBatchPrinting(false);
-    }, 1000);
+      const originalTitle = document.title
+      document.title = `Secular_Hub_${activeLevel}_Batch_${new Date().toISOString().split('T')[0]}`.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_')
+      window.print()
+      document.title = originalTitle
+      setIsBatchPrinting(false)
+    }, 1000)
   }
 
   const handleShare = async () => {
@@ -471,10 +430,8 @@ export default function SecularHubClient({
   }
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 dark:bg-[#0f172a] print:bg-white text-slate-900 dark:text-slate-100 font-sans">
-
-      {/* Enterprise Top Navigation using Theology Hub Component */}
-      <div className="print:hidden relative z-40 border-b border-slate-200/60 shadow-sm shrink-0">
+    <div className="flex flex-col h-full bg-[#F8FAFC] print:bg-white text-stone-900 font-sans tabular-nums">
+      <div className="print:hidden relative z-20 shrink-0">
         <TopToolbar
           printOptions={[
             { label: 'Print Current View', onClick: handlePrint, icon: <Printer size={14} /> },
@@ -506,11 +463,11 @@ export default function SecularHubClient({
           searchOpen={filtersOpen}
           onSearchToggle={() => setFiltersOpen(!filtersOpen)}
           title={
-            <div className="flex items-center gap-2 text-slate-800 dark:text-white">
-              <div className="p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded text-blue-600 dark:text-blue-400">
-                <LayoutDashboard size={18} />
+            <div className="flex items-center gap-2 text-stone-900">
+              <div className="p-1.5 bg-[#059669]/10 rounded-lg text-[#059669]">
+                <LayoutDashboard size={16} />
               </div>
-              <h1 className="text-[15px] font-semibold tracking-tight">Secular Hub</h1>
+              <h1 className="text-sm sm:text-[15px] font-bold tracking-tight">Secular Hub</h1>
             </div>
           }
         />
@@ -523,16 +480,15 @@ export default function SecularHubClient({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden bg-white dark:bg-[#1e293b] border-b border-slate-200/60 dark:border-slate-800 shadow-sm print:hidden shrink-0"
+            className="overflow-hidden bg-white border-b border-stone-200 shadow-xs print:hidden shrink-0"
           >
-            <div className="px-4 py-3 max-w-7xl mx-auto">
-              <div className="flex flex-wrap items-center gap-4">
-
+            <div className="px-3 sm:px-5 py-3 max-w-7xl mx-auto">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 items-end">
                 {/* Term Selector */}
-                <div className="flex-1 min-w-[200px]">
-                  <label className="block text-xs font-semibold text-slate-600 uppercase mb-2">Academic Term</label>
+                <div>
+                  <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1">Academic Term</label>
                   <select
-                    className="w-full px-4 py-2 border border-slate-200 rounded-xl bg-slate-50 focus:ring-2 focus:ring-blue-500 text-sm"
+                    className="w-full min-h-[42px] px-2.5 py-1.5 border border-stone-200 rounded-xl bg-[#F8FAFC] text-stone-900 text-xs font-semibold outline-none focus:border-[#059669]"
                     value={activeTermId}
                     onChange={(e) => setActiveTermId(e.target.value)}
                   >
@@ -542,62 +498,12 @@ export default function SecularHubClient({
                   </select>
                 </div>
 
-                {/* View Toggle */}
-                <div className="flex-col lg:col-span-5 min-w-[300px]">
-                  <label className="block text-xs font-semibold text-slate-600 uppercase mb-2">Dashboard View</label>
-                  <div className="flex overflow-x-auto no-scrollbar p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
-                    <button
-                      onClick={() => setActiveTab('assessment')}
-                      className={`flex-1 min-w-[120px] py-1.5 px-3 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 ${activeTab === 'assessment' ? 'bg-white shadow-sm text-blue-700' : 'text-slate-500 hover:text-slate-700'}`}
-                    >
-                      <BookOpen size={14} /> Assessment
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('analysis')}
-                      className={`flex-1 min-w-[120px] py-1.5 px-3 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 ${activeTab === 'analysis' ? 'bg-white shadow-sm text-blue-700' : 'text-slate-500 hover:text-slate-700'}`}
-                    >
-                      <ScrollText size={14} /> Analysis
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('top_students')}
-                      className={`flex-1 min-w-[120px] py-1.5 px-3 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 ${activeTab === 'top_students' ? 'bg-white shadow-sm text-blue-700' : 'text-slate-500 hover:text-slate-700'}`}
-                    >
-                      <Award size={14} /> Top Students
-                    </button>
-                  </div>
-                </div>
-
-                {/* Exam Phase Toggle */}
-                <div className="flex-col lg:col-span-2 min-w-[200px]">
-                  <label className="block text-xs font-semibold text-slate-600 uppercase mb-2">Exam Phase</label>
-                  <div className="flex p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
-                    <button
-                      onClick={() => setExamPhase('bot')}
-                      className={`flex-1 py-1.5 px-2 text-sm font-medium rounded-lg transition-all flex items-center justify-center ${examPhase === 'bot' ? 'bg-white shadow-sm text-blue-700' : 'text-slate-500 hover:text-slate-700'}`}
-                    >
-                      BOT
-                    </button>
-                    <button
-                      onClick={() => setExamPhase('mot')}
-                      className={`flex-1 py-1.5 px-2 text-sm font-medium rounded-lg transition-all flex items-center justify-center ${examPhase === 'mot' ? 'bg-white shadow-sm text-blue-700' : 'text-slate-500 hover:text-slate-700'}`}
-                    >
-                      MOT
-                    </button>
-                    <button
-                      onClick={() => setExamPhase('eot')}
-                      className={`flex-1 py-1.5 px-2 text-sm font-medium rounded-lg transition-all flex items-center justify-center ${examPhase === 'eot' ? 'bg-white shadow-sm text-blue-700' : 'text-slate-500 hover:text-slate-700'}`}
-                    >
-                      EOT
-                    </button>
-                  </div>
-                </div>
-
                 {/* Contextual Selectors */}
-                {activeTab === 'assessment' && (
-                  <div className="flex-1 min-w-[200px]">
-                    <label className="block text-xs font-semibold text-slate-600 uppercase mb-2">Class List</label>
+                {activeTab === 'assessment' ? (
+                  <div>
+                    <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1">Class List</label>
                     <select
-                      className="w-full px-4 py-2 border border-slate-200 rounded-xl bg-slate-50 focus:ring-2 focus:ring-blue-500 text-sm"
+                      className="w-full min-h-[42px] px-2.5 py-1.5 border border-stone-200 rounded-xl bg-[#F8FAFC] text-stone-900 text-xs font-semibold outline-none focus:border-[#059669]"
                       value={activeClassId}
                       onChange={(e) => setActiveClassId(e.target.value)}
                     >
@@ -607,13 +513,11 @@ export default function SecularHubClient({
                       ))}
                     </select>
                   </div>
-                )}
-
-                {(activeTab === 'analysis' || activeTab === 'top_students') && (
-                  <div className="flex-1 min-w-[200px]">
-                    <label className="block text-xs font-semibold text-slate-600 uppercase mb-2">Academic Level</label>
+                ) : (
+                  <div>
+                    <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1">Academic Level</label>
                     <select
-                      className="w-full px-4 py-2 border border-slate-200 rounded-xl bg-slate-50 focus:ring-2 focus:ring-blue-500 text-sm"
+                      className="w-full min-h-[42px] px-2.5 py-1.5 border border-stone-200 rounded-xl bg-[#F8FAFC] text-stone-900 text-xs font-semibold outline-none focus:border-[#059669]"
                       value={activeLevel}
                       onChange={(e) => setActiveLevel(e.target.value)}
                     >
@@ -623,6 +527,51 @@ export default function SecularHubClient({
                     </select>
                   </div>
                 )}
+
+                {/* View Toggle */}
+                <div className="col-span-2 sm:col-span-1">
+                  <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1">Dashboard View</label>
+                  <div className="flex p-1 bg-[#F1F5F9] border border-stone-200/80 rounded-xl">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('assessment')}
+                      className={`flex-1 min-h-[34px] px-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer ${activeTab === 'assessment' ? 'bg-[#059669] text-white shadow-xs' : 'text-stone-600 hover:text-stone-900'}`}
+                    >
+                      <BookOpen size={12} /> Sheet
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('analysis')}
+                      className={`flex-1 min-h-[34px] px-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer ${activeTab === 'analysis' ? 'bg-[#059669] text-white shadow-xs' : 'text-stone-600 hover:text-stone-900'}`}
+                    >
+                      <ScrollText size={12} /> Analysis
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('top_students')}
+                      className={`flex-1 min-h-[34px] px-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer ${activeTab === 'top_students' ? 'bg-[#059669] text-white shadow-xs' : 'text-stone-600 hover:text-stone-900'}`}
+                    >
+                      <Award size={12} /> Top 10
+                    </button>
+                  </div>
+                </div>
+
+                {/* Exam Phase Toggle */}
+                <div className="col-span-2 sm:col-span-1">
+                  <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1">Exam Phase</label>
+                  <div className="flex p-1 bg-[#F1F5F9] border border-stone-200/80 rounded-xl">
+                    {(['bot', 'mot', 'eot'] as const).map((phaseKey) => (
+                      <button
+                        key={phaseKey}
+                        type="button"
+                        onClick={() => setExamPhase(phaseKey)}
+                        className={`flex-1 min-h-[34px] px-2 text-xs font-bold uppercase rounded-lg transition-all flex items-center justify-center cursor-pointer ${examPhase === phaseKey ? 'bg-[#0F172A] text-white shadow-xs' : 'text-stone-600 hover:text-stone-900'}`}
+                      >
+                        {phaseKey}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           </motion.div>
@@ -630,436 +579,269 @@ export default function SecularHubClient({
       </AnimatePresence>
 
       {/* Main Content Area */}
-      <div className="flex-1 overflow-auto p-4 md:p-8 print:p-0">
+      <div className="flex-1 overflow-auto p-3 sm:p-6 md:p-8 print:p-0">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center h-full print:hidden">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-500 mb-4" />
-            <p className="text-slate-500 font-medium">Loading secular data...</p>
+            <Loader2 className="w-8 h-8 animate-spin text-[#059669] mb-3" />
+            <p className="text-stone-600 text-sm font-medium">Loading secular assessment data…</p>
           </div>
         ) : (!data || (!activeClassId && activeTab === 'assessment') || (!activeLevel && (activeTab === 'analysis' || activeTab === 'top_students'))) ? (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="flex flex-col items-center justify-center h-full text-center p-8 max-w-md mx-auto"
-          >
-            <div className="w-20 h-20 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center mb-6 ring-8 ring-blue-50/50 dark:ring-blue-900/10">
-              <SearchX className="w-10 h-10 text-blue-500 dark:text-blue-400" />
+          <div className="flex flex-col items-center justify-center h-full text-center p-6 max-w-md mx-auto">
+            <div className="w-16 h-16 bg-[#059669]/10 rounded-2xl flex items-center justify-center mb-4">
+              <SearchX className="w-8 h-8 text-[#059669]" />
             </div>
-            <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">No Data Selected</h3>
-            <p className="text-slate-500 dark:text-slate-400 leading-relaxed">
-              Please select {activeTab === 'assessment' ? 'a specific class' : 'an academic level'} from the control panel to view the reports.
+            <h3 className="text-lg font-bold text-stone-900 mb-1">No Cohort Selected</h3>
+            <p className="text-xs sm:text-sm text-stone-600">
+              Select {activeTab === 'assessment' ? 'a class' : 'an academic level'} above to load secular broadsheets.
             </p>
-          </motion.div>
+          </div>
         ) : (
           <div className="w-full max-w-7xl mx-auto print:max-w-[210mm] print:m-0 min-h-[297mm] print:min-h-0 report-container" data-report-orientation="portrait">
-
-            {/* Assessment Tab */}
             {activeTab === 'assessment' && (isBatchPrinting || activeClassId) && (
               <>
                 {(isBatchPrinting ? circularClasses : circularClasses.filter(c => c.id === activeClassId)).map((cls, classIdx, arr) => {
-                  const currentAssessmentData = isBatchPrinting ? computeAssessmentDataForClass(cls.id) : assessmentData;
-                  if (!currentAssessmentData || !currentAssessmentData.orderedSubjects) return null;
-                  
+                  const currentAssessmentData = isBatchPrinting ? computeAssessmentDataForClass(cls.id) : assessmentData
+                  if (!currentAssessmentData || !currentAssessmentData.orderedSubjects) return null
+
                   return (
                     <div key={cls.id} className={isBatchPrinting ? 'hidden print:block print:py-0 print:px-2 text-left' : 'print:py-0 print:px-2 text-left'} style={{ pageBreakAfter: isBatchPrinting && classIdx < arr.length - 1 ? 'always' : 'auto' }}>
-
-                {/* Print Header */}
-                <div className="text-center mb-8 hidden print:block">
-                  <h1 className="text-2xl font-extrabold text-slate-800 print:text-black mb-1 uppercase tracking-wide">Jiddah Islamic Schools</h1>
-                  <h3 className="text-xl font-bold mb-4 underline underline-offset-4 text-slate-700 print:text-black uppercase">
-                    {examPhase === 'bot' ? 'Beginning of Term Assessment Report' : examPhase === 'eot' ? 'End of Term Assessment Report' : 'Mid-Term Assessment Report'}
-                  </h3>
-                </div>
-
-                {/* Context Bar */}
-                <div className="flex justify-between items-center mb-6 font-semibold text-slate-700 print:text-black bg-white/50 print:bg-transparent px-4 py-3 rounded-xl border border-slate-200/50 print:border-none shadow-sm print:shadow-none">
-                  <div>
-                    <span className="uppercase text-[11px] tracking-wider text-slate-500 mr-2">Term:</span>
-                    <span className="text-blue-800 print:text-black font-bold">{terms.find(t => t.id === activeTermId)?.label}</span>
-                  </div>
-                  <div>
-                    <span className="uppercase text-[11px] tracking-wider text-slate-500 mr-2">Class:</span>
-                    <span className="text-blue-800 print:text-black font-bold">{cls.class_name}</span>
-                  </div>
-                  <div>
-                    <span className="uppercase text-[11px] tracking-wider text-slate-500 mr-2">Phase:</span>
-                    <span className="text-blue-800 print:text-black font-bold uppercase">{examPhase}</span>
-                  </div>
-                  <div>
-                    <span className="uppercase text-[11px] tracking-wider text-slate-500 mr-2">Year:</span>
-                    <span className="text-blue-800 print:text-black font-bold">{terms.find(t => t.id === activeTermId)?.academic_year}</span>
-                  </div>
-                </div>
-
-                {/* Glassmorphic Table Container */}
-                <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-3xl rounded-[2rem] shadow-[0_8px_40px_-12px_rgba(0,0,0,0.08)] border border-slate-200/60 dark:border-slate-800/60 overflow-hidden print:bg-transparent print:border-none print:shadow-none print:rounded-none print:overflow-visible relative">
-                  <div className="hidden print:block absolute inset-0 opacity-[0.03] pointer-events-none z-0" style={{ backgroundImage: "url('/school_budge.jpeg')", backgroundPosition: 'center', backgroundRepeat: 'no-repeat', backgroundSize: '60%' }}></div>
-                  <div className="overflow-x-auto shadow-inner print:shadow-none print:overflow-visible relative z-10">
-                    <table className="w-full text-left border-collapse">
-                      <thead className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-md sticky top-0 z-10 print:bg-transparent print:static border-b-2 border-slate-900/5 dark:border-white/5 print:border-b-[1.5px] print:border-black">
-                        <tr className="hidden print:table-row"><th colSpan={100} className="h-6 p-0 border-none"></th></tr>
-                        <tr>
-                          <th className="px-6 py-5 text-slate-500 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-[0.2em] w-12 text-center print:w-auto print:text-slate-800 print:px-1 print:py-1 print:text-[8px] print:tracking-normal">#</th>
-                          <th className="px-6 py-5 text-slate-500 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-[0.2em] w-64 print:w-auto print:text-slate-800 print:px-1 print:py-1 print:text-[8px] print:tracking-normal">Student Name</th>
-                          {currentAssessmentData.orderedSubjects?.flatMap(s => {
-                            const cols = [
-                              <th key={`${s.id}-score`} className="px-2 py-5 text-slate-500 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-[0.2em] text-center print:text-slate-800 print:px-1 print:py-1 print:text-[8px] print:tracking-normal">
-                                {s.subject_name === 'MATH' ? 'MTC' : s.subject_name === 'SCI' ? 'SCIE' : s.subject_name}
-                              </th>
-                            ]
-
-                            cols.push(
-                              <th key={`${s.id}-agg`} className="px-2 py-5 text-slate-400 dark:text-slate-500 font-extrabold text-[10px] uppercase tracking-[0.2em] text-center print:text-slate-800 print:px-1 print:py-1 print:text-[8px] print:tracking-normal">
-                                {cls.section === 'nursery' ? 'GRD' : 'AGG'}
-                              </th>
-                            )
-
-                            return cols
-                          })}
-                          <th className="px-6 py-5 text-slate-500 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-[0.2em] text-center w-auto print:text-slate-800 print:px-1 print:py-1 print:text-[8px] print:tracking-normal">TOTAL</th>
-                          {cls.section !== 'nursery' && (
-                            <>
-                              <th className="px-6 py-5 text-slate-500 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-[0.2em] text-center w-auto print:text-slate-800 print:px-1 print:py-1 print:text-[8px] print:tracking-normal">T/L AGG.</th>
-                              <th className="px-6 py-5 text-slate-500 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-[0.2em] text-center w-auto print:text-slate-800 print:px-1 print:py-1 print:text-[8px] print:tracking-normal">DIV</th>
-                            </>
-                          )}
-                          <th className="px-6 py-5 text-slate-500 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-[0.2em] text-center w-auto print:text-slate-800 print:px-1 print:py-1 print:text-[8px] print:tracking-normal">PSN</th>
-                        </tr>
-                      </thead>
-                      <motion.tbody
-                        initial="hidden"
-                        animate="visible"
-                        variants={tableVariants}
-                        className="print:!opacity-100 print:!transform-none"
-                      >
-                        {currentAssessmentData.students?.map((student, idx) => (
-                          <motion.tr
-                            variants={rowVariants}
-                            key={student.id}
-                            className="group hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-all duration-300 border-b border-slate-100 dark:border-slate-800/50 last:border-0 print:border-b print:border-slate-300 print:hover:bg-transparent print:!opacity-100 print:!transform-none print:even:bg-slate-50/40"
-                          >
-                            <td className="px-6 py-4 text-center text-slate-400 font-medium print:text-slate-800 print:px-1 print:py-1 print:text-[9px]">{idx + 1}</td>
-                            <td className="px-6 py-4 font-bold text-[13px] text-slate-900 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors whitespace-nowrap print:text-slate-800 print:px-1 print:py-1 print:text-[9px]">{student.name}</td>
-
-                            {currentAssessmentData.orderedSubjects?.flatMap(s => {
-                              const gradeStr = student.subjectGrades?.[s.id] || '-'
-                              const cells = [
-                                <td key={`${s.id}-score`} className="px-2 py-4 text-center font-bold text-[13px] text-slate-600 dark:text-slate-300 print:text-slate-800 print:px-1 print:py-1 print:text-[9px]">
-                                  {student.subjectScores[s.id] !== undefined ? student.subjectScores[s.id] : '-'}
-                                </td>
-                              ]
-
-                              cells.push(
-                                <td key={`${s.id}-agg`} className="px-2 py-4 text-center print:px-1 print:py-1">
-                                  <span className={`inline-flex items-center justify-center min-w-[32px] h-[26px] px-2 rounded font-bold text-[11px] border ${getBadgeStyles(gradeStr)} print:!shadow-none print:!scale-90 print:transform-gpu`}>
-                                    {gradeStr}
-                                  </span>
-                                </td>
-                              )
-
-                              return cells
-                            })}
-
-                            <td className="px-6 py-4 text-center print:px-1 print:py-1">
-                               <div className="inline-flex items-center justify-center h-8 px-3 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 font-extrabold text-[13px] shadow-sm border border-slate-200/50 dark:border-slate-700/50 print:!shadow-none print:!scale-90 print:transform-gpu">
-                                 {student.total > 0 ? student.total : '-'}
-                               </div>
-                            </td>
-
-                            {cls.section !== 'nursery' && (
-                              <td className="px-6 py-4 text-center print:px-1 print:py-1">
-                                 <div className={`inline-flex items-center justify-center h-8 w-10 rounded-lg font-extrabold text-[13px] border ${getBadgeStyles(student.division)} print:!shadow-none print:!scale-90 print:transform-gpu`}>
-                                   {student.totalAggregate > 0 ? student.totalAggregate : '-'}
-                                 </div>
-                              </td>
-                            )}
-
-                            {cls.section !== 'nursery' && (
-                              <td className="px-6 py-4 text-center print:px-1 print:py-1">
-                                 <div className={`inline-flex items-center justify-center h-8 w-10 rounded-lg font-extrabold text-[14px] border ${getBadgeStyles(student.division)} print:!shadow-none print:!scale-90 print:transform-gpu`}>
-                                   {student.division}
-                                 </div>
-                              </td>
-                            )}
-
-                            <td className="px-6 py-4 text-center print:px-1 print:py-1">
-                              <span className={`${getPositionStyles(student.position)}`}>
-                                {student.total > 0 ? student.position : '-'}
-                              </span>
-                            </td>
-                          </motion.tr>
-                        ))}
-
-                        {/* Empty Rows Padding for Print/Visual Balance */}
-                        {Array.from({ length: Math.max(0, 10 - (currentAssessmentData.students?.length || 0)) }).map((_, i) => (
-                          <tr key={`empty-${i}`} className="border-b border-slate-100 dark:border-slate-800/50 last:border-0 print:border-b print:border-slate-300 print:h-10 print:even:bg-slate-50/40">
-                            <td className="px-6 py-4 print:border-none print:px-1 print:py-1">&nbsp;</td>
-                            <td className="px-6 py-4 print:border-none print:px-1 print:py-1">&nbsp;</td>
-                            {currentAssessmentData.orderedSubjects?.flatMap(s => [
-                              <td key={`empty-${s.id}-score`} className="px-6 py-4 print:border-none print:px-1 print:py-1">&nbsp;</td>,
-                              <td key={`empty-${s.id}-agg`} className="px-6 py-4 print:border-none print:px-1 print:py-1">&nbsp;</td>
-                            ])}
-                            <td className="px-6 py-4 print:border-none print:px-1 print:py-1">&nbsp;</td>
-                            {cls.section !== 'nursery' && (
-                              <>
-                                <td className="px-6 py-4 print:border-none print:px-1 print:py-1">&nbsp;</td>
-                                <td className="px-6 py-4 print:border-none print:px-1 print:py-1">&nbsp;</td>
-                              </>
-                            )}
-                            <td className="px-6 py-4 print:border-none print:px-1 print:py-1">&nbsp;</td>
-                          </tr>
-                        ))}
-                        {/* Footer Signatures as last row */}
-                        <tr className="print:table-row border-none print:break-inside-avoid">
-                          <td colSpan={100} className="border-none p-0">
-                            <div className="flex justify-between items-center mt-12 mb-8 px-8 text-slate-700 print:text-black w-full" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
-                              <div className="text-center w-64">
-                                <p className="font-serif font-bold mb-12 text-sm uppercase tracking-wider text-black">Class Teacher's Signature</p>
-                                <hr className="border-t-[3px] border-dotted border-black w-full" />
-                              </div>
-                              <div className="text-center w-64">
-                                <p className="font-serif font-bold mb-12 text-sm uppercase tracking-wider text-black">D.O.S Signature</p>
-                                <hr className="border-t-[3px] border-dotted border-black w-full" />
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
-                      </motion.tbody>
-                      <tfoot className="hidden print:table-footer-group">
-                        <tr className="hidden print:table-row"><td colSpan={100} className="h-6 p-0 border-none"></td></tr>
-                      </tfoot>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            )
-          })}
-        </>
-      )}
-
-      {/* Analysis Tab */}
-      {activeTab === 'analysis' && activeLevel && (
-              <div className="print:py-0 print:px-2 text-left">
-
-                {/* Print Header */}
-                <div className="text-center mb-8 hidden print:block">
-                  <h1 className="text-2xl font-extrabold text-slate-800 print:text-black mb-1 uppercase tracking-wide">Jiddah Islamic Schools</h1>
-                  <h3 className="text-xl font-bold mb-4 underline underline-offset-4 text-slate-700 print:text-black uppercase">{examPhase === "bot" ? "Beginning of Term" : examPhase === "eot" ? "End of Term" : "Mid-Term"} Analytics Overview</h3>
-                </div>
-
-                {/* Context Bar */}
-                <div className="flex justify-between items-center mb-6 font-semibold text-slate-700 print:text-black bg-white/50 print:bg-transparent px-4 py-3 rounded-xl border border-slate-200/50 print:border-none shadow-sm print:shadow-none">
-                  <div>
-                    <span className="uppercase text-[11px] tracking-wider text-slate-500 mr-2">Level:</span>
-                    <span className="text-blue-800 print:text-black font-bold uppercase">{activeLevel.replace('_', ' ')}</span>
-                  </div>
-                  <div>
-                    <span className="uppercase text-[11px] tracking-wider text-slate-500 mr-2">Term:</span>
-                    <span className="text-blue-800 print:text-black font-bold">{terms.find(t => t.id === activeTermId)?.label}</span>
-                  </div>
-                  <div>
-                    <span className="uppercase text-[11px] tracking-wider text-slate-500 mr-2">Phase:</span>
-                    <span className="text-blue-800 print:text-black font-bold uppercase">{examPhase}</span>
-                  </div>
-                  <div>
-                    <span className="uppercase text-[11px] tracking-wider text-slate-500 mr-2">Year:</span>
-                    <span className="text-blue-800 print:text-black font-bold">{terms.find(t => t.id === activeTermId)?.academic_year}</span>
-                  </div>
-                </div>
-
-                <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-200/60 dark:border-slate-800/60 overflow-hidden print:bg-transparent print:border-none print:shadow-none print:rounded-none print:overflow-visible relative print:overflow-visible relative">
-                  <div className="hidden print:block absolute inset-0 opacity-[0.03] pointer-events-none z-0" style={{ backgroundImage: "url('/school_budge.jpeg')", backgroundPosition: 'center', backgroundRepeat: 'no-repeat', backgroundSize: '60%' }}></div>
-                  <div className="p-6 space-y-8 relative z-10">
-                    {/* 1. Exam Analysis Table */}
-                    <div>
-                      <h4 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-3">1. Exam Analysis</h4>
-                      <div className="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm">
-                        <table className="w-full text-left border-collapse print:border print:border-slate-300">
-                          <thead className="bg-slate-50/90 dark:bg-slate-800/90 print:bg-slate-100">
-                            <tr>
-                              <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 font-semibold text-xs uppercase tracking-wider">Class Segment</th>
-                              <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 font-semibold text-xs uppercase tracking-wider text-center">Capacity</th>
-                              <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-blue-600 font-semibold text-xs uppercase tracking-wider text-center">Highest Avg</th>
-                              <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-rose-600 font-semibold text-xs uppercase tracking-wider text-center">Lowest Avg</th>
-                              <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-emerald-600 font-semibold text-xs uppercase tracking-wider text-center">Class Avg</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {analysisData.map((cls) => (
-                              <tr key={`exam-${cls.id}`} className="hover:bg-slate-50/80 border-b border-slate-100 last:border-0 print:border-black">
-                                <td className="px-4 py-3 font-bold text-slate-800">{cls.className}</td>
-                                <td className="px-4 py-3 text-center font-medium text-slate-600">{cls.numStudents}</td>
-                                <td className="px-4 py-3 text-center font-bold text-blue-700">{cls.highestAvg}</td>
-                                <td className="px-4 py-3 text-center font-bold text-rose-700">{cls.lowestAvg}</td>
-                                <td className="px-4 py-3 text-center font-extrabold text-emerald-700">{cls.classAvg}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                      <div className="text-center mb-8 hidden print:block">
+                        <h1 className="text-2xl font-extrabold text-stone-900 print:text-black mb-1 uppercase tracking-wide">Jiddah Islamic Schools</h1>
+                        <h3 className="text-xl font-bold mb-4 underline underline-offset-4 text-stone-700 print:text-black uppercase">
+                          {examPhase === 'bot' ? 'Beginning of Term Assessment Report' : examPhase === 'eot' ? 'End of Term Assessment Report' : 'Mid-Term Assessment Report'}
+                        </h3>
                       </div>
-                    </div>
 
-                    {/* 2. Division Breakdown Table */}
-                    {activeLevel !== 'nursery' && (
-                      <div>
-                        <h4 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-3">2. Division Breakdown</h4>
-                        <div className="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm">
-                          <table className="w-full text-left border-collapse print:border print:border-slate-300">
-                            <thead className="bg-slate-50/90 dark:bg-slate-800/90 print:bg-slate-100">
+                      <div className="flex flex-wrap justify-between items-center gap-3 mb-6 font-semibold text-stone-700 print:text-black bg-white print:bg-transparent px-4 py-3 rounded-xl border border-stone-200 print:border-none shadow-xs print:shadow-none text-xs">
+                        <div>
+                          <span className="uppercase text-[11px] tracking-wider text-stone-500 mr-2">Term:</span>
+                          <span className="text-[#059669] print:text-black font-bold">{terms.find(t => t.id === activeTermId)?.label}</span>
+                        </div>
+                        <div>
+                          <span className="uppercase text-[11px] tracking-wider text-stone-500 mr-2">Class:</span>
+                          <span className="text-[#059669] print:text-black font-bold">{cls.class_name}</span>
+                        </div>
+                        <div>
+                          <span className="uppercase text-[11px] tracking-wider text-stone-500 mr-2">Phase:</span>
+                          <span className="text-[#059669] print:text-black font-bold uppercase">{examPhase}</span>
+                        </div>
+                        <div>
+                          <span className="uppercase text-[11px] tracking-wider text-stone-500 mr-2">Year:</span>
+                          <span className="text-[#059669] print:text-black font-bold">{terms.find(t => t.id === activeTermId)?.academic_year}</span>
+                        </div>
+                      </div>
+
+                      <div className="bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden print:bg-transparent print:border-none print:shadow-none print:rounded-none print:overflow-visible relative">
+                        <div className="overflow-x-auto print:overflow-visible relative z-10">
+                          <table className="w-full text-left border-collapse">
+                            <thead className="bg-[#F8FAFC] sticky top-0 z-10 print:bg-transparent print:static border-b border-stone-200 print:border-b-[1.5px] print:border-black">
                               <tr>
-                                <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 font-semibold text-xs uppercase tracking-wider">Class Segment</th>
-                                <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-emerald-600 font-semibold text-xs uppercase tracking-wider text-center">Div I</th>
-                                <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-blue-600 font-semibold text-xs uppercase tracking-wider text-center">Div II</th>
-                                <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-indigo-600 font-semibold text-xs uppercase tracking-wider text-center">Div III</th>
-                                <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-amber-600 font-semibold text-xs uppercase tracking-wider text-center">Div IV</th>
-                                <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-rose-600 font-semibold text-xs uppercase tracking-wider text-center">Div U</th>
-                                <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-400 font-semibold text-xs uppercase tracking-wider text-center">Div X</th>
+                                <th className="px-4 py-3 text-stone-600 font-bold text-[10px] uppercase tracking-wider w-12 text-center">#</th>
+                                <th className="px-4 py-3 text-stone-600 font-bold text-[10px] uppercase tracking-wider w-56">Student Name</th>
+                                {currentAssessmentData.orderedSubjects?.flatMap(s => [
+                                  <th key={`${s.id}-score`} className="px-2 py-3 text-stone-600 font-bold text-[10px] uppercase tracking-wider text-center">
+                                    {s.subject_name === 'MATH' ? 'MTC' : s.subject_name === 'SCI' ? 'SCIE' : s.subject_name}
+                                  </th>,
+                                  <th key={`${s.id}-agg`} className="px-2 py-3 text-stone-500 font-bold text-[10px] uppercase tracking-wider text-center">
+                                    {cls.section === 'nursery' ? 'GRD' : 'AGG'}
+                                  </th>
+                                ])}
+                                <th className="px-4 py-3 text-stone-600 font-bold text-[10px] uppercase tracking-wider text-center">TOTAL</th>
+                                {cls.section !== 'nursery' && (
+                                  <>
+                                    <th className="px-4 py-3 text-stone-600 font-bold text-[10px] uppercase tracking-wider text-center">T/L AGG.</th>
+                                    <th className="px-4 py-3 text-stone-600 font-bold text-[10px] uppercase tracking-wider text-center">DIV</th>
+                                  </>
+                                )}
+                                <th className="px-4 py-3 text-stone-600 font-bold text-[10px] uppercase tracking-wider text-center">PSN</th>
                               </tr>
                             </thead>
-                            <tbody>
-                              {analysisData.map((cls) => (
-                                <tr key={`div-${cls.id}`} className="hover:bg-slate-50/80 border-b border-slate-100 last:border-0 print:border-black">
-                                  <td className="px-4 py-3 font-bold text-slate-800">{cls.className}</td>
-                                  <td className="px-4 py-3 text-center font-bold text-emerald-700">{cls.divCounts.I}</td>
-                                  <td className="px-4 py-3 text-center font-bold text-blue-700">{cls.divCounts.II}</td>
-                                  <td className="px-4 py-3 text-center font-bold text-indigo-700">{cls.divCounts.III}</td>
-                                  <td className="px-4 py-3 text-center font-bold text-amber-700">{cls.divCounts.IV}</td>
-                                  <td className="px-4 py-3 text-center font-bold text-rose-700">{cls.divCounts.U}</td>
-                                  <td className="px-4 py-3 text-center font-bold text-slate-400">{cls.divCounts.X}</td>
-                                </tr>
+                            <motion.tbody
+                              initial="hidden"
+                              animate="visible"
+                              variants={tableVariants}
+                              className="print:!opacity-100 print:!transform-none"
+                            >
+                              {currentAssessmentData.students?.map((student, idx) => (
+                                <motion.tr
+                                  variants={rowVariants}
+                                  key={student.id}
+                                  className="hover:bg-stone-50 transition-colors border-b border-stone-100 last:border-0"
+                                >
+                                  <td className="px-4 py-3 text-center text-stone-500 font-medium text-xs">{idx + 1}</td>
+                                  <td className="px-4 py-3 font-bold text-xs text-stone-900 whitespace-nowrap">{student.name}</td>
+                                  {currentAssessmentData.orderedSubjects?.flatMap(s => {
+                                    const gradeStr = student.subjectGrades?.[s.id] || '-'
+                                    return [
+                                      <td key={`${s.id}-score`} className="px-2 py-3 text-center font-bold text-xs text-stone-700">
+                                        {student.subjectScores[s.id] !== undefined && student.subjectScores[s.id] !== null ? student.subjectScores[s.id] : '-'}
+                                      </td>,
+                                      <td key={`${s.id}-agg`} className="px-2 py-3 text-center">
+                                        <span className={`inline-flex items-center justify-center min-w-[32px] h-[24px] px-1.5 rounded font-bold text-[11px] border ${getBadgeStyles(gradeStr)}`}>
+                                          {gradeStr}
+                                        </span>
+                                      </td>
+                                    ]
+                                  })}
+                                  <td className="px-4 py-3 text-center">
+                                    <div className="inline-flex items-center justify-center h-7 px-2.5 rounded-lg bg-stone-100 text-stone-900 font-extrabold text-xs border border-stone-200">
+                                      {student.total > 0 ? student.total : '-'}
+                                    </div>
+                                  </td>
+                                  {cls.section !== 'nursery' && (
+                                    <>
+                                      <td className="px-4 py-3 text-center">
+                                        <div className={`inline-flex items-center justify-center h-7 w-9 rounded-lg font-extrabold text-xs border ${getBadgeStyles(student.division)}`}>
+                                          {student.totalAggregate > 0 ? student.totalAggregate : '-'}
+                                        </div>
+                                      </td>
+                                      <td className="px-4 py-3 text-center">
+                                        <div className={`inline-flex items-center justify-center h-7 w-9 rounded-lg font-extrabold text-xs border ${getBadgeStyles(student.division)}`}>
+                                          {student.division}
+                                        </div>
+                                      </td>
+                                    </>
+                                  )}
+                                  <td className="px-4 py-3 text-center">
+                                    <span className={getPositionStyles(student.position)}>
+                                      {student.total > 0 ? student.position : '-'}
+                                    </span>
+                                  </td>
+                                </motion.tr>
                               ))}
-                            </tbody>
+                            </motion.tbody>
                           </table>
                         </div>
                       </div>
-                    )}
+                    </div>
+                  )
+                })}
+              </>
+            )}
 
-                    {/* 3. Grade Distribution Table */}
+            {/* Analysis Tab */}
+            {activeTab === 'analysis' && activeLevel && (
+              <div className="print:py-0 print:px-2 text-left space-y-6">
+                <div className="flex flex-wrap justify-between items-center gap-3 font-semibold text-stone-700 bg-white px-4 py-3 rounded-xl border border-stone-200 shadow-xs text-xs">
+                  <div>
+                    <span className="uppercase text-[11px] tracking-wider text-stone-500 mr-2">Level:</span>
+                    <span className="text-[#059669] font-bold uppercase">{activeLevel.replace('_', ' ')}</span>
+                  </div>
+                  <div>
+                    <span className="uppercase text-[11px] tracking-wider text-stone-500 mr-2">Term:</span>
+                    <span className="text-[#059669] font-bold">{terms.find(t => t.id === activeTermId)?.label}</span>
+                  </div>
+                  <div>
+                    <span className="uppercase text-[11px] tracking-wider text-stone-500 mr-2">Phase:</span>
+                    <span className="text-[#059669] font-bold uppercase">{examPhase}</span>
+                  </div>
+                  <div>
+                    <span className="uppercase text-[11px] tracking-wider text-stone-500 mr-2">Year:</span>
+                    <span className="text-[#059669] font-bold">{terms.find(t => t.id === activeTermId)?.academic_year}</span>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-2xl shadow-sm border border-stone-200 p-5 space-y-6">
+                  <div>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-stone-600 mb-3">1. Exam Analysis</h4>
+                    <div className="overflow-x-auto border border-stone-200 rounded-xl">
+                      <table className="w-full text-left border-collapse">
+                        <thead className="bg-[#F8FAFC]">
+                          <tr>
+                            <th className="px-4 py-3 border-b border-stone-200 text-stone-600 font-bold text-xs uppercase tracking-wider">Class Segment</th>
+                            <th className="px-4 py-3 border-b border-stone-200 text-stone-600 font-bold text-xs uppercase tracking-wider text-center">Capacity</th>
+                            <th className="px-4 py-3 border-b border-stone-200 text-[#059669] font-bold text-xs uppercase tracking-wider text-center">Highest Avg</th>
+                            <th className="px-4 py-3 border-b border-stone-200 text-rose-700 font-bold text-xs uppercase tracking-wider text-center">Lowest Avg</th>
+                            <th className="px-4 py-3 border-b border-stone-200 text-amber-800 font-bold text-xs uppercase tracking-wider text-center">Class Avg</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {analysisData.map((cls) => (
+                            <tr key={`exam-${cls.id}`} className="hover:bg-stone-50 border-b border-stone-100 last:border-0">
+                              <td className="px-4 py-3 font-bold text-stone-900">{cls.className}</td>
+                              <td className="px-4 py-3 text-center font-medium text-stone-700">{cls.numStudents}</td>
+                              <td className="px-4 py-3 text-center font-bold text-[#059669]">{cls.highestAvg}</td>
+                              <td className="px-4 py-3 text-center font-bold text-rose-700">{cls.lowestAvg}</td>
+                              <td className="px-4 py-3 text-center font-extrabold text-amber-800">{cls.classAvg}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {activeLevel !== 'nursery' && (
                     <div>
-                      <h4 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-3">{activeLevel === 'nursery' ? '2. Grade Distribution' : '3. Grade Distribution'}</h4>
-                      <div className="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm">
-                        <table className="w-full text-left border-collapse print:border print:border-slate-300">
-                          <thead className="bg-slate-50/90 dark:bg-slate-800/90 print:bg-slate-100">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-stone-600 mb-3">2. Division Breakdown</h4>
+                      <div className="overflow-x-auto border border-stone-200 rounded-xl">
+                        <table className="w-full text-left border-collapse">
+                          <thead className="bg-[#F8FAFC]">
                             <tr>
-                              <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-slate-500 font-semibold text-xs uppercase tracking-wider">Class Segment</th>
-                              {activeLevel === 'nursery' ? (
-                                <>
-                                  <th className="px-3 py-3 border-b border-slate-200 text-emerald-600 font-bold text-xs text-center">A</th>
-                                  <th className="px-3 py-3 border-b border-slate-200 text-emerald-600 font-bold text-xs text-center">B</th>
-                                  <th className="px-3 py-3 border-b border-slate-200 text-blue-600 font-bold text-xs text-center">C</th>
-                                  <th className="px-3 py-3 border-b border-slate-200 text-amber-600 font-bold text-xs text-center">D</th>
-                                  <th className="px-3 py-3 border-b border-slate-200 text-rose-600 font-bold text-xs text-center">E</th>
-                                </>
-                              ) : (
-                                <>
-                                  <th className="px-3 py-3 border-b border-slate-200 text-emerald-600 font-bold text-xs text-center">D1</th>
-                                  <th className="px-3 py-3 border-b border-slate-200 text-emerald-600 font-bold text-xs text-center">D2</th>
-                                  <th className="px-3 py-3 border-b border-slate-200 text-blue-600 font-bold text-xs text-center">C3</th>
-                                  <th className="px-3 py-3 border-b border-slate-200 text-blue-600 font-bold text-xs text-center">C4</th>
-                                  <th className="px-3 py-3 border-b border-slate-200 text-blue-600 font-bold text-xs text-center">C5</th>
-                                  <th className="px-3 py-3 border-b border-slate-200 text-blue-600 font-bold text-xs text-center">C6</th>
-                                  <th className="px-3 py-3 border-b border-slate-200 text-amber-600 font-bold text-xs text-center">P7</th>
-                                  <th className="px-3 py-3 border-b border-slate-200 text-amber-600 font-bold text-xs text-center">P8</th>
-                                  <th className="px-3 py-3 border-b border-slate-200 text-rose-600 font-bold text-xs text-center">F9</th>
-                                </>
-                              )}
+                              <th className="px-4 py-3 border-b border-stone-200 text-stone-600 font-bold text-xs uppercase tracking-wider">Class Segment</th>
+                              <th className="px-4 py-3 border-b border-stone-200 text-[#059669] font-bold text-xs uppercase tracking-wider text-center">Div I</th>
+                              <th className="px-4 py-3 border-b border-stone-200 text-emerald-700 font-bold text-xs uppercase tracking-wider text-center">Div II</th>
+                              <th className="px-4 py-3 border-b border-stone-200 text-amber-700 font-bold text-xs uppercase tracking-wider text-center">Div III</th>
+                              <th className="px-4 py-3 border-b border-stone-200 text-orange-700 font-bold text-xs uppercase tracking-wider text-center">Div IV</th>
+                              <th className="px-4 py-3 border-b border-stone-200 text-rose-700 font-bold text-xs uppercase tracking-wider text-center">Div U</th>
+                              <th className="px-4 py-3 border-b border-stone-200 text-stone-500 font-bold text-xs uppercase tracking-wider text-center">Div X</th>
                             </tr>
                           </thead>
                           <tbody>
                             {analysisData.map((cls) => (
-                              <tr key={`grade-${cls.id}`} className="hover:bg-slate-50/80 border-b border-slate-100 last:border-0 print:border-black">
-                                <td className="px-4 py-3 font-bold text-slate-800">{cls.className}</td>
-                                {activeLevel === 'nursery' ? (
-                                  <>
-                                    <td className="px-3 py-3 text-center font-bold text-emerald-700">{cls.gradeCounts.A}</td>
-                                    <td className="px-3 py-3 text-center font-bold text-emerald-700">{cls.gradeCounts.B}</td>
-                                    <td className="px-3 py-3 text-center font-bold text-blue-700">{cls.gradeCounts.C}</td>
-                                    <td className="px-3 py-3 text-center font-bold text-amber-700">{cls.gradeCounts.D}</td>
-                                    <td className="px-3 py-3 text-center font-bold text-rose-700">{cls.gradeCounts.E}</td>
-                                  </>
-                                ) : (
-                                  <>
-                                    <td className="px-3 py-3 text-center font-bold text-emerald-700">{cls.gradeCounts.D1}</td>
-                                    <td className="px-3 py-3 text-center font-bold text-emerald-700">{cls.gradeCounts.D2}</td>
-                                    <td className="px-3 py-3 text-center font-bold text-blue-700">{cls.gradeCounts.C3}</td>
-                                    <td className="px-3 py-3 text-center font-bold text-blue-700">{cls.gradeCounts.C4}</td>
-                                    <td className="px-3 py-3 text-center font-bold text-blue-700">{cls.gradeCounts.C5}</td>
-                                    <td className="px-3 py-3 text-center font-bold text-blue-700">{cls.gradeCounts.C6}</td>
-                                    <td className="px-3 py-3 text-center font-bold text-amber-700">{cls.gradeCounts.P7}</td>
-                                    <td className="px-3 py-3 text-center font-bold text-amber-700">{cls.gradeCounts.P8}</td>
-                                    <td className="px-3 py-3 text-center font-bold text-rose-700">{cls.gradeCounts.F9}</td>
-                                  </>
-                                )}
+                              <tr key={`div-${cls.id}`} className="hover:bg-stone-50 border-b border-stone-100 last:border-0">
+                                <td className="px-4 py-3 font-bold text-stone-900">{cls.className}</td>
+                                <td className="px-4 py-3 text-center font-bold text-[#059669]">{cls.divCounts.I}</td>
+                                <td className="px-4 py-3 text-center font-bold text-emerald-700">{cls.divCounts.II}</td>
+                                <td className="px-4 py-3 text-center font-bold text-amber-700">{cls.divCounts.III}</td>
+                                <td className="px-4 py-3 text-center font-bold text-orange-700">{cls.divCounts.IV}</td>
+                                <td className="px-4 py-3 text-center font-bold text-rose-700">{cls.divCounts.U}</td>
+                                <td className="px-4 py-3 text-center font-bold text-stone-500">{cls.divCounts.X}</td>
                               </tr>
                             ))}
                           </tbody>
                         </table>
                       </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
             )}
 
             {/* Top Students Tab */}
             {activeTab === 'top_students' && activeLevel && (
-              <div className="print:py-0 print:px-2 text-left">
-
-                {/* Print Header */}
-                <div className="text-center mb-10 hidden print:block">
-                  <h1 className="text-2xl font-extrabold text-slate-800 print:text-black mb-1 uppercase tracking-wide">Jiddah Islamic Schools</h1>
-                  <h3 className="text-xl font-bold mb-4 underline underline-offset-4 text-slate-700 print:text-black uppercase">Top Performers Leaderboard</h3>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                  {topStudentsData.map((cls) => {
-                    return (
-                      <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ duration: 0.3 }}
-                        key={cls.classId}
-                        className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-200/60 dark:border-slate-800/60 overflow-hidden print:bg-transparent print:border-none print:shadow-none print:rounded-none print:overflow-visible relative"
-                      >
-                        <div className="bg-slate-50/90 backdrop-blur-md p-4 border-b border-slate-200/60 text-center print:border print:border-slate-300 print:px-1 print:py-1 print:bg-slate-100 flex items-center justify-between">
-                          <h4 className="font-extrabold text-slate-800 print:text-black text-lg">{cls.className} Rankings</h4>
-                          <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 print:text-black">Top {cls.students.length}</span>
-                        </div>
-                        <div className="hidden print:block absolute inset-0 opacity-[0.03] pointer-events-none z-0" style={{ backgroundImage: "url('/school_budge.jpeg')", backgroundPosition: 'center', backgroundRepeat: 'no-repeat', backgroundSize: '60%' }}></div>
-                        <div className="overflow-x-auto print:overflow-visible relative z-10 p-2">
-                          <table className="w-full border-collapse print:border print:border-slate-300">
-                            <thead className="bg-slate-50/50 print:bg-slate-100 hidden">
-                              <tr>
-                                <th className="px-4 py-2 text-slate-500 font-semibold text-sm border-b border-slate-200/60 w-12 text-center print:w-auto print:border print:border-slate-300 print:text-slate-800 print:px-1 print:py-1 print:text-[9px]">#</th>
-                                <th className="px-4 py-2 text-slate-500 font-semibold text-sm border-b border-slate-200/60 text-left print:border print:border-slate-300 print:text-slate-800 print:px-1 print:py-1 print:text-[9px]">Name</th>
-                                <th className="px-4 py-2 text-slate-500 font-semibold text-sm border-b border-slate-200/60 text-right w-28 print:border print:border-slate-300 print:text-slate-800 print:px-1 print:py-1 print:text-[9px]">Average</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {cls.students.map((student, idx) => (
-                                <tr key={student.id} className="hover:bg-slate-50/50 transition-colors duration-200 border-b border-slate-100 last:border-0 print:border print:border-slate-300 print:px-1 print:py-1">
-                                  <td className="px-4 py-3 text-center w-12 print:border print:border-slate-300 print:px-1 print:py-1">
-                                    <RankBadge rank={idx + 1} />
-                                  </td>
-                                  <td className="px-4 py-3 font-bold text-slate-800 print:border print:border-slate-300 print:text-slate-800 print:px-1 print:py-1 print:text-[9px]">
-                                    {student.studentName}
-                                  </td>
-                                  <td className="px-4 py-3 text-right print:border print:border-slate-300 print:text-slate-800 print:px-1 print:py-1 print:text-[9px]">
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5 print:hidden">Avg</p>
-                                    <p className="font-extrabold text-blue-700 print:text-black text-lg leading-none">{Math.round(student.avg)}</p>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </motion.div>
-                    )
-                  })}
-                </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {topStudentsData.map((cls) => (
+                  <div
+                    key={cls.classId}
+                    className="bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden"
+                  >
+                    <div className="bg-[#F8FAFC] px-4 py-3 border-b border-stone-200 flex items-center justify-between">
+                      <h4 className="font-bold text-stone-900 text-sm">{cls.className} Rankings</h4>
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-stone-500">Top {cls.students.length}</span>
+                    </div>
+                    <div className="overflow-x-auto p-2">
+                      <table className="w-full border-collapse">
+                        <tbody>
+                          {cls.students.map((student, idx) => (
+                            <tr key={student.id} className="hover:bg-stone-50 border-b border-stone-100 last:border-0">
+                              <td className="px-3 py-2.5 text-center w-12">
+                                <RankBadge rank={idx + 1} />
+                              </td>
+                              <td className="px-3 py-2.5 font-bold text-xs text-stone-900">
+                                {student.studentName}
+                              </td>
+                              <td className="px-3 py-2.5 text-right">
+                                <span className="font-extrabold text-[#059669] text-sm">{Math.round(student.avg)}</span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
-
           </div>
         )}
       </div>

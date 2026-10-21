@@ -4,9 +4,13 @@ import {
   getConductRemark,
 } from "@/lib/grading";
 import { ReportContainer } from "@/components/reports/shared/ReportContainer";
+import { resolveReportBranding, resolveReportGradingBands } from "@/lib/school-settings-helper";
 import { getClassTeacherSignatureKey } from "@/utils/signatures";
 
 export default function PrimaryBOTReport({ reportData }: any) {
+  const branding = resolveReportBranding(reportData);
+  const gradingBands = resolveReportGradingBands(reportData);
+
   const className =
     reportData?.class_name ||
     reportData?.class ||
@@ -43,7 +47,13 @@ export default function PrimaryBOTReport({ reportData }: any) {
   );
 
   return (
-    <ReportContainer reportType="PrimaryBOTReport">
+    <ReportContainer
+      reportType="PrimaryBOTReport"
+      primaryFont={branding.primaryFont}
+      arabicFont={branding.arabicFont}
+      themePreset={branding.themePreset}
+      themeColor={branding.themeColor}
+    >
       <style
         dangerouslySetInnerHTML={{
           __html: `
@@ -60,7 +70,7 @@ export default function PrimaryBOTReport({ reportData }: any) {
             width: 100%;
             height: 100%;
             background: #fffef8;
-            border: 4px solid #163f2d;
+            border: 4px solid var(--report-primary-color, #163f2d);
             position: relative;
             overflow: hidden;
             padding: 20px 25px 40px;
@@ -75,17 +85,16 @@ export default function PrimaryBOTReport({ reportData }: any) {
             left: 0;
             width: 100%;
             text-align: center;
-            color: #0d5c3f;
+            color: var(--report-primary-color, #0d5c3f);
             letter-spacing: 6px;
             font-size: 14px;
         }
 
-        /* Header */
         .bot-top-arabic {
             text-align: center;
             font-family: 'Cairo', sans-serif;
             font-size: 24px;
-            color: #0d5c3f;
+            color: var(--report-primary-color, #0d5c3f);
             font-weight: 700;
             margin-top: 5px;
         }
@@ -128,11 +137,10 @@ export default function PrimaryBOTReport({ reportData }: any) {
         .bot-school-right { width: 42%; text-align: right; font-family: 'Cairo', sans-serif; }
         .bot-school-right h2 { color: #7a1408; font-size: 21px; line-height: 1.4; margin: 0; }
 
-        /* Ribbon */
         .bot-ribbon {
             width: 360px;
             margin: 12px auto;
-            background: linear-gradient(to right, #0d5c3f, #15734f);
+            background: linear-gradient(to right, var(--report-primary-color, #0d5c3f), #15734f);
             color: #fff;
             text-align: center;
             padding: 10px;
@@ -140,12 +148,11 @@ export default function PrimaryBOTReport({ reportData }: any) {
             font-size: 20px;
             font-weight: 700;
             box-shadow: 0 4px 10px rgba(0,0,0,.15);
-            border: 3px solid #d6b14c;
+            border: 3px solid var(--report-border-color, #d6b14c);
         }
 
-        /* Info Section */
         .bot-info {
-            border: 2px solid #d6b14c;
+            border: 2px solid var(--report-border-color, #d6b14c);
             border-radius: 12px;
             padding: 10px 18px;
         }
@@ -157,10 +164,9 @@ export default function PrimaryBOTReport({ reportData }: any) {
         .bot-field { display: flex; align-items: flex-end; gap: 8px; font-size: 13px; font-weight: 600; }
         .bot-line { border-bottom: 2px dotted #555; width: 150px; height: 18px; text-align: center; color: #111; font-weight: 700; }
 
-        /* Rounded Table Container */
         .bot-table-wrap {
             margin-top: 12px;
-            border: 2px solid #d6b14c;
+            border: 2px solid var(--report-border-color, #d6b14c);
             border-radius: 10px;
             overflow: hidden;
         }
@@ -172,39 +178,37 @@ export default function PrimaryBOTReport({ reportData }: any) {
         }
 
         .bot-main-table th {
-            background: #0d5c3f;
+            background: var(--report-primary-color, #0d5c3f);
             color: #fff;
             padding: 8px 4px;
-            border: 1px solid #d6b14c;
+            border: 1px solid var(--report-border-color, #d6b14c);
             font-size: 12px;
         }
 
         .bot-main-table td {
-            border: 1px solid #d6b14c;
+            border: 1px solid var(--report-border-color, #d6b14c);
             padding: 7px 8px;
             height: 36px;
             font-size: 12px;
             text-align: center;
         }
 
-        .bot-main-table .subhead th { background: #e8f3ec; color: #0d5c3f; font-weight: 700; }
+        .bot-main-table .subhead th { background: #e8f3ec; color: var(--report-primary-color, #0d5c3f); font-weight: 700; }
         .bot-main-table .subject { font-weight: 700; text-align: left !important; }
 
-        /* Grading */
         .bot-grading { margin-top: 12px; }
         .bot-grade-title { font-size: 14px; font-weight: 700; color: #7a1408; margin-bottom: 4px; }
 
         .bot-grade-wrap {
-            border: 2px solid #d6b14c;
+            border: 2px solid var(--report-border-color, #d6b14c);
             border-radius: 10px;
             overflow: hidden;
         }
 
         .bot-grade-table { width: 100%; border-collapse: collapse; border-style: hidden; }
-        .bot-grade-table th { background: #d6b14c; color: #000; padding: 6px; border: 1px solid #333; font-size: 11px; }
+        .bot-grade-table th { background: var(--report-border-color, #d6b14c); color: #000; padding: 6px; border: 1px solid #333; font-size: 11px; }
         .bot-grade-table td { border: 1px solid #333; text-align: center; padding: 6px; font-size: 11px; }
 
-        /* Bottom Section */
         .bot-bottom { margin-top: 16px; }
 
         .bot-comment-row {
@@ -269,7 +273,6 @@ export default function PrimaryBOTReport({ reportData }: any) {
             background: white;
         }
 
-        /* Footer */
         .bot-final-footer {
             position: absolute;
             bottom: 14px;
@@ -288,16 +291,16 @@ export default function PrimaryBOTReport({ reportData }: any) {
 
         <div className="bot-header">
           <div className="bot-school-left">
-            <h1>JIDDAH ISLAMIC SCHOOLS</h1>
+            <h1 data-testid="report-school-name">{branding.schoolName}</h1>
             <p>
-              P.O.Box 34008 Kampala (U)<br/>
-              Tel: +256 744950042 / 0705316961<br/>
-              jiddahislamicnurseryandpri@gmail.com
+              {branding.address}<br/>
+              Tel: {branding.phone}<br/>
+              {branding.email}
             </p>
           </div>
 
           <div className="bot-logo">
-            <img src={reportData?.settings?.logo_url || "/school_budge.jpeg"} alt="Logo" />
+            <img src={branding.logoUrl} alt="Logo" data-testid="report-school-logo" />
           </div>
 
           <div className="bot-school-right">
@@ -344,17 +347,22 @@ export default function PrimaryBOTReport({ reportData }: any) {
           </table>
         </div>
 
-        <div className="bot-grading">
+        <div className="bot-grading" data-testid="report-grading-scale">
           <div className="bot-grade-title">Grading</div>
           <div className="bot-grade-wrap">
             <table className="bot-grade-table">
               <tbody>
                 <tr>
-                  <th>Grade</th><th>D1</th><th>D2</th><th>C3</th><th>C4</th><th>C5</th><th>C6</th><th>P7</th><th>P8</th><th>F9</th>
+                  <th>Grade</th>
+                  {gradingBands.map((b) => (
+                    <th key={b.grade}>{b.grade}</th>
+                  ))}
                 </tr>
                 <tr>
                   <td><strong>Marks</strong></td>
-                  <td>85-100</td><td>75-84</td><td>70-74</td><td>60-69</td><td>55-59</td><td>50-54</td><td>40-49</td><td>35-39</td><td>0-34</td>
+                  {gradingBands.map((b) => (
+                    <td key={b.grade}>{b.range}</td>
+                  ))}
                 </tr>
               </tbody>
             </table>
@@ -362,13 +370,11 @@ export default function PrimaryBOTReport({ reportData }: any) {
         </div>
 
         <div className="bot-bottom">
-          {/* Conduct row */}
           <div className="bot-conduct-row">
             <span className="bot-comment-label">Conduct:</span>
             <div className="bot-comment-value" style={{fontFamily: '"Caveat", cursive', fontSize: '18px'}}>{conductRemark}</div>
           </div>
 
-          {/* Class Teacher: comment + signature on same row */}
           <div className="bot-comment-row">
             <span className="bot-comment-label">Class Teacher&apos;s Comment:</span>
             <div className="bot-comment-value">{teacherComment}</div>
@@ -380,7 +386,6 @@ export default function PrimaryBOTReport({ reportData }: any) {
             </div>
           </div>
 
-          {/* Head Teacher: comment + signature on same row */}
           <div className="bot-comment-row">
             <span className="bot-comment-label">Head Teacher&apos;s Comment:</span>
             <div className="bot-comment-value">{headComment}</div>

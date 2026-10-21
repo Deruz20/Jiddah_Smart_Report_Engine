@@ -453,6 +453,35 @@ test('Item E: Teacher Deactivation, Session Revocation, Guards & Audit Suite', a
     console.log('  [HISTORICAL INTEGRITY] Verified preserved scores:', mark.mot_score, mark.eot_score);
   });
 
+  // J5: Verify unified /api/teachers DELETE path has identical guards and ban
+  await t.test('J5: Unified /api/teachers?id= DELETE route enforces identical guards and service call', async () => {
+    // 1. Non-admin caller receives HTTP 403
+    const teacherSessionAuth = await supabaseAnon.auth.signInWithPassword({
+      email: 'teacher@test.local',
+      password: 'Password123!'
+    });
+    assert.equal(teacherSessionAuth.error, null);
+
+    const nonAdminRes = await fetch(`${BASE_URL}/api/teachers?id=${DISPOSABLE_TEACHER_ID}`, {
+      method: 'DELETE',
+      headers: getHeaders(teacherSessionAuth.data.session)
+    });
+    const nonAdminBody = await nonAdminRes.json();
+    assert.equal(nonAdminRes.status, 403, 'Non-admin calling /api/teachers DELETE must receive 403');
+    assert.equal(nonAdminBody.error, 'Insufficient permissions');
+    console.log('  [J5 NON-ADMIN GUARD] Status:', nonAdminRes.status, 'Body:', nonAdminBody);
+
+    // 2. Admin attempting self-deactivation receives HTTP 400
+    const selfRes = await fetch(`${BASE_URL}/api/teachers?id=${adminSession.user.id}`, {
+      method: 'DELETE',
+      headers: getHeaders(adminSession)
+    });
+    const selfBody = await selfRes.json();
+    assert.equal(selfRes.status, 400, 'Self-deactivation via /api/teachers DELETE must receive 400');
+    assert.equal(selfBody.error, 'Cannot deactivate own account');
+    console.log('  [J5 SELF-DEACTIVATE GUARD] Status:', selfRes.status, 'Body:', selfBody);
+  });
+
   // Teardown: Clean up disposable test fixtures
   t.after(async () => {
     await supabaseAdmin.from('teacher_class_assignments').delete().eq('teacher_id', DISPOSABLE_TEACHER_ID);

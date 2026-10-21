@@ -96,13 +96,14 @@ export function ProductTour({ isOpen, onClose, role }: ProductTourProps) {
               <div className="flex items-center justify-center size-8 rounded-full bg-emerald-100 dark:bg-emerald-500/20">
                 {steps[currentStep].icon}
               </div>
-              <span className="font-semibold text-slate-700 dark:text-slate-200">
+              <span className="font-bold text-slate-900 dark:text-white">
                 Product Tour
               </span>
             </div>
             <button
               onClick={onClose}
-              className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors"
+              aria-label="Close Product Tour"
+              className="p-1 rounded-lg text-slate-700 hover:text-slate-900 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors"
             >
               <X className="size-5" />
             </button>
@@ -119,10 +120,10 @@ export function ProductTour({ isOpen, onClose, role }: ProductTourProps) {
                 transition={{ duration: 0.2 }}
                 className="text-center"
               >
-                <h2 className="text-xl font-bold text-emerald-800 dark:text-emerald-400 mb-3">
+                <h2 className="text-xl font-black text-emerald-950 dark:text-emerald-300 mb-3">
                   {steps[currentStep].title}
                 </h2>
-                <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
+                <p className="text-slate-900 dark:text-slate-100 font-medium leading-relaxed">
                   {steps[currentStep].content}
                 </p>
               </motion.div>
@@ -137,8 +138,8 @@ export function ProductTour({ isOpen, onClose, role }: ProductTourProps) {
                   key={i}
                   className={`h-1.5 rounded-full transition-all duration-300 ${
                     i === currentStep
-                      ? "w-6 bg-emerald-500"
-                      : "w-2 bg-slate-300 dark:bg-slate-600"
+                      ? "w-6 bg-emerald-600"
+                      : "w-2 bg-slate-400 dark:bg-slate-500"
                   }`}
                 />
               ))}
@@ -148,13 +149,13 @@ export function ProductTour({ isOpen, onClose, role }: ProductTourProps) {
               <button
                 onClick={prevStep}
                 disabled={currentStep === 0}
-                className="px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 disabled:opacity-50 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors"
+                className="px-3 py-1.5 rounded-lg text-sm font-bold text-slate-800 dark:text-white disabled:opacity-50 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors"
               >
                 Back
               </button>
               <button
                 onClick={nextStep}
-                className="flex items-center gap-1 px-4 py-1.5 rounded-lg text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 transition-colors shadow-md shadow-emerald-600/20"
+                className="flex items-center gap-1 px-4 py-1.5 rounded-lg text-sm font-bold text-white bg-emerald-800 hover:bg-emerald-900 transition-colors shadow-md shadow-emerald-900/20"
               >
                 {currentStep === steps.length - 1 ? "Get Started" : "Next"}
                 {currentStep < steps.length - 1 && <ChevronRight className="size-4" />}

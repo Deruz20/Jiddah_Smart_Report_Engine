@@ -1,8 +1,33 @@
 import { createClient } from '@/utils/supabase/server'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
-import { verifyDataAccess } from '@/lib/auth-server'
+import { verifyDataAccess, verifyEnrollmentClassAccess } from '@/lib/auth-server'
 import { recordActivity } from '@/lib/api-server'
+import { canAccessClass, subjectMatchesClassScope } from '@/lib/teacher-access'
+
+async function verifyTheologySubjectScope(
+  supabase: SupabaseClient,
+  classId: string | null,
+  subjectId: string
+) {
+  if (!classId) return { allowed: false, error: null }
+
+  const [{ data: theologyClass, error: classError }, { data: subject, error: subjectError }] =
+    await Promise.all([
+      supabase.from('theology_classes').select('level').eq('id', classId).maybeSingle(),
+      supabase.from('theology_subjects').select('level').eq('id', subjectId).maybeSingle(),
+    ])
+
+  if (classError || subjectError) {
+    return { allowed: false, error: classError?.message ?? subjectError?.message ?? 'Subject scope lookup failed.' }
+  }
+
+  return {
+    allowed: Boolean(theologyClass && subject && subjectMatchesClassScope(theologyClass.level, subject.level)),
+    error: null,
+  }
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -37,6 +62,7 @@ export async function GET(request: NextRequest) {
         eot_score,
         enrollments (
           student_id,
+          circular_class_id,
           theology_class_id,
           students ( name ),
           theology_classes ( class_name_english, level )
@@ -55,7 +81,22 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json({ data: data || [] }, { status: 200 })
+    const scopedData = (data || []).filter((mark: any) => {
+      const enrollment = Array.isArray(mark.enrollments) ? mark.enrollments[0] : mark.enrollments
+      const theologyClass = Array.isArray(enrollment?.theology_classes)
+        ? enrollment.theology_classes[0]
+        : enrollment?.theology_classes
+      const subject = Array.isArray(mark.theology_subjects)
+        ? mark.theology_subjects[0]
+        : mark.theology_subjects
+      return canAccessClass(
+        authRes,
+        'theology',
+        enrollment?.theology_class_id,
+        enrollment?.circular_class_id
+      ) && subjectMatchesClassScope(theologyClass?.level, subject?.level)
+    })
+    return NextResponse.json({ data: scopedData }, { status: 200 })
   } catch (err) {
     console.error('GET error:', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -83,12 +124,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const authRes = await verifyDataAccess(supabase, user, 'write')
-    if (!authRes.isAuthorized) {
-      return NextResponse.json({ error: authRes.message }, { status: 403 })
+    const { access: authRes, enrollment } = await verifyEnrollmentClassAccess(
+      supabase, user, 'write', enrollment_id, 'theology'
+    )
+    if (!authRes.isAuthorized) return NextResponse.json({ error: authRes.message }, { status: 403 })
+
+    const subjectScope = await verifyTheologySubjectScope(
+      supabase,
+      enrollment?.theology_class_id ?? null,
+      subject_id
+    )
+    if (subjectScope.error) {
+      console.error('Theology subject scope lookup failed:', subjectScope.error)
+      return NextResponse.json({ error: 'Unable to verify subject scope.' }, { status: 500 })
     }
-    if (authRes.filterByDepartment && authRes.filterByDepartment === 'secular') {
-      return NextResponse.json({ error: 'Unauthorized: Cannot modify Theology marks' }, { status: 403 })
+    if (!subjectScope.allowed) {
+      return NextResponse.json({ error: 'Subject is outside the assigned theology class level.' }, { status: 403 })
     }
 
     const updateData: any = {}
@@ -175,6 +226,30 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const { data: mark, error: markError } = await supabase
+      .from('theology_marks')
+      .select('enrollment_id, subject_id')
+      .eq('id', id)
+      .maybeSingle()
+    if (markError) return NextResponse.json({ error: markError.message }, { status: 500 })
+    if (!mark) return NextResponse.json({ error: 'Mark not found' }, { status: 404 })
+    const { access, enrollment } = await verifyEnrollmentClassAccess(
+      supabase, user, 'write', mark.enrollment_id, 'theology'
+    )
+    if (!access.isAuthorized) return NextResponse.json({ error: access.message }, { status: 403 })
+    const subjectScope = await verifyTheologySubjectScope(
+      supabase,
+      enrollment?.theology_class_id ?? null,
+      mark.subject_id
+    )
+    if (subjectScope.error) {
+      console.error('Theology subject scope lookup failed:', subjectScope.error)
+      return NextResponse.json({ error: 'Unable to verify subject scope.' }, { status: 500 })
+    }
+    if (!subjectScope.allowed) {
+      return NextResponse.json({ error: 'Subject is outside the assigned theology class level.' }, { status: 403 })
+    }
+
     const updateData: any = {}
     if (mot_score !== undefined) updateData.mot_score = mot_score === '' ? null : parseFloat(mot_score)
     if (eot_score !== undefined) updateData.eot_score = eot_score === '' ? null : parseFloat(eot_score)
@@ -207,6 +282,30 @@ export async function DELETE(request: NextRequest) {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { data: mark, error: markError } = await supabase
+      .from('theology_marks')
+      .select('enrollment_id, subject_id')
+      .eq('id', id)
+      .maybeSingle()
+    if (markError) return NextResponse.json({ error: markError.message }, { status: 500 })
+    if (!mark) return NextResponse.json({ error: 'Mark not found' }, { status: 404 })
+    const { access, enrollment } = await verifyEnrollmentClassAccess(
+      supabase, user, 'write', mark.enrollment_id, 'theology'
+    )
+    if (!access.isAuthorized) return NextResponse.json({ error: access.message }, { status: 403 })
+    const subjectScope = await verifyTheologySubjectScope(
+      supabase,
+      enrollment?.theology_class_id ?? null,
+      mark.subject_id
+    )
+    if (subjectScope.error) {
+      console.error('Theology subject scope lookup failed:', subjectScope.error)
+      return NextResponse.json({ error: 'Unable to verify subject scope.' }, { status: 500 })
+    }
+    if (!subjectScope.allowed) {
+      return NextResponse.json({ error: 'Subject is outside the assigned theology class level.' }, { status: 403 })
     }
 
     const { error } = await supabase.from('theology_marks').delete().eq('id', id)

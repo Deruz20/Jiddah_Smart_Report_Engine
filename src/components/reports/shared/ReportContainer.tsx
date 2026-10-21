@@ -16,6 +16,8 @@
 
 import React from 'react'
 import { STABILIZED_REPORT_ORIENTATIONS } from '@/lib/report-constants'
+import { getFontVariables } from '@/lib/fonts'
+import { getThemeColors } from '@/lib/themes'
 import type { ReportContainerProps } from '@/types/report'
 
 /**
@@ -29,25 +31,25 @@ import type { ReportContainerProps } from '@/types/report'
  * @param children - Report content (tables, sections, etc.)
  * @param reportType - One of 6 stabilized report types (canonically mapped to A4 dimensions)
  * @param className - Optional additional CSS classes
- *
- * @example
- * <ReportContainer reportType="PrimaryMOTReport">
- *   <YourReportContent />
- * </ReportContainer>
  */
 export const ReportContainer: React.FC<ReportContainerProps> = ({
   children,
   reportType,
   className = '',
+  primaryFont,
+  arabicFont,
+  themePreset,
+  themeColor,
 }) => {
   // Derive dimensions ONLY from canonical mapping
   // This is the single source of truth for each report's dimensions
   const dimensions = STABILIZED_REPORT_ORIENTATIONS[reportType]
   const pageOrientation = dimensions.pageOrientation
+  const theme = getThemeColors(themePreset)
+  const fontVars = getFontVariables(primaryFont, arabicFont)
 
   // Inline styles with exact dimensions from constants
-  // Using minHeight instead of height to allow content expansion while maintaining A4 baseline
-  const containerStyle: React.CSSProperties = {
+  const containerStyle: React.CSSProperties & Record<string, any> = {
     width: `${dimensions.width}px`,
     height: `${dimensions.height}px`,
     position: 'relative',
@@ -60,6 +62,9 @@ export const ReportContainer: React.FC<ReportContainerProps> = ({
     flexDirection: 'column',
     flexShrink: 0,
     flexGrow: 0,
+    '--report-primary-color': themeColor || theme.primary,
+    '--report-secondary-color': theme.secondary,
+    '--report-border-color': theme.border,
   }
 
   return (
@@ -67,8 +72,10 @@ export const ReportContainer: React.FC<ReportContainerProps> = ({
       role="report"
       data-report-type={reportType}
       data-report-orientation={pageOrientation}
+      data-theme-preset={themePreset || 'default'}
+      data-primary-font={primaryFont || 'default'}
       style={containerStyle}
-      className={`report-container ${className}`}
+      className={`report-container ${fontVars} ${className}`}
     >
       {children}
     </div>

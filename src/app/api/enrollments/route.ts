@@ -4,6 +4,7 @@ import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { verifyDataAccess } from '@/lib/auth-server'
+import { classIdsForType } from '@/lib/teacher-access'
 
 export async function OPTIONS(request: NextRequest) {
   return apiOptions(request)
@@ -21,7 +22,7 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Authentication required. Please log in.' }, { status: 401 }))
     }
 
-    const authRes = await verifyDataAccess(supabase, user, 'read');
+    const authRes = await verifyDataAccess(supabase, user, 'read')
     if (!authRes.isAuthorized) {
       return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
     }
@@ -32,20 +33,32 @@ export async function GET(request: NextRequest) {
         id,
         academic_year,
         is_active,
+        circular_class_id,
+        theology_class_id,
         circular_classes ( id, class_name, section ),
         theology_classes ( id, class_name_arabic, class_name_english, level ),
-        students ( id, name, admission_number, created_at )
+        students!inner ( id, name, admission_number, created_at, arabic_name, is_archived )
       `)
       .eq('is_active', true)
       .order('academic_year', { ascending: false })
 
     if (authRes.filterByClasses) {
-      const assignedClasses = authRes.filterByClasses;
-      if (assignedClasses.length > 0) {
-        query = query.in('circular_class_id', assignedClasses)
-      } else {
-        query = query.eq('circular_class_id', 'UNASSIGNED_DUMMY_VALUE')
+      const circularClassIds = classIdsForType(authRes, 'circular') ?? []
+      const theologyClassIds = classIdsForType(authRes, 'theology') ?? []
+      const validUuid = (id: string) =>
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+      const filters = [
+        ...(circularClassIds.filter(validUuid).length
+          ? [`circular_class_id.in.(${circularClassIds.filter(validUuid).join(',')})`]
+          : []),
+        ...(theologyClassIds.filter(validUuid).length
+          ? [`theology_class_id.in.(${theologyClassIds.filter(validUuid).join(',')})`]
+          : []),
+      ]
+      if (filters.length === 0) {
+        return withCors(request, NextResponse.json([]))
       }
+      query = query.or(filters.join(','))
     } else if (authRes.filterByDepartment) {
       if (authRes.filterByDepartment === 'theology') {
         query = query.not('theology_class_id', 'is', null)
@@ -61,8 +74,13 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: error.message }, { status: 500 }))
     }
 
+    const activeRows = (data ?? []).filter((row: any) => {
+      const studentObj = Array.isArray(row.students) ? row.students[0] : row.students
+      return studentObj?.is_archived !== true
+    })
+
     const reshaped =
-      data?.map((e) => reshapeEnrollmentRow(e)).filter((row): row is NonNullable<typeof row> => row != null) ?? []
+      activeRows.map((e) => reshapeEnrollmentRow(e)).filter((row): row is NonNullable<typeof row> => row != null) ?? []
 
     return withCors(request, NextResponse.json(reshaped))
   } catch (err) {

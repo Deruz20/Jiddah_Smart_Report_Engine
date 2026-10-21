@@ -84,7 +84,6 @@ export async function POST(req: Request) {
           name: finalName,
           classes: invite.classes || [],
           phone: invite.phone || phone || null,
-          auth_user_id: userId,
           status: 'active'
         }
       ]);

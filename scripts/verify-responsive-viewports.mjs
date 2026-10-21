@@ -12,12 +12,20 @@ const viewports = [
   { name: '1440x900_desktop', width: 1440, height: 900 }
 ];
 
-const routes = [
-  { name: 'dashboard', path: '/admin' },
-  { name: 'marks', path: '/admin/marks' },
-  { name: 'reports', path: '/admin/reports' },
-  { name: 'settings', path: '/admin/settings' },
-  { name: 'notifications', path: '/admin/notifications' },
+const protectedAdminRoutes = [
+  { name: 'auth-redirect-dashboard', path: '/admin' },
+  { name: 'auth-redirect-marks', path: '/admin/marks' },
+  { name: 'auth-redirect-reports', path: '/admin/reports' },
+  { name: 'auth-redirect-settings', path: '/admin/settings' },
+  { name: 'auth-redirect-notifications', path: '/admin/notifications' },
+];
+
+const componentPreviewCanvases = [
+  { name: 'preview-dashboard', path: '/preview-shell?view=dashboard' },
+  { name: 'preview-settings', path: '/preview-shell?view=settings' },
+  { name: 'preview-notifications', path: '/preview-shell?view=notifications' },
+  { name: 'preview-marks', path: '/preview-shell?view=marks' },
+  { name: 'preview-reports', path: '/preview-shell?view=reports' },
   { name: 'preview-test', path: '/preview-test' }
 ];
 
@@ -36,14 +44,32 @@ async function runResponsiveAudit() {
   const page = await browser.newPage();
   const results = [];
 
+  // Phase 1: Verify Authentication Edge Boundary on Protected Routes
+  console.log('\n=== Phase 1: Authentication Edge & Redirect Verification ===');
+  await page.setViewport({ width: 1440, height: 900 });
+  for (const route of protectedAdminRoutes) {
+    await page.goto(`http://localhost:3000${route.path}`, { waitUntil: 'networkidle2', timeout: 15000 });
+    const finalUrl = page.url();
+    const isRedirectedToLogin = finalUrl.includes('/login');
+    console.log(`  Protected Route: ${route.path} -> redirected to ${finalUrl} (Redirected: ${isRedirectedToLogin ? 'PASS' : 'FAIL'})`);
+    results.push({
+      category: 'auth_boundary',
+      path: route.path,
+      finalUrl,
+      isRedirectedToLogin
+    });
+  }
+
+  // Phase 2: Responsive Viewport Testing across All Component Canvases
+  console.log('\n=== Phase 2: Responsive Viewport Audit of Administrative UI Components ===');
   for (const vp of viewports) {
-    console.log(`\n=== Testing Viewport: ${vp.name} (${vp.width}x${vp.height}) ===`);
+    console.log(`\n--- Testing Viewport: ${vp.name} (${vp.width}x${vp.height}) ---`);
     await page.setViewport({ width: vp.width, height: vp.height });
 
-    for (const route of routes) {
+    for (const route of componentPreviewCanvases) {
       try {
-        await page.goto(`http://localhost:3000${route.path}`, { waitUntil: 'networkidle2', timeout: 15000 });
-        await new Promise(r => setTimeout(r, 800));
+        await page.goto(`http://localhost:3000${route.path}`, { waitUntil: 'networkidle2', timeout: 20000 });
+        await new Promise(r => setTimeout(r, 600));
 
         // Evaluate layout metrics
         const metrics = await page.evaluate(() => {
@@ -79,28 +105,25 @@ async function runResponsiveAudit() {
         const screenshotFile = path.join(scratchDir, `${route.name}_${vp.width}x${vp.height}.png`);
         await page.screenshot({ path: screenshotFile, fullPage: false });
 
-        const actualUrl = page.url();
-        const wasRedirected = !actualUrl.endsWith(route.path);
-        const redirectNote = wasRedirected ? ` [Redirected -> ${actualUrl}]` : '';
-
-        console.log(`  Route: ${route.name} (${route.path}${redirectNote}) -> Overflow: ${metrics.hasHorizontalOverflow ? `YES (+${metrics.overflowDiff}px)` : 'NO'}, Undersized targets (<24px): ${metrics.undersizedTargets}/${metrics.totalInteractive}`);
+        console.log(`  Canvas: ${route.name} (${route.path}) -> Overflow: ${metrics.hasHorizontalOverflow ? `YES (+${metrics.overflowDiff}px)` : 'NO'}, Undersized targets (<24px): ${metrics.undersizedTargets}/${metrics.totalInteractive}`);
 
         results.push({
+          category: 'responsive_viewport',
           viewport: vp.name,
           width: vp.width,
           height: vp.height,
           route: route.name,
           path: route.path,
-          actualUrl,
-          wasRedirected,
           overflow: metrics.hasHorizontalOverflow,
           overflowDiff: metrics.overflowDiff,
           undersizedTargets: metrics.undersizedTargets,
+          totalInteractive: metrics.totalInteractive,
           screenshot: screenshotFile
         });
       } catch (err) {
         console.error(`  Error on ${route.name} (${vp.name}):`, err.message);
         results.push({
+          category: 'responsive_viewport',
           viewport: vp.name,
           route: route.name,
           error: err.message
@@ -109,13 +132,12 @@ async function runResponsiveAudit() {
     }
   }
 
-  // Mobile navigation drawer test on 390x844
-  console.log('\n=== Testing Mobile Drawer & Escape behavior ===');
+  // Phase 3: Mobile Navigation Drawer & Escape Verification on 390x844
+  console.log('\n=== Phase 3: Mobile Drawer Interaction & Escape Behavior ===');
   await page.setViewport({ width: 390, height: 844 });
-  await page.goto('http://localhost:3000/preview-shell', { waitUntil: 'domcontentloaded', timeout: 15000 });
-  await new Promise(r => setTimeout(r, 1500));
+  await page.goto('http://localhost:3000/preview-shell', { waitUntil: 'networkidle2', timeout: 15000 });
+  await new Promise(r => setTimeout(r, 1000));
 
-  // Find hamburger button via accessible label or testid
   const hamburger = await page.$('button[data-testid="mobile-menu-trigger"], button[aria-label="Toggle Navigation Menu"]');
   if (hamburger) {
     console.log('Found hamburger button, clicking...');

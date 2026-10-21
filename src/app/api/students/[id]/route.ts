@@ -1,8 +1,9 @@
-import { createClient } from '@/utils/supabase/server'
+import { createAdminClient, createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { verifyDataAccess } from '@/lib/auth-server'
+import { canAccessClass, canAccessEnrollment, canHardDeleteStudent, isAdministratorRole } from '@/lib/teacher-access'
 
 export async function OPTIONS(request: NextRequest) {
   return apiOptions(request)
@@ -47,18 +48,54 @@ export async function PUT(
       return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
     }
 
-    if (authRes.filterByClasses) {
-      const isTheology = authRes.filterByDepartment === 'theology';
-      const targetClassId = isTheology ? body.theology_class_id : body.circular_class_id;
-      if (!targetClassId || !authRes.filterByClasses.includes(targetClassId)) {
-        return withCors(request, NextResponse.json({ error: 'Unauthorized: Cannot modify student outside your assigned classes' }, { status: 403 }))
+    const { data: currentEnrollments, error: currentEnrollmentsError } = await supabaseAdmin
+      .from('enrollments')
+      .select('id, circular_class_id, theology_class_id, academic_year')
+      .eq('student_id', studentId)
+      .eq('is_active', true)
+
+    if (currentEnrollmentsError) {
+      console.error('Student enrollment access lookup failed:', currentEnrollmentsError.message)
+      return withCors(request, NextResponse.json({ error: 'Unable to verify student class access.' }, { status: 500 }))
+    }
+
+    if (!currentEnrollments?.length) {
+      if (!isAdministratorRole(authRes.role)) {
+        return withCors(request, NextResponse.json({ error: 'Unauthorized: Student has no active enrollment in your assigned classes.' }, { status: 403 }))
       }
-    } else if (authRes.filterByDepartment) {
-      if (authRes.filterByDepartment === 'theology' && !body.theology_class_id) {
-        return withCors(request, NextResponse.json({ error: 'Unauthorized: Must assign a Theology class' }, { status: 403 }))
+    } else {
+      if (currentEnrollments.some((enrollment) => !canAccessEnrollment(authRes, enrollment))) {
+        return withCors(request, NextResponse.json({ error: 'Unauthorized: Cannot modify student outside your assigned classes.' }, { status: 403 }))
       }
-      if (authRes.filterByDepartment === 'secular' && !body.circular_class_id) {
-        return withCors(request, NextResponse.json({ error: 'Unauthorized: Must assign a Secular class' }, { status: 403 }))
+
+      const currentEnrollment = currentEnrollments.length === 1 ? currentEnrollments[0] : null
+      if (!currentEnrollment) {
+        return withCors(request, NextResponse.json({ error: 'Unable to update a student with multiple active enrollments.' }, { status: 409 }))
+      }
+
+      const nextCircularClass = body.circular_class_id
+      const nextTheologyClass = body.theology_class_id || null
+      const canManageCircular = canAccessClass(authRes, 'circular', currentEnrollment.circular_class_id)
+      const canManageTheology = canAccessClass(
+        authRes,
+        'theology',
+        currentEnrollment.theology_class_id,
+        currentEnrollment.circular_class_id
+      )
+      const circularAllowed = canManageCircular
+        ? canAccessClass(authRes, 'circular', nextCircularClass)
+        : nextCircularClass === currentEnrollment.circular_class_id
+      const theologyAllowed = canManageTheology
+        ? !nextTheologyClass || canAccessClass(
+          authRes,
+          'theology',
+          nextTheologyClass,
+          nextCircularClass
+        )
+        : nextTheologyClass === currentEnrollment.theology_class_id
+
+      if (!circularAllowed || !theologyAllowed) {
+        return withCors(request, NextResponse.json({ error: 'Unauthorized: Cannot assign classes outside your permissions.' }, { status: 403 }))
       }
     }
 
@@ -91,17 +128,7 @@ export async function PUT(
       return withCors(request, NextResponse.json({ error: studentUpdateError.message }, { status: 500 }))
     }
 
-    // 2. Fetch current active enrollment
-    const { data: currentEnrollment, error: fetchEnrollmentError } = await supabase
-      .from('enrollments')
-      .select('id, circular_class_id, theology_class_id, academic_year')
-      .eq('student_id', studentId)
-      .eq('is_active', true)
-      .single()
-
-    if (fetchEnrollmentError && fetchEnrollmentError.code !== 'PGRST116') { // PGRST116 is not found
-      return withCors(request, NextResponse.json({ error: fetchEnrollmentError.message }, { status: 500 }))
-    }
+    const currentEnrollment = currentEnrollments?.[0] ?? null
 
     const newCircularClass = body.circular_class_id
     const newTheologyClass = body.theology_class_id || null
@@ -111,13 +138,15 @@ export async function PUT(
       const theologyChanged = currentEnrollment.theology_class_id !== newTheologyClass
 
       if (circularChanged || theologyChanged) {
-        // Mark old enrollment inactive
-        await supabaseAdmin
+        const { error: archiveEnrollmentError } = await supabaseAdmin
           .from('enrollments')
           .update({ is_active: false })
           .eq('id', currentEnrollment.id)
 
-        // Create new enrollment
+        if (archiveEnrollmentError) {
+          return withCors(request, NextResponse.json({ error: archiveEnrollmentError.message }, { status: 500 }))
+        }
+
         const { error: newEnrollmentError } = await supabaseAdmin
           .from('enrollments')
           .insert([{
@@ -134,8 +163,7 @@ export async function PUT(
         }
       }
     } else {
-      // No active enrollment found, just create one
-      await supabaseAdmin
+      const { error: newEnrollmentError } = await supabaseAdmin
         .from('enrollments')
         .insert([{
           student_id: studentId,
@@ -144,6 +172,10 @@ export async function PUT(
           academic_year: new Date().getFullYear(),
           is_active: true,
         }])
+
+      if (newEnrollmentError) {
+        return withCors(request, NextResponse.json({ error: newEnrollmentError.message }, { status: 500 }))
+      }
     }
 
     return withCors(request, NextResponse.json({ success: true }))
@@ -184,50 +216,58 @@ export async function DELETE(
       return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
     }
 
-    // Must fetch student's enrollment to verify permission for DELETE
-    if (authRes.filterByClasses || authRes.filterByDepartment) {
-      const { data: existingEnrollment } = await supabase
-        .from('enrollments')
-        .select('circular_class_id, theology_class_id')
-        .eq('student_id', studentId)
-        .eq('is_active', true)
-        .single()
-        
-      if (existingEnrollment) {
-        if (authRes.filterByClasses) {
-          const isTheology = authRes.filterByDepartment === 'theology';
-          const targetClassId = isTheology ? existingEnrollment.theology_class_id : existingEnrollment.circular_class_id;
-          if (!targetClassId || !authRes.filterByClasses.includes(targetClassId)) {
-            return withCors(request, NextResponse.json({ error: 'Unauthorized to delete this student' }, { status: 403 }))
-          }
-        }
-        if (authRes.filterByDepartment) {
-          if (authRes.filterByDepartment === 'theology' && !existingEnrollment.theology_class_id) {
-            return withCors(request, NextResponse.json({ error: 'Unauthorized to delete Secular student' }, { status: 403 }))
-          }
-          if (authRes.filterByDepartment === 'secular' && !existingEnrollment.circular_class_id) {
-            return withCors(request, NextResponse.json({ error: 'Unauthorized to delete Theology student' }, { status: 403 }))
-          }
-        }
-      }
+    if (isHardDelete && !canHardDeleteStudent(authRes)) {
+      return withCors(request, NextResponse.json({ error: 'Only administrators may permanently delete student records.' }, { status: 403 }))
+    }
+
+    let targetEnrollmentQuery = supabaseAdmin
+      .from('enrollments')
+      .select('id, circular_class_id, theology_class_id')
+      .eq('student_id', studentId)
+    if (!isHardDelete) {
+      targetEnrollmentQuery = targetEnrollmentQuery.eq('is_active', true)
+    }
+    const { data: targetEnrollments, error: targetEnrollmentsError } = await targetEnrollmentQuery
+
+    if (targetEnrollmentsError) {
+      console.error('Student enrollment access lookup failed:', targetEnrollmentsError.message)
+      return withCors(request, NextResponse.json({ error: 'Unable to verify student class access.' }, { status: 500 }))
+    }
+
+    if (!isAdministratorRole(authRes.role) && (
+      !targetEnrollments?.length ||
+      targetEnrollments.some((enrollment) => !canAccessEnrollment(authRes, enrollment))
+    )) {
+      return withCors(request, NextResponse.json({ error: 'Unauthorized to delete this student' }, { status: 403 }))
     }
 
     if (isHardDelete) {
-      // For hard delete, we first need to get all enrollments for this student to delete their marks
-      const { data: enrollments } = await supabase
-        .from('enrollments')
-        .select('id')
-        .eq('student_id', studentId)
-
-      if (enrollments && enrollments.length > 0) {
-        const enrollmentIds = enrollments.map(e => e.id)
+      if (targetEnrollments && targetEnrollments.length > 0) {
+        const enrollmentIds = targetEnrollments.map(enrollment => enrollment.id)
         
-        // Delete circular marks
-        await supabaseAdmin.from('circular_marks').delete().in('enrollment_id', enrollmentIds)
-        // Delete theology marks
-        await supabaseAdmin.from('theology_marks').delete().in('enrollment_id', enrollmentIds)
-        // Delete enrollments
-        await supabaseAdmin.from('enrollments').delete().eq('student_id', studentId)
+        const { error: circularMarksError } = await supabaseAdmin
+          .from('circular_marks')
+          .delete()
+          .in('enrollment_id', enrollmentIds)
+        if (circularMarksError) {
+          return withCors(request, NextResponse.json({ error: circularMarksError.message }, { status: 500 }))
+        }
+
+        const { error: theologyMarksError } = await supabaseAdmin
+          .from('theology_marks')
+          .delete()
+          .in('enrollment_id', enrollmentIds)
+        if (theologyMarksError) {
+          return withCors(request, NextResponse.json({ error: theologyMarksError.message }, { status: 500 }))
+        }
+
+        const { error: enrollmentDeleteError } = await supabaseAdmin
+          .from('enrollments')
+          .delete()
+          .eq('student_id', studentId)
+        if (enrollmentDeleteError) {
+          return withCors(request, NextResponse.json({ error: enrollmentDeleteError.message }, { status: 500 }))
+        }
       }
 
       // Finally, delete the student
@@ -280,6 +320,29 @@ export async function PATCH(
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
       return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+    }
+
+    const authRes = await verifyDataAccess(supabase, user, 'write')
+    if (!authRes.isAuthorized) {
+      return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
+    }
+
+    const { data: activeEnrollments, error: enrollmentError } = await createAdminClient()
+      .from('enrollments')
+      .select('circular_class_id, theology_class_id')
+      .eq('student_id', studentId)
+      .eq('is_active', true)
+
+    if (enrollmentError) {
+      console.error('Student enrollment access lookup failed:', enrollmentError.message)
+      return withCors(request, NextResponse.json({ error: 'Unable to verify student class access.' }, { status: 500 }))
+    }
+
+    if (!isAdministratorRole(authRes.role) && (
+      !activeEnrollments?.length ||
+      activeEnrollments.some((enrollment) => !canAccessEnrollment(authRes, enrollment))
+    )) {
+      return withCors(request, NextResponse.json({ error: 'Unauthorized to update this student' }, { status: 403 }))
     }
 
     const { error: archiveError } = await supabase

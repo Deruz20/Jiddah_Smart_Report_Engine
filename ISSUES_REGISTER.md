@@ -202,19 +202,46 @@ Governing Standard: Autonomous Master Pass Audit & Resolution Protocol
 
 ---
 
-## 3. Non-Phase-1 Deferred Defects (Pre-existing Uncommitted Invariants)
+## 3. Security Hardening & Defect Resolutions
 
-#### DEF-CSV-01: Local Helper `escapeCSV` Not Exported in `src/utils/csvExport.ts`
-- **Classification:** NOT Phase 1 (Pre-existing uncommitted work from Wave 6 suite)
-- **Evidence:** `TypeError: escapeCSV is not a function` in `src/__tests__/security-hardening-and-invariants.test.mjs:11:18`
-- **Finding:** `src/utils/csvExport.ts` defines `const escapeCSV = (val: any) => ...` as a private module-scoped helper rather than an exported function.
-- **Resolution:** Deferred to Post-Phase 1 hardening. Requires adding `export` to `escapeCSV` in `src/utils/csvExport.ts`.
-- **Status:** Logged & Deferred.
+#### DEF-CSV-01: Local Helper `escapeCSV` in `src/utils/csvExport.ts` (RESOLVED)
+- **Classification:** Security Hardening (CWE-1236 Defense)
+- **Evidence:** Commit `5f81199` ("security hardening"). `security-hardening-and-invariants.test.mjs` test 1 passes.
+- **Resolution:** Exported `escapeCSV` and enforced single-quote neutralization for leading `=`, `+`, `-`, `@`, `\t`, `\r` characters.
+- **Status:** **RESOLVED** in commit `5f81199`.
 
-#### DEF-SNIFF-01: Untracked Module `src/lib/image-sniff.ts` Imported by Wave 6 Test
-- **Classification:** NOT Phase 1 (Pre-existing uncommitted experimental security defense)
-- **Evidence:** `ERR_MODULE_NOT_FOUND` in `src/__tests__/security-hardening-and-invariants.test.mjs:68`
-- **Finding:** `src/lib/image-sniff.ts` is an untracked working-tree file implementing magic byte MIME sniffing. The committed test in `security-hardening-and-invariants.test.mjs` imports it dynamically.
-- **Verification:** Proven with `git grep` that no committed app router, component, or library file imports `image-sniff.ts` (0 hits across `src/app`, `src/components`, `src/lib` in committed git tree).
-- **Resolution:** Deferred to Post-Phase 1 hardening.
-- **Status:** Logged & Deferred.
+#### DEF-SNIFF-01: Magic Byte Sniffing `src/lib/image-sniff.ts` (RESOLVED)
+- **Classification:** Security Hardening (CWE-434 Defense)
+- **Evidence:** Commit `5f81199` ("security hardening"). `security-hardening-and-invariants.test.mjs` test 5 passes.
+- **Resolution:** Committed `src/lib/image-sniff.ts` and integrated binary magic-byte inspection into `/api/settings/user/avatar` and `/api/signatures/upload`.
+- **Status:** **RESOLVED** in commit `5f81199`.
+
+#### SEC-LEAK-KEY-01: Active `.env.local` Anon & Publishable Keys Match Legacy Leaked Commits
+- **Severity:** Pending Dashboard Verification (Informational / Operational Audit)
+- **Token Classification & Decoded Metadata:**
+  - **Legacy Leaks #1–#5 (Commit `4670f498`, `scratch/test_db*.mjs`, `scratch/test_rls.mjs`):**
+    - `role`: `service_role` (**CRITICAL if still active**).
+    - `iss`: `supabase` | `project ref`: `vism...ay` (masked).
+    - `iat`: `2026-05-03T10:01:45.000Z` | `exp`: `2036-05-02T22:01:45.000Z`.
+  - **Legacy Leaks #6–#9 (Commits `79f12323`, `6f394d38`):**
+    - `role`: `anon` (**Public-by-design token**; intended for client-side embedding).
+    - `iss`: `supabase` | `project ref`: `vism...ay` (masked).
+    - `iat`: `2026-05-03T10:01:45.000Z` | `exp`: `2036-05-02T22:01:45.000Z`.
+  - **Active `.env.local` Anon Key:**
+    - `role`: `anon` (**Public-by-design token**). Matches legacy leaks #6–#9.
+    - `iss`: `supabase` | `project ref`: `vism...ay` (masked).
+    - `iat`: `2026-05-03T10:01:45.000Z` | `exp`: `2036-05-02T22:01:45.000Z`.
+  - **Legacy Leak #10 (`scripts/run-real-browser-e2e-and-axe.mjs` line 152):**
+    - `sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH` (**Public-by-design publishable key format**).
+- **Audit Contradiction Flagged:** The presence of the May 2026 `anon` token in active `.env.local` contradicts earlier audit claims that "legacy keys were rotated".
+- **Action Required:**
+  - **DO NOT ROTATE API KEYS AT THIS TIME.** Blind rotation invalidates live production sessions.
+  - Owner executes `OWNER_CHECKLIST.md` Step 2.5: Inspect Supabase Dashboard -> Project Settings -> API to check whether "Legacy API Keys" are already listed as Disabled.
+- **Status:** **UPDATED (Pending Dashboard Verification)**.
+
+#### PROD-SHAPE-01: Class Teachers Assigned Only Through `teacher_class_assignments` Are Not Resolved
+- **Severity:** P1 (Production Access Gap)
+- **Evidence:** Owner-provided 2026-10-19 production facts: RLS is enabled with zero policies on `teacher_class_assignments`. Production-shaped rehearsal comparison: `scripts/rebuild-rehearsal.mjs` reports 0 rehearsal policies versus 0 production policies for that table. `src/lib/auth-server.ts` reads assignments using the user-JWT client, so RLS hides those rows.
+- **Impact:** A Class Teacher whose only assignment is in `teacher_class_assignments` receives an empty `filterByClasses` list. Existing route guards fail closed, but the teacher may see no classes/students or be denied marks/report actions. The full authenticated route test remains blocked because the rehearsal is also missing production policies on `teachers` and other tables.
+- **Owner Decision Needed:** Decide whether to add a narrowly scoped teacher-self SELECT policy at Gate 1 or retain the current no-policy state and accept that assignment-only teachers cannot use class-scoped routes. No policy was created or applied.
+- **Status:** **NEEDS OWNER DECISION**.

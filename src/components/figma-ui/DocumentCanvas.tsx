@@ -51,13 +51,13 @@ export function DocumentCanvas({
         className="absolute inset-0 overflow-auto"
         style={{
           background: `
-            radial-gradient(circle, rgba(5,150,105,0.035) 1px, transparent 1px),
-            radial-gradient(circle, rgba(5,150,105,0.02) 1px, transparent 1px)
+            radial-gradient(circle, rgba(15,77,37,0.04) 1px, transparent 1px),
+            radial-gradient(circle, rgba(15,77,37,0.025) 1px, transparent 1px)
           `,
           backgroundSize: '28px 28px, 56px 56px',
-          backgroundColor: '#f1f5f9',
+          backgroundColor: '#FDFBF7',
           scrollbarWidth: 'thin',
-          scrollbarColor: 'rgba(0,0,0,0.1) transparent',
+          scrollbarColor: 'rgba(0,0,0,0.12) transparent',
         }}
       >
         {reports.length === 0 ? (

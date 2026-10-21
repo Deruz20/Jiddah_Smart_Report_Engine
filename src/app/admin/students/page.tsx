@@ -1,12 +1,13 @@
 import { createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
-import { CreateStudentWizard } from '@/components/CreateStudentWizard'
+import { StudentRegistrationContainer } from '@/components/students/StudentRegistrationContainer'
 import { StudentsListClient } from '@/components/StudentsListClient'
 import { MetricCard } from '@/components/figma-ui/MetricCard'
 import { RegistrationTips } from '@/components/figma-ui/RegistrationTips'
 import { GraduationCap, BookOpen, TrendingUp, Calendar } from 'lucide-react'
 
 import { verifyDataAccess } from '@/lib/auth-server'
+import { classIdsForType } from '@/lib/teacher-access'
 
 export default async function StudentsManagementPage() {
   const cookieStore = await cookies()
@@ -25,14 +26,25 @@ export default async function StudentsManagementPage() {
     .select(`
       academic_year,
       is_active,
+      circular_class_id,
+      theology_class_id,
       circular_classes ( id, class_name, section ),
       theology_classes ( id, class_name_arabic, class_name_english ),
       students ( id, name, admission_number, created_at, gender, is_archived, is_muslim, arabic_name )
     `)
     .eq('is_active', true)
     .order('academic_year', { ascending: false });
-    
-  if (authRes.filterByDepartment === 'secular') {
+
+  if (authRes.filterByClasses) {
+    const circularIds = classIdsForType(authRes, 'circular') ?? []
+    const theologyIds = classIdsForType(authRes, 'theology') ?? []
+    const filters = [
+      ...(circularIds.length ? [`circular_class_id.in.(${circularIds.join(',')})`] : []),
+      ...(theologyIds.length ? [`theology_class_id.in.(${theologyIds.join(',')})`] : []),
+    ]
+    if (filters.length === 0) return <div className="p-10">No assigned classes.</div>
+    query = query.or(filters.join(','))
+  } else if (authRes.filterByDepartment === 'secular') {
     query = query.not('circular_class_id', 'is', null);
   } else if (authRes.filterByDepartment === 'theology') {
     query = query.not('theology_class_id', 'is', null);
@@ -43,29 +55,31 @@ export default async function StudentsManagementPage() {
   const { data: activeTerm } = await supabase.from('terms').select('*').eq('is_current', true).single();
   const currentAcademicYear = activeTerm?.academic_year || '2024–25';
 
-  const students = (enrollments || []).map((e: any) => ({
-    id: e.students.id,
-    name: e.students.name,
-    admission_number: e.students.admission_number ?? '—',
-    created_at: e.students.created_at,
-    circular_class: e.circular_classes?.class_name ?? '—',
-    circular_class_id: e.circular_classes?.id ?? null,
-    section: e.circular_classes?.section ?? null,
-    theology_class_arabic: e.theology_classes?.class_name_arabic ?? null,
-    theology_class_english: e.theology_classes?.class_name_english ?? null,
-    theology_class_id: e.theology_classes?.id ?? null,
-    academic_year: e.academic_year,
-    status: (e.circular_classes ? (e.circular_classes.section?.toLowerCase() === 'nursery' ? 'Nursery' : 'Primary') : 'Theology') as 'Nursery' | 'Primary' | 'Theology',
-    is_theology_enrolled: !!e.theology_classes,
-    gender: e.students.gender,
-    is_archived: e.students.is_archived ?? false,
-    is_muslim: e.students.is_muslim ?? false,
-    arabic_name: e.students.arabic_name ?? null,
-  }))
+  const students = (enrollments || [])
+    .filter((e: any) => e && e.students)
+    .map((e: any) => ({
+      id: e.students.id,
+      name: e.students.name,
+      admission_number: e.students.admission_number ?? '—',
+      created_at: e.students.created_at,
+      circular_class: e.circular_classes?.class_name ?? '—',
+      circular_class_id: e.circular_classes?.id ?? null,
+      section: e.circular_classes?.section ?? null,
+      theology_class_arabic: e.theology_classes?.class_name_arabic ?? null,
+      theology_class_english: e.theology_classes?.class_name_english ?? null,
+      theology_class_id: e.theology_classes?.id ?? null,
+      academic_year: e.academic_year,
+      status: (e.circular_classes ? (e.circular_classes.section?.toLowerCase() === 'nursery' ? 'Nursery' : 'Primary') : 'Theology') as 'Nursery' | 'Primary' | 'Theology',
+      is_theology_enrolled: !!e.theology_classes,
+      gender: e.students.gender,
+      is_archived: e.students.is_archived ?? false,
+      is_muslim: e.students.is_muslim ?? false,
+      arabic_name: e.students.arabic_name ?? null,
+    }))
 
   const heroStats = [
     { label: 'Active Students', value: students.length, icon: GraduationCap, color: 'emerald' },
-    { label: 'Classes Running', value: 7, icon: BookOpen, color: 'orange' }, // Mock for now or calculate unique classes
+    { label: 'Classes Running', value: 7, icon: BookOpen, color: 'orange' },
     { label: 'Growth YoY', value: '+18%', icon: TrendingUp, color: 'emerald' },
     { label: 'Academic Year', value: currentAcademicYear, icon: Calendar, color: 'slate' },
   ];
@@ -110,7 +124,7 @@ export default async function StudentsManagementPage() {
 
           {/* Mini stat strip */}
           <div className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {heroStats.map((stat, i) => {
+            {heroStats.map((stat) => {
               const Icon = stat.icon;
               return (
                 <div
@@ -138,7 +152,7 @@ export default async function StudentsManagementPage() {
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-10">
           {/* Wizard takes 3 cols */}
           <div className="lg:col-span-3">
-            <CreateStudentWizard />
+            <StudentRegistrationContainer />
           </div>
 
           {/* Right column: Metric + Tips stacked */}

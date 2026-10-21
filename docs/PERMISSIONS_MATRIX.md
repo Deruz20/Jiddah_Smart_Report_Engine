@@ -51,6 +51,18 @@
 > **Theology Marks Access Rule for Class Teachers:** Class Teachers can access and enter theology marks strictly for students in their assigned classes (via `teacher_class_assignments` or `circular_classes.class_teacher_id`). Access to unassigned classes is blocked at both API (403) and Database RLS (42501). Status: PENDING GATE 1.  
 > **Teacher Deactivation Rule (`/api/admin/teachers/[id]`):** DELETE: Administrator only; performs soft-delete (`status = 'inactive'`) preserving historical marks/remarks referential integrity. Blocked for all non-admin roles (403). Status: PENDING GATE 1.
 
+## 4. Teacher Marks Scoping Draft — PENDING GATE 1
+
+The following policy changes are rehearsal-only in `supabase/hardening/20261020_teacher_marks_scoping.sql`. They are **DRAFT / DO NOT APPLY TO PRODUCTION** until Gate 1 approval:
+
+| Proposed behavior | Difference from production policy text | Gate |
+|---|---|---|
+| `current_teacher_id()` also resolves a teacher row by `teachers.id = auth.uid()` when `auth_user_id` is NULL. | Production mark policies identify teachers via `auth_user_id = auth.uid()` only. | PENDING GATE 1 |
+| A `DOS` row with subject `Theology` or `Secular` receives the corresponding department's mark-write access. | Production policy role lists contain `DOS Theology` / `DOS Secular`; the live role constraint excludes those strings and production DOS users use role `DOS` with a subject. | PENDING GATE 1 |
+| An authenticated user can SELECT their own rows in `teacher_class_assignments`. | Production has RLS enabled and no policy on this table; the user-JWT lookup currently sees no assignment rows. | PENDING GATE 1 |
+
+The rehearsal fixture/test covers `class_teacher_id`-only, assignment-only, and legacy-`teachers.classes`-only teachers. Legacy `teachers.classes` entries do not authorize mark writes; a teacher gains access only after an administrator adds a corresponding assignment row. Teacher status `inactive`, `suspended`, `deactivated`, or `banned` is denied. No SQL reads `teachers.classes`.
+
 ---
 
 ## 3. Four Core Security Invariants

@@ -2,6 +2,8 @@ import { createClient } from '@supabase/supabase-js';
 import { createClient as createServerClient } from '@/utils/supabase/server';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { verifyDataAccess } from '@/lib/auth-server'
+import { isAdministratorRole } from '@/lib/teacher-access'
 
 export async function POST(req: Request) {
   try {
@@ -14,20 +16,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Look up caller's role freshly from the teachers table
-    const { data: callerProfile, error: callerError } = await supabase
-      .from('teachers')
-      .select('id, role, subject')
-      .eq('email', user.email)
-      .single();
-
-    // If caller is not in teachers table, deny access
-    const callerRole = callerProfile?.role;
-    const callerSubject = callerProfile?.subject;
-    const callerId = callerProfile?.id;
-
-    if (!callerRole) {
-      return NextResponse.json({ error: 'Caller role not found in teachers directory' }, { status: 403 });
+    const authRes = await verifyDataAccess(supabase, user, 'write');
+    if (!authRes.isAuthorized || !isAdministratorRole(authRes.role)) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
 
     const body = await req.json();
@@ -37,36 +28,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 });
     }
 
-    let finalRole = requestedRole;
-    let finalSubject = requestedSubject;
-
-    if (callerRole === 'admin' || callerRole === 'Administrator') {
-
-      // Admin: freely selectable role and subject, but must be provided
-      if (!finalRole || !finalSubject) {
-        return NextResponse.json({ error: 'Role and Department/Track are required for Admin invites' }, { status: 400 });
-      }
-    } else if (callerRole.startsWith('DOS') || callerRole === 'Head Teacher') {
-      // DOS Caller
-      if (requestedRole && requestedRole.toUpperCase().includes('DOS')) {
-        return NextResponse.json({ error: 'A DOS cannot invite another DOS' }, { status: 403 });
-      }
-      if (requestedRole === 'Head Teacher' || requestedRole === 'Administrator' || requestedRole === 'Deputy Head Teacher') {
-        return NextResponse.json({ error: 'A DOS cannot invite administrative roles' }, { status: 403 });
-      }
-      if (requestedSubject && requestedSubject !== callerSubject) {
-        return NextResponse.json({ error: 'A DOS can only invite into their own Department/Track' }, { status: 403 });
-      }
-
-      if (!requestedRole) {
-        return NextResponse.json({ error: 'Role is required' }, { status: 400 });
-      }
-      finalRole = requestedRole;
-      finalSubject = callerSubject;
-    } else {
-      // Regular teachers cannot invite
-      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    if (!requestedRole || !requestedSubject) {
+      return NextResponse.json({ error: 'Role and Department/Track are required for Admin invites' }, { status: 400 });
     }
+    const finalRole = requestedRole;
+    const finalSubject = requestedSubject;
 
     // Use Service Role to bypass RLS and insert invite
     const supabaseAdmin = createClient(
@@ -75,12 +41,30 @@ export async function POST(req: Request) {
     );
 
     // Check if email already has an active account or pending invite
-    const { data: existingTeacher } = await supabaseAdmin.from('teachers').select('id').eq('email', email).single();
+    const { data: existingTeacher, error: teacherLookupError } = await supabaseAdmin
+      .from('teachers')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle();
+    if (teacherLookupError) {
+      console.error('Invite teacher lookup failed:', teacherLookupError.message);
+      return NextResponse.json({ error: 'Unable to verify whether this account already exists.' }, { status: 500 });
+    }
     if (existingTeacher) {
       return NextResponse.json({ error: 'An active account already exists for this email' }, { status: 400 });
     }
 
-    const { data: existingInvite } = await supabaseAdmin.from('teacher_invites').select('id').eq('email', email).eq('status', 'pending').single();
+    const { data: existingInvite, error: inviteLookupError } = await supabaseAdmin
+      .from('teacher_invites')
+      .select('id')
+      .eq('email', email)
+      .eq('status', 'pending')
+      .limit(1)
+      .maybeSingle();
+    if (inviteLookupError) {
+      console.error('Pending invite lookup failed:', inviteLookupError.message);
+      return NextResponse.json({ error: 'Unable to verify whether a pending invitation exists.' }, { status: 500 });
+    }
     if (existingInvite) {
       return NextResponse.json({ error: 'A pending invite already exists for this email' }, { status: 400 });
     }
@@ -91,7 +75,7 @@ export async function POST(req: Request) {
       .insert([
         {
           email,
-          invited_by: callerId,
+          invited_by: authRes.teacherId,
           role: finalRole,
           subject: finalSubject,
           name: name || null,

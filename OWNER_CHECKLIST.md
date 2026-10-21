@@ -83,21 +83,12 @@ Please follow these steps in sequential order. Check off each box as you complet
 ---
 
 ### STEP 1: Pre-Flight Safety & CSV Backup Fallback (Mandatory)
-Because Supabase Free tier does not offer automated point-in-time recovery, export critical tables before applying any changes:
+Because Supabase Free tier does not offer automated point-in-time recovery, export every table reported in the probe's row-count output before applying any changes:
 - [ ] 1.1 Open [Supabase Dashboard](https://supabase.com/dashboard) -> Select `Jiddah Smart Report Engine` project.
-- [ ] 1.2 Navigate to **Table Editor**. For each table below, open it, click **Export** (top right) -> **Export to CSV**, and save in an encrypted backup folder:
-  - `teachers`
-  - `students`
-  - `enrollments`
-  - `circular_marks`
-  - `theology_marks`
-  - `teacher_class_assignments`
-  - `school_settings`
-  - `signatures`
-  - `teacher_initials`
-  - `terms`
-  - `academic_terms`
-  - `notifications`
+- [ ] 1.2 Navigate to **Table Editor**. Export **every table listed in the probe's `table_row_counts` output** (in rehearsal, 34 public tables: `academic_terms`, `activity_log`, `activity_logs`, `audit_logs`, `circular_classes`, `circular_marks`, `circular_subjects`, `enrollments`, `grading_criteria`, `grading_remarks`, `marks_audit_log`, `marks_primary`, `notification_reads`, `notifications`, `notifications_sync_history`, `report_card_templates`, `report_cards`, `report_templates`, `school_classes`, `school_settings`, `signatures`, `special_exam_marks`, `student_marks`, `students`, `subjects`, `teacher_class_assignments`, `teacher_classes`, `teacher_initials`, `teacher_invites`, `teachers`, `terms`, `theology_classes`, `theology_marks`, `theology_subjects`).
+- [ ] 1.3 For each table, click **Export** (top right) -> **Export to CSV**, and save in an encrypted backup folder.
+- [ ] 1.4 **Compare Row Counts:** Verify that the exported row count (excluding CSV header line) matches the exact count reported in the probe output (`table_row_counts[table_name]`).
+- [ ] 1.5 Export `auth.users` snapshot via SQL Editor (`SELECT id, email, banned_until, last_sign_in_at, created_at FROM auth.users ORDER BY created_at ASC;`).
 
 ---
 
@@ -107,6 +98,15 @@ Because Supabase Free tier does not offer automated point-in-time recovery, expo
 - [ ] 2.3 Turn it **OFF** (Disabled).
 - [ ] 2.4 Click **Save**.
 - [ ] *Verification Note:* Teacher account creation in Jiddah uses `supabaseAdmin.auth.admin.createUser` from the secure server backend (`/api/teachers/register`), which bypasses this setting. Disabling public sign-ups prevents unauthorized external accounts while keeping teacher invitations 100% operational.
+
+---
+
+### STEP 2.5: Supabase API Key Inspection (Check Legacy Key Status — DO NOT ROTATE)
+- [ ] 2.5.1 In Supabase Dashboard, click **Project Settings** (gear icon, left sidebar) -> **API** (`https://supabase.com/dashboard/project/<PROJECT_REF>/settings/api`).
+- [ ] 2.5.2 Inspect the **API Keys** section:
+  - Check whether **Legacy API Keys** (JWT-based `anon` and `service_role` keys issued prior to new API key format) are listed as **Disabled** or **Active**.
+  - **CRITICAL OPERATIONAL RULE:** **DO NOT CLICK ROTATE KEYS.** Rotating keys in the dashboard without synchronized Vercel deployment will instantly invalidate all active client sessions and take down the live production site with HTTP 401.
+  - Record whether legacy keys are disabled. If disabled, historical leaked service_role tokens from legacy commits (#1-#5) are already neutralized at the infrastructure gateway. If still active, coordinate key deprecation after Phase 1 release verification.
 
 ---
 
@@ -223,7 +223,23 @@ Execute these 3 smoke tests against your preview or production domain:
 | **Case 3: Both (Migration First, then Code Deploy)** *(Recommended)* | Migration applied first; then application code deployed. | **ZERO DOWNTIME / ZERO ANOMALY:** The database migration is additive and backward compatible (it preserves full existing access for Administrator, DOS, and Theology Instructor while adding assigned active Class Teachers). Existing production roles experience zero degradation during rollout window. Once Vercel build deploys, Class Teachers immediately gain save access. | Standard operational path. |
 | **Case 4: Both (Code Deploy First, then Migration)** | Vercel code deployed first; then migration applied. | **TEMPORARY FAIL-CLOSED WINDOW:** During the window between Vercel deployment and SQL execution, Class Teachers attempting to save theology marks encounter the Case 1 fail-closed error (`42501`). All other roles continue normally. As soon as the SQL migration executes, saves immediately succeed without requiring another code deploy. | Apply migration immediately after code release. |
 
----
+#### Code-Only Release Operational Matrix: Exact Capabilities & Limitations for Teachers
+When application code is deployed to Vercel with **zero database migrations applied** (running against the baseline DB policy):
+
+##### 1. What Teachers CAN Do:
+- **Authentication & Dashboard:** Teachers log in cleanly, access their authorized dashboard, and navigate without UI layout overflow or rendering errors.
+- **Circular Marks (Homeroom Cohort):** Class Teachers enter, update, and compile circular curriculum marks for their assigned classes via both `/api/marks` and client queries.
+- **Theology Marks (Theology Instructors):** Theology Instructors assigned to theology classes continue to enter and save theology marks with zero regression (authorized by baseline policy).
+- **Theology Marks via API (`/api/marks`):** Class Teachers submitting marks through `/api/marks` are validated by updated `auth-server.ts` logic. Because `/api/marks` uses the server-side service client for final DB writes, marks save correctly through the standard UI workflow.
+- **Students & Classes Browsing:** Class Teachers view student rosters for their assigned classes without the previous 500 UUID cast crash (UUID resolution active in `auth-server.ts`).
+- **Reports Generation:** Class Teachers generate and view report cards for assigned circular classes.
+- **Security Protections:** CSV exports neutralize Excel formula injection (CWE-1236 immune). Avatar and signature uploads enforce magic-byte sniffing (CWE-434 immune). Inactive teachers cannot log in once deactivated by admin.
+
+##### 2. What Teachers CANNOT Do (Pending SQL Migration):
+- **Direct PostgREST Theology Marks Mutation:** Class Teachers attempting to bypass the Next.js API to write directly to `theology_marks` via the client-side Supabase client will be rejected by PostgreSQL RLS with error `42501` (`new row violates row-level security policy for table "theology_marks"`).
+- **Enrollments with NULL `theology_class_id`:** Students enrolled in a circular class but lacking a theology class assignment (`theology_class_id IS NULL`) cannot have their theology mark records queried directly due to the baseline inner join `JOIN theology_classes tc ON tc.id = e.theology_class_id`.
+- **General 'DOS' Direct Client Access:** Staff members with generic role `'DOS'` (instead of `'DOS Theology'`) cannot read all theology marks via direct PostgREST client queries (only allowed in API).
+- **Legacy Teacher ID Direct RLS:** Teachers whose record in `teachers` has `auth_user_id IS NULL` (where only `teachers.id` matched `auth.uid()`) cannot be authenticated by direct database RLS for theology marks.
 
 ### STEP 10: Phase 1 Item E Rollout Order & Behavior Change Analysis (Teacher Deactivation & Access Revocation)
 

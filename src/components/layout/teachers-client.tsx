@@ -9,6 +9,7 @@ import { HeroSection } from "@/components/HeroSection";
 import { AnimatedButton } from "@/components/AnimatedButton";
 import { createClient } from "@/utils/supabase/client";
 import { escapeHtml } from "@/lib/sanitize";
+import { CANONICAL_ACCOUNT_ROLES, normalizeAccountRole } from "@/lib/teacher-access";
 import { toast } from "sonner";
 
 export type DashboardTeacher = {
@@ -17,6 +18,7 @@ export type DashboardTeacher = {
   role: string;
   subject: string;
   classes: string[];
+  classIds?: string[];
   email: string;
   phone: string;
   status: string;
@@ -38,15 +40,15 @@ const defaultTeacherFormValues: TeacherForm = {
   full_name: '',
   email: '',
   phone: '',
-  role: '',
-  subject_specialization: '',
+  role: 'Class Teacher',
+  subject_specialization: 'Secular',
   classes_assigned: [],
 };
 
 const statusBadgeStyle = (status: string) => {
   switch (status) {
     case 'active':
-      return { background: 'rgba(16,185,129,0.12)', color: '#065F46' }
+      return { background: 'rgba(15,77,37,0.12)', color: '#0F4D25' }
     case 'on_leave':
       return { background: 'rgba(245,158,11,0.12)', color: '#92400E' }
     default:
@@ -56,15 +58,16 @@ const statusBadgeStyle = (status: string) => {
 
 const roleBadgeStyle = (role: string) => {
   switch (role) {
+    case 'Administrator':
+    case 'Head Teacher':
+      return { background: 'rgba(15,77,37,0.14)', color: '#0F4D25' }
+    case 'DOS Secular':
+    case 'DOS Theology':
+      return { background: 'rgba(180,83,9,0.12)', color: '#92400E' }
     case 'Class Teacher':
-    case 'Teacher':
-    case 'DOS':
       return { background: 'rgba(16,185,129,0.12)', color: '#065F46' }
-    case 'Deputy Head Teacher':
-    case 'Support Staff':
-      return { background: 'rgba(107,114,128,0.12)', color: '#374151' }
     default:
-      return { background: 'rgba(229,231,235,0.45)', color: '#4B5563' }
+      return { background: 'rgba(120,113,108,0.15)', color: '#44403C' }
   }
 }
 
@@ -77,15 +80,13 @@ const maskValue = (value: string | undefined) => {
   return value.length > 6 ? `${value.slice(0, 3)}...${value.slice(-3)}` : value
 }
 
-// Avatar color hashing
 function avatarColors(name: string) {
   const palettes = [
-    'bg-emerald-100 text-emerald-700',
-    'bg-orange-100 text-orange-700',
-    'bg-blue-100 text-blue-700',
-    'bg-violet-100 text-violet-700',
-    'bg-rose-100 text-rose-700',
-    'bg-amber-100 text-amber-700',
+    'bg-emerald-100 text-emerald-800',
+    'bg-amber-100 text-amber-800',
+    'bg-stone-200 text-stone-800',
+    'bg-orange-100 text-orange-800',
+    'bg-teal-100 text-teal-800',
   ];
   let hash = 0;
   for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
@@ -122,7 +123,43 @@ export default function TeachersClient({
     fetchClasses();
   }, []);
 
+  const classLookup = useMemo(() => {
+    const idToName = new Map<string, string>();
+    const nameToId = new Map<string, string>();
+    circularClasses.forEach((c) => {
+      if (c?.id && c?.class_name) {
+        idToName.set(c.id, c.class_name);
+        nameToId.set(c.class_name.toLowerCase(), c.id);
+      }
+    });
+    theologyClasses.forEach((t) => {
+      const label = t?.class_name_english || t?.class_name_arabic;
+      if (t?.id && label) {
+        idToName.set(t.id, label);
+        nameToId.set(label.toLowerCase(), t.id);
+      }
+    });
+    return { idToName, nameToId };
+  }, [circularClasses, theologyClasses]);
 
+  const resolveDisplayClasses = (teacher: DashboardTeacher): string[] => {
+    const raw = teacher.classes || [];
+    return raw
+      .map((item) => classLookup.idToName.get(item) || (!/^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(item) ? item : null))
+      .filter(Boolean) as string[];
+  };
+
+  const resolveAssignedClassIds = (teacher: DashboardTeacher): string[] => {
+    if (teacher.classIds && teacher.classIds.length > 0) {
+      return teacher.classIds;
+    }
+    return (teacher.classes || [])
+      .map((item) => {
+        if (classLookup.idToName.has(item)) return item;
+        return classLookup.nameToId.get(item.toLowerCase()) || null;
+      })
+      .filter(Boolean) as string[];
+  };
 
   const addTeacherForm = useForm<TeacherForm>({
     resolver: zodResolver(teacherFormSchema),
@@ -134,33 +171,41 @@ export default function TeachersClient({
   const filteredTeachers = useMemo(() => {
     const normalizedSearch = searchQuery.trim().toLowerCase();
     return teachers.filter((teacher) => {
+      const displayRole = normalizeAccountRole(teacher.role, teacher.subject);
       const matchesSearch =
         !normalizedSearch ||
         teacher.name.toLowerCase().includes(normalizedSearch) ||
-        teacher.role.toLowerCase().includes(normalizedSearch) ||
+        displayRole.toLowerCase().includes(normalizedSearch) ||
         teacher.subject.toLowerCase().includes(normalizedSearch);
-      const matchesRole = roleFilter === 'All Roles' || teacher.role === roleFilter;
+      const matchesRole = roleFilter === 'All Roles' || displayRole === roleFilter || teacher.role === roleFilter;
       return matchesSearch && matchesRole;
     });
   }, [teachers, roleFilter, searchQuery]);
 
   const refetch = async () => {
-    const supabase = createClient();
-    const { data } = await supabase.from('teachers').select('*').order('name');
-    if (data) {
-      const formatted = data.map((t: any) => ({
-        id: t.id,
-        name: t.name || '',
-        role: t.role || '',
-        subject: t.subject || '',
-        classes: typeof t.classes === 'string' ? t.classes.split(',').map((c: string) => c.trim()).filter(Boolean) : (t.classes || []),
-        email: t.email || '',
-        phone: t.phone || '',
-        status: t.status || 'active',
-        joined: t.created_at || ''
-      }));
-      setTeachers(formatted);
-    }
+    try {
+      const res = await fetch('/api/teachers');
+      if (res.ok) {
+        const json = await res.json();
+        if (Array.isArray(json.data)) {
+          setTeachers(
+            json.data.map((t: any) => ({
+              id: t.id,
+              name: t.name || '',
+              role: normalizeAccountRole(t.role, t.subject),
+              subject: t.subject || '',
+              classes: Array.isArray(t.classes) ? t.classes : [],
+              classIds: Array.isArray(t.class_ids) ? t.class_ids : [],
+              email: t.email || '',
+              phone: t.phone || '',
+              status: t.status || 'active',
+              joined: t.joined || ''
+            }))
+          );
+          return;
+        }
+      }
+    } catch {}
   };
 
   const openFormModal = () => {
@@ -175,9 +220,9 @@ export default function TeachersClient({
       full_name: teacher.name,
       email: teacher.email ?? '',
       phone: teacher.phone ?? '',
-      role: teacher.role as TeacherForm['role'],
+      role: normalizeAccountRole(teacher.role, teacher.subject),
       subject_specialization: teacher.subject ?? '',
-      classes_assigned: teacher.classes ?? [],
+      classes_assigned: resolveAssignedClassIds(teacher),
     });
     setShowFormModal(true);
   };
@@ -191,7 +236,6 @@ export default function TeachersClient({
   const handleSaveTeacher = async (values: TeacherForm) => {
     try {
       if (selectedTeacher) {
-        const supabase = createClient();
         const payload = {
           name: values.full_name,
           role: values.role,
@@ -218,7 +262,7 @@ export default function TeachersClient({
             role: values.role,
             email: values.email,
             phone: values.phone,
-            subject: values.subject_specialization,
+            subject: values.subject_specialization || (values.role === 'DOS Theology' ? 'Theology' : 'Secular'),
             classes: values.classes_assigned || []
           })
         });
@@ -254,152 +298,157 @@ export default function TeachersClient({
   };
 
   return (
-    <div className="pb-12 w-full">
+    <div className="pb-12 w-full bg-[#FDFBF7]">
       <HeroSection
         title="Teachers & Staff"
-        subtitle={`${teachers.length} teachers and staff currently registered`}
+        subtitle={`${teachers.length} faculty accounts registered across consolidated roles`}
         actions={
           <AnimatedButton
             type="button"
             onClick={openFormModal}
-            className="flex items-center gap-2 rounded-xl bg-[#10B981] px-4 py-2.5 text-sm font-semibold text-white"
+            className="flex items-center gap-2 rounded-xl bg-[#0F4D25] px-4 py-2.5 min-h-[44px] text-sm font-semibold text-white"
           >
             <Plus className="w-4 h-4" /> Add Teacher
           </AnimatedButton>
         }
       />
 
-      <div className="w-full px-4 sm:px-6 lg:px-8 mt-8">
+      <div className="w-full px-4 sm:px-6 lg:px-8 mt-6">
         <div className="flex flex-col gap-3 mb-6 md:flex-row md:items-center md:justify-between">
           <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
             <input
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Search by name, role or subject..."
-              className="w-full rounded-2xl border border-slate-200 bg-white px-10 py-3 text-sm text-slate-700 outline-none focus:border-[#10B981] transition-colors"
+              placeholder="Search by name, role or department..."
+              className="w-full min-h-[44px] rounded-xl border border-[#E7E2D7] bg-white px-10 py-2.5 text-sm text-stone-800 outline-none focus:border-[#0F4D25] transition-colors"
             />
           </div>
           <div className="relative w-full max-w-xs">
             <select
               value={roleFilter}
               onChange={(event) => setRoleFilter(event.target.value)}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none appearance-none focus:border-[#10B981] transition-colors"
+              aria-label="Filter by role"
+              className="w-full min-h-[44px] rounded-xl border border-[#E7E2D7] bg-white px-4 py-2.5 text-sm text-stone-800 outline-none appearance-none focus:border-[#0F4D25] transition-colors"
             >
-              <option>All Roles</option>
-              <option>Administrator</option>
-              <option>DOS</option>
-              <option>Class Teacher</option>
-              <option>Teacher</option>
-              <option>Support Staff</option>
+              <option value="All Roles">All Roles</option>
+              {CANONICAL_ACCOUNT_ROLES.map((r) => (
+                <option key={r} value={r}>{r}</option>
+              ))}
             </select>
-            <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
           </div>
         </div>
 
         {filteredTeachers.length === 0 ? (
-          <div className="py-16 text-center flex flex-col items-center justify-center">
-            <div className="w-14 h-14 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-center mb-4 text-slate-300">
+          <div className="py-16 text-center flex flex-col items-center justify-center bg-white rounded-2xl border border-[#E7E2D7]">
+            <div className="w-14 h-14 bg-[#FAF7F2] border border-[#E7E2D7] rounded-2xl flex items-center justify-center mb-4 text-stone-400">
               <UserX size={24} />
             </div>
-            <h3 className="text-sm font-bold text-slate-800">{teachers.length === 0 ? 'No teachers yet' : 'No results found'}</h3>
-            <p className="mt-1 text-sm text-slate-400">
+            <h3 className="text-sm font-bold text-stone-800">{teachers.length === 0 ? 'No teachers yet' : 'No results found'}</h3>
+            <p className="mt-1 text-sm text-stone-500">
               {teachers.length === 0 ? 'Add your first teacher using the button above.' : 'Try a different search term or role.'}
             </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-            {filteredTeachers.map((teacher) => (
-              <div key={teacher.id} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
-                <div className="mb-4 flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className={`flex h-12 w-12 items-center justify-center rounded-2xl shrink-0 ${avatarColors(teacher.name)}`}>
-                      <span className="text-base font-bold">
-                        {teacher.name
-                          .split(' ')
-                          .filter((word) => !['Mr.', 'Mrs.', 'Miss', 'Mallam', 'Ustaz', 'Ustazah'].includes(word))
-                          .map((word) => word[0])
-                          .join('')
-                          .slice(0, 2)}
+            {filteredTeachers.map((teacher) => {
+              const displayRole = normalizeAccountRole(teacher.role, teacher.subject);
+              const displayClasses = resolveDisplayClasses(teacher);
+              return (
+                <div key={teacher.id} className="rounded-2xl border border-[#E7E2D7] bg-white p-5 shadow-sm transition hover:shadow-md">
+                  <div className="mb-4 flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={`flex h-12 w-12 items-center justify-center rounded-xl shrink-0 ${avatarColors(teacher.name)}`}>
+                        <span className="text-base font-bold">
+                          {teacher.name
+                            .split(' ')
+                            .filter((word) => !['Mr.', 'Mrs.', 'Miss', 'Mallam', 'Ustaz', 'Ustazah'].includes(word))
+                            .map((word) => word[0])
+                            .join('')
+                            .slice(0, 2)}
+                        </span>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-stone-900 truncate">{escapeHtml(teacher.name)}</p>
+                        <p className="mt-0.5 text-xs text-stone-500 truncate">{escapeHtml(teacher.subject) || 'General'}</p>
+                      </div>
+                    </div>
+                    <span
+                      className="rounded-full px-2.5 py-1 text-[11px] font-semibold shrink-0 whitespace-nowrap"
+                      style={roleBadgeStyle(displayRole)}
+                    >
+                      {escapeHtml(displayRole)}
+                    </span>
+                  </div>
+
+                  <div className="space-y-2.5 text-sm text-stone-700">
+                    <div className="flex items-center justify-between">
+                      <span className="text-stone-500 text-xs">Email</span>
+                      <span className="text-xs font-mono">{escapeHtml(maskValue(teacher.email))}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-stone-500 text-xs">Phone</span>
+                      <span className="text-xs font-mono tabular-nums">{escapeHtml(maskValue(teacher.phone))}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-stone-500 text-xs">Assigned Classes</span>
+                      <span className="truncate ml-2 text-xs font-semibold text-stone-900" data-testid={`teacher-classes-${teacher.id}`}>
+                        {escapeHtml(displayClasses.join(', ') || 'Unassigned')}
                       </span>
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-slate-900 truncate">{escapeHtml(teacher.name)}</p>
-                      <p className="mt-1 text-xs text-slate-500 truncate">{escapeHtml(teacher.subject) || 'No subject'}</p>
+                  </div>
+
+                  <div className="mt-5 flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-[#E7E2D7]">
+                    <span
+                      className="rounded-full px-3 py-1 text-xs font-semibold"
+                      style={statusBadgeStyle(teacher.status)}
+                    >
+                      {teacher.status === 'active'
+                        ? 'Active'
+                        : teacher.status === 'on_leave'
+                        ? 'On leave'
+                        : 'Inactive'}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <AnimatedButton
+                        type="button"
+                        onClick={() => openEditModal(teacher)}
+                        className="rounded-xl bg-[#FAF7F2] border border-[#E7E2D7] px-3.5 py-2 min-h-[44px] text-xs font-semibold text-stone-800 hover:bg-[#F3EFE6] transition-colors flex items-center gap-1.5"
+                      >
+                        <Edit className="h-3.5 w-3.5" /> Edit
+                      </AnimatedButton>
+                      <AnimatedButton
+                        type="button"
+                        onClick={() => handleDeactivate(teacher)}
+                        aria-label={`Deactivate ${teacher.name}`}
+                        className="rounded-xl bg-rose-50 border border-rose-200 px-3.5 py-2 min-h-[44px] text-xs font-semibold text-rose-700 hover:bg-rose-100 transition-colors flex items-center gap-1.5"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" /> Deactivate
+                      </AnimatedButton>
                     </div>
                   </div>
-                  <span
-                    className="rounded-full px-2.5 py-1 text-[11px] font-semibold shrink-0 whitespace-nowrap"
-                    style={roleBadgeStyle(teacher.role)}
-                  >
-                    {escapeHtml(teacher.role)}
-                  </span>
                 </div>
-
-                <div className="space-y-3 text-sm text-slate-600">
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400">Email</span>
-                    <span>{escapeHtml(maskValue(teacher.email))}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400">Phone</span>
-                    <span>{escapeHtml(maskValue(teacher.phone))}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400">Class</span>
-                    <span className="truncate ml-2">{escapeHtml(teacher.classes.join(', ') || 'Unassigned')}</span>
-                  </div>
-                </div>
-
-                <div className="mt-5 flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-100">
-                  <span
-                    className="rounded-full px-3 py-1 text-xs font-semibold"
-                    style={statusBadgeStyle(teacher.status)}
-                  >
-                    {teacher.status === 'active'
-                      ? 'Active'
-                      : teacher.status === 'on_leave'
-                      ? 'On leave'
-                      : 'Inactive'}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <AnimatedButton
-                      type="button"
-                      onClick={() => openEditModal(teacher)}
-                      className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200 transition-colors"
-                    >
-                      <Edit className="mr-1 inline-block h-3.5 w-3.5" /> Edit
-                    </AnimatedButton>
-                    <AnimatedButton
-                      type="button"
-                      onClick={() => handleDeactivate(teacher)}
-                      aria-label={`Deactivate ${teacher.name}`}
-                      className="rounded-xl bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-100 transition-colors"
-                    >
-                      <Trash2 className="mr-1 inline-block h-3.5 w-3.5" /> Deactivate
-                    </AnimatedButton>
-                  </div>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
 
       {showFormModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm overflow-y-auto">
-          <div className="w-full max-w-2xl rounded-3xl bg-white shadow-xl max-h-[90vh] flex flex-col my-auto">
-            <div className="flex items-center justify-between border-b border-slate-200 p-6 shrink-0">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/50 p-4 backdrop-blur-sm overflow-y-auto">
+          <div className="w-full max-w-2xl rounded-2xl bg-white border border-[#E7E2D7] shadow-xl max-h-[90vh] flex flex-col my-auto">
+            <div className="flex items-center justify-between border-b border-[#E7E2D7] p-6 shrink-0">
               <div>
-                <p className="text-sm font-semibold text-slate-500">{selectedTeacher ? 'Edit teacher details' : 'Add a new teacher'}</p>
-                <h2 className="mt-1 text-2xl font-bold text-slate-900">
-                  {selectedTeacher ? escapeHtml(selectedTeacher.name) : 'Teacher details'}
+                <p className="text-xs font-semibold text-stone-500 uppercase tracking-wider">{selectedTeacher ? 'Edit teacher details' : 'Add a new teacher'}</p>
+                <h2 className="mt-1 text-xl font-bold text-stone-900">
+                  {selectedTeacher ? escapeHtml(selectedTeacher.name) : 'Teacher Account Details'}
                 </h2>
               </div>
               <button
                 type="button"
                 onClick={closeModal}
-                className="rounded-full bg-slate-100 p-2 text-slate-600 transition hover:bg-slate-200"
+                className="rounded-xl bg-[#FAF7F2] min-w-[44px] min-h-[44px] flex items-center justify-center text-stone-600 transition hover:bg-[#F3EFE6]"
               >
                 ×
               </button>
@@ -407,168 +456,142 @@ export default function TeachersClient({
             <div className="overflow-y-auto p-6">
               <form noValidate onSubmit={handleSubmit(handleSaveTeacher)} className="space-y-4">
                 <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="mb-2 block text-sm font-semibold text-slate-700">Full Name</label>
-                  <input
-                    type="text"
-                    {...register('full_name')}
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-[#10B981]"
-                  />
-                  {errors.full_name && <p className="mt-2 text-xs text-rose-600">{errors.full_name.message}</p>}
-                </div>
-                {currentUserRole === 'admin' ? (
                   <div>
-                    <label className="mb-2 block text-sm font-semibold text-slate-700">Role</label>
-                    <div className="relative">
-                      <select
-                        {...register('role')}
-                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 pr-10 text-sm text-slate-900 outline-none appearance-none focus:border-[#10B981]"
-                      >
-                        <option value="Administrator">Administrator</option>
-                        <option value="DOS">DOS</option>
-                        <option value="Class Teacher">Class Teacher</option>
-                        <option value="Teacher">Teacher</option>
-                        <option value="Support Staff">Support Staff</option>
-                      </select>
-                      <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    </div>
-                    {errors.role && <p className="mt-2 text-xs text-rose-600">{errors.role.message}</p>}
+                    <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-stone-700">Full Name</label>
+                    <input
+                      type="text"
+                      {...register('full_name')}
+                      className="w-full min-h-[44px] rounded-xl border border-[#E7E2D7] bg-white px-4 py-2.5 text-sm text-stone-900 outline-none focus:border-[#0F4D25]"
+                    />
+                    {errors.full_name && <p className="mt-1.5 text-xs text-rose-600">{errors.full_name.message}</p>}
                   </div>
-                ) : (
                   <div>
-                    <label className="mb-2 block text-sm font-semibold text-slate-700">Role</label>
+                    <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-stone-700">Account Role</label>
                     <div className="relative">
                       <select
                         {...register('role')}
-                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 pr-10 text-sm text-slate-900 outline-none appearance-none focus:border-[#10B981]"
+                        className="w-full min-h-[44px] rounded-xl border border-[#E7E2D7] bg-white px-4 py-2.5 pr-10 text-sm text-stone-900 outline-none appearance-none focus:border-[#0F4D25]"
                       >
-                        <option value="" disabled>Select a role...</option>
-                        {currentUserRole === 'DOS Secular' ? (
-                          <option value="Class Teacher">Class Teacher</option>
-                        ) : currentUserRole === 'DOS Theology' ? (
-                          <option value="Theology Instructor">Theology Instructor</option>
+                        {currentUserRole === 'admin' ? (
+                          CANONICAL_ACCOUNT_ROLES.map((r) => (
+                            <option key={r} value={r}>{r}</option>
+                          ))
                         ) : (
-                          <>
-                            <option value="Class Teacher">Class Teacher</option>
-                            <option value="Theology Instructor">Theology Instructor</option>
-                            <option value="Support Staff">Support Staff</option>
-                          </>
+                          <option value="Class Teacher">Class Teacher</option>
                         )}
                       </select>
-                      <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                      <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
                     </div>
-                    {errors.role && <p className="mt-2 text-xs text-rose-600">{errors.role.message}</p>}
+                    {errors.role && <p className="mt-1.5 text-xs text-rose-600">{errors.role.message}</p>}
                   </div>
-                )}
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="mb-2 block text-sm font-semibold text-slate-700">Email</label>
-                  <input
-                    type="email"
-                    {...register('email')}
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-[#10B981]"
-                  />
-                  {errors.email && <p className="mt-2 text-xs text-rose-600">{errors.email.message}</p>}
                 </div>
-                <div>
-                  <label className="mb-2 block text-sm font-semibold text-slate-700">Phone</label>
-                  <input
-                    type="text"
-                    {...register('phone')}
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-[#10B981]"
-                  />
-                  {errors.phone && <p className="mt-2 text-xs text-rose-600">{errors.phone.message}</p>}
-                </div>
-              </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                {currentUserRole === 'admin' ? (
+                <div className="grid gap-4 md:grid-cols-2">
                   <div>
-                    <label className="mb-2 block text-sm font-semibold text-slate-700">Scope (Department / Track)</label>
-                    <div className="relative">
-                      <select
-                        {...register('subject_specialization')}
-                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 pr-10 text-sm text-slate-900 outline-none appearance-none focus:border-[#10B981]"
-                      >
-                        <option value="">None / Unassigned</option>
-                        <option value="Secular">Secular</option>
-                        <option value="Theology">Theology</option>
-                        <option value="Administration">Administration</option>
-                      </select>
-                      <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-stone-700">Email</label>
+                    <input
+                      type="email"
+                      {...register('email')}
+                      className="w-full min-h-[44px] rounded-xl border border-[#E7E2D7] bg-white px-4 py-2.5 text-sm text-stone-900 outline-none focus:border-[#0F4D25]"
+                    />
+                    {errors.email && <p className="mt-1.5 text-xs text-rose-600">{errors.email.message}</p>}
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-stone-700">Phone</label>
+                    <input
+                      type="text"
+                      {...register('phone')}
+                      className="w-full min-h-[44px] rounded-xl border border-[#E7E2D7] bg-white px-4 py-2.5 text-sm text-stone-900 outline-none focus:border-[#0F4D25]"
+                    />
+                    {errors.phone && <p className="mt-1.5 text-xs text-rose-600">{errors.phone.message}</p>}
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  {currentUserRole === 'admin' ? (
+                    <div>
+                      <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-stone-700">Scope (Department / Track)</label>
+                      <div className="relative">
+                        <select
+                          {...register('subject_specialization')}
+                          className="w-full min-h-[44px] rounded-xl border border-[#E7E2D7] bg-white px-4 py-2.5 pr-10 text-sm text-stone-900 outline-none appearance-none focus:border-[#0F4D25]"
+                        >
+                          <option value="Secular">Secular</option>
+                          <option value="Theology">Theology</option>
+                          <option value="Administration">Administration</option>
+                        </select>
+                        <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+                      </div>
+                      {errors.subject_specialization && (
+                        <p className="mt-1.5 text-xs text-rose-600">{errors.subject_specialization.message}</p>
+                      )}
                     </div>
-                    {errors.subject_specialization && (
-                      <p className="mt-2 text-xs text-rose-600">{errors.subject_specialization.message}</p>
+                  ) : (
+                    <div>
+                      <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-stone-700">Scope (Department / Track)</label>
+                      <div className="w-full min-h-[44px] flex items-center rounded-xl border border-[#E7E2D7] bg-[#FAF7F2] px-4 py-2.5 text-sm text-stone-600">
+                        Inviting into: {currentUserSubject || 'Your Department'}
+                      </div>
+                    </div>
+                  )}
+                  <div className="col-span-full">
+                    <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-stone-700">Classes Assigned (Check all that apply)</label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-60 overflow-y-auto p-4 border border-[#E7E2D7] rounded-xl bg-[#FAF7F2]">
+                      <div>
+                        <h4 className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Secular Classes</h4>
+                        <div className="space-y-2">
+                          {circularClasses.map(c => (
+                            <label key={c.id} className="flex items-center gap-2.5 min-h-[36px] cursor-pointer group">
+                              <input
+                                type="checkbox"
+                                value={c.id}
+                                {...register('classes_assigned')}
+                                className="w-4 h-4 rounded border-stone-300 text-[#0F4D25] focus:ring-[#0F4D25]"
+                              />
+                              <span className="text-sm font-medium text-stone-700 group-hover:text-stone-900 transition-colors">
+                                {c.class_name} {c.section ? `(${c.section})` : ''}
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Theology Classes</h4>
+                        <div className="space-y-2">
+                          {theologyClasses.map(t => (
+                            <label key={t.id} className="flex items-center gap-2.5 min-h-[36px] cursor-pointer group">
+                              <input
+                                type="checkbox"
+                                value={t.id}
+                                {...register('classes_assigned')}
+                                className="w-4 h-4 rounded border-stone-300 text-amber-600 focus:ring-amber-500"
+                              />
+                              <span className="text-sm font-medium text-stone-700 group-hover:text-stone-900 transition-colors">
+                                {t.class_name_english || t.class_name_arabic}
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    {errors.classes_assigned && (
+                      <p className="mt-1.5 text-xs text-rose-600">{errors.classes_assigned.message}</p>
                     )}
                   </div>
-                ) : (
-                  <div>
-                    <label className="mb-2 block text-sm font-semibold text-slate-700">Scope (Department / Track)</label>
-                    <div className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
-                      Inviting into: {currentUserSubject || 'Your Department'}
-                    </div>
-                  </div>
-                )}
-                <div className="col-span-full">
-                  <label className="mb-2 block text-sm font-semibold text-slate-700">Classes Assigned (Check all that apply)</label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-60 overflow-y-auto p-4 border border-slate-200 rounded-2xl bg-slate-50">
-                    <div>
-                      <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Secular Classes</h4>
-                      <div className="space-y-2">
-                        {circularClasses.map(c => (
-                          <label key={c.id} className="flex items-center gap-2 cursor-pointer group">
-                            <input
-                              type="checkbox"
-                              value={c.id}
-                              {...register('classes_assigned')}
-                              className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                            />
-                            <span className="text-sm font-medium text-slate-700 group-hover:text-slate-900 transition-colors">
-                              {c.class_name} {c.section ? `(${c.section})` : ''}
-                            </span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Theology Classes</h4>
-                      <div className="space-y-2">
-                        {theologyClasses.map(t => (
-                          <label key={t.id} className="flex items-center gap-2 cursor-pointer group">
-                            <input
-                              type="checkbox"
-                              value={t.id}
-                              {...register('classes_assigned')}
-                              className="w-4 h-4 rounded border-slate-300 text-orange-500 focus:ring-orange-400"
-                            />
-                            <span className="text-sm font-medium text-slate-700 group-hover:text-slate-900 transition-colors">
-                              {t.class_name_english || t.class_name_arabic}
-                            </span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                  {errors.classes_assigned && (
-                    <p className="mt-2 text-xs text-rose-600">{errors.classes_assigned.message}</p>
-                  )}
                 </div>
-              </div>
 
-                <div className="flex flex-col gap-3 pt-4 sm:flex-row border-t border-slate-100 mt-4">
+                <div className="flex flex-col gap-3 pt-4 sm:flex-row border-t border-[#E7E2D7] mt-4">
                   <AnimatedButton
                     type="submit"
                     disabled={isSubmitting}
-                    className="flex-1 rounded-2xl bg-[#10B981] px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                    className="flex-1 min-h-[44px] rounded-xl bg-[#0F4D25] px-5 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {isSubmitting ? 'Saving...' : selectedTeacher ? 'Update Teacher' : 'Add Teacher'}
                   </AnimatedButton>
                   <AnimatedButton
                     type="button"
                     onClick={closeModal}
-                    className="flex-1 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                    className="flex-1 min-h-[44px] rounded-xl border border-[#E7E2D7] bg-white px-5 py-2.5 text-sm font-semibold text-stone-700 hover:bg-[#FAF7F2]"
                   >
                     Cancel
                   </AnimatedButton>

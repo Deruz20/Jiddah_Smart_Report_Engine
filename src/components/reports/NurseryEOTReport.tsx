@@ -1,10 +1,12 @@
 import { getNurseryGrade, getNurseryTeacherComment, getConductRemark } from '@/lib/grading'
 import { ReportContainer } from '@/components/reports/shared/ReportContainer'
+import { resolveReportBranding } from '@/lib/school-settings-helper'
 import { formatDateWithOrdinal } from '@/utils/dateHelpers';
 
 import { getClassTeacherSignatureKey } from "@/utils/signatures";
 
 export default function NurseryEOTReport({ reportData }: any) {
+  const branding = resolveReportBranding(reportData)
   const subjects = (reportData?.circular?.subjects || []).filter((s: any) => {
     if (reportData?.student?.class_name?.toLowerCase().includes('top') && s.subject_name.toLowerCase().includes('writing')) {
       return false;
@@ -40,7 +42,13 @@ export default function NurseryEOTReport({ reportData }: any) {
   }
 
   return (
-    <ReportContainer reportType="NurseryEOTReport">
+    <ReportContainer
+      reportType="NurseryEOTReport"
+      primaryFont={branding.primaryFont}
+      arabicFont={branding.arabicFont}
+      themePreset={branding.themePreset}
+      themeColor={branding.themeColor}
+    >
       <style dangerouslySetInnerHTML={{
         __html: `
     .nursery-eot-report {
@@ -289,13 +297,13 @@ export default function NurseryEOTReport({ reportData }: any) {
       <div className="nursery-eot-report">
         <div className="header-banner">
           <div className="school-left">
-            <h1>JIDDAH ISLAMIC SCHOOLS</h1>
-            <p>P.O. BOX 34008 Kampala (U)</p>
-            <p>Tel: +256 744950042 / 787779909</p>
+            <h1>{branding.schoolName}</h1>
+            <p>{branding.address}</p>
+            <p>Tel: {branding.phone}</p>
           </div>
           <div className="header-center">
             <div className="logo">
-              <img src="/school_budge.jpeg" alt="Badge" />
+              <img src={branding.logoUrl} alt="Badge" />
             </div>
             <div className="report-badge">END OF TERM REPORT</div>
           </div>

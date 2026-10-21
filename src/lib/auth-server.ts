@@ -1,135 +1,249 @@
-import type { SupabaseClient, User } from '@supabase/supabase-js'
+import type { SupabaseClient, User } from '@supabase/supabase-js';
+import { createAdminClient } from '@/utils/supabase/server';
+import {
+  accessDeniedForLookupError,
+  authorizeTeacherProfile,
+  resolveTeacherProfile,
+  isTeacherLevelRole,
+  isAdministratorRole,
+  type AuthAccessResult,
+  type ClassAssignment,
+  type Department,
+  type ActionType,
+  type TeacherProfile,
+  type ClassType,
+  canAccessClass,
+} from '@/lib/teacher-access';
 
-export type ActionType = 'read' | 'write';
-export type Department = 'secular' | 'theology' | 'both';
+export type { AuthAccessResult, ClassAssignment, Department, ActionType } from '@/lib/teacher-access';
 
-export interface AuthAccessResult {
-  isAuthorized: boolean;
-  message?: string;
-  // Specific query filters the route should apply, if applicable
-  filterByDepartment?: Department;
-  filterByClasses?: string[];
-  role?: string;
+function parseLegacyClassList(raw: unknown): string[] {
+  if (!raw) return [];
+  if (Array.isArray(raw)) {
+    return raw.map((item) => String(item ?? '').trim()).filter(Boolean);
+  }
+  if (typeof raw === 'string') {
+    const trimmed = raw.trim();
+    if (!trimmed) return [];
+    if (trimmed.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) {
+          return parsed.map((item) => String(item ?? '').trim()).filter(Boolean);
+        }
+      } catch {
+        // fallback to comma split
+      }
+    }
+    return trimmed
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+  return [];
 }
 
-/**
- * Single source of truth for backend API authorization.
- * FAILS CLOSED: Any unrecognized role gets 403 Forbidden.
- * 
- * @param supabase The Supabase client (used to fetch fresh teacher profile)
- * @param user The authenticated user
- * @param action 'read' or 'write'
- * @param targetClass Optional. If the request is for a specific class, pass it here.
- * @param targetDepartment Optional. 'secular' or 'theology', if the request is department-specific.
- */
 export async function verifyDataAccess(
-  supabase: SupabaseClient,
+  _supabase: SupabaseClient,
   user: User,
   action: ActionType,
   targetClass?: string | null,
   targetDepartment?: Department | null
 ): Promise<AuthAccessResult> {
-  // Always fetch fresh from the teachers table. NEVER trust user_metadata.
-  const { data: profile } = await supabase
+  const directory = process.env.SUPABASE_SERVICE_ROLE_KEY ? createAdminClient() : _supabase;
+
+  let { data: profiles, error: profileError } = await directory
     .from('teachers')
-    .select('id, role, subject, classes, status')
-    .eq('email', user.email)
-    .single();
+    .select('id, auth_user_id, email, role, subject, status, classes')
+    .or(`auth_user_id.eq.${user.id},id.eq.${user.id}`)
+    .limit(2);
+
+  // Fallback if `classes` column does not exist on older schema
+  if (profileError && profileError.message?.includes('classes')) {
+    const retry = await directory
+      .from('teachers')
+      .select('id, auth_user_id, email, role, subject, status')
+      .or(`auth_user_id.eq.${user.id},id.eq.${user.id}`)
+      .limit(2);
+    profiles = retry.data as any;
+    profileError = retry.error;
+  }
+
+  const profileLookupDenied = accessDeniedForLookupError(profileError, 'Unable to verify staff identity.');
+  if (profileLookupDenied) {
+    console.error('Teacher access profile lookup failed:', profileError?.message);
+    return profileLookupDenied;
+  }
+
+  let profile = resolveTeacherProfile((profiles ?? []) as TeacherProfile[], user.id);
+
+  // Fallback for legacy email-mapped rows if no auth_user_id/id match was found
+  if (!profile && user.email) {
+    let { data: emailProfiles, error: emailError } = await directory
+      .from('teachers')
+      .select('id, auth_user_id, email, role, subject, status, classes')
+      .eq('email', user.email)
+      .limit(2);
+
+    if (emailError && emailError.message?.includes('classes')) {
+      const retryEmail = await directory
+        .from('teachers')
+        .select('id, auth_user_id, email, role, subject, status')
+        .eq('email', user.email)
+        .limit(2);
+      emailProfiles = retryEmail.data as any;
+      emailError = retryEmail.error;
+    }
+
+    if (!emailError && emailProfiles && emailProfiles.length === 1) {
+      profile = emailProfiles[0] as TeacherProfile;
+    }
+  }
+
+  // Bootstrap fallback if user has explicit Administrator role in Auth metadata
+  if (!profile) {
+    const metaRole = user.app_metadata?.role || user.user_metadata?.role;
+    if (isAdministratorRole(metaRole)) {
+      profile = {
+        id: user.id,
+        auth_user_id: user.id,
+        role: 'Administrator',
+        status: 'active',
+      };
+    }
+  }
 
   if (!profile) {
-    return { isAuthorized: false, message: 'User profile not found in teachers directory.' };
+    return { isAuthorized: false, message: 'User profile not found or identity is ambiguous.' };
   }
 
-  // Deny explicitly deactivated or suspended accounts (allow 'active', 'Active', 'approved', NULL, etc.)
-  const normalizedStatus = profile.status ? String(profile.status).toLowerCase().trim() : 'active';
-  const INACTIVE_STATUSES = ['inactive', 'suspended', 'deactivated', 'banned'];
-  if (INACTIVE_STATUSES.includes(normalizedStatus)) {
-    return { isAuthorized: false, message: 'Account is suspended or inactive.' };
-  }
+  let assignments: ClassAssignment[] = [];
+  if (isTeacherLevelRole(profile.role)) {
+    const [assignmentRes, homeroomRes] = await Promise.all([
+      directory
+        .from('teacher_class_assignments')
+        .select('class_id, class_type')
+        .eq('teacher_id', profile.id),
+      directory
+        .from('circular_classes')
+        .select('id')
+        .eq('class_teacher_id', profile.id),
+    ]);
 
-  const role = profile.role as string;
-  
-  // 1. Administrator
-  if (role === 'Administrator' || role === 'admin') {
-    return { isAuthorized: true, role };
-  }
-
-  // 2. Head Teacher & Deputy Head Teacher (including HM alias)
-  if (role === 'Head Teacher' || role === 'Deputy Head Teacher' || role === 'HM') {
-    if (action === 'write') {
-      return { isAuthorized: false, message: 'Unauthorized: Read-only access across departments.' };
-    }
-    // Read access to both departments
-    return { isAuthorized: true, role, filterByDepartment: 'both' };
-  }
-
-  // 3. Support Staff
-  if (role === 'Support Staff') {
-    // Explicitly denied from academic endpoints
-    return { isAuthorized: false, message: 'Unauthorized: Support Staff do not have access to academic records.' };
-  }
-
-  // 4. DOS (Director of Studies)
-  if (role === 'DOS Secular' || role === 'DOS Theology' || role === 'DOS') {
-    let myDepartment: Department = 'secular';
-    const sub = profile.subject?.toLowerCase() || '';
-
-    if (role === 'DOS Theology' || (role === 'DOS' && sub.includes('theology'))) {
-      myDepartment = 'theology';
-    } else if (role === 'DOS' && (!profile.subject || sub.includes('both') || sub.includes('all'))) {
-      myDepartment = 'both';
+    const assignmentLookupDenied = accessDeniedForLookupError(
+      assignmentRes.error,
+      'Unable to verify teacher class assignments.'
+    );
+    if (assignmentLookupDenied && !assignmentRes.error?.message?.includes('does not exist')) {
+      console.error('Teacher class assignment lookup failed:', assignmentRes.error?.message);
+      return assignmentLookupDenied;
     }
 
-    if (targetDepartment && myDepartment !== 'both' && targetDepartment !== myDepartment) {
-      return { isAuthorized: false, message: `Unauthorized: You only have access to the ${myDepartment} department.` };
+    const homeroomLookupDenied = accessDeniedForLookupError(
+      homeroomRes.error,
+      'Unable to verify teacher class assignments.'
+    );
+    if (homeroomLookupDenied) {
+      console.error('Teacher homeroom lookup failed:', homeroomRes.error?.message);
+      return homeroomLookupDenied;
     }
 
-    return { isAuthorized: true, role, filterByDepartment: myDepartment };
+    assignments = [
+      ...(assignmentRes.data ?? [])
+        .filter((row: { class_id: string; class_type: string }) =>
+          row.class_type === 'circular' || row.class_type === 'theology'
+        )
+        .map((row: { class_id: string; class_type: 'circular' | 'theology' }) => ({
+          classId: row.class_id,
+          classType: row.class_type,
+        })),
+      ...(homeroomRes.data ?? []).map((row: { id: string }) => ({
+        classId: row.id,
+        classType: 'circular' as const,
+      })),
+    ];
+
+    // Also resolve any legacy `teachers.classes` entries (by UUID or class name)
+    const legacyEntries = parseLegacyClassList(profile.classes);
+    if (legacyEntries.length > 0) {
+      const [allCircularRes, allTheologyRes] = await Promise.all([
+        directory.from('circular_classes').select('id, class_name'),
+        directory.from('theology_classes').select('id, class_name_arabic, class_name_english'),
+      ]);
+
+      const circularList = allCircularRes.data ?? [];
+      const theologyList = allTheologyRes.data ?? [];
+
+      for (const token of legacyEntries) {
+        const lower = token.toLowerCase();
+        const matchedCircular = circularList.find(
+          (c: any) => c.id === token || String(c.class_name ?? '').trim().toLowerCase() === lower
+        );
+        if (matchedCircular) {
+          assignments.push({ classId: matchedCircular.id, classType: 'circular' });
+        }
+        const matchedTheology = theologyList.find(
+          (t: any) =>
+            t.id === token ||
+            String(t.class_name_arabic ?? '').trim().toLowerCase() === lower ||
+            String(t.class_name_english ?? '').trim().toLowerCase() === lower
+        );
+        if (matchedTheology) {
+          assignments.push({ classId: matchedTheology.id, classType: 'theology' });
+        }
+      }
+    }
   }
 
-  // 5. Class Teacher, Theology Instructor, Teacher
-  if (role === 'Class Teacher' || role === 'Theology Instructor' || role === 'Teacher') {
-    // Resolve assigned class IDs from teacher_class_assignments junction table and legacy columns
-    const { data: assignments } = await supabase
-      .from('teacher_class_assignments')
-      .select('class_id')
-      .eq('teacher_id', profile.id);
+  return authorizeTeacherProfile(
+    profile,
+    assignments,
+    action,
+    targetClass,
+    targetDepartment
+  );
+}
 
-    const { data: circularClasses } = await supabase
-      .from('circular_classes')
-      .select('id')
-      .eq('class_teacher_id', profile.id);
+export async function verifyEnrollmentClassAccess(
+  supabase: SupabaseClient,
+  user: User,
+  action: ActionType,
+  enrollmentId: string,
+  classType: ClassType
+) {
+  const access = await verifyDataAccess(supabase, user, action);
+  if (!access.isAuthorized) return { access, enrollment: null };
 
-    const classIdsFromAssignments = (assignments || []).map((a: any) => a.class_id);
-    const classIdsFromCircular = (circularClasses || []).map((c: any) => c.id);
-    const assignedClasses: string[] = Array.from(new Set([
-      ...(profile.classes || []),
-      ...classIdsFromAssignments,
-      ...classIdsFromCircular
-    ]));
-    
-    if (targetClass && !assignedClasses.includes(targetClass)) {
-      return { isAuthorized: false, message: `Unauthorized: You do not have access to class ${targetClass}.` };
-    }
+  const { data: enrollment, error } = await supabase
+    .from('enrollments')
+    .select('id, circular_class_id, theology_class_id')
+    .eq('id', enrollmentId)
+    .maybeSingle();
 
-    // Class Teachers oversee both circular and theology for their assigned cohort.
-    // Theology Instructors specialize strictly in theology.
-    // Standard Teachers specialize strictly in secular curriculum.
-    let myDepartment: Department = 'secular';
-    if (role === 'Class Teacher') {
-      myDepartment = 'both';
-    } else if (role === 'Theology Instructor' || (profile.subject?.toLowerCase().includes('theology'))) {
-      myDepartment = 'theology';
-    }
-
-    if (targetDepartment && myDepartment !== 'both' && targetDepartment !== myDepartment) {
-      return { isAuthorized: false, message: `Unauthorized: You only have access to the ${myDepartment} department.` };
-    }
-
-    // If they didn't specify a target class, we authorize but return their assigned classes so the endpoint can filter.
-    return { isAuthorized: true, role, filterByClasses: assignedClasses, filterByDepartment: myDepartment };
+  if (error) {
+    console.error('Enrollment access lookup failed:', error.message);
+    return {
+      access: { isAuthorized: false, message: 'Unable to verify enrollment access.' },
+      enrollment: null,
+    };
+  }
+  if (!enrollment) {
+    return {
+      access: { isAuthorized: false, message: 'Enrollment not found.' },
+      enrollment: null,
+    };
   }
 
-  // Fail closed for any unrecognized role
-  return { isAuthorized: false, message: `Unauthorized: Unrecognized role '${role}'.` };
+  const allowed =
+    classType === 'circular'
+      ? canAccessClass(access, classType, enrollment.circular_class_id)
+      : canAccessClass(access, classType, enrollment.theology_class_id, enrollment.circular_class_id);
+  if (!allowed) {
+    return {
+      access: { isAuthorized: false, message: 'Unauthorized: Enrollment is outside your assigned classes.' },
+      enrollment: null,
+    };
+  }
+
+  return { access, enrollment };
 }

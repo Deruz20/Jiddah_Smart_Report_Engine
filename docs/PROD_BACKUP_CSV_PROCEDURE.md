@@ -5,32 +5,17 @@
 
 ---
 
-## 1. Mandatory Pre-Migration Tables (Complete Public Schema & Auth Snapshot)
+## 1. Mandatory Pre-Migration Tables (Every Table in Probe Output & Auth Snapshot)
 
-Because the database size is small, export of **EVERY public table** plus an **auth.users snapshot** is mandatory before executing any migration:
+Because production tables vary depending on legacy migrations and the database size is small, export of **EVERY table reported in the probe's `row_counts` output** plus an **auth.users snapshot** is mandatory before executing any migration.
 
-| Table / Relation | Scope | Rationale |
-|---|---|---|
-| `teachers` | Public Schema | Teacher identities, roles, auth links, active/inactive status. |
-| `theology_marks` | Public Schema | Target relation for Phase 1 Item D RLS policy changes. |
-| `circular_marks` | Public Schema | Primary academic scores and grades. |
-| `students` | Public Schema | Core student enrollment master roster. |
-| `enrollments` | Public Schema | Student-to-class linkage and academic history. |
-| `teacher_class_assignments` | Public Schema | Teacher-to-class mapping junction table. |
-| `circular_classes` | Public Schema | Secular cohort definitions. |
-| `theology_classes` | Public Schema | Islamic studies cohort definitions. |
-| `theology_subjects` | Public Schema | Theology subject roster and level definitions. |
-| `subjects` | Public Schema | Secular subject roster. |
-| `terms` | Public Schema | Academic calendar terms and active indicators. |
-| `school_settings` | Public Schema | Institution metadata, branding, grading configuration. |
-| `grading_remarks` | Public Schema | Head teacher and class teacher remarks. |
-| `signatures` | Public Schema | Digital administrative signature slots. |
-| `teacher_initials` | Public Schema | Teacher initial configurations. |
-| `special_exam_marks` | Public Schema | Specialized assessment records. |
-| `activity_logs` | Public Schema | System activity logs. |
-| `activity_log` | Public Schema | Legacy activity log records. |
-| `audit_logs` | Public Schema | Audit trail records. |
-| `auth.users (snapshot)` | Auth Schema | **MANDATORY AUTH SNAPSHOT:** Required because Item E (teacher deactivation) and Item i (synthetic account cleanup) modify `auth.users.banned_until`. |
+Every downloaded table export CSV must be verified by comparing its exported row count (excluding header) against the exact count reported in the probe's `row_counts[table_name]`.
+
+### Tables to Export:
+1. **Dynamic Target:** Every table key present in `row_counts` from `scripts/prod-schema-probe.sql`.
+   For the owner-verified production shape dated 2026-10-19, this means all 33 public tables:
+   `academic_terms`, `activity_log`, `activity_logs`, `circular_classes`, `circular_marks`, `circular_results`, `circular_subjects`, `classes`, `enrollments`, `grading_criteria`, `grading_remarks`, `marks`, `marks_audit_log`, `marks_primary`, `notifications`, `nursery_assessments`, `profiles`, `report_templates`, `school_settings`, `signatures`, `students`, `subjects`, `teacher_class_assignments`, `teacher_initials`, `teacher_invites`, `teachers`, `terms`, `theology_classes`, `theology_marks`, `theology_results`, `theology_subjects`, `user_profiles`, and `users`.
+2. **Auth Snapshot:** `auth.users` snapshot query (MANDATORY because deactivation and account cleanups touch auth user ban statuses).
 
 ### Auth Users Snapshot Query (Download CSV via SQL Editor)
 ```sql

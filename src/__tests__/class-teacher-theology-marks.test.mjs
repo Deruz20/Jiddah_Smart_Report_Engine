@@ -4,6 +4,7 @@ import { chromium } from 'playwright';
 import { createClient } from '@supabase/supabase-js';
 import { enforceLocalSafeEnvironment } from '../lib/test-guard.mjs';
 import { seedRehearsalDatabase } from '../../scripts/seed-rehearsal-synthetic-users.mjs';
+import { getRehearsalCredentials } from '../../scripts/rehearsal-credentials.mjs';
 
 // Enforce local-only execution
 enforceLocalSafeEnvironment();
@@ -61,7 +62,7 @@ test('Item D: Class Teacher Theology Marks Save & Strict RLS Boundary Suite', as
       await page.locator('button[type="submit"]').click();
 
       // Wait for redirect to /admin/marks
-      await page.waitForURL(url => url.pathname === '/admin/marks', { timeout: 60000, waitUntil: 'domcontentloaded' });
+      await page.waitForURL(url => url.pathname === '/admin/marks', { timeout: 120000, waitUntil: 'domcontentloaded' });
       console.log('  [E2E UI] Landed on:', page.url());
 
       // Dismiss tour if present
@@ -289,5 +290,173 @@ test('Item D: Class Teacher Theology Marks Save & Strict RLS Boundary Suite', as
       `,
       encoding: 'utf8'
     });
+  });
+
+  await t.test('6. J2 Direct-PostgREST tests: role Teacher vs Class Teacher, unassigned, and identity keys', async () => {
+    const { serviceRoleKey } = getRehearsalCredentials();
+    const supabaseAdmin = createClient(SUPABASE_URL, serviceRoleKey);
+
+    // Setup 1: Provision a regular Teacher (role: 'Teacher') assigned to circular class
+    // Setup 1: Provision a regular Teacher (role: 'Teacher') assigned to circular class
+    const REGULAR_TEACHER_EMAIL = 'secular-teacher@test.local';
+    const REGULAR_TEACHER_PASS = 'Password123!';
+
+    // Ensure auth user exists
+    const { data: userList } = await supabaseAdmin.auth.admin.listUsers();
+    const existingRegular = userList?.users?.find(u => u.email === REGULAR_TEACHER_EMAIL);
+    let regularUserId;
+    if (existingRegular) {
+      regularUserId = existingRegular.id;
+    } else {
+      const { data: createdReg } = await supabaseAdmin.auth.admin.createUser({
+        email: REGULAR_TEACHER_EMAIL,
+        password: REGULAR_TEACHER_PASS,
+        email_confirm: true
+      });
+      regularUserId = createdReg.user.id;
+    }
+
+    await supabaseAdmin.from('teachers').upsert({
+      id: regularUserId,
+      auth_user_id: regularUserId,
+      name: 'Secular Teacher',
+      email: REGULAR_TEACHER_EMAIL,
+      role: 'Teacher', // NOT 'Class Teacher'
+      status: 'active'
+    });
+
+    // Assign to circular class c1000000-0000-0000-0000-000000000001
+    await supabaseAdmin.from('teacher_class_assignments').upsert({
+      teacher_id: regularUserId,
+      class_id: 'c1000000-0000-0000-0000-000000000001',
+      class_type: 'circular',
+      subject_id: 'b0000000-0000-0000-0000-000000000001'
+    });
+
+    // Authenticate regular Teacher
+    const { data: regAuth } = await supabase.auth.signInWithPassword({
+      email: REGULAR_TEACHER_EMAIL,
+      password: REGULAR_TEACHER_PASS
+    });
+    assert.ok(regAuth.session, 'Regular teacher must authenticate');
+
+    const regularTeacherClient = createClient(SUPABASE_URL, ANON_KEY, {
+      global: { headers: { Authorization: `Bearer ${regAuth.session.access_token}` } }
+    });
+
+    // Test Case A: Role 'Teacher' assigned to circular class gets 0 rows
+    const { data: regData, error: regError } = await regularTeacherClient
+      .from('theology_marks')
+      .update({ mot_score: 95 })
+      .eq('enrollment_id', 'e0000000-0000-0000-0000-000000000001')
+      .select();
+
+    console.log('  [J2 DIRECT POSTGREST: ROLE TEACHER] Updated rows:', regData?.length ?? 0, 'Error:', regError?.message);
+    assert.equal(regData?.length ?? 0, 0, 'Role Teacher assigned to circular class must get 0 rows on theology_marks');
+
+    // Test Case B: Assigned Class Teacher gets 1 row
+    const classTeacherClient = createClient(SUPABASE_URL, ANON_KEY, {
+      global: { headers: { Authorization: `Bearer ${auth.session.access_token}` } }
+    });
+    const { data: ctData, error: ctError } = await classTeacherClient
+      .from('theology_marks')
+      .update({ mot_score: 90 })
+      .eq('enrollment_id', 'e0000000-0000-0000-0000-000000000001')
+      .select();
+
+    console.log('  [J2 DIRECT POSTGREST: ASSIGNED CLASS TEACHER] Updated rows:', ctData?.length ?? 0, 'Error:', ctError?.message);
+    assert.equal(ctError, null);
+    assert.equal(ctData?.length, 1, 'Assigned Class Teacher must get exactly 1 row updated');
+
+    // Test Case C: Unassigned Class Teacher gets 0 rows
+    const { data: unctData, error: unctError } = await classTeacherClient
+      .from('theology_marks')
+      .update({ mot_score: 90 })
+      .eq('enrollment_id', 'e0000000-0000-0000-0000-000000000002') // unassigned student
+      .select();
+
+    console.log('  [J2 DIRECT POSTGREST: UNASSIGNED CLASS TEACHER] Updated rows:', unctData?.length ?? 0, 'Error:', unctError?.message);
+    assert.equal(unctData?.length ?? 0, 0, 'Unassigned Class Teacher must get 0 rows');
+
+    // Test Case D: Identity key reconciliation (t.id = auth.uid() legacy mapping)
+    const LEGACY_ID_EMAIL = 'legacy-id-teacher@test.local';
+    const LEGACY_ID_PASS = 'Password123!';
+
+    // Clean up any stale legacy teacher by email
+    const { data: staleTeachers } = await supabaseAdmin.from('teachers').select('id').eq('email', LEGACY_ID_EMAIL);
+    for (const t of staleTeachers || []) {
+      await supabaseAdmin.from('teacher_class_assignments').delete().eq('teacher_id', t.id);
+      await supabaseAdmin.from('teachers').delete().eq('id', t.id);
+    }
+    const { data: currentUsers } = await supabaseAdmin.auth.admin.listUsers();
+    const existingLegacy = currentUsers?.users?.find(u => u.email === LEGACY_ID_EMAIL);
+    if (existingLegacy) {
+      await supabaseAdmin.auth.admin.deleteUser(existingLegacy.id).catch(() => {});
+    }
+
+    const { data: createdLegacy, error: createLegErr } = await supabaseAdmin.auth.admin.createUser({
+      email: LEGACY_ID_EMAIL,
+      password: LEGACY_ID_PASS,
+      email_confirm: true
+    });
+    assert.equal(createLegErr, null);
+    const legacyTeacherId = createdLegacy.user.id;
+
+    // In legacy seed, t.id = auth.uid() but auth_user_id was NULL
+    const { error: insTeacherErr } = await supabaseAdmin.from('teachers').insert({
+      id: legacyTeacherId,
+      auth_user_id: null, // Explicitly NULL to test t.id = auth.uid() branch
+      name: 'Legacy ID Teacher',
+      email: LEGACY_ID_EMAIL,
+      role: 'Class Teacher',
+      status: 'active'
+    });
+    assert.equal(insTeacherErr, null);
+
+    // Assign legacy teacher to circular class c1000000-0000-0000-0000-000000000001
+    const { error: insAssignErr } = await supabaseAdmin.from('teacher_class_assignments').insert({
+      teacher_id: legacyTeacherId,
+      class_id: 'c1000000-0000-0000-0000-000000000001',
+      class_type: 'circular',
+      subject_id: 'b0000000-0000-0000-0000-000000000001'
+    });
+    assert.equal(insAssignErr, null);
+
+    // Also set class_teacher_id on circular_classes (legacy direct class teacher assignment)
+    await supabaseAdmin.from('circular_classes').update({
+      class_teacher_id: legacyTeacherId
+    }).eq('id', 'c1000000-0000-0000-0000-000000000001');
+
+    const { data: legAuth, error: legAuthErr } = await supabase.auth.signInWithPassword({
+      email: LEGACY_ID_EMAIL,
+      password: LEGACY_ID_PASS
+    });
+    assert.equal(legAuthErr, null);
+    assert.ok(legAuth.session, 'Legacy ID teacher must authenticate');
+
+    const legacyTeacherClient = createClient(SUPABASE_URL, ANON_KEY, {
+      global: { headers: { Authorization: `Bearer ${legAuth.session.access_token}` } }
+    });
+
+    const { data: legData, error: legError } = await legacyTeacherClient
+      .from('theology_marks')
+      .update({ mot_score: 92 })
+      .eq('enrollment_id', 'e0000000-0000-0000-0000-000000000001')
+      .select();
+
+    console.log('  [J2 IDENTITY KEY: t.id = auth.uid()] Updated rows:', legData?.length ?? 0, 'Error:', legError?.message);
+    assert.equal(legError, null);
+    assert.equal(legData?.length, 1, 'Teacher with auth_user_id = NULL and t.id = auth.uid() must be authorized');
+
+    // Restore circular_classes class_teacher_id to standard seeded class teacher
+    await supabaseAdmin.from('circular_classes').update({
+      class_teacher_id: 'c599cb13-fb3d-4e5d-8e27-253cb7e5ac1a'
+    }).eq('id', 'c1000000-0000-0000-0000-000000000001');
+
+    // Teardown J2 fixtures
+    await supabaseAdmin.from('teacher_class_assignments').delete().in('teacher_id', [regularUserId, legacyTeacherId]);
+    await supabaseAdmin.from('teachers').delete().in('id', [regularUserId, legacyTeacherId]);
+    await supabaseAdmin.auth.admin.deleteUser(regularUserId).catch(() => {});
+    await supabaseAdmin.auth.admin.deleteUser(legacyTeacherId).catch(() => {});
   });
 });

@@ -18,8 +18,10 @@ import {
   getHeadTeacherComment,
 } from '@/lib/grading'
 import { resolveSectionType } from '@/lib/section-type'
+import { canAccessClass } from '@/lib/teacher-access'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { evaluateCriteria, GradingCriterion } from '@/lib/grading-engine'
+import { fetchMergedSchoolSettings } from '@/lib/school-settings-helper'
 import { applyRateLimit, rateLimitResponse } from '@/utils/rate-limit'
 import { z } from 'zod'
 
@@ -77,7 +79,7 @@ export async function POST(request: NextRequest) {
     const { data: gradingCriteriaData } = await supabase.from('grading_criteria').select('*')
     const gradingCriteria = (gradingCriteriaData as GradingCriterion[]) || []
 
-    const { data: schoolSettings } = await supabase.from('school_settings').select('*').limit(1).single()
+    const schoolSettings = await fetchMergedSchoolSettings(supabase, gradingCriteria)
 
     // Helper to fetch in chunks to avoid URL length limits and timeouts
     const fetchInChunks = async (table: string, select: string, column: string, ids: string[], extraBuilder?: (query: any) => any) => {
@@ -113,6 +115,25 @@ export async function POST(request: NextRequest) {
 
     if (!requestedEnrollments || requestedEnrollments.length === 0) {
       return withCors(request, NextResponse.json({ error: 'No enrollments found or error fetching enrollments' }, { status: 404 }))
+    }
+
+    const unauthorizedEnrollment = requestedEnrollments.find((enrollment) => {
+      const circularAllowed = curriculum === 'theology' ||
+        canAccessClass(authRes, 'circular', enrollment.circular_class_id)
+      const theologyAllowed = curriculum === 'secular' ||
+        canAccessClass(
+          authRes,
+          'theology',
+          enrollment.theology_class_id,
+          enrollment.circular_class_id
+        )
+      return !circularAllowed || !theologyAllowed
+    })
+    if (unauthorizedEnrollment) {
+      return withCors(request, NextResponse.json(
+        { error: 'Unauthorized: One or more reports are outside your assigned classes or curriculum.' },
+        { status: 403 }
+      ))
     }
 
     // 2. Fetch term info

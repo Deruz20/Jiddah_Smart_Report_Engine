@@ -10,8 +10,12 @@ import TheologyMOTReport, { Theology2UpPrintSheet } from '@/components/reports/T
 import { ReportPreviewCell } from '@/components/reports/ReportPreviewCell'
 import { PrintPortal } from '@/components/reports/PrintPortal'
 import { Printer, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react'
+import { notFound } from 'next/navigation'
 
 export default function PreviewTestPage() {
+  if (process.env.NODE_ENV === 'production') {
+    notFound();
+  }
   const [zoom, setZoom] = useState(0.85)
   const [selectedReport, setSelectedReport] = useState<string>('theology-2up')
 
@@ -131,23 +135,26 @@ export default function PreviewTestPage() {
           <div className="flex items-center gap-1 bg-slate-100 px-2 py-1 rounded-lg border border-slate-200 text-xs">
             <button
               onClick={() => setZoom(z => Math.max(0.4, +(z - 0.1).toFixed(2)))}
-              className="p-1 hover:bg-white rounded transition-colors text-slate-600"
+              className="p-1 hover:bg-white rounded transition-colors text-slate-700"
               title="Zoom Out"
+              aria-label="Zoom Out"
             >
               <ZoomOut size={14} />
             </button>
-            <span className="font-mono font-medium px-1.5">{Math.round(zoom * 100)}%</span>
+            <span className="font-mono font-medium px-1.5 text-slate-800">{Math.round(zoom * 100)}%</span>
             <button
               onClick={() => setZoom(z => Math.min(1.8, +(z + 0.1).toFixed(2)))}
-              className="p-1 hover:bg-white rounded transition-colors text-slate-600"
+              className="p-1 hover:bg-white rounded transition-colors text-slate-700"
               title="Zoom In"
+              aria-label="Zoom In"
             >
               <ZoomIn size={14} />
             </button>
             <button
               onClick={() => setZoom(0.85)}
-              className="p-1 hover:bg-white rounded transition-colors text-slate-600 ml-1"
+              className="p-1 hover:bg-white rounded transition-colors text-slate-700 ml-1"
               title="Reset Zoom"
+              aria-label="Reset Zoom"
             >
               <RotateCcw size={13} />
             </button>
@@ -155,7 +162,8 @@ export default function PreviewTestPage() {
 
           <button
             onClick={() => window.print()}
-            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-xs font-semibold shadow-sm transition-colors"
+            aria-label="Test Print / Save PDF"
+            className="flex items-center gap-2 bg-emerald-800 hover:bg-emerald-900 text-white px-4 py-2 rounded-lg text-xs font-semibold shadow-sm transition-colors"
           >
             <Printer size={15} />
             Test Print / Save PDF

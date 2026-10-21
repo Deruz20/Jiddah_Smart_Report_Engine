@@ -1,6 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
-import Link from 'next/link'
 import SettingsClient from '@/components/SettingsClient'
 
 export const dynamic = 'force-dynamic'
@@ -10,12 +9,12 @@ export default async function TermSettingsPage() {
   const supabase = createClient(cookieStore)
 
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return <div className="p-10">Unauthorized</div>
+  if (!user) return <div className="p-10 text-stone-800 bg-[#FDFBF7] min-h-screen">Unauthorized</div>
 
   const { verifyDataAccess } = await import('@/lib/auth-server')
-  const authRes = await verifyDataAccess(supabase, user, 'read');
+  const authRes = await verifyDataAccess(supabase, user, 'read')
   if (!authRes.isAuthorized || (authRes.role !== 'Administrator' && authRes.role !== 'admin')) {
-    return <div className="p-10 text-red-500">Access Denied: You must be an Administrator to access Settings.</div>
+    return <div className="p-10 text-rose-700 bg-[#FDFBF7] min-h-screen">Access Denied: You must be an Administrator to access Settings.</div>
   }
 
   const { data: terms, error } = await supabase
@@ -26,8 +25,8 @@ export default async function TermSettingsPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-red-700 text-sm">
+      <div className="min-h-screen bg-[#FDFBF7] flex items-center justify-center">
+        <div className="bg-rose-50 border border-rose-200 rounded-xl p-6 text-rose-800 text-sm">
           Failed to load terms: {error.message}
         </div>
       </div>
@@ -35,11 +34,8 @@ export default async function TermSettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-
-
-      {/* Content */}
-      <div className="max-w-7xl mx-auto px-6 py-8">
+    <div className="min-h-screen bg-[#FDFBF7] w-full max-w-full overflow-x-hidden">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <SettingsClient terms={terms ?? []} />
       </div>
     </div>

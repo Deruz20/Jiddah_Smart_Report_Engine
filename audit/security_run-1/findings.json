@@ -1,0 +1,62 @@
+[
+  {
+    "id": "JIDDAH-SEC-01",
+    "title": "Next.js Edge Middleware Naming Divergence",
+    "severity": "Medium",
+    "cwe": "CWE-693",
+    "status": "FIXED",
+    "location": "src/proxy.ts -> src/middleware.ts",
+    "description": "Session update logic was located in src/proxy.ts, which Next.js App Router does not execute as edge middleware. Created src/middleware.ts to ensure request-time edge session updates and path protection.",
+    "remediation_test": "src/__tests__/security-hardening-and-invariants.test.mjs"
+  },
+  {
+    "id": "JIDDAH-SEC-02",
+    "title": "CSV / Excel Formula Injection in Data Exports",
+    "severity": "Medium",
+    "cwe": "CWE-1236",
+    "status": "FIXED",
+    "location": "src/utils/csvExport.ts:escapeCSV",
+    "description": "Exported CSV rows did not neutralize leading formula trigger characters (=, +, -, @, \\t, \\r), allowing potential formula injection when opened in spreadsheet software. Sanitized by prepending a single quote.",
+    "remediation_test": "src/__tests__/security-hardening-and-invariants.test.mjs"
+  },
+  {
+    "id": "JIDDAH-SEC-03",
+    "title": "Unauthenticated Database Mutation Endpoint",
+    "severity": "High",
+    "cwe": "CWE-306",
+    "status": "FIXED",
+    "location": "src/app/api/test_error/route.ts",
+    "description": "Development test endpoint allowed unauthenticated GET requests to trigger live teacher table inserts using the Supabase Service Role key. Defused by returning 404 disabled.",
+    "remediation_test": "src/__tests__/security-hardening-and-invariants.test.mjs"
+  },
+  {
+    "id": "JIDDAH-SEC-04",
+    "title": "Untrusted File Extension Derivation in Storage Uploads",
+    "severity": "Low",
+    "cwe": "CWE-434",
+    "status": "FIXED",
+    "location": "src/app/api/signatures/upload/route.ts, src/app/api/settings/user/avatar/route.ts",
+    "description": "File extensions were derived from client-controlled file.name rather than validated MIME types. Hardened to map canonical extensions strictly from allowlisted MIME types.",
+    "remediation_test": "src/__tests__/security-hardening-and-invariants.test.mjs"
+  },
+  {
+    "id": "JIDDAH-SEC-05",
+    "title": "Unrestricted Service Role Key in Public Class Lookup",
+    "severity": "Low",
+    "cwe": "CWE-250",
+    "status": "FIXED",
+    "location": "src/app/api/theology-classes/route.ts",
+    "description": "Public theology classes route unnecessarily used SUPABASE_SERVICE_ROLE_KEY to query reference data. Replaced with anon key to adhere to least privilege.",
+    "remediation_test": "src/app/api/theology-classes/route.ts"
+  },
+  {
+    "id": "JIDDAH-SEC-06",
+    "title": "Transitive Dependency Vulnerabilities in Dev Dependencies",
+    "severity": "Informational",
+    "cwe": "CWE-1395",
+    "status": "HELD_PER_RULES",
+    "location": "package-lock.json (braces, micromatch, next image)",
+    "description": "npm audit identified 8 high severity advisories in transitive packages. In accordance with safety rules, npm audit fix and broad upgrades are strictly forbidden.",
+    "remediation_test": "npm audit"
+  }
+]

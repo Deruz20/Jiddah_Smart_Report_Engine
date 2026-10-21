@@ -1,10 +1,9 @@
-import { createClient } from '@supabase/supabase-js'
 import { createClient as createServerClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { verifyDataAccess } from '@/lib/auth-server'
-import { getSupabaseAnonKey } from '@/lib/supabase-env'
+import { classIdsForType } from '@/lib/teacher-access'
 
 export async function OPTIONS(request: NextRequest) {
   return apiOptions(request)
@@ -15,13 +14,6 @@ export async function GET(request: NextRequest) {
   if (preflight) return preflight
 
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseKey = getSupabaseAnonKey()
-
-    if (!supabaseUrl || !supabaseKey) {
-      return withCors(request, NextResponse.json({ error: 'Supabase configuration missing' }, { status: 500 }))
-    }
-
     const cookieStore = await cookies()
     const supabase = createServerClient(cookieStore)
 
@@ -37,8 +29,6 @@ export async function GET(request: NextRequest) {
       user = userData?.user || null
     }
 
-    let allowedTheologyClassIds: string[] | null = null
-
     if (!user) {
       return withCors(request, NextResponse.json({ error: 'Unauthorized: Authentication required.' }, { status: 401 }))
     }
@@ -48,29 +38,28 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
     }
 
-      if (authRes.filterByClasses) {
-        const assignedClasses = authRes.filterByClasses
-
-        // 1. Direct assignments to theology classes
-        const { data: directTheology } = await supabase
-          .from('teacher_class_assignments')
-          .select('class_id')
-          .eq('class_type', 'theology')
-          .in('class_id', assignedClasses)
-
-        const directIds = (directTheology || []).map((t: any) => t.class_id)
-
-        // 2. Cohort assignments: theology classes enrolled by students in the teacher's circular class(es)
-        const { data: cohortEnrollments } = await supabase
+    let allowedTheologyClassIds: string[] | null = null
+    if (authRes.filterByClasses) {
+      const assignedTheology = classIdsForType(authRes, 'theology') ?? []
+      const assignedCircular = classIdsForType(authRes, 'circular') ?? []
+      const cohortIds: string[] = []
+      if (assignedCircular.length > 0) {
+        const { data: cohortEnrollments, error: cohortError } = await supabase
           .from('enrollments')
           .select('theology_class_id')
-          .in('circular_class_id', assignedClasses)
+          .in('circular_class_id', assignedCircular)
           .not('theology_class_id', 'is', null)
 
-        const cohortIds = (cohortEnrollments || []).map((e: any) => e.theology_class_id).filter(Boolean)
-
-        allowedTheologyClassIds = Array.from(new Set([...directIds, ...cohortIds]))
+        if (cohortError) {
+          console.error('theology-classes enrollment lookup error:', cohortError.message)
+          return withCors(request, NextResponse.json({ error: cohortError.message }, { status: 500 }))
+        }
+        cohortIds.push(...(cohortEnrollments ?? []).map((row) => row.theology_class_id).filter(Boolean))
       }
+      allowedTheologyClassIds = Array.from(new Set([...assignedTheology, ...cohortIds]))
+    } else if (authRes.filterByDepartment === 'secular') {
+      allowedTheologyClassIds = []
+    }
 
     let query = supabase
       .from('theology_classes')
@@ -78,12 +67,11 @@ export async function GET(request: NextRequest) {
       .order('level', { ascending: true })
       .order('class_name_arabic', { ascending: true })
 
+    if (allowedTheologyClassIds !== null && allowedTheologyClassIds.length === 0) {
+      return withCors(request, NextResponse.json({ data: [] }))
+    }
     if (allowedTheologyClassIds !== null) {
-      if (allowedTheologyClassIds.length > 0) {
-        query = query.in('id', allowedTheologyClassIds)
-      } else {
-        query = query.eq('id', '00000000-0000-0000-0000-000000000000')
-      }
+      query = query.in('id', allowedTheologyClassIds)
     }
 
     const { data, error } = await query

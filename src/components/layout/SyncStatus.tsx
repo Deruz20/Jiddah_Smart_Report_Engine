@@ -39,19 +39,19 @@ export function SyncStatus({ state, lastSyncedAt, pendingCount = 0, onSyncNow, o
   }
 
   return (
-    <div className="flex items-center gap-3 text-sm bg-white/50 backdrop-blur-sm border rounded-full px-4 py-1.5 shadow-sm">
+    <div className="flex items-center gap-1.5 sm:gap-3 text-sm bg-white/50 backdrop-blur-sm border rounded-full px-2 sm:px-4 py-1 sm:py-1.5 shadow-sm">
       {/* Status Icon & Label */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5 sm:gap-2">
         {state === 'synced' && (
           <>
-            <CheckCircle2 className="w-4 h-4 text-green-500" />
+            <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
             <span className="font-medium text-slate-700 hidden sm:inline">Synced</span>
           </>
         )}
         
         {state === 'pending' && (
           <>
-            <Clock className="w-4 h-4 text-orange-500" />
+            <Clock className="w-4 h-4 text-orange-500 shrink-0" />
             <span className="font-medium text-slate-700 hidden sm:inline">
               {pendingCount} Pending
             </span>
@@ -60,14 +60,14 @@ export function SyncStatus({ state, lastSyncedAt, pendingCount = 0, onSyncNow, o
 
         {state === 'syncing' && (
           <>
-            <RefreshCw className="w-4 h-4 text-blue-500 animate-spin" />
+            <RefreshCw className="w-4 h-4 text-blue-500 animate-spin shrink-0" />
             <span className="font-medium text-slate-700 hidden sm:inline">Syncing...</span>
           </>
         )}
 
         {state === 'error' && (
           <>
-            <AlertCircle className="w-4 h-4 text-red-500" />
+            <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
             <span className="font-medium text-red-600 hidden sm:inline">Action Required</span>
             {onResolveError && (
               <Button 
@@ -83,7 +83,7 @@ export function SyncStatus({ state, lastSyncedAt, pendingCount = 0, onSyncNow, o
         )}
       </div>
 
-      <div className="w-px h-4 bg-slate-200" />
+      <div className="w-px h-4 bg-slate-200 hidden sm:block" />
 
       {/* Last Synced Time */}
       <div className="hidden sm:flex text-slate-500 text-xs items-center gap-2">
@@ -93,11 +93,11 @@ export function SyncStatus({ state, lastSyncedAt, pendingCount = 0, onSyncNow, o
       {/* Manual Sync Button */}
       {state !== 'syncing' && state !== 'error' && (
         <>
-          <div className="w-px h-4 bg-slate-200" />
+          <div className="w-px h-4 bg-slate-200 hidden sm:block" />
           <Button
             variant="ghost"
             size="sm"
-            className="h-6 px-2 rounded-full text-slate-500 hover:text-slate-900"
+            className="h-6 px-1.5 sm:px-2 rounded-full text-slate-500 hover:text-slate-900 hidden sm:flex"
             onClick={handleSync}
             disabled={isManualSyncing || state === 'syncing'}
           >

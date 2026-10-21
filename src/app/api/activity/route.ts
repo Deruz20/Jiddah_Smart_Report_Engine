@@ -43,6 +43,18 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
+    // RBAC: Check role against permission matrix (Only Admin, Head Teacher, DOS)
+    const { data: profile } = await supabase
+      .from('teachers')
+      .select('role')
+      .eq('email', user.email)
+      .single()
+
+    const allowedRoles = ['Administrator', 'Head Teacher', 'Deputy Head Teacher', 'DOS', 'DOS Secular', 'DOS Theology', 'admin']
+    if (!profile || !allowedRoles.includes(profile.role)) {
+      return withCors(request, NextResponse.json({ error: 'Forbidden: Insufficient privileges to view global activity logs.' }, { status: 403 }))
+    }
+
     const { data, error } = await supabase
       .from('activity_logs')
       .select('id, user_id, action, metadata, created_at')

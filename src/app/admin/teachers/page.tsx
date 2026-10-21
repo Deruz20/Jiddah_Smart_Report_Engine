@@ -1,8 +1,8 @@
 import { createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import TeachersClient, { DashboardTeacher } from '@/components/layout/teachers-client'
-
 import { verifyDataAccess } from '@/lib/auth-server'
+import { normalizeAccountRole } from '@/lib/teacher-access'
 
 export const dynamic = "force-dynamic";
 
@@ -18,13 +18,32 @@ export default async function TeachersManagementPage() {
     return <div className="p-10 text-red-500">Access Denied: {authRes.message}</div>
   }
 
-  // Fetch classes to map UUIDs to names
-  const { data: circularClasses } = await supabase.from('circular_classes').select('id, class_name');
-  const { data: theologyClasses } = await supabase.from('theology_classes').select('id, class_name');
+  // Fetch both circular and theology classes + assignments to map all UUIDs to human-readable names
+  const [
+    { data: circularClasses },
+    { data: theologyClasses },
+    { data: classAssignments },
+  ] = await Promise.all([
+    supabase.from('circular_classes').select('id, class_name, section, class_teacher_id'),
+    supabase.from('theology_classes').select('id, class_name_english, class_name_arabic'),
+    supabase.from('teacher_class_assignments').select('teacher_id, class_id'),
+  ]);
 
-  const classMap = new Map<string, string>();
-  (circularClasses || []).forEach(c => classMap.set(c.id, c.class_name));
-  (theologyClasses || []).forEach(c => classMap.set(c.id, c.class_name));
+  const classIdToName = new Map<string, string>();
+  const classNameToId = new Map<string, string>();
+
+  (circularClasses || []).forEach((c: any) => {
+    const label = c.class_name || 'Unnamed Class';
+    classIdToName.set(c.id, label);
+    classNameToId.set(label.toLowerCase(), c.id);
+  });
+
+  (theologyClasses || []).forEach((c: any) => {
+    const label = c.class_name_english || c.class_name_arabic || 'Theology Class';
+    classIdToName.set(c.id, label);
+    if (c.class_name_english) classNameToId.set(c.class_name_english.toLowerCase(), c.id);
+    if (c.class_name_arabic) classNameToId.set(c.class_name_arabic.toLowerCase(), c.id);
+  });
 
   let query = supabase.from('teachers').select('*').order('name', { ascending: true });
 
@@ -36,44 +55,77 @@ export default async function TeachersManagementPage() {
 
   const { data: teachers } = await query;
 
-  const formattedTeachers = (teachers || []).map((t: any) => {
-    const classIds = typeof t.classes === 'string' ? t.classes.split(',').map((c: string) => c.trim()).filter(Boolean) : (t.classes || []);
-    const classNames = classIds.map((id: string) => classMap.get(id) || id);
-    
+  const formattedTeachers: DashboardTeacher[] = (teachers || []).map((t: any) => {
+    const rawList: string[] = Array.isArray(t.classes)
+      ? t.classes
+      : typeof t.classes === 'string'
+      ? t.classes.split(',').map((c: string) => c.trim()).filter(Boolean)
+      : [];
+
+    const assignedFromTable = (classAssignments || [])
+      .filter((a: any) => a.teacher_id === t.id)
+      .map((a: any) => a.class_id);
+
+    const assignedFromCircularLead = (circularClasses || [])
+      .filter((c: any) => c.class_teacher_id === t.id)
+      .map((c: any) => c.id);
+
+    const combinedTokens = [...new Set([...rawList, ...assignedFromTable, ...assignedFromCircularLead])];
+
+    const resolvedNames: string[] = [];
+    const resolvedIds: string[] = [];
+
+    for (const token of combinedTokens) {
+      if (classIdToName.has(token)) {
+        resolvedNames.push(classIdToName.get(token)!);
+        resolvedIds.push(token);
+      } else {
+        const matchedId = classNameToId.get(String(token).toLowerCase());
+        if (matchedId) {
+          resolvedIds.push(matchedId);
+          resolvedNames.push(classIdToName.get(matchedId) || String(token));
+        } else if (!/^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(String(token))) {
+          resolvedNames.push(String(token));
+        }
+      }
+    }
+
     return {
       id: t.id,
       name: t.name || '',
-      role: t.role || '',
+      role: normalizeAccountRole(t.role, t.subject),
       subject: t.subject || '',
-      classes: classNames,
+      classes: [...new Set(resolvedNames)],
+      classIds: [...new Set(resolvedIds)],
       email: t.email || '',
       phone: t.phone || '',
       status: t.status || 'active',
       joined: t.created_at || ''
     };
-  })
+  });
 
-
-
-  let currentUserRole = user?.user_metadata?.role || 'teacher'
-  let currentUserSubject = ''
+  let currentUserRole = authRes.role || user?.user_metadata?.role || 'Class Teacher';
+  let currentUserSubject = '';
 
   if (user?.email) {
-    const { data: profile } = await supabase.from('teachers').select('role, subject').eq('email', user.email).single()
+    const { data: profile } = await supabase.from('teachers').select('role, subject').eq('email', user.email).maybeSingle();
     if (profile) {
-      currentUserRole = profile.role
-      currentUserSubject = profile.subject
+      currentUserRole = profile.role || currentUserRole;
+      currentUserSubject = profile.subject || '';
     }
   }
 
-  // Normalize Administrator to admin so the TeachersClient correctly grants full edit capabilities
   if (currentUserRole === 'Administrator' || currentUserRole === 'admin') {
     currentUserRole = 'admin';
   }
 
   return (
-    <div className="w-full h-full bg-slate-50 dark:bg-[#0f172a]">
-      <TeachersClient initialTeachers={formattedTeachers} currentUserRole={currentUserRole} currentUserSubject={currentUserSubject} />
+    <div className="w-full h-full bg-[#FDFBF7]">
+      <TeachersClient
+        initialTeachers={formattedTeachers}
+        currentUserRole={currentUserRole}
+        currentUserSubject={currentUserSubject}
+      />
     </div>
   )
 }

@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
   try {
     const cookieStore = await cookies()
     const supabase = createClient(cookieStore)
-    const { error } = await supabase.from('enrollments').select('id', { head: true, count: 'exact' })
+    const { error } = await supabase.from('school_settings').select('id', { head: true, count: 'exact' })
 
     if (error) {
       return withCors(

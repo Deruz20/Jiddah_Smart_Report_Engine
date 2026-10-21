@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
-
 import { getSupabaseAnonKey } from "@/lib/supabase-env";
+import { normalizeAccountRole, resolveRoleDepartment } from "@/lib/teacher-access";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = getSupabaseAnonKey();
@@ -9,112 +9,147 @@ const supabaseKey = getSupabaseAnonKey();
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
-  })
+  });
 
-  const supabase = createServerClient(
-    supabaseUrl!,
-    supabaseKey!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
-          supabaseResponse = NextResponse.next({
-            request,
-          })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          )
-        },
+  const supabase = createServerClient(supabaseUrl!, supabaseKey!, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll();
       },
-    }
-  )
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+        supabaseResponse = NextResponse.next({
+          request,
+        });
+        cookiesToSet.forEach(({ name, value, options }) =>
+          supabaseResponse.cookies.set(name, value, options)
+        );
+      },
+    },
+  });
 
-  // This will refresh session if expired - required for Server Components
-  // https://supabase.com/docs/guides/auth/server-side/nextjs
-  const { data: { user } } = await supabase.auth.getUser()
-  if (process.env.NODE_ENV !== 'production') {
-    console.log('[Middleware]', request.nextUrl.pathname, 'hasUser:', !!user);
-  }
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  // Fetch role from database (source of truth)
-  let role = 'guest';
+  let rawRole = "guest";
+  let rawSubject = "";
+  let status = "active";
 
   if (user) {
-    if (user.user_metadata?.role === 'admin' || user.user_metadata?.role === 'Administrator') {
-      role = 'admin'; // Bootstrap admin fallback
-    }
+    rawRole =
+      user.app_metadata?.role ||
+      user.user_metadata?.role ||
+      "Class Teacher";
+    rawSubject = user.user_metadata?.subject || "";
 
-    // DB query for actual role
     if (user.email) {
       const { data: teacherProfile } = await supabase
-        .from('teachers')
-        .select('role')
-        .eq('email', user.email)
-        .single();
+        .from("teachers")
+        .select("role, subject, status")
+        .eq("email", user.email)
+        .maybeSingle();
       if (teacherProfile?.role) {
-        role = teacherProfile.role;
+        rawRole = teacherProfile.role;
+      }
+      if (teacherProfile?.subject) {
+        rawSubject = teacherProfile.subject;
+      }
+      if (teacherProfile?.status) {
+        status = teacherProfile.status;
       }
     }
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('[Middleware Role] resolved role:', role);
-    }
-  }
-
-  // Explicit mapping of roles to landing paths
-  let targetLanding = '/pending';
-  
-  if (role === 'admin' || role === 'Administrator' || role === 'Head Teacher') {
-    targetLanding = '/admin';
-  } else if (role === 'DOS' || (typeof role === 'string' && role.toUpperCase().includes('DOS'))) {
-    targetLanding = '/admin'; // Consolidate to unified admin dashboard
-  } else if (role === 'Class Teacher' || role === 'Theology Instructor' || role === 'teacher') {
-    targetLanding = '/admin'; // Consolidate to unified admin dashboard
-  } else if (role === 'Support Staff' || role === 'Deputy Head Teacher') {
-    targetLanding = '/pending'; // Or specific landing
   }
 
   const path = request.nextUrl.pathname;
 
-  // Protect internal testing harnesses from public access in production environments
-  if (process.env.NODE_ENV === 'production' && (path.startsWith('/preview-shell') || path.startsWith('/preview-test'))) {
+  if (
+    process.env.NODE_ENV === "production" &&
+    (path.startsWith("/preview-shell") || path.startsWith("/preview-test"))
+  ) {
     const url = request.nextUrl.clone();
-    url.pathname = role === 'guest' ? '/login' : '/admin';
+    url.pathname = !user ? "/login" : "/admin";
     return NextResponse.redirect(url);
   }
 
-  if (role === 'guest') {
-    // Protect authenticated routes
-    if (path.startsWith('/admin') || path.startsWith('/dos') || path.startsWith('/teacher') || path.startsWith('/pending') || path === '/') {
+  if (!user) {
+    if (
+      path.startsWith("/admin") ||
+      path.startsWith("/dos") ||
+      path.startsWith("/teacher") ||
+      path.startsWith("/pending") ||
+      path === "/"
+    ) {
       const url = request.nextUrl.clone();
-      url.pathname = '/login';
+      url.pathname = "/login";
       return NextResponse.redirect(url);
     }
-  } else {
-    // If logged in and hitting login or root, go to target landing
-    if (path === '/login' || path === '/') {
+    return supabaseResponse;
+  }
+
+  const rl = rawRole.trim().toLowerCase();
+  const isSuspended = ["inactive", "suspended", "deactivated", "banned"].includes(
+    status.trim().toLowerCase()
+  );
+  const isPendingOrSupport =
+    isSuspended || rl === "support staff" || rl === "pending" || rl === "guest";
+
+  const targetLanding = isPendingOrSupport ? "/pending" : "/admin";
+
+  if (path === "/login" || path === "/") {
+    const url = request.nextUrl.clone();
+    url.pathname = targetLanding;
+    return NextResponse.redirect(url);
+  }
+
+  if (path.startsWith("/admin") && targetLanding !== "/admin") {
+    const url = request.nextUrl.clone();
+    url.pathname = targetLanding;
+    return NextResponse.redirect(url);
+  }
+
+  if (path.startsWith("/dos") || path.startsWith("/teacher")) {
+    const url = request.nextUrl.clone();
+    url.pathname = path.replace(/^\/(dos|teacher)/, "/admin");
+    return NextResponse.redirect(url);
+  }
+
+  if (path.startsWith("/pending") && targetLanding !== "/pending") {
+    const url = request.nextUrl.clone();
+    url.pathname = targetLanding;
+    return NextResponse.redirect(url);
+  }
+
+  // Enforce role & department boundaries on /admin sub-routes
+  if (path.startsWith("/admin")) {
+    const canonicalRole = normalizeAccountRole(rawRole, rawSubject);
+    const department = resolveRoleDepartment(rawRole, rawSubject);
+
+    if (canonicalRole === "Class Teacher") {
+      const teacherBlockedPrefixes = [
+        "/admin/settings",
+        "/admin/teachers",
+        "/admin/invites",
+        "/admin/upload",
+        "/admin/activity",
+        "/admin/dev-tools",
+      ];
+      if (teacherBlockedPrefixes.some((prefix) => path.startsWith(prefix))) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/admin";
+        return NextResponse.redirect(url);
+      }
+    }
+
+    if (department === "secular" && path.startsWith("/admin/theology-hub")) {
       const url = request.nextUrl.clone();
-      url.pathname = targetLanding;
+      url.pathname = "/admin";
       return NextResponse.redirect(url);
     }
 
-    // Protect role-specific routes from unauthorized access
-    if (path.startsWith('/admin') && targetLanding !== '/admin') {
+    if (department === "theology" && path.startsWith("/admin/secular-hub")) {
       const url = request.nextUrl.clone();
-      url.pathname = targetLanding;
-      return NextResponse.redirect(url);
-    }
-    // Redirect old dos/teacher paths to admin equivalent
-    if (path.startsWith('/dos') || path.startsWith('/teacher')) {
-      const url = request.nextUrl.clone();
-      url.pathname = path.replace(/^\/(dos|teacher)/, '/admin');
-      return NextResponse.redirect(url);
-    }
-    if (path.startsWith('/pending') && targetLanding !== '/pending') {
-      const url = request.nextUrl.clone();
-      url.pathname = targetLanding;
+      url.pathname = "/admin";
       return NextResponse.redirect(url);
     }
   }

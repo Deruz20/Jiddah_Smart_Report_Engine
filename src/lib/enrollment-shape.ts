@@ -2,6 +2,7 @@ type StudentRow = {
   id: string
   name: string
   admission_number?: string | null
+  arabic_name?: string | null
   created_at?: string
   is_archived?: boolean
 }
@@ -50,6 +51,7 @@ export function reshapeEnrollmentRow(e: {
     id: student.id,
     enrollment_id: e.id,
     name: student.name,
+    arabic_name: student.arabic_name ?? null,
     admission_number: student.admission_number ?? '—',
     created_at: student.created_at,
     circular_class: circular?.class_name ?? '—',

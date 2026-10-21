@@ -431,9 +431,10 @@ function NotificationBell({ size = "default" }: { size?: "default" | "mobile" })
   const fetchNotifications = React.useCallback(async () => {
     setLoading(true);
     try {
-      const json = await safeJsonFetch<{ data?: BellNotification[] }>("/api/notifications");
-      if (json?.data) {
-        setNotifications(json.data.slice(0, 6));
+      const res = await safeJsonFetch<any>("/api/notifications");
+      if (res?.ok && res.data) {
+        const list = Array.isArray(res.data) ? res.data : Array.isArray(res.data.data) ? res.data.data : [];
+        setNotifications(list.slice(0, 6));
       }
     } catch {
       // ignore

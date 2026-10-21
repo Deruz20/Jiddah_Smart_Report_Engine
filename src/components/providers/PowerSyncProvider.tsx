@@ -23,7 +23,7 @@ export const powerSync = new PowerSyncDatabase({
     disableSSRWarning: true,
     enableMultiTabs: false,
   },
-})
+} as any)
 
 export const connector = new SupabaseConnector()
 

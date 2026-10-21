@@ -78,7 +78,7 @@ export async function POST(req: Request) {
         {
           id: userId,
           auth_user_id: userId,
-          email: invite.email,
+          email: String(invite.email).trim().toLowerCase(),
           role: finalRole,
           subject: finalSubject,
           name: finalName,

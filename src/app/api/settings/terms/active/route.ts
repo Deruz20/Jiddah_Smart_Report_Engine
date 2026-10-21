@@ -31,21 +31,13 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
-    // Verify caller is an authenticated staff member in teachers directory and not deactivated
-    const { data: profile } = await supabase
-      .from('teachers')
-      .select('id, role, status')
-      .eq('email', user.email)
-      .single()
-
-    if (!profile) {
-      return withCors(request, NextResponse.json({ error: 'User profile not found in teachers directory.' }, { status: 403 }))
+    const { data: teacher, error: teacherError } = await findActiveTeacher(supabase, user.id)
+    if (teacherError) {
+      console.error('settings/terms/active GET staff lookup error:', teacherError)
+      return withCors(request, NextResponse.json({ error: 'Unable to verify staff access' }, { status: 500 }))
     }
-
-    const normalizedStatus = profile.status ? String(profile.status).toLowerCase().trim() : 'active'
-    const INACTIVE_STATUSES = ['inactive', 'suspended', 'deactivated', 'banned']
-    if (INACTIVE_STATUSES.includes(normalizedStatus)) {
-      return withCors(request, NextResponse.json({ error: 'Account is suspended or inactive.' }, { status: 403 }))
+    if (!teacher) {
+      return withCors(request, NextResponse.json({ error: 'Active staff access required' }, { status: 403 }))
     }
 
     const { data, error } = await supabase

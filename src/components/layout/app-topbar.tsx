@@ -37,6 +37,7 @@ import { normalizeAccountRole } from "@/lib/teacher-access";
 import {
   fetchActiveTermCached,
   fetchUnreadCountCached,
+  invalidateClientCache,
   safeJsonFetch,
   getStoredThemeMode,
   setStoredThemeMode,
@@ -108,7 +109,7 @@ function DesktopSearch() {
   return (
     <div
       className={cn(
-        "relative hidden lg:flex items-center gap-2 min-h-[40px] h-10 px-3 rounded-xl transition-colors duration-200 border w-48 xl:w-72",
+        "relative hidden lg:flex items-center gap-2 min-h-[38px] h-9 px-3 rounded-xl transition-colors duration-200 border w-full max-w-[260px]",
         focused
           ? "bg-white border-emerald-500/50 shadow-[0_0_0_3px_rgba(16,185,129,0.12)]"
           : "bg-[#FAF7F2] border-stone-200 hover:bg-stone-100/80 hover:border-stone-300",
@@ -274,8 +275,12 @@ function TermBadge() {
 
   React.useEffect(() => {
     let active = true;
-    fetchActiveTermCached().then((data) => {
+    fetchActiveTermCached().then((data: any) => {
       if (!active || !data) return;
+      if (typeof data === "string") {
+        setTermName(data);
+        return;
+      }
       const label = data.label || "Active Term";
       const yearStr = String(data.academic_year || "");
       if (yearStr && label.includes(yearStr)) {
@@ -653,6 +658,7 @@ function UserProfileDropdown() {
 
   const handleLogout = async () => {
     const supabase = createClient();
+    invalidateClientCache();
     try {
       const { powerSync } = await import("../providers/PowerSyncProvider");
       await powerSync.disconnectAndClear();
@@ -795,6 +801,22 @@ export function AppTopbar({ breadcrumbs, currentPage }: AppTopbarProps) {
     return () => window.removeEventListener("toggle-topbar", handleToggle);
   }, []);
 
+  React.useEffect(() => {
+    const supabase = createClient();
+    let lastUid: string | null = null;
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event: string, session: any) => {
+      const nextUid = session?.user?.id || null;
+      if (lastUid !== null && lastUid !== nextUid) {
+        invalidateClientCache();
+        window.dispatchEvent(new CustomEvent("notifications-updated"));
+      }
+      lastUid = nextUid;
+    });
+    return () => subscription?.unsubscribe();
+  }, []);
+
   return (
     <>
       <AnimatePresence>
@@ -866,14 +888,14 @@ export function AppTopbar({ breadcrumbs, currentPage }: AppTopbarProps) {
             </div>
 
             {/* ── Desktop layout ── */}
-            <div className="hidden md:flex items-center justify-between gap-3 lg:gap-6 h-14 px-3 lg:px-5 min-w-0">
-              <div className="flex items-center gap-2 min-w-0 shrink">
+            <div className="hidden md:flex items-center justify-between gap-2 lg:gap-4 h-12 px-3 lg:px-5 min-w-0">
+              <div className="flex items-center gap-2 min-w-0 shrink-0">
                 <Breadcrumbs crumbs={resolvedCrumbs} />
               </div>
-              <div className="hidden lg:flex flex-1 justify-center max-w-xs mx-2 min-w-0">
+              <div className="hidden lg:flex flex-1 justify-center max-w-[260px] mx-2 min-w-[140px]">
                 <DesktopSearch />
               </div>
-              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
                 <TermBadge />
                 <PowerSyncStatus />
                 <ThemeModeSwitcher />
@@ -883,7 +905,7 @@ export function AppTopbar({ breadcrumbs, currentPage }: AppTopbarProps) {
                 <button
                   type="button"
                   onClick={() => setIsTopbarHidden(true)}
-                  className="hidden lg:flex items-center justify-center min-h-[44px] min-w-[44px] size-11 rounded-xl text-stone-500 hover:text-stone-800 hover:bg-stone-100 transition-colors ml-1 cursor-pointer"
+                  className="hidden lg:flex items-center justify-center min-h-[40px] min-w-[40px] size-10 rounded-xl text-stone-500 hover:text-stone-800 hover:bg-stone-100 transition-colors ml-0.5 cursor-pointer"
                   title="Hide Topbar"
                   aria-label="Hide Topbar"
                 >

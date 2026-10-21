@@ -4,7 +4,7 @@ import { StudentRegistrationContainer } from '@/components/students/StudentRegis
 import { StudentsListClient } from '@/components/StudentsListClient'
 import { MetricCard } from '@/components/figma-ui/MetricCard'
 import { RegistrationTips } from '@/components/figma-ui/RegistrationTips'
-import { GraduationCap, BookOpen, TrendingUp, Calendar } from 'lucide-react'
+import { GraduationCap, BookOpen, TrendingUp, Calendar, UserPlus, ChevronDown } from 'lucide-react'
 
 import { verifyDataAccess } from '@/lib/auth-server'
 import { classIdsForType } from '@/lib/teacher-access'
@@ -14,11 +14,11 @@ export default async function StudentsManagementPage() {
   const supabase = createClient(cookieStore)
   
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return <div className="p-10">Unauthorized</div>
+  if (!user) return <div className="p-6 text-stone-700">Unauthorized</div>
 
   const authRes = await verifyDataAccess(supabase, user, 'read');
   if (!authRes.isAuthorized) {
-    return <div className="p-10 text-red-500">Access Denied: {authRes.message}</div>
+    return <div className="p-6 text-rose-600">Access Denied: {authRes.message}</div>
   }
 
   let query = supabase
@@ -42,7 +42,7 @@ export default async function StudentsManagementPage() {
       ...(circularIds.length ? [`circular_class_id.in.(${circularIds.join(',')})`] : []),
       ...(theologyIds.length ? [`theology_class_id.in.(${theologyIds.join(',')})`] : []),
     ]
-    if (filters.length === 0) return <div className="p-10">No assigned classes.</div>
+    if (filters.length === 0) return <div className="p-6 text-stone-600">No assigned classes.</div>
     query = query.or(filters.join(','))
   } else if (authRes.filterByDepartment === 'secular') {
     query = query.not('circular_class_id', 'is', null);
@@ -81,98 +81,109 @@ export default async function StudentsManagementPage() {
     { label: 'Active Students', value: students.length, icon: GraduationCap, color: 'emerald' },
     { label: 'Classes Running', value: 7, icon: BookOpen, color: 'orange' },
     { label: 'Growth YoY', value: '+18%', icon: TrendingUp, color: 'emerald' },
-    { label: 'Academic Year', value: currentAcademicYear, icon: Calendar, color: 'slate' },
+    { label: 'Academic Year', value: currentAcademicYear, icon: Calendar, color: 'stone' },
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-emerald-200 selection:text-emerald-900 pb-16 relative overflow-x-hidden">
-      {/* Ambient mesh background */}
-      <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-        <div className="absolute -top-40 -left-40 w-[600px] h-[600px] rounded-full bg-emerald-200/30 blur-[120px]" />
-        <div className="absolute top-1/2 -right-60 w-[500px] h-[500px] rounded-full bg-orange-100/40 blur-[100px]" />
-        <div className="absolute bottom-0 left-1/3 w-[400px] h-[400px] rounded-full bg-slate-200/50 blur-[100px]" />
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 sm:pt-14">
-        {/* ─── Hero Header ─── */}
-        <header className="mb-10 animate-fade-in-up">
-          <div className="flex items-start justify-between flex-wrap gap-4">
-            <div>
-              <div className="flex items-center gap-2.5 mb-2">
-                <div className="w-9 h-9 rounded-xl bg-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-200">
-                  <GraduationCap size={20} className="text-white" />
-                </div>
-                <span className="text-xs font-bold tracking-widest text-emerald-600 uppercase">School Management</span>
-              </div>
-              <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-slate-900 leading-none">
-                Students{' '}
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-emerald-700">
-                  Management
-                </span>
+    <div className="w-full max-w-full text-stone-900 font-sans pb-6 relative overflow-x-hidden">
+      {/* Compact Header Bar */}
+      <div className="bg-white border-b border-stone-200/80">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-[#059669] flex items-center justify-center shrink-0 text-white shadow-xs">
+              <GraduationCap size={17} />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-base sm:text-xl font-bold text-stone-900 tracking-tight truncate">
+                Students Directory
               </h1>
-              <p className="mt-3 text-slate-500 max-w-lg">
-                Manage enrollments, track academic progress, and register new students seamlessly.
+              <p className="text-xs text-stone-500 truncate">
+                Manage enrollments, class rosters, and register new students.
               </p>
             </div>
-            <div className="hidden sm:flex items-center gap-2 mt-1">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-full text-emerald-700 text-xs font-semibold">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                Live · Academic Year {currentAcademicYear}
-              </span>
-            </div>
           </div>
 
-          {/* Mini stat strip */}
-          <div className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {heroStats.map((stat) => {
-              const Icon = stat.icon;
-              return (
-                <div
-                  key={stat.label}
-                  className="bg-white/80 backdrop-blur border border-white/60 rounded-2xl px-4 py-3 flex items-center gap-3 shadow-sm hover:shadow-md transition-shadow"
-                >
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                    stat.color === 'emerald' ? 'bg-emerald-100 text-emerald-600' :
-                    stat.color === 'orange' ? 'bg-orange-100 text-orange-500' :
-                    'bg-slate-100 text-slate-500'
-                  }`}>
-                    <Icon size={16} />
-                  </div>
-                  <div>
-                    <div className="text-lg font-black text-slate-800 leading-none">{stat.value}</div>
-                    <div className="text-xs text-slate-500 mt-0.5">{stat.label}</div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </header>
-
-        {/* ─── Top Grid: Wizard + Metric + Tips ─── */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-10">
-          {/* Wizard takes 3 cols */}
-          <div className="lg:col-span-3">
-            <StudentRegistrationContainer />
-          </div>
-
-          {/* Right column: Metric + Tips stacked */}
-          <div className="lg:col-span-2 flex flex-col gap-6">
-            <MetricCard total={students.length} />
-            <RegistrationTips />
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 border border-emerald-200 rounded-full text-emerald-800 text-xs font-semibold tabular-nums">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
+              AY {currentAcademicYear}
+            </span>
           </div>
         </div>
+      </div>
 
-        {/* ─── Students Table ─── */}
-        <section>
-          <div className="flex items-center justify-between mb-5">
-            <div>
-              <h2 className="text-xl font-bold text-slate-800">Enrolled Students</h2>
-              <p className="text-sm text-slate-500 mt-0.5">{students.length} active registrations</p>
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-3 sm:pt-4 space-y-4">
+        {/* Compact 4-pill KPI strip */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+          {heroStats.map((stat) => {
+            const Icon = stat.icon;
+            return (
+              <div
+                key={stat.label}
+                className="bg-white border border-stone-200/80 rounded-xl px-3 py-2.5 flex items-center gap-2.5 shadow-2xs"
+              >
+                <div
+                  className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                    stat.color === 'emerald'
+                      ? 'bg-emerald-50 text-[#059669]'
+                      : stat.color === 'orange'
+                      ? 'bg-amber-50 text-amber-600'
+                      : 'bg-stone-100 text-stone-600'
+                  }`}
+                >
+                  <Icon size={14} />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-sm sm:text-base font-extrabold text-stone-900 leading-none tabular-nums">
+                    {stat.value}
+                  </div>
+                  <div className="text-[11px] text-stone-500 mt-0.5 truncate">{stat.label}</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Collapsible Student Registration Drawer — keeps Enrolled Students immediately visible above the fold */}
+        <details className="group bg-white border border-stone-200/90 rounded-2xl shadow-2xs overflow-hidden">
+          <summary className="list-none cursor-pointer px-4 py-3 flex items-center justify-between gap-3 bg-[#FAF7F2] hover:bg-stone-100/70 transition-colors select-none">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-7 h-7 rounded-lg bg-[#059669] text-white flex items-center justify-center shrink-0">
+                <UserPlus size={14} />
+              </div>
+              <div className="min-w-0">
+                <span className="text-xs sm:text-sm font-bold text-stone-900">
+                  Register New Student
+                </span>
+                <span className="hidden sm:inline text-xs text-stone-500 ml-2">
+                  Click to open the admission &amp; dual-curriculum placement wizard
+                </span>
+              </div>
+            </div>
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-stone-200 text-xs font-bold text-[#059669] shrink-0">
+              <span className="group-open:hidden">+ New Admission</span>
+              <span className="hidden group-open:inline">Hide Form</span>
+              <ChevronDown size={14} className="transition-transform duration-200 group-open:rotate-180" />
+            </span>
+          </summary>
+
+          <div className="p-3 sm:p-5 border-t border-stone-200 bg-[#F8FAFC]">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+              <div className="lg:col-span-3">
+                <StudentRegistrationContainer />
+              </div>
+              <div className="lg:col-span-2 flex flex-col gap-4">
+                <MetricCard total={students.length} />
+                <RegistrationTips />
+              </div>
             </div>
           </div>
+        </details>
+
+        {/* Students Directory Table — Immediately visible above the fold */}
+        <section>
           <StudentsListClient students={students} department={authRes.filterByDepartment} />
         </section>
-
       </div>
     </div>
   )

@@ -15,6 +15,20 @@ let inFlightTermPromise: Promise<string> | null = null
 let memoryUnreadCount: { count: number; ts: number } | null = null
 let inFlightUnreadPromise: Promise<number> | null = null
 
+export function invalidateClientCache() {
+  memorySettings = null
+  inFlightSettingsPromise = null
+  memoryTerm = null
+  inFlightTermPromise = null
+  memoryUnreadCount = null
+  inFlightUnreadPromise = null
+  if (typeof window !== 'undefined') {
+    try {
+      sessionStorage.removeItem(TERM_CACHE_KEY)
+    } catch {}
+  }
+}
+
 export async function safeJsonFetch<T = any>(
   url: string,
   init?: RequestInit
@@ -102,6 +116,7 @@ export function setStoredThemeMode(mode: ThemeMode) {
   } catch {}
   applyThemeModeToDom(mode)
   window.dispatchEvent(new CustomEvent('jiddah:theme-changed', { detail: { mode } }))
+  window.dispatchEvent(new CustomEvent('jiddah-theme-changed', { detail: { mode } }))
 }
 
 export function getCachedSchoolSettingsSync(): any | null {

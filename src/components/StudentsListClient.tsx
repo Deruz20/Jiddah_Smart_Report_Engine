@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useDeferredValue } from 'react';
-import { Search, Filter, MoreHorizontal, Download, ChevronDown, ChevronUp, ChevronsUpDown, UserX, Edit2, Archive, RotateCcw, Trash2 } from 'lucide-react';
+import { Search, Filter, Download, ChevronDown, ChevronUp, ChevronsUpDown, UserX, Edit2, Archive, RotateCcw, Trash2 } from 'lucide-react';
 import { Badge } from './figma-ui/Badge';
 import { EditStudentModal } from './EditStudentModal';
 import { useRouter } from 'next/navigation';
@@ -30,13 +30,13 @@ type SortKey = 'name' | 'admission_number' | 'created_at' | 'circular_class';
 type SortDir = 'asc' | 'desc';
 type FilterTab = 'All' | 'Primary' | 'Nursery' | 'Theology' | 'Archived';
 
-const PAGE_SIZE = 8;
+const PAGE_SIZE = 10;
 
 function SortIcon({ column, sortKey, sortDir }: { column: SortKey; sortKey: SortKey; sortDir: SortDir }) {
-  if (column !== sortKey) return <ChevronsUpDown size={13} className="text-slate-300 ml-1" />;
+  if (column !== sortKey) return <ChevronsUpDown size={13} className="text-stone-300 ml-1" />;
   return sortDir === 'asc'
-    ? <ChevronUp size={13} className="text-emerald-500 ml-1" />
-    : <ChevronDown size={13} className="text-emerald-500 ml-1" />;
+    ? <ChevronUp size={13} className="text-[#059669] ml-1" />
+    : <ChevronDown size={13} className="text-[#059669] ml-1" />;
 }
 
 function avatarColors(name: string) {
@@ -142,7 +142,7 @@ export function StudentsListClient({ students, department }: StudentsTableProps)
       if (!res.ok) throw new Error('Failed to archive student');
       toast.success(`${student.name} has been archived`);
       router.refresh();
-    } catch (err) {
+    } catch {
       toast.error('Failed to archive student');
     }
   };
@@ -154,7 +154,7 @@ export function StudentsListClient({ students, department }: StudentsTableProps)
       if (!res.ok) throw new Error('Failed to delete student permanently');
       toast.success(`${student.name} has been permanently deleted`);
       router.refresh();
-    } catch (err) {
+    } catch {
       toast.error('Failed to delete student');
     }
   };
@@ -169,7 +169,7 @@ export function StudentsListClient({ students, department }: StudentsTableProps)
       if (!res.ok) throw new Error('Failed to restore student');
       toast.success(`${student.name} has been restored`);
       router.refresh();
-    } catch (err) {
+    } catch {
       toast.error('Failed to restore student');
     }
   };
@@ -188,13 +188,13 @@ export function StudentsListClient({ students, department }: StudentsTableProps)
     toast.success('Exported students successfully');
   };
 
-  const ThCell = ({ label, col }: { label: string; col: SortKey }) => (
+  const ThCell = ({ label, col, className = '' }: { label: string; col: SortKey; className?: string }) => (
     <th
       scope="col"
-      className="px-5 py-3.5 text-left cursor-pointer select-none group"
+      className={`px-3 py-2.5 text-left cursor-pointer select-none group ${className}`}
       onClick={() => handleSort(col)}
     >
-      <span className="flex items-center text-xs font-bold text-slate-500 uppercase tracking-wider group-hover:text-slate-800 transition-colors">
+      <span className="flex items-center text-[11px] font-bold text-stone-500 uppercase tracking-wider group-hover:text-stone-800 transition-colors">
         {label}
         <SortIcon column={col} sortKey={sortKey} sortDir={sortDir} />
       </span>
@@ -202,24 +202,25 @@ export function StudentsListClient({ students, department }: StudentsTableProps)
   );
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col">
+    <div className="bg-white rounded-2xl shadow-xs border border-stone-200/90 overflow-hidden flex flex-col w-full min-w-0">
 
       {/* Filter tabs */}
-      <div className="px-5 pt-4 pb-0 border-b border-slate-100">
+      <div className="px-3 sm:px-4 pt-2.5 pb-0 border-b border-stone-200/80">
         <div className="flex items-center gap-1 overflow-x-auto pb-0 hide-scrollbar">
           {tabs.map((tab) => (
             <button
               key={tab}
+              type="button"
               onClick={() => { setActiveTab(tab); setPage(1); }}
-              className={`flex items-center gap-1.5 px-3 py-2 text-sm font-semibold rounded-t-lg whitespace-nowrap transition-all border-b-2 ${
+              className={`flex items-center gap-1.5 px-2.5 py-2 text-xs font-bold rounded-t-lg whitespace-nowrap transition-all border-b-2 cursor-pointer ${
                 activeTab === tab
-                  ? 'text-emerald-700 border-emerald-500 bg-emerald-50/50'
-                  : 'text-slate-500 border-transparent hover:text-slate-800 hover:bg-slate-50'
+                  ? 'text-[#059669] border-[#059669] bg-emerald-50/50'
+                  : 'text-stone-500 border-transparent hover:text-stone-800 hover:bg-stone-50'
               }`}
             >
               {tab}
-              <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${
-                activeTab === tab ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold tabular-nums ${
+                activeTab === tab ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-100 text-stone-500'
               }`}>
                 {tabCounts[tab]}
               </span>
@@ -229,114 +230,118 @@ export function StudentsListClient({ students, department }: StudentsTableProps)
       </div>
 
       {/* Search + actions bar */}
-      <div className="px-5 py-3.5 flex flex-col sm:flex-row justify-between items-center gap-3 bg-slate-50/40 border-b border-slate-100">
+      <div className="px-3 sm:px-4 py-2.5 flex flex-col sm:flex-row justify-between items-center gap-2 bg-[#F8FAFC] border-b border-stone-200/80">
         <div className="relative w-full sm:max-w-xs">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" />
           <input
             type="text"
             placeholder="Search by name, class, or ID…"
             value={searchTerm}
             onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
-            className="block w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 text-sm transition-all shadow-sm"
+            className="block w-full pl-8 pr-3 py-1.5 border border-stone-200 rounded-xl bg-white placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-[#059669] text-xs transition-all"
           />
         </div>
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="flex items-center gap-1.5 w-full sm:w-auto">
           <button 
+            type="button"
             onClick={() => toast.info('Use the tabs above to filter by department/status')}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-all shadow-sm flex-1 sm:flex-none justify-center"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-stone-200 rounded-xl text-xs font-semibold text-stone-600 hover:bg-stone-50 transition-all flex-1 sm:flex-none justify-center cursor-pointer"
           >
-            <Filter size={14} className="text-slate-400" />
+            <Filter size={13} className="text-stone-400" />
             Filters
           </button>
           <button 
+            type="button"
             onClick={handleExport}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-all shadow-sm flex-1 sm:flex-none justify-center"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-stone-200 rounded-xl text-xs font-semibold text-stone-600 hover:bg-stone-50 transition-all flex-1 sm:flex-none justify-center cursor-pointer"
           >
-            <Download size={14} className="text-slate-400" />
-            Export
+            <Download size={13} className="text-stone-400" />
+            Export CSV
           </button>
         </div>
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto flex-1">
-        <table className="min-w-full divide-y divide-slate-100">
+      {/* Responsive Zero-Scrollbar Table */}
+      <div className="w-full min-w-0 flex-1">
+        <table className="w-full divide-y divide-stone-100 table-auto">
           <thead className="bg-white">
             <tr>
               <ThCell label="Student" col="name" />
-              <ThCell label="Admission No." col="admission_number" />
+              <ThCell label="Adm No." col="admission_number" className="hidden sm:table-cell" />
               <ThCell label="Class / Section" col="circular_class" />
-              <th scope="col" className="px-5 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
-                Academic Year
+              <th scope="col" className="hidden lg:table-cell px-3 py-2.5 text-left text-[11px] font-bold text-stone-500 uppercase tracking-wider">
+                Year
               </th>
-              <th scope="col" className="px-5 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+              <th scope="col" className="hidden md:table-cell px-3 py-2.5 text-left text-[11px] font-bold text-stone-500 uppercase tracking-wider">
                 Status
               </th>
-              <th scope="col" className="relative px-5 py-3.5">
+              <th scope="col" className="relative px-3 py-2.5 text-right w-24">
                 <span className="sr-only">Actions</span>
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-slate-50">
+          <tbody className="bg-white divide-y divide-stone-100">
             {paginated.map((student) => (
               <tr
                 key={student.id}
-                className="hover:bg-slate-50/70 transition-colors group relative"
+                className="hover:bg-stone-50/70 transition-colors group relative"
               >
-                {/* Left accent bar on hover */}
-                <td className="px-5 py-4 whitespace-nowrap">
-                  <div className="flex items-center gap-3">
-                    <div className={`h-10 w-10 flex-shrink-0 rounded-2xl bg-gradient-to-br ${avatarColors(student.name)} flex items-center justify-center font-bold shadow-[0_2px_10px_-3px_rgba(0,0,0,0.1)] text-sm border border-white/50`}>
+                <td className="px-3 py-2.5 min-w-0">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className={`h-8 w-8 shrink-0 rounded-xl bg-gradient-to-br ${avatarColors(student.name)} flex items-center justify-center font-bold text-xs border border-white/50`}>
                       {student.name.charAt(0).toUpperCase()}
                     </div>
-                    <div>
-                      <div className="text-sm font-bold text-slate-800 tracking-tight">{student.name}</div>
-                      <div className="flex items-center gap-2 text-xs text-slate-400 mt-0.5 font-medium">
+                    <div className="min-w-0">
+                      <div className="text-xs sm:text-sm font-bold text-stone-900 truncate">{student.name}</div>
+                      <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-stone-500 mt-0.5 font-medium">
+                        <span className="sm:hidden font-mono font-bold text-stone-700 bg-stone-100 px-1.5 py-0.2 rounded">
+                          {student.admission_number}
+                        </span>
                         {student.gender && (
-                          <span className={`inline-flex items-center justify-center px-1.5 py-0.5 rounded-md text-[10px] uppercase tracking-wider font-bold ${
+                          <span className={`inline-flex items-center justify-center px-1.5 py-0.2 rounded text-[9px] uppercase tracking-wider font-bold ${
                             student.gender.toLowerCase() === 'female' 
                               ? 'bg-rose-50 text-rose-600 border border-rose-100' 
                               : 'bg-blue-50 text-blue-600 border border-blue-100'
                           }`}>
-                            {student.gender.toLowerCase() === 'female' ? '♀ Female' : '♂ Male'}
+                            {student.gender.toLowerCase() === 'female' ? '♀ F' : '♂ M'}
                           </span>
                         )}
-                        <span>
+                        <span className="hidden sm:inline text-stone-400">
                           Joined {new Date(student.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </span>
                       </div>
                     </div>
                   </div>
                 </td>
-                <td className="px-5 py-4 whitespace-nowrap">
-                  <code className="text-[11px] font-mono font-bold text-slate-600 bg-slate-100/80 px-2 py-1 rounded-md border border-slate-200/60 shadow-sm">
+                <td className="hidden sm:table-cell px-3 py-2.5 whitespace-nowrap">
+                  <code className="text-[11px] font-mono font-bold text-stone-600 bg-stone-100/80 px-2 py-0.5 rounded-md border border-stone-200/60 tabular-nums">
                     {student.admission_number}
                   </code>
                 </td>
-                <td className="px-5 py-4 whitespace-nowrap">
+                <td className="px-3 py-2.5">
                   {department !== 'theology' && (
-                    <div className="text-sm font-bold text-slate-700 flex items-center gap-1.5">
-                      {student.circular_class}
+                    <div className="text-xs font-bold text-stone-800 flex flex-wrap items-center gap-1">
+                      <span>{student.circular_class}</span>
                       {student.section && (
-                        <span className="text-[10px] uppercase tracking-widest font-bold text-slate-500 bg-white border border-slate-200 px-1.5 py-0.5 rounded shadow-sm">
+                        <span className="hidden sm:inline text-[9px] uppercase tracking-wider font-bold text-stone-500 bg-stone-50 border border-stone-200 px-1.5 py-0.2 rounded">
                           {student.section}
                         </span>
                       )}
                     </div>
                   )}
                   {department !== 'secular' && (student.theology_class_english || student.theology_class_arabic) && (
-                    <div className="text-[11px] font-semibold text-amber-600 bg-amber-50 inline-flex px-1.5 py-0.5 rounded mt-1 border border-amber-100">
+                    <div className="text-[10px] font-semibold text-amber-800 bg-amber-50 inline-flex px-1.5 py-0.2 rounded mt-0.5 border border-amber-200/70">
                       {student.theology_class_english || student.theology_class_arabic}
                     </div>
                   )}
                 </td>
-                <td className="px-5 py-4 whitespace-nowrap">
-                  <span className="text-[11px] font-bold text-slate-500 bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-md shadow-sm">
+                <td className="hidden lg:table-cell px-3 py-2.5 whitespace-nowrap">
+                  <span className="text-[11px] font-bold text-stone-500 bg-stone-50 border border-stone-200 px-2 py-0.5 rounded-md tabular-nums">
                     {student.academic_year}
                   </span>
                 </td>
-                <td className="px-5 py-4 whitespace-nowrap">
-                  <div className="flex flex-col items-start gap-1">
+                <td className="hidden md:table-cell px-3 py-2.5 whitespace-nowrap">
+                  <div className="flex flex-col items-start gap-0.5">
                     <Badge
                       variant={
                         student.status === 'Primary' ? 'emerald' :
@@ -346,44 +351,50 @@ export function StudentsListClient({ students, department }: StudentsTableProps)
                       {student.status}
                     </Badge>
                     {student.is_theology_enrolled && student.status !== 'Theology' && (
-                      <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded uppercase tracking-wider border border-orange-100">
+                      <span className="text-[9px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded uppercase tracking-wider border border-amber-200">
                         + Theology
                       </span>
                     )}
                   </div>
                 </td>
-                <td className="px-5 py-4 whitespace-nowrap text-right flex items-center justify-end gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-                  <button 
-                    onClick={() => setEditingStudent(student)}
-                    className="text-slate-400 hover:text-blue-600 transition-colors p-1.5 rounded-lg hover:bg-blue-50"
-                    title="Edit Student"
-                  >
-                    <Edit2 size={16} />
-                  </button>
-                  {student.is_archived ? (
+                <td className="px-2 sm:px-3 py-2.5 whitespace-nowrap text-right">
+                  <div className="inline-flex items-center justify-end gap-1">
                     <button 
-                      onClick={() => handleRestore(student)}
-                      className="text-slate-400 hover:text-emerald-600 transition-colors p-1.5 rounded-lg hover:bg-emerald-50"
-                      title="Restore Student"
+                      type="button"
+                      onClick={() => setEditingStudent(student)}
+                      className="text-stone-400 hover:text-blue-600 transition-colors p-1.5 rounded-lg hover:bg-blue-50 cursor-pointer"
+                      title="Edit Student"
                     >
-                      <RotateCcw size={16} />
+                      <Edit2 size={14} />
                     </button>
-                  ) : (
+                    {student.is_archived ? (
+                      <button 
+                        type="button"
+                        onClick={() => handleRestore(student)}
+                        className="text-stone-400 hover:text-emerald-600 transition-colors p-1.5 rounded-lg hover:bg-emerald-50 cursor-pointer"
+                        title="Restore Student"
+                      >
+                        <RotateCcw size={14} />
+                      </button>
+                    ) : (
+                      <button 
+                        type="button"
+                        onClick={() => handleArchive(student)}
+                        className="text-stone-400 hover:text-amber-600 transition-colors p-1.5 rounded-lg hover:bg-amber-50 cursor-pointer"
+                        title="Archive Student"
+                      >
+                        <Archive size={14} />
+                      </button>
+                    )}
                     <button 
-                      onClick={() => handleArchive(student)}
-                      className="text-slate-400 hover:text-amber-600 transition-colors p-1.5 rounded-lg hover:bg-amber-50"
-                      title="Archive Student"
+                      type="button"
+                      onClick={() => handleHardDelete(student)}
+                      className="text-stone-400 hover:text-rose-600 transition-colors p-1.5 rounded-lg hover:bg-rose-50 cursor-pointer"
+                      title="Permanently Delete Student"
                     >
-                      <Archive size={16} />
+                      <Trash2 size={14} />
                     </button>
-                  )}
-                  <button 
-                    onClick={() => handleHardDelete(student)}
-                    className="text-slate-400 hover:text-rose-600 transition-colors p-1.5 rounded-lg hover:bg-rose-50"
-                    title="Permanently Delete Student"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -391,51 +402,54 @@ export function StudentsListClient({ students, department }: StudentsTableProps)
         </table>
 
         {filtered.length === 0 && (
-          <div className="py-16 text-center flex flex-col items-center justify-center">
-            <div className="w-14 h-14 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-center mb-4 text-slate-300">
-              <UserX size={24} />
+          <div className="py-10 text-center flex flex-col items-center justify-center">
+            <div className="w-11 h-11 bg-stone-50 border border-stone-200 rounded-2xl flex items-center justify-center mb-3 text-stone-400">
+              <UserX size={20} />
             </div>
-            <h3 className="text-sm font-bold text-slate-800">No students found</h3>
-            <p className="text-sm text-slate-400 mt-1">Try adjusting your search or filter.</p>
+            <h3 className="text-xs font-bold text-stone-800">No students found</h3>
+            <p className="text-xs text-stone-500 mt-0.5">Try adjusting your search or filter.</p>
           </div>
         )}
       </div>
 
       {/* Pagination */}
-      <div className="px-5 py-3.5 border-t border-slate-100 bg-slate-50/40 flex items-center justify-between flex-wrap gap-2">
-        <div className="text-xs text-slate-500">
+      <div className="px-3 sm:px-4 py-2.5 border-t border-stone-200/80 bg-[#F8FAFC] flex items-center justify-between flex-wrap gap-2">
+        <div className="text-xs text-stone-500 tabular-nums">
           Showing{' '}
-          <span className="font-bold text-slate-800">{Math.min((page - 1) * PAGE_SIZE + 1, filtered.length)}</span>
+          <span className="font-bold text-stone-800">{Math.min((page - 1) * PAGE_SIZE + 1, filtered.length)}</span>
           –
-          <span className="font-bold text-slate-800">{Math.min(page * PAGE_SIZE, filtered.length)}</span>
+          <span className="font-bold text-stone-800">{Math.min(page * PAGE_SIZE, filtered.length)}</span>
           {' '}of{' '}
-          <span className="font-bold text-slate-800">{filtered.length}</span> results
+          <span className="font-bold text-stone-800">{filtered.length}</span>
         </div>
         <div className="flex items-center gap-1">
           <button
+            type="button"
             disabled={page === 1}
             onClick={() => setPage((p) => p - 1)}
-            className="px-3 py-1.5 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+            className="px-2.5 py-1 text-xs font-semibold text-stone-600 bg-white border border-stone-200 rounded-lg hover:bg-stone-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
           >
-            Previous
+            Prev
           </button>
           {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
             <button
               key={p}
+              type="button"
               onClick={() => setPage(p)}
-              className={`w-8 h-8 text-xs font-bold rounded-lg transition-all ${
+              className={`w-7 h-7 text-xs font-bold rounded-lg transition-all cursor-pointer tabular-nums ${
                 p === page
-                  ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-200'
-                  : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                  ? 'bg-[#059669] text-white shadow-xs'
+                  : 'bg-white border border-stone-200 text-stone-600 hover:bg-stone-50'
               }`}
             >
               {p}
             </button>
           ))}
           <button
+            type="button"
             disabled={page === totalPages}
             onClick={() => setPage((p) => p + 1)}
-            className="px-3 py-1.5 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+            className="px-2.5 py-1 text-xs font-semibold text-stone-600 bg-white border border-stone-200 rounded-lg hover:bg-stone-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
           >
             Next
           </button>

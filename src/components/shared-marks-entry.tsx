@@ -363,7 +363,7 @@ export function SharedMarksEntry({
                 }
               }
             }}
-            className={`score-input w-[74px] min-h-[44px] px-2 py-1.5 text-center text-sm font-mono font-bold tabular-nums rounded-xl border transition-all outline-none focus:ring-2 ${
+            className={`score-input w-[72px] min-h-[38px] sm:min-h-[42px] px-2 py-1 text-center text-sm font-mono font-bold tabular-nums rounded-xl border transition-all outline-none focus:ring-2 ${
               fieldError
                 ? 'border-rose-500 bg-rose-50 text-rose-900 focus:ring-rose-500/20'
                 : isHigh
@@ -375,7 +375,7 @@ export function SharedMarksEntry({
           />
           {badge && (
             <span
-              className={`hidden sm:inline-flex items-center justify-center w-7 h-6 rounded-md text-[10px] font-extrabold border ${badge.bg} ${badge.text} ${badge.border}`}
+              className={`inline-flex items-center justify-center w-6 h-5 sm:w-7 sm:h-6 rounded-md text-[10px] font-extrabold border ${badge.bg} ${badge.text} ${badge.border}`}
             >
               {badge.grade}
             </span>
@@ -394,7 +394,7 @@ export function SharedMarksEntry({
   }
 
   return (
-    <div className="w-full max-w-full min-w-0 space-y-3.5 pb-28">
+    <div className="w-full max-w-full min-w-0 space-y-2.5 pb-4">
       <style>{`
         input[type="number"].score-input::-webkit-inner-spin-button,
         input[type="number"].score-input::-webkit-outer-spin-button {
@@ -767,24 +767,28 @@ export function SharedMarksEntry({
                       data-testid="marks-scroll-grid"
                       className="w-full max-w-full overflow-x-auto overscroll-x-contain"
                     >
-                      <table className="w-full min-w-[440px] border-collapse text-left tabular-nums">
+                      <table
+                        className={`w-full border-collapse text-left tabular-nums ${
+                          examType === 'all' ? 'min-w-[420px]' : ''
+                        }`}
+                      >
                         <thead>
                           <tr className="bg-stone-50/80 border-b border-stone-200 text-[10px] font-bold text-stone-500 uppercase tracking-wider">
                             <th
                               data-testid="frozen-first-column-header"
-                              className="sticky left-0 z-20 bg-stone-50 px-3 py-3 border-r border-stone-200 min-w-[140px] max-w-[175px]"
+                              className="sticky left-0 z-20 bg-stone-50 px-3 py-2 border-r border-stone-200"
                             >
                               Subject
                             </th>
-                            <th className="px-2 py-3 text-center w-14">Core</th>
+                            <th className="hidden sm:table-cell px-2 py-2 text-center w-14">Core</th>
                             {['bot', 'all'].includes(examType) && (
-                              <th className="px-2.5 py-3 text-center w-28">BOT (100)</th>
+                              <th className="px-2 py-2 text-center w-28">BOT (100)</th>
                             )}
                             {['mot', 'all'].includes(examType) && (
-                              <th className="px-2.5 py-3 text-center w-28">MOT (100)</th>
+                              <th className="px-2 py-2 text-center w-28">MOT (100)</th>
                             )}
                             {['eot', 'all'].includes(examType) && (
-                              <th className="px-2.5 py-3 text-center w-28">EOT (100)</th>
+                              <th className="px-2 py-2 text-center w-28">EOT (100)</th>
                             )}
                           </tr>
                         </thead>
@@ -794,16 +798,26 @@ export function SharedMarksEntry({
                               {/* Frozen First Column */}
                               <td
                                 data-testid={`frozen-cell-${idx}`}
-                                className="sticky left-0 z-10 bg-white px-3 py-2.5 border-r border-stone-200 min-w-[140px] max-w-[175px]"
+                                className="sticky left-0 z-10 bg-white px-3 py-1.5 border-r border-stone-200"
                               >
-                                <div className="font-bold text-stone-900 truncate" title={mark.subject_name}>
-                                  {mark.subject_name}
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-bold text-stone-900 truncate" title={mark.subject_name}>
+                                    {mark.subject_name}
+                                  </span>
+                                  {mark.is_core && (
+                                    <span
+                                      className="sm:hidden inline-flex items-center justify-center w-4 h-4 rounded-full bg-emerald-50 text-[#059669] text-[9px] font-bold border border-emerald-200 shrink-0"
+                                      title="Core subject"
+                                    >
+                                      ✓
+                                    </span>
+                                  )}
                                 </div>
-                                <div className="text-[10px] text-stone-400 truncate" title={selectedEnrollment.name}>
+                                <div className="text-[10px] text-stone-400 truncate leading-tight" title={selectedEnrollment.name}>
                                   {selectedEnrollment.name}
                                 </div>
                               </td>
-                              <td className="px-2 py-2.5 text-center">
+                              <td className="hidden sm:table-cell px-2 py-1.5 text-center">
                                 {mark.is_core ? (
                                   <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-50 text-[#059669] text-[10px] font-bold border border-emerald-200">
                                     ✓
@@ -813,17 +827,17 @@ export function SharedMarksEntry({
                                 )}
                               </td>
                               {['bot', 'all'].includes(examType) && (
-                                <td className="px-2 py-2 text-center">
+                                <td className="px-2 py-1.5 text-center">
                                   {renderScoreCell('secular', mark.subject_id, mark.subject_name, 'bot', mark.bot_score, idx)}
                                 </td>
                               )}
                               {['mot', 'all'].includes(examType) && (
-                                <td className="px-2 py-2 text-center">
+                                <td className="px-2 py-1.5 text-center">
                                   {renderScoreCell('secular', mark.subject_id, mark.subject_name, 'mot', mark.mot_score, idx)}
                                 </td>
                               )}
                               {['eot', 'all'].includes(examType) && (
-                                <td className="px-2 py-2 text-center">
+                                <td className="px-2 py-1.5 text-center">
                                   {renderScoreCell('secular', mark.subject_id, mark.subject_name, 'eot', mark.eot_score, idx)}
                                 </td>
                               )}
@@ -841,7 +855,7 @@ export function SharedMarksEntry({
                   examType !== 'bot' &&
                   selectedEnrollment?.theology_status !== 'not_applicable' && (
                     <div className="bg-white border border-stone-200/90 rounded-2xl shadow-xs overflow-hidden w-full min-w-0">
-                      <div className="px-4 py-2.5 bg-[#F8FAFC] border-b border-stone-200 flex items-center justify-between gap-2">
+                      <div className="px-4 py-2 bg-[#F8FAFC] border-b border-stone-200 flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
                           <span className="w-2 h-2 rounded-full bg-amber-600" />
                           <span className="text-xs font-bold text-stone-900 uppercase tracking-wider">
@@ -854,38 +868,42 @@ export function SharedMarksEntry({
                       </div>
 
                       <div className="w-full max-w-full overflow-x-auto overscroll-x-contain">
-                        <table className="w-full min-w-[360px] border-collapse text-left tabular-nums">
+                        <table
+                          className={`w-full border-collapse text-left tabular-nums ${
+                            examType === 'all' ? 'min-w-[340px]' : ''
+                          }`}
+                        >
                           <thead>
                             <tr className="bg-stone-50/80 border-b border-stone-200 text-[10px] font-bold text-stone-500 uppercase tracking-wider">
-                              <th className="sticky left-0 z-20 bg-stone-50 px-3 py-3 border-r border-stone-200 min-w-[140px] max-w-[175px]">
+                              <th className="sticky left-0 z-20 bg-stone-50 px-3 py-2 border-r border-stone-200">
                                 Subject (المادة)
                               </th>
                               {['mot', 'all'].includes(examType) && (
-                                <th className="px-2.5 py-3 text-center w-28">MOT (100)</th>
+                                <th className="px-2 py-2 text-center w-28">MOT (100)</th>
                               )}
                               {['eot', 'all'].includes(examType) && (
-                                <th className="px-2.5 py-3 text-center w-28">EOT (100)</th>
+                                <th className="px-2 py-2 text-center w-28">EOT (100)</th>
                               )}
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-stone-100 text-xs">
                             {theologyMarks.map((mark, idx) => (
                               <tr key={mark.subject_id} className="hover:bg-stone-50/70 transition-colors">
-                                <td className="sticky left-0 z-10 bg-white px-3 py-2.5 border-r border-stone-200 min-w-[140px] max-w-[175px]">
+                                <td className="sticky left-0 z-10 bg-white px-3 py-1.5 border-r border-stone-200">
                                   <div className="font-bold text-stone-900 truncate" dir="rtl">
                                     {mark.subject_name_arabic}
                                   </div>
-                                  <div className="text-[10px] text-stone-400 truncate">
+                                  <div className="text-[10px] text-stone-400 truncate leading-tight">
                                     {selectedEnrollment.name}
                                   </div>
                                 </td>
                                 {['mot', 'all'].includes(examType) && (
-                                  <td className="px-2 py-2 text-center">
+                                  <td className="px-2 py-1.5 text-center">
                                     {renderScoreCell('theology', mark.subject_id, mark.subject_name_arabic, 'mot', mark.mot_score, idx)}
                                   </td>
                                 )}
                                 {['eot', 'all'].includes(examType) && (
-                                  <td className="px-2 py-2 text-center">
+                                  <td className="px-2 py-1.5 text-center">
                                     {renderScoreCell('theology', mark.subject_id, mark.subject_name_arabic, 'eot', mark.eot_score, idx)}
                                   </td>
                                 )}
@@ -905,9 +923,9 @@ export function SharedMarksEntry({
         {selectedEnrollment && (
           <div
             data-testid="sticky-save-bar"
-            className="sticky bottom-14 md:bottom-0 z-20 pt-2"
+            className="sticky bottom-14 md:bottom-2 z-20 pt-1"
           >
-            <div className="bg-white/95 backdrop-blur-md border border-stone-300 rounded-2xl p-3 sm:px-5 shadow-lg flex flex-wrap items-center justify-between gap-3">
+            <div className="bg-white/95 backdrop-blur-md border border-stone-300 rounded-2xl p-2.5 sm:px-4 shadow-lg flex flex-wrap items-center justify-between gap-2.5">
               <div className="flex items-center gap-2 min-w-0">
                 <span
                   className={`w-2.5 h-2.5 rounded-full shrink-0 ${

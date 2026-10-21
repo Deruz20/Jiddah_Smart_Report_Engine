@@ -55,6 +55,7 @@ import {
 import {
   fetchSchoolSettingsCached,
   getStoredThemeMode,
+  invalidateClientCache,
   resolveEffectiveTheme,
 } from "@/lib/client-cache";
 
@@ -373,6 +374,7 @@ export function AppSidebar() {
 
   const handleLogout = async () => {
     const supabase = createClient();
+    invalidateClientCache();
     await supabase.auth.signOut();
     router.replace("/login");
   };
@@ -427,6 +429,8 @@ export function AppSidebar() {
                   alt="School Badge"
                   width="36"
                   height="36"
+                  loading="lazy"
+                  decoding="async"
                   className="object-contain w-full h-full p-0.5"
                 />
               </div>

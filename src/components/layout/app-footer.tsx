@@ -7,38 +7,42 @@ import { usePathname } from "next/navigation";
 
 export function AppFooter() {
   const pathname = usePathname();
-  if (pathname === "/admin/reports" || pathname === "/admin/theology-hub") {
+  if (pathname === "/admin/reports" || pathname === "/admin/theology-hub" || pathname === "/admin/secular-hub") {
     return null;
   }
 
   return (
-    <footer className="w-full mt-auto shrink-0 print:hidden px-4 sm:px-6 pb-6 pt-4 border-t border-stone-200/70 bg-[#FDFBF7]">
-      <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center size-7 rounded-lg bg-[#0F4D25]/10 text-[#0F4D25]">
-            <GraduationCap className="size-4" strokeWidth={2} />
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-stone-800">
-              Jiddah Smart Report Engine
-            </p>
-            <p className="text-[11px] text-stone-500 mt-0.5 tabular-nums">
-              © {new Date().getFullYear()} Jiddah Islamic Schools.
-            </p>
-          </div>
-        </div>
+    <footer
+      data-testid="app-footer"
+      className="hidden md:flex w-full shrink-0 print:hidden px-4 lg:px-6 h-8 items-center justify-between border-t border-stone-200/70 bg-white/90 backdrop-blur-xs text-[11px] text-stone-500 select-none z-10"
+    >
+      <div className="flex items-center gap-2 min-w-0">
+        <GraduationCap className="size-3.5 text-[#059669] shrink-0" strokeWidth={2} />
+        <span className="font-semibold text-stone-700 truncate">
+          Jiddah Smart Report Engine
+        </span>
+        <span className="text-stone-300">•</span>
+        <span className="tabular-nums truncate">
+          © {new Date().getFullYear()} Jiddah Islamic Schools
+        </span>
+      </div>
 
-        <div className="flex items-center gap-6">
-          <Link href="/admin/settings" className="min-h-[44px] inline-flex items-center text-xs font-medium text-stone-600 hover:text-[#0F4D25] transition-colors">
-            School Settings
-          </Link>
-          <Link href="/admin/activity" className="min-h-[44px] inline-flex items-center text-xs font-medium text-stone-600 hover:text-[#0F4D25] transition-colors">
-            Audit Trail
-          </Link>
-          <span className="text-xs font-mono text-stone-500 tabular-nums">
-            v0.1.0-audited
-          </span>
-        </div>
+      <div className="flex items-center gap-4 shrink-0">
+        <Link
+          href="/admin/settings"
+          className="font-medium text-stone-500 hover:text-[#059669] transition-colors"
+        >
+          School Settings
+        </Link>
+        <Link
+          href="/admin/activity"
+          className="font-medium text-stone-500 hover:text-[#059669] transition-colors"
+        >
+          Audit Trail
+        </Link>
+        <span className="font-mono text-[10px] text-stone-400 tabular-nums">
+          v0.1.0-audited
+        </span>
       </div>
     </footer>
   );

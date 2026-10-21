@@ -44,7 +44,8 @@ export function ReportPreviewCell({
   const reportH = dims.height
 
   const updateFit = useCallback((availableW: number) => {
-    const usable = availableW - 80
+    const padding = availableW < 640 ? 24 : 64
+    const usable = Math.max(availableW - padding, 220)
     const fit = Math.min(usable / reportW, 1)
     setFitScale(Math.max(fit, 0.2))
   }, [reportW])
@@ -101,6 +102,8 @@ export function ReportPreviewCell({
         <img
           src="/school_budge.jpeg"
           alt=""
+          loading="lazy"
+          decoding="async"
           style={{ width: '80%', maxHeight: '80%', objectFit: 'contain', filter: 'grayscale(1)' }}
         />
       </div>

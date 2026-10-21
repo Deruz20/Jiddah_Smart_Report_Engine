@@ -119,12 +119,12 @@ export default async function MarksEntryPage() {
   }
 
   return (
-    <div className="min-h-screen pb-16 w-full max-w-full overflow-x-hidden">
+    <div className="w-full max-w-full overflow-x-hidden">
       <div className="bg-white border-b border-stone-200/80">
-        <div className="max-w-6xl mx-auto px-3 sm:px-6 py-3 sm:py-4 flex flex-wrap items-center justify-between gap-2">
+        <div className="max-w-6xl mx-auto px-3 sm:px-6 py-2.5 sm:py-3 flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h1 className="text-lg sm:text-2xl font-bold text-stone-900 tracking-tight">Marks Entry</h1>
-            <p className="text-stone-500 mt-0.5 text-xs sm:text-sm">
+            <h1 className="text-base sm:text-xl font-bold text-stone-900 tracking-tight">Marks Entry</h1>
+            <p className="text-stone-500 text-xs">
               Select a term, student, and enter scores per subject.
             </p>
           </div>
@@ -136,7 +136,7 @@ export default async function MarksEntryPage() {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-2.5 sm:px-6 py-3 sm:py-5 w-full min-w-0">
+      <div className="max-w-6xl mx-auto px-2.5 sm:px-6 py-2.5 sm:py-4 w-full min-w-0">
         {error ? (
           <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl">
             <p className="text-rose-800 font-semibold text-sm">System Error: {error}</p>

@@ -114,7 +114,7 @@ export function SearchFilterBar({
           transition={{ type: 'spring', stiffness: 280, damping: 30 }}
           className="overflow-hidden"
         >
-          <div className="bg-[#FAF7F2] border-b border-stone-200 px-4 py-4 flex flex-col gap-4 max-h-[calc(100vh-60px)] overflow-y-auto">
+          <div className="bg-[#FAF7F2] border-b border-stone-200 px-3 sm:px-4 py-3 flex flex-col gap-3 max-h-[52vh] sm:max-h-[60vh] overflow-y-auto">
             {/* ── Row 1: Mode + Section + Curriculum ── */}
             <div className="flex gap-3 items-start flex-wrap">
               <FilterGroup label="Mode">

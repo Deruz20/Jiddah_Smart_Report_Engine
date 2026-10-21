@@ -139,15 +139,15 @@ export default function AdminLayout({
         <AppTopbar />
         <div
           className={cn(
-            "flex-1 flex flex-col print:overflow-visible min-w-0 w-full overflow-x-hidden pb-14 md:pb-0",
+            "flex-1 flex flex-col min-h-0 min-w-0 w-full overflow-x-hidden pb-14 md:pb-0 relative",
             isReportsPage ? "overflow-y-hidden" : "overflow-y-auto"
           )}
         >
           <div className="flex-1 flex flex-col min-h-0 min-w-0 w-full relative">
             {children}
           </div>
-          {!isReportsPage && <AppFooter />}
         </div>
+        {!isReportsPage && <AppFooter />}
         <MobileBottomNav />
         <ProductTour isOpen={showTour} onClose={handleCloseTour} role={role} />
       </SidebarInset>

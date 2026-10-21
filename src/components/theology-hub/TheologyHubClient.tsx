@@ -502,7 +502,7 @@ export default function TheologyHubClient({
       </AnimatePresence>
 
       {/* Main Content Area */}
-      <div className="flex-1 overflow-auto p-3 sm:p-6 md:p-8 print:p-0">
+      <div className="flex-1 p-3 sm:p-5 print:p-0">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center h-full print:hidden">
             <Loader2 className="w-8 h-8 animate-spin text-[#059669] mb-3" />
@@ -511,7 +511,7 @@ export default function TheologyHubClient({
         ) : !data || (!activeClassId && activeTab === 'assessment') || (!activeLevel && (activeTab === 'analysis' || activeTab === 'top_students')) ? (
           <TheologyHubEmptyState />
         ) : (
-          <div className="w-full max-w-7xl mx-auto print:max-w-[210mm] print:m-0 min-h-[297mm] print:min-h-0">
+          <div className="w-full max-w-7xl mx-auto print:max-w-[210mm] print:m-0">
             {/* Assessment Tab */}
             {activeTab === 'assessment' && activeClassId && (
               <div className="font-arabic text-right print:py-0 print:px-2" dir="rtl">
@@ -554,14 +554,14 @@ export default function TheologyHubClient({
                     <table className="w-full text-right border-collapse print:border-2 print:border-black">
                       <thead className="bg-[#F8FAFC] sticky top-0 z-10 print:bg-stone-100 print:static">
                         <tr>
-                          <th className="px-4 py-3 border-b border-stone-200 text-stone-600 font-bold text-xs w-12 text-center print:border print:border-black print:text-black">م</th>
-                          <th className="px-4 py-3 border-b border-stone-200 text-stone-600 font-bold text-xs w-64 print:border print:border-black print:text-black">اسم التلميذ/ة</th>
+                          <th className="px-2.5 py-2 border-b border-stone-200 text-stone-600 font-bold text-xs w-10 text-center print:border print:border-black print:text-black">م</th>
+                          <th className="px-3 py-2 border-b border-stone-200 text-stone-600 font-bold text-xs min-w-[140px] print:border print:border-black print:text-black">اسم التلميذ/ة</th>
                           {assessmentData.orderedSubjects?.map(s => (
-                            <th key={s.id} className="px-4 py-3 border-b border-stone-200 text-stone-600 font-bold text-xs text-center print:border print:border-black print:text-black">{s.subject_name_arabic}</th>
+                            <th key={s.id} className="px-2.5 py-2 border-b border-stone-200 text-stone-600 font-bold text-xs text-center print:border print:border-black print:text-black">{s.subject_name_arabic}</th>
                           ))}
-                          <th className="px-4 py-3 border-b border-stone-200 text-stone-600 font-bold text-xs text-center w-24 print:border print:border-black print:text-black">المجموع</th>
-                          <th className="px-4 py-3 border-b border-stone-200 text-stone-600 font-bold text-xs text-center w-24 print:border print:border-black print:text-black">الترتيب</th>
-                          <th className="px-4 py-3 border-b border-stone-200 text-stone-600 font-bold text-xs text-center w-32 print:border print:border-black print:text-black">الملاحظات</th>
+                          <th className="px-2.5 py-2 border-b border-stone-200 text-stone-600 font-bold text-xs text-center w-20 print:border print:border-black print:text-black">المجموع</th>
+                          <th className="px-2.5 py-2 border-b border-stone-200 text-stone-600 font-bold text-xs text-center w-20 print:border print:border-black print:text-black">الترتيب</th>
+                          <th className="px-2.5 py-2 border-b border-stone-200 text-stone-600 font-bold text-xs text-center w-28 print:border print:border-black print:text-black">الملاحظات</th>
                         </tr>
                       </thead>
                       <motion.tbody
@@ -576,20 +576,20 @@ export default function TheologyHubClient({
                             key={student.id}
                             className="hover:bg-stone-50 transition-colors border-b border-stone-100 last:border-0 print:border print:border-black"
                           >
-                            <td className="px-4 py-3 text-center text-stone-500 font-medium print:border print:border-black print:text-black">{toArabicNumerals(idx + 1)}</td>
-                            <td className="px-4 py-3 font-semibold text-stone-900 whitespace-nowrap print:border print:border-black print:text-black">{student.arabic_name || student.name}</td>
+                            <td className="px-2.5 py-2 text-center text-stone-500 font-medium print:border print:border-black print:text-black">{toArabicNumerals(idx + 1)}</td>
+                            <td className="px-3 py-2 font-semibold text-stone-900 whitespace-nowrap print:border print:border-black print:text-black">{student.arabic_name || student.name}</td>
                             {assessmentData.orderedSubjects?.map(s => (
-                              <td key={s.id} className="px-4 py-3 text-center font-medium text-stone-700 print:border print:border-black print:text-black">
+                              <td key={s.id} className="px-2.5 py-2 text-center font-medium text-stone-700 print:border print:border-black print:text-black">
                                 {student.subjectScores[s.id] !== undefined && student.subjectScores[s.id] !== null ? toArabicNumerals(student.subjectScores[s.id]!) : '-'}
                               </td>
                             ))}
-                            <td className="px-4 py-3 text-center font-bold text-stone-900 print:border print:border-black print:text-black">
+                            <td className="px-2.5 py-2 text-center font-bold text-stone-900 print:border print:border-black print:text-black">
                               {student.total > 0 ? toArabicNumerals(student.total) : '-'}
                             </td>
-                            <td className="px-4 py-3 text-center font-bold text-[#059669] print:border print:border-black print:text-black">
+                            <td className="px-2.5 py-2 text-center font-bold text-[#059669] print:border print:border-black print:text-black">
                               {student.total > 0 ? toArabicNumerals(student.position) : '-'}
                             </td>
-                            <td className="px-4 py-3 text-center font-medium print:border print:border-black print:text-black">
+                            <td className="px-2.5 py-2 text-center font-medium print:border print:border-black print:text-black">
                               {student.total > 0 ? (
                                 <RemarkBadge score={student.total / (assessmentData.orderedSubjects.length || 1)} />
                               ) : '-'}

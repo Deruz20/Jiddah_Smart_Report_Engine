@@ -77,13 +77,13 @@ export async function POST(req: Request) {
       .insert([
         {
           id: userId,
+          auth_user_id: userId,
           email: String(invite.email).trim().toLowerCase(),
           role: finalRole,
           subject: finalSubject,
           name: finalName,
           classes: invite.classes || [],
           phone: invite.phone || phone || null,
-          auth_user_id: userId,
           status: 'active'
         }
       ]);

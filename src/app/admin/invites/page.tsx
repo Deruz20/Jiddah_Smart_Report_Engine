@@ -12,9 +12,14 @@ export default async function InvitesPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return <div className="p-10">Unauthorized</div>
 
-  const authRes = await verifyDataAccess(supabase, user, 'read');
-  if (!authRes.isAuthorized) {
-    return <div className="p-10 text-red-500">Access Denied: {authRes.message}</div>
+  const { data: profile } = await supabase
+    .from('teachers')
+    .select('role')
+    .eq('email', user.email)
+    .single();
+
+  if (!profile || (profile.role !== 'Administrator' && profile.role !== 'admin')) {
+    return <div className="p-10 text-red-500 font-medium">Access Denied: You must be an Administrator to access Teacher Invites.</div>
   }
 
   // Invites are admin visible

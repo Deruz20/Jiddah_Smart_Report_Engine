@@ -1,9 +1,12 @@
 import { getClassTeacherComment, getHeadTeacherComment, getConductRemark, getTheologyComment } from '@/lib/grading'
 import { ReportContainer } from '@/components/reports/shared/ReportContainer'
+import { resolveReportBranding, resolveReportGradingBands } from '@/lib/school-settings-helper'
 
 import { getClassTeacherSignatureKey } from '@/utils/signatures'
 
 export default function P7EOTReport({ reportData }: any) {
+  const branding = resolveReportBranding(reportData)
+  const gradingBands = resolveReportGradingBands(reportData)
   const teacherComment =
     reportData?.circular?.class_teacher_comment ??
     getClassTeacherComment(reportData?.circular?.division ?? null)
@@ -46,7 +49,13 @@ export default function P7EOTReport({ reportData }: any) {
   )
 
   return (
-    <ReportContainer reportType="P7EOTReport">
+    <ReportContainer
+      reportType="P7EOTReport"
+      primaryFont={branding.primaryFont}
+      arabicFont={branding.arabicFont}
+      themePreset={branding.themePreset}
+      themeColor={branding.themeColor}
+    >
       <style
         dangerouslySetInnerHTML={{
           __html: `
@@ -489,16 +498,16 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
         <header className="header">
           <div className="school-left">
             <h1>
-              JIDDAH ISLAMIC SCHOOLS
+              {branding.schoolName}
             </h1>
-            <p>P.O.Box 34008 Kampala (U)</p>
-            <p>Tel: +256 744950042 / 0705316961</p>
-            <p>jiddahislamicnurseryandpri@gmail.com</p>
+            <p>{branding.address}</p>
+            <p>Tel: {branding.phone}</p>
+            <p>{branding.email}</p>
           </div>
 
           <div className="header-center">
             <div className="logo">
-              <img src="/school_budge.jpeg" alt="School Badge" />
+              <img src={branding.logoUrl} alt="School Badge" />
             </div>
           </div>
 
@@ -599,29 +608,17 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
                 <tbody>
                   <tr>
                     <th>Grade</th>
-                    <td>D1</td>
-                    <td>D2</td>
-                    <td>C3</td>
-                    <td>C4</td>
-                    <td>C5</td>
-                    <td>C6</td>
-                    <td>P7</td>
-                    <td>P8</td>
-                    <td>F9</td>
+                    {gradingBands.map((band) => (
+                      <td key={`grade-${band.grade}`}>{band.grade}</td>
+                    ))}
                   </tr>
                   <tr>
                     <td>
                       <b>Marks</b>
                     </td>
-                    <td>85-100</td>
-                    <td>75-84</td>
-                    <td>70-74</td>
-                    <td>60-69</td>
-                    <td>55-59</td>
-                    <td>50-54</td>
-                    <td>40-49</td>
-                    <td>35-39</td>
-                    <td>0-34</td>
+                    {gradingBands.map((band) => (
+                      <td key={`marks-${band.grade}`}>{band.range}</td>
+                    ))}
                   </tr>
                 </tbody>
               </table>
@@ -701,7 +698,9 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
                   <span style={{ fontWeight: 700 }}>ملاحظة مشرف الفصل: </span>
                   <span style={{ fontStyle: 'italic', color: '#334155', fontWeight: 600 }}>
                     {getTheologyComment(
-                      reportData?.theology?.eot_total ?? null
+                      reportData?.theology?.eot_total ?? null,
+                      reportData?.student?.gender,
+                      reportData?.settings?.theology_remarks
                     )}
                   </span>
                 </div>

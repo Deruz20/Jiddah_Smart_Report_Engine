@@ -1,9 +1,10 @@
 import { createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import NotificationsClient from '@/components/layout/notifications-client'
-import { getAuthenticatedUser, recordActivity } from '@/lib/api-server'
+import { getAuthenticatedUser } from '@/lib/api-server'
+import { fetchUserBroadcastReadContext, isBroadcastNotificationRead } from '@/lib/notifications'
 
-export const dynamic = "force-dynamic";
+export const dynamic = "force-dynamic"
 
 function parseMetadata(value: unknown): Record<string, unknown> {
   if (!value) return {}
@@ -32,33 +33,43 @@ export default async function NotificationsPage() {
   const supabase = createClient(cookieStore)
   const user = await getAuthenticatedUser(supabase)
 
-  // Fetch notifications
-  let notifQuery = supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(100)
+  let notifQuery = supabase
+    .from('notifications')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
+    .limit(100)
   if (user?.id) {
     notifQuery = notifQuery.or(`recipient_id.is.null,recipient_id.eq.${user.id}`)
   }
   const { data: notifData } = await notifQuery
 
-  const notifications = (notifData ?? []).map((notification: any) => ({
-    id: notification.id,
-    title: notification.title || '',
-    message: notification.message || '',
-    time: notification.time || notification.created_at || '',
-    read: Boolean(notification.read),
-    priority: notification.priority || 'normal',
-    type: notification.type || 'info',
-  }))
-
-  if (user?.id && notifications.length > 0) {
-    await recordActivity(supabase, user.id, 'view_notifications', {
-      count: notifications.length,
-    })
+  let broadcastContext = { readBroadcastIds: new Set<string>(), markAllReadTimestamp: null as number | null }
+  if (user?.id && notifData && notifData.length > 0) {
+    broadcastContext = await fetchUserBroadcastReadContext(supabase, user.id, notifData)
   }
 
-  // Fetch activities
+  const notifications = (notifData ?? []).map((notification: any) => {
+    let isRead = Boolean(notification.read)
+    if (notification.recipient_id === null) {
+      isRead = isBroadcastNotificationRead(notification.id, notification.created_at, broadcastContext)
+    }
+
+    return {
+      id: notification.id,
+      title: notification.title || '',
+      message: notification.message || '',
+      time: notification.time || notification.created_at || '',
+      read: isRead,
+      priority: notification.priority || 'normal',
+      type: notification.type || 'info',
+    }
+  })
+
   const { data: activityData } = await supabase
     .from('activity_logs')
     .select('id, user_id, action, metadata, created_at')
+    .neq('action', 'school_customization_config')
     .order('created_at', { ascending: false })
     .limit(100)
 
@@ -80,7 +91,7 @@ export default async function NotificationsPage() {
   })
 
   return (
-    <div className="w-full h-full bg-slate-50 dark:bg-[#0f172a]">
+    <div className="w-full min-h-full bg-[#FDFBF7]">
       <NotificationsClient initialNotifications={notifications} initialActivities={activities} />
     </div>
   )

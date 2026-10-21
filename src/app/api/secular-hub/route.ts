@@ -2,6 +2,8 @@ import { createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
+import { verifyDataAccess } from '@/lib/auth-server'
+import { classIdsForType } from '@/lib/teacher-access'
 
 export async function OPTIONS(request: NextRequest) {
   return apiOptions(request)
@@ -27,14 +29,17 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
-    const { verifyDataAccess } = await import('@/lib/auth-server')
     const authRes = await verifyDataAccess(supabase, user, 'read', null, 'secular')
     if (!authRes.isAuthorized) {
       return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
     }
 
-    // 1. Fetch active enrollments with their circular class and student details
-    const { data: enrollments, error: enrollmentsError } = await supabase
+    const allowedCircularIds = classIdsForType(authRes, 'circular')
+    if (allowedCircularIds !== null && allowedCircularIds.length === 0) {
+      return withCors(request, NextResponse.json({ enrollments: [], marks: [], subjects: [] }))
+    }
+
+    let enrollmentsQuery = supabase
       .from('enrollments')
       .select(`
         id,
@@ -47,14 +52,42 @@ export async function GET(request: NextRequest) {
       .not('circular_class_id', 'is', null)
       .eq('is_active', true)
 
-    if (enrollmentsError) throw enrollmentsError
+    if (allowedCircularIds !== null) {
+      enrollmentsQuery = enrollmentsQuery.in('circular_class_id', allowedCircularIds)
+    }
 
-    const enrollmentIds = enrollments.map(e => e.id)
+    const [enrollmentsRes, circularSubjectsRes] = await Promise.all([
+      enrollmentsQuery,
+      supabase
+        .from('circular_subjects')
+        .select('id, subject_name, section')
+        .order('subject_name', { ascending: true }),
+    ])
 
-    // 2. Fetch marks for these enrollments for the given term
+    if (enrollmentsRes.error) throw enrollmentsRes.error
+
+    const enrollments = enrollmentsRes.data ?? []
+    const enrollmentIds = enrollments.map((e) => e.id)
+
+    let subjects = (circularSubjectsRes.data ?? []).map((s: any) => ({
+      ...s,
+      curriculum: 'secular',
+    }))
+
+    // Fallback to legacy `subjects` table if `circular_subjects` is empty or errored
+    if (circularSubjectsRes.error || subjects.length === 0) {
+      const legacySubjects = await supabase
+        .from('subjects')
+        .select('id, subject_name, section, curriculum')
+        .eq('curriculum', 'secular')
+      if (!legacySubjects.error && legacySubjects.data) {
+        subjects = legacySubjects.data
+      }
+    }
+
     let marks: any[] = []
     if (enrollmentIds.length > 0) {
-      const { data, error: marksError } = await supabase
+      const { data: marksData, error: marksError } = await supabase
         .from('circular_marks')
         .select(`
           id,
@@ -68,23 +101,17 @@ export async function GET(request: NextRequest) {
         .in('enrollment_id', enrollmentIds)
 
       if (marksError) throw marksError
-      marks = data
+      marks = marksData ?? []
     }
 
-    // 3. Fetch subjects
-    const { data: subjects, error: subjectsError } = await supabase
-      .from('subjects')
-      .select('id, subject_name, section, curriculum')
-      .eq('curriculum', 'secular')
-
-    if (subjectsError) throw subjectsError
-
-    return withCors(request, NextResponse.json({
-      enrollments,
-      marks,
-      subjects
-    }))
-
+    return withCors(
+      request,
+      NextResponse.json({
+        enrollments,
+        marks,
+        subjects,
+      })
+    )
   } catch (err) {
     console.error('Secular Hub API error:', err)
     return withCors(

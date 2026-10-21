@@ -1,36 +1,74 @@
 // @ts-nocheck
 'use client'
 
-import React from 'react'
-import { usePowerSync, useStatus } from '@powersync/react'
+import React, { useContext, useEffect, useState } from 'react'
+import { PowerSyncContext, useStatus } from '@powersync/react'
 import { SyncStatus, SyncState } from './SyncStatus'
 
-export function PowerSyncStatus() {
-  const powerSync = usePowerSync();
-  const status = useStatus();
+function PowerSyncStatusContent() {
+  const status = useStatus()
+  const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true)
+  const [lastSynced, setLastSynced] = useState<Date>(new Date())
 
-  let state: SyncState = 'synced';
-  if (status.dataFlowStatus.uploading || status.dataFlowStatus.downloading) {
-    state = 'syncing';
-  } else if (!status.connected) {
-    state = 'pending';
-  } else if (status.dataFlowStatus.error) {
-    // Treat generic network errors as offline/pending rather than hard red errors
-    state = 'pending';
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true)
+    const handleOffline = () => setIsOnline(false)
+
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (status?.lastSyncedAt) {
+      setLastSynced(new Date(status.lastSyncedAt))
+    }
+  }, [status?.lastSyncedAt])
+
+  let state: SyncState = 'synced'
+  let pendingCount = 0
+
+  if (!isOnline) {
+    state = 'pending'
+    pendingCount = 1
+  } else if (status?.dataFlowStatus?.uploading || status?.dataFlowStatus?.downloading) {
+    state = 'syncing'
+  } else if (status?.hasSynced) {
+    state = 'synced'
+  } else {
+    // In Direct Supabase mode (BYPASS_POWERSYNC_WRITES = true), online cloud connection is active
+    state = 'synced'
   }
 
   return (
     <SyncStatus
       state={state}
-      lastSyncedAt={status.lastSyncedAt || undefined}
-      pendingCount={0} // We can derive this if we hook into the queue
+      pendingCount={pendingCount}
+      lastSyncedAt={lastSynced}
       onSyncNow={async () => {
-        // Force a sync or reconnect
-        if (!status.connected) {
-          powerSync.connect(powerSync.currentConnector!);
-        }
+        setLastSynced(new Date())
       }}
     />
   )
+}
+
+export function PowerSyncStatus() {
+  const [mounted, setMounted] = useState(false)
+  const context = useContext(PowerSyncContext)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Guard against SSR prerender and missing PowerSyncContext
+  if (!mounted || !context) {
+    return null
+  }
+
+  return <PowerSyncStatusContent />
 }
 

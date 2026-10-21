@@ -47,16 +47,17 @@ export function DocumentCanvas({
       {/* Workspace */}
       <div
         ref={scrollRef}
-        className="absolute inset-0 overflow-auto print:static print:overflow-visible print:block print:bg-none print:h-auto"
+        data-canvas-scroll
+        className="absolute inset-0 overflow-auto"
         style={{
           background: `
-            radial-gradient(circle, rgba(5,150,105,0.035) 1px, transparent 1px),
-            radial-gradient(circle, rgba(5,150,105,0.02) 1px, transparent 1px)
+            radial-gradient(circle, rgba(15,77,37,0.04) 1px, transparent 1px),
+            radial-gradient(circle, rgba(15,77,37,0.025) 1px, transparent 1px)
           `,
           backgroundSize: '28px 28px, 56px 56px',
-          backgroundColor: '#f1f5f9',
+          backgroundColor: '#FDFBF7',
           scrollbarWidth: 'thin',
-          scrollbarColor: 'rgba(0,0,0,0.1) transparent',
+          scrollbarColor: 'rgba(0,0,0,0.12) transparent',
         }}
       >
         {reports.length === 0 ? (
@@ -65,7 +66,7 @@ export function DocumentCanvas({
           </div>
         ) : layout === 'grid' ? (
           <div
-            className="print-reset-layout print-reset-zoom print:!block print:!p-0 print:!m-0 p-4 md:p-12"
+            className="p-4 md:p-12"
             style={{
               display: 'flex',
               flexWrap: 'wrap' as const,
@@ -78,31 +79,19 @@ export function DocumentCanvas({
                 <motion.div
                   key={report.id}
                   data-report-id={report.id}
-                  className={`${(printScope === 'current' && report.id !== activeReportId) || (Array.isArray(printScope) && !printScope.includes(report.id)) ? 'print:hidden' : ''} print-reset-zoom print:!outline-none print:!shadow-none`}
                   onClick={() => onSelectReport(report.id)}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.055, type: 'spring', stiffness: 260, damping: 26 }}
-                  style={{
-                    cursor: 'pointer',
-                    borderRadius: 6,
-                    outline: report.id === activeReportId
-                      ? '3px solid #f97316'
-                      : '3px solid transparent',
-                    outlineOffset: 4,
-                    transition: 'outline-color 0.15s',
-                  }}
                 >
-                  <div style={{ zoom: zoom }} className="print-reset-zoom">
-                    {renderReport(report, report.id === activeReportId)}
-                  </div>
+                  {renderReport(report, report.id === activeReportId)}
                 </motion.div>
               ))}
             </AnimatePresence>
           </div>
         ) : (
           <div
-            className="print-reset-layout print-reset-zoom p-4 md:p-12 pb-[100px] md:pb-[100px]"
+            className="p-4 md:p-12 pb-[100px] md:pb-[100px]"
             style={{
               display: 'flex',
               flexDirection: 'column' as const,
@@ -115,27 +104,12 @@ export function DocumentCanvas({
                 <motion.div
                   key={report.id}
                   data-report-id={report.id}
-                  className={`${(printScope === 'current' && report.id !== activeReportId) || (Array.isArray(printScope) && !printScope.includes(report.id)) ? 'print:hidden' : ''} print-reset-zoom print:!outline-none print:!shadow-none`}
                   onClick={() => onSelectReport(report.id)}
                   initial={{ opacity: 0, y: 24 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.07, type: 'spring', stiffness: 250, damping: 26 }}
-                  style={{
-                    cursor: 'pointer',
-                    borderRadius: 6,
-                    outline: report.id === activeReportId
-                      ? '3px solid #f97316'
-                      : '3px solid transparent',
-                    outlineOffset: 4,
-                    transition: 'outline-color 0.15s',
-                    boxShadow: report.id === activeReportId
-                      ? '0 0 0 8px rgba(249,115,22,0.12), 0 16px 56px rgba(0,0,0,0.22)'
-                      : '0 8px 40px rgba(0,0,0,0.16)',
-                  }}
                 >
-                  <div style={{ zoom: zoom }} className="print-reset-zoom">
-                    {renderReport(report, report.id === activeReportId)}
-                  </div>
+                  {renderReport(report, report.id === activeReportId)}
                 </motion.div>
               ))}
             </AnimatePresence>

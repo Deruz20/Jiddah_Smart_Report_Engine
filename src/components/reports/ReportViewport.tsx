@@ -14,12 +14,6 @@ export function ReportViewport({ children, reportType }: ReportViewportProps) {
   const orientation = dimensions.orientation
   const pageOrientation = dimensions.pageOrientation
 
-  useEffect(() => {
-    document.body.classList.add('print-orientation-' + pageOrientation);
-    return () => {
-      document.body.classList.remove('print-orientation-' + pageOrientation);
-    };
-  }, [pageOrientation]);
 
   return (
     <>

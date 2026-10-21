@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { verifyDataAccess } from '@/lib/auth-server'
 import { recordActivity } from '@/lib/api-server'
+import { canAssignEnrollmentClasses, enrollmentMatchesRosterFilters, rosterClassFilters } from '@/lib/teacher-access'
 
 export async function OPTIONS(request: NextRequest) {
   return apiOptions(request)
@@ -47,14 +48,12 @@ export async function GET(request: NextRequest) {
       .order('academic_year', { ascending: false })
 
     if (authRes.filterByClasses) {
-      const assignedClasses = authRes.filterByClasses.filter((classId) =>
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(classId)
-      )
-      if (assignedClasses.length === 0) {
+      const classFilters = rosterClassFilters(authRes)
+      if (classFilters.length === 0) {
         return withCors(request, NextResponse.json([]))
       }
-      const classIdList = assignedClasses.join(',')
-      query = query.or(`circular_class_id.in.(${classIdList}),theology_class_id.in.(${classIdList})`)
+      const filters = classFilters.map(({ column, classIds }) => `${column}.in.(${classIds.join(',')})`)
+      query = query.or(filters.join(','))
     } else if (authRes.filterByDepartment) {
       if (authRes.filterByDepartment === 'theology') {
         query = query.not('theology_class_id', 'is', null)
@@ -117,19 +116,12 @@ export async function POST(request: NextRequest) {
       { auth: { persistSession: false, autoRefreshToken: false } }
     );
 
-    if (authRes.filterByClasses) {
-      const isTheology = authRes.filterByDepartment === 'theology';
-      const targetClassId = isTheology ? body.theology_class_id : body.circular_class_id;
-      if (!targetClassId || !authRes.filterByClasses.includes(targetClassId)) {
-        return withCors(request, NextResponse.json({ error: 'Unauthorized: Cannot enroll student into unassigned class' }, { status: 403 }))
-      }
-    } else if (authRes.filterByDepartment) {
-      if (authRes.filterByDepartment === 'theology' && !body.theology_class_id) {
-        return withCors(request, NextResponse.json({ error: 'Unauthorized: Must assign a Theology class' }, { status: 403 }))
-      }
-      if (authRes.filterByDepartment === 'secular' && !body.circular_class_id) {
-        return withCors(request, NextResponse.json({ error: 'Unauthorized: Must assign a Secular class' }, { status: 403 }))
-      }
+    if (!canAssignEnrollmentClasses(
+      authRes,
+      body.circular_class_id,
+      body.theology_class_id || null
+    )) {
+      return withCors(request, NextResponse.json({ error: 'Unauthorized: Cannot enroll student into unassigned class' }, { status: 403 }))
     }
 
     // Get circular class to check if it's P.7

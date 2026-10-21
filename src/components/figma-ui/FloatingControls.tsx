@@ -25,13 +25,13 @@ export function FloatingControls({
 
   return (
     <motion.div
-      className="absolute bottom-5 left-1/2 flex items-center gap-1 rounded-2xl shadow-2xl print:hidden"
+      className="absolute bottom-5 left-1/2 flex items-center gap-1 rounded-2xl shadow-2xl print:hidden tabular-nums"
       style={{
         transform: 'translateX(-50%)',
-        background: 'rgba(15,23,42,0.93)',
+        background: 'rgba(28,25,23,0.95)',
         backdropFilter: 'blur(12px)',
-        border: '1px solid rgba(255,255,255,0.08)',
-        padding: '6px 10px',
+        border: '1px solid rgba(255,255,255,0.12)',
+        padding: '4px 8px',
         zIndex: 50,
       }}
       initial={{ y: 20, opacity: 0 }}
@@ -47,13 +47,13 @@ export function FloatingControls({
             exit={{ width: 0, opacity: 0 }}
           >
             <PillBtn onClick={() => onNavigate?.(activeIndex - 1)} disabled={!canPrev} title="Previous">
-              <ChevronLeft size={15} />
+              <ChevronLeft size={16} />
             </PillBtn>
-            <span style={{ fontSize: 12, fontWeight: 600, color: '#f97316', padding: '0 8px' }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#fbbf24', padding: '0 8px' }}>
               {activeIndex + 1} / {totalReports}
             </span>
             <PillBtn onClick={() => onNavigate?.(activeIndex + 1)} disabled={!canNext} title="Next">
-              <ChevronRight size={15} />
+              <ChevronRight size={16} />
             </PillBtn>
             <div style={{ width: 1, height: 18, background: 'rgba(255,255,255,0.12)', margin: '0 4px' }} />
           </motion.div>
@@ -67,16 +67,18 @@ export function FloatingControls({
       <motion.button
         onClick={onFitScreen}
         title="Reset to 100%"
+        aria-label="Reset zoom to 100%"
         style={{
-          background: 'rgba(255,255,255,0.07)',
-          border: '1px solid rgba(255,255,255,0.1)',
+          background: 'rgba(255,255,255,0.08)',
+          border: '1px solid rgba(255,255,255,0.12)',
           padding: '4px 12px',
-          borderRadius: 8,
+          borderRadius: 10,
           fontSize: 13,
-          fontWeight: 600,
+          fontWeight: 700,
           color: 'white',
           cursor: 'pointer',
-          minWidth: 52,
+          minWidth: 56,
+          minHeight: 44,
         }}
         whileHover={{ background: 'rgba(255,255,255,0.14)' }}
         whileTap={{ scale: 0.94 }}
@@ -113,14 +115,15 @@ function PillBtn({
       onClick={onClick}
       disabled={disabled}
       title={title}
+      aria-label={title}
       style={{
-        width: 30,
-        height: 30,
+        minWidth: 44,
+        minHeight: 44,
         background: 'transparent',
         border: 'none',
-        borderRadius: 8,
+        borderRadius: 10,
         cursor: disabled ? 'not-allowed' : 'pointer',
-        opacity: disabled ? 0.3 : 1,
+        opacity: disabled ? 0.35 : 1,
         color: 'white',
         display: 'flex',
         alignItems: 'center',

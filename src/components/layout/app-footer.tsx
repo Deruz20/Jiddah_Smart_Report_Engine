@@ -3,42 +3,40 @@
 import React from "react";
 import Link from "next/link";
 import { GraduationCap } from "lucide-react";
-import { usePathname } from "next/navigation";
 
 export function AppFooter() {
-  const pathname = usePathname();
-  if (pathname === "/admin/reports" || pathname === "/admin/theology-hub") {
-    return null;
-  }
-
   return (
-    <footer className="w-full mt-auto shrink-0 print:hidden px-6 pb-6 pt-4">
-      <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center size-7 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-            <GraduationCap className="size-4" strokeWidth={2} />
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-              Jiddah Smart Report Engine
-            </p>
-            <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
-              © {new Date().getFullYear()} Jiddah Islamic Schools.
-            </p>
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-6">
-          <Link href="#" className="text-xs font-medium text-slate-400 dark:text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
-            Support
-          </Link>
-          <Link href="#" className="text-xs font-medium text-slate-400 dark:text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
-            Privacy Policy
-          </Link>
-          <Link href="#" className="text-xs font-medium text-slate-400 dark:text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
-            Terms of Service
-          </Link>
-        </div>
+    <footer
+      data-testid="app-footer"
+      className="hidden md:flex w-full shrink-0 print:hidden px-4 lg:px-6 h-8 items-center justify-between border-t border-stone-200/70 bg-white/95 backdrop-blur-xs text-[11px] text-stone-500 select-none z-10"
+    >
+      <div className="flex items-center gap-2 min-w-0">
+        <GraduationCap className="size-3.5 text-[#059669] shrink-0" strokeWidth={2} />
+        <span className="font-semibold text-stone-700 truncate">
+          Jiddah Smart Report Engine
+        </span>
+        <span className="text-stone-300">•</span>
+        <span className="tabular-nums truncate">
+          © {new Date().getFullYear()} Jiddah Islamic Schools
+        </span>
+      </div>
+
+      <div className="flex items-center gap-4 shrink-0">
+        <Link
+          href="/admin/settings"
+          className="font-medium text-stone-500 hover:text-[#059669] transition-colors"
+        >
+          School Settings
+        </Link>
+        <Link
+          href="/admin/activity"
+          className="font-medium text-stone-500 hover:text-[#059669] transition-colors"
+        >
+          Audit Trail
+        </Link>
+        <span className="font-mono text-[10px] text-stone-400 tabular-nums">
+          v0.1.0-audited
+        </span>
       </div>
     </footer>
   );

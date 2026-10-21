@@ -7,13 +7,20 @@ const supabase = createClient(
 );
 
 async function testLogin() {
-  console.log("Testing login with a dummy credential...");
+  const email = process.env.TEST_AUTH_EMAIL;
+  const password = process.env.TEST_AUTH_PASSWORD;
+
+  if (!email || !password) {
+    console.log("No TEST_AUTH_EMAIL and TEST_AUTH_PASSWORD configured in environment. Skipping auth probe.");
+    return;
+  }
+
+  console.log(`Testing login for ${email}...`);
   const { data, error } = await supabase.auth.signInWithPassword({
-    email: 'admin@example.com', // just testing if the endpoint responds
-    password: 'password123'
+    email,
+    password,
   });
-  console.log("Error:", error?.message);
-  console.log("Data:", data);
+  console.log("Response:", error ? `Auth failed: ${error.message}` : "Auth success!");
 }
 
 testLogin();

@@ -1,19 +1,311 @@
 import { getTheologyComment } from '@/lib/grading'
 import { ReportContainer } from '@/components/reports/shared/ReportContainer'
-import { transliterateEnglishToArabic } from '@/lib/transliterate'
 
+const theologyCSS = `
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap');
 
-export default function TheologyMOTReport({ reportData }: any) {
-  const getTheologyRemark = (score: number | null): string => {
-    if (score == null) return '--'
-    if (score >= 90) return 'ممتاز'
-    if (score >= 80) return 'جيد جداً'
-    if (score >= 70) return 'جيد'
-    if (score >= 60) return 'جيد'
-    if (score >= 50) return 'مقبول'
-    return 'ضعيف'
-  }
+/*
+ * THEOLOGY CARD CSS
+ * Sized to fill the 558px tall × 794px wide slot (A5 landscape in 2-up A4 sheet).
+ * Uses justify-content: space-between so all sections expand and fill the available space evenly.
+ */
 
+/* Wrapper provided by the 2-up sheet / single preview */
+.theology-card-page {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    padding: 4px;
+    background: #fff;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+
+/* OUTER GOLD BORDER */
+.theology-card-outer {
+    border: 3.5px solid #d6b14c;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+    background: #fff;
+    box-sizing: border-box;
+}
+
+/* INNER GREEN BORDER */
+.theology-card-inner {
+    border: 2px solid #064e3b;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    margin: 2px;
+    position: relative;
+    overflow: hidden;
+    background: #fff;
+    box-sizing: border-box;
+}
+
+/* WATERMARK */
+.theology-card-inner::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: url('/school_budge.jpeg') center center no-repeat;
+    background-size: 240px;
+    opacity: 0.08;
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* CARD CONTENT — fills entire 558px slot */
+.theology-card {
+    flex: 1;
+    height: 100%;
+    direction: rtl;
+    font-family: 'Cairo', sans-serif;
+    color: #111;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 12px 24px;
+    position: relative;
+    z-index: 1;
+}
+
+/* HEADER */
+.tc-header {
+    text-align: center;
+    background: linear-gradient(to right, #064e3b, #047857);
+    padding: 12px 18px;
+    border-radius: 12px;
+    border-bottom: 3.5px solid #fbbf24;
+    flex-shrink: 0;
+}
+
+.tc-basmala {
+    font-family: 'Amiri', serif;
+    font-size: 23px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 2px;
+    line-height: 1.2;
+}
+
+.tc-school {
+    font-size: 19px;
+    font-weight: 800;
+    color: #fff;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+    line-height: 1.25;
+}
+
+.tc-title {
+    margin-top: 5px;
+    font-size: 15px;
+    font-weight: 900;
+    color: #fff;
+    display: inline-block;
+    padding: 3px 26px;
+    border: 1.5px solid rgba(255,255,255,0.4);
+    border-radius: 999px;
+    background: rgba(255,255,255,0.22);
+}
+
+/* INFO SECTION */
+.tc-info {
+    font-size: 15px;
+    font-weight: 700;
+    background: #f8fafc;
+    padding: 10px 18px;
+    border-radius: 10px;
+    border: 1.5px solid #e2e8f0;
+    flex-shrink: 0;
+}
+
+.tc-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.tc-row-sub {
+    margin-top: 8px;
+}
+
+.tc-label {
+    font-size: 15px;
+    font-weight: 800;
+    color: #0f172a;
+    white-space: nowrap;
+}
+
+.tc-field {
+    flex: 1;
+    min-width: 0;
+    border-bottom: 2px dashed #94a3b8;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    padding: 0 8px 1px;
+    color: #0f172a;
+    font-weight: 800;
+    font-size: 16px;
+}
+
+.tc-term {
+    width: 55px;
+    flex: none;
+    justify-content: center;
+}
+
+.tc-class {
+    width: 130px;
+    flex: none;
+    justify-content: center;
+}
+
+.tc-year {
+    width: 80px;
+    flex: none;
+    justify-content: center;
+}
+
+/* SCORES TABLE */
+.tc-table-wrap {
+    border: 2.5px solid #d6b14c;
+    border-radius: 10px;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.tc-table {
+    width: 100%;
+    border-collapse: collapse;
+    border-style: hidden;
+    table-layout: fixed;
+}
+
+.tc-table th {
+    padding: 9px 4px;
+    background: #047857;
+    color: white;
+    font-weight: 800;
+    border: 1px solid #064e3b;
+    font-size: 14.5px;
+    text-align: center;
+}
+
+.tc-table td {
+    height: 48px;
+    background: white;
+    vertical-align: middle;
+    padding: 2px 4px;
+    color: #0f172a;
+    font-weight: 800;
+    font-size: 17px;
+    border: 1px solid #e2e8f0;
+    text-align: center;
+}
+
+.tc-red {
+    color: #c1121f;
+    font-weight: 900;
+    font-size: 18px;
+}
+
+/* RANK ROW */
+.tc-rank-row {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 14px;
+    font-size: 15px;
+    font-weight: 800;
+    flex-shrink: 0;
+}
+
+.tc-rank-field {
+    width: 110px;
+    border-bottom: 2px dashed #94a3b8;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 8px 1px;
+    color: #0f172a;
+    font-weight: 800;
+    font-size: 16px;
+}
+
+.tc-rank-val {
+    color: #c1121f;
+    font-weight: 900;
+    font-size: 17px;
+}
+
+/* COMMENT + STAMP ROW */
+.tc-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    flex-shrink: 0;
+}
+
+.tc-comment {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 15.5px;
+    font-weight: 800;
+    flex: 1;
+}
+
+.tc-comment-label {
+    color: #064e3b;
+    font-size: 16px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.tc-comment-field {
+    flex: 1;
+    border-bottom: 2px dashed #94a3b8;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    padding: 0 12px 2px;
+    color: #0369a1;
+    font-style: italic;
+    font-weight: 900;
+    font-size: 17px;
+}
+
+.tc-stamp {
+    width: 110px;
+    height: 110px;
+    border-radius: 16px;
+    border: 2px dashed #94a3b8;
+    background: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 800;
+    color: #94a3b8;
+    flex-shrink: 0;
+    line-height: 1.4;
+}
+`
+
+export function TheologyCard({ reportData }: { reportData: any }) {
   const toAr = (val: number | string | null | undefined): string => {
     if (val == null) return '--'
     return String(val).replace(/[0-9]/g, (d) => '٠١٢٣٤٥٦٧٨٩'[+d])
@@ -22,403 +314,212 @@ export default function TheologyMOTReport({ reportData }: any) {
   const toHijri = (gregorianYear: number): number =>
     Math.round((gregorianYear - 622) * (33 / 32))
 
-  const termInArabic = (n: number): string => {
-    if (n === 1) return 'الأولى'
-    if (n === 2) return 'الثاني'
-    if (n === 3) return 'الثالث'
-    return String(n)
-  }
-
   const isEOT = reportData?.score_type === 'eot'
   const subjects = reportData?.theology?.subjects ?? []
 
-  const renderCard = () => (
-    <div className="theology-mot-report font-cairo">
-      <div className="inner">
-        <div className="header">
-          <div className="basmala">بسم الله الرحمن الرحيم</div>
-          <div className="school">
-            مدرسة جدة الإسلامية للروضة والابتدائية _ انساغو واكيسو
-          </div>
-          <div className="title">
-            {isEOT ? 'كشف الدرجات لنهاية الفترة' : 'كشف الدرجات لمنتصف الفترة'}
-          </div>
-        </div>
+  const totalStudents =
+    reportData?.meta?.total_students ??
+    reportData?.circular?.total_students ??
+    reportData?.total_students
 
-        <div className="info">
-          <div className="row">
-            <span>اسم الطالب/ة :</span>
-            <div className="line-dots">
-              <span className="line-text">
-                {reportData?.student?.arabic_name || "___"}
-              </span>
-            </div>
-          </div>
+  const position =
+    reportData?.meta?.position ??
+    reportData?.circular?.position ??
+    reportData?.position
 
-          <div className="row">
-            <span>الفترة:</span>
-            <div className="line-dots short">
-              <span className="line-text">
-                {toAr(reportData?.term?.term_number)}
-              </span>
+  const totalScore = isEOT
+    ? (reportData?.theology?.eot_total ?? 0)
+    : (reportData?.theology?.mot_total ?? 0)
+
+  return (
+    <div className="theology-card-page">
+      <div className="theology-card-outer">
+        <div className="theology-card-inner">
+          <div className="theology-card">
+
+            {/* HEADER */}
+            <div className="tc-header">
+              <div className="tc-basmala">بسم الله الرحمن الرحيم</div>
+              <div className="tc-school">مدرسة جدة الإسلامية للروضة والابتدائية _ انساغو واكيسو</div>
+              <div className="tc-title">
+                {isEOT ? 'كشف الدرجات لنهاية الفترة' : 'كشف الدرجات لمنتصف الفترة'}
+              </div>
             </div>
 
-            <span>الفصل:</span>
-            <div className="line-dots short">
-              <span className="line-text">
-                {reportData?.student?.theology_class_arabic ?? '--'}
-              </span>
+            {/* INFO */}
+            <div className="tc-info">
+              <div className="tc-row">
+                <span className="tc-label">اسم الطالب/ة :</span>
+                <div className="tc-field">{reportData?.student?.arabic_name || '___'}</div>
+              </div>
+              <div className="tc-row tc-row-sub">
+                <span className="tc-label">الفترة:</span>
+                <div className="tc-field tc-term">{toAr(reportData?.term?.term_number)}</div>
+                <span className="tc-label">الفصل:</span>
+                <div className="tc-field tc-class">{reportData?.student?.theology_class_arabic ?? '--'}</div>
+                <span className="tc-label">السنة :</span>
+                <div className="tc-field tc-year">{toAr(toHijri(Number(reportData?.term?.academic_year)))}</div>
+                <span className="tc-label">هـ</span>
+                <div className="tc-field tc-year">{toAr(reportData?.term?.academic_year)}</div>
+                <span className="tc-label">م</span>
+              </div>
             </div>
 
-            <span>السنة :</span>
-            <div className="line-dots medium">
-              <span className="line-text">
-                {toAr(toHijri(Number(reportData?.term?.academic_year)))}
-              </span>
+            {/* SCORES TABLE */}
+            <div className="tc-table-wrap">
+              <table className="tc-table">
+                <tbody>
+                  <tr>
+                    {subjects.map((subj: any, index: number) => (
+                      <th key={index}>{subj.subject_name_arabic || subj.subject_name}</th>
+                    ))}
+                    <th>المجموع</th>
+                    <th className="tc-red">الدرجة</th>
+                  </tr>
+                  <tr>
+                    {subjects.map((subj: any, index: number) => (
+                      <td key={index}>{toAr(isEOT ? subj.eot_score : subj.mot_score)}</td>
+                    ))}
+                    <td>{toAr(isEOT ? reportData?.theology?.eot_total : reportData?.theology?.mot_total)}</td>
+                    <td className="tc-red">{reportData?.theology?.division ?? '--'}</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
-            <span>هـ</span>
-            <div className="line-dots medium">
-              <span className="line-text">
-                {toAr(reportData?.term?.academic_year)}
-              </span>
+
+            {/* RANK ROW */}
+            <div className="tc-rank-row">
+              <span className="tc-label">عدد الطلبة :</span>
+              <div className="tc-rank-field">{toAr(totalStudents)}</div>
+              <span className="tc-label tc-rank-val">الترتيب :</span>
+              <div className="tc-rank-field tc-rank-val">{toAr(position)}</div>
             </div>
-            <span>م</span>
-          </div>
-        </div>
 
-        <div className="table-wrap">
-          <table className="table">
-            <tbody>
-              <tr>
-                {subjects.map((subj: any, index: number) => (
-                  <th key={index}>{subj.subject_name_arabic || subj.subject_name}</th>
-                ))}
-                <th>المجموع</th>
-                <th className="red">الدرجة</th>
-              </tr>
-              <tr>
-                {subjects.map((subj: any, index: number) => (
-                  <td key={index}>{toAr(isEOT ? subj.eot_score : subj.mot_score)}</td>
-                ))}
-                <td>{toAr(isEOT ? reportData?.theology?.eot_total : reportData?.theology?.mot_total)}</td>
-                <td className="red">
-                  {reportData?.theology?.division ?? '--'}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div className="students">
-          <span>عدد الطلبة :</span>
-          <div className="line-dots">
-            <span className="line-text">
-              {toAr(reportData?.meta?.total_students)}
-            </span>
-          </div>
-          <span className="rank">الترتيب :</span>
-          <div className="line-dots">
-            <span className="line-text">
-              {toAr(reportData?.meta?.position)}
-            </span>
-          </div>
-        </div>
-
-        <div className="comment-section">
-          <div className="comment" style={{ flex: 1, margin: 0 }}>
-            <span>تقرير مرب الفصل :</span>
-            <div className="line-dots">
-              <span className="line-text">
-                {getTheologyComment(isEOT ? (reportData?.theology?.eot_total ?? 0) : (reportData?.theology?.mot_total ?? 0))}
-              </span>
+            {/* COMMENT + STAMP */}
+            <div className="tc-footer">
+              <div className="tc-comment">
+                <span className="tc-comment-label">تقرير مرب الفصل :</span>
+                <div className="tc-comment-field">
+                  {getTheologyComment(totalScore, reportData?.student?.gender, reportData?.settings?.theology_remarks)}
+                </div>
+              </div>
+              <div className="tc-stamp">
+                <span>الختم الرسمي</span>
+                <span>للمدرسة</span>
+              </div>
             </div>
-          </div>
-          <div className="stamp-box">
-            الختم الرسمي للمدرسة
+
           </div>
         </div>
       </div>
     </div>
   )
+}
 
+/**
+ * 2-Up A4 Print Sheet for Theology Cards.
+ * Stacks two A5-landscape cards vertically on a single A4 portrait sheet (794×1123px).
+ * Each slot is (1123 - 7) / 2 = 558px tall.
+ */
+export function Theology2UpPrintSheet({
+  topReport,
+  bottomReport,
+}: {
+  topReport: any
+  bottomReport?: any
+}) {
+  return (
+    <div
+      role="report"
+      data-report-type="TheologyMOTReport"
+      data-report-orientation="portrait"
+      className="report-container theology-2up-sheet"
+      style={{
+        width: '794px',
+        height: '1123px',
+        maxHeight: '1123px',
+        boxSizing: 'border-box',
+        margin: 0,
+        padding: 0,
+        backgroundColor: '#ffffff',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        flexShrink: 0,
+        flexGrow: 0,
+      }}
+    >
+      <style dangerouslySetInnerHTML={{ __html: theologyCSS }} />
+
+      {/* TOP CARD SLOT — exactly 558px */}
+      <div
+        style={{
+          width: '794px',
+          height: '558px',
+          maxHeight: '558px',
+          overflow: 'hidden',
+          flexShrink: 0,
+          boxSizing: 'border-box',
+        }}
+      >
+        <TheologyCard reportData={topReport} />
+      </div>
+
+      {/* CUT LINE — 7px */}
+      <div
+        style={{
+          height: '7px',
+          flexShrink: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderTop: '1.5px dashed #94a3b8',
+          position: 'relative',
+          boxSizing: 'border-box',
+        }}
+      >
+        <span
+          style={{
+            position: 'absolute',
+            background: '#ffffff',
+            padding: '0 12px',
+            fontSize: '9px',
+            color: '#64748b',
+            fontFamily: 'sans-serif',
+            fontWeight: 700,
+            letterSpacing: '0.5px',
+          }}
+        >
+          ✂ Cut Here / اقصص هنا
+        </span>
+      </div>
+
+      {/* BOTTOM CARD SLOT — exactly 558px */}
+      <div
+        style={{
+          width: '794px',
+          height: '558px',
+          maxHeight: '558px',
+          overflow: 'hidden',
+          flexShrink: 0,
+          boxSizing: 'border-box',
+        }}
+      >
+        {bottomReport ? (
+          <TheologyCard reportData={bottomReport} />
+        ) : (
+          <div style={{ width: '794px', height: '558px', background: '#ffffff' }} />
+        )}
+      </div>
+    </div>
+  )
+}
+
+export default function TheologyMOTReport({ reportData }: any) {
   return (
     <ReportContainer reportType="TheologyMOTReport">
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
-@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@700&display=swap');
-        @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap');
-
-.theology-mot-report-page {
-    --primary-green: #064e3b;
-    --secondary-green: #047857;
-    --data-navy: #0f172a;
-    --data-indigo: #1e293b;
-    --data-teal: #0369a1;
-    
-    flex: 1 1 auto;
-    width: 100%;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    box-sizing: border-box;
-    background: transparent;
-}
-
-
-
-/* MAIN CARD */
-.theology-mot-report {
-    flex: 1;
-    width: 100%;
-    background: transparent;
-    position: relative;
-    overflow: hidden;
-    direction: rtl;
-    color: #111;
-    font-family: 'Cairo', sans-serif;
-    box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-}
-
-
-
-/* WATERMARK */
-.theology-mot-report::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: url('/school_budge.jpeg') center center no-repeat;
-    background-size: 250px;
-    opacity: 0.08;
-    pointer-events: none;
-}
-
-/* CONTENT */
-.theology-mot-report .inner {
-    padding: 16px 28px 12px;
-    position: relative;
-    z-index: 2;
-}
-
-/* HEADER */
-.theology-mot-report .header {
-    text-align: center;
-    position: relative;
-    background: linear-gradient(to right, var(--primary-green), var(--secondary-green));
-    padding: 16px;
-    border-radius: 12px;
-    color: white;
-    border-bottom: 4px solid #fbbf24;
-}
-
-.theology-mot-report .basmala {
-    font-family: 'Amiri', serif;
-    font-size: 24px;
-    font-weight: 700;
-    color: white;
-    margin-bottom: 4px;
-    letter-spacing: .5px;
-}
-
-.theology-mot-report .school {
-    font-size: 22px;
-    font-weight: 800;
-    color: white;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
-    line-height: 1.3;
-}
-
-.theology-mot-report .title {
-    margin-top: 6px;
-    font-size: 18px;
-    font-weight: 900;
-    color: white;
-    display: inline-block;
-    padding: 4px 22px;
-    border: 1px solid rgba(255,255,255,0.3);
-    border-radius: 999px;
-    background: rgba(255,255,255,0.2);
-}
-
-/* INFO AREA */
-.theology-mot-report .info {
-    margin-top: 16px;
-    font-size: 15px;
-    font-weight: 700;
-    color: #111;
-    line-height: 1.5;
-    background: #f8fafc;
-    padding: 12px 16px;
-    border-radius: 12px;
-    border: 1px solid #e2e8f0;
-    box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
-}
-
-.theology-mot-report .row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 12px;
-    padding-bottom: 8px;
-}
-
-.theology-mot-report .short { width: 100px; }
-.theology-mot-report .medium { width: 150px; }
-
-.theology-mot-report .comment {
-    margin-top: 14px;
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    font-size: 15px;
-    font-weight: 700;
-    line-height: 1.4;
-}
-
-.theology-mot-report .line-dots {
-    flex: 1;
-    min-width: 0;
-    border-bottom: 1.5px dashed #cbd5e1;
-    height: 18px;
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    padding: 0 8px 2px 8px;
-    color: var(--data-indigo);
-    font-weight: 800;
-    font-size: 16px;
-}
-
-.theology-mot-report .line-text {
-    line-height: 1.1;
-    padding-right: 4px;
-    color: var(--data-teal);
-    font-style: italic;
-    font-weight: 900;
-    font-size: 16px;
-}
-
-/* TABLE */
-.theology-mot-report .table-wrap {
-    margin-top: 14px;
-    display: flex;
-    justify-content: center;
-}
-
-.theology-mot-report .table {
-    width: 95%;
-    border-collapse: separate;
-    border-spacing: 0;
-    table-layout: fixed;
-    font-size: 15px;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    overflow: hidden;
-}
-
-.theology-mot-report .table th,
-.theology-mot-report .table td {
-    border-right: 1px solid #e2e8f0;
-    border-bottom: 1px solid #e2e8f0;
-    text-align: center;
-    white-space: normal;
-    word-break: break-word;
-}
-.theology-mot-report .table th:last-child,
-.theology-mot-report .table td:last-child {
-    border-right: none;
-}
-
-.theology-mot-report .table th {
-    padding: 6px 4px;
-    background: var(--secondary-green);
-    color: white;
-    font-weight: 700;
-    border-bottom: 2px solid var(--primary-green);
-}
-
-.theology-mot-report .table td {
-    height: 28px;
-    background: white;
-    vertical-align: middle;
-    padding: 2px;
-    color: var(--data-indigo);
-    font-weight: 800;
-    font-size: 16px;
-}
-
-.theology-mot-report .red {
-    color: #c1121f;
-    font-weight: 900;
-}
-
-/* STUDENTS ROW */
-.theology-mot-report .students {
-    margin-top: 10px;
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    gap: 10px;
-    font-size: 15px;
-    font-weight: 700;
-}
-
-.theology-mot-report .students .line-dots {
-    width: 140px;
-    flex: none;
-}
-
-.theology-mot-report .rank {
-    color: #c1121f;
-    font-weight: 900;
-}
-
-/* STAMP BOX */
-.theology-mot-report .stamp-box {
-    width: 120px;
-    height: 120px;
-    border-radius: 16px;
-    border: 2px dashed #94a3b8;
-    background: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    font-size: 12px;
-    font-weight: 800;
-    color: #94a3b8;
-    flex-shrink: 0;
-    margin-right: auto;
-}
-
-.theology-mot-report .comment-section {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    margin-top: 14px;
-}
-
-@media print {
-    .theology-mot-report-page {
-        margin: 0;
-        border: none;
-        box-shadow: none;
-        padding: 10px;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-    }
-}
-        `
-        }}
-      />
-
-      <div className="theology-mot-report-page">
-        {renderCard()}
-      </div>
+      <style dangerouslySetInnerHTML={{ __html: theologyCSS }} />
+      <TheologyCard reportData={reportData} />
     </ReportContainer>
   )
 }

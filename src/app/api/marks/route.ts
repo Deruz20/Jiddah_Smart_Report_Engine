@@ -6,6 +6,7 @@ import { resolveSectionType } from '@/lib/section-type'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { verifyDataAccess } from '@/lib/auth-server'
 import { recordActivity } from '@/lib/api-server'
+import { canAccessClass } from '@/lib/teacher-access'
 
 export async function OPTIONS(request: NextRequest) {
   return apiOptions(request)
@@ -57,19 +58,15 @@ export async function GET(request: NextRequest) {
     if (!authRes.isAuthorized) {
       return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
     }
-    if (authRes.filterByClasses) {
-      if (!authRes.filterByClasses.includes(enrollment.circular_class_id) && !authRes.filterByClasses.includes(enrollment.theology_class_id)) {
-        return withCors(request, NextResponse.json({ error: 'Unauthorized: You do not have access to this student\'s classes.' }, { status: 403 }))
-      }
-    }
-    
-    if (authRes.filterByDepartment) {
-      if (authRes.filterByDepartment === 'theology' && !enrollment.theology_class_id) {
-        return withCors(request, NextResponse.json({ error: 'Unauthorized: Student is not in the Theology department' }, { status: 403 }))
-      }
-      if (authRes.filterByDepartment === 'secular' && !enrollment.circular_class_id) {
-        return withCors(request, NextResponse.json({ error: 'Unauthorized: Student is not in the Secular department' }, { status: 403 }))
-      }
+    const canReadCircular = canAccessClass(authRes, 'circular', enrollment.circular_class_id)
+    const canReadTheology = canAccessClass(
+      authRes,
+      'theology',
+      enrollment.theology_class_id,
+      enrollment.circular_class_id
+    )
+    if (!canReadCircular && !canReadTheology) {
+      return withCors(request, NextResponse.json({ error: 'Unauthorized: You do not have access to this student\'s classes.' }, { status: 403 }))
     }
 
     // Fetch circular subjects
@@ -160,9 +157,10 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    if (authRes.filterByDepartment === 'secular') {
+    if (!canReadTheology || authRes.filterByDepartment === 'secular') {
       theology_marks = [];
-    } else if (authRes.filterByDepartment === 'theology') {
+    }
+    if (!canReadCircular || authRes.filterByDepartment === 'theology') {
       circular_marks = [];
     }
 
@@ -211,19 +209,19 @@ export async function POST(request: NextRequest) {
     if (!authRes.isAuthorized) {
       return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
     }
-    if (authRes.filterByClasses) {
-      if (!authRes.filterByClasses.includes(enrollment.circular_class_id) && !authRes.filterByClasses.includes(enrollment.theology_class_id)) {
-        return withCors(request, NextResponse.json({ error: 'Unauthorized: You do not have access to this student\'s classes.' }, { status: 403 }))
-      }
-    }
-
-    if (authRes.filterByDepartment) {
-      if (authRes.filterByDepartment === 'theology' && !enrollment.theology_class_id) {
-        return withCors(request, NextResponse.json({ error: 'Unauthorized: Student is not in the Theology department' }, { status: 403 }))
-      }
-      if (authRes.filterByDepartment === 'secular' && !enrollment.circular_class_id) {
-        return withCors(request, NextResponse.json({ error: 'Unauthorized: Student is not in the Secular department' }, { status: 403 }))
-      }
+    const canWriteCircular = canAccessClass(authRes, 'circular', enrollment.circular_class_id)
+    const canWriteTheology = canAccessClass(
+      authRes,
+      'theology',
+      enrollment.theology_class_id,
+      enrollment.circular_class_id
+    )
+    if (
+      (!canWriteCircular && Array.isArray(circular_marks) && circular_marks.length > 0) ||
+      (!canWriteTheology && Array.isArray(theology_marks) && theology_marks.length > 0) ||
+      (!canWriteCircular && !canWriteTheology)
+    ) {
+      return withCors(request, NextResponse.json({ error: "Unauthorized: You do not have access to this student's classes or requested curriculum." }, { status: 403 }))
     }
 
     const circularClassMeta = Array.isArray(enrollment.circular_classes)
@@ -248,6 +246,7 @@ export async function POST(request: NextRequest) {
             enrollment_id,
             term_id,
             subject_id: mark.subject_id,
+            updated_by: authRes.teacherId,
           }
           if (mark.bot_score !== undefined) payload.bot_score = mark.bot_score === '' || mark.bot_score === null ? null : Number(mark.bot_score)
           if (mark.mot_score !== undefined) payload.mot_score = mark.mot_score === '' || mark.mot_score === null ? null : Number(mark.mot_score)
@@ -294,6 +293,7 @@ export async function POST(request: NextRequest) {
             enrollment_id,
             term_id,
             subject_id: mark.subject_id,
+            updated_by: authRes.teacherId,
           }
           if (mark.mot_score !== undefined) payload.mot_score = mark.mot_score === '' || mark.mot_score === null ? null : Number(mark.mot_score)
           if (mark.eot_score !== undefined) payload.eot_score = mark.eot_score === '' || mark.eot_score === null ? null : Number(mark.eot_score)

@@ -1,7 +1,9 @@
 import { createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
-import Link from 'next/link'
 import { ReportGeneratorClient } from '@/components/ReportGeneratorClient'
+import { verifyDataAccess } from '@/lib/auth-server'
+
+export const dynamic = 'force-dynamic'
 
 type TermData = {
   id: string
@@ -19,6 +21,24 @@ export default async function ReportsManagementPage() {
     const cookieStore = await cookies()
     const supabase = createClient(cookieStore)
 
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      return (
+        <div className="p-6 text-rose-700 font-medium max-w-xl mx-auto mt-8 bg-rose-50 border border-rose-200 rounded-xl">
+          Unauthorized: You must be logged in to access the Report Center.
+        </div>
+      )
+    }
+
+    const access = await verifyDataAccess(supabase, user, 'read')
+    if (!access.isAuthorized) {
+      return (
+        <div className="p-6 text-rose-700 font-medium max-w-xl mx-auto mt-8 bg-rose-50 border border-rose-200 rounded-xl">
+          Access Denied: {access.message || 'You do not have permission to access the Report Center.'}
+        </div>
+      )
+    }
+
     const { data: termData, error: termError } = await supabase
       .from('terms')
       .select('id, academic_year, term_number, label, is_current')
@@ -33,9 +53,9 @@ export default async function ReportsManagementPage() {
 
   if (error) {
     return (
-      <div className="p-6 bg-red-50 border border-red-200 rounded-lg print:hidden max-w-[1600px] mx-auto mt-6">
-        <p className="text-red-800 font-medium">❌ System Error: {error}</p>
-        <p className="text-red-600 text-sm mt-1">Please ensure the database connection is active and terms exist.</p>
+      <div className="p-6 bg-rose-50 border border-rose-200 rounded-xl print:hidden max-w-3xl mx-auto mt-6">
+        <p className="text-rose-800 font-semibold text-sm">System Error: {error}</p>
+        <p className="text-rose-600 text-xs mt-1">Please ensure the database connection is active and terms exist.</p>
       </div>
     )
   }

@@ -1,8 +1,19 @@
-import { type NextRequest } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { updateSession } from '@/utils/supabase/middleware'
 
 export async function proxy(request: NextRequest) {
-  return await updateSession(request)
+  try {
+    return await updateSession(request)
+  } catch (error) {
+    console.error('[proxy.ts unhandled exception]:', error)
+    const path = request.nextUrl.pathname
+    if (path === '/' || path.startsWith('/admin') || path.startsWith('/dos') || path.startsWith('/teacher')) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/login'
+      return NextResponse.redirect(url)
+    }
+    return NextResponse.next({ request })
+  }
 }
 
 export const config = {

@@ -1,25 +1,13 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import "./print.css";
+
 import { Toaster } from "sonner";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+import { PowerSyncProvider } from "../components/providers/PowerSyncProvider";
 
 export const viewport: Viewport = {
-  themeColor: "#12312a",
+  themeColor: "#FDFBF7",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
 };
 
 export const metadata: Metadata = {
@@ -32,8 +20,6 @@ export const metadata: Metadata = {
   },
 };
 
-import { PowerSyncProvider } from "../components/providers/PowerSyncProvider";
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -42,9 +28,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className="h-full antialiased"
     >
-      <body className="min-h-full flex flex-col">
+      <body className="min-h-full flex flex-col bg-[#FDFBF7] text-[#1C1917]">
         <PowerSyncProvider>
           {children}
           <Toaster position="bottom-right" richColors />

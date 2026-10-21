@@ -1,7 +1,36 @@
 import { createClient } from '@/utils/supabase/server'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
-import { verifyDataAccess } from '@/lib/auth-server'
+import { verifyDataAccess, verifyEnrollmentClassAccess } from '@/lib/auth-server'
+import { canAccessClass, subjectMatchesClassScope } from '@/lib/teacher-access'
+import { resolveSectionType } from '@/lib/section-type'
+
+async function verifyCircularSubjectScope(
+  supabase: SupabaseClient,
+  classId: string | null,
+  subjectId: string
+) {
+  if (!classId) return { allowed: false, error: null }
+
+  const [{ data: circularClass, error: classError }, { data: subject, error: subjectError }] =
+    await Promise.all([
+      supabase.from('circular_classes').select('section, class_name').eq('id', classId).maybeSingle(),
+      supabase.from('circular_subjects').select('section').eq('id', subjectId).maybeSingle(),
+    ])
+
+  if (classError || subjectError) {
+    return { allowed: false, error: classError?.message ?? subjectError?.message ?? 'Subject scope lookup failed.' }
+  }
+
+  const classSection = circularClass
+    ? resolveSectionType(circularClass.section, circularClass.class_name)
+    : null
+  return {
+    allowed: Boolean(subject && subjectMatchesClassScope(classSection, subject.section)),
+    error: null,
+  }
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -55,7 +84,21 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json({ data: data || [] }, { status: 200 })
+    const scopedData = (data || []).filter((mark: any) => {
+      const enrollment = Array.isArray(mark.enrollments) ? mark.enrollments[0] : mark.enrollments
+      const circularClass = Array.isArray(enrollment?.circular_classes)
+        ? enrollment.circular_classes[0]
+        : enrollment?.circular_classes
+      const subject = Array.isArray(mark.circular_subjects)
+        ? mark.circular_subjects[0]
+        : mark.circular_subjects
+      const classSection = circularClass
+        ? resolveSectionType(circularClass.section, circularClass.class_name)
+        : null
+      return canAccessClass(authRes, 'circular', enrollment?.circular_class_id) &&
+        subjectMatchesClassScope(classSection, subject?.section)
+    })
+    return NextResponse.json({ data: scopedData }, { status: 200 })
   } catch (err) {
     console.error('GET error:', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -83,12 +126,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const authRes = await verifyDataAccess(supabase, user, 'write')
-    if (!authRes.isAuthorized) {
-      return NextResponse.json({ error: authRes.message }, { status: 403 })
+    const { access: authRes, enrollment } = await verifyEnrollmentClassAccess(
+      supabase, user, 'write', enrollment_id, 'circular'
+    )
+    if (!authRes.isAuthorized) return NextResponse.json({ error: authRes.message }, { status: 403 })
+
+    const subjectScope = await verifyCircularSubjectScope(
+      supabase,
+      enrollment?.circular_class_id ?? null,
+      subject_id
+    )
+    if (subjectScope.error) {
+      console.error('Circular subject scope lookup failed:', subjectScope.error)
+      return NextResponse.json({ error: 'Unable to verify subject scope.' }, { status: 500 })
     }
-    if (authRes.filterByDepartment && authRes.filterByDepartment === 'theology') {
-      return NextResponse.json({ error: 'Unauthorized: Cannot modify Secular marks' }, { status: 403 })
+    if (!subjectScope.allowed) {
+      return NextResponse.json({ error: 'Subject is outside the assigned class section.' }, { status: 403 })
     }
 
     const updateData: any = {}
@@ -134,6 +187,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: result.error.message }, { status: 400 })
     }
 
+    // Dispatch event-driven system notification for user
+    const { createSystemNotification } = await import('@/lib/notifications')
+    await createSystemNotification(supabase, {
+      title: 'Marks Saved',
+      message: `Marks recorded for enrollment #${enrollment_id.slice(0, 8)}.`,
+      recipientId: user.id,
+      priority: 'normal',
+      type: 'marks',
+    })
+
     return NextResponse.json({ data: result.data }, { status: existing ? 200 : 201 })
   } catch (err) {
     console.error('API error:', err)
@@ -153,10 +216,33 @@ export async function PUT(request: NextRequest) {
     const cookieStore = await cookies()
     const supabase = createClient(cookieStore)
 
-    // Auth Enforcement Check
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { data: mark, error: markError } = await supabase
+      .from('circular_marks')
+      .select('enrollment_id, subject_id')
+      .eq('id', id)
+      .maybeSingle()
+    if (markError) return NextResponse.json({ error: markError.message }, { status: 500 })
+    if (!mark) return NextResponse.json({ error: 'Mark not found' }, { status: 404 })
+    const { access, enrollment } = await verifyEnrollmentClassAccess(
+      supabase, user, 'write', mark.enrollment_id, 'circular'
+    )
+    if (!access.isAuthorized) return NextResponse.json({ error: access.message }, { status: 403 })
+    const subjectScope = await verifyCircularSubjectScope(
+      supabase,
+      enrollment?.circular_class_id ?? null,
+      mark.subject_id
+    )
+    if (subjectScope.error) {
+      console.error('Circular subject scope lookup failed:', subjectScope.error)
+      return NextResponse.json({ error: 'Unable to verify subject scope.' }, { status: 500 })
+    }
+    if (!subjectScope.allowed) {
+      return NextResponse.json({ error: 'Subject is outside the assigned class section.' }, { status: 403 })
     }
 
     const updateData: any = {}
@@ -188,10 +274,33 @@ export async function DELETE(request: NextRequest) {
     const cookieStore = await cookies()
     const supabase = createClient(cookieStore)
 
-    // Auth Enforcement Check
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { data: mark, error: markError } = await supabase
+      .from('circular_marks')
+      .select('enrollment_id, subject_id')
+      .eq('id', id)
+      .maybeSingle()
+    if (markError) return NextResponse.json({ error: markError.message }, { status: 500 })
+    if (!mark) return NextResponse.json({ error: 'Mark not found' }, { status: 404 })
+    const { access, enrollment } = await verifyEnrollmentClassAccess(
+      supabase, user, 'write', mark.enrollment_id, 'circular'
+    )
+    if (!access.isAuthorized) return NextResponse.json({ error: access.message }, { status: 403 })
+    const subjectScope = await verifyCircularSubjectScope(
+      supabase,
+      enrollment?.circular_class_id ?? null,
+      mark.subject_id
+    )
+    if (subjectScope.error) {
+      console.error('Circular subject scope lookup failed:', subjectScope.error)
+      return NextResponse.json({ error: 'Unable to verify subject scope.' }, { status: 500 })
+    }
+    if (!subjectScope.allowed) {
+      return NextResponse.json({ error: 'Subject is outside the assigned class section.' }, { status: 403 })
     }
 
     const { error } = await supabase.from('circular_marks').delete().eq('id', id)

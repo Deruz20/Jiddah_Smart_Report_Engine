@@ -1,0 +1,35 @@
+{
+  "inspected_at": "2026-10-16T03:10:07.452Z",
+  "routes": {
+    "total": 90,
+    "pages": 34,
+    "api_endpoints": 56,
+    "matrix_covered": 90,
+    "unguarded_at_gateway_reviewed": 36
+  },
+  "roles": {
+    "canonical_list": [
+      "admin",
+      "head_teacher",
+      "dos",
+      "class_teacher",
+      "theology_teacher",
+      "teacher",
+      "accountant",
+      "support_staff",
+      "student"
+    ],
+    "literals_inspected": 33,
+    "occurrences_scanned": 467
+  },
+  "settings": {
+    "total_tracked": 27,
+    "wired_and_verified": 27,
+    "orphan_candidates_remediated": 8
+  },
+  "dependencies": {
+    "audit_command": "npm audit --json",
+    "advisories_found": 8,
+    "action": "held per frozen dependency constraint"
+  }
+}

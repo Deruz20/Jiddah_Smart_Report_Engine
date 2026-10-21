@@ -1,0 +1,620 @@
+[
+  {
+    "page": "Login",
+    "slug": "login",
+    "route": "/login",
+    "viewport": "360x800",
+    "isMobile": true,
+    "screenshot": "login-360x800.png",
+    "artifactPath": "C:\\Users\\USER\\.gemini\\antigravity\\brain\\5e092b19-cfeb-417e-a4d3-91395a9ea9d1\\screenshots\\login-360x800.png",
+    "repoPath": "C:\\Users\\USER\\Desktop\\school_management_system\\jiddah_repo_clean_room\\artifacts\\phase4-screenshots\\login-360x800.png",
+    "overflowMetrics": {
+      "docScrollWidth": 360,
+      "docClientWidth": 360,
+      "bodyScrollWidth": 360,
+      "bodyClientWidth": 360,
+      "mainScrollWidth": 0,
+      "mainClientWidth": 0,
+      "hasDocOverflow": false,
+      "hasBodyOverflow": false,
+      "hasMainOverflow": false,
+      "headings": [
+        "Fast, accurate mark entry & official terminal reports.",
+        "Staff Sign In"
+      ]
+    },
+    "status": "PASS"
+  },
+  {
+    "page": "Login",
+    "slug": "login",
+    "route": "/login",
+    "viewport": "390x844",
+    "isMobile": true,
+    "screenshot": "login-390x844.png",
+    "artifactPath": "C:\\Users\\USER\\.gemini\\antigravity\\brain\\5e092b19-cfeb-417e-a4d3-91395a9ea9d1\\screenshots\\login-390x844.png",
+    "repoPath": "C:\\Users\\USER\\Desktop\\school_management_system\\jiddah_repo_clean_room\\artifacts\\phase4-screenshots\\login-390x844.png",
+    "overflowMetrics": {
+      "docScrollWidth": 390,
+      "docClientWidth": 390,
+      "bodyScrollWidth": 390,
+      "bodyClientWidth": 390,
+      "mainScrollWidth": 0,
+      "mainClientWidth": 0,
+      "hasDocOverflow": false,
+      "hasBodyOverflow": false,
+      "hasMainOverflow": false,
+      "headings": [
+        "Fast, accurate mark entry & official terminal reports.",
+        "Staff Sign In"
+      ]
+    },
+    "status": "PASS"
+  },
+  {
+    "page": "Login",
+    "slug": "login",
+    "route": "/login",
+    "viewport": "768x1024",
+    "isMobile": false,
+    "screenshot": "login-768x1024.png",
+    "artifactPath": "C:\\Users\\USER\\.gemini\\antigravity\\brain\\5e092b19-cfeb-417e-a4d3-91395a9ea9d1\\screenshots\\login-768x1024.png",
+    "repoPath": "C:\\Users\\USER\\Desktop\\school_management_system\\jiddah_repo_clean_room\\artifacts\\phase4-screenshots\\login-768x1024.png",
+    "overflowMetrics": {
+      "docScrollWidth": 768,
+      "docClientWidth": 768,
+      "bodyScrollWidth": 768,
+      "bodyClientWidth": 768,
+      "mainScrollWidth": 0,
+      "mainClientWidth": 0,
+      "hasDocOverflow": false,
+      "hasBodyOverflow": false,
+      "hasMainOverflow": false,
+      "headings": [
+        "Fast, accurate mark entry & official terminal reports.",
+        "Staff Sign In"
+      ]
+    },
+    "status": "PASS"
+  },
+  {
+    "page": "Login",
+    "slug": "login",
+    "route": "/login",
+    "viewport": "1366x768",
+    "isMobile": false,
+    "screenshot": "login-1366x768.png",
+    "artifactPath": "C:\\Users\\USER\\.gemini\\antigravity\\brain\\5e092b19-cfeb-417e-a4d3-91395a9ea9d1\\screenshots\\login-1366x768.png",
+    "repoPath": "C:\\Users\\USER\\Desktop\\school_management_system\\jiddah_repo_clean_room\\artifacts\\phase4-screenshots\\login-1366x768.png",
+    "overflowMetrics": {
+      "docScrollWidth": 1366,
+      "docClientWidth": 1366,
+      "bodyScrollWidth": 1366,
+      "bodyClientWidth": 1366,
+      "mainScrollWidth": 0,
+      "mainClientWidth": 0,
+      "hasDocOverflow": false,
+      "hasBodyOverflow": false,
+      "hasMainOverflow": false,
+      "headings": [
+        "Fast, accurate mark entry & official terminal reports.",
+        "Staff Sign In"
+      ]
+    },
+    "status": "PASS"
+  },
+  {
+    "page": "Dashboard",
+    "slug": "dashboard",
+    "route": "/admin",
+    "viewport": "360x800",
+    "isMobile": true,
+    "screenshot": "dashboard-360x800.png",
+    "artifactPath": "C:\\Users\\USER\\.gemini\\antigravity\\brain\\5e092b19-cfeb-417e-a4d3-91395a9ea9d1\\screenshots\\dashboard-360x800.png",
+    "repoPath": "C:\\Users\\USER\\Desktop\\school_management_system\\jiddah_repo_clean_room\\artifacts\\phase4-screenshots\\dashboard-360x800.png",
+    "overflowMetrics": {
+      "docScrollWidth": 360,
+      "docClientWidth": 360,
+      "bodyScrollWidth": 360,
+      "bodyClientWidth": 360,
+      "mainScrollWidth": 360,
+      "mainClientWidth": 360,
+      "hasDocOverflow": false,
+      "hasBodyOverflow": false,
+      "hasMainOverflow": false,
+      "headings": [
+        "School Reporting Control Room",
+        "Current term marks overview",
+        "12 Pending Scores in Primary 4"
+      ]
+    },
+    "status": "PASS"
+  },
+  {
+    "page": "Dashboard",
+    "slug": "dashboard",
+    "route": "/admin",
+    "viewport": "390x844",
+    "isMobile": true,
+    "screenshot": "dashboard-390x844.png",
+    "artifactPath": "C:\\Users\\USER\\.gemini\\antigravity\\brain\\5e092b19-cfeb-417e-a4d3-91395a9ea9d1\\screenshots\\dashboard-390x844.png",
+    "repoPath": "C:\\Users\\USER\\Desktop\\school_management_system\\jiddah_repo_clean_room\\artifacts\\phase4-screenshots\\dashboard-390x844.png",
+    "overflowMetrics": {
+      "docScrollWidth": 390,
+      "docClientWidth": 390,
+      "bodyScrollWidth": 390,
+      "bodyClientWidth": 390,
+      "mainScrollWidth": 390,
+      "mainClientWidth": 390,
+      "hasDocOverflow": false,
+      "hasBodyOverflow": false,
+      "hasMainOverflow": false,
+      "headings": [
+        "School Reporting Control Room",
+        "Current term marks overview",
+        "12 Pending Scores in Primary 4"
+      ]
+    },
+    "status": "PASS"
+  },
+  {
+    "page": "Dashboard",
+    "slug": "dashboard",
+    "route": "/admin",
+    "viewport": "768x1024",
+    "isMobile": false,
+    "screenshot": "dashboard-768x1024.png",
+    "artifactPath": "C:\\Users\\USER\\.gemini\\antigravity\\brain\\5e092b19-cfeb-417e-a4d3-91395a9ea9d1\\screenshots\\dashboard-768x1024.png",
+    "repoPath": "C:\\Users\\USER\\Desktop\\school_management_system\\jiddah_repo_clean_room\\artifacts\\phase4-screenshots\\dashboard-768x1024.png",
+    "overflowMetrics": {
+      "docScrollWidth": 768,
+      "docClientWidth": 768,
+      "bodyScrollWidth": 768,
+      "bodyClientWidth": 768,
+      "mainScrollWidth": 512,
+      "mainClientWidth": 512,
+      "hasDocOverflow": false,
+      "hasBodyOverflow": false,
+      "hasMainOverflow": false,
+      "headings": [
+        "School Reporting Control Room",
+        "Current term marks overview",
+        "12 Pending Scores in Primary 4"
+      ]
+    },
+    "status": "PASS"
+  },
+  {
+    "page": "Dashboard",
+    "slug": "dashboard",
+    "route": "/admin",
+    "viewport": "1366x768",
+    "isMobile": false,
+    "screenshot": "dashboard-1366x768.png",
+    "artifactPath": "C:\\Users\\USER\\.gemini\\antigravity\\brain\\5e092b19-cfeb-417e-a4d3-91395a9ea9d1\\screenshots\\dashboard-1366x768.png",
+    "repoPath": "C:\\Users\\USER\\Desktop\\school_management_system\\jiddah_repo_clean_room\\artifacts\\phase4-screenshots\\dashboard-1366x768.png",
+    "overflowMetrics": {
+      "docScrollWidth": 1366,
+      "docClientWidth": 1366,
+      "bodyScrollWidth": 1366,
+      "bodyClientWidth": 1366,
+      "mainScrollWidth": 1110,
+      "mainClientWidth": 1110,
+      "hasDocOverflow": false,
+      "hasBodyOverflow": false,
+      "hasMainOverflow": false,
+      "headings": [
+        "School Reporting Control Room",
+        "Current term marks overview",
+        "12 Pending Scores in Primary 4"
+      ]
+    },
+    "status": "PASS"
+  },
+  {
+    "page": "Marks Entry",
+    "slug": "marks-entry",
+    "route": "/admin/marks",
+    "viewport": "360x800",
+    "isMobile": true,
+    "screenshot": "marks-entry-360x800.png",
+    "artifactPath": "C:\\Users\\USER\\.gemini\\antigravity\\brain\\5e092b19-cfeb-417e-a4d3-91395a9ea9d1\\screenshots\\marks-entry-360x800.png",
+    "repoPath": "C:\\Users\\USER\\Desktop\\school_management_system\\jiddah_repo_clean_room\\artifacts\\phase4-screenshots\\marks-entry-360x800.png",
+    "overflowMetrics": {
+      "docScrollWidth": 360,
+      "docClientWidth": 360,
+      "bodyScrollWidth": 360,
+      "bodyClientWidth": 360,
+      "mainScrollWidth": 360,
+      "mainClientWidth": 360,
+      "hasDocOverflow": false,
+      "hasBodyOverflow": false,
+      "hasMainOverflow": false,
+      "headings": [
+        "Marks Entry Ledger"
+      ]
+    },
+    "status": "PASS"
+  },
+  {
+    "page": "Marks Entry",
+    "slug": "marks-entry",
+    "route": "/admin/marks",
+    "viewport": "390x844",
+    "isMobile": true,
+    "screenshot": "marks-entry-390x844.png",
+    "artifactPath": "C:\\Users\\USER\\.gemini\\antigravity\\brain\\5e092b19-cfeb-417e-a4d3-91395a9ea9d1\\screenshots\\marks-entry-390x844.png",
+    "repoPath": "C:\\Users\\USER\\Desktop\\school_management_system\\jiddah_repo_clean_room\\artifacts\\phase4-screenshots\\marks-entry-390x844.png",
+    "overflowMetrics": {
+      "docScrollWidth": 390,
+      "docClientWidth": 390,
+      "bodyScrollWidth": 390,
+      "bodyClientWidth": 390,
+      "mainScrollWidth": 390,
+      "mainClientWidth": 390,
+      "hasDocOverflow": false,
+      "hasBodyOverflow": false,
+      "hasMainOverflow": false,
+      "headings": [
+        "Marks Entry Ledger",
+        "Welcome to Jiddah Smart Report Engine!"
+      ]
+    },
+    "status": "PASS"
+  },
+  {
+    "page": "Marks Entry",
+    "slug": "marks-entry",
+    "route": "/admin/marks",
+    "viewport": "768x1024",
+    "isMobile": false,
+    "screenshot": "marks-entry-768x1024.png",
+    "artifactPath": "C:\\Users\\USER\\.gemini\\antigravity\\brain\\5e092b19-cfeb-417e-a4d3-91395a9ea9d1\\screenshots\\marks-entry-768x1024.png",
+    "repoPath": "C:\\Users\\USER\\Desktop\\school_management_system\\jiddah_repo_clean_room\\artifacts\\phase4-screenshots\\marks-entry-768x1024.png",
+    "overflowMetrics": {
+      "docScrollWidth": 768,
+      "docClientWidth": 768,
+      "bodyScrollWidth": 768,
+      "bodyClientWidth": 768,
+      "mainScrollWidth": 512,
+      "mainClientWidth": 512,
+      "hasDocOverflow": false,
+      "hasBodyOverflow": false,
+      "hasMainOverflow": false,
+      "headings": [
+        "Marks Entry Ledger"
+      ]
+    },
+    "status": "PASS"
+  },
+  {
+    "page": "Marks Entry",
+    "slug": "marks-entry",
+    "route": "/admin/marks",
+    "viewport": "1366x768",
+    "isMobile": false,
+    "screenshot": "marks-entry-1366x768.png",
+    "artifactPath": "C:\\Users\\USER\\.gemini\\antigravity\\brain\\5e092b19-cfeb-417e-a4d3-91395a9ea9d1\\screenshots\\marks-entry-1366x768.png",
+    "repoPath": "C:\\Users\\USER\\Desktop\\school_management_system\\jiddah_repo_clean_room\\artifacts\\phase4-screenshots\\marks-entry-1366x768.png",
+    "overflowMetrics": {
+      "docScrollWidth": 1366,
+      "docClientWidth": 1366,
+      "bodyScrollWidth": 1366,
+      "bodyClientWidth": 1366,
+      "mainScrollWidth": 1110,
+      "mainClientWidth": 1110,
+      "hasDocOverflow": false,
+      "hasBodyOverflow": false,
+      "hasMainOverflow": false,
+      "headings": [
+        "Marks Entry Ledger"
+      ]
+    },
+    "status": "PASS"
+  },
+  {
+    "page": "Report Center",
+    "slug": "report-center",
+    "route": "/admin/reports",
+    "viewport": "360x800",
+    "isMobile": true,
+    "screenshot": "report-center-360x800.png",
+    "artifactPath": "C:\\Users\\USER\\.gemini\\antigravity\\brain\\5e092b19-cfeb-417e-a4d3-91395a9ea9d1\\screenshots\\report-center-360x800.png",
+    "repoPath": "C:\\Users\\USER\\Desktop\\school_management_system\\jiddah_repo_clean_room\\artifacts\\phase4-screenshots\\report-center-360x800.png",
+    "overflowMetrics": {
+      "docScrollWidth": 360,
+      "docClientWidth": 360,
+      "bodyScrollWidth": 360,
+      "bodyClientWidth": 360,
+      "mainScrollWidth": 360,
+      "mainClientWidth": 360,
+      "hasDocOverflow": false,
+      "hasBodyOverflow": false,
+      "hasMainOverflow": false,
+      "headings": [
+        "Report Cards Ready to Generate",
+        "Jiddah Islamic Schools — Report Generation Engine"
+      ]
+    },
+    "status": "PASS"
+  },
+  {
+    "page": "Report Center",
+    "slug": "report-center",
+    "route": "/admin/reports",
+    "viewport": "390x844",
+    "isMobile": true,
+    "screenshot": "report-center-390x844.png",
+    "artifactPath": "C:\\Users\\USER\\.gemini\\antigravity\\brain\\5e092b19-cfeb-417e-a4d3-91395a9ea9d1\\screenshots\\report-center-390x844.png",
+    "repoPath": "C:\\Users\\USER\\Desktop\\school_management_system\\jiddah_repo_clean_room\\artifacts\\phase4-screenshots\\report-center-390x844.png",
+    "overflowMetrics": {
+      "docScrollWidth": 390,
+      "docClientWidth": 390,
+      "bodyScrollWidth": 390,
+      "bodyClientWidth": 390,
+      "mainScrollWidth": 390,
+      "mainClientWidth": 390,
+      "hasDocOverflow": false,
+      "hasBodyOverflow": false,
+      "hasMainOverflow": false,
+      "headings": [
+        "Report Cards Ready to Generate",
+        "Jiddah Islamic Schools — Report Generation Engine"
+      ]
+    },
+    "status": "PASS"
+  },
+  {
+    "page": "Report Center",
+    "slug": "report-center",
+    "route": "/admin/reports",
+    "viewport": "768x1024",
+    "isMobile": false,
+    "screenshot": "report-center-768x1024.png",
+    "artifactPath": "C:\\Users\\USER\\.gemini\\antigravity\\brain\\5e092b19-cfeb-417e-a4d3-91395a9ea9d1\\screenshots\\report-center-768x1024.png",
+    "repoPath": "C:\\Users\\USER\\Desktop\\school_management_system\\jiddah_repo_clean_room\\artifacts\\phase4-screenshots\\report-center-768x1024.png",
+    "overflowMetrics": {
+      "docScrollWidth": 768,
+      "docClientWidth": 768,
+      "bodyScrollWidth": 768,
+      "bodyClientWidth": 768,
+      "mainScrollWidth": 512,
+      "mainClientWidth": 512,
+      "hasDocOverflow": false,
+      "hasBodyOverflow": false,
+      "hasMainOverflow": false,
+      "headings": [
+        "Report Cards Ready to Generate",
+        "Jiddah Islamic Schools — Report Generation Engine"
+      ]
+    },
+    "status": "PASS"
+  },
+  {
+    "page": "Report Center",
+    "slug": "report-center",
+    "route": "/admin/reports",
+    "viewport": "1366x768",
+    "isMobile": false,
+    "screenshot": "report-center-1366x768.png",
+    "artifactPath": "C:\\Users\\USER\\.gemini\\antigravity\\brain\\5e092b19-cfeb-417e-a4d3-91395a9ea9d1\\screenshots\\report-center-1366x768.png",
+    "repoPath": "C:\\Users\\USER\\Desktop\\school_management_system\\jiddah_repo_clean_room\\artifacts\\phase4-screenshots\\report-center-1366x768.png",
+    "overflowMetrics": {
+      "docScrollWidth": 1366,
+      "docClientWidth": 1366,
+      "bodyScrollWidth": 1366,
+      "bodyClientWidth": 1366,
+      "mainScrollWidth": 1110,
+      "mainClientWidth": 1110,
+      "hasDocOverflow": false,
+      "hasBodyOverflow": false,
+      "hasMainOverflow": false,
+      "headings": [
+        "Report Cards Ready to Generate",
+        "Jiddah Islamic Schools — Report Generation Engine"
+      ]
+    },
+    "status": "PASS"
+  },
+  {
+    "page": "Settings",
+    "slug": "settings",
+    "route": "/admin/settings",
+    "viewport": "360x800",
+    "isMobile": true,
+    "screenshot": "settings-360x800.png",
+    "artifactPath": "C:\\Users\\USER\\.gemini\\antigravity\\brain\\5e092b19-cfeb-417e-a4d3-91395a9ea9d1\\screenshots\\settings-360x800.png",
+    "repoPath": "C:\\Users\\USER\\Desktop\\school_management_system\\jiddah_repo_clean_room\\artifacts\\phase4-screenshots\\settings-360x800.png",
+    "overflowMetrics": {
+      "docScrollWidth": 360,
+      "docClientWidth": 360,
+      "bodyScrollWidth": 360,
+      "bodyClientWidth": 360,
+      "mainScrollWidth": 360,
+      "mainClientWidth": 360,
+      "hasDocOverflow": false,
+      "hasBodyOverflow": false,
+      "hasMainOverflow": false,
+      "headings": [
+        "School Profile",
+        "Welcome to Jiddah Smart Report Engine!"
+      ]
+    },
+    "status": "PASS"
+  },
+  {
+    "page": "Settings",
+    "slug": "settings",
+    "route": "/admin/settings",
+    "viewport": "390x844",
+    "isMobile": true,
+    "screenshot": "settings-390x844.png",
+    "artifactPath": "C:\\Users\\USER\\.gemini\\antigravity\\brain\\5e092b19-cfeb-417e-a4d3-91395a9ea9d1\\screenshots\\settings-390x844.png",
+    "repoPath": "C:\\Users\\USER\\Desktop\\school_management_system\\jiddah_repo_clean_room\\artifacts\\phase4-screenshots\\settings-390x844.png",
+    "overflowMetrics": {
+      "docScrollWidth": 390,
+      "docClientWidth": 390,
+      "bodyScrollWidth": 390,
+      "bodyClientWidth": 390,
+      "mainScrollWidth": 390,
+      "mainClientWidth": 390,
+      "hasDocOverflow": false,
+      "hasBodyOverflow": false,
+      "hasMainOverflow": false,
+      "headings": [
+        "School Profile"
+      ]
+    },
+    "status": "PASS"
+  },
+  {
+    "page": "Settings",
+    "slug": "settings",
+    "route": "/admin/settings",
+    "viewport": "768x1024",
+    "isMobile": false,
+    "screenshot": "settings-768x1024.png",
+    "artifactPath": "C:\\Users\\USER\\.gemini\\antigravity\\brain\\5e092b19-cfeb-417e-a4d3-91395a9ea9d1\\screenshots\\settings-768x1024.png",
+    "repoPath": "C:\\Users\\USER\\Desktop\\school_management_system\\jiddah_repo_clean_room\\artifacts\\phase4-screenshots\\settings-768x1024.png",
+    "overflowMetrics": {
+      "docScrollWidth": 768,
+      "docClientWidth": 768,
+      "bodyScrollWidth": 768,
+      "bodyClientWidth": 768,
+      "mainScrollWidth": 512,
+      "mainClientWidth": 512,
+      "hasDocOverflow": false,
+      "hasBodyOverflow": false,
+      "hasMainOverflow": false,
+      "headings": [
+        "School Profile"
+      ]
+    },
+    "status": "PASS"
+  },
+  {
+    "page": "Settings",
+    "slug": "settings",
+    "route": "/admin/settings",
+    "viewport": "1366x768",
+    "isMobile": false,
+    "screenshot": "settings-1366x768.png",
+    "artifactPath": "C:\\Users\\USER\\.gemini\\antigravity\\brain\\5e092b19-cfeb-417e-a4d3-91395a9ea9d1\\screenshots\\settings-1366x768.png",
+    "repoPath": "C:\\Users\\USER\\Desktop\\school_management_system\\jiddah_repo_clean_room\\artifacts\\phase4-screenshots\\settings-1366x768.png",
+    "overflowMetrics": {
+      "docScrollWidth": 1366,
+      "docClientWidth": 1366,
+      "bodyScrollWidth": 1366,
+      "bodyClientWidth": 1366,
+      "mainScrollWidth": 1110,
+      "mainClientWidth": 1110,
+      "hasDocOverflow": false,
+      "hasBodyOverflow": false,
+      "hasMainOverflow": false,
+      "headings": [
+        "School Profile"
+      ]
+    },
+    "status": "PASS"
+  },
+  {
+    "page": "Notifications",
+    "slug": "notifications",
+    "route": "/admin/notifications",
+    "viewport": "360x800",
+    "isMobile": true,
+    "screenshot": "notifications-360x800.png",
+    "artifactPath": "C:\\Users\\USER\\.gemini\\antigravity\\brain\\5e092b19-cfeb-417e-a4d3-91395a9ea9d1\\screenshots\\notifications-360x800.png",
+    "repoPath": "C:\\Users\\USER\\Desktop\\school_management_system\\jiddah_repo_clean_room\\artifacts\\phase4-screenshots\\notifications-360x800.png",
+    "overflowMetrics": {
+      "docScrollWidth": 360,
+      "docClientWidth": 360,
+      "bodyScrollWidth": 360,
+      "bodyClientWidth": 360,
+      "mainScrollWidth": 360,
+      "mainClientWidth": 360,
+      "hasDocOverflow": false,
+      "hasBodyOverflow": false,
+      "hasMainOverflow": false,
+      "headings": [
+        "Notifications & Activity Log"
+      ]
+    },
+    "status": "PASS"
+  },
+  {
+    "page": "Notifications",
+    "slug": "notifications",
+    "route": "/admin/notifications",
+    "viewport": "390x844",
+    "isMobile": true,
+    "screenshot": "notifications-390x844.png",
+    "artifactPath": "C:\\Users\\USER\\.gemini\\antigravity\\brain\\5e092b19-cfeb-417e-a4d3-91395a9ea9d1\\screenshots\\notifications-390x844.png",
+    "repoPath": "C:\\Users\\USER\\Desktop\\school_management_system\\jiddah_repo_clean_room\\artifacts\\phase4-screenshots\\notifications-390x844.png",
+    "overflowMetrics": {
+      "docScrollWidth": 390,
+      "docClientWidth": 390,
+      "bodyScrollWidth": 390,
+      "bodyClientWidth": 390,
+      "mainScrollWidth": 390,
+      "mainClientWidth": 390,
+      "hasDocOverflow": false,
+      "hasBodyOverflow": false,
+      "hasMainOverflow": false,
+      "headings": [
+        "Notifications & Activity Log"
+      ]
+    },
+    "status": "PASS"
+  },
+  {
+    "page": "Notifications",
+    "slug": "notifications",
+    "route": "/admin/notifications",
+    "viewport": "768x1024",
+    "isMobile": false,
+    "screenshot": "notifications-768x1024.png",
+    "artifactPath": "C:\\Users\\USER\\.gemini\\antigravity\\brain\\5e092b19-cfeb-417e-a4d3-91395a9ea9d1\\screenshots\\notifications-768x1024.png",
+    "repoPath": "C:\\Users\\USER\\Desktop\\school_management_system\\jiddah_repo_clean_room\\artifacts\\phase4-screenshots\\notifications-768x1024.png",
+    "overflowMetrics": {
+      "docScrollWidth": 768,
+      "docClientWidth": 768,
+      "bodyScrollWidth": 768,
+      "bodyClientWidth": 768,
+      "mainScrollWidth": 512,
+      "mainClientWidth": 512,
+      "hasDocOverflow": false,
+      "hasBodyOverflow": false,
+      "hasMainOverflow": false,
+      "headings": [
+        "Notifications & Activity Log"
+      ]
+    },
+    "status": "PASS"
+  },
+  {
+    "page": "Notifications",
+    "slug": "notifications",
+    "route": "/admin/notifications",
+    "viewport": "1366x768",
+    "isMobile": false,
+    "screenshot": "notifications-1366x768.png",
+    "artifactPath": "C:\\Users\\USER\\.gemini\\antigravity\\brain\\5e092b19-cfeb-417e-a4d3-91395a9ea9d1\\screenshots\\notifications-1366x768.png",
+    "repoPath": "C:\\Users\\USER\\Desktop\\school_management_system\\jiddah_repo_clean_room\\artifacts\\phase4-screenshots\\notifications-1366x768.png",
+    "overflowMetrics": {
+      "docScrollWidth": 1366,
+      "docClientWidth": 1366,
+      "bodyScrollWidth": 1366,
+      "bodyClientWidth": 1366,
+      "mainScrollWidth": 1110,
+      "mainClientWidth": 1110,
+      "hasDocOverflow": false,
+      "hasBodyOverflow": false,
+      "hasMainOverflow": false,
+      "headings": [
+        "Notifications & Activity Log"
+      ]
+    },
+    "status": "PASS"
+  }
+]

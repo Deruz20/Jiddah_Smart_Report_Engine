@@ -3,6 +3,7 @@ import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { getAuthenticatedUser } from '@/lib/api-server'
+import { computeUserUnreadNotificationCount } from '@/lib/notifications'
 
 export async function OPTIONS(request: NextRequest) {
   return apiOptions(request)
@@ -17,19 +18,12 @@ export async function GET(request: NextRequest) {
     const supabase = createClient(cookieStore)
     const user = await getAuthenticatedUser(supabase)
 
-    let query = supabase.from('notifications').select('id', { head: true, count: 'exact' }).eq('read', false)
-
-    if (user?.id) {
-      query = query.or(`recipient_id.is.null,recipient_id.eq.${user.id}`)
+    if (!user) {
+      return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
-    const { count, error } = await query
-    if (error) {
-      console.error('notifications unread-count error:', error.message)
-      return withCors(request, NextResponse.json({ error: error.message }, { status: 500 }))
-    }
-
-    return withCors(request, NextResponse.json({ count: count ?? 0 }))
+    const totalUnread = await computeUserUnreadNotificationCount(supabase, user.id)
+    return withCors(request, NextResponse.json({ count: totalUnread }))
   } catch (err: any) {
     console.error('notifications unread-count exception:', err)
     return withCors(

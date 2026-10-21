@@ -4,6 +4,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import {
   getSubjectGradeNumber,
   getGradeDisplay,
+  getTheologyGradeNumber,
+  getTheologyGradeDisplay,
   getSubjectRemark,
   getTheologySubjectRemark,
   getNurseryGrade,
@@ -18,8 +20,10 @@ import {
   getHeadTeacherComment,
 } from '@/lib/grading'
 import { resolveSectionType } from '@/lib/section-type'
+import { canAccessClass } from '@/lib/teacher-access'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { evaluateCriteria, GradingCriterion } from '@/lib/grading-engine'
+import { fetchMergedSchoolSettings } from '@/lib/school-settings-helper'
 import { applyRateLimit, rateLimitResponse } from '@/utils/rate-limit'
 import { z } from 'zod'
 
@@ -77,7 +81,7 @@ export async function POST(request: NextRequest) {
     const { data: gradingCriteriaData } = await supabase.from('grading_criteria').select('*')
     const gradingCriteria = (gradingCriteriaData as GradingCriterion[]) || []
 
-    const { data: schoolSettings } = await supabase.from('school_settings').select('*').limit(1).single()
+    const schoolSettings = await fetchMergedSchoolSettings(supabase, gradingCriteria)
 
     // Helper to fetch in chunks to avoid URL length limits and timeouts
     const fetchInChunks = async (table: string, select: string, column: string, ids: string[], extraBuilder?: (query: any) => any) => {
@@ -105,7 +109,7 @@ export async function POST(request: NextRequest) {
         theology_class_id,
         circular_classes ( id, class_name, section ),
         theology_classes ( id, class_name_arabic, class_name_english, level ),
-        students ( id, name, arabic_name, admission_number, created_at, is_muslim )
+        students ( id, name, arabic_name, admission_number, created_at, is_muslim, gender )
       `,
       'id',
       enrollment_ids
@@ -113,6 +117,25 @@ export async function POST(request: NextRequest) {
 
     if (!requestedEnrollments || requestedEnrollments.length === 0) {
       return withCors(request, NextResponse.json({ error: 'No enrollments found or error fetching enrollments' }, { status: 404 }))
+    }
+
+    const unauthorizedEnrollment = requestedEnrollments.find((enrollment) => {
+      const circularAllowed = curriculum === 'theology' ||
+        canAccessClass(authRes, 'circular', enrollment.circular_class_id)
+      const theologyAllowed = curriculum === 'secular' ||
+        canAccessClass(
+          authRes,
+          'theology',
+          enrollment.theology_class_id,
+          enrollment.circular_class_id
+        )
+      return !circularAllowed || !theologyAllowed
+    })
+    if (unauthorizedEnrollment) {
+      return withCors(request, NextResponse.json(
+        { error: 'Unauthorized: One or more reports are outside your assigned classes or curriculum.' },
+        { status: 403 }
+      ))
     }
 
     // 2. Fetch term info
@@ -222,37 +245,35 @@ export async function POST(request: NextRequest) {
       }
 
       // If we are in theology mode or dual mode, we need theology class rankings.
-      if (curriculum !== 'secular') {
-        const theologyClassIds = [...new Set(requestedEnrollments.map(e => e.theology_class_id).filter(Boolean))]
-        if (theologyClassIds.length > 0) {
-          const { data: theoClassmates } = await supabase
-            .from('enrollments')
-            .select('id, theology_class_id')
-            .in('theology_class_id', theologyClassIds)
-            .eq('is_active', true)
+      const theologyClassIds = [...new Set(requestedEnrollments.map(e => e.theology_class_id).filter(Boolean))]
+      if (theologyClassIds.length > 0) {
+        const { data: theoClassmates } = await supabase
+          .from('enrollments')
+          .select('id, theology_class_id')
+          .in('theology_class_id', theologyClassIds)
+          .eq('is_active', true)
 
-          if (theoClassmates) {
-            const allTheoClassmateIds = theoClassmates.map(c => c.id)
-            let allTheoMarks: any[] = []
-            if (allTheoClassmateIds.length > 0) {
-              allTheoMarks = await fetchInChunks('theology_marks', '*', 'enrollment_id', allTheoClassmateIds, (q) => q.eq('term_id', term_id))
-            }
+        if (theoClassmates) {
+          const allTheoClassmateIds = theoClassmates.map(c => c.id)
+          let allTheoMarks: any[] = []
+          if (allTheoClassmateIds.length > 0) {
+            allTheoMarks = await fetchInChunks('theology_marks', '*', 'enrollment_id', allTheoClassmateIds, (q) => q.eq('term_id', term_id))
+          }
 
-            for (const tId of theologyClassIds) {
-              const classMembers = theoClassmates.filter(c => c.theology_class_id === tId)
-              const memberTotals: { id: string, total: number }[] = []
+          for (const tId of theologyClassIds) {
+            const classMembers = theoClassmates.filter(c => c.theology_class_id === tId)
+            const memberTotals: { id: string, total: number }[] = []
 
-              for (const member of classMembers) {
-                const memberMarks = allTheoMarks.filter(m => m.enrollment_id === member.id)
-                const hasMarks = memberMarks.some(m => typeof m[score_type + '_score'] === 'number')
-                if (hasMarks) {
-                  const eTotal = memberMarks.reduce((sum, m) => sum + (typeof m[score_type + '_score'] === 'number' ? m[score_type + '_score'] : 0), 0)
-                  memberTotals.push({ id: member.id, total: eTotal })
-                }
+            for (const member of classMembers) {
+              const memberMarks = allTheoMarks.filter(m => m.enrollment_id === member.id)
+              const hasMarks = memberMarks.some(m => typeof m[score_type + '_score'] === 'number')
+              if (hasMarks) {
+                const eTotal = memberMarks.reduce((sum, m) => sum + (typeof m[score_type + '_score'] === 'number' ? m[score_type + '_score'] : 0), 0)
+                memberTotals.push({ id: member.id, total: eTotal })
               }
-              theologyRankings[tId] = memberTotals.sort((a, b) => b.total - a.total)
-              theologyClassSizes[tId] = classMembers.length
             }
+            theologyRankings[tId] = memberTotals.sort((a, b) => b.total - a.total)
+            theologyClassSizes[tId] = classMembers.length
           }
         }
       }
@@ -430,19 +451,19 @@ export async function POST(request: NextRequest) {
           const existing = eTheoMarks.find(m => m.subject_id === sub.id)
           const score = score_type === 'mot' ? existing?.mot_score ?? null : existing?.eot_score ?? null
           const numericScore = typeof score === 'number' ? score : null
-          const defaultGrade = numericScore !== null ? getGradeDisplay(getSubjectGradeNumber(numericScore)) : '—'
+          const defaultGrade = numericScore !== null ? getTheologyGradeDisplay(numericScore, (schoolSettings as any)?.theology_grading_scale) : '—'
           const overrideGrade = evaluateCriteria(numericScore, 'subject_score', 'theology', enrollment.theology_class_id, gradingCriteria, 'grade_label')
           const grade_display = overrideGrade || defaultGrade
 
-          const defaultMotGrade = typeof existing?.mot_score === 'number' ? getGradeDisplay(getSubjectGradeNumber(existing.mot_score)) : null
+          const defaultMotGrade = typeof existing?.mot_score === 'number' ? getTheologyGradeDisplay(existing.mot_score, (schoolSettings as any)?.theology_grading_scale) : null
           const overrideMotGrade = evaluateCriteria(existing?.mot_score ?? null, 'subject_score', 'theology', enrollment.theology_class_id, gradingCriteria, 'grade_label')
           const mot_grade_display = overrideMotGrade || defaultMotGrade
 
-          const defaultEotGrade = typeof existing?.eot_score === 'number' ? getGradeDisplay(getSubjectGradeNumber(existing.eot_score)) : null
+          const defaultEotGrade = typeof existing?.eot_score === 'number' ? getTheologyGradeDisplay(existing.eot_score, (schoolSettings as any)?.theology_grading_scale) : null
           const overrideEotGrade = evaluateCriteria(existing?.eot_score ?? null, 'subject_score', 'theology', enrollment.theology_class_id, gradingCriteria, 'grade_label')
           const eot_grade_display = overrideEotGrade || defaultEotGrade
 
-          const defaultRemark = existing?.eot_score != null ? getTheologySubjectRemark(getSubjectGradeNumber(existing.eot_score)) : existing?.mot_score != null ? getTheologySubjectRemark(getSubjectGradeNumber(existing.mot_score)) : null
+          const defaultRemark = existing?.eot_score != null ? getTheologySubjectRemark(getTheologyGradeNumber(existing.eot_score, (schoolSettings as any)?.theology_grading_scale)) : existing?.mot_score != null ? getTheologySubjectRemark(getTheologyGradeNumber(existing.mot_score, (schoolSettings as any)?.theology_grading_scale)) : null
           const overrideRemark = evaluateCriteria(numericScore, 'subject_score', 'theology', enrollment.theology_class_id, gradingCriteria, 'comment')
 
           return {
@@ -467,7 +488,7 @@ export async function POST(request: NextRequest) {
         })
 
         const theoScores = sortedTheoSubjects.map(r => r.score)
-        const theologyAggregate = theoScores.some(s => s == null) ? null : calculateTheologyAggregate(theoScores as number[])
+        const theologyAggregate = theoScores.some(s => s == null) ? null : calculateTheologyAggregate(theoScores as number[], (schoolSettings as any)?.theology_grading_scale)
 
         theologySectionData = {
           subjects: sortedTheoSubjects,
@@ -505,8 +526,11 @@ export async function POST(request: NextRequest) {
             name: studentData?.name ?? '—',
             admission_number: studentData?.admission_number ?? '—',
             arabic_name: studentData?.arabic_name ?? null,
+
+  
             religion: studentData?.is_muslim === false ? 'Non-Muslim' : 'Muslim',
             class_name: '—',
+            gender: studentData?.gender ?? null,
             theology_class_arabic: theologyClassArabic ?? null,
             theology_class_english: theologyClassEnglish ?? null,
             section: null,
@@ -547,8 +571,10 @@ export async function POST(request: NextRequest) {
           name: studentData?.name ?? '—',
           admission_number: studentData?.admission_number ?? '—',
           arabic_name: studentData?.arabic_name ?? null,
+
           religion: studentData?.is_muslim === false ? 'Non-Muslim' : 'Muslim',
           class_name: className ?? '—',
+          gender: studentData?.gender ?? null,
           theology_class_arabic: curriculum === 'secular' ? null : theologyClassArabic ?? null,
           theology_class_english: curriculum === 'secular' ? null : theologyClassEnglish ?? null,
           section,
@@ -599,7 +625,19 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    return withCors(request, NextResponse.json({ reports: reports.filter(r => r !== null) }))
+    const filteredReports = reports.filter(r => r !== null)
+
+    // Dispatch event-driven system notification for generating user
+    const { createSystemNotification } = await import('@/lib/notifications')
+    await createSystemNotification(supabase, {
+      title: 'Batch Reports Generated',
+      message: `Generated ${filteredReports.length} report cards for ${term.label} (${score_type.toUpperCase()}).`,
+      recipientId: user.id,
+      priority: 'normal',
+      type: 'report'
+    })
+
+    return withCors(request, NextResponse.json({ reports: filteredReports }))
   } catch (err: any) {
     console.error('Batch Report API POST error:', err)
     return withCors(request, NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 }))

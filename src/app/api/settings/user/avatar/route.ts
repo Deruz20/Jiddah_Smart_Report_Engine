@@ -4,6 +4,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { getAuthenticatedUser, recordActivity } from '@/lib/api-server'
 
+import { sniffImageMimeType } from '@/lib/image-sniff'
+
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp']
 const MAX_FILE_SIZE = 2 * 1024 * 1024
 const AVATAR_BUCKET = 'user-avatars'
@@ -40,16 +42,28 @@ export async function POST(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Avatar must be smaller than 2MB' }, { status: 400 }))
     }
 
-    const extension = file.name.split('.').pop()?.toLowerCase() ?? 'png'
+    const arrayBuffer = await file.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
+
+    // Content Sniffing: Verify genuine image magic bytes (CWE-434 defense)
+    const sniffedMime = sniffImageMimeType(buffer)
+    if (!sniffedMime || !ACCEPTED_TYPES.includes(sniffedMime)) {
+      return withCors(request, NextResponse.json({ error: 'File content verification failed: not a valid PNG, JPG, or WEBP image' }, { status: 400 }))
+    }
+
+    const mimeToExt: Record<string, string> = {
+      'image/png': 'png',
+      'image/jpeg': 'jpg',
+      'image/webp': 'webp',
+    }
+    const extension = mimeToExt[sniffedMime] || 'png'
     const filePath = `avatars/${user.id}.${extension}`
 
     const supabaseAdmin = createAdminClient()
-    const arrayBuffer = await file.arrayBuffer()
-    const buffer = Buffer.from(arrayBuffer)
     
     const { error: uploadError } = await supabaseAdmin.storage.from(AVATAR_BUCKET).upload(filePath, buffer, {
       upsert: true,
-      contentType: file.type
+      contentType: sniffedMime
     })
 
     if (uploadError) {

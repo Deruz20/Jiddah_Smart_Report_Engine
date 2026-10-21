@@ -39,20 +39,20 @@ export function SyncStatus({ state, lastSyncedAt, pendingCount = 0, onSyncNow, o
   }
 
   return (
-    <div className="flex items-center gap-3 text-sm bg-white/50 backdrop-blur-sm border rounded-full px-4 py-1.5 shadow-sm">
+    <div className="flex items-center gap-1.5 text-xs bg-white/80 backdrop-blur-sm border border-stone-200/80 rounded-full px-2 sm:px-2.5 py-1 shadow-xs shrink-0">
       {/* Status Icon & Label */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         {state === 'synced' && (
           <>
-            <CheckCircle2 className="w-4 h-4 text-green-500" />
-            <span className="font-medium text-slate-700 hidden sm:inline">Synced</span>
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+            <span className="font-semibold text-stone-700 hidden xl:inline">Synced</span>
           </>
         )}
-        
+
         {state === 'pending' && (
           <>
-            <Clock className="w-4 h-4 text-orange-500" />
-            <span className="font-medium text-slate-700 hidden sm:inline">
+            <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+            <span className="font-semibold text-stone-700 hidden sm:inline tabular-nums">
               {pendingCount} Pending
             </span>
           </>
@@ -60,20 +60,20 @@ export function SyncStatus({ state, lastSyncedAt, pendingCount = 0, onSyncNow, o
 
         {state === 'syncing' && (
           <>
-            <RefreshCw className="w-4 h-4 text-blue-500 animate-spin" />
-            <span className="font-medium text-slate-700 hidden sm:inline">Syncing...</span>
+            <RefreshCw className="w-3.5 h-3.5 text-blue-600 animate-spin shrink-0" />
+            <span className="font-semibold text-stone-700 hidden xl:inline">Syncing...</span>
           </>
         )}
 
         {state === 'error' && (
           <>
-            <AlertCircle className="w-4 h-4 text-red-500" />
-            <span className="font-medium text-red-600 hidden sm:inline">Action Required</span>
+            <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+            <span className="font-semibold text-rose-600 hidden sm:inline">Action Required</span>
             {onResolveError && (
-              <Button 
-                variant="link" 
-                size="sm" 
-                className="h-auto p-0 text-red-600 underline"
+              <Button
+                variant="link"
+                size="sm"
+                className="h-auto p-0 text-rose-600 underline text-xs"
                 onClick={onResolveError}
               >
                 Resolve
@@ -83,30 +83,25 @@ export function SyncStatus({ state, lastSyncedAt, pendingCount = 0, onSyncNow, o
         )}
       </div>
 
-      <div className="w-px h-4 bg-slate-200" />
-
-      {/* Last Synced Time */}
-      <div className="hidden sm:flex text-slate-500 text-xs items-center gap-2">
-        <span>Last updated: {formatTime(lastSyncedAt)}</span>
+      {/* Last Synced Time — only on ultra-wide 2xl screens so it never crowds medium desktop topbars */}
+      <div className="hidden 2xl:flex text-stone-500 text-[11px] items-center gap-1.5 pl-1.5 border-l border-stone-200 tabular-nums">
+        <span>{formatTime(lastSyncedAt)}</span>
       </div>
 
       {/* Manual Sync Button */}
       {state !== 'syncing' && state !== 'error' && (
-        <>
-          <div className="w-px h-4 bg-slate-200" />
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 px-2 rounded-full text-slate-500 hover:text-slate-900"
-            onClick={handleSync}
-            disabled={isManualSyncing || state === 'syncing'}
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isManualSyncing ? 'animate-spin' : ''}`} />
-            <span className="sr-only">Sync Now</span>
-          </Button>
-        </>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-5 w-5 p-0 rounded-full text-stone-500 hover:text-stone-900 hidden sm:inline-flex items-center justify-center"
+          onClick={handleSync}
+          disabled={isManualSyncing || state === 'syncing'}
+          title={`Last synced: ${formatTime(lastSyncedAt)} — Click to sync`}
+        >
+          <RefreshCw className={`w-3 h-3 ${isManualSyncing ? 'animate-spin' : ''}`} />
+          <span className="sr-only">Sync Now</span>
+        </Button>
       )}
     </div>
   )
 }
-

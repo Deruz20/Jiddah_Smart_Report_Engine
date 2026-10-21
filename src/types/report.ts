@@ -32,6 +32,10 @@ export interface ReportContainerProps {
   children: React.ReactNode;
   reportType: StabilizedReportType;
   className?: string;
+  primaryFont?: string;
+  arabicFont?: string;
+  themePreset?: string;
+  themeColor?: string;
 }
 
 export interface PrintableReportProps {

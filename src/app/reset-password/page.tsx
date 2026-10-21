@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Lock, RefreshCw, ArrowRight } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 
-export default function ResetPasswordPage() {
+function ResetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [password, setPassword] = useState('');
@@ -58,6 +58,7 @@ export default function ResetPasswordPage() {
     }
 
     setLoading(true);
+
     try {
       const supabase = createClient();
       const { error } = await supabase.auth.updateUser({ password });
@@ -132,5 +133,19 @@ export default function ResetPasswordPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
+          <RefreshCw className="h-6 w-6 animate-spin text-emerald-400" />
+        </div>
+      }
+    >
+      <ResetPasswordForm />
+    </Suspense>
   );
 }

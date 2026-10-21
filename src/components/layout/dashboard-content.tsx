@@ -1,35 +1,34 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Users,
-  User,
-  UserCheck,
-  Pencil,
+  ClipboardCheck,
   FileText,
-  TrendingUp,
-  BookOpen,
-  Calendar,
-  Bell,
-  ArrowRight,
+  AlertTriangle,
   Printer,
+  Pencil,
+  CheckCircle2,
+  Clock,
+  ArrowRight,
+  TrendingUp,
   AlertCircle,
-  BarChart3,
+  Calendar,
+  ChevronRight,
+  ShieldCheck,
 } from "lucide-react";
-import { HeroSection } from "@/components/HeroSection";
-import {
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
-import { motion } from "framer-motion";
+
+export interface ClassReportingStatus {
+  className: string;
+  totalStudents: number;
+  marksEntered: number;
+  totalRequired: number;
+  missingMarks: number;
+  stage: 'marks_in' | 'checked' | 'remarks' | 'approved' | 'printed';
+  stageLabel: string;
+  percent: number;
+  anomalies: number;
+}
 
 export interface DashboardData {
   role: 'admin' | 'dos' | 'teacher';
@@ -38,7 +37,11 @@ export interface DashboardData {
     activeTeachers: number;
     reportsGenerated: number;
     avgAttendance: number;
+    missingMarks: number;
+    totalAnomalies: number;
+    readyToPrintCount: number;
   };
+  classStatuses: ClassReportingStatus[];
   attendanceTrend: { month: string; rate: number }[];
   classPerformance: { class: string; avg: number }[];
   recentActivity: {
@@ -55,320 +58,491 @@ export interface DashboardData {
     time: string;
     read: boolean;
   }[];
+  upcomingEvents?: {
+    title: string;
+    date: string;
+    type: string;
+  }[];
+  themeSettings: {
+    schoolName: string;
+    rawThemeColor: string;
+    safeThemeColor: string;
+    contrastRatio: number;
+    wasAdjusted: boolean;
+    currentTerm: string;
+    currentYear: number | string;
+  };
 }
-
-const upcomingEvents = [
-  { title: "Term 3 Marks Deadline", date: "May 16, 2026", type: "deadline" },
-  { title: "Primary 6 Graduation Ceremony", date: "May 28, 2026", type: "event" },
-  { title: "Parent-Teacher Conference", date: "June 4, 2026", type: "meeting" },
-  { title: "Academic Session Ends", date: "June 20, 2026", type: "term" },
-];
-
-const activityIcons: Record<string, typeof User> = {
-  student: User,
-  marks: Pencil,
-  teacher: UserCheck,
-  report: FileText,
-  notification: Bell,
-  system: AlertCircle,
-};
 
 export default function DashboardContent({ data }: { data: DashboardData }) {
   const router = useRouter();
-
-  const { role } = data;
+  const { role, kpis, classStatuses, themeSettings } = data;
   const isTeacher = role === 'teacher';
   const isDOS = role === 'dos';
   const isAdmin = role === 'admin';
 
-  const kpiCards = useMemo(() => {
-    const k = data.kpis;
-    const cards = [
-      {
-        label: isTeacher ? "My Students" : "Total Students",
-        value: String(k.totalStudents),
-        change: isTeacher ? "Assigned" : "Active enrollments",
-        icon: Users,
-        textClass: "text-emerald-600",
-        bgClass: "bg-emerald-100",
-      },
-      ...(!isTeacher ? [{
-        label: "Active Teachers",
-        value: String(k.activeTeachers),
-        change: isDOS ? "In Department" : "Currently active",
-        icon: BookOpen,
-        textClass: "text-emerald-900",
-        bgClass: "bg-emerald-100",
-      }] : []),
-      {
-        label: "Reports Generated",
-        value: String(k.reportsGenerated),
-        change: "Logged this term",
-        icon: FileText,
-        textClass: "text-indigo-600",
-        bgClass: "bg-indigo-100",
-      },
-      ...(!isTeacher ? [{
-        label: "Avg Attendance",
-        value: `${k.avgAttendance}%`,
-        change: isDOS ? "Dept average" : "School average",
-        icon: TrendingUp,
-        textClass: "text-pink-600",
-        bgClass: "bg-pink-100",
-      }] : [])
-    ];
-    return cards;
-  }, [data, isTeacher, isDOS]);
+  const [stageFilter, setStageFilter] = useState<'all' | 'needs_action' | 'ready'>('all');
 
-  const title = isAdmin ? "Admin Dashboard" : isDOS ? "Department Overview" : "Teacher Dashboard";
-  const subtitle = isAdmin 
-    ? "Analytics, activity, and action cards for your school."
-    : isDOS 
-    ? "Analytics, activity, and action cards for your department."
-    : "Manage your assigned classes and students.";
+  const accentColor = themeSettings?.safeThemeColor || '#0F4D25';
 
-  const attendanceAverage = data.attendanceTrend.length
-    ? Math.round(
-        data.attendanceTrend.reduce((sum, item) => sum + Number(item.rate), 0) /
-          data.attendanceTrend.length
-      )
-    : 0;
+  const totalMissingMarks = kpis.missingMarks ?? 0;
+  const totalAnomalies = kpis.totalAnomalies ?? 0;
+  const totalStudents = kpis.totalStudents ?? 0;
+
+  const overallCyclePercent = useMemo(() => {
+    const totalRequired = classStatuses.reduce((acc, curr) => acc + curr.totalRequired, 0);
+    const totalEntered = classStatuses.reduce((acc, curr) => acc + curr.marksEntered, 0);
+    if (totalRequired === 0) return 0;
+    return Math.min(100, Math.round((totalEntered / totalRequired) * 100));
+  }, [classStatuses]);
+
+  const pendingClasses = useMemo(() => {
+    return classStatuses.filter((c) => c.missingMarks > 0);
+  }, [classStatuses]);
+
+  const nextAction = useMemo(() => {
+    if (classStatuses.length === 0 || totalStudents === 0) {
+      return {
+        title: "No Enrolled Students In Active Cohorts",
+        description: "Enroll students and configure circular classes to initialize the reporting cycle.",
+        actionText: "Manage Students",
+        actionHref: "/admin/students",
+        badge: "Setup Required",
+        accent: "border-stone-300 bg-[#FAF7F2]",
+      };
+    }
+
+    if (totalMissingMarks > 0) {
+      const classNames = pendingClasses.map((c) => c.className).slice(0, 3).join(", ");
+      const more = pendingClasses.length > 3 ? ` +${pendingClasses.length - 3} more` : "";
+      return {
+        title: `${totalMissingMarks} Pending Scores in ${classNames}${more}`,
+        description: `Pending subject scores across ${pendingClasses.length} class${pendingClasses.length === 1 ? '' : 'es'}. Submit remaining marks to unlock verification.`,
+        actionText: "Enter Pending Marks",
+        actionHref: "/admin/marks",
+        badge: isTeacher ? "Teacher Action Required" : isDOS ? "Moderation Queue" : "Cycle Milestone",
+        accent: "border-amber-400 bg-amber-50/70",
+      };
+    }
+
+    if (totalAnomalies > 0) {
+      return {
+        title: `${totalAnomalies} Score Outliers Require Review`,
+        description: "Scores exceeding 100 or negative marks were flagged in the database. Verify before moderation.",
+        actionText: "Review Anomalies",
+        actionHref: "/admin/marks",
+        badge: "Quality Audit",
+        accent: "border-rose-300 bg-rose-50/70",
+      };
+    }
+
+    return {
+      title: `Reporting Cycle: ${overallCyclePercent}% Marks Recorded · ${themeSettings.currentTerm}`,
+      description: `All subject marks are recorded for the current term. Report cards can be previewed and compiled in the Report Center.`,
+      actionText: "Open Report Center",
+      actionHref: "/admin/reports",
+      badge: "Cycle Ready",
+      accent: "border-[#CCE7D3] bg-[#FAF8F5]",
+    };
+  }, [classStatuses, totalStudents, totalMissingMarks, totalAnomalies, pendingClasses, isTeacher, isDOS, overallCyclePercent, themeSettings]);
+
+  const filteredClasses = useMemo(() => {
+    if (stageFilter === 'needs_action') {
+      return classStatuses.filter((c) => c.missingMarks > 0 || c.anomalies > 0);
+    }
+    if (stageFilter === 'ready') {
+      return classStatuses.filter((c) => c.percent === 100);
+    }
+    return classStatuses;
+  }, [classStatuses, stageFilter]);
 
   return (
-    <div className="w-full">
-      <HeroSection
-        title={title}
-        subtitle={subtitle}
-        actions={
-          <>
-            <button
-              onClick={() => router.push(isTeacher ? "/admin/marks" : "/admin/reports")}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#10B981] text-sm font-semibold text-white"
-            >
-              {isTeacher ? <Pencil className="w-4 h-4" /> : <Printer className="w-4 h-4" />} 
-              {isTeacher ? "Enter Marks" : "Generate Reports"}
-            </button>
-            {!isTeacher && (
-              <button
-                onClick={() => router.push("/admin/analytics")}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700"
-              >
-                <BarChart3 className="w-4 h-4" /> View Analytics
-              </button>
-            )}
-          </>
-        }
-      />
-
-      {/* KPIs Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
-        {kpiCards.map((card, index) => {
-          const Icon = card.icon;
-          return (
-            <motion.div
-              key={card.label}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: index * 0.08, ease: [0.25, 1, 0.5, 1] }}
-              className="group relative rounded-3xl border border-slate-200/60 bg-white p-6 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-300 overflow-hidden"
-            >
-              {/* Decorative background glow on hover */}
-              <div className={`absolute -right-6 -top-6 w-24 h-24 rounded-full blur-2xl opacity-0 group-hover:opacity-20 transition-opacity duration-500 ${card.bgClass.replace('bg-', '')}`} />
-              
-              <div className="flex items-center justify-between mb-5 relative z-10">
-                <div className={`h-12 w-12 rounded-2xl flex items-center justify-center shadow-inner ${card.bgClass} transition-transform duration-300 group-hover:scale-110`}>
-                  <Icon className={`h-5 w-5 ${card.textClass}`} strokeWidth={2.5} />
-                </div>
-                <span className={`text-[11px] font-bold tracking-wide uppercase px-2.5 py-1 rounded-full bg-slate-50 border border-slate-100 ${card.textClass}`}>
-                  {card.change}
-                </span>
-              </div>
-              <div className="relative z-10">
-                <h2 className="text-3xl font-black text-slate-800 tracking-tight">{card.value}</h2>
-                <p className="mt-1 text-[13px] font-medium text-slate-500">{card.label}</p>
-              </div>
-            </motion.div>
-          );
-        })}
-      </div>
-
-      {/* Charts Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        {!isTeacher && (
-          <div className="lg:col-span-2 rounded-3xl border border-slate-200/60 bg-white p-6 shadow-sm hover:shadow-md transition-shadow duration-300">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-              <div>
-                <h3 className="text-[15px] font-bold text-slate-800 tracking-tight">Attendance Trend</h3>
-                <p className="text-[13px] font-medium text-slate-500 mt-0.5">Monthly attendance data for the year.</p>
-              </div>
-              <span className="inline-flex self-start sm:self-auto rounded-full bg-emerald-50 border border-emerald-100 px-3 py-1 text-[12px] font-bold text-emerald-600 shadow-sm">
-                Avg {attendanceAverage}%
+    <div className="w-full min-h-screen bg-[#FDFBF7] text-[#1C1917] p-4 sm:p-6 lg:p-8 font-sans tabular-nums">
+      <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8">
+        
+        {/* 1. HEADER & SETTINGS STATUS */}
+        <header className="border-b border-[#E7E2D7] pb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <div className="flex flex-wrap items-center gap-2 mb-2">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold tracking-wide uppercase bg-[#EFE9DF] text-[#44403C] border border-[#E0D7C7]">
+                <ShieldCheck className="w-3.5 h-3.5" style={{ color: accentColor }} />
+                Reporting-Cycle Control Room
+              </span>
+              <span className="text-xs font-medium text-[#44403C]">
+                Active cycle: {themeSettings.currentTerm} · Academic year {themeSettings.currentYear}
               </span>
             </div>
-            <div className="relative -ml-4 sm:ml-0">
-              <ResponsiveContainer width="100%" height={220}>
-                <AreaChart data={data.attendanceTrend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="attendanceGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10B981" stopOpacity={0.25} />
-                      <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="4 4" stroke="rgba(148,163,184,0.15)" vertical={false} />
-                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#64748B", fontWeight: 500 }} axisLine={false} tickLine={false} dy={10} />
-                  <YAxis domain={[80, 100]} tick={{ fontSize: 11, fill: "#64748B", fontWeight: 500 }} axisLine={false} tickLine={false} dx={-10} />
-                  <Tooltip 
-                    contentStyle={{ borderRadius: "12px", border: "1px solid rgba(226,232,240,0.8)", boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1)", padding: "12px" }}
-                    itemStyle={{ color: "#0F172A", fontWeight: 600, fontSize: "13px" }}
-                    labelStyle={{ color: "#64748B", fontSize: "12px", marginBottom: "4px" }}
-                  />
-                  <Area type="monotone" dataKey="rate" stroke="#10B981" strokeWidth={3} fill="url(#attendanceGrad)" activeDot={{ r: 6, strokeWidth: 0, fill: "#059669" }} />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-[#1C1917] font-serif">
+              {isAdmin ? "School Reporting Control Room" : isDOS ? "Academic Moderation Dashboard" : "Teacher Reporting Workstation"}
+            </h1>
+            <p className="mt-1 text-xs sm:text-sm text-[#57534E]">
+              Track live mark submissions, pending class approvals, and score anomalies across cohorts.
+            </p>
           </div>
-        )}
 
-        <div className={`rounded-3xl border border-slate-200/60 bg-white p-6 shadow-sm hover:shadow-md transition-shadow duration-300 ${isTeacher ? 'lg:col-span-3' : ''}`}>
-          <div className="mb-6">
-            <h3 className="text-[15px] font-bold text-slate-800 tracking-tight">Class Performance</h3>
-            <p className="text-[13px] font-medium text-slate-500 mt-0.5">Average score by class.</p>
-          </div>
-          <div className="relative -ml-4 sm:ml-0">
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={data.classPerformance} layout="vertical" barSize={12} margin={{ top: 0, right: 20, left: 0, bottom: 0 }}>
-                <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 11, fill: "#64748B", fontWeight: 500 }} axisLine={false} tickLine={false} />
-                <YAxis type="category" dataKey="class" tick={{ fontSize: 11, fill: "#64748B", fontWeight: 600 }} axisLine={false} tickLine={false} width={70} />
-                <Tooltip 
-                  cursor={{ fill: "rgba(241,245,249,0.5)" }}
-                  contentStyle={{ borderRadius: "12px", border: "1px solid rgba(226,232,240,0.8)", boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1)" }}
-                />
-                <Bar dataKey="avg" fill="#10B981" radius={[0, 6, 6, 0]} activeBar={{ fill: "#059669" }} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 rounded-3xl border border-slate-200/60 bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h3 className="text-[15px] font-bold text-slate-800 tracking-tight">Recent Activity</h3>
-              <p className="text-[13px] font-medium text-slate-500 mt-0.5">Latest administrative actions.</p>
-            </div>
-            <button onClick={() => router.push("/admin/activity")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-bold text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 transition-colors">
-              View all <ArrowRight className="w-4 h-4" />
+          <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => router.push("/admin/marks")}
+              className="min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#D6CEBF] bg-[#FFFFFF] hover:bg-[#F8F5EE] text-sm font-semibold text-[#1C1917] shadow-sm transition-all cursor-pointer"
+            >
+              <Pencil className="w-4 h-4" style={{ color: accentColor }} />
+              Marks Entry
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push("/admin/reports")}
+              style={{ backgroundColor: accentColor }}
+              className="min-h-[44px] inline-flex items-center gap-2 px-5 py-2.5 rounded-xl hover:opacity-90 text-sm font-bold text-white shadow-sm transition-all cursor-pointer"
+            >
+              <Printer className="w-4 h-4 text-white" />
+              Report Center
             </button>
           </div>
+        </header>
 
-          {data.recentActivity.length === 0 ? (
-            <div className="py-12 text-center flex flex-col items-center justify-center">
-              <div className="w-12 h-12 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-center mb-3 text-slate-300">
-                <AlertCircle size={20} />
+        {/* 2. CURRENT TERM MARKS OVERVIEW */}
+        <section aria-labelledby="pipeline-heading" className="rounded-2xl border border-[#E7E2D7] bg-[#FFFFFF] p-5 sm:p-6 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+            <div>
+              <h2 id="pipeline-heading" className="text-base sm:text-lg font-bold text-[#1C1917] font-serif flex items-center gap-2">
+                <ClipboardCheck className="w-5 h-5" style={{ color: accentColor }} />
+                Current term marks overview
+              </h2>
+              <p className="text-xs text-[#57534E] mt-0.5">
+                Live subject mark entries across secular and theology cohorts for {themeSettings.currentTerm}.
+              </p>
+            </div>
+            <div className="flex items-center gap-3 self-start sm:self-auto">
+              <span className="text-xs font-semibold text-[#57534E]">Cycle completion</span>
+              <span
+                className="text-lg font-black px-3 py-1 rounded-lg border"
+                style={{
+                  color: accentColor,
+                  backgroundColor: '#EAF5EE',
+                  borderColor: '#CCE7D3',
+                }}
+              >
+                {overallCyclePercent}%
+              </span>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <div className="h-3 w-full bg-[#EAE4D9] rounded-full overflow-hidden p-0.5">
+              <div
+                className="h-full rounded-full transition-all duration-500"
+                style={{
+                  width: `${overallCyclePercent}%`,
+                  backgroundColor: accentColor,
+                }}
+              />
+            </div>
+            <div className="flex flex-wrap items-center justify-between text-xs text-[#57534E] pt-1">
+              <span>{classStatuses.filter(c => c.percent === 100).length} of {classStatuses.length} cohorts complete</span>
+              <span>{totalMissingMarks > 0 ? `${totalMissingMarks} pending score entries` : 'All marks recorded'}</span>
+            </div>
+          </div>
+        </section>
+
+        {/* 3. NEXT ACTION COMMAND BANNER */}
+        <section aria-labelledby="action-banner-heading" className={`rounded-2xl border p-5 sm:p-6 shadow-sm ${nextAction.accent}`}>
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-[#1C1917] text-white">
+                  {nextAction.badge}
+                </span>
+                <span className="text-xs font-semibold text-[#44403C]">Priority Action</span>
               </div>
-              <h3 className="text-[14px] font-bold text-slate-800">No activity recorded yet</h3>
-              <p className="text-[13px] text-slate-400 mt-0.5">Administrative actions will appear here.</p>
+              <h2 id="action-banner-heading" className="text-lg sm:text-xl font-black text-[#1C1917] font-serif">
+                {nextAction.title}
+              </h2>
+              <p className="text-xs sm:text-sm text-[#44403C] max-w-3xl">
+                {nextAction.description}
+              </p>
             </div>
-          ) : (
-            <div className="space-y-3">
-              {data.recentActivity.map((item, index) => {
-                const Icon = activityIcons[item.entity_type] || AlertCircle;
-                return (
-                  <motion.div
-                    key={item.id}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.3, delay: index * 0.05 }}
-                    className="group flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 rounded-2xl border border-slate-100 bg-slate-50/30 p-4 hover:bg-white hover:border-slate-200 hover:shadow-sm transition-all"
-                  >
-                    <div className="flex items-center gap-3 sm:w-full">
-                      <div className="flex shrink-0 h-10 w-10 items-center justify-center rounded-xl bg-white shadow-sm border border-slate-100 text-slate-500 group-hover:text-emerald-600 group-hover:border-emerald-100 transition-colors">
-                        <Icon className="h-4 w-4" strokeWidth={2.5} />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[14px] font-bold text-slate-800">{item.user_name}</p>
-                        <p className="text-[13px] font-medium text-slate-500 truncate mt-0.5 leading-snug pr-4">{item.action}</p>
-                      </div>
-                      <span suppressHydrationWarning className="hidden sm:block text-[11px] font-semibold text-slate-400 whitespace-nowrap">{new Date(item.created_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-                    </div>
-                    {/* Mobile date display */}
-                    <span suppressHydrationWarning className="sm:hidden text-[11px] font-semibold text-slate-400 pl-13">{new Date(item.created_at).toLocaleString()}</span>
-                  </motion.div>
-                );
-              })}
+            <button
+              type="button"
+              onClick={() => router.push(nextAction.actionHref)}
+              style={{ backgroundColor: accentColor }}
+              className="min-h-[44px] inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl hover:opacity-90 text-white text-sm font-bold shadow transition-all shrink-0 self-start lg:self-auto cursor-pointer"
+            >
+              {nextAction.actionText}
+              <ArrowRight className="w-4 h-4 text-white" />
+            </button>
+          </div>
+        </section>
+
+        {/* 4. KEY METRICS: REPORTING CONTROL ROOM CARDS */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+          <div className="rounded-2xl border border-[#E7E2D7] bg-[#FFFFFF] p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#44403C]">Missing Marks</span>
+              <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700">
+                <AlertCircle className="w-5 h-5" />
+              </div>
             </div>
-          )}
+            <div className="text-3xl font-black text-[#1C1917]">{totalMissingMarks}</div>
+            <p className="text-xs font-semibold text-amber-800 mt-1 flex items-center gap-1">
+              <span>{pendingClasses.length > 0 ? `Across ${pendingClasses.length} cohorts` : 'All marks submitted'}</span>
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-[#E7E2D7] bg-[#FFFFFF] p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#44403C]">Score Anomalies</span>
+              <div className="w-9 h-9 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-700">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+            </div>
+            <div className="text-3xl font-black text-[#1C1917]">{totalAnomalies}</div>
+            <p className="text-xs font-semibold text-rose-800 mt-1">
+              {totalAnomalies === 0 ? 'No out-of-range marks detected' : 'Outliers >100 or negative marks'}
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-[#E7E2D7] bg-[#FFFFFF] p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#44403C]">Pending Approvals</span>
+              <div className="w-9 h-9 rounded-xl bg-[#FAF8F5] border border-[#E0D7C7] flex items-center justify-center text-[#44403C]">
+                <FileText className="w-5 h-5" style={{ color: accentColor }} />
+              </div>
+            </div>
+            <div className="text-3xl font-black text-[#1C1917]">{pendingClasses.length}</div>
+            <p className="text-xs font-semibold text-[#57534E] mt-1">
+              {pendingClasses.length === 0 ? 'All cohorts verified for print' : 'Cohorts awaiting verification'}
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-[#E7E2D7] bg-[#FFFFFF] p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#44403C]">Total Enrolled</span>
+              <div className="w-9 h-9 rounded-xl bg-[#FAF8F5] border border-[#E7E2D7] flex items-center justify-center text-[#44403C]">
+                <TrendingUp className="w-5 h-5" />
+              </div>
+            </div>
+            <div className="text-3xl font-black text-[#1C1917]">{totalStudents}</div>
+            <p className="text-xs font-semibold text-[#57534E] mt-1">
+              Active student enrollments this term
+            </p>
+          </div>
         </div>
 
-        <div className="space-y-6">
-          <div className="rounded-3xl border border-slate-200/60 bg-white p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-6">
+        {/* 5. PER-CLASS PROGRESSION TABLE & ANOMALY ALERTS */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 rounded-2xl border border-[#E7E2D7] bg-[#FFFFFF] p-5 sm:p-6 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
               <div>
-                <h3 className="text-[15px] font-bold text-slate-800 tracking-tight">Notifications</h3>
-                <p className="text-[13px] font-medium text-slate-500 mt-0.5">Most recent alerts.</p>
+                <h2 className="text-lg font-bold text-[#1C1917] font-serif">Class Reporting Progress</h2>
+                <p className="text-xs text-[#57534E]">Progress of subject mark submissions per cohort from live database.</p>
               </div>
-              <div className="w-8 h-8 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center">
-                <Bell className="w-4 h-4 text-slate-400" />
+
+              <div className="flex items-center gap-1 p-1 bg-[#F8F5EE] border border-[#E7E2D7] rounded-xl self-start sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => setStageFilter('all')}
+                  className={`min-h-[44px] px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                    stageFilter === 'all'
+                      ? 'bg-white text-[#1C1917] shadow-sm'
+                      : 'text-[#44403C] hover:text-[#1C1917]'
+                  }`}
+                >
+                  All ({classStatuses.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStageFilter('needs_action')}
+                  className={`min-h-[44px] px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                    stageFilter === 'needs_action'
+                      ? 'bg-white text-amber-800 shadow-sm'
+                      : 'text-[#44403C] hover:text-amber-800'
+                  }`}
+                >
+                  Pending ({classStatuses.filter((c) => c.missingMarks > 0 || c.anomalies > 0).length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStageFilter('ready')}
+                  className={`min-h-[44px] px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                    stageFilter === 'ready'
+                      ? 'bg-white shadow-sm'
+                      : 'text-[#44403C] hover:text-[#1C1917]'
+                  }`}
+                  style={stageFilter === 'ready' ? { color: accentColor } : undefined}
+                >
+                  Ready ({classStatuses.filter((c) => c.percent === 100).length})
+                </button>
               </div>
             </div>
 
-            {data.notifications.length === 0 ? (
-              <div className="py-10 text-center flex flex-col items-center justify-center">
-                <div className="w-12 h-12 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-center mb-3 text-slate-300">
-                  <Bell size={20} />
-                </div>
-                <h3 className="text-[14px] font-bold text-slate-800">No notifications yet</h3>
-                <p className="text-[13px] text-slate-400 mt-0.5">You're all caught up.</p>
+            {classStatuses.length === 0 ? (
+              <div className="text-center py-12 px-4 rounded-xl border border-dashed border-[#D6CEBF] bg-[#FAF8F5]">
+                <ClipboardCheck className="w-10 h-10 mx-auto text-[#78716C] mb-3" />
+                <h3 className="text-base font-bold text-[#1C1917]">No Active Cohorts Found</h3>
+                <p className="text-xs text-[#57534E] max-w-sm mx-auto mt-1">
+                  There are no classes or active enrollments in the database for the current academic term.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => router.push('/admin/students')}
+                  style={{ backgroundColor: accentColor }}
+                  className="mt-4 min-h-[44px] px-5 py-2.5 rounded-xl text-white text-xs font-bold shadow hover:opacity-90 transition-all inline-flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                  Enroll Students
+                </button>
+              </div>
+            ) : filteredClasses.length === 0 ? (
+              <div className="text-center py-8 px-4 rounded-xl border border-dashed border-[#D6CEBF] bg-[#FAF8F5]">
+                <p className="text-xs text-[#57534E]">No classes match the selected filter.</p>
               </div>
             ) : (
               <div className="space-y-3">
-                {data.notifications.slice(0, 3).map((item) => (
-                  <div key={item.id} className="relative rounded-2xl border border-slate-100 bg-slate-50/50 p-4 hover:bg-white hover:border-slate-200 hover:shadow-sm transition-all group overflow-hidden">
-                    {!item.read && <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-400" />}
-                    <div className="flex items-start justify-between gap-3 mb-1">
-                      <p className={`text-[13px] ${!item.read ? 'font-bold text-slate-900' : 'font-semibold text-slate-700'} leading-tight`}>{item.title}</p>
-                      <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap bg-white px-2 py-0.5 rounded border border-slate-100">{item.time}</span>
+                {filteredClasses.map((c) => (
+                  <div
+                    key={c.className}
+                    className="p-3.5 sm:p-4 rounded-xl border border-[#EFE9DF] bg-[#FAF8F5]/60 hover:bg-[#FAF8F5] transition-colors"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-sm text-[#1C1917]">{c.className}</span>
+                        <span className="text-xs text-[#44403C]">({c.totalStudents} students)</span>
+                        {c.anomalies > 0 && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                            <AlertCircle className="w-3 h-3" />
+                            {c.anomalies} Anomaly
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
+                            c.percent === 100
+                              ? 'bg-[#EAF5EE] text-[#0F4D25] border border-[#CCE7D3]'
+                              : c.missingMarks > 0
+                              ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                              : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                          }`}
+                        >
+                          {c.stageLabel}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => router.push(c.missingMarks > 0 ? '/admin/marks' : '/admin/reports')}
+                          className="min-h-[44px] px-3 text-xs font-bold hover:underline inline-flex items-center gap-0.5 ml-1 cursor-pointer rounded-lg"
+                          style={{ color: accentColor }}
+                          aria-label={`Open ${c.className}`}
+                        >
+                          Action <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
-                    <p className="text-[12px] font-medium text-slate-500 leading-relaxed mt-1.5">{item.message}</p>
+
+                    <div className="w-full bg-[#EAE4D9] rounded-full h-2 overflow-hidden">
+                      <div
+                        className="h-2 rounded-full transition-all duration-500"
+                        style={{
+                          width: `${c.percent}%`,
+                          backgroundColor: c.percent === 100 ? accentColor : '#D97706',
+                        }}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between text-[11px] text-[#44403C] mt-1.5 font-medium">
+                      <span>
+                        {c.totalStudents === 0
+                          ? 'No enrolled candidates'
+                          : c.missingMarks === 0
+                          ? 'All required core marks recorded'
+                          : `${c.missingMarks} marks remaining`}
+                      </span>
+                      <span>{c.percent}%</span>
+                    </div>
                   </div>
                 ))}
               </div>
             )}
           </div>
 
-          <div className="rounded-3xl border border-slate-200/60 bg-white p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-[15px] font-bold text-slate-800 tracking-tight">Upcoming Events</h3>
-              <div className="w-8 h-8 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center">
-                <Calendar className="w-4 h-4 text-slate-400" />
+          <div className="space-y-6">
+            <div className="rounded-2xl border border-[#E7E2D7] bg-[#FFFFFF] p-5 sm:p-6 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-rose-700" />
+                  <h3 className="font-bold text-sm text-[#1C1917] font-serif">Anomaly Watchlist</h3>
+                </div>
+                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200">
+                  {totalAnomalies} Flags
+                </span>
               </div>
-            </div>
-            <div className="space-y-4">
-              {upcomingEvents.map((event, index) => {
-                const colors =
-                  event.type === "deadline"
-                    ? { bg: "bg-rose-100", border: "border-rose-200", text: "text-rose-600" }
-                    : event.type === "event"
-                    ? { bg: "bg-amber-100", border: "border-amber-200", text: "text-amber-600" }
-                    : event.type === "meeting"
-                    ? { bg: "bg-sky-100", border: "border-sky-200", text: "text-sky-600" }
-                    : { bg: "bg-emerald-100", border: "border-emerald-200", text: "text-emerald-600" };
-                return (
-                  <div key={index} className="flex items-start gap-3.5 group">
-                    <div className={`mt-0.5 shrink-0 flex h-9 w-9 items-center justify-center rounded-xl border shadow-sm transition-transform group-hover:scale-105 ${colors.bg} ${colors.border}`}>
-                      <Calendar className={`w-4 h-4 ${colors.text}`} strokeWidth={2.5} />
+
+              {totalAnomalies === 0 ? (
+                <div className="p-4 rounded-xl border border-[#E7E2D7] bg-[#FAF8F5] text-center text-xs text-[#57534E]">
+                  <CheckCircle2 className="w-6 h-6 text-emerald-600 mx-auto mb-1.5" />
+                  <p className="font-semibold text-[#1C1917]">Integrity Check Passed</p>
+                  <p className="text-[11px] mt-0.5 text-[#57534E]">Zero out-of-scale or corrupted scores detected.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="p-3 rounded-xl border border-rose-100 bg-rose-50/40 text-xs space-y-1">
+                    <div className="flex items-center justify-between font-bold text-rose-900">
+                      <span>Score Outliers Detected</span>
+                      <span className="text-[10px] text-rose-700 font-semibold">{totalAnomalies} Marks</span>
                     </div>
-                    <div>
-                      <p className="text-[14px] font-bold text-slate-800 leading-tight group-hover:text-emerald-600 transition-colors">{event.title}</p>
-                      <p className="text-[12px] font-semibold text-slate-400 mt-1 uppercase tracking-wide">{event.date}</p>
-                    </div>
+                    <p className="text-[#57534E]">
+                      Marks recorded with values outside the 0–100 scale require review before report generation.
+                    </p>
                   </div>
-                )
-              })}
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={() => router.push('/admin/marks')}
+                className="w-full mt-4 min-h-[44px] py-2.5 text-center text-xs font-bold rounded-xl transition-colors border cursor-pointer"
+                style={{
+                  color: accentColor,
+                  backgroundColor: '#EAF5EE',
+                  borderColor: '#CCE7D3',
+                }}
+              >
+                Inspect Anomalies in Marks Entry
+              </button>
+            </div>
+
+            <div className="rounded-2xl border border-[#E7E2D7] bg-[#FFFFFF] p-5 sm:p-6 shadow-sm">
+              <div className="flex items-center gap-2 mb-4">
+                <Calendar className="w-4 h-4" style={{ color: accentColor }} />
+                <h3 className="font-bold text-sm text-[#1C1917] font-serif">Cycle Cutoffs</h3>
+              </div>
+
+              <div className="space-y-2.5">
+                <div className="flex items-start gap-3 p-3 rounded-xl bg-[#FAF8F5] border border-[#EFE9DF]">
+                  <div className="p-1.5 rounded-lg bg-white border border-[#E0D7C7] text-[#44403C] shrink-0">
+                    <Calendar className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="text-xs">
+                    <p className="font-bold text-[#1C1917]">Term Ending Cutoff</p>
+                    <p className="text-[#57534E] text-[11px]">{data.upcomingEvents?.[0]?.date || 'Term Ongoing'}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 p-3 rounded-xl bg-[#FAF8F5] border border-[#EFE9DF]">
+                  <div className="p-1.5 rounded-lg bg-white border border-[#E0D7C7] text-[#44403C] shrink-0">
+                    <Clock className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="text-xs">
+                    <p className="font-bold text-[#1C1917]">Report Release Window</p>
+                    <p className="text-[#57534E] text-[11px]">Follows teacher score verification</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
+
       </div>
     </div>
   );

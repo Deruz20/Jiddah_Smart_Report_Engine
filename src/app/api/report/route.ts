@@ -20,7 +20,7 @@ import {
   getHeadTeacherComment,
 } from '@/lib/grading'
 import { resolveSectionType } from '@/lib/section-type'
-import { canAccessClass } from '@/lib/teacher-access'
+import { canAccessClass, isAdministratorRole } from '@/lib/teacher-access'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { evaluateCriteria, GradingCriterion } from '@/lib/grading-engine'
 import { fetchMergedSchoolSettings } from '@/lib/school-settings-helper'
@@ -108,11 +108,20 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Enrollment not found' }, { status: 404 }))
     }
 
-    const allowedReportClass = curriculum === 'theology'
-      ? canAccessClass(authRes, 'theology', enrollment.theology_class_id, enrollment.circular_class_id)
-      : curriculum === 'secular'
-        ? canAccessClass(authRes, 'circular', enrollment.circular_class_id)
-        : false
+    const isAdmin = isAdministratorRole(authRes.role) || authRes.role === 'Administrator' || (!authRes.filterByClasses && !authRes.filterByDepartment);
+    let allowedReportClass = isAdmin;
+    if (!allowedReportClass) {
+      if (curriculum === 'theology') {
+        allowedReportClass = Boolean(enrollment.theology_class_id && canAccessClass(authRes, 'theology', enrollment.theology_class_id, enrollment.circular_class_id));
+      } else if (curriculum === 'secular') {
+        allowedReportClass = Boolean(enrollment.circular_class_id && canAccessClass(authRes, 'circular', enrollment.circular_class_id));
+      } else {
+        // combined curriculum
+        const circularOk = Boolean(enrollment.circular_class_id && canAccessClass(authRes, 'circular', enrollment.circular_class_id));
+        const theologyOk = Boolean(enrollment.theology_class_id && canAccessClass(authRes, 'theology', enrollment.theology_class_id, enrollment.circular_class_id));
+        allowedReportClass = circularOk || theologyOk;
+      }
+    }
     if (!allowedReportClass) {
       return withCors(request, NextResponse.json({ error: 'Unauthorized: Report is outside your assigned classes or curriculum.' }, { status: 403 }))
     }
@@ -124,12 +133,17 @@ export async function GET(request: NextRequest) {
     const className = Array.isArray(enrollment.circular_classes)
       ? enrollment.circular_classes[0]?.class_name
       : (enrollment.circular_classes as any)?.class_name
-    
-    if (!section && !className) {
-      return withCors(request, NextResponse.json({ error: 'Circular class section and name are missing' }, { status: 400 }))
-    }
 
-    const sectionType = resolveSectionType(section, className)
+    const theologyClassName = Array.isArray(enrollment.theology_classes)
+      ? enrollment.theology_classes[0]?.class_name_english
+      : (enrollment.theology_classes as any)?.class_name_english
+    const earlyTheologyLevel = Array.isArray(enrollment.theology_classes)
+      ? enrollment.theology_classes[0]?.level
+      : (enrollment.theology_classes as any)?.level
+
+    const resolvedName = className || theologyClassName || 'Primary'
+    const resolvedSection = section || earlyTheologyLevel || 'upper_primary'
+    const sectionType = resolveSectionType(resolvedSection, resolvedName)
 
     const { data: term, error: termError } = await supabase
       .from('terms')

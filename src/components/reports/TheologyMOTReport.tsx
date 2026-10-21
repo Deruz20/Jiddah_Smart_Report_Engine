@@ -81,10 +81,35 @@ const theologyCSS = `
 .tc-header {
     text-align: center;
     background: linear-gradient(to right, #064e3b, #047857);
-    padding: 12px 18px;
+    padding: 10px 18px;
     border-radius: 12px;
     border-bottom: 3.5px solid #fbbf24;
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.tc-header-center {
+    flex: 1;
+    text-align: center;
+}
+
+.tc-badge {
+    width: 64px;
+    height: 64px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+}
+
+.tc-badge img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
 }
 
 .tc-basmala {
@@ -147,14 +172,15 @@ const theologyCSS = `
 .tc-field {
     flex: 1;
     min-width: 0;
-    border-bottom: 2px dashed #94a3b8;
-    height: 26px;
+    border-bottom: 2px dashed #064e3b;
+    height: 28px;
     display: flex;
     align-items: center;
+    justify-content: center;
     padding: 0 8px 1px;
-    color: #0f172a;
-    font-weight: 800;
-    font-size: 16px;
+    color: #064e3b;
+    font-weight: 900;
+    font-size: 17px;
 }
 
 .tc-term {
@@ -339,10 +365,18 @@ export function TheologyCard({ reportData }: { reportData: any }) {
 
             {/* HEADER */}
             <div className="tc-header">
-              <div className="tc-basmala">بسم الله الرحمن الرحيم</div>
-              <div className="tc-school">مدرسة جدة الإسلامية للروضة والابتدائية _ انساغو واكيسو</div>
-              <div className="tc-title">
-                {isEOT ? 'كشف الدرجات لنهاية الفترة' : 'كشف الدرجات لمنتصف الفترة'}
+              <div className="tc-badge">
+                <img src={reportData?.settings?.logo_url || "/school_budge.jpeg"} alt="School Badge" />
+              </div>
+              <div className="tc-header-center">
+                <div className="tc-basmala">بسم الله الرحمن الرحيم</div>
+                <div className="tc-school">{reportData?.settings?.arabic_name || "مدرسة جدة الإسلامية للروضة والابتدائية _ انساغو واكيسو"}</div>
+                <div className="tc-title">
+                  {isEOT ? 'كشف الدرجات لنهاية الفترة' : 'كشف الدرجات لمنتصف الفترة'}
+                </div>
+              </div>
+              <div className="tc-badge" style={{ visibility: 'hidden' }}>
+                <img src="/school_budge.jpeg" alt="" />
               </div>
             </div>
 

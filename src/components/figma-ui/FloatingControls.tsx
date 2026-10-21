@@ -1,5 +1,6 @@
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ZoomOut, ZoomIn, Maximize2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ZoomOut, ZoomIn, Maximize2, Minimize2, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface FloatingControlsProps {
   zoom: number;
@@ -20,12 +21,30 @@ export function FloatingControls({
   activeIndex = 0,
   onNavigate,
 }: FloatingControlsProps) {
+  const [isMinimized, setIsMinimized] = useState(false);
   const canPrev = activeIndex > 0;
   const canNext = activeIndex < totalReports - 1;
 
+  if (isMinimized) {
+    return (
+      <motion.button
+        type="button"
+        onClick={() => setIsMinimized(false)}
+        className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-50 flex items-center gap-1.5 px-3.5 py-2 rounded-full shadow-2xl bg-stone-900/95 text-white border border-white/20 text-xs font-bold backdrop-blur-md cursor-pointer hover:bg-stone-800 transition"
+        title="Expand zoom controls"
+        aria-label="Expand zoom controls"
+        initial={{ scale: 0.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+      >
+        <Maximize2 size={13} className="text-amber-400" />
+        <span>{Math.round(zoom * 100)}%</span>
+      </motion.button>
+    );
+  }
+
   return (
     <motion.div
-      className="absolute bottom-5 left-1/2 flex items-center gap-1 rounded-2xl shadow-2xl print:hidden tabular-nums"
+      className="fixed bottom-20 md:bottom-5 left-1/2 flex items-center gap-1 rounded-2xl shadow-2xl print:hidden tabular-nums max-w-[95vw] overflow-x-auto"
       style={{
         transform: 'translateX(-50%)',
         background: 'rgba(28,25,23,0.95)',
@@ -49,7 +68,7 @@ export function FloatingControls({
             <PillBtn onClick={() => onNavigate?.(activeIndex - 1)} disabled={!canPrev} title="Previous">
               <ChevronLeft size={16} />
             </PillBtn>
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#fbbf24', padding: '0 8px' }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#fbbf24', padding: '0 8px', whiteSpace: 'nowrap' }}>
               {activeIndex + 1} / {totalReports}
             </span>
             <PillBtn onClick={() => onNavigate?.(activeIndex + 1)} disabled={!canNext} title="Next">
@@ -71,14 +90,14 @@ export function FloatingControls({
         style={{
           background: 'rgba(255,255,255,0.08)',
           border: '1px solid rgba(255,255,255,0.12)',
-          padding: '4px 12px',
+          padding: '4px 10px',
           borderRadius: 10,
-          fontSize: 13,
+          fontSize: 12,
           fontWeight: 700,
           color: 'white',
           cursor: 'pointer',
-          minWidth: 56,
-          minHeight: 44,
+          minWidth: 50,
+          minHeight: 38,
         }}
         whileHover={{ background: 'rgba(255,255,255,0.14)' }}
         whileTap={{ scale: 0.94 }}
@@ -94,6 +113,12 @@ export function FloatingControls({
 
       <PillBtn onClick={onFitScreen} title="Fit to screen">
         <Maximize2 size={15} />
+      </PillBtn>
+
+      <div style={{ width: 1, height: 18, background: 'rgba(255,255,255,0.12)', margin: '0 4px' }} />
+
+      <PillBtn onClick={() => setIsMinimized(true)} title="Minimize controls">
+        <Minimize2 size={14} />
       </PillBtn>
     </motion.div>
   );
@@ -117,8 +142,8 @@ function PillBtn({
       title={title}
       aria-label={title}
       style={{
-        minWidth: 44,
-        minHeight: 44,
+        minWidth: 38,
+        minHeight: 38,
         background: 'transparent',
         border: 'none',
         borderRadius: 10,

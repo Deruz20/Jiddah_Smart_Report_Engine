@@ -20,7 +20,7 @@ import {
   getHeadTeacherComment,
 } from '@/lib/grading'
 import { resolveSectionType } from '@/lib/section-type'
-import { canAccessClass } from '@/lib/teacher-access'
+import { canAccessClass, isAdministratorRole } from '@/lib/teacher-access'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { evaluateCriteria, GradingCriterion } from '@/lib/grading-engine'
 import { fetchMergedSchoolSettings } from '@/lib/school-settings-helper'
@@ -119,17 +119,18 @@ export async function POST(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'No enrollments found or error fetching enrollments' }, { status: 404 }))
     }
 
-    const unauthorizedEnrollment = requestedEnrollments.find((enrollment) => {
-      const circularAllowed = curriculum === 'theology' ||
-        canAccessClass(authRes, 'circular', enrollment.circular_class_id)
-      const theologyAllowed = curriculum === 'secular' ||
-        canAccessClass(
-          authRes,
-          'theology',
-          enrollment.theology_class_id,
-          enrollment.circular_class_id
-        )
-      return !circularAllowed || !theologyAllowed
+    const isAdmin = isAdministratorRole(authRes.role) || authRes.role === 'Administrator' || (!authRes.filterByClasses && !authRes.filterByDepartment);
+    const unauthorizedEnrollment = isAdmin ? undefined : requestedEnrollments.find((enrollment) => {
+      if (curriculum === 'theology') {
+        return !enrollment.theology_class_id || !canAccessClass(authRes, 'theology', enrollment.theology_class_id, enrollment.circular_class_id);
+      }
+      if (curriculum === 'secular') {
+        return !enrollment.circular_class_id || !canAccessClass(authRes, 'circular', enrollment.circular_class_id);
+      }
+      // combined curriculum
+      const circularOk = Boolean(enrollment.circular_class_id && canAccessClass(authRes, 'circular', enrollment.circular_class_id));
+      const theologyOk = Boolean(enrollment.theology_class_id && canAccessClass(authRes, 'theology', enrollment.theology_class_id, enrollment.circular_class_id));
+      return !circularOk && !theologyOk;
     })
     if (unauthorizedEnrollment) {
       return withCors(request, NextResponse.json(

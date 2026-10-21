@@ -111,13 +111,13 @@ export default function NurseryMOTReport({ reportData }: any) {
     .nursery-mot-report .header-center { width: 36%; text-align: center; display: flex; flex-direction: column; align-items: center; }
     
     .nursery-mot-report .logo {
-        width: 54px;
-        height: 54px;
+        width: 60px;
+        height: 60px;
         margin: 0 auto 6px;
-        background: white;
-        border-radius: 12px;
-        padding: 4px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        background: transparent;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
     
     .nursery-mot-report .logo img {

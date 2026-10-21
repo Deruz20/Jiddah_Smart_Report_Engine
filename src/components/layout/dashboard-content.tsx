@@ -4,6 +4,8 @@ import React, { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   ClipboardCheck,
+  Users,
+  Settings,
   FileText,
   AlertTriangle,
   Printer,
@@ -157,7 +159,7 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
   }, [classStatuses, stageFilter]);
 
   return (
-    <div className="w-full min-h-screen bg-[#FDFBF7] text-[#1C1917] p-4 sm:p-6 lg:p-8 font-sans tabular-nums">
+    <div className="w-full min-h-screen bg-[#FFFDF9] text-[#1C1917] p-3 sm:p-6 lg:p-8 pb-28 sm:pb-12 font-sans tabular-nums">
       <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8">
         
         {/* 1. HEADER & SETTINGS STATUS */}
@@ -199,7 +201,43 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
               Report Center
             </button>
           </div>
-        </header>
+                </header>
+
+        {/* Mobile Quick Action Shortcuts (Compact, Vibrant & Fast) */}
+        <div className="flex md:hidden items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+          <button
+            type="button"
+            onClick={() => router.push("/admin/marks")}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold shrink-0 shadow-xs active:scale-95 transition"
+          >
+            <Pencil className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Marks Entry</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => router.push("/admin/reports")}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-50 text-amber-800 border border-amber-200 text-xs font-bold shrink-0 shadow-xs active:scale-95 transition"
+          >
+            <Printer className="w-3.5 h-3.5 text-amber-600" />
+            <span>Report Center</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => router.push("/admin/students")}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-50 text-blue-800 border border-blue-200 text-xs font-bold shrink-0 shadow-xs active:scale-95 transition"
+          >
+            <Users className="w-3.5 h-3.5 text-blue-600" />
+            <span>Students</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => router.push("/admin/settings")}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-stone-100 text-stone-800 border border-stone-200 text-xs font-bold shrink-0 shadow-xs active:scale-95 transition"
+          >
+            <Settings className="w-3.5 h-3.5 text-stone-600" />
+            <span>Settings</span>
+          </button>
+        </div>
 
         {/* 2. CURRENT TERM MARKS OVERVIEW */}
         <section aria-labelledby="pipeline-heading" className="rounded-2xl border border-[#E7E2D7] bg-[#FFFFFF] p-5 sm:p-6 shadow-sm">
@@ -275,56 +313,60 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
         </section>
 
         {/* 4. KEY METRICS: REPORTING CONTROL ROOM CARDS */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-          <div className="rounded-2xl border border-[#E7E2D7] bg-[#FFFFFF] p-5 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#44403C]">Missing Marks</span>
-              <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700">
-                <AlertCircle className="w-5 h-5" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
+          {/* 1. Missing Marks (Warm Amber/Gold) */}
+          <div className="rounded-2xl border border-amber-200/80 bg-white p-3.5 sm:p-5 shadow-xs hover:shadow-md transition">
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
+              <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-amber-900">Missing Marks</span>
+              <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600">
+                <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
             </div>
-            <div className="text-3xl font-black text-[#1C1917]">{totalMissingMarks}</div>
-            <p className="text-xs font-semibold text-amber-800 mt-1 flex items-center gap-1">
-              <span>{pendingClasses.length > 0 ? `Across ${pendingClasses.length} cohorts` : 'All marks submitted'}</span>
+            <div className="text-2xl sm:text-3xl font-black text-amber-600">{totalMissingMarks}</div>
+            <p className="text-[11px] sm:text-xs font-semibold text-amber-800 mt-1 truncate">
+              {pendingClasses.length > 0 ? `Across ${pendingClasses.length} cohorts` : 'All marks submitted'}
             </p>
           </div>
 
-          <div className="rounded-2xl border border-[#E7E2D7] bg-[#FFFFFF] p-5 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#44403C]">Score Anomalies</span>
-              <div className="w-9 h-9 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-700">
-                <AlertTriangle className="w-5 h-5" />
+          {/* 2. Score Anomalies (Ruby Red) */}
+          <div className="rounded-2xl border border-rose-200/80 bg-white p-3.5 sm:p-5 shadow-xs hover:shadow-md transition">
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
+              <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-rose-900">Anomalies</span>
+              <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600">
+                <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
             </div>
-            <div className="text-3xl font-black text-[#1C1917]">{totalAnomalies}</div>
-            <p className="text-xs font-semibold text-rose-800 mt-1">
-              {totalAnomalies === 0 ? 'No out-of-range marks detected' : 'Outliers >100 or negative marks'}
+            <div className="text-2xl sm:text-3xl font-black text-rose-600">{totalAnomalies}</div>
+            <p className="text-[11px] sm:text-xs font-semibold text-rose-800 mt-1 truncate">
+              {totalAnomalies === 0 ? 'Zero outliers detected' : 'Outliers >100 or <0'}
             </p>
           </div>
 
-          <div className="rounded-2xl border border-[#E7E2D7] bg-[#FFFFFF] p-5 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#44403C]">Pending Approvals</span>
-              <div className="w-9 h-9 rounded-xl bg-[#FAF8F5] border border-[#E0D7C7] flex items-center justify-center text-[#44403C]">
-                <FileText className="w-5 h-5" style={{ color: accentColor }} />
+          {/* 3. Pending Approvals (Sapphire Blue) */}
+          <div className="rounded-2xl border border-blue-200/80 bg-white p-3.5 sm:p-5 shadow-xs hover:shadow-md transition">
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
+              <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-blue-900">Cohorts</span>
+              <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600">
+                <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
             </div>
-            <div className="text-3xl font-black text-[#1C1917]">{pendingClasses.length}</div>
-            <p className="text-xs font-semibold text-[#57534E] mt-1">
-              {pendingClasses.length === 0 ? 'All cohorts verified for print' : 'Cohorts awaiting verification'}
+            <div className="text-2xl sm:text-3xl font-black text-blue-700">{pendingClasses.length}</div>
+            <p className="text-[11px] sm:text-xs font-semibold text-blue-800 mt-1 truncate">
+              {pendingClasses.length === 0 ? 'All verified for print' : 'Awaiting verification'}
             </p>
           </div>
 
-          <div className="rounded-2xl border border-[#E7E2D7] bg-[#FFFFFF] p-5 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#44403C]">Total Enrolled</span>
-              <div className="w-9 h-9 rounded-xl bg-[#FAF8F5] border border-[#E7E2D7] flex items-center justify-center text-[#44403C]">
-                <TrendingUp className="w-5 h-5" />
+          {/* 4. Total Enrolled (Emerald Green) */}
+          <div className="rounded-2xl border border-emerald-200/80 bg-white p-3.5 sm:p-5 shadow-xs hover:shadow-md transition">
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
+              <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-emerald-900">Enrolled</span>
+              <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
+                <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
             </div>
-            <div className="text-3xl font-black text-[#1C1917]">{totalStudents}</div>
-            <p className="text-xs font-semibold text-[#57534E] mt-1">
-              Active student enrollments this term
+            <div className="text-2xl sm:text-3xl font-black text-emerald-700">{totalStudents}</div>
+            <p className="text-[11px] sm:text-xs font-semibold text-emerald-800 mt-1 truncate">
+              Active candidates
             </p>
           </div>
         </div>

@@ -146,14 +146,34 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
 }
 
 .nursery-theology-eot-report .header {
-    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
     text-align: center;
-    margin-bottom: 10px;
-    background: linear-gradient(to right, var(--primary-green), var(--secondary-green));
-    padding: 12px;
-    border-radius: 12px;
+    background: linear-gradient(135deg, var(--primary-green), var(--secondary-green));
+    padding: 10px 18px;
+    border-radius: 16px;
+    border: 3px solid var(--nursery-gold);
     color: white;
-    border-bottom: 4px solid var(--nursery-gold);
+}
+.nursery-theology-eot-report .header-badge {
+    width: 60px;
+    height: 60px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+}
+.nursery-theology-eot-report .header-badge img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+.nursery-theology-eot-report .header-center {
+    flex: 1;
+    text-align: center;
 }
 
 .nursery-theology-eot-report .basmala {
@@ -358,9 +378,17 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
       <div className="nursery-theology-eot-report font-cairo" dir="rtl">
         <div className="watermark-bg"></div>
         <div className="header">
-          <div className="basmala">بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْم</div>
-          <div className="school-name">مدرسة جدة الإسلامية للروضة والإبتدائية</div>
-          <div className="report-badge">بطاقة تقرير للروضة</div>
+          <div className="header-badge">
+            <img src={reportData?.settings?.logo_url || "/school_budge.jpeg"} alt="School Badge" />
+          </div>
+          <div className="header-center">
+            <div className="basmala">بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْم</div>
+            <div className="school-name">{reportData?.settings?.arabic_name || "مدرسة جدة الإسلامية للروضة والإبتدائية"}</div>
+            <div className="report-badge">بطاقة تقرير للروضة</div>
+          </div>
+          <div className="header-badge" style={{ visibility: 'hidden' }}>
+            <img src="/school_budge.jpeg" alt="" />
+          </div>
         </div>
 
         <div className="info-grid">

@@ -52,6 +52,22 @@ export interface SharedMarksEntryProps {
   allowedDepartment?: 'secular' | 'theology' | 'both'
 }
 
+function computeTheologyBadge(score: number | null | undefined): {
+  grade: string
+  bg: string
+  text: string
+  border: string
+} | null {
+  if (score === null || score === undefined || Number.isNaN(Number(score))) return null
+  const n = Number(score)
+  if (n < 0 || n > 100) return null
+  if (n >= 85) return { grade: 'ممتاز', bg: 'bg-emerald-50', text: 'text-emerald-800 font-bold', border: 'border-emerald-300' }
+  if (n >= 75) return { grade: 'جيد جدا', bg: 'bg-emerald-50/80', text: 'text-emerald-700 font-bold', border: 'border-emerald-200' }
+  if (n >= 60) return { grade: 'جيد', bg: 'bg-blue-50', text: 'text-blue-700 font-bold', border: 'border-blue-200' }
+  if (n >= 50) return { grade: 'مقبول', bg: 'bg-amber-50', text: 'text-amber-800 font-bold', border: 'border-amber-200' }
+  return { grade: 'ضعيف', bg: 'bg-rose-50', text: 'text-rose-700 font-bold', border: 'border-rose-200' }
+}
+
 function computeGradeBadge(score: number | null | undefined): {
   grade: string
   bg: string
@@ -329,7 +345,9 @@ export function SharedMarksEntry({
     const hasScore = val !== '' && !Number.isNaN(numVal)
     const isHigh = !fieldError && hasScore && numVal >= 75
     const isLow = !fieldError && hasScore && numVal < 50
-    const badge = !fieldError && hasScore ? computeGradeBadge(numVal) : null
+    const badge = !fieldError && hasScore
+      ? (curriculum === 'theology' ? computeTheologyBadge(numVal) : computeGradeBadge(numVal))
+      : null
 
     return (
       <div className="flex flex-col items-center justify-center min-w-[88px]">
@@ -375,7 +393,8 @@ export function SharedMarksEntry({
           />
           {badge && (
             <span
-              className={`inline-flex items-center justify-center w-6 h-5 sm:w-7 sm:h-6 rounded-md text-[10px] font-extrabold border ${badge.bg} ${badge.text} ${badge.border}`}
+              className={`inline-flex items-center justify-center min-w-[28px] h-5 sm:h-6 px-1.5 rounded-md text-[10px] sm:text-[11px] font-extrabold border ${badge.bg} ${badge.text} ${badge.border}`}
+              dir={curriculum === 'theology' ? 'rtl' : 'ltr'}
             >
               {badge.grade}
             </span>
@@ -667,6 +686,32 @@ export function SharedMarksEntry({
                 ))}
               </div>
             )}
+
+            {/* Docked Top Save Action */}
+            <div className="flex items-center gap-2 ml-auto shrink-0">
+              {hasUnsavedChanges && (
+                <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                  Unsaved edits
+                </span>
+              )}
+              <button
+                type="submit"
+                disabled={isSaving || isPending || !selectedEnrollment}
+                className="min-h-[38px] px-4 py-1.5 bg-[#059669] hover:bg-[#047857] text-white text-xs font-bold rounded-xl shadow-xs inline-flex items-center justify-center gap-2 disabled:opacity-50 transition cursor-pointer"
+              >
+                {isSaving || isPending ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                ) : success ? (
+                  <Check className="w-3.5 h-3.5" />
+                ) : (
+                  <Save className="w-3.5 h-3.5" />
+                )}
+                <span>
+                  {isSaving || isPending ? 'Saving...' : 'Save Marks'}
+                </span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -923,7 +968,7 @@ export function SharedMarksEntry({
         {selectedEnrollment && (
           <div
             data-testid="sticky-save-bar"
-            className="sticky bottom-14 md:bottom-2 z-20 pt-1"
+            className="pt-3 pb-2"
           >
             <div className="bg-white/95 backdrop-blur-md border border-stone-300 rounded-2xl p-2.5 sm:px-4 shadow-lg flex flex-wrap items-center justify-between gap-2.5">
               <div className="flex items-center gap-2 min-w-0">

@@ -126,14 +126,12 @@ export default function PrimaryMOTReport({ reportData }: any) {
         }
 
         .mot-logo {
-            width: 85px;
-            height: 85px;
-            border-radius: 50%;
-            background: #f6f6f6;
+            width: 95px;
+            height: 95px;
             display: flex;
             justify-content: center;
             align-items: center;
-            overflow: hidden;
+            background: transparent;
         }
         .mot-logo img { width: 100%; height: 100%; object-fit: contain; }
 
@@ -166,8 +164,8 @@ export default function PrimaryMOTReport({ reportData }: any) {
             justify-content: space-between;
             margin-bottom: 10px;
         }
-        .mot-field { display: flex; align-items: flex-end; gap: 8px; font-size: 13px; font-weight: 600; }
-        .mot-line { border-bottom: 2px dotted #555; width: 150px; height: 18px; text-align: center; color: #111; font-weight: 700; }
+        .mot-field { display: flex; align-items: baseline; gap: 8px; font-size: 14px; font-weight: 700; color: #111827; }
+        .mot-line { border-bottom: 2px solid var(--report-primary-color, #0d5c3f); min-height: 22px; text-align: center; color: #047857; font-weight: 900; font-size: 16px; display: inline-flex; align-items: center; justify-content: center; }
 
         /* Rounded Table Container */
         .mot-table-wrap {
@@ -326,7 +324,7 @@ export default function PrimaryMOTReport({ reportData }: any) {
           </div>
           <div className="mot-info-row" style={{marginBottom: 0}}>
             <div className="mot-field" style={{width: '100%'}}>
-              Pupil&apos;s Name: <div className="mot-line" style={{width: '100%'}}>{reportData?.student?.name}</div>
+              Pupil&apos;s Name: <div className="mot-line" style={{width: '100%', fontSize: '18px', fontWeight: 900, textTransform: 'uppercase'}}>{reportData?.student?.name}</div>
             </div>
           </div>
         </div>

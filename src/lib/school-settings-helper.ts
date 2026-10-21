@@ -115,7 +115,8 @@ export async function fetchMergedSchoolSettings(supabase: any, gradingCriteria: 
 export function resolveReportBranding(reportData: any) {
   const s = reportData?.settings || {};
   return {
-    schoolName: (s.school_name || s.name || 'JIDDAH ISLAMIC SCHOOLS').toUpperCase(),
+    schoolName: s.school_name || s.name || 'Jiddah Islamic Schools',
+    arabicSchoolName: s.arabic_name || 'مدرسة جدة الإسلامية للروضة والابتدائية _ انساغو واكيسو',
     address: s.address || 'P.O.Box 34008 Kampala (U)',
     phone: s.phone_1 || s.phone
       ? `${s.phone_1 || s.phone}${s.phone_2 ? ` / ${s.phone_2}` : ''}`

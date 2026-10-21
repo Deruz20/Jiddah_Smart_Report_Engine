@@ -161,10 +161,10 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
   width: 75px;
   height: 75px;
   margin: 0 auto;
-  background: white;
-  border-radius: 12px;
-  padding: 4px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .p7-eot-report .logo img {

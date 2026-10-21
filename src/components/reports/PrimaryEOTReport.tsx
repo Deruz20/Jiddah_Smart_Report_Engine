@@ -100,66 +100,26 @@ export default function PrimaryEOTReport({ reportData }: any) {
         @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Montserrat:wght@500;600;700;800;900&display=swap');
 
         /* ── RESPONSIVE & PRINT ARCHITECTURE ── */
-        @media screen {
-          .print-wrapper {
-            width: 100%;
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background-color: #52525b;
-            overflow: auto;
-          }
-          .landscape-page {
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-          }
-        }
-
-        @media print {
-          @page {
-            size: A4 landscape;
-            margin: 0 !important;
-          }
-          html, body {
-            width: 297mm !important;
-            height: 209mm !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-            background-color: white !important;
-          }
-          .print-wrapper {
-            display: block !important;
-            padding: 0 !important;
-            background: transparent !important;
-          }
-          .landscape-page {
-            width: 297mm !important;
-            height: 205mm !important;
-            margin: 0 !important;
-            padding: 3mm !important;
-            box-shadow: none !important;
-            border: none !important;
-            box-sizing: border-box !important;
-            overflow: hidden !important;
-          }
+        .print-wrapper {
+          width: 100%;
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+          box-sizing: border-box;
         }
 
         /* ── PAGE CONTAINER ── */
         .landscape-page {
-          width: 297mm;
-          min-height: 205mm;
+          width: 100%;
+          height: 100%;
           background: white;
           padding: 4mm;
-          margin: 0 auto;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-          border: 1px solid #e2e8f0;
+          margin: 0;
           position: relative;
-          page-break-after: always;
           display: flex;
           flex-direction: column;
           box-sizing: border-box;
+          flex: 1;
         }
 
         .landscape-page * { box-sizing: border-box; }
@@ -549,7 +509,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
 
                   <div className="header-center">
                     <div className="bismillah">بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْم</div>
-                    <img src="/school_budge.jpeg" alt="School Badge" className="school-logo" />
+                    <img src={reportData?.settings?.logo_url || "/school_budge.jpeg"} alt="School Badge" className="school-logo" />
                     <div className="report-badge">
                       {isLower ? 'LOWER' : 'UPPER'} REPORT FORM – END OF TERM
                     </div>

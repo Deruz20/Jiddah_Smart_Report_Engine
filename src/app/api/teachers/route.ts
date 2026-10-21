@@ -14,9 +14,14 @@ import { isMissingTableError } from '@/lib/api-response'
 
 const validRoles = [
   'Head Teacher',
+  'Deputy Head Teacher',
   'Class Teacher',
+  'Teacher',
   'Theology Instructor',
   'Administrator',
+  'DOS',
+  'DOS Secular',
+  'DOS Theology',
   'Support Staff',
 ]
 const validStatuses = ['active', 'inactive']

@@ -4,7 +4,26 @@ import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { getAuthenticatedUser, isValidEmail, normalizePhone, normalizeString, recordActivity } from '@/lib/api-server'
 
-const allowedKeys = ['name', 'address', 'email', 'phone', 'phone_2', 'pay_code', 'current_term', 'current_year', 'motto', 'website', 'timezone', 'logo_url', 'primary_font', 'arabic_font', 'theme_color', 'report_theme_preset']
+const allowedKeys = [
+  'school_name',
+  'name',
+  'address',
+  'district',
+  'email',
+  'phone_1',
+  'phone',
+  'phone_2',
+  'pay_code',
+  'current_term',
+  'current_year',
+  'motto',
+  'logo_url',
+  'primary_font',
+  'arabic_font',
+  'theme_color',
+  'report_theme_preset',
+]
+const allowedNumericKeys = ['current_year']
 
 export async function OPTIONS(request: NextRequest) {
   return apiOptions(request)
@@ -35,7 +54,16 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: error.message }, { status: 500 }))
     }
 
-    return withCors(request, NextResponse.json({ data }))
+    // Provide isomorphic aliases so frontend clients can safely read either naming convention
+    const formattedData = data ? {
+      ...data,
+      name: data.school_name || data.name || '',
+      school_name: data.school_name || data.name || '',
+      phone: data.phone_1 || data.phone || '',
+      phone_1: data.phone_1 || data.phone || '',
+    } : null
+
+    return withCors(request, NextResponse.json({ data: formattedData }))
   } catch (err: any) {
     console.error('settings/school GET exception:', err)
     return withCors(request, NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 }))
@@ -71,6 +99,11 @@ export async function PATCH(request: NextRequest) {
       if (!allowedKeys.includes(key)) return
       if (typeof value === 'string') {
         updatePayload[key] = normalizeString(value)
+      } else if (allowedNumericKeys.includes(key) && (typeof value === 'number' || (typeof value === 'string' && value !== ''))) {
+        const numVal = Number(value)
+        if (!Number.isNaN(numVal) && Number.isFinite(numVal)) {
+          updatePayload[key] = numVal
+        }
       }
     })
 
@@ -78,8 +111,19 @@ export async function PATCH(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Invalid school email address' }, { status: 400 }))
     }
 
-    if (updatePayload.phone && typeof updatePayload.phone === 'string') {
-      updatePayload.phone = normalizePhone(updatePayload.phone)
+    // Normalize incoming aliases to actual database schema columns
+    if (updatePayload.name && !updatePayload.school_name) {
+      updatePayload.school_name = updatePayload.name
+    }
+    delete updatePayload.name
+
+    if (updatePayload.phone && !updatePayload.phone_1) {
+      updatePayload.phone_1 = updatePayload.phone
+    }
+    delete updatePayload.phone
+
+    if (updatePayload.phone_1 && typeof updatePayload.phone_1 === 'string') {
+      updatePayload.phone_1 = normalizePhone(updatePayload.phone_1)
     }
 
     if (Object.keys(updatePayload).length === 0) {

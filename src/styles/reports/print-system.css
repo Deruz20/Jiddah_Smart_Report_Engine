@@ -1,170 +1,209 @@
 /**
- * UNIFIED PRINT SYSTEM CSS
- * 
- * Centralized print rules for all report components.
- * Source of truth for print behavior across all A4 report types.
- * 
- * RULES:
- * - NO report-specific selectors (use ReportContainer)
- * - NO duplicated @page declarations
- * - NO component-specific media queries
- * - Print-safe values only (px units, no transforms, no hacks)
+ * UNIFIED PRINT SYSTEM — PERMANENT LAYOUT CONTRACT
+ *
+ * Architecture: Screen preview and print output are FULLY ISOLATED.
+ *
+ * SCREEN PREVIEW:
+ *   .report-preview-shell  → outer container that clips to canvas cell size
+ *   .report-scale-origin   → CSS transform: scale() applied here ONLY
+ *   .report-container      → always exactly A4 px dimensions (794×1123 or 1123×794)
+ *
+ * PRINT OUTPUT:
+ *   #print-portal           → hidden on screen, position:fixed off-screen
+ *   #print-portal *         → made visible only in @media print
+ *   .report-container       → NEVER transformed, always true A4 dimensions
+ *
+ * GOLDEN RULE:
+ *   transform: scale() ONLY appears on .report-scale-origin
+ *   The .report-container itself is NEVER scaled, translated, or zoomed
+ *   This means template authors NEVER need to think about preview vs. print
  */
 
 /* ============================================================================
-   PRINT MEDIA BASE RULES
+   SCREEN: PREVIEW SHELL (clips the scaled report to the cell bounds)
+   ============================================================================ */
+
+.report-preview-shell {
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+  border-radius: 4px;
+  box-shadow: 0 4px 40px rgba(0, 0, 0, 0.18);
+  background: #fffbf0;
+  cursor: pointer;
+  transition: box-shadow 0.15s, outline-color 0.15s;
+}
+
+.report-preview-shell[data-active='true'] {
+  box-shadow:
+    0 0 0 3px #f97316,
+    0 16px 56px rgba(0, 0, 0, 0.22);
+}
+
+/* ============================================================================
+   SCREEN: SCALE ORIGIN (the only element allowed to carry transform: scale)
+   ============================================================================ */
+
+.report-scale-origin {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: top left;
+}
+
+/* ============================================================================
+   SHARED: REPORT CONTAINER (A4 page — never changes size)
+   ============================================================================ */
+
+.report-container {
+  position: relative;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  background-color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  flex-grow: 0;
+}
+
+/* ============================================================================
+   PRINT: PORTAL (completely hidden on screen, fully revealed on print)
+   ============================================================================ */
+
+#print-portal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: -9999;
+  visibility: hidden;
+  pointer-events: none;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+/* ============================================================================
+   PRINT: @MEDIA RULES
    ============================================================================ */
 
 @media print {
-
-
-  .print-root {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    margin: 0;
-    padding: 0;
+  /* 1. Hide EVERYTHING on the main page */
+  html body {
+    visibility: hidden !important;
     overflow: visible !important;
-    transform: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    height: auto !important;
+    background: #ffffff !important;
   }
 
-  /* Remove transforms from all print contexts */
-  .print-root,
-  .print-area {
-    transform: none !important;
+  /* 2. Reveal ONLY the print portal */
+  #print-portal {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
     width: auto !important;
     height: auto !important;
-    margin: 0 !important;
-    padding: 0 !important;
+    overflow: visible !important;
+    visibility: visible !important;
+    z-index: 9999 !important;
+    pointer-events: none !important;
+    display: block !important;
   }
 
-  .report-container {
+  #print-portal,
+  #print-portal * {
+    visibility: visible !important;
+  }
+
+  /* 3. Report containers inside the portal print true A4 */
+  #print-portal .report-container {
     transform: none !important;
-    width: 210mm !important;
-    min-width: 210mm !important;
+    zoom: 1 !important;
     margin: 0 !important;
     padding: 0 !important;
     overflow: visible !important;
-  }
-
-  /* Hide non-print controls */
-  .print-hide,
-  .no-print {
-    display: none !important;
-  }
-
-  /* Disable transforms and transitions */
-  * {
-    transition: none !important;
-    animation: none !important;
-  }
-}
-
-/* ============================================================================
-   PAGE SIZE STRATEGY — DIMENSION-DRIVEN APPROACH
-   ============================================================================
-   
-   NOTE: @page rules do NOT reliably respond to media queries or container
-   selectors across all browsers. Instead, print sizing is driven by the
-   ReportContainer component dimensions:
-   
-   * width: 794px (A4 portrait) or 1123px (A4 landscape)
-   * minHeight: 1123px (A4 portrait) or 794px (A4 landscape)
-   
-   This ensures browser's print preview/PDF export respects container dimensions.
-   Browser will scale to fit page, or browser defaults may apply.
-   
-   If explicit @page rules are needed, implement at report component level
-   with component-specific @page declarations (not in this global file).
-   ============================================================================ */
-
-/* ============================================================================
-   PRINT-SAFE COLOR PRESERVATION
-   ============================================================================ */
-
-@media print {
-  /* Ensure exact color reproduction */
-  * {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-
-  /* Preserve backgrounds */
-  * {
-    background-attachment: scroll !important;
-  }
-}
-
-/* ============================================================================
-   PAGE BREAK RULES
-   ============================================================================ */
-
-@media print {
-  /* Prevent content splitting */
-  .no-page-break,
-  .report-container,
-  .page-content {
-    page-break-inside: avoid !important;
-    page-break-after: avoid !important;
-  }
-
-  /* Explicit page breaks if needed */
-  .page-break {
     page-break-after: always;
-  }
-
-  .page-break-before {
-    page-break-before: always;
-  }
-}
-
-/* ============================================================================
-   CONTENT OVERFLOW PROTECTION
-   ============================================================================ */
-
-@media print {
-  /* Allow content to expand naturally on print */
-  body {
-    margin: 0;
-    padding: 0;
-  }
-}
-
-/* ============================================================================
-   IMAGE AND MEDIA RULES
-   ============================================================================ */
-
-@media print {
-  /* Ensure images print */
-  img {
-    max-width: 100%;
     page-break-inside: avoid;
   }
 
-  /* Hide shadows for cleaner print */
+  /* 3b. Theology 2-up sheet strictly constrains height to prevent spillover */
+  #print-portal .report-container.theology-2up-sheet {
+    height: 1123px !important;
+    max-height: 1123px !important;
+    overflow: hidden !important;
+  }
+
+  /* 4. Last report should not add extra blank page */
+  #print-portal .report-container:last-child {
+    page-break-after: avoid !important;
+  }
+
+  /* 5. Kill ALL transforms everywhere in print scope (safety net) */
+  #print-portal .report-scale-origin {
+    transform: none !important;
+  }
+
+  #print-portal .report-preview-shell {
+    overflow: visible !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    width: auto !important;
+    height: auto !important;
+  }
+
+  /* 6. Remove decorations */
   * {
+    transition: none !important;
+    animation: none !important;
     box-shadow: none !important;
   }
-}
 
-/* ============================================================================
-   TEXT AND TYPOGRAPHY RULES
-   ============================================================================ */
+  /* 7. Exact color preservation */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    background-attachment: scroll !important;
+  }
 
-@media print {
-  /* Preserve font rendering */
+  /* 8. Typography */
   * {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Prevent text truncation */
-  a,
-  button,
-  input,
-  select,
-  textarea {
-    text-decoration: none;
+  /* 9. Hide preview-only UI chrome */
+  .print-hide,
+  .no-print,
+  .report-preview-shell > :not(.report-scale-origin) {
+    display: none !important;
   }
+}
+
+/* ============================================================================
+   PAGE SIZE STRATEGY (browser-native)
+   ============================================================================ */
+
+@page {
+  margin: 0;
+}
+
+@page portrait-page {
+  size: A4 portrait;
+  margin: 0;
+}
+
+@page landscape-page {
+  size: A4 landscape;
+  margin: 0;
+}
+
+/* Assign named @page to report containers by orientation attribute */
+#print-portal .report-container[data-report-orientation='portrait'] {
+  page: portrait-page;
+}
+
+#print-portal .report-container[data-report-orientation='landscape'] {
+  page: landscape-page;
 }

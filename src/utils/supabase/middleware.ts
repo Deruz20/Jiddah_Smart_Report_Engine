@@ -35,12 +35,15 @@ export async function updateSession(request: NextRequest) {
   // This will refresh session if expired - required for Server Components
   // https://supabase.com/docs/guides/auth/server-side/nextjs
   const { data: { user } } = await supabase.auth.getUser()
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('[Middleware]', request.nextUrl.pathname, 'hasUser:', !!user);
+  }
 
   // Fetch role from database (source of truth)
   let role = 'guest';
 
   if (user) {
-    if (user.user_metadata?.role === 'admin') {
+    if (user.user_metadata?.role === 'admin' || user.user_metadata?.role === 'Administrator') {
       role = 'admin'; // Bootstrap admin fallback
     }
 
@@ -51,10 +54,12 @@ export async function updateSession(request: NextRequest) {
         .select('role')
         .eq('email', user.email)
         .single();
-      
       if (teacherProfile?.role) {
         role = teacherProfile.role;
       }
+    }
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[Middleware Role] resolved role:', role);
     }
   }
 
@@ -72,6 +77,13 @@ export async function updateSession(request: NextRequest) {
   }
 
   const path = request.nextUrl.pathname;
+
+  // Protect internal testing harnesses from public access in production environments
+  if (process.env.NODE_ENV === 'production' && (path.startsWith('/preview-shell') || path.startsWith('/preview-test'))) {
+    const url = request.nextUrl.clone();
+    url.pathname = role === 'guest' ? '/login' : '/admin';
+    return NextResponse.redirect(url);
+  }
 
   if (role === 'guest') {
     // Protect authenticated routes

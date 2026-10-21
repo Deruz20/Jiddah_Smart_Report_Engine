@@ -55,7 +55,7 @@ export const ReportContainer: React.FC<ReportContainerProps> = ({
     margin: 0,
     padding: 0,
     backgroundColor: '#ffffff',
-    overflow: 'visible',
+    overflow: 'hidden',
     display: 'flex',
     flexDirection: 'column',
     flexShrink: 0,

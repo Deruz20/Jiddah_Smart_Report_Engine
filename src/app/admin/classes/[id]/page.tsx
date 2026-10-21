@@ -38,10 +38,11 @@ export default async function ClassDetailsPage(props: { params: Promise<{ id: st
     .select('*')
     .order('subject_name')
   
-  // 4. Fetch Teachers for assigning class teacher
+  // 4. Fetch Teachers for assigning class teacher (only active teachers)
   const { data: teachersData } = await supabase
     .from('teachers')
     .select('*')
+    .neq('status', 'inactive')
     .order('name')
 
   // Calculate some KPIs

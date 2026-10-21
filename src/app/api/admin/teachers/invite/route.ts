@@ -108,6 +108,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Failed to create invite' }, { status: 500 });
     }
 
+    // Dispatch event-driven system notification
+    const { createSystemNotification } = await import('@/lib/notifications');
+    await createSystemNotification(supabaseAdmin, {
+      title: 'Staff Invitation Sent',
+      message: `Invitation issued for ${name || email} (${finalRole} - ${finalSubject || 'General'}).`,
+      priority: 'normal',
+      type: 'invitation',
+    });
+
     return NextResponse.json({ success: true, invite: newInvite });
   } catch (err: any) {
     console.error('Invite error:', err);

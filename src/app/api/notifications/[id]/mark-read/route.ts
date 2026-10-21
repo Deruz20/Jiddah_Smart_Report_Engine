@@ -17,7 +17,7 @@ export async function PUT(
   if (preflight) return preflight
 
   const notificationId = params?.id
-  if (!notificationId || !isNumericId(notificationId)) {
+  if (!notificationId) {
     return withCors(request, NextResponse.json({ error: 'Invalid notification ID' }, { status: 400 }))
   }
 
@@ -30,25 +30,43 @@ export async function PUT(
       return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
-    const result = await supabase
+    const idValue = isNumericId(notificationId) ? Number(notificationId) : notificationId
+
+    // 1. Verify notification exists and is accessible to caller
+    const { data: targetNotification, error: fetchError } = await supabase
       .from('notifications')
-      .update({ read: true, read_at: new Date().toISOString(), read_by: user.id })
-      .eq('id', Number(notificationId))
+      .select('id, recipient_id')
+      .eq('id', idValue)
+      .or(`recipient_id.is.null,recipient_id.eq.${user.id}`)
+      .maybeSingle()
 
-    const data = result.data as any
-    const error = result.error
-
-    if (error) {
-      console.error('notification mark-read error:', error.message)
-      return withCors(request, NextResponse.json({ error: error.message }, { status: 500 }))
+    if (fetchError) {
+      console.error('notification mark-read fetch error:', fetchError.message)
+      return withCors(request, NextResponse.json({ error: fetchError.message }, { status: 500 }))
     }
 
-    if (!data || (Array.isArray(data) && data.length === 0)) {
+    if (!targetNotification) {
       return withCors(request, NextResponse.json({ error: 'Notification not found' }, { status: 404 }))
     }
 
+    // 2. Private notification: mutate read = true on the user's specific row
+    if (targetNotification.recipient_id === user.id) {
+      const { error: updateError } = await supabase
+        .from('notifications')
+        .update({ read: true })
+        .eq('id', idValue)
+        .eq('recipient_id', user.id)
+
+      if (updateError) {
+        console.error('notification mark-read error:', updateError.message)
+        return withCors(request, NextResponse.json({ error: updateError.message }, { status: 500 }))
+      }
+    }
+
+    // 3. For broadcast notifications (recipient_id is null), do NOT mutate the shared row.
+    // Recording the event in activity_logs tracks this user's read state without corrupting other users.
     await recordActivity(supabase, user.id, 'mark_notification_read', {
-      notificationId: Number(notificationId),
+      notificationId: idValue,
     })
 
     return withCors(request, NextResponse.json({ success: true }))
@@ -59,6 +77,13 @@ export async function PUT(
       NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 })
     )
   }
+}
+
+export async function POST(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  return PUT(request, context)
 }
 
 export async function PATCH(

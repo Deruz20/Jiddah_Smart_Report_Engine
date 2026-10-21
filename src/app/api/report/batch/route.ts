@@ -222,37 +222,35 @@ export async function POST(request: NextRequest) {
       }
 
       // If we are in theology mode or dual mode, we need theology class rankings.
-      if (curriculum !== 'secular') {
-        const theologyClassIds = [...new Set(requestedEnrollments.map(e => e.theology_class_id).filter(Boolean))]
-        if (theologyClassIds.length > 0) {
-          const { data: theoClassmates } = await supabase
-            .from('enrollments')
-            .select('id, theology_class_id')
-            .in('theology_class_id', theologyClassIds)
-            .eq('is_active', true)
+      const theologyClassIds = [...new Set(requestedEnrollments.map(e => e.theology_class_id).filter(Boolean))]
+      if (theologyClassIds.length > 0) {
+        const { data: theoClassmates } = await supabase
+          .from('enrollments')
+          .select('id, theology_class_id')
+          .in('theology_class_id', theologyClassIds)
+          .eq('is_active', true)
 
-          if (theoClassmates) {
-            const allTheoClassmateIds = theoClassmates.map(c => c.id)
-            let allTheoMarks: any[] = []
-            if (allTheoClassmateIds.length > 0) {
-              allTheoMarks = await fetchInChunks('theology_marks', '*', 'enrollment_id', allTheoClassmateIds, (q) => q.eq('term_id', term_id))
-            }
+        if (theoClassmates) {
+          const allTheoClassmateIds = theoClassmates.map(c => c.id)
+          let allTheoMarks: any[] = []
+          if (allTheoClassmateIds.length > 0) {
+            allTheoMarks = await fetchInChunks('theology_marks', '*', 'enrollment_id', allTheoClassmateIds, (q) => q.eq('term_id', term_id))
+          }
 
-            for (const tId of theologyClassIds) {
-              const classMembers = theoClassmates.filter(c => c.theology_class_id === tId)
-              const memberTotals: { id: string, total: number }[] = []
+          for (const tId of theologyClassIds) {
+            const classMembers = theoClassmates.filter(c => c.theology_class_id === tId)
+            const memberTotals: { id: string, total: number }[] = []
 
-              for (const member of classMembers) {
-                const memberMarks = allTheoMarks.filter(m => m.enrollment_id === member.id)
-                const hasMarks = memberMarks.some(m => typeof m[score_type + '_score'] === 'number')
-                if (hasMarks) {
-                  const eTotal = memberMarks.reduce((sum, m) => sum + (typeof m[score_type + '_score'] === 'number' ? m[score_type + '_score'] : 0), 0)
-                  memberTotals.push({ id: member.id, total: eTotal })
-                }
+            for (const member of classMembers) {
+              const memberMarks = allTheoMarks.filter(m => m.enrollment_id === member.id)
+              const hasMarks = memberMarks.some(m => typeof m[score_type + '_score'] === 'number')
+              if (hasMarks) {
+                const eTotal = memberMarks.reduce((sum, m) => sum + (typeof m[score_type + '_score'] === 'number' ? m[score_type + '_score'] : 0), 0)
+                memberTotals.push({ id: member.id, total: eTotal })
               }
-              theologyRankings[tId] = memberTotals.sort((a, b) => b.total - a.total)
-              theologyClassSizes[tId] = classMembers.length
             }
+            theologyRankings[tId] = memberTotals.sort((a, b) => b.total - a.total)
+            theologyClassSizes[tId] = classMembers.length
           }
         }
       }
@@ -599,7 +597,19 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    return withCors(request, NextResponse.json({ reports: reports.filter(r => r !== null) }))
+    const filteredReports = reports.filter(r => r !== null)
+
+    // Dispatch event-driven system notification for generating user
+    const { createSystemNotification } = await import('@/lib/notifications')
+    await createSystemNotification(supabase, {
+      title: 'Batch Reports Generated',
+      message: `Generated ${filteredReports.length} report cards for ${term.label} (${score_type.toUpperCase()}).`,
+      recipientId: user.id,
+      priority: 'normal',
+      type: 'report'
+    })
+
+    return withCors(request, NextResponse.json({ reports: filteredReports }))
   } catch (err: any) {
     console.error('Batch Report API POST error:', err)
     return withCors(request, NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 }))

@@ -373,7 +373,7 @@ function LoginContent() {
                         {...loginForm.register("password")}
                         className="w-full pl-12 pr-12 py-3.5 rounded-xl outline-none transition-all bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:bg-white/10 focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20"
                       />
-                      <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors">
+                      <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors p-2 rounded-lg" aria-label={showPass ? 'Hide password' : 'Show password'}>
                         {showPass ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                       </button>
                     </div>
@@ -385,14 +385,14 @@ function LoginContent() {
                   <div className="flex items-center justify-between pt-2">
                     <label className="flex items-center gap-2 cursor-pointer group">
                       <div className="relative flex items-center justify-center">
-                        <input type="checkbox" className="peer appearance-none w-4 h-4 rounded border border-slate-600 bg-white/5 checked:bg-emerald-500 checked:border-emerald-500 transition-all cursor-pointer" />
+                        <input type="checkbox" className="peer appearance-none w-5 h-5 rounded border border-slate-600 bg-white/5 checked:bg-emerald-500 checked:border-emerald-500 transition-all cursor-pointer" />
                         <svg className="absolute w-3 h-3 text-white pointer-events-none opacity-0 peer-checked:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                         </svg>
                       </div>
                       <span className="text-sm text-slate-400 group-hover:text-slate-300 transition-colors">Remember me</span>
                     </label>
-                    <button type="button" onClick={() => setScreen("forgot")} className="text-sm text-emerald-400 font-medium hover:text-emerald-300 transition-colors">
+                    <button type="button" onClick={() => setScreen("forgot")} className="text-sm text-emerald-400 font-medium hover:text-emerald-300 transition-colors min-h-[44px] px-1 py-2">
                       Forgot password?
                     </button>
                   </div>

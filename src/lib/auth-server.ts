@@ -1,4 +1,4 @@
-import { SupabaseClient, User } from '@supabase/supabase-js'
+import type { SupabaseClient, User } from '@supabase/supabase-js'
 
 export type ActionType = 'read' | 'write';
 export type Department = 'secular' | 'theology' | 'both';
@@ -32,23 +32,19 @@ export async function verifyDataAccess(
   // Always fetch fresh from the teachers table. NEVER trust user_metadata.
   const { data: profile } = await supabase
     .from('teachers')
-    .select('id, role, subject, classes')
+    .select('id, role, subject, classes, status')
     .eq('email', user.email)
     .single();
 
   if (!profile) {
-    // If they aren't in the teachers table, check if they are the hardcoded superadmin
-    // (In local dev / initial setup, sometimes the first admin isn't in teachers yet)
-    // But to be strictly safe, we fail closed unless they are explicitly seeded.
-    // However, we'll allow "admin" fallback ONLY IF it's the exact owner email.
-    // Let's keep it strictly fail-closed. If not in teachers table -> DENY.
-    // Wait, the original code had: user.user_metadata?.role === 'admin'
-    // To not break the absolute root admin, let's check user_metadata ONLY if role is exactly 'Administrator'
-    // and even then, let's be careful. Let's just return false if not in teachers table, UNLESS we explicitly 
-    // want to allow a root admin. I'll check user_metadata ONLY for 'Administrator', but prompt says:
-    // "never reads user.user_metadata or any session/token claim for this decision."
-    // Okay, strict compliance: if not in `teachers` table, YOU HAVE NO ACCESS.
     return { isAuthorized: false, message: 'User profile not found in teachers directory.' };
+  }
+
+  // Deny explicitly deactivated or suspended accounts (allow 'active', 'Active', 'approved', NULL, etc.)
+  const normalizedStatus = profile.status ? String(profile.status).toLowerCase().trim() : 'active';
+  const INACTIVE_STATUSES = ['inactive', 'suspended', 'deactivated', 'banned'];
+  if (INACTIVE_STATUSES.includes(normalizedStatus)) {
+    return { isAuthorized: false, message: 'Account is suspended or inactive.' };
   }
 
   const role = profile.role as string;
@@ -58,8 +54,8 @@ export async function verifyDataAccess(
     return { isAuthorized: true, role };
   }
 
-  // 2. Head Teacher & Deputy Head Teacher
-  if (role === 'Head Teacher' || role === 'Deputy Head Teacher') {
+  // 2. Head Teacher & Deputy Head Teacher (including HM alias)
+  if (role === 'Head Teacher' || role === 'Deputy Head Teacher' || role === 'HM') {
     if (action === 'write') {
       return { isAuthorized: false, message: 'Unauthorized: Read-only access across departments.' };
     }
@@ -73,51 +69,60 @@ export async function verifyDataAccess(
     return { isAuthorized: false, message: 'Unauthorized: Support Staff do not have access to academic records.' };
   }
 
-  // 4. DOS
+  // 4. DOS (Director of Studies)
   if (role === 'DOS Secular' || role === 'DOS Theology' || role === 'DOS') {
-    const isTheology = role === 'DOS Theology' || (role === 'DOS' && profile.subject?.toLowerCase().includes('theology'));
-    
-    const myDepartment: Department = isTheology ? 'theology' : 'secular';
+    let myDepartment: Department = 'secular';
+    const sub = profile.subject?.toLowerCase() || '';
 
-    if (targetDepartment && targetDepartment !== myDepartment) {
+    if (role === 'DOS Theology' || (role === 'DOS' && sub.includes('theology'))) {
+      myDepartment = 'theology';
+    } else if (role === 'DOS' && (!profile.subject || sub.includes('both') || sub.includes('all'))) {
+      myDepartment = 'both';
+    }
+
+    if (targetDepartment && myDepartment !== 'both' && targetDepartment !== myDepartment) {
       return { isAuthorized: false, message: `Unauthorized: You only have access to the ${myDepartment} department.` };
     }
 
     return { isAuthorized: true, role, filterByDepartment: myDepartment };
   }
 
-  // 5. Class Teacher
-  if (role === 'Class Teacher') {
-    const { data: assignments, error: assignmentError } = await supabase
+  // 5. Class Teacher, Theology Instructor, Teacher
+  if (role === 'Class Teacher' || role === 'Theology Instructor' || role === 'Teacher') {
+    // Resolve assigned class IDs from teacher_class_assignments junction table and legacy columns
+    const { data: assignments } = await supabase
       .from('teacher_class_assignments')
       .select('class_id')
       .eq('teacher_id', profile.id);
 
-    if (assignmentError) {
-      return { isAuthorized: false, message: 'Unable to verify teacher class assignments.' };
-    }
+    const { data: circularClasses } = await supabase
+      .from('circular_classes')
+      .select('id')
+      .eq('class_teacher_id', profile.id);
 
-    const assignedClasses = assignments.map((assignment) => assignment.class_id);
-    return {
-      isAuthorized: true,
-      role,
-      filterByClasses: assignedClasses,
-      filterByDepartment: 'both',
-    };
-  }
-
-  // 6. Theology Instructor, Teacher
-  if (role === 'Theology Instructor' || role === 'Teacher') {
-    const assignedClasses: string[] = profile.classes || [];
+    const classIdsFromAssignments = (assignments || []).map((a: any) => a.class_id);
+    const classIdsFromCircular = (circularClasses || []).map((c: any) => c.id);
+    const assignedClasses: string[] = Array.from(new Set([
+      ...(profile.classes || []),
+      ...classIdsFromAssignments,
+      ...classIdsFromCircular
+    ]));
     
     if (targetClass && !assignedClasses.includes(targetClass)) {
       return { isAuthorized: false, message: `Unauthorized: You do not have access to class ${targetClass}.` };
     }
 
-    const isTheology = role === 'Theology Instructor' || (profile.subject?.toLowerCase().includes('theology'));
-    const myDepartment: Department = isTheology ? 'theology' : 'secular';
+    // Class Teachers oversee both circular and theology for their assigned cohort.
+    // Theology Instructors specialize strictly in theology.
+    // Standard Teachers specialize strictly in secular curriculum.
+    let myDepartment: Department = 'secular';
+    if (role === 'Class Teacher') {
+      myDepartment = 'both';
+    } else if (role === 'Theology Instructor' || (profile.subject?.toLowerCase().includes('theology'))) {
+      myDepartment = 'theology';
+    }
 
-    if (targetDepartment && targetDepartment !== myDepartment) {
+    if (targetDepartment && myDepartment !== 'both' && targetDepartment !== myDepartment) {
       return { isAuthorized: false, message: `Unauthorized: You only have access to the ${myDepartment} department.` };
     }
 

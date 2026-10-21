@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { Toaster, toast } from 'sonner'
 import { AnimatePresence } from 'motion/react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
@@ -21,9 +21,10 @@ import PrimaryBOTReport from './reports/PrimaryBOTReport'
 import PrimaryMOTReport from './reports/PrimaryMOTReport'
 import NurseryEOTReport from './reports/NurseryEOTReport'
 import NurseryMOTReport from './reports/NurseryMOTReport'
-import TheologyMOTReport from './reports/TheologyMOTReport'
+import TheologyMOTReport, { Theology2UpPrintSheet } from './reports/TheologyMOTReport'
 import NurseryTheologyEOTReport from './reports/NurseryTheologyEOTReport'
-import { ReportViewport } from './reports/ReportViewport'
+import { ReportPreviewCell } from './reports/ReportPreviewCell'
+import { PrintPortal } from './reports/PrintPortal'
 import { STABILIZED_REPORT_ORIENTATIONS } from '@/lib/report-constants'
 
 type TermData = {
@@ -398,8 +399,8 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
 
   const activeReport = rawReports.find(r => r.id === activeReportId) ?? null
 
-  // RENDER CUSTOM REPORT TEMPLATE
-  const renderJiddahReport = useCallback((report: ReportData, isActive: boolean) => {
+  // RESOLVE REPORT COMPONENT & TYPE
+  const resolveReport = useCallback((report: ReportData): { component: React.ReactNode; type: keyof typeof STABILIZED_REPORT_ORIENTATIONS } | null => {
     let component: React.ReactNode = null
     let type: keyof typeof STABILIZED_REPORT_ORIENTATIONS | null = null
 
@@ -460,19 +461,41 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
       }
     }
 
-    if (!component || !type) return <div className="p-8 text-rose-500">Error: Unmapped report format.</div>
+    if (!component || !type) return null
 
-    return (
-      <div className="bg-white" style={{ pointerEvents: isActive ? 'auto' : 'none' }}>
-        <ReportViewport reportType={type}>
-          {component}
-        </ReportViewport>
-      </div>
-    )
+    return { component, type }
   }, [filterState.curriculum])
 
+  // RENDER CUSTOM REPORT TEMPLATE (Screen Preview via ReportPreviewCell)
+  const renderJiddahReport = useCallback((report: ReportData, isActive: boolean) => {
+    const resolved = resolveReport(report)
+    if (!resolved) return <div className="p-8 text-rose-500">Error: Unmapped report format.</div>
+
+    return (
+      <ReportPreviewCell
+        reportType={resolved.type}
+        zoom={zoom}
+        isActive={isActive}
+        onClick={() => setActiveReportId(report.id)}
+      >
+        {resolved.component}
+      </ReportPreviewCell>
+    )
+  }, [resolveReport, zoom])
+
+  const printableReports = useMemo(() => {
+    if (printScope === 'current') {
+      const current = rawReports.find(r => r.id === activeReportId)
+      return current ? [current] : []
+    }
+    if (Array.isArray(printScope)) {
+      return rawReports.filter(r => printScope.includes(r.id))
+    }
+    return rawReports
+  }, [rawReports, printScope, activeReportId])
+
   return (
-    <div className="h-full bg-[#f1f5f9] font-sans flex flex-col relative print:bg-white overflow-hidden text-slate-800 print:overflow-visible print:h-auto print:block">
+    <div className="h-full bg-[#f1f5f9] font-sans flex flex-col relative overflow-hidden text-slate-800">
       
 
       <PrintDialog
@@ -556,7 +579,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
         )}
       </AnimatePresence>
 
-      <div className="flex flex-1 overflow-hidden print:overflow-visible print:block print-reset-layout relative">
+      <div className="flex flex-1 overflow-hidden relative">
         <DocumentCanvas
           reports={rawReports}
           activeReportId={activeReportId}
@@ -588,6 +611,59 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
           </div>
         </div>
       </div>
+
+      {/* ── Print Portal (screen: hidden; print: only visible element) ───── */}
+      {printableReports.length > 0 && (
+        <PrintPortal>
+          {(() => {
+            const nodes: React.ReactNode[] = []
+            let i = 0
+
+            while (i < printableReports.length) {
+              const report = printableReports[i]
+              const resolved = resolveReport(report)
+              if (!resolved) {
+                i++
+                continue
+              }
+
+              if (resolved.type === 'TheologyMOTReport') {
+                const topReport = report
+                const nextReport = printableReports[i + 1]
+                const nextResolved = nextReport ? resolveReport(nextReport) : null
+
+                if (nextReport && nextResolved?.type === 'TheologyMOTReport') {
+                  nodes.push(
+                    <Theology2UpPrintSheet
+                      key={`theology-sheet-${topReport.id}-${nextReport.id}`}
+                      topReport={topReport}
+                      bottomReport={nextReport}
+                    />
+                  )
+                  i += 2
+                } else {
+                  nodes.push(
+                    <Theology2UpPrintSheet
+                      key={`theology-sheet-${topReport.id}`}
+                      topReport={topReport}
+                    />
+                  )
+                  i += 1
+                }
+              } else {
+                nodes.push(
+                  <React.Fragment key={report.id}>
+                    {resolved.component}
+                  </React.Fragment>
+                )
+                i++
+              }
+            }
+
+            return nodes
+          })()}
+        </PrintPortal>
+      )}
     </div>
   )
 }

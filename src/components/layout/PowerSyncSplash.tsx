@@ -7,7 +7,7 @@ import { Database, Loader2, CheckCircle2, WifiOff } from 'lucide-react'
 
 export function PowerSyncSplash({ children }: { children: React.ReactNode }) {
   const status = useStatus()
-  const [showSplash, setShowSplash] = useState(true)
+  const [showSplash, setShowSplash] = useState(false)
 
   useEffect(() => {
     // Hide splash if we have finished an initial sync OR if we are explicitly disconnected/offline

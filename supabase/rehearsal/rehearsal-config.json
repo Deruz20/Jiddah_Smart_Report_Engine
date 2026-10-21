@@ -1,0 +1,6 @@
+{
+  "api_url": "http://127.0.0.1:54321",
+  "db_url": "postgresql://postgres:postgres@127.0.0.1:54322/postgres",
+  "project_id": "rehearsal_isolated_supabase",
+  "jwt_secret": "super-secret-jwt-token-with-at-least-32-characters-long"
+}

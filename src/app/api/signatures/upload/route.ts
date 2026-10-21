@@ -5,6 +5,7 @@ import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { getAuthenticatedUser, recordActivity } from '@/lib/api-server'
 
 import { getDynamicSignatureSlots } from '@/utils/signatures'
+import { sniffImageMimeType } from '@/lib/image-sniff'
 const BUCKET = 'signatures'
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp']
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB limit for signatures
@@ -52,18 +53,30 @@ export async function POST(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'File must be smaller than 5MB', status: 400 }))
     }
 
-    const extension = file.name.split('.').pop()?.toLowerCase() ?? 'png'
+    const arrayBuffer = await file.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
+
+    // Content Sniffing: Verify genuine image magic bytes (CWE-434 defense)
+    const sniffedMime = sniffImageMimeType(buffer)
+    if (!sniffedMime || !ACCEPTED_TYPES.includes(sniffedMime)) {
+      return withCors(request, NextResponse.json({ error: 'File content verification failed: not a valid PNG, JPG, or WEBP image' }, { status: 400 }))
+    }
+
+    const mimeToExt: Record<string, string> = {
+      'image/png': 'png',
+      'image/jpeg': 'jpg',
+      'image/webp': 'webp',
+    }
+    const extension = mimeToExt[sniffedMime] || 'png'
     // Format: slot_key.extension to overwrite existing
     const filePath = `${slotKey}.${extension}`
 
     const supabaseAdmin = createAdminClient()
-    const arrayBuffer = await file.arrayBuffer()
-    const buffer = Buffer.from(arrayBuffer)
 
     const { error: uploadError } = await supabaseAdmin.storage.from(BUCKET).upload(filePath, buffer, {
       upsert: true,
       cacheControl: '3600', // 1 hour cache
-      contentType: file.type
+      contentType: sniffedMime
     })
 
     if (uploadError) {

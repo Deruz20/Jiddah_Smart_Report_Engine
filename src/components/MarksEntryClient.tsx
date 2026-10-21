@@ -76,7 +76,7 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
             AND (e.is_active IS NULL OR e.is_active = 1 OR e.is_active = 'true')
         `)
         
-        const mappedEnrollments: EnrollmentData[] = data.map((e: any) => ({
+        let mappedEnrollments: EnrollmentData[] = (data || []).map((e: any) => ({
           id: e.enrollment_id,
           student_id: e.student_id ?? null,
           name: e.name || 'Unknown Student',
@@ -88,6 +88,39 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
           theology_class_level: e.theology_class_level || null,
           theology_status: e.theology_class_arabic ? 'active' : 'inactive',
         }))
+
+        // Cloud fallback: if local database has 0 enrollments, fetch directly from Supabase
+        if (mappedEnrollments.length === 0) {
+          const supabase = createClient()
+          const { data: cloudData, error: cloudErr } = await supabase
+            .from('enrollments')
+            .select(`
+              id,
+              student_id,
+              students ( id, name, arabic_name, admission_number, is_archived ),
+              circular_classes ( id, class_name, section ),
+              theology_classes ( id, class_name_arabic, class_name_english )
+            `)
+            .eq('is_active', true)
+
+          if (!cloudErr && cloudData) {
+            mappedEnrollments = cloudData
+              .filter((e: any) => !e.students?.is_archived)
+              .map((e: any) => ({
+                id: e.id,
+                student_id: e.student_id ?? null,
+                name: e.students?.name || 'Unknown Student',
+                arabic_name: e.students?.arabic_name || null,
+                admission_number: e.students?.admission_number || '',
+                circular_class: e.circular_classes?.class_name || '',
+                section: e.circular_classes?.section || null,
+                theology_class_arabic: e.theology_classes?.class_name_arabic || null,
+                theology_class_level: e.theology_classes?.class_name_english || null,
+                theology_status: e.theology_classes?.class_name_arabic ? 'active' : 'inactive',
+              }))
+          }
+        }
+
         setEnrollments(mappedEnrollments)
       } catch (err: any) {
         if (err.message && err.message.includes('no such column')) {
@@ -106,79 +139,80 @@ export function MarksEntryClient({ terms }: MarksEntryClientProps) {
   // Load marks when enrollment or term changes
   useEffect(() => {
     if (!selectedEnrollmentId || !selectedTermId) {
-      setCircularMarks([])
-      setTheologyMarks([])
-      return
+      setCircularMarks([]);
+      setTheologyMarks([]);
+      return;
     }
 
     const loadMarks = async () => {
-      setIsLoading(true)
-      setError(null)
-      setSuccess(false)
+      setIsLoading(true);
+      setError(null);
+      setSuccess(false);
 
       try {
-        const selectedEnrollment = enrollments.find(e => e.id === selectedEnrollmentId)
-        const section = selectedEnrollment?.section || null
-        const className = selectedEnrollment?.circular_class || null
+        const supabase = createClient();
+        const selectedEnrollment = enrollments.find(e => e.id === selectedEnrollmentId);
 
-        const circular = await powerSync.getAll(`
-          SELECT 
-            s.id as subject_id, s.subject_name, 'true' as is_core,
-            cm.bot_score, cm.mot_score, cm.eot_score
-          FROM subjects s
-          LEFT JOIN circular_marks cm ON cm.subject_id = s.id AND cm.enrollment_id = ? AND cm.term_id = ?
-          WHERE s.curriculum = 'secular' AND (s.section = ? OR s.section = ? OR s.section IS NULL)
-        `, [selectedEnrollmentId, selectedTermId, section, className]);
+        const { data: secularSubjects } = await supabase
+          .from('circular_subjects')
+          .select('id, subject_name, section')
+          .order('subject_name');
 
-        let theology: any[] = []
-        if (selectedEnrollment?.theology_class_id) {
-          // Fetch theology marks from PowerSync local DB
-          const localMarks = await powerSync.getAll(`
-            SELECT subject_id, mot_score, eot_score FROM theology_marks WHERE enrollment_id = ? AND term_id = ?
-          `, [selectedEnrollmentId, selectedTermId]);
-          
-          const marksMap = new Map(localMarks.map(m => [m.subject_id, m]));
+        const { data: existingCircular } = await supabase
+          .from('circular_marks')
+          .select('subject_id, bot_score, mot_score, eot_score')
+          .eq('enrollment_id', selectedEnrollmentId)
+          .eq('term_id', selectedTermId);
 
-          // Fallback to fetch theology subjects from Supabase directly
-          const supabase = createClient();
-          const { data: theologyClassData } = await supabase
-            .from('theology_classes')
-            .select('level')
-            .eq('id', selectedEnrollment.theology_class_id)
-            .single();
-          
-          if (theologyClassData) {
-            const { data: theologySubjects } = await supabase
-              .from('theology_subjects')
-              .select('id, subject_name_arabic')
-              .eq('level', theologyClassData.level)
-              .order('sort_order', { ascending: true });
-            
-            if (theologySubjects) {
-              theology = theologySubjects.map(sub => {
-                const m = marksMap.get(sub.id) || {};
-                return {
-                  subject_id: sub.id,
-                  subject_name_arabic: sub.subject_name_arabic,
-                  mot_score: m.mot_score ?? null,
-                  eot_score: m.eot_score ?? null
-                };
-              });
-            }
-          }
+        const circMap = new Map((existingCircular || []).map(m => [m.subject_id, m]));
+        const circular = (secularSubjects || []).map(s => {
+          const m = circMap.get(s.id);
+          return {
+            subject_id: s.id,
+            subject_name: s.subject_name,
+            is_core: true,
+            bot_score: m?.bot_score ?? null,
+            mot_score: m?.mot_score ?? null,
+            eot_score: m?.eot_score ?? null
+          };
+        });
+
+        let theology: any[] = [];
+        const { data: existingTheology } = await supabase
+          .from('theology_marks')
+          .select('subject_id, mot_score, eot_score')
+          .eq('enrollment_id', selectedEnrollmentId)
+          .eq('term_id', selectedTermId);
+
+        const theoMap = new Map((existingTheology || []).map(m => [m.subject_id, m]));
+        const { data: theoSubjects } = await supabase
+          .from('theology_subjects')
+          .select('id, subject_name_arabic')
+          .order('sort_order', { ascending: true });
+
+        if (theoSubjects && theoSubjects.length > 0) {
+          theology = theoSubjects.map(sub => {
+            const m = theoMap.get(sub.id) || {};
+            return {
+              subject_id: sub.id,
+              subject_name_arabic: sub.subject_name_arabic,
+              mot_score: m.mot_score ?? null,
+              eot_score: m.eot_score ?? null
+            };
+          });
         }
 
-        setCircularMarks(circular as any)
-        setTheologyMarks(theology as any)
+        setCircularMarks(circular as any);
+        setTheologyMarks(theology as any);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load marks')
+        setError(err instanceof Error ? err.message : 'Failed to load marks');
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
-    }
+    };
 
-    loadMarks()
-  }, [selectedEnrollmentId, selectedTermId, powerSync])
+    loadMarks();
+  }, [selectedEnrollmentId, selectedTermId]);
 
   const handleSaveMarks = async (event?: React.FormEvent<HTMLFormElement>) => {
     if (event) event.preventDefault()

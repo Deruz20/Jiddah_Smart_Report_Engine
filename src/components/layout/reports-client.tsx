@@ -4,6 +4,7 @@ import React, { useState, useMemo } from "react";
 import Link from 'next/link';
 import { FileText, Download, Printer, RefreshCw, Check, ChevronDown, Eye, Zap, BarChart2, Search } from "lucide-react";
 import { HeroSection } from "@/components/HeroSection";
+import { PageState } from "@/components/PageState";
 
 interface ReportsClientProps {
   initialHistory: any[];

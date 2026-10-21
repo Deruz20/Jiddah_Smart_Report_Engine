@@ -77,7 +77,8 @@ export async function POST(req: Request) {
       .insert([
         {
           id: userId,
-          email: String(invite.email).trim().toLowerCase(),
+          auth_user_id: userId,
+          email: invite.email,
           role: finalRole,
           subject: finalSubject,
           name: finalName,

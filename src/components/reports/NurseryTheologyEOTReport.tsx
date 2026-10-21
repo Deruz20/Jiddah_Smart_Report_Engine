@@ -421,13 +421,13 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
           <div className="remark-box">
             <span className="remark-label">ملاحظات مرب الفصل</span>
             <div style={{ height: '40px' }}>
-              <span style={{ color: 'var(--data-teal)', fontStyle: 'italic', fontWeight: 900, fontSize: '16px', direction: 'rtl' }}>{getTheologyComment(reportData?.theology?.total ?? null)}</span>
+              <span style={{ color: 'var(--data-teal)', fontStyle: 'italic', fontWeight: 900, fontSize: '16px', direction: 'rtl' }}>{getTheologyComment(reportData?.theology?.total ?? null, reportData?.student?.gender, reportData?.settings?.theology_remarks)}</span>
             </div>
           </div>
           <div className="remark-box">
             <span className="remark-label">ملاحظات مدير المدرسة</span>
             <div style={{ height: '40px' }}>
-              <span style={{ color: 'var(--data-teal)', fontStyle: 'italic', fontWeight: 900, fontSize: '16px', direction: 'rtl' }}>{getTheologyComment(reportData?.theology?.total ?? null)}</span>
+              <span style={{ color: 'var(--data-teal)', fontStyle: 'italic', fontWeight: 900, fontSize: '16px', direction: 'rtl' }}>{getTheologyComment(reportData?.theology?.total ?? null, reportData?.student?.gender, reportData?.settings?.theology_remarks)}</span>
             </div>
           </div>
         </div>

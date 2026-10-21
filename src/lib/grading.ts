@@ -3,7 +3,7 @@ export type Division = 'I' | 'II' | 'III' | 'IV' | 'U'
 export type NurseryGrade = 'A' | 'B' | 'C' | 'D' | 'E'
 export type PromotionStatus = 'Promote' | 'Probation' | 'Repeat' | 'Try Next Class'
 
-// UNEB subject grade (1-9) from mark
+// UNEB subject grade (1-9) from mark (Secular)
 export function getSubjectGradeNumber(mark: number): number {
   if (mark >= 85) return 1
   if (mark >= 75) return 2
@@ -30,6 +30,57 @@ export function getGradeDisplay(gradeNum: number): GradeCode {
     9: 'F9',
   }
   return map[gradeNum] ?? 'F9'
+}
+
+/**
+ * Official Theology Grading Scale (2026 Standards):
+ * 85-100: D1 (1)
+ * 75-84:  D2 (2)
+ * 65-74:  C3 (3)
+ * 60-64:  C4 (4)
+ * 55-59:  C5 (5)
+ * 50-54:  C6 (6)
+ * 40-49:  P7 (7)
+ * 30-39:  P8 (8)
+ * 0-29:   F9 (9)
+ */
+export function getTheologyGradeNumber(
+  mark: number,
+  customBands?: { min: number; max: number; grade: string }[]
+): number {
+  if (customBands && customBands.length > 0) {
+    for (let i = 0; i < customBands.length; i++) {
+      const b = customBands[i];
+      if (mark >= b.min && mark <= b.max) {
+        const num = parseInt(String(b.grade).replace(/\D/g, ''), 10);
+        return !isNaN(num) ? num : i + 1;
+      }
+    }
+  }
+
+  if (mark >= 85) return 1
+  if (mark >= 75) return 2
+  if (mark >= 65) return 3
+  if (mark >= 60) return 4
+  if (mark >= 55) return 5
+  if (mark >= 50) return 6
+  if (mark >= 40) return 7
+  if (mark >= 30) return 8
+  return 9
+}
+
+export function getTheologyGradeDisplay(
+  mark: number,
+  customBands?: { min: number; max: number; grade: string }[]
+): GradeCode {
+  if (customBands && customBands.length > 0) {
+    for (const b of customBands) {
+      if (mark >= b.min && mark <= b.max) {
+        return (b.grade as GradeCode) || 'F9'
+      }
+    }
+  }
+  return getGradeDisplay(getTheologyGradeNumber(mark))
 }
 
 export const CORE_SUBJECTS_BY_SECTION: Record<string, string[][]> = {
@@ -117,9 +168,9 @@ export function calculateAggregate(
 }
 
 // Theology aggregate from 4 subject scores
-export function calculateTheologyAggregate(scores: number[]): number | null {
+export function calculateTheologyAggregate(scores: number[], customBands?: any[]): number | null {
   if (scores.length !== 4 || scores.some((s) => s == null)) return null
-  return scores.reduce((sum, s) => sum + getSubjectGradeNumber(s), 0)
+  return scores.reduce((sum, s) => sum + getTheologyGradeNumber(s, customBands), 0)
 }
 
 // Division from aggregate (Roman numerals)
@@ -224,11 +275,49 @@ export function getNurseryTeacherComment(grades: string[]): string {
   return 'Needs significant support at home.'
 }
 
-export function getTheologyComment(total: number | null): string {
-  if (total == null) return ''
-  if (total >= 360) return 'ممتاز جداً. استمر في التفوق!'
-  if (total >= 320) return 'جيد جداً. واصل الاجتهاد.'
-  if (total >= 280) return 'جيد. يحتاج إلى مزيد من الجهد.'
-  if (total >= 240) return 'مقبول. عليك الاجتهاد أكثر.'
-  return 'ضعيف. يحتاج إلى دعم إضافي.'
+/**
+ * Official Theology Performance Remarks (الملاحظات from 2026 PDF specification):
+ * Evaluates student total or percentage score, applying gender-sensitive Arabic remarks.
+ * Configurable via Settings page (theology_remarks).
+ */
+export function getTheologyComment(
+  scoreOrTotal: number | null,
+  gender?: string | null,
+  customRemarks?: { level: string; boys: string; girls: string }[]
+): string {
+  if (scoreOrTotal == null) return ''
+  // If total score (> 100), assume 4 subjects to get average percentage
+  const avg = scoreOrTotal > 100 ? scoreOrTotal / 4 : scoreOrTotal
+  const isGirl = gender ? ['female', 'f', 'girl', 'بنت', 'أنثى'].includes(gender.trim().toLowerCase()) : false
+
+  const remarks = customRemarks && customRemarks.length > 0 ? customRemarks : [
+    { level: 'ممتاز', boys: 'جهد مميز،شكرا', girls: 'جهد مميز،شكرا' },
+    { level: 'جيد جدا', boys: 'بقيت خطوة إلى الامتياز', girls: 'بقيت خطوة إلى الامتياز' },
+    { level: 'جيد', boys: 'أنت قادر على الأفضل', girls: 'أنتِ قادرة على الأفضل' },
+    { level: 'مقبول', boys: 'أنت قادر على الأفضل', girls: 'أنتِ قادرة على الأفضل' },
+    { level: 'ضعيف', boys: 'أنت قادر على الأفضل', girls: 'أنتِ قادرة على الأفضل' },
+  ]
+
+  let targetLevel = 'ضعيف'
+  if (avg >= 85) targetLevel = 'ممتاز'
+  else if (avg >= 75) targetLevel = 'جيد جدا'
+  else if (avg >= 60) targetLevel = 'جيد'
+  else if (avg >= 50) targetLevel = 'مقبول'
+  else targetLevel = 'ضعيف'
+
+  const normalizedTarget = targetLevel.trim()
+  const match =
+    remarks.find(r => r.level.trim() === normalizedTarget) ||
+    remarks.find(r => r.level.replace(/\s+/g, '') === normalizedTarget.replace(/\s+/g, '')) ||
+    remarks.find(r => {
+      if (normalizedTarget === 'جيد') return r.level.includes('جيد') && !r.level.includes('جدا')
+      return r.level.includes(normalizedTarget)
+    })
+  if (match) {
+    return isGirl ? (match.girls || match.boys) : (match.boys || match.girls)
+  }
+
+  if (targetLevel === 'ممتاز') return 'جهد مميز،شكرا'
+  if (targetLevel === 'جيد جدا') return 'بقيت خطوة إلى الامتياز'
+  return isGirl ? 'أنتِ قادرة على الأفضل' : 'أنت قادر على الأفضل'
 }

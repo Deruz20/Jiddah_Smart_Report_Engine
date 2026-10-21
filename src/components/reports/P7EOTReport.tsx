@@ -698,7 +698,9 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
                   <span style={{ fontWeight: 700 }}>ملاحظة مشرف الفصل: </span>
                   <span style={{ fontStyle: 'italic', color: '#334155', fontWeight: 600 }}>
                     {getTheologyComment(
-                      reportData?.theology?.eot_total ?? null
+                      reportData?.theology?.eot_total ?? null,
+                      reportData?.student?.gender,
+                      reportData?.settings?.theology_remarks
                     )}
                   </span>
                 </div>

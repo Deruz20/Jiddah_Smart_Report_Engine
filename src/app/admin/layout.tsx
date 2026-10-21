@@ -147,7 +147,7 @@ export default function AdminLayout({
             {children}
           </div>
         </div>
-        {!isReportsPage && <AppFooter />}
+        <AppFooter />
         <MobileBottomNav />
         <ProductTour isOpen={showTour} onClose={handleCloseTour} role={role} />
       </SidebarInset>

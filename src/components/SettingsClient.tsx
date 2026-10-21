@@ -14,7 +14,12 @@ import { TeacherInitialsConfig } from "./TeacherInitialsConfig"
 import { RankingSettingsPreview } from "@/components/reports/RankingSettingsPreview"
 import { getContrastRatio } from "@/lib/contrast-guard"
 import { RankingPreferences } from "@/lib/ranking"
-import { DEFAULT_GRADING_BANDS } from "@/lib/school-settings-helper"
+import {
+  DEFAULT_GRADING_BANDS,
+  DEFAULT_THEOLOGY_GRADING_BANDS,
+  DEFAULT_THEOLOGY_REMARKS,
+  type TheologyRemarkItem,
+} from "@/lib/school-settings-helper"
 import {
   fetchSchoolSettingsCached,
   getStoredThemeMode,
@@ -92,6 +97,19 @@ export default function SettingsClient({ terms }: { terms: Term[] }) {
       remark: b.remark,
     }))
   )
+
+  const [gradingCurriculumTab, setGradingCurriculumTab] = useState<'secular' | 'theology'>('secular')
+
+  const [theologyGradingBands, setTheologyGradingBands] = useState<GradingBandItem[]>(
+    DEFAULT_THEOLOGY_GRADING_BANDS.map((b) => ({
+      grade: b.grade,
+      min: b.min,
+      max: b.max,
+      remark: b.remark,
+    }))
+  )
+
+  const [theologyRemarks, setTheologyRemarks] = useState<TheologyRemarkItem[]>(DEFAULT_THEOLOGY_REMARKS)
 
   const [rankingPrefs, setRankingPrefs] = useState<RankingPreferences>({
     method: 'standard',
@@ -186,6 +204,25 @@ export default function SettingsClient({ terms }: { terms: Term[] }) {
           }))
         )
       }
+      if (Array.isArray(payload.theology_grading_scale) && payload.theology_grading_scale.length > 0) {
+        setTheologyGradingBands(
+          payload.theology_grading_scale.map((item: any) => ({
+            grade: String(item.grade || ''),
+            min: Number(item.min ?? 0),
+            max: Number(item.max ?? 100),
+            remark: String(item.remark || ''),
+          }))
+        )
+      }
+      if (Array.isArray(payload.theology_remarks) && payload.theology_remarks.length > 0) {
+        setTheologyRemarks(
+          payload.theology_remarks.map((item: any) => ({
+            level: String(item.level || ''),
+            boys: String(item.boys || ''),
+            girls: String(item.girls || ''),
+          }))
+        )
+      }
       if (payload.ranking_preferences && typeof payload.ranking_preferences === 'object') {
         setRankingPrefs((prev) => ({ ...prev, ...payload.ranking_preferences }))
       }
@@ -245,6 +282,8 @@ export default function SettingsClient({ terms }: { terms: Term[] }) {
       theme_color: currentForm.theme_color,
       report_theme_preset: currentForm.report_theme_preset,
       grading_scale: gradingBands,
+      theology_grading_scale: theologyGradingBands,
+      theology_remarks: theologyRemarks,
       ranking_preferences: rankingPrefs,
       print_preferences: printPrefs,
       ...extraPayload,
@@ -527,7 +566,7 @@ export default function SettingsClient({ terms }: { terms: Term[] }) {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h2 className="text-lg font-bold text-stone-900">Grading Standards & Remarks</h2>
-                <p className="text-xs text-stone-600 mt-0.5">Configure grade boundaries, subject remarks, and class ranking rules.</p>
+                <p className="text-xs text-stone-600 mt-0.5">Configure grade boundaries, subject remarks, and class ranking rules for both Secular and Theology curricula.</p>
               </div>
               <button
                 type="button"
@@ -539,78 +578,321 @@ export default function SettingsClient({ terms }: { terms: Term[] }) {
               </button>
             </div>
 
-            {/* Editable Grading Scale Table */}
-            <div className="rounded-2xl border border-stone-200 overflow-x-auto bg-white shadow-sm">
-              <div className="px-4 py-3 bg-[#F8FAFC] border-b border-stone-200 flex items-center justify-between">
-                <span className="text-xs font-bold text-stone-800 uppercase tracking-wider">Official Report Card Grading Scale (D1 – F9)</span>
-                <span className="text-[11px] text-stone-500">Reflected directly in report PDF grading keys</span>
-              </div>
-              <table className="w-full text-left text-xs tabular-nums">
-                <thead className="bg-stone-50 border-b border-stone-200 text-stone-600 uppercase text-[10px] font-bold">
-                  <tr>
-                    <th className="px-4 py-2.5 w-20">Grade</th>
-                    <th className="px-4 py-2.5 w-28">Min Score</th>
-                    <th className="px-4 py-2.5 w-28">Max Score</th>
-                    <th className="px-4 py-2.5">Default Teacher Remark</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-stone-100">
-                  {gradingBands.map((band, idx) => (
-                    <tr key={band.grade} className="hover:bg-stone-50/70">
-                      <td className="px-4 py-2 font-bold text-stone-900">{band.grade}</td>
-                      <td className="px-4 py-2">
-                        <input
-                          type="number"
-                          min={0}
-                          max={100}
-                          value={band.min}
-                          onChange={(e) => {
-                            const next = [...gradingBands]
-                            next[idx] = { ...next[idx], min: Number(e.target.value) }
-                            setGradingBands(next)
-                          }}
-                          className="w-20 min-h-[38px] px-2.5 py-1 rounded-lg border border-stone-200 text-xs font-mono text-stone-800 bg-white"
-                        />
-                      </td>
-                      <td className="px-4 py-2">
-                        <input
-                          type="number"
-                          min={0}
-                          max={100}
-                          value={band.max}
-                          onChange={(e) => {
-                            const next = [...gradingBands]
-                            next[idx] = { ...next[idx], max: Number(e.target.value) }
-                            setGradingBands(next)
-                          }}
-                          className="w-20 min-h-[38px] px-2.5 py-1 rounded-lg border border-stone-200 text-xs font-mono text-stone-800 bg-white"
-                        />
-                      </td>
-                      <td className="px-4 py-2">
-                        <input
-                          type="text"
-                          value={band.remark}
-                          onChange={(e) => {
-                            const next = [...gradingBands]
-                            next[idx] = { ...next[idx], remark: e.target.value }
-                            setGradingBands(next)
-                          }}
-                          className="w-full min-h-[38px] px-3 py-1 rounded-lg border border-stone-200 text-xs text-stone-800 bg-white"
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            {/* Curriculum Sub-Tab Switcher */}
+            <div className="flex items-center gap-2 p-1 bg-[#F1F5F9] border border-stone-200 rounded-xl w-fit">
+              <button
+                type="button"
+                onClick={() => setGradingCurriculumTab('secular')}
+                className={`min-h-[38px] px-4 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  gradingCurriculumTab === 'secular'
+                    ? 'bg-[#059669] text-white shadow-xs'
+                    : 'text-stone-600 hover:text-stone-900'
+                }`}
+              >
+                Secular (UNEB) Standards
+              </button>
+              <button
+                type="button"
+                onClick={() => setGradingCurriculumTab('theology')}
+                className={`min-h-[38px] px-4 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                  gradingCurriculumTab === 'theology'
+                    ? 'bg-[#059669] text-white shadow-xs'
+                    : 'text-stone-600 hover:text-stone-900'
+                }`}
+              >
+                <span>Theology (Islamic Studies) Standards</span>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                  gradingCurriculumTab === 'theology' ? 'bg-white text-emerald-800' : 'bg-emerald-100 text-emerald-800'
+                }`}>
+                  2026 PDF
+                </span>
+              </button>
             </div>
 
-            <div className="pt-2">
-              <RankingSettingsPreview
-                initialPreferences={rankingPrefs}
-                onPreferencesChange={(prefs) => setRankingPrefs(prefs)}
-                isStandalone={true}
-              />
-            </div>
+            {gradingCurriculumTab === 'secular' ? (
+              <>
+                {/* Editable Secular Grading Scale Table */}
+                <div className="rounded-2xl border border-stone-200 overflow-x-auto bg-white shadow-sm">
+                  <div className="px-4 py-3 bg-[#F8FAFC] border-b border-stone-200 flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <span className="text-xs font-bold text-stone-800 uppercase tracking-wider block">Official Secular Report Card Grading Scale (D1 – F9)</span>
+                      <span className="text-[11px] text-stone-500">Reflected directly in UNEB report PDF grading keys</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setGradingBands(DEFAULT_GRADING_BANDS.map(b => ({ ...b })))
+                        toast.success("Secular grading scale reset to UNEB defaults")
+                      }}
+                      className="text-xs font-bold text-[#059669] hover:underline cursor-pointer"
+                    >
+                      Reset to UNEB Defaults
+                    </button>
+                  </div>
+                  <table className="w-full text-left text-xs tabular-nums">
+                    <thead className="bg-stone-50 border-b border-stone-200 text-stone-600 uppercase text-[10px] font-bold">
+                      <tr>
+                        <th className="px-4 py-2.5 w-20">Grade</th>
+                        <th className="px-4 py-2.5 w-28">Min Score</th>
+                        <th className="px-4 py-2.5 w-28">Max Score</th>
+                        <th className="px-4 py-2.5">Default Teacher Remark</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-stone-100">
+                      {gradingBands.map((band, idx) => (
+                        <tr key={band.grade} className="hover:bg-stone-50/70">
+                          <td className="px-4 py-2 font-bold text-stone-900">{band.grade}</td>
+                          <td className="px-4 py-2">
+                            <input
+                              type="number"
+                              min={0}
+                              max={100}
+                              value={band.min}
+                              onChange={(e) => {
+                                const next = [...gradingBands]
+                                next[idx] = { ...next[idx], min: Number(e.target.value) }
+                                setGradingBands(next)
+                              }}
+                              className="w-20 min-h-[38px] px-2.5 py-1 rounded-lg border border-stone-200 text-xs font-mono text-stone-800 bg-white"
+                            />
+                          </td>
+                          <td className="px-4 py-2">
+                            <input
+                              type="number"
+                              min={0}
+                              max={100}
+                              value={band.max}
+                              onChange={(e) => {
+                                const next = [...gradingBands]
+                                next[idx] = { ...next[idx], max: Number(e.target.value) }
+                                setGradingBands(next)
+                              }}
+                              className="w-20 min-h-[38px] px-2.5 py-1 rounded-lg border border-stone-200 text-xs font-mono text-stone-800 bg-white"
+                            />
+                          </td>
+                          <td className="px-4 py-2">
+                            <input
+                              type="text"
+                              value={band.remark}
+                              onChange={(e) => {
+                                const next = [...gradingBands]
+                                next[idx] = { ...next[idx], remark: e.target.value }
+                                setGradingBands(next)
+                              }}
+                              className="w-full min-h-[38px] px-3 py-1 rounded-lg border border-stone-200 text-xs text-stone-800 bg-white"
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="pt-2">
+                  <RankingSettingsPreview
+                    initialPreferences={rankingPrefs}
+                    onPreferencesChange={(prefs) => setRankingPrefs(prefs)}
+                    isStandalone={true}
+                  />
+                </div>
+              </>
+            ) : (
+              <div className="space-y-6">
+                {/* PDF Defaults Banner */}
+                <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200 text-emerald-950 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-[#059669] shrink-0" />
+                      <span className="text-xs font-bold uppercase tracking-wider text-emerald-900">
+                        2026 Theology Standards & Gender Remarks (Active Defaults)
+                      </span>
+                    </div>
+                    <p className="text-xs text-emerald-800 mt-1">
+                      Exact scale and Arabic remarks from the official 2026 specification PDFs. Remarks are automatically selected on all Theology report cards based on student total mark and student gender (Boys / Girls).
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTheologyGradingBands(
+                          DEFAULT_THEOLOGY_GRADING_BANDS.map((b) => ({
+                            grade: b.grade,
+                            min: b.min,
+                            max: b.max,
+                            remark: b.remark,
+                          }))
+                        )
+                        setTheologyRemarks(DEFAULT_THEOLOGY_REMARKS.map((r) => ({ ...r })))
+                        toast.success("Theology scale and remarks reset to 2026 PDF defaults")
+                      }}
+                      className="min-h-[38px] px-3 py-1.5 rounded-xl bg-white border border-emerald-300 text-emerald-900 text-xs font-bold hover:bg-emerald-100/50 transition cursor-pointer"
+                    >
+                      Reset All to PDF Defaults
+                    </button>
+                  </div>
+                </div>
+
+                {/* Theology Grading Scale 2026 (D1 – F9) Table */}
+                <div className="rounded-2xl border border-stone-200 overflow-x-auto bg-white shadow-sm">
+                  <div className="px-4 py-3 bg-[#F8FAFC] border-b border-stone-200 flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <span className="text-xs font-bold text-stone-800 uppercase tracking-wider block">
+                        Theology Grading Scale 2026 (D1 – F9)
+                      </span>
+                      <span className="text-[11px] text-stone-500">
+                        85-100: D1 • 75-84: D2 • 65-74: C3 • 60-64: C4 • 55-59: C5 • 50-54: C6 • 40-49: P7 • 30-39: P8 • 0-29: F9
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTheologyGradingBands(
+                          DEFAULT_THEOLOGY_GRADING_BANDS.map((b) => ({
+                            grade: b.grade,
+                            min: b.min,
+                            max: b.max,
+                            remark: b.remark,
+                          }))
+                        )
+                        toast.success("Theology grading scale reset to 2026 PDF defaults")
+                      }}
+                      className="text-xs font-bold text-[#059669] hover:underline cursor-pointer"
+                    >
+                      Reset Scale to Defaults
+                    </button>
+                  </div>
+                  <table className="w-full text-left text-xs tabular-nums">
+                    <thead className="bg-stone-50 border-b border-stone-200 text-stone-600 uppercase text-[10px] font-bold">
+                      <tr>
+                        <th className="px-4 py-2.5 w-20">Grade</th>
+                        <th className="px-4 py-2.5 w-28">Min Score</th>
+                        <th className="px-4 py-2.5 w-28">Max Score</th>
+                        <th className="px-4 py-2.5">Arabic Grade Descriptor (الوصف التقديري)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-stone-100">
+                      {theologyGradingBands.map((band, idx) => (
+                        <tr key={band.grade} className="hover:bg-stone-50/70">
+                          <td className="px-4 py-2 font-bold text-stone-900">{band.grade}</td>
+                          <td className="px-4 py-2">
+                            <input
+                              type="number"
+                              min={0}
+                              max={100}
+                              value={band.min}
+                              onChange={(e) => {
+                                const next = [...theologyGradingBands]
+                                next[idx] = { ...next[idx], min: Number(e.target.value) }
+                                setTheologyGradingBands(next)
+                              }}
+                              className="w-20 min-h-[38px] px-2.5 py-1 rounded-lg border border-stone-200 text-xs font-mono text-stone-800 bg-white"
+                            />
+                          </td>
+                          <td className="px-4 py-2">
+                            <input
+                              type="number"
+                              min={0}
+                              max={100}
+                              value={band.max}
+                              onChange={(e) => {
+                                const next = [...theologyGradingBands]
+                                next[idx] = { ...next[idx], max: Number(e.target.value) }
+                                setTheologyGradingBands(next)
+                              }}
+                              className="w-20 min-h-[38px] px-2.5 py-1 rounded-lg border border-stone-200 text-xs font-mono text-stone-800 bg-white"
+                            />
+                          </td>
+                          <td className="px-4 py-2">
+                            <input
+                              type="text"
+                              value={band.remark}
+                              onChange={(e) => {
+                                const next = [...theologyGradingBands]
+                                next[idx] = { ...next[idx], remark: e.target.value }
+                                setTheologyGradingBands(next)
+                              }}
+                              dir="rtl"
+                              className="w-full min-h-[38px] px-3 py-1 rounded-lg border border-stone-200 text-xs text-stone-800 bg-white font-arabic text-right"
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Theology Performance Remarks (الملاحظات) Table */}
+                <div className="rounded-2xl border border-stone-200 overflow-x-auto bg-white shadow-sm">
+                  <div className="px-4 py-3 bg-[#F8FAFC] border-b border-stone-200 flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <span className="text-xs font-bold text-stone-800 uppercase tracking-wider block">
+                        Theology Performance Remarks (الملاحظات الرسمية حسب الجنس)
+                      </span>
+                      <span className="text-[11px] text-stone-500">
+                        Gender-specific remarks selected from student total mark and student gender
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTheologyRemarks(DEFAULT_THEOLOGY_REMARKS.map((r) => ({ ...r })))
+                        toast.success("Theology remarks reset to 2026 PDF defaults")
+                      }}
+                      className="text-xs font-bold text-[#059669] hover:underline cursor-pointer"
+                    >
+                      Reset Remarks to Defaults
+                    </button>
+                  </div>
+                  <table className="w-full text-left text-xs tabular-nums">
+                    <thead className="bg-stone-50 border-b border-stone-200 text-stone-600 uppercase text-[10px] font-bold">
+                      <tr>
+                        <th className="px-4 py-2.5 w-32">المستوى (Level)</th>
+                        <th className="px-4 py-2.5">ملاحظات البنين (Boys Remark)</th>
+                        <th className="px-4 py-2.5">ملاحظات البنات (Girls Remark)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-stone-100 font-arabic text-right" dir="rtl">
+                      {theologyRemarks.map((item, idx) => (
+                        <tr key={item.level} className="hover:bg-stone-50/70">
+                          <td className="px-4 py-2 font-bold text-stone-900 whitespace-nowrap text-right">
+                            <span className="inline-block px-2.5 py-1 rounded-lg bg-stone-100 text-stone-800 text-xs">
+                              {item.level}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2">
+                            <input
+                              type="text"
+                              value={item.boys}
+                              onChange={(e) => {
+                                const next = [...theologyRemarks]
+                                next[idx] = { ...next[idx], boys: e.target.value }
+                                setTheologyRemarks(next)
+                              }}
+                              dir="rtl"
+                              className="w-full min-h-[38px] px-3 py-1 rounded-lg border border-stone-200 text-xs text-stone-800 bg-white font-arabic text-right"
+                            />
+                          </td>
+                          <td className="px-4 py-2">
+                            <input
+                              type="text"
+                              value={item.girls}
+                              onChange={(e) => {
+                                const next = [...theologyRemarks]
+                                next[idx] = { ...next[idx], girls: e.target.value }
+                                setTheologyRemarks(next)
+                              }}
+                              dir="rtl"
+                              className="w-full min-h-[38px] px-3 py-1 rounded-lg border border-stone-200 text-xs text-stone-800 bg-white font-arabic text-right"
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         )
 
@@ -1258,6 +1540,7 @@ export default function SettingsClient({ terms }: { terms: Term[] }) {
                   onClick={(e) => {
                     e.preventDefault()
                     reset(initialSchoolSettings || defaultSchoolValues)
+                    fetchSchoolSettings()
                     toast.info("Changes discarded")
                   }}
                   className="min-h-[44px] px-5 py-2.5 rounded-xl border border-stone-200 text-stone-700 text-xs font-semibold hover:bg-stone-50 transition-all cursor-pointer text-center"

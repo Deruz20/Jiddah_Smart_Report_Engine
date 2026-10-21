@@ -12,7 +12,7 @@ export function StudentRegistrationContainer() {
     <div className="space-y-4">
       {/* Switcher Header */}
       <div className="bg-white/80 backdrop-blur border border-stone-200/80 rounded-2xl p-2.5 flex items-center justify-between shadow-xs">
-        <div className="flex items-center gap-1.5 p-1 bg-stone-100 rounded-xl">
+        <div className="flex items-center gap-1.5 p-1 bg-stone-100 rounded-xl overflow-x-auto no-scrollbar max-w-full">
           <button
             type="button"
             onClick={() => setActiveTab('current')}

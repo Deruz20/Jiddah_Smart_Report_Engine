@@ -399,7 +399,9 @@ export function TheologyCard({ reportData }: { reportData: any }) {
             <div className="tc-footer">
               <div className="tc-comment">
                 <span className="tc-comment-label">تقرير مرب الفصل :</span>
-                <div className="tc-comment-field">{getTheologyComment(totalScore)}</div>
+                <div className="tc-comment-field">
+                  {getTheologyComment(totalScore, reportData?.student?.gender, reportData?.settings?.theology_remarks)}
+                </div>
               </div>
               <div className="tc-stamp">
                 <span>الختم الرسمي</span>

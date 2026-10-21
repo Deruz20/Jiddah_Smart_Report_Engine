@@ -38,6 +38,8 @@ const allowedJsonKeys = [
   'ranking_preferences',
   'report_overlays',
   'grading_scale',
+  'theology_grading_scale',
+  'theology_remarks',
   'print_preferences',
 ]
 
@@ -236,6 +238,32 @@ export async function PATCH(request: NextRequest) {
         }
       } catch {
         // Continue — full grading_scale is also persisted in school_customization_config
+      }
+    }
+
+    if (Array.isArray(jsonCustomizationPayload.theology_grading_scale) && jsonCustomizationPayload.theology_grading_scale.length > 0) {
+      try {
+        for (const rule of jsonCustomizationPayload.theology_grading_scale) {
+          if (rule && typeof rule.grade === 'string' && typeof rule.min === 'number' && typeof rule.max === 'number') {
+            await supabase.from('grading_criteria').upsert(
+              [
+                {
+                  id: rule.id || undefined,
+                  curriculum: 'theology',
+                  class_id: rule.class_id || null,
+                  metric_type: rule.metric_type || 'subject_score',
+                  min_value: Number(rule.min),
+                  max_value: Number(rule.max),
+                  output_type: 'grade_label',
+                  output_text: String(rule.grade),
+                },
+              ],
+              { onConflict: 'id' }
+            )
+          }
+        }
+      } catch {
+        // Continue
       }
     }
 

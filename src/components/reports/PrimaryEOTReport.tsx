@@ -698,8 +698,8 @@ export default function PrimaryEOTReport({ reportData }: any) {
                       <div className="theology-notes">
                         <div className="t-note-row">
                           <span className="t-note-lbl">ملاحظة مشرف الفصل:</span>
-                          <div className="t-note-val" style={{ color: remarkColor(getTheologyComment(reportData?.theology?.eot_total ?? null)) }}>
-                            {getTheologyComment(reportData?.theology?.eot_total ?? null)}
+                          <div className="t-note-val" style={{ color: remarkColor(getTheologyComment(reportData?.theology?.eot_total ?? null, reportData?.student?.gender, reportData?.settings?.theology_remarks)) }}>
+                            {getTheologyComment(reportData?.theology?.eot_total ?? null, reportData?.student?.gender, reportData?.settings?.theology_remarks)}
                           </div>
                         </div>
                         <div className="t-note-row">

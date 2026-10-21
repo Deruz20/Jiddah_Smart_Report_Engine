@@ -131,7 +131,7 @@ export function StudentRegistrationPrototype() {
   };
 
   return (
-    <div className="bg-white/95 backdrop-blur-xl border border-stone-200 shadow-xl rounded-2xl p-6 relative overflow-hidden flex flex-col h-full text-stone-800">
+    <div className="bg-white/95 backdrop-blur-xl border border-stone-200 shadow-xl rounded-2xl p-3.5 sm:p-6 relative overflow-hidden flex flex-col h-full text-stone-800">
       {/* Top Banner: Prototype Badge */}
       <div className="flex items-center justify-between border-b border-stone-200 pb-4 mb-5">
         <div>
@@ -156,7 +156,7 @@ export function StudentRegistrationPrototype() {
 
       {/* Stepper Tabs */}
       {!isSimulatedSubmitted && (
-        <div className="grid grid-cols-4 gap-2 mb-6 text-xs font-semibold">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar sm:grid sm:grid-cols-4 sm:gap-2 mb-4 sm:mb-6 text-xs font-semibold">
           {[
             { s: 1, label: '1. Core Identity' },
             { s: 2, label: '2. Guardian & Sibling' },
@@ -181,7 +181,7 @@ export function StudentRegistrationPrototype() {
       )}
 
       {/* Main Step Content */}
-      <div className="flex-1 overflow-y-auto pr-1">
+      <div className="flex-1 overflow-y-auto pr-1 no-scrollbar">
         {isSimulatedSubmitted ? (
           <div className="p-8 text-center space-y-4 max-w-md mx-auto">
             <div className="w-16 h-16 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto shadow-sm">

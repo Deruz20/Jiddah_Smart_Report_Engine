@@ -574,7 +574,7 @@ export function CreateStudentWizard() {
   ];
 
   return (
-    <div className="bg-white/75 backdrop-blur-xl border border-white/50 shadow-xl shadow-slate-200/60 rounded-2xl p-6 relative overflow-hidden flex flex-col h-full">
+    <div className="bg-white/75 backdrop-blur-xl border border-white/50 shadow-xl shadow-slate-200/60 rounded-2xl p-3.5 sm:p-6 relative overflow-hidden flex flex-col h-full">
       {/* Background blob */}
       <div className="absolute top-0 right-0 -mr-24 -mt-24 w-80 h-80 bg-gradient-to-br from-emerald-100/50 to-orange-50/40 rounded-full blur-3xl pointer-events-none" />
 

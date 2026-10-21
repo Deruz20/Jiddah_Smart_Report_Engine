@@ -4,6 +4,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import {
   getSubjectGradeNumber,
   getGradeDisplay,
+  getTheologyGradeNumber,
+  getTheologyGradeDisplay,
   getSubjectRemark,
   getTheologySubjectRemark,
   getNurseryGrade,
@@ -107,7 +109,7 @@ export async function POST(request: NextRequest) {
         theology_class_id,
         circular_classes ( id, class_name, section ),
         theology_classes ( id, class_name_arabic, class_name_english, level ),
-        students ( id, name, arabic_name, admission_number, created_at, is_muslim )
+        students ( id, name, arabic_name, admission_number, created_at, is_muslim, gender )
       `,
       'id',
       enrollment_ids
@@ -449,19 +451,19 @@ export async function POST(request: NextRequest) {
           const existing = eTheoMarks.find(m => m.subject_id === sub.id)
           const score = score_type === 'mot' ? existing?.mot_score ?? null : existing?.eot_score ?? null
           const numericScore = typeof score === 'number' ? score : null
-          const defaultGrade = numericScore !== null ? getGradeDisplay(getSubjectGradeNumber(numericScore)) : '—'
+          const defaultGrade = numericScore !== null ? getTheologyGradeDisplay(numericScore, (schoolSettings as any)?.theology_grading_scale) : '—'
           const overrideGrade = evaluateCriteria(numericScore, 'subject_score', 'theology', enrollment.theology_class_id, gradingCriteria, 'grade_label')
           const grade_display = overrideGrade || defaultGrade
 
-          const defaultMotGrade = typeof existing?.mot_score === 'number' ? getGradeDisplay(getSubjectGradeNumber(existing.mot_score)) : null
+          const defaultMotGrade = typeof existing?.mot_score === 'number' ? getTheologyGradeDisplay(existing.mot_score, (schoolSettings as any)?.theology_grading_scale) : null
           const overrideMotGrade = evaluateCriteria(existing?.mot_score ?? null, 'subject_score', 'theology', enrollment.theology_class_id, gradingCriteria, 'grade_label')
           const mot_grade_display = overrideMotGrade || defaultMotGrade
 
-          const defaultEotGrade = typeof existing?.eot_score === 'number' ? getGradeDisplay(getSubjectGradeNumber(existing.eot_score)) : null
+          const defaultEotGrade = typeof existing?.eot_score === 'number' ? getTheologyGradeDisplay(existing.eot_score, (schoolSettings as any)?.theology_grading_scale) : null
           const overrideEotGrade = evaluateCriteria(existing?.eot_score ?? null, 'subject_score', 'theology', enrollment.theology_class_id, gradingCriteria, 'grade_label')
           const eot_grade_display = overrideEotGrade || defaultEotGrade
 
-          const defaultRemark = existing?.eot_score != null ? getTheologySubjectRemark(getSubjectGradeNumber(existing.eot_score)) : existing?.mot_score != null ? getTheologySubjectRemark(getSubjectGradeNumber(existing.mot_score)) : null
+          const defaultRemark = existing?.eot_score != null ? getTheologySubjectRemark(getTheologyGradeNumber(existing.eot_score, (schoolSettings as any)?.theology_grading_scale)) : existing?.mot_score != null ? getTheologySubjectRemark(getTheologyGradeNumber(existing.mot_score, (schoolSettings as any)?.theology_grading_scale)) : null
           const overrideRemark = evaluateCriteria(numericScore, 'subject_score', 'theology', enrollment.theology_class_id, gradingCriteria, 'comment')
 
           return {
@@ -486,7 +488,7 @@ export async function POST(request: NextRequest) {
         })
 
         const theoScores = sortedTheoSubjects.map(r => r.score)
-        const theologyAggregate = theoScores.some(s => s == null) ? null : calculateTheologyAggregate(theoScores as number[])
+        const theologyAggregate = theoScores.some(s => s == null) ? null : calculateTheologyAggregate(theoScores as number[], (schoolSettings as any)?.theology_grading_scale)
 
         theologySectionData = {
           subjects: sortedTheoSubjects,
@@ -524,8 +526,11 @@ export async function POST(request: NextRequest) {
             name: studentData?.name ?? '—',
             admission_number: studentData?.admission_number ?? '—',
             arabic_name: studentData?.arabic_name ?? null,
+
+  
             religion: studentData?.is_muslim === false ? 'Non-Muslim' : 'Muslim',
             class_name: '—',
+            gender: studentData?.gender ?? null,
             theology_class_arabic: theologyClassArabic ?? null,
             theology_class_english: theologyClassEnglish ?? null,
             section: null,
@@ -566,8 +571,10 @@ export async function POST(request: NextRequest) {
           name: studentData?.name ?? '—',
           admission_number: studentData?.admission_number ?? '—',
           arabic_name: studentData?.arabic_name ?? null,
+
           religion: studentData?.is_muslim === false ? 'Non-Muslim' : 'Muslim',
           class_name: className ?? '—',
+          gender: studentData?.gender ?? null,
           theology_class_arabic: curriculum === 'secular' ? null : theologyClassArabic ?? null,
           theology_class_english: curriculum === 'secular' ? null : theologyClassEnglish ?? null,
           section,

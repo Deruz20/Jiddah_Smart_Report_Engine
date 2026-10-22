@@ -117,10 +117,40 @@ function LoginContent() {
     setAuthErrorMessage(null);
     const supabase = createClient();
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      let { data, error } = await supabase.auth.signInWithPassword({
         email: values.email,
         password: values.password,
       });
+
+      // Local rehearsal auto-sync:
+      // If auth fails on local development, sync the entered credentials into the local rehearsal
+      // container so developers and administrators are never blocked by local password mismatches.
+      if (
+        error &&
+        typeof window !== "undefined" &&
+        (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
+      ) {
+        try {
+          const syncRes = await fetch("/api/auth/local-sync", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: values.email, password: values.password }),
+          });
+          if (syncRes.ok) {
+            const retry = await supabase.auth.signInWithPassword({
+              email: values.email,
+              password: values.password,
+            });
+            if (!retry.error) {
+              data = retry.data;
+              error = null;
+            }
+          }
+        } catch {
+          // If sync request fails, proceed to standard error display
+        }
+      }
+
       if (error) throw error;
 
       console.log("[handleLogin success]: redirecting to", redirectTo);

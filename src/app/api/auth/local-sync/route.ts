@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: listErr.message }, { status: 500 });
     }
 
-    let existing = userList?.users?.find(u => u.email?.toLowerCase() === email);
+    let existing: any = (userList?.users as any[])?.find((u: any) => u.email?.toLowerCase() === email);
 
     if (existing) {
       const { error: updateErr } = await supabaseAdmin.auth.admin.updateUserById(existing.id, {

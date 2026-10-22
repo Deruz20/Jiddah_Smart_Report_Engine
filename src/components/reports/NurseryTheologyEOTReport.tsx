@@ -133,7 +133,7 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
 .nursery-theology-eot-report .watermark-bg {
     position: absolute;
     inset: 0;
-    background: url('/school_budge.jpeg') center center no-repeat;
+    background: url('/logo-512h.png') center center no-repeat;
     background-size: contain;
     opacity: 0.04;
     pointer-events: none;
@@ -379,7 +379,7 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
         <div className="watermark-bg"></div>
         <div className="header">
           <div className="header-badge">
-            <img src={reportData?.settings?.logo_url || "/school_budge.jpeg"} alt="School Badge" />
+            <img src={reportData?.settings?.logo_url || "/logo-512h.png"} alt="School Badge" />
           </div>
           <div className="header-center">
             <div className="basmala">بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْم</div>
@@ -387,7 +387,7 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
             <div className="report-badge">بطاقة تقرير للروضة</div>
           </div>
           <div className="header-badge" style={{ visibility: 'hidden' }}>
-            <img src="/school_budge.jpeg" alt="" />
+            <img src="/logo-512h.png" alt="" />
           </div>
         </div>
 

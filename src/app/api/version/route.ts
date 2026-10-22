@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
 
   const releaseInfo = {
     version: "2.4.0",
-    buildTimestamp: new Date().toISOString(),
+    buildTimestamp: "2026-10-22T08:31:00.000Z",
     gitCommit: "77d5aa5",
     engine: "Jiddah Smart Report Engine 2.0",
     status: "operational",

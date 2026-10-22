@@ -43,7 +43,7 @@ export function WatermarkOverlay({ config }: { config: WatermarkConfig }) {
             }}
           >
             {config.use_badge ? (
-              <img src="/school_logo.svg" alt="Watermark" className="w-28 h-32 object-contain grayscale" />
+              <img src="/logo-512h.png" alt="Watermark" className="w-28 h-32 object-contain grayscale" />
             ) : (
               <span className="text-2xl font-black tracking-widest uppercase text-stone-700 font-sans border-2 border-stone-700 px-4 py-1 rounded-lg">
                 {config.custom_text}
@@ -67,7 +67,7 @@ export function WatermarkOverlay({ config }: { config: WatermarkConfig }) {
         }}
       >
         {config.use_badge ? (
-          <img src="/school_logo.svg" alt="Watermark Shield" className="w-64 h-72 object-contain grayscale" />
+          <img src="/logo-512h.png" alt="Watermark Shield" className="w-64 h-72 object-contain grayscale" />
         ) : (
           <div className="border-4 border-stone-800 px-8 py-3 rounded-2xl text-center">
             <span className="text-5xl font-black tracking-widest uppercase text-stone-800 font-sans">
@@ -96,18 +96,23 @@ export function WatermarkConfigPanel({
     setIsSaving(true);
     try {
       const supabase = createClient();
-      await supabase.from("watermark_configs").upsert([
-        {
-          enabled: config.enabled,
-          use_badge: config.use_badge,
-          custom_text: config.custom_text,
-          opacity: config.opacity,
-          scale: config.scale,
-          rotation: config.rotation,
-          layout: config.layout,
-          updated_at: new Date().toISOString(),
-        },
-      ]);
+      const { error } = await supabase.from("watermark_configs").upsert(
+        [
+          {
+            config_key: "current",
+            enabled: config.enabled,
+            use_badge: config.use_badge,
+            custom_text: config.custom_text,
+            opacity: config.opacity,
+            scale: config.scale,
+            rotation: config.rotation,
+            layout: config.layout,
+            updated_at: new Date().toISOString(),
+          },
+        ],
+        { onConflict: "config_key" }
+      );
+      if (error) throw error;
       if (onSave) await onSave();
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2000);

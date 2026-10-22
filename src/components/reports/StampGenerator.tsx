@@ -341,21 +341,26 @@ export function StampGeneratorPanel({
     setIsSaving(true);
     try {
       const supabase = createClient();
-      await supabase.from("stamp_configs").upsert([
-        {
-          shape: config.shape,
-          school_name: config.school_name,
-          title: config.title,
-          po_box: config.po_box,
-          phone: config.phone,
-          ink_color: config.ink_color,
-          size_scale: config.size_scale,
-          rotation: config.rotation,
-          opacity: config.opacity,
-          grain_realism: config.grain_realism,
-          updated_at: new Date().toISOString(),
-        },
-      ]);
+      const { error } = await supabase.from("stamp_configs").upsert(
+        [
+          {
+            config_key: "current",
+            shape: config.shape,
+            school_name: config.school_name,
+            title: config.title,
+            po_box: config.po_box,
+            phone: config.phone,
+            ink_color: config.ink_color,
+            size_scale: config.size_scale,
+            rotation: config.rotation,
+            opacity: config.opacity,
+            grain_realism: config.grain_realism,
+            updated_at: new Date().toISOString(),
+          },
+        ],
+        { onConflict: "config_key" }
+      );
+      if (error) throw error;
       if (onSave) await onSave();
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2000);

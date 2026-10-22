@@ -38,7 +38,7 @@ function MobileBottomNav() {
     <nav
       aria-label="Mobile quick navigation"
       data-testid="mobile-bottom-nav"
-      className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-[#0B1120]/95 backdrop-blur-md border-t border-white/10 px-2 pb-[env(safe-area-inset-bottom)] print:hidden"
+      className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-[#0B1120]/95 backdrop-blur-md border-t border-slate-200 dark:border-white/10 px-2 pb-[env(safe-area-inset-bottom)] print:hidden"
     >
       <div className="flex items-center justify-around h-14 max-w-md mx-auto">
         {tabs.map((tab) => {
@@ -54,8 +54,8 @@ function MobileBottomNav() {
               className={cn(
                 "flex flex-col items-center justify-center min-h-[44px] min-w-[56px] px-2.5 py-1 rounded-xl transition-all",
                 active
-                  ? "text-[#34D399] bg-emerald-500/15 font-bold"
-                  : "text-[#94A3B8] hover:text-white font-medium"
+                  ? "text-emerald-700 dark:text-[#34D399] bg-emerald-50 dark:bg-emerald-500/15 font-bold"
+                  : "text-slate-600 dark:text-[#94A3B8] hover:text-slate-900 dark:hover:text-white font-medium"
               )}
             >
               <Icon className="size-4 mb-0.5" strokeWidth={active ? 2.3 : 1.8} />
@@ -67,7 +67,7 @@ function MobileBottomNav() {
           type="button"
           onClick={toggleSidebar}
           aria-label="More menu"
-          className="flex flex-col items-center justify-center min-h-[44px] min-w-[56px] px-2.5 py-1 rounded-xl text-[#94A3B8] hover:text-white font-medium transition-all cursor-pointer"
+          className="flex flex-col items-center justify-center min-h-[44px] min-w-[56px] px-2.5 py-1 rounded-xl text-slate-600 dark:text-[#94A3B8] hover:text-slate-900 dark:hover:text-white font-medium transition-all cursor-pointer"
         >
           <Menu className="size-4 mb-0.5" strokeWidth={1.8} />
           <span className="text-[10px] leading-none">More</span>
@@ -112,7 +112,10 @@ export default function AdminLayout({
       const user = data.session?.user;
       if (user?.user_metadata) {
         setRole(user.user_metadata.role || "teacher");
-        if (!user.user_metadata.tour_completed) {
+        const dismissedLocally =
+          typeof window !== "undefined" &&
+          localStorage.getItem("jiddah_tour_completed") === "true";
+        if (!user.user_metadata.tour_completed && !dismissedLocally) {
           setShowTour(true);
         }
       }
@@ -121,10 +124,17 @@ export default function AdminLayout({
 
   const handleCloseTour = async () => {
     setShowTour(false);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("jiddah_tour_completed", "true");
+    }
     const supabase = createClient();
-    await supabase.auth.updateUser({
-      data: { tour_completed: true },
-    });
+    try {
+      await supabase.auth.updateUser({
+        data: { tour_completed: true },
+      });
+    } catch {
+      // Ignore network errors
+    }
   };
 
   return (
@@ -133,7 +143,7 @@ export default function AdminLayout({
       <SidebarInset
         className={cn(
           "h-screen print:h-auto print:min-h-screen overflow-hidden print:overflow-visible print:bg-white flex flex-col min-w-0 max-w-full relative transition-colors",
-          workspaceDark ? "bg-[#0F172A] text-stone-100" : "bg-[#F8FAFC] text-stone-900"
+          workspaceDark ? "bg-[#0B0D11] text-slate-100" : "bg-[#F8FAFC] text-slate-900"
         )}
       >
         <AppTopbar />

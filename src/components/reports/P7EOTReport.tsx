@@ -105,7 +105,7 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
   content: "";
   position: absolute;
   inset: 0;
-  background: url('/school_budge.jpeg') center center no-repeat;
+  background: url('/logo-512h.png') center center no-repeat;
   background-size: 450px;
   opacity: 0.03;
   pointer-events: none;

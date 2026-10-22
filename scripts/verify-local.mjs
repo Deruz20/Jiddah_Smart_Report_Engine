@@ -1,7 +1,9 @@
 import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { enforceLocalSafeEnvironment } from '../src/lib/test-guard.mjs';
+import { enforceLocalSafeEnvironment, getRehearsalCredentials } from '../src/lib/test-guard.mjs';
+
+const creds = getRehearsalCredentials();
 
 const ROOT_DIR = process.cwd();
 const ARTIFACTS_DIR = path.resolve(ROOT_DIR, '../jiddah_agent_artifacts');
@@ -37,8 +39,10 @@ function runStep(name, cmd, opts = {}) {
       env: {
         ...process.env,
         NODE_ENV: 'test',
-        NEXT_PUBLIC_SUPABASE_URL: 'http://127.0.0.1:54321',
-        NEXT_PUBLIC_SUPABASE_ANON_KEY: 'test-anon-key-synthetic',
+        NEXT_PUBLIC_SUPABASE_URL: creds.apiUrl,
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: creds.anonKey,
+        SUPABASE_SERVICE_ROLE_KEY: creds.serviceRoleKey,
+        TEST_BASE_URL: 'http://localhost:3000',
         ...opts.env,
       },
     });

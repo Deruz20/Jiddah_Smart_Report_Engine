@@ -26,7 +26,7 @@ export function AdminMarksEntryClient({
   const [selectedEnrollmentId, setSelectedEnrollmentId] = useState(() => {
     return hasInitial ? initialEnrollments[0].id : ''
   })
-  const [examType, setExamType] = useState<ExamType>('bot')
+  const [examType, setExamType] = useState<ExamType>('mot')
   const [circularMarks, setCircularMarks] = useState<CircularMarkRow[]>([])
   const [theologyMarks, setTheologyMarks] = useState<TheologyMarkRow[]>([])
   const [isFetching, setIsFetching] = useState(!hasInitial)

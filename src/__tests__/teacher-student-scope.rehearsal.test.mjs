@@ -44,7 +44,7 @@ const anon = createClient(rehearsalConfig.api_url, anonKey, {
 
 const container = 'supabase_db_rehearsal_isolated_supabase';
 const testPort = 3006;
-const baseUrl = `http://127.0.0.1:${testPort}`;
+let baseUrl = process.env.TEST_BASE_URL || `http://127.0.0.1:3000`;
 const suffix = `${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
 const createdUsers = [];
 const createdTeachers = [];

@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/utils/supabase/client";
+import JiddahLogo from "@/components/brand/JiddahLogo";
 
 import {
   forgotPasswordSchema,
@@ -111,6 +112,7 @@ function LoginContent() {
   });
 
   const handleLogin = async (values: LoginForm) => {
+    console.log("[handleLogin called with]:", values.email);
     setLoading(true);
     setAuthErrorMessage(null);
     const supabase = createClient();
@@ -121,6 +123,7 @@ function LoginContent() {
       });
       if (error) throw error;
 
+      console.log("[handleLogin success]: redirecting to", redirectTo);
       if (
         data.user?.user_metadata?.role?.toLowerCase().includes("teacher") &&
         !data.user?.user_metadata?.onboarding_completed
@@ -130,6 +133,7 @@ function LoginContent() {
         window.location.href = redirectTo;
       }
     } catch (error: any) {
+      console.log("[handleLogin error]:", error?.message);
       try {
         await supabase.auth.signOut();
       } catch {}
@@ -142,6 +146,7 @@ function LoginContent() {
   };
 
   const handleLoginInvalid = (errors: FieldErrors<LoginForm>) => {
+    console.log("[handleLoginInvalid errors]:", JSON.stringify(errors));
     const message = firstFieldError(errors) ?? "Please enter your email address and password.";
     setAuthErrorMessage(message);
     toast.error(message);
@@ -200,11 +205,7 @@ function LoginContent() {
       {/* Left Panel — Editorial Paper & School Identity (Desktop) */}
       <div className="hidden lg:flex lg:w-5/12 xl:w-1/2 bg-[#FAF7F2] border-r border-stone-200 flex-col justify-between p-12">
         <div className="flex items-center gap-3.5">
-          <img
-            src="/school_budge.jpeg"
-            alt={schoolName}
-            className="w-12 h-12 rounded-xl object-contain bg-white border border-stone-200 p-1 shadow-sm"
-          />
+          <JiddahLogo height={44} className="w-auto drop-shadow-sm shrink-0" />
           <div>
             <p className="text-sm font-bold text-stone-900 tracking-tight">{schoolName}</p>
             <p className="text-xs text-stone-500 font-medium">Academic Assessment & Reporting System</p>
@@ -250,11 +251,7 @@ function LoginContent() {
         <div className="w-full max-w-[420px] bg-white border border-stone-200 rounded-2xl p-6 sm:p-8 shadow-sm">
           {/* Mobile School Header */}
           <div className="lg:hidden flex items-center gap-3 pb-6 mb-6 border-b border-stone-100">
-            <img
-              src="/school_budge.jpeg"
-              alt="School Badge"
-              className="w-11 h-11 rounded-xl object-contain bg-[#FAF7F2] border border-stone-200 p-1 shrink-0"
-            />
+            <JiddahLogo height={38} className="w-auto drop-shadow-sm shrink-0" />
             <div className="min-w-0">
               <p className="font-bold text-stone-900 text-sm truncate">{schoolName}</p>
               <p className="text-xs text-stone-500 font-medium truncate">Staff Assessment Portal</p>
@@ -265,7 +262,11 @@ function LoginContent() {
           {screen === "login" && (
             <form
               noValidate
-              onSubmit={loginForm.handleSubmit(handleLogin, handleLoginInvalid)}
+              action="javascript:void(0)"
+              onSubmit={(e) => {
+                e.preventDefault();
+                loginForm.handleSubmit(handleLogin, handleLoginInvalid)(e);
+              }}
               className="space-y-5"
             >
               <div>
@@ -365,6 +366,10 @@ function LoginContent() {
               <button
                 type="submit"
                 disabled={loading}
+                onClick={(e) => {
+                  e.preventDefault();
+                  loginForm.handleSubmit(handleLogin, handleLoginInvalid)(e);
+                }}
                 style={{ backgroundColor: accentColor }}
                 className="w-full min-h-[44px] py-3 px-4 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 shadow-sm hover:opacity-95 disabled:opacity-60 transition cursor-pointer"
               >
@@ -384,7 +389,11 @@ function LoginContent() {
           {screen === "forgot" && (
             <form
               noValidate
-              onSubmit={forgotForm.handleSubmit(handleForgot)}
+              action="javascript:void(0)"
+              onSubmit={(e) => {
+                e.preventDefault();
+                forgotForm.handleSubmit(handleForgot)(e);
+              }}
               className="space-y-5"
               data-testid="forgot-password-form"
             >
@@ -456,6 +465,10 @@ function LoginContent() {
               <button
                 type="submit"
                 disabled={loading}
+                onClick={(e) => {
+                  e.preventDefault();
+                  forgotForm.handleSubmit(handleForgot)(e);
+                }}
                 style={{ backgroundColor: accentColor }}
                 className="w-full min-h-[44px] py-3 px-4 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 shadow-sm hover:opacity-95 disabled:opacity-60 transition cursor-pointer"
               >
@@ -473,7 +486,11 @@ function LoginContent() {
           {screen === "reset" && (
             <form
               noValidate
-              onSubmit={resetForm.handleSubmit(handleReset)}
+              action="javascript:void(0)"
+              onSubmit={(e) => {
+                e.preventDefault();
+                resetForm.handleSubmit(handleReset)(e);
+              }}
               className="space-y-5"
             >
               <div>
@@ -497,6 +514,10 @@ function LoginContent() {
               <button
                 type="submit"
                 disabled={loading}
+                onClick={(e) => {
+                  e.preventDefault();
+                  resetForm.handleSubmit(handleReset)(e);
+                }}
                 style={{ backgroundColor: accentColor }}
                 className="w-full min-h-[44px] py-3 px-4 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 shadow-sm hover:opacity-95 disabled:opacity-60 transition cursor-pointer"
               >

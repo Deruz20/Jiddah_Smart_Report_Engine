@@ -233,10 +233,8 @@ export function authorizeTeacherProfile(
     department = 'theology';
   } else if (rl === 'dos secular' || (rl === 'dos' && subject === 'secular')) {
     department = 'secular';
-  } else if (rl === 'dos' && ['both', 'all'].includes(subject)) {
-    department = 'both';
   } else if (rl === 'dos') {
-    department = 'secular';
+    department = 'both';
   }
 
   if (department) {

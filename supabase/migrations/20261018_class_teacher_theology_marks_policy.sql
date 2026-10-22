@@ -40,17 +40,7 @@ USING (
               AND tca.class_id = tc.id
           )
         )
-        OR
-        -- 2. Class teacher assigned to student's circular class via assignments table
-        (
-          t.role = 'Class Teacher'
-          AND EXISTS (
-            SELECT 1 FROM public.teacher_class_assignments tca
-            WHERE tca.teacher_id = t.id
-              AND cc.id IS NOT NULL
-              AND tca.class_id = cc.id
-          )
-        )
+
         OR
         -- 3. Class teacher assigned to student's circular class via direct circular_classes reference
         (
@@ -59,16 +49,10 @@ USING (
           AND cc.class_teacher_id = t.id
         )
         OR
-        -- 4. Leadership roles: Administrator, admin, Head Teacher, Deputy Head Teacher, DOS, DOS Secular, DOS Theology, Theology Instructor
-        t.role IN (
-          'Administrator',
-          'admin',
-          'Head Teacher',
-          'Deputy Head Teacher',
-          'DOS',
-          'DOS Secular',
-          'DOS Theology',
-          'Theology Instructor'
+        -- 4. Leadership roles: Administrator, admin, Head Teacher, Deputy Head Teacher, DOS Theology, Theology Instructor (DOS Secular excluded from theology marks)
+        (
+          t.role IN ('Administrator', 'admin', 'Head Teacher', 'Deputy Head Teacher', 'DOS Theology', 'Theology Instructor')
+          OR (t.role = 'DOS' AND lower(coalesce(t.subject, '')) <> 'secular')
         )
       )
   )
@@ -93,17 +77,7 @@ WITH CHECK (
               AND tca.class_id = tc.id
           )
         )
-        OR
-        -- 2. Class teacher assigned to student's circular class via assignments table
-        (
-          t.role = 'Class Teacher'
-          AND EXISTS (
-            SELECT 1 FROM public.teacher_class_assignments tca
-            WHERE tca.teacher_id = t.id
-              AND cc.id IS NOT NULL
-              AND tca.class_id = cc.id
-          )
-        )
+
         OR
         -- 3. Class teacher assigned to student's circular class via direct circular_classes reference
         (
@@ -112,16 +86,10 @@ WITH CHECK (
           AND cc.class_teacher_id = t.id
         )
         OR
-        -- 4. Leadership roles: Administrator, admin, Head Teacher, Deputy Head Teacher, DOS, DOS Secular, DOS Theology, Theology Instructor
-        t.role IN (
-          'Administrator',
-          'admin',
-          'Head Teacher',
-          'Deputy Head Teacher',
-          'DOS',
-          'DOS Secular',
-          'DOS Theology',
-          'Theology Instructor'
+        -- 4. Leadership roles: Administrator, admin, Head Teacher, Deputy Head Teacher, DOS Theology, Theology Instructor (DOS Secular excluded from theology marks)
+        (
+          t.role IN ('Administrator', 'admin', 'Head Teacher', 'Deputy Head Teacher', 'DOS Theology', 'Theology Instructor')
+          OR (t.role = 'DOS' AND lower(coalesce(t.subject, '')) <> 'secular')
         )
       )
   )

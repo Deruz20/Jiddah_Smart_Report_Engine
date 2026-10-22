@@ -54,7 +54,7 @@ const theologyCSS = `
     content: '';
     position: absolute;
     inset: 0;
-    background: url('/school_budge.jpeg') center center no-repeat;
+    background: url('/logo-512h.png') center center no-repeat;
     background-size: 240px;
     opacity: 0.08;
     pointer-events: none;
@@ -367,10 +367,10 @@ export function TheologyCard({ reportData }: { reportData: any }) {
             <div className="tc-header">
               <div className="tc-badge">
                 <img
-                  src={reportData?.settings?.logo_url || "/school_budge.jpeg"}
+                  src={reportData?.settings?.logo_url || "/logo-512h.png"}
                   alt="School Badge"
                   onError={(e) => {
-                    e.currentTarget.src = "/school_logo.svg";
+                    e.currentTarget.src = "/logo-512h.png";
                   }}
                 />
               </div>
@@ -382,7 +382,7 @@ export function TheologyCard({ reportData }: { reportData: any }) {
                 </div>
               </div>
               <div className="tc-badge" style={{ visibility: 'hidden' }}>
-                <img src="/school_budge.jpeg" alt="" />
+                <img src="/logo-512h.png" alt="" />
               </div>
             </div>
 

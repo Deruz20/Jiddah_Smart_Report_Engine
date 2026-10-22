@@ -1,5 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { getSupabaseAnonKey } from "@/lib/supabase-env";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://dummy.supabase.co';
@@ -23,7 +23,7 @@ function fetchWithTimeout(
 }
 
 export const createClient = (cookieStore: Awaited<ReturnType<typeof cookies>>) => {
-  return createServerClient(
+  const client = createServerClient(
     supabaseUrl!,
     supabaseKey!,
     {
@@ -46,6 +46,31 @@ export const createClient = (cookieStore: Awaited<ReturnType<typeof cookies>>) =
       },
     },
   );
+
+  const originalGetUser = client.auth.getUser.bind(client.auth);
+  client.auth.getUser = async (jwt?: string) => {
+    if (jwt) {
+      return originalGetUser(jwt);
+    }
+    try {
+      const headerList = await headers();
+      const authHeader = headerList.get('authorization') || headerList.get('Authorization');
+      if (authHeader && authHeader.toLowerCase().startsWith('bearer ')) {
+        const token = authHeader.slice(7).trim();
+        if (token) {
+          const res = await originalGetUser(token);
+          if (!res.error && res.data?.user) {
+            return res;
+          }
+        }
+      }
+    } catch {
+      // In non-request context, ignore
+    }
+    return originalGetUser();
+  };
+
+  return client;
 };
 
 export const createAdminClient = () => {

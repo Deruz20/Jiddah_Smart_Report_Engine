@@ -129,7 +129,7 @@ export function resolveReportBranding(reportData: any) {
     email: s.email || 'jiddahislamicnurseryandpri@gmail.com',
     motto: s.motto || '',
     payCode: s.pay_code || '--',
-    logoUrl: s.logo_url || '/school_budge.jpeg',
+    logoUrl: s.logo_url || '/logo-512h.png',
     primaryFont: s.primary_font || undefined,
     arabicFont: s.arabic_font || undefined,
     themePreset: s.report_theme_preset || undefined,

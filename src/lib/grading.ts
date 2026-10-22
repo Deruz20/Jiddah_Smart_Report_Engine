@@ -49,9 +49,10 @@ export function getTheologyGradeNumber(
   customBands?: { min: number; max: number; grade: string }[]
 ): number {
   if (customBands && customBands.length > 0) {
-    for (let i = 0; i < customBands.length; i++) {
-      const b = customBands[i];
-      if (mark >= b.min && mark <= b.max) {
+    const sorted = [...customBands].sort((a, b) => b.min - a.min);
+    for (let i = 0; i < sorted.length; i++) {
+      const b = sorted[i];
+      if (mark >= b.min) {
         const num = parseInt(String(b.grade).replace(/\D/g, ''), 10);
         return !isNaN(num) ? num : i + 1;
       }
@@ -74,9 +75,11 @@ export function getTheologyGradeDisplay(
   customBands?: { min: number; max: number; grade: string }[]
 ): GradeCode {
   if (customBands && customBands.length > 0) {
-    for (const b of customBands) {
-      if (mark >= b.min && mark <= b.max) {
-        return (b.grade as GradeCode) || 'F9'
+    const sorted = [...customBands].sort((a, b) => b.min - a.min);
+    for (let i = 0; i < sorted.length; i++) {
+      const b = sorted[i];
+      if (mark >= b.min) {
+        return (b.grade as GradeCode) || 'F9';
       }
     }
   }

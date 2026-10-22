@@ -77,14 +77,14 @@ function computeGradeBadge(score: number | null | undefined): {
   if (score === null || score === undefined || Number.isNaN(Number(score))) return null
   const n = Number(score)
   if (n < 0 || n > 100) return null
-  if (n >= 90) return { grade: 'D1', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' }
-  if (n >= 80) return { grade: 'D2', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' }
+  if (n >= 85) return { grade: 'D1', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' }
+  if (n >= 75) return { grade: 'D2', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' }
   if (n >= 70) return { grade: 'C3', bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' }
   if (n >= 60) return { grade: 'C4', bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' }
   if (n >= 55) return { grade: 'C5', bg: 'bg-sky-50', text: 'text-sky-700', border: 'border-sky-200' }
   if (n >= 50) return { grade: 'C6', bg: 'bg-sky-50', text: 'text-sky-700', border: 'border-sky-200' }
-  if (n >= 45) return { grade: 'P7', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' }
-  if (n >= 40) return { grade: 'P8', bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200' }
+  if (n >= 40) return { grade: 'P7', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' }
+  if (n >= 35) return { grade: 'P8', bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200' }
   return { grade: 'F9', bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200' }
 }
 
@@ -362,7 +362,7 @@ export function SharedMarksEntry({
             placeholder="0-100"
             value={val}
             onChange={(e) => validateAndApplyScore(curriculum, subjectId, subjectLabel, type, e.target.value)}
-            data-col={type}
+            data-col={type.toUpperCase()}
             data-row={rowIndex}
             data-table={curriculum}
             onKeyDown={(e) => {

@@ -47,17 +47,23 @@ export function SignaturePad({
   // Load existing signature on mount
   useEffect(() => {
     const supabase = createClient();
-    supabase
-      .from("signatures")
-      .select("data_url")
-      .eq("role", slotKey)
-      .limit(1)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data?.data_url) {
-          setSavedDataUrl(data.data_url);
-        }
-      });
+    supabase.auth.getUser().then(({ data: authData }) => {
+      const userId = authData?.user?.id;
+      if (!userId) return;
+      supabase
+        .from("signatures")
+        .select("data_url, image_url")
+        .eq("user_id", userId)
+        .eq("role", slotKey)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data?.data_url || data?.image_url) {
+            setSavedDataUrl(data.data_url || data.image_url);
+          }
+        });
+    });
   }, [slotKey]);
 
   // Canvas Drawing Handlers
@@ -176,14 +182,16 @@ export function SignaturePad({
       const userId = authData?.user?.id || null;
 
       // 1. Commit to database signatures table
-      await supabase.from("signatures").upsert([
+      const { error } = await supabase.from("signatures").insert([
         {
           role: slotKey,
           data_url: savedDataUrl,
+          image_url: savedDataUrl,
           user_id: userId,
           updated_at: new Date().toISOString(),
         },
       ]);
+      if (error) throw error;
 
       if (onSaved) onSaved(savedDataUrl);
       setSuccess(true);

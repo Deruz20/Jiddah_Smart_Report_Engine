@@ -257,12 +257,15 @@ export async function POST(request: NextRequest) {
       if (circularUpsert.length > 0) {
         // Validation: Ensure all subject_ids match the enrollment's section
         const subjectIds = circularUpsert.map((u: any) => u.subject_id)
-        const { data: subjects, error: subjErr } = await supabase
-          .from('circular_subjects')
-          .select('id, section')
-          .in('id', subjectIds)
-          
-        if (subjErr) return withCors(request, NextResponse.json({ error: subjErr.message }, { status: 500 }))
+        const subjects: any[] = []
+        for (let i = 0; i < subjectIds.length; i += 30) {
+          const chunk = subjectIds.slice(i, i + 30)
+          const { data: chunkSubjects, error: subjErr } = await supabase
+            .from('circular_subjects')
+            .select('id, section')
+            .in('id', chunk)
+          if (chunkSubjects) subjects.push(...chunkSubjects)
+        }
         
         const invalidSubjects = subjects?.filter((s: any) => s.section !== expectedCircularSection) || []
         if (invalidSubjects.length > 0) {
@@ -303,12 +306,15 @@ export async function POST(request: NextRequest) {
       if (theologyUpsert.length > 0) {
         // Validation: Ensure all subject_ids match the enrollment's theology level
         const subjectIds = theologyUpsert.map((u: any) => u.subject_id)
-        const { data: subjects, error: subjErr } = await supabase
-          .from('theology_subjects')
-          .select('id, level')
-          .in('id', subjectIds)
-          
-        if (subjErr) return withCors(request, NextResponse.json({ error: subjErr.message }, { status: 500 }))
+        const subjects: any[] = []
+        for (let i = 0; i < subjectIds.length; i += 30) {
+          const chunk = subjectIds.slice(i, i + 30)
+          const { data: chunkSubjects, error: subjErr } = await supabase
+            .from('theology_subjects')
+            .select('id, level')
+            .in('id', chunk)
+          if (chunkSubjects) subjects.push(...chunkSubjects)
+        }
         
         const invalidSubjects = subjects?.filter((s: any) => s.level !== expectedTheologyLevel) || []
         if (invalidSubjects.length > 0) {

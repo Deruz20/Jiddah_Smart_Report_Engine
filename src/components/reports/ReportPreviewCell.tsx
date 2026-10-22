@@ -100,7 +100,7 @@ export function ReportPreviewCell({
         }}
       >
         <img
-          src="/school_budge.jpeg"
+          src="/logo-512h.png"
           alt=""
           loading="lazy"
           decoding="async"

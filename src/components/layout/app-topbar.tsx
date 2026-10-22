@@ -69,13 +69,13 @@ function Breadcrumbs({ crumbs }: { crumbs: string[] }) {
       <Home className="size-3.5 text-stone-400 shrink-0" strokeWidth={1.8} />
       {crumbs.map((crumb, i) => (
         <React.Fragment key={crumb}>
-          <ChevronRight className="size-3 text-stone-300 shrink-0" strokeWidth={2} />
+          <ChevronRight className="size-3 text-slate-400 shrink-0" strokeWidth={2} />
           <span
             className={cn(
               "transition-colors duration-150 truncate max-w-[140px] xl:max-w-[220px]",
               i === crumbs.length - 1
-                ? "text-stone-900 font-semibold"
-                : "text-stone-500 hover:text-stone-800 cursor-pointer",
+                ? "text-slate-900 dark:text-white font-bold"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white cursor-pointer",
             )}
             style={{ fontSize: "0.8rem" }}
           >
@@ -111,12 +111,12 @@ function DesktopSearch() {
       className={cn(
         "relative hidden lg:flex items-center gap-2 min-h-[38px] h-9 px-3 rounded-xl transition-colors duration-200 border w-full max-w-[260px]",
         focused
-          ? "bg-white border-emerald-500/50 shadow-[0_0_0_3px_rgba(16,185,129,0.12)]"
-          : "bg-[#FAF7F2] border-stone-200 hover:bg-stone-100/80 hover:border-stone-300",
+          ? "bg-white dark:bg-[#1A1E29] border-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.18)]"
+          : "bg-slate-100/90 dark:bg-[#151922] border-slate-200 dark:border-[#262B38] hover:bg-slate-200/60 dark:hover:bg-[#1C212E]",
       )}
     >
       <Search
-        className={cn("size-3.5 shrink-0 transition-colors duration-200", focused ? "text-[#059669]" : "text-stone-400")}
+        className={cn("size-3.5 shrink-0 transition-colors duration-200", focused ? "text-emerald-600 dark:text-emerald-400" : "text-slate-400 dark:text-slate-500")}
         strokeWidth={2}
       />
       <input
@@ -126,7 +126,7 @@ function DesktopSearch() {
         onBlur={() => setFocused(false)}
         onKeyDown={handleKeyDown}
         placeholder="Search students, classes..."
-        className="flex-1 bg-transparent outline-none text-stone-800 placeholder:text-stone-400 min-w-0"
+        className="flex-1 bg-transparent outline-none text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 min-w-0"
         style={{ fontSize: "0.8rem" }}
       />
       <AnimatePresence>
@@ -135,7 +135,7 @@ function DesktopSearch() {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
-            className="hidden lg:flex items-center gap-0.5 px-1.5 py-0.5 rounded text-stone-600 font-semibold bg-stone-200/80 border border-stone-300"
+            className="hidden lg:flex items-center gap-0.5 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-400 font-semibold bg-slate-200/80 dark:bg-white/10 border border-slate-300 dark:border-white/10"
             style={{ fontSize: "0.65rem" }}
           >
             ⌘K
@@ -297,9 +297,9 @@ function TermBadge() {
   }, []);
 
   return (
-    <div className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 rounded-xl shrink-0 bg-emerald-50/90 border border-emerald-200/80 tabular-nums">
-      <div className="size-1.5 rounded-full bg-emerald-600 animate-pulse" />
-      <span className="text-emerald-900 font-semibold text-xs">{termName}</span>
+    <div className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 rounded-xl shrink-0 bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-300 dark:border-emerald-500/30 tabular-nums">
+      <div className="size-1.5 rounded-full bg-emerald-600 dark:bg-emerald-400 animate-pulse" />
+      <span className="text-emerald-900 dark:text-emerald-300 font-bold text-xs">{termName}</span>
     </div>
   );
 }
@@ -344,10 +344,10 @@ function ThemeModeSwitcher() {
         aria-label={`Theme mode: ${currentOpt.label}`}
         title={`Theme: ${currentOpt.label} (${currentOpt.desc})`}
         data-testid="theme-mode-switcher"
-        className="flex items-center justify-center gap-1.5 rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-100 transition-all duration-200 cursor-pointer min-h-[44px] min-w-[44px] px-2.5"
+        className="flex items-center justify-center gap-1.5 rounded-xl text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-all duration-200 cursor-pointer min-h-[44px] min-w-[44px] px-2.5"
       >
-        <CurrentIcon className="size-4 text-emerald-700" strokeWidth={2} />
-        <span className="hidden lg:inline text-xs font-semibold text-stone-700">
+        <CurrentIcon className="size-4 text-emerald-600 dark:text-emerald-400" strokeWidth={2} />
+        <span className="hidden lg:inline text-xs font-bold text-slate-800 dark:text-slate-200">
           {currentOpt.label}
         </span>
       </button>
@@ -359,9 +359,9 @@ function ThemeModeSwitcher() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.97 }}
             transition={{ duration: 0.14 }}
-            className="absolute right-0 top-full mt-2 w-56 rounded-2xl bg-white border border-stone-200 p-1.5 z-50 shadow-xl"
+            className="absolute right-0 top-full mt-2 w-56 rounded-2xl bg-white dark:bg-[#151922] border border-slate-200 dark:border-[#252C3B] p-1.5 z-50 shadow-xl"
           >
-            <div className="px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-stone-400">
+            <div className="px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Appearance Mode
             </div>
             {THEME_OPTIONS.map((opt) => {
@@ -380,19 +380,19 @@ function ThemeModeSwitcher() {
                   className={cn(
                     "w-full min-h-[40px] flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-left transition-colors cursor-pointer",
                     active
-                      ? "bg-emerald-50 text-emerald-900 font-bold"
-                      : "text-stone-700 hover:bg-stone-100 font-medium"
+                      ? "bg-emerald-50 dark:bg-emerald-500/15 text-emerald-950 dark:text-emerald-300 font-bold"
+                      : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 font-medium"
                   )}
                 >
                   <Icon
-                    className={cn("size-4 shrink-0", active ? "text-emerald-600" : "text-stone-500")}
+                    className={cn("size-4 shrink-0", active ? "text-emerald-600 dark:text-emerald-400" : "text-slate-400 dark:text-slate-500")}
                     strokeWidth={2}
                   />
                   <div className="flex-1 min-w-0">
                     <div className="text-xs leading-tight">{opt.label}</div>
-                    <div className="text-[10px] text-stone-500 font-normal truncate">{opt.desc}</div>
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400 font-normal truncate">{opt.desc}</div>
                   </div>
-                  {active && <div className="size-2 rounded-full bg-emerald-600 shrink-0" />}
+                  {active && <div className="size-2 rounded-full bg-emerald-600 dark:bg-emerald-400 shrink-0" />}
                 </button>
               );
             })}
@@ -551,13 +551,13 @@ function NotificationBell({ size = "default" }: { size?: "default" | "mobile" })
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.97 }}
             transition={{ duration: 0.15, ease: "easeOut" }}
-            className="fixed right-3 left-3 top-16 sm:absolute sm:right-0 sm:left-auto sm:top-full sm:mt-2 sm:w-80 rounded-2xl bg-white border border-stone-200 overflow-hidden z-50 shadow-xl"
+            className="fixed right-3 left-3 top-16 sm:absolute sm:right-0 sm:left-auto sm:top-full sm:mt-2 sm:w-80 rounded-2xl bg-white dark:bg-[#151922] border border-slate-200 dark:border-[#252C3B] overflow-hidden z-50 shadow-xl"
           >
-            <div className="flex items-center justify-between px-4 py-3 border-b border-stone-200 bg-[#FAF7F2]">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-[#252C3B] bg-slate-50 dark:bg-[#1A1F2C]">
               <div className="flex items-center gap-2">
-                <span className="text-stone-900 text-sm font-bold">Notifications</span>
+                <span className="text-slate-900 dark:text-white text-sm font-bold">Notifications</span>
                 {unreadCount > 0 && (
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 text-xs font-bold tabular-nums">
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-900 dark:text-emerald-300 text-xs font-bold tabular-nums">
                     {unreadCount} new
                   </span>
                 )}
@@ -566,46 +566,46 @@ function NotificationBell({ size = "default" }: { size?: "default" | "mobile" })
                 <button
                   type="button"
                   onClick={handleMarkAllRead}
-                  className="min-h-[36px] px-2 flex items-center gap-1 text-[11px] font-semibold text-[#059669] hover:underline transition cursor-pointer"
+                  className="min-h-[36px] px-2 flex items-center gap-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 hover:underline transition cursor-pointer"
                 >
                   <CheckCheck className="size-3.5" /> Mark all read
                 </button>
               )}
             </div>
 
-            <div className="max-h-72 overflow-y-auto divide-y divide-stone-100">
+            <div className="max-h-72 overflow-y-auto divide-y divide-slate-100 dark:divide-white/5">
               {loading ? (
-                <div className="px-4 py-6 text-center text-xs text-stone-500">Loading notifications...</div>
+                <div className="px-4 py-6 text-center text-xs text-slate-500 dark:text-slate-400">Loading notifications...</div>
               ) : notifications.length === 0 ? (
-                <div className="px-4 py-6 text-center text-xs text-stone-500">No recent notifications</div>
+                <div className="px-4 py-6 text-center text-xs text-slate-500 dark:text-slate-400">No recent notifications</div>
               ) : (
                 notifications.map((n) => (
                   <div
                     key={String(n.id)}
                     onClick={() => handleMarkRead(n.id)}
                     className={cn(
-                      "flex items-start gap-3 px-4 py-3 hover:bg-stone-50 transition-colors cursor-pointer",
-                      !n.read ? "bg-[#FAF7F2]" : ""
+                      "flex items-start gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors cursor-pointer",
+                      !n.read ? "bg-slate-50/70 dark:bg-white/[0.03]" : ""
                     )}
                   >
                     <div
                       className={cn(
                         "mt-1.5 size-2 rounded-full shrink-0",
                         n.priority === "high"
-                          ? "bg-rose-600"
+                          ? "bg-rose-500"
                           : n.priority === "medium"
-                          ? "bg-amber-600"
+                          ? "bg-amber-500"
                           : !n.read
-                          ? "bg-[#059669]"
-                          : "bg-stone-300"
+                          ? "bg-emerald-500"
+                          : "bg-slate-300 dark:bg-slate-600"
                       )}
                     />
                     <div className="flex-1 min-w-0">
-                      <p className={cn("text-xs text-stone-900 truncate", !n.read ? "font-bold" : "font-medium")}>
+                      <p className={cn("text-xs text-slate-900 dark:text-white truncate", !n.read ? "font-bold" : "font-medium")}>
                         {n.title}
                       </p>
-                      <p className="text-[11px] text-stone-600 line-clamp-2 mt-0.5">{n.message}</p>
-                      <p className="text-[10px] text-stone-500 mt-1 tabular-nums">
+                      <p className="text-[11px] text-slate-600 dark:text-slate-300 line-clamp-2 mt-0.5">{n.message}</p>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 tabular-nums">
                         {n.time ? new Date(n.time).toLocaleDateString() : ""}
                       </p>
                     </div>
@@ -614,11 +614,11 @@ function NotificationBell({ size = "default" }: { size?: "default" | "mobile" })
               )}
             </div>
 
-            <div className="p-2 border-t border-stone-200 bg-[#FAF7F2] text-center">
+            <div className="p-2 border-t border-slate-200 dark:border-[#252C3B] bg-slate-50 dark:bg-[#1A1F2C] text-center">
               <Link
                 href="/admin/notifications"
                 onClick={() => setOpen(false)}
-                className="min-h-[40px] flex items-center justify-center text-xs font-bold text-[#059669] hover:underline"
+                className="min-h-[40px] flex items-center justify-center text-xs font-bold text-emerald-700 dark:text-emerald-400 hover:underline"
               >
                 View all notifications &rarr;
               </Link>
@@ -720,19 +720,19 @@ function UserProfileDropdown() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.97 }}
             transition={{ duration: 0.15, ease: "easeOut" }}
-            className="absolute right-0 top-full mt-2 w-64 rounded-2xl bg-white border border-stone-200 overflow-hidden z-50 origin-top-right shadow-xl"
+            className="absolute right-0 top-full mt-2 w-64 rounded-2xl bg-white dark:bg-[#151922] border border-slate-200 dark:border-[#252C3B] overflow-hidden z-50 origin-top-right shadow-xl"
           >
-            <div className="p-4 border-b border-stone-200 bg-[#FAF7F2]">
+            <div className="p-4 border-b border-slate-200 dark:border-[#252C3B] bg-slate-50 dark:bg-[#1A1F2C]">
               <div className="flex items-center gap-3">
                 <div
-                  className="flex items-center justify-center size-10 rounded-xl text-white font-bold shrink-0 bg-[#059669]"
+                  className="flex items-center justify-center size-10 rounded-xl text-slate-950 font-bold shrink-0 bg-emerald-500 shadow-sm"
                   style={{ fontSize: "0.8rem" }}
                 >
                   {userName.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase() || userName.slice(0, 2).toUpperCase()}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-stone-900 font-bold truncate" style={{ fontSize: "0.9rem" }}>{userName}</p>
-                  <p className="text-stone-600 truncate" style={{ fontSize: "0.75rem" }}>{rawRoleDisplay}</p>
+                  <p className="text-slate-900 dark:text-white font-bold truncate" style={{ fontSize: "0.9rem" }}>{userName}</p>
+                  <p className="text-slate-600 dark:text-slate-400 truncate" style={{ fontSize: "0.75rem" }}>{rawRoleDisplay}</p>
                 </div>
               </div>
             </div>
@@ -745,19 +745,19 @@ function UserProfileDropdown() {
                     setOpen(false);
                     router.push(href);
                   }}
-                  className="min-h-[44px] flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-stone-700 hover:text-stone-900 hover:bg-stone-50 active:scale-[0.98] transition-all duration-150 cursor-pointer"
+                  className="min-h-[44px] flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5 active:scale-[0.98] transition-all duration-150 cursor-pointer"
                   style={{ fontSize: "0.85rem", fontWeight: 600 }}
                 >
-                  <Icon className="size-4 text-stone-500" strokeWidth={1.8} />
+                  <Icon className="size-4 text-slate-400 dark:text-slate-500" strokeWidth={1.8} />
                   {label}
                 </button>
               ))}
             </div>
-            <div className="p-1.5 border-t border-stone-200 mt-1">
+            <div className="p-1.5 border-t border-slate-200 dark:border-[#252C3B] mt-1">
               <button
                 type="button"
                 onClick={handleLogout}
-                className="min-h-[44px] flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-red-700 hover:bg-red-50 active:scale-[0.98] transition-all duration-150 cursor-pointer"
+                className="min-h-[44px] flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 active:scale-[0.98] transition-all duration-150 cursor-pointer"
                 style={{ fontSize: "0.85rem", fontWeight: 600 }}
               >
                 <LogOut className="size-4" strokeWidth={1.8} />
@@ -842,7 +842,7 @@ export function AppTopbar({ breadcrumbs, currentPage }: AppTopbarProps) {
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: -60, opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="sticky top-0 z-30 border-b border-stone-200/80 bg-[#FDFBF7]/95 backdrop-blur-md print:hidden"
+            className="sticky top-0 z-30 border-b border-slate-200 dark:border-[#1E2430] bg-white/95 dark:bg-[#0E1117]/95 text-slate-900 dark:text-slate-100 backdrop-blur-md transition-colors print:hidden"
           >
             {/* ── Mobile layout ── */}
             <div className="md:hidden flex items-center justify-between h-14 px-2 gap-1 min-w-0">

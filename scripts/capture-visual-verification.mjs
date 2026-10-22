@@ -64,7 +64,7 @@ async function runVisualCapture() {
 
       for (const target of pagesToCapture) {
         console.log(`[${vp.name} | ${theme}] Capturing ${target.path}...`);
-        await page.goto(`${BASE_URL}${target.path}`, { waitUntil: 'domcontentloaded', timeout: 60000 });
+        await page.goto(`${BASE_URL}${target.path}`, { waitUntil: 'domcontentloaded', timeout: 90000 });
         await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
         await page.waitForTimeout(1500);
 

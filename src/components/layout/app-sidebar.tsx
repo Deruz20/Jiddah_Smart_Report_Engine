@@ -42,6 +42,7 @@ import {
 } from "../figma-ui/ui/sidebar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../figma-ui/ui/tooltip";
 import { cn } from "../figma-ui/ui/utils";
+import { JiddahLogo } from "@/components/brand/JiddahLogo";
 import { createClient } from "@/utils/supabase/client";
 import {
   normalizeAccountRole,
@@ -146,7 +147,7 @@ export const ROLE_GATED_NAV_ITEMS: NavItemConfig[] = [
     icon: UploadCloud,
     label: "Upload Center",
     id: "uploads",
-    href: "/admin/uploads",
+    href: "/admin/upload",
     roles: ["Administrator", "Head Teacher", "DOS Secular", "DOS Theology"],
   },
 ];
@@ -188,10 +189,6 @@ function NavItem({
   }, [active, isChildActive]);
 
   const isActive = active || (item.id === "dashboard" && pathname === "/admin");
-  const activeTextColor = sidebarDark ? "#34D399" : accentColor;
-  const activeBgColor = sidebarDark ? "rgba(16, 185, 129, 0.14)" : `${accentColor}14`;
-  const activeBorderColor = sidebarDark ? "rgba(16, 185, 129, 0.32)" : `${accentColor}38`;
-  const activeBarColor = sidebarDark ? "#10B981" : accentColor;
 
   return (
     <SidebarMenuItem className="flex flex-col">
@@ -203,54 +200,49 @@ function NavItem({
               data-testid={`nav-item-${item.id}`}
               onClick={() => isMobile && setOpenMobile(false)}
               className={cn(
-                "group/nav-item relative flex items-center min-h-[44px] h-11 w-full rounded-xl outline-none border-none transition-colors duration-150",
-                collapsed ? "justify-center" : "px-3",
-                !isActive &&
-                  (sidebarDark
-                    ? "text-[#94A3B8] hover:text-white hover:bg-[#1E293B]/75"
-                    : "text-[#57534E] hover:text-[#1C1917] hover:bg-[#F3EFE6]")
+                "group/nav-item relative flex items-center min-h-[44px] w-full rounded-xl outline-none transition-all duration-150",
+                collapsed ? "justify-center p-1" : "px-3 h-11",
+                collapsed && isActive
+                  ? "bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20 font-bold"
+                  : collapsed
+                  ? sidebarDark
+                    ? "text-slate-400 hover:text-white hover:bg-white/10"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+                  : isActive
+                  ? sidebarDark
+                    ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-bold"
+                    : "bg-emerald-50 text-emerald-800 border border-emerald-300 font-bold"
+                  : sidebarDark
+                  ? "text-slate-400 hover:text-white hover:bg-white/5 font-medium"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium"
               )}
             >
-              {isActive && (
-                <motion.div
-                  layoutId="active-nav-background"
-                  className="absolute inset-0 rounded-xl z-0"
-                  style={{
-                    backgroundColor: activeBgColor,
-                    border: `1px solid ${activeBorderColor}`,
-                  }}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{
-                    type: "spring",
-                    stiffness: 350,
-                    damping: 30,
-                    mass: 0.8,
-                  }}
-                />
-              )}
-
               {isActive && !collapsed && (
-                <motion.div
-                  layoutId="active-nav-indicator"
-                  className="absolute left-0 top-1/2 -translate-y-1/2 h-1/2 w-[3.5px] rounded-r-full z-10"
-                  style={{ backgroundColor: activeBarColor }}
-                  transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                <div
+                  className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r-full bg-emerald-500"
                 />
               )}
 
-              <div className="relative z-10 flex items-center justify-center size-8 shrink-0 rounded-lg">
+              <div
+                className={cn(
+                  "relative z-10 flex items-center justify-center shrink-0 transition-transform duration-150 group-hover/nav-item:scale-105",
+                  collapsed ? "size-10" : "size-7"
+                )}
+              >
                 <Icon
                   className={cn(
-                    "size-4 transition-all duration-200",
-                    !isActive &&
-                      (sidebarDark
-                        ? "text-[#94A3B8] group-hover/nav-item:text-white"
-                        : "text-[#78716C] group-hover/nav-item:text-[#1C1917]")
+                    collapsed ? "size-5" : "size-4",
+                    collapsed && isActive
+                      ? "text-slate-950"
+                      : isActive
+                      ? sidebarDark
+                        ? "text-emerald-400"
+                        : "text-emerald-700"
+                      : sidebarDark
+                      ? "text-slate-400 group-hover/nav-item:text-white"
+                      : "text-slate-600 group-hover/nav-item:text-slate-900"
                   )}
-                  style={isActive ? { color: activeTextColor } : undefined}
-                  strokeWidth={1.75}
+                  strokeWidth={collapsed && isActive ? 2.2 : 1.75}
                 />
               </div>
 
@@ -268,12 +260,13 @@ function NavItem({
                     className={cn(
                       "relative z-10 text-xs ml-2.5 overflow-hidden whitespace-nowrap flex-1",
                       isActive
-                        ? "font-bold"
+                        ? sidebarDark
+                          ? "text-emerald-400 font-bold"
+                          : "text-emerald-900 font-bold"
                         : sidebarDark
-                        ? "text-[#94A3B8] group-hover/nav-item:text-white font-medium"
-                        : "text-[#57534E] font-medium"
+                        ? "text-slate-300 group-hover/nav-item:text-white font-medium"
+                        : "text-slate-700 group-hover/nav-item:text-slate-900 font-medium"
                     )}
-                    style={isActive ? { color: activeTextColor } : undefined}
                   >
                     {item.label}
                   </motion.span>
@@ -439,29 +432,6 @@ export function AppSidebar() {
           .then(({ count }) => {
             if (typeof count === "number") setUnreadCount(count);
           });
-
-        // Supabase Realtime subscription for live unread updates
-        const channel = supabase
-          .channel("sidebar-notifications")
-          .on(
-            "postgres_changes",
-            { event: "*", schema: "public", table: "notifications" },
-            () => {
-              supabase
-                .from("notifications")
-                .select("id", { count: "exact", head: true })
-                .eq("read", false)
-                .or(`recipient_id.eq.${user.id},recipient_id.is.null`)
-                .then(({ count }) => {
-                  if (typeof count === "number") setUnreadCount(count);
-                });
-            }
-          )
-          .subscribe();
-
-        return () => {
-          supabase.removeChannel(channel);
-        };
       }
     });
 
@@ -485,6 +455,37 @@ export function AppSidebar() {
       active = false;
     };
   }, []);
+
+  // Dedicated Realtime Notification Subscription with safe cleanup
+  React.useEffect(() => {
+    if (!userEmail) return;
+    const supabase = createClient();
+    const channelName = `sidebar-notifs-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const channel = supabase.channel(channelName);
+
+    channel.on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "notifications" },
+      () => {
+        supabase
+          .from("notifications")
+          .select("id", { count: "exact", head: true })
+          .eq("read", false)
+          .then(({ count }) => {
+            if (typeof count === "number") setUnreadCount(count);
+          });
+      }
+    );
+
+    channel.subscribe();
+
+    return () => {
+      try {
+        channel.unsubscribe();
+        supabase.removeChannel(channel);
+      } catch {}
+    };
+  }, [userEmail]);
 
   const handleLogout = async () => {
     const supabase = createClient();
@@ -539,15 +540,11 @@ export function AppSidebar() {
               title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
               {/* Natural Shield Logo without enclosing circle/box */}
-              <div className="relative shrink-0 flex items-center justify-center size-9">
-                <img
-                  src="/school_logo.svg"
-                  alt="School Emblem"
-                  width="36"
-                  height="36"
-                  loading="eager"
-                  decoding="async"
-                  className="object-contain w-8 h-9 drop-shadow-sm transition-transform duration-200 group-hover/logo:scale-105"
+              <div className="relative shrink-0 flex items-center justify-center py-1">
+                <JiddahLogo
+                  height={collapsed ? 38 : 42}
+                  className="w-auto drop-shadow-sm transition-transform duration-200 group-hover/logo:scale-105"
+                  paper="transparent"
                 />
               </div>
               <AnimatePresence>

@@ -24,8 +24,11 @@ import {
   ArrowDown,
   ArrowLeft,
   ArrowRight,
+  Shield,
+  Minimize2,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { createClient } from '@/utils/supabase/client';
 
 import PrimaryEOTReport from '@/components/reports/PrimaryEOTReport';
 import PrimaryMOTReport from '@/components/reports/PrimaryMOTReport';
@@ -38,6 +41,10 @@ import TheologyMOTReport from '@/components/reports/TheologyMOTReport';
 import { DraggableOverlayLayer } from '@/components/reports/DraggableOverlayLayer';
 import { RankingSettingsPreview } from '@/components/reports/RankingSettingsPreview';
 import { ReportCardDesignGate } from '@/components/reports/ReportCardDesignGate';
+import { StampGeneratorPanel, StampConfig, DEFAULT_STAMP_CONFIG } from '@/components/reports/StampGenerator';
+import { WatermarkConfigPanel, WatermarkOverlay, WatermarkConfig, DEFAULT_WATERMARK_CONFIG } from '@/components/reports/WatermarkConfigurator';
+import { ReportTemplateOverridesPanel } from '@/components/reports/ReportTemplateOverrides';
+import { SmartPreFlightWarningBar } from '@/components/reports/SmartPreFlightWarningBar';
 import {
   TemplateOverlays,
   DEFAULT_OVERLAYS_BY_TEMPLATE,
@@ -72,11 +79,16 @@ export default function ReportStudioClient({ initialSettings }: ReportStudioClie
   // Active template
   const [selectedTemplate, setSelectedTemplate] = useState<string>('primary-eot');
 
-  // Active side drawer: 'overlays' | 'branding' | 'ranking' | 'design-gate'
-  const [activeDrawer, setActiveDrawer] = useState<'overlays' | 'branding' | 'ranking' | 'design-gate'>('overlays');
+  // Active side drawer
+  const [activeDrawer, setActiveDrawer] = useState<'overlays' | 'stamp-design' | 'watermark' | 'overrides' | 'branding' | 'ranking' | 'design-gate'>('overlays');
 
-  // Zoom scale
+  // Zoom scale & Minimizable toolbar
   const [zoom, setZoom] = useState<number>(0.7);
+  const [isZoomCollapsed, setIsZoomCollapsed] = useState<boolean>(false);
+
+  // Parameterized Stamp & Watermark Configs
+  const [stampConfig, setStampConfig] = useState<StampConfig>(DEFAULT_STAMP_CONFIG);
+  const [watermarkConfig, setWatermarkConfig] = useState<WatermarkConfig>(DEFAULT_WATERMARK_CONFIG);
 
   // Overlay state per template
   const [overlays, setOverlays] = useState<TemplateOverlays>(() =>
@@ -124,6 +136,32 @@ export default function ReportStudioClient({ initialSettings }: ReportStudioClie
       active = false;
     };
   }, [selectedTemplate]);
+
+  // Load persisted Stamp and Watermark configs from Supabase
+  useEffect(() => {
+    const supabase = createClient();
+    supabase
+      .from('stamp_configs')
+      .select('*')
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setStampConfig((prev) => ({ ...prev, ...data }));
+        }
+      });
+
+    supabase
+      .from('watermark_configs')
+      .select('*')
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setWatermarkConfig((prev) => ({ ...prev, ...data }));
+        }
+      });
+  }, []);
 
   // Contrast calculation
   const contrastRatio = getContrastRatio(previewBranding.themeColor, '#FFFFFF');
@@ -245,50 +283,83 @@ export default function ReportStudioClient({ initialSettings }: ReportStudioClie
         </div>
 
         {/* Tab Switcher */}
-        <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-xl border border-stone-200">
+        <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-xl border border-stone-200 overflow-x-auto max-w-full">
           <button
             onClick={() => setActiveDrawer('overlays')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${
+            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
               activeDrawer === 'overlays'
                 ? 'bg-white text-emerald-800 shadow-sm border border-stone-200/60'
                 : 'text-stone-600 hover:text-stone-900'
             }`}
           >
             <Move className="w-3.5 h-3.5" />
-            <span>Stamp & Signatures</span>
+            <span>Positions</span>
+          </button>
+          <button
+            onClick={() => setActiveDrawer('stamp-design')}
+            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+              activeDrawer === 'stamp-design'
+                ? 'bg-white text-emerald-800 shadow-sm border border-stone-200/60'
+                : 'text-stone-600 hover:text-stone-900'
+            }`}
+          >
+            <Sliders className="w-3.5 h-3.5" />
+            <span>Stamp</span>
+          </button>
+          <button
+            onClick={() => setActiveDrawer('watermark')}
+            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+              activeDrawer === 'watermark'
+                ? 'bg-white text-emerald-800 shadow-sm border border-stone-200/60'
+                : 'text-stone-600 hover:text-stone-900'
+            }`}
+          >
+            <Shield className="w-3.5 h-3.5" />
+            <span>Watermark</span>
+          </button>
+          <button
+            onClick={() => setActiveDrawer('overrides')}
+            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+              activeDrawer === 'overrides'
+                ? 'bg-white text-emerald-800 shadow-sm border border-stone-200/60'
+                : 'text-stone-600 hover:text-stone-900'
+            }`}
+          >
+            <Layout className="w-3.5 h-3.5" />
+            <span>Styling</span>
           </button>
           <button
             onClick={() => setActiveDrawer('branding')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${
+            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
               activeDrawer === 'branding'
                 ? 'bg-white text-emerald-800 shadow-sm border border-stone-200/60'
                 : 'text-stone-600 hover:text-stone-900'
             }`}
           >
             <Palette className="w-3.5 h-3.5" />
-            <span>Live Branding</span>
+            <span>Theme</span>
           </button>
           <button
             onClick={() => setActiveDrawer('ranking')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${
+            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
               activeDrawer === 'ranking'
                 ? 'bg-white text-emerald-800 shadow-sm border border-stone-200/60'
                 : 'text-stone-600 hover:text-stone-900'
             }`}
           >
             <Award className="w-3.5 h-3.5" />
-            <span>Ranking Ties</span>
+            <span>Ties</span>
           </button>
           <button
             onClick={() => setActiveDrawer('design-gate')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${
+            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
               activeDrawer === 'design-gate'
                 ? 'bg-white text-emerald-800 shadow-sm border border-stone-200/60'
                 : 'text-stone-600 hover:text-stone-900'
             }`}
           >
-            <Layout className="w-3.5 h-3.5" />
-            <span>A4 Design Gate</span>
+            <Check className="w-3.5 h-3.5" />
+            <span>Audit</span>
           </button>
         </div>
       </header>
@@ -297,44 +368,72 @@ export default function ReportStudioClient({ initialSettings }: ReportStudioClie
       <div className="flex-1 flex overflow-hidden">
         {/* Left Interactive Canvas Area */}
         <div className="flex-1 flex flex-col overflow-hidden relative">
-          {/* Zoom & Canvas Toolbar */}
-          <div className="h-10 bg-stone-50 border-b border-stone-200 px-4 flex items-center justify-between z-20 text-xs text-stone-600">
-            <div className="flex items-center gap-3">
-              <span className="font-mono text-[11px] bg-stone-200/70 text-stone-700 px-2 py-0.5 rounded">
-                {currentTemplateMeta.width} × {currentTemplateMeta.height}px ({currentTemplateMeta.orientation})
-              </span>
-              <span className="text-[11px] text-stone-500">
-                Synthetic pupil: <strong>{currentFixture.student?.name}</strong> ({currentFixture.student?.class_name})
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setZoom((z) => Math.max(0.3, Math.round((z - 0.1) * 10) / 10))}
-                className="p-1 rounded hover:bg-stone-200 transition"
-                title="Zoom Out"
-              >
-                <ZoomOut className="w-4 h-4" />
-              </button>
-              <span className="font-mono text-xs w-12 text-center">{Math.round(zoom * 100)}%</span>
-              <button
-                onClick={() => setZoom((z) => Math.min(1.5, Math.round((z + 0.1) * 10) / 10))}
-                className="p-1 rounded hover:bg-stone-200 transition"
-                title="Zoom In"
-              >
-                <ZoomIn className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => setZoom(0.7)}
-                className="px-2 py-0.5 text-[11px] font-medium rounded hover:bg-stone-200 transition"
-              >
-                Reset Zoom
-              </button>
-            </div>
+          {/* Smart Pre-Flight Warning Bar */}
+          <div className="px-4 py-2 bg-stone-100 border-b border-stone-200">
+            <SmartPreFlightWarningBar
+              overlays={overlays}
+              templateId={selectedTemplate}
+              signatures={currentFixture.signatures}
+              onAutoFix={handleResetOverlays}
+            />
           </div>
 
+          {/* Minimizable Zoom & Canvas Toolbar */}
+          {!isZoomCollapsed ? (
+            <div className="h-10 bg-stone-50 border-b border-stone-200 px-4 flex items-center justify-between z-20 text-xs text-stone-600 transition-all">
+              <div className="flex items-center gap-3">
+                <span className="font-mono text-[11px] bg-stone-200/70 text-stone-700 px-2 py-0.5 rounded">
+                  {currentTemplateMeta.width} × {currentTemplateMeta.height}px ({currentTemplateMeta.orientation})
+                </span>
+                <span className="text-[11px] text-stone-500 hidden sm:inline">
+                  Pupil: <strong>{currentFixture.student?.name}</strong> ({currentFixture.student?.class_name})
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setZoom((z) => Math.max(0.3, Math.round((z - 0.1) * 10) / 10))}
+                  className="p-1 rounded hover:bg-stone-200 transition cursor-pointer"
+                  title="Zoom Out"
+                >
+                  <ZoomOut className="w-4 h-4" />
+                </button>
+                <span className="font-mono text-xs w-12 text-center">{Math.round(zoom * 100)}%</span>
+                <button
+                  onClick={() => setZoom((z) => Math.min(1.5, Math.round((z + 0.1) * 10) / 10))}
+                  className="p-1 rounded hover:bg-stone-200 transition cursor-pointer"
+                  title="Zoom In"
+                >
+                  <ZoomIn className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setZoom(0.7)}
+                  className="px-2 py-0.5 text-[11px] font-medium rounded hover:bg-stone-200 transition cursor-pointer"
+                >
+                  Reset
+                </button>
+                <button
+                  onClick={() => setIsZoomCollapsed(true)}
+                  className="p-1 rounded hover:bg-stone-200 text-stone-400 hover:text-stone-700 transition cursor-pointer ml-1"
+                  title="Minimize zoom bar"
+                >
+                  <Minimize2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setIsZoomCollapsed(false)}
+              className="absolute top-14 left-4 z-30 px-2.5 py-1 rounded-full bg-stone-900/80 text-white text-[11px] font-mono shadow-lg backdrop-blur-xs flex items-center gap-1.5 hover:bg-black transition cursor-pointer"
+              title="Expand zoom toolbar"
+            >
+              <Maximize2 className="w-3 h-3 text-emerald-400" />
+              <span>{Math.round(zoom * 100)}%</span>
+            </button>
+          )}
+
           {/* Scrollable Canvas Viewport */}
-          <div className="flex-1 overflow-auto p-8 flex items-center justify-center bg-stone-200/60">
+          <div className="flex-1 overflow-auto p-4 sm:p-8 flex items-center justify-center bg-stone-200/60">
             <div
               className="relative shadow-2xl transition-transform duration-75 origin-top-center"
               style={{
@@ -351,6 +450,9 @@ export default function ReportStudioClient({ initialSettings }: ReportStudioClie
                   '--report-primary-color': previewBranding.themeColor,
                 } as any}
               >
+                {/* Watermark Underlay */}
+                <WatermarkOverlay config={watermarkConfig} />
+
                 {selectedTemplate === 'primary-eot' && <PrimaryEOTReport reportData={currentFixture} />}
                 {selectedTemplate === 'primary-mot' && <PrimaryMOTReport reportData={currentFixture} />}
                 {selectedTemplate === 'primary-bot' && <PrimaryBOTReport reportData={currentFixture} />}
@@ -611,6 +713,21 @@ export default function ReportStudioClient({ initialSettings }: ReportStudioClie
                 <div>• [ and ]: Rotate -1° / +1°</div>
               </div>
             </div>
+          )}
+
+          {/* Drawer: Stamp Vector Customizer */}
+          {activeDrawer === 'stamp-design' && (
+            <StampGeneratorPanel config={stampConfig} onChange={setStampConfig} />
+          )}
+
+          {/* Drawer: Watermark Controls */}
+          {activeDrawer === 'watermark' && (
+            <WatermarkConfigPanel config={watermarkConfig} onChange={setWatermarkConfig} />
+          )}
+
+          {/* Drawer: No-Code Section Overrides */}
+          {activeDrawer === 'overrides' && (
+            <ReportTemplateOverridesPanel templateType={selectedTemplate} />
           )}
 
           {/* Drawer 2: Live Customization & Branding */}

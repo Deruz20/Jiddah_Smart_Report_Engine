@@ -1,17 +1,67 @@
-:root {
+:root, [data-theme="light"] {
   color-scheme: light;
-  --ui-canvas: #f4f3ed;
-  --ui-surface: #fffdf8;
-  --ui-border: #d6d5cc;
-  --ui-text: #1f2937;
-  --ui-muted: #475569;
+  --bg-canvas:        #F8FAFC;
+  --bg-card:          #FFFFFF;
+  --bg-hover:         #F4F3ED;
+  --border:           #E2E8F0;
+  --accent-primary:   #008744;
+  --accent-secondary: #065F46;
+  --accent-dark:      #052E16;
+  --badge-bg:         #ECFDF5;
+  --badge-text:       #047857;
+  --text-primary:     #0F172A;
+  --text-secondary:   #475569;
+  --text-active:      #052E16;
+  --shadow-card:      0 1px 3px rgba(0,0,0,0.04);
+  --gradient-card:    linear-gradient(135deg, #F0FDF4 0%, #FFFFFF 100%);
+
+  /* UI tokens */
+  --ui-canvas: var(--bg-canvas);
+  --ui-surface: var(--bg-card);
+  --ui-border: var(--border);
+  --ui-text: var(--text-primary);
+  --ui-muted: var(--text-secondary);
   --ui-shell-background: #12312a;
   --ui-shell-raised: #1b3d35;
   --ui-shell-border: #35564e;
   --ui-shell-text: #f8fafc;
   --ui-shell-muted: #d1d5db;
-  --ui-primary: #065f46;
-  --ui-primary-hover: #047857;
+  --ui-primary: var(--accent-primary);
+  --ui-primary-hover: var(--accent-secondary);
   --ui-accent: #10b981;
-  --ui-accent-soft: #d1fae5;
+  --ui-accent-soft: var(--badge-bg);
+}
+
+[data-theme="dark"], .dark {
+  color-scheme: dark;
+  --bg-canvas:        #090C0A;
+  --bg-card:          #111714;
+  --bg-hover:         #17201B;
+  --border:           rgba(255, 255, 255, 0.08);
+  --accent-primary:   #84CC16;
+  --accent-secondary: #10B981;
+  --accent-dark:      #052E16;
+  --gradient-card:    linear-gradient(135deg, #064E3B 0%, #0F291E 100%);
+  --text-primary:     #F9FAFB;
+  --text-secondary:   #9CA3AF;
+  --text-active:      #052E16;
+  --badge-bg:         rgba(132, 204, 22, 0.12);
+  --badge-text:       #84CC16;
+  --shadow-card:      0 1px 4px rgba(0,0,0,0.3);
+
+  /* UI tokens */
+  --ui-canvas: var(--bg-canvas);
+  --ui-surface: var(--bg-card);
+  --ui-border: var(--border);
+  --ui-text: var(--text-primary);
+  --ui-muted: var(--text-secondary);
+  --ui-shell-background: #090C0A;
+  --ui-shell-raised: #111714;
+  --ui-shell-border: rgba(255, 255, 255, 0.08);
+  --ui-shell-text: #F9FAFB;
+  --ui-shell-muted: #9CA3AF;
+  --ui-primary: var(--accent-primary);
+  --ui-primary-hover: #65a30d;
+  --ui-accent: var(--accent-secondary);
+  --ui-accent-soft: rgba(16, 185, 129, 0.15);
 }

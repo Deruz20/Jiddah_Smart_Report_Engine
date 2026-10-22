@@ -306,7 +306,14 @@ export default function PrimaryMOTReport({ reportData }: any) {
           </div>
 
           <div className="mot-logo">
-            <img src={branding.logoUrl} alt="Logo" data-testid="report-school-logo" />
+            <img
+              src={branding.logoUrl || "/school_logo.svg"}
+              alt="Logo"
+              data-testid="report-school-logo"
+              onError={(e) => {
+                e.currentTarget.src = "/school_logo.svg";
+              }}
+            />
           </div>
 
           <div className="mot-school-right">
@@ -318,13 +325,22 @@ export default function PrimaryMOTReport({ reportData }: any) {
 
         <div className="mot-info">
           <div className="mot-info-row">
-            <div className="mot-field">Class: <div className="mot-line">{className}</div></div>
-            <div className="mot-field">Term: <div className="mot-line">{reportData?.term?.term_number ?? "--"}</div></div>
-            <div className="mot-field">Year: <div className="mot-line" style={{width: '100px'}}>{reportData?.term?.academic_year ?? "--"}</div></div>
+            <div className="mot-field" style={{ flex: 1.2 }}>
+              Class: <div className="mot-line" style={{ fontWeight: 800, textAlign: 'center' }}>{className}</div>
+            </div>
+            <div className="mot-field" style={{ flex: 1 }}>
+              Term: <div className="mot-line" style={{ fontWeight: 800, textAlign: 'center' }}>{reportData?.term?.term_number ?? "--"}</div>
+            </div>
+            <div className="mot-field" style={{ flex: 1 }}>
+              Year: <div className="mot-line" style={{ fontWeight: 800, textAlign: 'center' }}>{reportData?.term?.academic_year ?? "--"}</div>
+            </div>
+            <div className="mot-field" style={{ flex: 1.2 }}>
+              DIV: <div className="mot-line" style={{ fontWeight: 900, textAlign: 'center', color: '#b10000' }}>{reportData?.circular?.division || reportData?.student?.division || "_________"}</div>
+            </div>
           </div>
-          <div className="mot-info-row" style={{marginBottom: 0}}>
-            <div className="mot-field" style={{width: '100%'}}>
-              Pupil&apos;s Name: <div className="mot-line" style={{width: '100%', fontSize: '18px', fontWeight: 900, textTransform: 'uppercase'}}>{reportData?.student?.name}</div>
+          <div className="mot-info-row" style={{ marginBottom: 0 }}>
+            <div className="mot-field" style={{ width: '100%' }}>
+              Pupil&apos;s Name: <div className="mot-line" style={{ width: '100%', fontSize: '18px', fontWeight: 900, textTransform: 'uppercase', textAlign: 'center', letterSpacing: '0.5px' }}>{reportData?.student?.name}</div>
             </div>
           </div>
         </div>

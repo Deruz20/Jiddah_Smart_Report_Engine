@@ -4,6 +4,7 @@ import React, { useState, useMemo, useDeferredValue } from 'react';
 import { Search, Filter, Download, ChevronDown, ChevronUp, ChevronsUpDown, UserX, Edit2, Archive, RotateCcw, Trash2 } from 'lucide-react';
 import { Badge } from './figma-ui/Badge';
 import { EditStudentModal } from './EditStudentModal';
+import { ConfirmDestructiveDialog } from '@/components/ui/confirm-destructive-dialog';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
@@ -66,6 +67,11 @@ export function StudentsListClient({ students, department }: StudentsTableProps)
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [page, setPage] = useState(1);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [destructiveDialog, setDestructiveDialog] = useState<{
+    open: boolean;
+    student: Student | null;
+    mode: 'archive' | 'delete';
+  }>({ open: false, student: null, mode: 'archive' });
   const router = useRouter();
 
   const tabs: FilterTab[] = useMemo(() => {
@@ -135,8 +141,7 @@ export function StudentsListClient({ students, department }: StudentsTableProps)
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  const handleArchive = async (student: Student) => {
-    if (!confirm(`Are you sure you want to archive ${student.name}?`)) return;
+  const executeArchive = async (student: Student) => {
     try {
       const res = await fetch(`/api/students/${student.id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to archive student');
@@ -147,8 +152,7 @@ export function StudentsListClient({ students, department }: StudentsTableProps)
     }
   };
 
-  const handleHardDelete = async (student: Student) => {
-    if (!confirm(`WARNING: Are you sure you want to PERMANENTLY delete ${student.name}? This will erase all their marks and enrollments. This cannot be undone.`)) return;
+  const executeHardDelete = async (student: Student) => {
     try {
       const res = await fetch(`/api/students/${student.id}?hard_delete=true`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to delete student permanently');
@@ -157,6 +161,14 @@ export function StudentsListClient({ students, department }: StudentsTableProps)
     } catch {
       toast.error('Failed to delete student');
     }
+  };
+
+  const handleArchive = (student: Student) => {
+    setDestructiveDialog({ open: true, student, mode: 'archive' });
+  };
+
+  const handleHardDelete = (student: Student) => {
+    setDestructiveDialog({ open: true, student, mode: 'delete' });
   };
 
   const handleRestore = async (student: Student) => {
@@ -461,6 +473,31 @@ export function StudentsListClient({ students, department }: StudentsTableProps)
         onClose={() => setEditingStudent(null)}
         student={editingStudent}
         onSaved={() => router.refresh()}
+      />
+
+      <ConfirmDestructiveDialog
+        open={destructiveDialog.open}
+        onOpenChange={(open) => setDestructiveDialog((prev) => ({ ...prev, open }))}
+        title={
+          destructiveDialog.mode === 'delete'
+            ? `Permanently Delete ${destructiveDialog.student?.name || 'Pupil'}`
+            : `Archive ${destructiveDialog.student?.name || 'Pupil'}`
+        }
+        description={
+          destructiveDialog.mode === 'delete'
+            ? 'This action cannot be undone. All marks, enrollments, and academic history for this pupil will be permanently erased.'
+            : 'Archiving removes this learner from active class rosters and roll call while safely preserving historical records.'
+        }
+        confirmPhrase={destructiveDialog.mode === 'delete' ? 'DELETE' : 'ARCHIVE'}
+        confirmButtonText={destructiveDialog.mode === 'delete' ? 'Permanently Delete' : 'Archive Pupil'}
+        onConfirm={async () => {
+          if (!destructiveDialog.student) return;
+          if (destructiveDialog.mode === 'delete') {
+            await executeHardDelete(destructiveDialog.student);
+          } else {
+            await executeArchive(destructiveDialog.student);
+          }
+        }}
       />
     </div>
   );

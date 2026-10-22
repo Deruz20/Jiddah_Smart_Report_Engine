@@ -208,7 +208,7 @@ export default async function AdminDashboard() {
   };
 
   return (
-    <div className="w-full h-full bg-[#FDFBF7]">
+    <div className="w-full min-h-full bg-[var(--bg-canvas,#090C0A)] text-[var(--text-primary,#F1F5F9)] transition-colors">
       <DashboardContent data={data} />
     </div>
   );

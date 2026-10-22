@@ -65,14 +65,14 @@ export async function safeJsonFetch<T = any>(
 }
 
 export function getStoredThemeMode(): ThemeMode {
-  if (typeof window === 'undefined') return 'hybrid'
+  if (typeof window === 'undefined') return 'system'
   try {
-    const raw = localStorage.getItem(THEME_STORAGE_KEY)
+    const raw = localStorage.getItem('jiddah_theme_mode') || localStorage.getItem(THEME_STORAGE_KEY)
     if (raw === 'hybrid' || raw === 'light' || raw === 'dark' || raw === 'system') {
       return raw
     }
   } catch {}
-  return 'hybrid'
+  return 'system'
 }
 
 export function resolveEffectiveTheme(mode: ThemeMode): {
@@ -104,6 +104,8 @@ export function resolveEffectiveTheme(mode: ThemeMode): {
 export function applyThemeModeToDom(mode: ThemeMode) {
   if (typeof document === 'undefined') return
   const resolved = resolveEffectiveTheme(mode)
+  const theme = resolved.workspaceDark ? 'dark' : 'light'
+  document.documentElement.setAttribute('data-theme', theme)
   document.documentElement.dataset.themeMode = mode
   document.documentElement.dataset.sidebarTheme = resolved.sidebarDark ? 'dark' : 'light'
   document.documentElement.classList.toggle('dark', resolved.workspaceDark)
@@ -113,6 +115,8 @@ export function setStoredThemeMode(mode: ThemeMode) {
   if (typeof window === 'undefined') return
   try {
     localStorage.setItem(THEME_STORAGE_KEY, mode)
+    localStorage.setItem('jiddah_theme_mode', mode)
+    localStorage.setItem('theme', mode)
   } catch {}
   applyThemeModeToDom(mode)
   window.dispatchEvent(new CustomEvent('jiddah:theme-changed', { detail: { mode } }))

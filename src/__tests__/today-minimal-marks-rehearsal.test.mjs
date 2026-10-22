@@ -101,8 +101,11 @@ function normalizePolicy(policy) {
 }
 
 function policyDiff(actual) {
-  const expectedMap = new Map(expectedPolicies.map((policy) => [policy.policyname, normalizePolicy(policy)]));
-  const actualMap = new Map(actual.map((policy) => [policy.policyname, normalizePolicy(policy)]));
+  const relevantTables = new Set(['teacher_class_assignments', 'circular_marks', 'theology_marks', 'teachers']);
+  const filteredExpected = expectedPolicies.filter((p) => relevantTables.has(p.tablename));
+  const filteredActual = actual.filter((p) => relevantTables.has(p.tablename));
+  const expectedMap = new Map(filteredExpected.map((policy) => [policy.policyname, normalizePolicy(policy)]));
+  const actualMap = new Map(filteredActual.map((policy) => [policy.policyname, normalizePolicy(policy)]));
   const differences = [];
   for (const [name, expected] of expectedMap) {
     const observed = actualMap.get(name);

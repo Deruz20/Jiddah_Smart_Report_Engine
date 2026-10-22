@@ -30,13 +30,19 @@ export default async function ReportsManagementPage() {
       )
     }
 
-    const access = await verifyDataAccess(supabase, user, 'read')
-    if (!access.isAuthorized) {
-      return (
-        <div className="p-6 text-rose-700 font-medium max-w-xl mx-auto mt-8 bg-rose-50 border border-rose-200 rounded-xl">
-          Access Denied: {access.message || 'You do not have permission to access the Report Center.'}
-        </div>
-      )
+    const metaRole = user.app_metadata?.role || user.user_metadata?.role;
+    const { isAdministratorRole } = await import('@/lib/teacher-access');
+    const isAdmin = isAdministratorRole(metaRole);
+
+    if (!isAdmin) {
+      const access = await verifyDataAccess(supabase, user, 'read');
+      if (!access.isAuthorized) {
+        return (
+          <div className="p-6 text-rose-700 font-medium max-w-xl mx-auto mt-8 bg-rose-50 border border-rose-200 rounded-xl">
+            Access Denied: {access.message || 'You do not have permission to access the Report Center.'}
+          </div>
+        );
+      }
     }
 
     const { data: termData, error: termError } = await supabase

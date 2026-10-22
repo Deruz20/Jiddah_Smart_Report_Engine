@@ -108,7 +108,9 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Enrollment not found' }, { status: 404 }))
     }
 
-    const isAdmin = isAdministratorRole(authRes.role) || authRes.role === 'Administrator' || (!authRes.filterByClasses && !authRes.filterByDepartment);
+    const metaRole = user.app_metadata?.role || user.user_metadata?.role;
+    const { isAdministratorRole } = await import('@/lib/teacher-access');
+    const isAdmin = isAdministratorRole(metaRole) || isAdministratorRole(authRes.role) || authRes.role === 'Administrator' || (!authRes.filterByClasses && !authRes.filterByDepartment);
     let allowedReportClass = isAdmin;
     if (!allowedReportClass) {
       if (curriculum === 'theology') {

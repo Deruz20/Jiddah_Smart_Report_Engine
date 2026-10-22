@@ -1,5 +1,4 @@
-import type { SupabaseClient, User } from '@supabase/supabase-js';
-import { createAdminClient } from '@/utils/supabase/server';
+import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js';
 import {
   accessDeniedForLookupError,
   authorizeTeacherProfile,
@@ -13,9 +12,9 @@ import {
   type TeacherProfile,
   type ClassType,
   canAccessClass,
-} from '@/lib/teacher-access';
+} from './teacher-access.ts';
 
-export type { AuthAccessResult, ClassAssignment, Department, ActionType } from '@/lib/teacher-access';
+export type { AuthAccessResult, ClassAssignment, Department, ActionType } from './teacher-access.ts';
 
 function parseLegacyClassList(raw: unknown): string[] {
   if (!raw) return [];
@@ -64,7 +63,12 @@ export async function verifyDataAccess(
     };
   }
 
-  const directory = process.env.SUPABASE_SERVICE_ROLE_KEY ? createAdminClient() : _supabase;
+  const adminKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const directory = adminKey
+    ? createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321', adminKey, {
+        auth: { persistSession: false, autoRefreshToken: false },
+      })
+    : _supabase;
 
   let { data: profiles, error: profileError } = await directory
     .from('teachers')

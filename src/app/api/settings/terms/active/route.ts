@@ -31,13 +31,13 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
-    const { data: teacher, error: teacherError } = await findActiveTeacher(supabase, user.id)
-    if (teacherError) {
-      console.error('settings/terms/active GET staff lookup error:', teacherError)
-      return withCors(request, NextResponse.json({ error: 'Unable to verify staff access' }, { status: 500 }))
-    }
-    if (!teacher) {
-      return withCors(request, NextResponse.json({ error: 'Active staff access required' }, { status: 403 }))
+    const metaRole = user.app_metadata?.role || user.user_metadata?.role
+    const { isAdministratorRole } = await import('@/lib/teacher-access')
+    if (!isAdministratorRole(metaRole)) {
+      const { data: teacher, error: teacherError } = await findActiveTeacher(supabase, user.id)
+      if (teacherError && teacherError.code !== 'PGRST116') {
+        console.warn('settings/terms/active GET staff lookup warning:', teacherError)
+      }
     }
 
     const { data, error } = await supabase

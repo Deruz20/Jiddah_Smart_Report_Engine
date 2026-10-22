@@ -3,39 +3,43 @@
 import React from "react";
 import Link from "next/link";
 import { GraduationCap } from "lucide-react";
+import { cn } from "@/components/figma-ui/ui/utils";
 
 export function AppFooter() {
   return (
     <footer
       data-testid="app-footer"
-      className="hidden md:flex w-full shrink-0 print:hidden px-4 lg:px-6 h-8 items-center justify-between border-t border-stone-200/70 bg-white/95 backdrop-blur-xs text-[11px] text-stone-500 select-none z-10"
+      className={cn(
+        "hidden md:flex w-full shrink-0 print:hidden px-4 lg:px-6 h-8 items-center justify-between border-t select-none z-10 text-[11px] transition-colors",
+        "border-[var(--border-subtle,#1E293B)] bg-[var(--bg-card,#111714)] text-stone-400"
+      )}
     >
       <div className="flex items-center gap-2 min-w-0">
-        <GraduationCap className="size-3.5 text-[#059669] shrink-0" strokeWidth={2} />
-        <span className="font-semibold text-stone-700 truncate">
+        <GraduationCap className="size-3.5 text-emerald-400 shrink-0" strokeWidth={2} />
+        <span className="font-semibold text-stone-200 truncate">
           Jiddah Smart Report Engine
         </span>
-        <span className="text-stone-300">•</span>
-        <span className="tabular-nums truncate">
+        <span className="opacity-40">•</span>
+        <span className="tabular-nums truncate opacity-75">
           © {new Date().getFullYear()} Jiddah Islamic Schools
         </span>
       </div>
 
-      <div className="flex items-center gap-4 shrink-0">
+      <div className="flex items-center gap-4 shrink-0 text-stone-400">
         <Link
           href="/admin/settings"
-          className="font-medium text-stone-500 hover:text-[#059669] transition-colors"
+          className="font-medium hover:text-emerald-400 transition-colors"
         >
           School Settings
         </Link>
         <Link
           href="/admin/activity"
-          className="font-medium text-stone-500 hover:text-[#059669] transition-colors"
+          className="font-medium hover:text-emerald-400 transition-colors"
         >
           Audit Trail
         </Link>
-        <span className="font-mono text-[10px] text-stone-400 tabular-nums">
-          v0.1.0-audited
+        <span className="font-mono text-[10px] opacity-60 tabular-nums">
+          v2.4.0
         </span>
       </div>
     </footer>

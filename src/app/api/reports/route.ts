@@ -56,18 +56,24 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Authentication required. Please log in.' }, { status: 401 }))
     }
 
-    const authRes = await verifyDataAccess(supabase, user, 'read', student.class_name);
-    if (!authRes.isAuthorized) {
-      return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
-    }
+    const metaRole = user.app_metadata?.role || user.user_metadata?.role;
+    const { isAdministratorRole } = await import('@/lib/teacher-access');
+    const isAdmin = isAdministratorRole(metaRole);
 
-    if (authRes.filterByDepartment) {
-      const hasTheologyClass = student.enrollments?.[0]?.theology_class_id != null;
-      if (authRes.filterByDepartment === 'theology' && !hasTheologyClass) {
-        return withCors(request, NextResponse.json({ error: 'Unauthorized: Student is not in the Theology department' }, { status: 403 }))
+    if (!isAdmin) {
+      const authRes = await verifyDataAccess(supabase, user, 'read', student.class_name);
+      if (!authRes.isAuthorized) {
+        return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
       }
-      if (authRes.filterByDepartment === 'secular' && !student.class_name) {
-        return withCors(request, NextResponse.json({ error: 'Unauthorized: Student is not in the Secular department' }, { status: 403 }))
+
+      if (authRes.filterByDepartment) {
+        const hasTheologyClass = student.enrollments?.[0]?.theology_class_id != null;
+        if (authRes.filterByDepartment === 'theology' && !hasTheologyClass) {
+          return withCors(request, NextResponse.json({ error: 'Unauthorized: Student is not in the Theology department' }, { status: 403 }))
+        }
+        if (authRes.filterByDepartment === 'secular' && !student.class_name) {
+          return withCors(request, NextResponse.json({ error: 'Unauthorized: Student is not in the Secular department' }, { status: 403 }))
+        }
       }
     }
 

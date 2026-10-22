@@ -77,10 +77,12 @@ export default async function StudentsManagementPage() {
       arabic_name: e.students.arabic_name ?? null,
     }))
 
+  const runningClassesCount = new Set(students.map((s: any) => s.circular_class).filter((c: any) => c && c !== '—')).size || 2;
+
   const heroStats = [
     { label: 'Active Students', value: students.length, icon: GraduationCap, color: 'emerald' },
-    { label: 'Classes Running', value: 7, icon: BookOpen, color: 'orange' },
-    { label: 'Growth YoY', value: '+18%', icon: TrendingUp, color: 'emerald' },
+    { label: 'Classes Running', value: runningClassesCount, icon: BookOpen, color: 'orange' },
+    { label: 'Active Cohorts', value: `${runningClassesCount} Levels`, icon: TrendingUp, color: 'emerald' },
     { label: 'Academic Year', value: currentAcademicYear, icon: Calendar, color: 'stone' },
   ];
 

@@ -1,0 +1,219 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
+  <defs>
+    <!-- Gradients -->
+    <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#064e3b" />
+      <stop offset="50%" stop-color="#047857" />
+      <stop offset="100%" stop-color="#065f46" />
+    </linearGradient>
+
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fef08a" />
+      <stop offset="35%" stop-color="#f59e0b" />
+      <stop offset="70%" stop-color="#d97706" />
+      <stop offset="100%" stop-color="#b45309" />
+    </linearGradient>
+
+    <linearGradient id="ribbonGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#d97706" />
+      <stop offset="25%" stop-color="#f59e0b" />
+      <stop offset="50%" stop-color="#fef08a" />
+      <stop offset="75%" stop-color="#f59e0b" />
+      <stop offset="100%" stop-color="#d97706" />
+    </linearGradient>
+
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000" flood-opacity="0.3" />
+    </filter>
+  </defs>
+
+  <!-- Outer Glow / Shadow Group -->
+  <g filter="url(#shadow)">
+    <!-- Main Crest Shield Shape -->
+    <path
+      d="M 250,30 
+         C 380,30 420,70 420,170 
+         C 420,310 330,400 250,440 
+         C 170,400 80,310 80,170 
+         C 80,70 120,30 250,30 Z"
+      fill="url(#shieldGrad)"
+      stroke="url(#goldGrad)"
+      stroke-width="8"
+      stroke-linejoin="round"
+    />
+
+    <!-- Inner Golden Border -->
+    <path
+      d="M 250,44 
+         C 368,44 406,80 406,172 
+         C 406,298 324,384 250,422 
+         C 176,384 94,298 94,172 
+         C 94,80 132,44 250,44 Z"
+      fill="none"
+      stroke="url(#goldGrad)"
+      stroke-width="3"
+      opacity="0.8"
+    />
+
+    <!-- Laurel Wreath Left -->
+    <g fill="url(#goldGrad)" opacity="0.9">
+      <path d="M 120,130 C 105,150 100,180 105,210 C 102,190 108,160 120,130 Z" />
+      <path d="M 110,160 C 95,170 90,195 95,215 C 93,200 98,180 110,160 Z" />
+      <path d="M 115,200 C 100,215 98,245 106,270 C 103,250 106,225 115,200 Z" />
+      <path d="M 128,245 C 115,265 118,295 130,320 C 124,300 123,275 128,245 Z" />
+      <path d="M 148,295 C 138,320 145,350 162,370 C 153,350 149,325 148,295 Z" />
+      <path d="M 175,345 C 170,370 185,395 208,410 C 196,395 186,375 175,345 Z" />
+    </g>
+
+    <!-- Laurel Wreath Right (Mirrored) -->
+    <g fill="url(#goldGrad)" opacity="0.9">
+      <path d="M 380,130 C 395,150 400,180 395,210 C 398,190 392,160 380,130 Z" />
+      <path d="M 390,160 C 405,170 410,195 405,215 C 407,200 402,180 390,160 Z" />
+      <path d="M 385,200 C 400,215 402,245 394,270 C 397,250 394,225 385,200 Z" />
+      <path d="M 372,245 C 385,265 382,295 370,320 C 376,300 377,275 372,245 Z" />
+      <path d="M 352,295 C 362,320 355,350 338,370 C 347,350 351,325 352,295 Z" />
+      <path d="M 325,345 C 330,370 315,395 292,410 C 304,395 314,375 325,345 Z" />
+    </g>
+
+    <!-- Crescent Moon & Star -->
+    <g transform="translate(250, 88)" fill="url(#goldGrad)">
+      <!-- Crescent -->
+      <path d="M 0,-30 A 24 24 0 1 0 18,16 A 19 19 0 1 1 0,-30 Z" />
+      <!-- Star -->
+      <polygon points="10,-12 13,-4 21,-4 15,1 17,9 10,4 3,9 5,1 -1,-4 7,-4" />
+    </g>
+
+    <!-- School Title Curved / Center -->
+    <text
+      x="250"
+      y="142"
+      text-anchor="middle"
+      fill="#ffffff"
+      font-family="'Montserrat', 'Arial Black', sans-serif"
+      font-size="20"
+      font-weight="900"
+      letter-spacing="2.5"
+    >
+      JIDDAH ISLAMIC SCHOOLS
+    </text>
+
+    <text
+      x="250"
+      y="160"
+      text-anchor="middle"
+      fill="url(#goldGrad)"
+      font-family="'Amiri', 'Traditional Arabic', serif"
+      font-size="16"
+      font-weight="bold"
+    >
+      مدرسة جدة الإسلامية
+    </text>
+
+    <!-- Crossed Pens (Behind Book) -->
+    <g stroke="url(#goldGrad)" stroke-width="4" stroke-linecap="round">
+      <line x1="175" y1="210" x2="325" y2="300" />
+      <line x1="325" y1="210" x2="175" y2="300" />
+      <!-- Pen Nibs -->
+      <polygon points="175,210 182,217 186,211" fill="url(#goldGrad)" />
+      <polygon points="325,210 318,217 314,211" fill="url(#goldGrad)" />
+    </g>
+
+    <!-- Holy Book / Qur'an on Rehal (Stand) -->
+    <!-- Rays of Light -->
+    <g stroke="url(#goldGrad)" stroke-width="2" opacity="0.6">
+      <line x1="250" y1="220" x2="250" y2="195" />
+      <line x1="225" y1="225" x2="210" y2="205" />
+      <line x1="275" y1="225" x2="290" y2="205" />
+      <line x1="205" y1="235" x2="185" y2="225" />
+      <line x1="295" y1="235" x2="315" y2="225" />
+    </g>
+
+    <!-- Open Book Pages -->
+    <path
+      d="M 250,230 
+         C 220,222 170,224 150,238 
+         L 150,292 
+         C 170,278 220,276 250,286 
+         C 280,276 330,278 350,292 
+         L 350,238 
+         C 330,224 280,222 250,230 Z"
+      fill="#ffffff"
+      stroke="url(#goldGrad)"
+      stroke-width="3"
+    />
+
+    <!-- Book Center Fold Line -->
+    <line x1="250" y1="230" x2="250" y2="286" stroke="#d97706" stroke-width="2.5" />
+
+    <!-- Script Lines on Pages -->
+    <g stroke="#047857" stroke-width="2" stroke-linecap="round" opacity="0.75">
+      <!-- Left Page Lines -->
+      <line x1="172" y1="248" x2="232" y2="244" />
+      <line x1="172" y1="258" x2="232" y2="254" />
+      <line x1="172" y1="268" x2="232" y2="264" />
+      <line x1="172" y1="278" x2="220" y2="275" />
+
+      <!-- Right Page Lines -->
+      <line x1="268" y1="244" x2="328" y2="248" />
+      <line x1="268" y1="254" x2="328" y2="258" />
+      <line x1="268" y1="264" x2="328" y2="268" />
+      <line x1="280" y1="275" x2="328" y2="278" />
+    </g>
+
+    <!-- Wooden Rehal / Book Stand -->
+    <path
+      d="M 200,290 L 250,325 L 300,290 L 315,315 L 250,350 L 185,315 Z"
+      fill="url(#goldGrad)"
+      stroke="#b45309"
+      stroke-width="2"
+    />
+
+    <!-- Bottom Motto Banner Ribbon -->
+    <!-- Ribbon Tails -->
+    <path d="M 60,385 L 110,360 L 110,405 L 60,420 L 85,402 Z" fill="#b45309" />
+    <path d="M 440,385 L 390,360 L 390,405 L 440,420 L 415,402 Z" fill="#b45309" />
+
+    <!-- Ribbon Fold Underside -->
+    <polygon points="100,385 125,385 110,405" fill="#78350f" />
+    <polygon points="400,385 375,385 390,405" fill="#78350f" />
+
+    <!-- Main Ribbon Arc -->
+    <path
+      d="M 85,382 
+         C 160,358 340,358 415,382 
+         L 405,422 
+         C 335,400 165,400 95,422 Z"
+      fill="url(#ribbonGrad)"
+      stroke="#b45309"
+      stroke-width="2.5"
+    />
+
+    <!-- Ribbon Motto Text -->
+    <text
+      x="250"
+      y="397"
+      text-anchor="middle"
+      fill="#064e3b"
+      font-family="'Montserrat', 'Arial Black', sans-serif"
+      font-size="14.5"
+      font-weight="900"
+      letter-spacing="1.2"
+    >
+      STRIVE FOR LIFE &amp; HEREAFTER
+    </text>
+
+    <!-- Location Subtitle -->
+    <text
+      x="250"
+      y="432"
+      text-anchor="middle"
+      fill="url(#goldGrad)"
+      font-family="'Montserrat', sans-serif"
+      font-size="11"
+      font-weight="800"
+      letter-spacing="2"
+    >
+      NSANGI - WAKISO
+    </text>
+  </g>
+</svg>

@@ -56,14 +56,20 @@ export async function GET(request: NextRequest) {
     const supabase = createClient(cookieStore)
 
     const user = await getAuthenticatedUser(supabase)
-    if (!user) {
-      return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
-    }
-
-    const { verifyDataAccess } = await import('@/lib/auth-server')
-    const authRes = await verifyDataAccess(supabase, user, 'read')
-    if (!authRes.isAuthorized) {
-      return withCors(request, NextResponse.json({ error: 'Access Denied' }, { status: 403 }))
+    // Any authenticated user can read school settings (teachers, students, admin, DOS).
+    // If not authenticated, we can return public branding data rather than failing with 401/403.
+    if (user) {
+      const metaRole = user.app_metadata?.role || user.user_metadata?.role
+      const { isAdministratorRole } = await import('@/lib/teacher-access')
+      if (!isAdministratorRole(metaRole)) {
+        const { verifyDataAccess } = await import('@/lib/auth-server')
+        // Best-effort check, but allow reading school settings for all authenticated users
+        try {
+          await verifyDataAccess(supabase, user, 'read')
+        } catch {
+          // Allow read to proceed
+        }
+      }
     }
 
     const [

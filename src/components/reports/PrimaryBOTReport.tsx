@@ -298,7 +298,14 @@ export default function PrimaryBOTReport({ reportData }: any) {
           </div>
 
           <div className="bot-logo">
-            <img src={branding.logoUrl} alt="Logo" data-testid="report-school-logo" />
+            <img
+              src={branding.logoUrl || "/school_logo.svg"}
+              alt="Logo"
+              data-testid="report-school-logo"
+              onError={(e) => {
+                e.currentTarget.src = "/school_logo.svg";
+              }}
+            />
           </div>
 
           <div className="bot-school-right">
@@ -310,13 +317,22 @@ export default function PrimaryBOTReport({ reportData }: any) {
 
         <div className="bot-info">
           <div className="bot-info-row">
-            <div className="bot-field">Class: <div className="bot-line">{className}</div></div>
-            <div className="bot-field">Term: <div className="bot-line">{reportData?.term?.term_number ?? "--"}</div></div>
-            <div className="bot-field">Year: <div className="bot-line" style={{width: '100px'}}>{reportData?.term?.academic_year ?? "--"}</div></div>
+            <div className="bot-field" style={{ flex: 1.2 }}>
+              Class: <div className="bot-line" style={{ fontWeight: 800, textAlign: 'center' }}>{className}</div>
+            </div>
+            <div className="bot-field" style={{ flex: 1 }}>
+              Term: <div className="bot-line" style={{ fontWeight: 800, textAlign: 'center' }}>{reportData?.term?.term_number ?? "--"}</div>
+            </div>
+            <div className="bot-field" style={{ flex: 1 }}>
+              Year: <div className="bot-line" style={{ fontWeight: 800, textAlign: 'center' }}>{reportData?.term?.academic_year ?? "--"}</div>
+            </div>
+            <div className="bot-field" style={{ flex: 1.2 }}>
+              DIV: <div className="bot-line" style={{ fontWeight: 900, textAlign: 'center', color: '#b10000' }}>{reportData?.circular?.division || reportData?.student?.division || "_________"}</div>
+            </div>
           </div>
-          <div className="bot-info-row" style={{marginBottom: 0}}>
-            <div className="bot-field" style={{width: '100%'}}>
-              Pupil&apos;s Name: <div className="bot-line" style={{width: '100%', fontSize: '18px', fontWeight: 900, textTransform: 'uppercase'}}>{reportData?.student?.name}</div>
+          <div className="bot-info-row" style={{ marginBottom: 0 }}>
+            <div className="bot-field" style={{ width: '100%' }}>
+              Pupil&apos;s Name: <div className="bot-line" style={{ width: '100%', fontSize: '18px', fontWeight: 900, textTransform: 'uppercase', textAlign: 'center', letterSpacing: '0.5px' }}>{reportData?.student?.name}</div>
             </div>
           </div>
         </div>

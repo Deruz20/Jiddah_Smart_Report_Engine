@@ -366,7 +366,13 @@ export function TheologyCard({ reportData }: { reportData: any }) {
             {/* HEADER */}
             <div className="tc-header">
               <div className="tc-badge">
-                <img src={reportData?.settings?.logo_url || "/school_budge.jpeg"} alt="School Badge" />
+                <img
+                  src={reportData?.settings?.logo_url || "/school_budge.jpeg"}
+                  alt="School Badge"
+                  onError={(e) => {
+                    e.currentTarget.src = "/school_logo.svg";
+                  }}
+                />
               </div>
               <div className="tc-header-center">
                 <div className="tc-basmala">بسم الله الرحمن الرحيم</div>
@@ -384,7 +390,7 @@ export function TheologyCard({ reportData }: { reportData: any }) {
             <div className="tc-info">
               <div className="tc-row">
                 <span className="tc-label">اسم الطالب/ة :</span>
-                <div className="tc-field">{reportData?.student?.arabic_name || '___'}</div>
+                <div className="tc-field" style={{ fontWeight: 800, fontSize: '15px' }}>{reportData?.student?.arabic_name || reportData?.student?.name || '___'}</div>
               </div>
               <div className="tc-row tc-row-sub">
                 <span className="tc-label">الفترة:</span>

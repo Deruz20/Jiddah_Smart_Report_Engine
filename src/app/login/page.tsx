@@ -146,7 +146,6 @@ function LoginContent() {
   };
 
   const handleLoginInvalid = (errors: FieldErrors<LoginForm>) => {
-    console.log("[handleLoginInvalid errors]:", JSON.stringify(errors));
     const message = firstFieldError(errors) ?? "Please enter your email address and password.";
     setAuthErrorMessage(message);
     toast.error(message);

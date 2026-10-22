@@ -8,6 +8,7 @@ const serviceKey = creds.serviceRoleKey;
 const supabase = createClient(SUPABASE_URL, serviceKey);
 
 const ROLES_TO_SEED = [
+  { id: 'f0a1b2c3-d4e5-4f6a-8b9c-0d1e2f3a4b5c', email: 'hassanhatima20@gmail.com', password: 'Jiddah', role: 'Administrator', name: 'Hassan Hatima' },
   { id: '972af107-555f-4289-9357-5c14119328e5', email: 'admin@test.local', password: 'Password123!', role: 'Administrator', name: 'Synthetic Admin' },
   { id: '47ccf9d7-f514-4e4b-a765-536e29deed84', email: 'head@test.local', password: 'Password123!', role: 'Head Teacher', name: 'Synthetic Head Teacher' },
   { id: '0811a4f1-efab-442e-8f17-dad3adbb82ee', email: 'dos@test.local', password: 'Password123!', role: 'DOS', name: 'Synthetic DOS' },

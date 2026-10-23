@@ -1,10 +1,10 @@
-import { createClient } from '@/utils/supabase/server'
+import { createAdminClient, createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { isCoreSubject } from '@/lib/grading'
 import { resolveSectionType } from '@/lib/section-type'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
-import { verifyDataAccess } from '@/lib/auth-server'
+import { canAccessCurriculumClass, verifyDataAccess } from '@/lib/auth-server'
 import { recordActivity } from '@/lib/api-server'
 
 export async function OPTIONS(request: NextRequest) {
@@ -42,7 +42,12 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Authentication required. Please log in.' }, { status: 401 }))
     }
 
-    const { data: enrollment, error: enrollmentError } = await supabase
+    const authRes = await verifyDataAccess(supabase, user, 'read')
+    if (!authRes.isAuthorized) {
+      return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
+    }
+
+    const { data: enrollment, error: enrollmentError } = await createAdminClient()
       .from('enrollments')
       .select('id, circular_class_id, theology_class_id, circular_classes(section, class_name), theology_classes(level)')
       .eq('id', enrollment_id)
@@ -52,15 +57,10 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Enrollment not found' }, { status: 404 }))
     }
 
-    // Security Check
-    const authRes = await verifyDataAccess(supabase, user, 'read');
-    if (!authRes.isAuthorized) {
-      return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
-    }
-    if (authRes.filterByClasses) {
-      if (!authRes.filterByClasses.includes(enrollment.circular_class_id) && !authRes.filterByClasses.includes(enrollment.theology_class_id)) {
-        return withCors(request, NextResponse.json({ error: 'Unauthorized: You do not have access to this student\'s classes.' }, { status: 403 }))
-      }
+    const canReadCircular = canAccessCurriculumClass(authRes, 'circular', enrollment.circular_class_id)
+    const canReadTheology = canAccessCurriculumClass(authRes, 'theology', enrollment.theology_class_id)
+    if (!canReadCircular && !canReadTheology) {
+      return withCors(request, NextResponse.json({ error: 'Unauthorized: You do not have access to this student\'s classes.' }, { status: 403 }))
     }
     
     if (authRes.filterByDepartment) {
@@ -72,53 +72,53 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Fetch circular subjects
     const circularClassMeta = Array.isArray(enrollment.circular_classes)
       ? enrollment.circular_classes[0]
       : (enrollment.circular_classes as { section?: string; class_name?: string } | null)
     const sectionType = resolveSectionType(circularClassMeta?.section, circularClassMeta?.class_name)
-    const { data: subjects, error: subjectsError } = await supabase
-      .from('circular_subjects')
-      .select('id, subject_name')
-      .eq('section', sectionType)
-      .order('subject_name', { ascending: true })
+    let circular_marks: any[] = []
+    if (canReadCircular) {
+      const { data: subjects, error: subjectsError } = await supabase
+        .from('circular_subjects')
+        .select('id, subject_name')
+        .eq('section', sectionType)
+        .order('subject_name', { ascending: true })
 
-    if (subjectsError) {
-      console.error('circular_subjects DB error:', subjectsError.message)
-      return withCors(request, NextResponse.json({ error: subjectsError.message }, { status: 500 }))
-    }
-
-    // Fetch existing circular marks
-    const { data: existingCircularMarks, error: circularMarksError } = await supabase
-      .from('circular_marks')
-      .select('subject_id, bot_score, mot_score, eot_score')
-      .eq('enrollment_id', enrollment_id)
-      .eq('term_id', term_id)
-
-    if (circularMarksError) {
-      console.error('circular_marks DB error:', circularMarksError.message)
-      return withCors(request, NextResponse.json({ error: circularMarksError.message }, { status: 500 }))
-    }
-
-    const circularMarkMap = new Map(
-      (existingCircularMarks || []).map((mark: any) => [mark.subject_id, mark])
-    )
-
-    let circular_marks = (subjects || []).map((subject: any) => {
-      const existingMark = circularMarkMap.get(subject.id)
-      return {
-        subject_id: subject.id,
-        subject_name: subject.subject_name,
-        is_core: isCoreSubject(subject.subject_name, sectionType),
-        bot_score: existingMark?.bot_score ?? null,
-        mot_score: existingMark?.mot_score ?? null,
-        eot_score: existingMark?.eot_score ?? null,
+      if (subjectsError) {
+        console.error('circular_subjects DB error:', subjectsError.message)
+        return withCors(request, NextResponse.json({ error: 'Unable to load circular subjects.' }, { status: 500 }))
       }
-    })
+
+      const { data: existingCircularMarks, error: circularMarksError } = await supabase
+        .from('circular_marks')
+        .select('subject_id, bot_score, mot_score, eot_score')
+        .eq('enrollment_id', enrollment_id)
+        .eq('term_id', term_id)
+
+      if (circularMarksError) {
+        console.error('circular_marks DB error:', circularMarksError.message)
+        return withCors(request, NextResponse.json({ error: 'Unable to load circular marks.' }, { status: 500 }))
+      }
+
+      const circularMarkMap = new Map(
+        (existingCircularMarks || []).map((mark: any) => [mark.subject_id, mark])
+      )
+      circular_marks = (subjects || []).map((subject: any) => {
+        const existingMark = circularMarkMap.get(subject.id)
+        return {
+          subject_id: subject.id,
+          subject_name: subject.subject_name,
+          is_core: isCoreSubject(subject.subject_name, sectionType),
+          bot_score: existingMark?.bot_score ?? null,
+          mot_score: existingMark?.mot_score ?? null,
+          eot_score: existingMark?.eot_score ?? null,
+        }
+      })
+    }
 
     // Fetch theology subjects if theology_class_id exists
     let theology_marks: any[] = []
-    if (enrollment.theology_class_id && enrollment.theology_classes) {
+    if (canReadTheology && enrollment.theology_class_id && enrollment.theology_classes) {
       const theologyClassLevel = Array.isArray(enrollment.theology_classes)
         ? enrollment.theology_classes[0]?.level
         : (enrollment.theology_classes as any)?.level
@@ -160,9 +160,9 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    if (authRes.filterByDepartment === 'secular') {
+    if (authRes.filterByDepartment === 'secular' || !canReadTheology) {
       theology_marks = [];
-    } else if (authRes.filterByDepartment === 'theology') {
+    } else if (authRes.filterByDepartment === 'theology' || !canReadCircular) {
       circular_marks = [];
     }
 
@@ -195,8 +195,13 @@ export async function POST(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Authentication required. Please log in.' }, { status: 401 }))
     }
 
-    // 1. Fetch enrollment's sections
-    const { data: enrollment, error: enrollmentError } = await supabase
+    const authRes = await verifyDataAccess(supabase, user, 'write')
+    if (!authRes.isAuthorized) {
+      return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
+    }
+
+    // Read the enrollment only after identity verification; authorization is checked against its classes below.
+    const { data: enrollment, error: enrollmentError } = await createAdminClient()
       .from('enrollments')
       .select('circular_class_id, theology_class_id, circular_classes(section, class_name), theology_classes(level)')
       .eq('id', enrollment_id)
@@ -206,15 +211,16 @@ export async function POST(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Enrollment not found' }, { status: 404 }))
     }
 
-    // Security Check
-    const authRes = await verifyDataAccess(supabase, user, 'write');
-    if (!authRes.isAuthorized) {
-      return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
+    const canWriteCircular = canAccessCurriculumClass(authRes, 'circular', enrollment.circular_class_id)
+    const canWriteTheology = canAccessCurriculumClass(authRes, 'theology', enrollment.theology_class_id)
+    if (!canWriteCircular && !canWriteTheology) {
+      return withCors(request, NextResponse.json({ error: 'Unauthorized: You do not have access to this student\'s classes.' }, { status: 403 }))
     }
-    if (authRes.filterByClasses) {
-      if (!authRes.filterByClasses.includes(enrollment.circular_class_id) && !authRes.filterByClasses.includes(enrollment.theology_class_id)) {
-        return withCors(request, NextResponse.json({ error: 'Unauthorized: You do not have access to this student\'s classes.' }, { status: 403 }))
-      }
+    if (Array.isArray(circular_marks) && circular_marks.length > 0 && !canWriteCircular) {
+      return withCors(request, NextResponse.json({ error: 'Unauthorized: Circular marks are outside your assigned classes.' }, { status: 403 }))
+    }
+    if (Array.isArray(theology_marks) && theology_marks.length > 0 && !canWriteTheology) {
+      return withCors(request, NextResponse.json({ error: 'Unauthorized: Theology marks are outside your assigned classes.' }, { status: 403 }))
     }
 
     if (authRes.filterByDepartment) {

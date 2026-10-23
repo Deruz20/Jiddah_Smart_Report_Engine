@@ -1,5 +1,5 @@
 import { reshapeEnrollmentRow } from '@/lib/enrollment-shape'
-import { createClient } from '@/utils/supabase/server'
+import { createAdminClient, createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
     }
 
-    let query = supabase
+    let query = createAdminClient()
       .from('enrollments')
       .select(`
         id,
@@ -39,12 +39,25 @@ export async function GET(request: NextRequest) {
       .eq('is_active', true)
       .order('academic_year', { ascending: false })
 
-    if (authRes.filterByClasses) {
-      const assignedClasses = authRes.filterByClasses;
-      if (assignedClasses.length > 0) {
-        query = query.in('circular_class_id', assignedClasses)
+    if (authRes.filterByCircularClasses && authRes.filterByTheologyClasses) {
+      const filters = [
+        authRes.filterByCircularClasses.length
+          ? `circular_class_id.in.(${authRes.filterByCircularClasses.join(',')})`
+          : null,
+        authRes.filterByTheologyClasses.length
+          ? `theology_class_id.in.(${authRes.filterByTheologyClasses.join(',')})`
+          : null,
+      ].filter((filter): filter is string => filter !== null)
+
+      if (filters.length === 0) {
+        return withCors(request, NextResponse.json([]))
+      }
+      query = query.or(filters.join(','))
+    } else if (authRes.filterByClasses) {
+      if (authRes.filterByClasses.length > 0) {
+        query = query.in('circular_class_id', authRes.filterByClasses)
       } else {
-        query = query.eq('circular_class_id', 'UNASSIGNED_DUMMY_VALUE')
+        return withCors(request, NextResponse.json([]))
       }
     } else if (authRes.filterByDepartment) {
       if (authRes.filterByDepartment === 'theology') {

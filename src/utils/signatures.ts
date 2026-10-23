@@ -1,4 +1,4 @@
-import { SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 export function getClassTeacherSignatureKey(className: string | undefined | null, isTheology: boolean = false): string | null {
   if (!className) return null;
@@ -33,6 +33,27 @@ export function getClassTeacherSignatureKey(className: string | undefined | null
   return isTheology ? `theology-teacher-${baseClass}` : `class-teacher-${baseClass}`;
 }
 
+export function getReportSignatureKeys(): string[] {
+  const classNames = [
+    'Baby Class',
+    'Middle Class',
+    'Top Class',
+    'Primary 1',
+    'Primary 2',
+    'Primary 3',
+    'Primary 4',
+    'Primary 5',
+    'Primary 6',
+    'Primary 7',
+  ]
+  const classTeacherKeys = classNames.flatMap((className) => [
+    getClassTeacherSignatureKey(className),
+    getClassTeacherSignatureKey(className, true),
+  ])
+  return ['head-teacher', 'principal', 'school-stamp', ...classTeacherKeys]
+    .filter((key): key is string => Boolean(key))
+}
+
 export async function getDynamicSignatureSlots(supabase: SupabaseClient) {
   const slots = [
     {
@@ -51,15 +72,36 @@ export async function getDynamicSignatureSlots(supabase: SupabaseClient) {
     }
   ];
 
-  // Fetch unique active classes to dynamically create class teacher slots
-  // We'll query students instead of classes since we need to know what classes are actually in use
-  const { data: students } = await supabase.from('students').select('class_name, status').eq('status', 'active');
-  
-  const classNames = new Set(students?.map(s => s.class_name).filter(Boolean) || []);
+  const { data: enrollments, error } = await supabase
+    .from('enrollments')
+    .select(`
+      circular_classes ( class_name ),
+      theology_classes ( class_name_english ),
+      students!inner ( is_archived )
+    `)
+    .eq('is_active', true)
+    .eq('students.is_archived', false)
+  if (error) {
+    throw new Error(`Unable to load active enrollments for signature slots: ${error.message}`)
+  }
+
+  const circularClassNames = new Set<string>()
+  const theologyClassNames = new Set<string>()
+  for (const enrollment of enrollments ?? []) {
+    const circularClass = Array.isArray(enrollment.circular_classes)
+      ? enrollment.circular_classes[0]
+      : enrollment.circular_classes
+    const theologyClass = Array.isArray(enrollment.theology_classes)
+      ? enrollment.theology_classes[0]
+      : enrollment.theology_classes
+    if (circularClass?.class_name) circularClassNames.add(circularClass.class_name)
+    if (theologyClass?.class_name_english) theologyClassNames.add(theologyClass.class_name_english)
+  }
+
   const addedBaseClasses = new Set<string>();
 
   // Add secular teacher slots
-  for (const name of classNames) {
+  for (const name of circularClassNames) {
     const key = getClassTeacherSignatureKey(name);
     if (key && !addedBaseClasses.has(key)) {
       addedBaseClasses.add(key);
@@ -86,10 +128,8 @@ export async function getDynamicSignatureSlots(supabase: SupabaseClient) {
     }
   }
 
-  // Theology uses same class names but theology teachers. We will add those too.
-  // Assuming Theology classes match the secular structure.
   addedBaseClasses.clear();
-  for (const name of classNames) {
+  for (const name of theologyClassNames) {
     const key = getClassTeacherSignatureKey(name, true);
     if (key && !addedBaseClasses.has(key)) {
       addedBaseClasses.add(key);
@@ -118,4 +158,3 @@ export async function getDynamicSignatureSlots(supabase: SupabaseClient) {
 
   return slots;
 }
-

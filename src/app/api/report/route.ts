@@ -1,4 +1,4 @@
-import { createClient } from '@/utils/supabase/server'
+import { createAdminClient, createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import {
@@ -19,7 +19,10 @@ import {
 } from '@/lib/grading'
 import { resolveSectionType } from '@/lib/section-type'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
+import { canAccessCurriculumClass } from '@/lib/auth-server'
 import { evaluateCriteria, GradingCriterion } from '@/lib/grading-engine'
+import { assertQuerySucceeded } from '@/lib/query-integrity'
+import { getReportSignatureKeys } from '@/utils/signatures'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -62,6 +65,9 @@ export async function GET(request: NextRequest) {
   if (!['bot', 'mot', 'eot'].includes(score_type)) {
     return withCors(request, NextResponse.json({ error: 'score_type must be bot, mot, or eot' }, { status: 400 }))
   }
+  if (!['secular', 'theology', 'combined'].includes(curriculum)) {
+    return withCors(request, NextResponse.json({ error: 'curriculum must be secular, theology, or combined' }, { status: 400 }))
+  }
 
   try {
     const cookieStore = await cookies()
@@ -78,12 +84,8 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
     }
 
-    const { data: gradingCriteriaData } = await supabase.from('grading_criteria').select('*')
-    const gradingCriteria = (gradingCriteriaData as GradingCriterion[]) || []
-
-    const { data: schoolSettings } = await supabase.from('school_settings').select('*').limit(1).single()
-
-    const { data: enrollment, error: enrollmentError } = await supabase
+    const dataClient = createAdminClient()
+    const { data: enrollment, error: enrollmentError } = await dataClient
       .from('enrollments')
       .select(`
         id,
@@ -100,6 +102,41 @@ export async function GET(request: NextRequest) {
     if (enrollmentError || !enrollment) {
       return withCors(request, NextResponse.json({ error: 'Enrollment not found' }, { status: 404 }))
     }
+    const enrollmentStudent = Array.isArray(enrollment.students) ? enrollment.students[0] : enrollment.students
+    const enrollmentCircularClass = Array.isArray(enrollment.circular_classes)
+      ? enrollment.circular_classes[0]
+      : enrollment.circular_classes
+    const enrollmentTheologyClass = Array.isArray(enrollment.theology_classes)
+      ? enrollment.theology_classes[0]
+      : enrollment.theology_classes
+    if (!enrollmentStudent || (curriculum !== 'theology' && !enrollmentCircularClass) ||
+      (curriculum !== 'secular' && enrollment.theology_class_id && !enrollmentTheologyClass)) {
+      return withCors(request, NextResponse.json({ error: 'Enrollment is missing required student or class data.' }, { status: 500 }))
+    }
+
+    const circularAllowed = canAccessCurriculumClass(authRes, 'circular', enrollment.circular_class_id)
+    const theologyAllowed = canAccessCurriculumClass(authRes, 'theology', enrollment.theology_class_id)
+    const reportAllowed = curriculum === 'secular'
+      ? circularAllowed
+      : curriculum === 'theology'
+        ? theologyAllowed
+        : circularAllowed && (!enrollment.theology_class_id || theologyAllowed)
+    if (!reportAllowed) {
+      return withCors(request, NextResponse.json({ error: 'Unauthorized: Report is outside your assigned classes or curriculum.' }, { status: 403 }))
+    }
+
+    const { data: gradingCriteriaData, error: gradingCriteriaError } = await dataClient
+      .from('grading_criteria')
+      .select('*')
+    assertQuerySucceeded('Grading criteria lookup', gradingCriteriaError)
+    const gradingCriteria = (gradingCriteriaData as GradingCriterion[]) || []
+
+    const { data: schoolSettings, error: schoolSettingsError } = await dataClient
+      .from('school_settings')
+      .select('*')
+      .limit(1)
+      .single()
+    assertQuerySucceeded('School settings lookup', schoolSettingsError)
 
     const section = Array.isArray(enrollment.circular_classes)
       ? enrollment.circular_classes[0]?.section
@@ -115,7 +152,7 @@ export async function GET(request: NextRequest) {
 
     const sectionType = resolveSectionType(section, className)
 
-    const { data: term, error: termError } = await supabase
+    const { data: term, error: termError } = await dataClient
       .from('terms')
       .select('id, academic_year, term_number, label, is_current, start_date, end_date, next_term_start')
       .eq('id', termId)
@@ -125,7 +162,7 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Term not found' }, { status: 404 }))
     }
 
-    const { data: circularSubjects, error: circularSubjectsError } = await supabase
+    const { data: circularSubjects, error: circularSubjectsError } = await dataClient
       .from('subjects')
       .select('id, subject_name')
       .eq('curriculum', 'secular')
@@ -136,18 +173,11 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: circularSubjectsError.message }, { status: 500 }))
     }
 
-    const { data: circularMarks, error: circularError } = await supabase
+    const { data: circularMarks, error: circularError } = await dataClient
       .from('circular_marks')
       .select('*')
       .eq('enrollment_id', enrollmentId)
       .eq('term_id', termId);
-
-    const debugInfo = {
-      enrollmentId,
-      termId,
-      circularMarksCount: circularMarks?.length || 0,
-      supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    }
 
     if (circularError) {
       console.error('CIRCULAR MARKS ERROR:', JSON.stringify(circularError, null, 2));
@@ -290,20 +320,22 @@ export async function GET(request: NextRequest) {
     let total_students: number | null = null
 
     if (enrollment.circular_class_id && hasAnyRelevantMark) {
-      const { data: classEnrollments } = await supabase
+      const { data: classEnrollments, error: classEnrollmentsError } = await dataClient
         .from('enrollments')
         .select('id, student_id')
         .eq('circular_class_id', enrollment.circular_class_id)
         .eq('is_active', true)
+      assertQuerySucceeded('Circular class roster lookup for ranking', classEnrollmentsError)
 
       if (classEnrollments && classEnrollments.length > 0) {
         const enrollmentIds = classEnrollments.map((e) => e.id)
 
-        const { data: classMarks } = await supabase
+        const { data: classMarks, error: classMarksError } = await dataClient
           .from('circular_marks')
           .select('enrollment_id, subject_id, bot_score, mot_score, eot_score')
           .eq('term_id', termId)
           .in('enrollment_id', enrollmentIds)
+        assertQuerySucceeded('Circular marks lookup for ranking', classMarksError)
 
         if (classMarks) {
           const totals: number[] = []
@@ -342,7 +374,7 @@ export async function GET(request: NextRequest) {
     let existingTheologyMarks: any = null;
 
     if (enrollment.theology_class_id && theologyLevel) {
-      const { data: theologySubjectsRaw, error: theologySubjectsError } = await supabase
+      const { data: theologySubjectsRaw, error: theologySubjectsError } = await dataClient
         .from('subjects')
         .select('id, subject_name')
         .eq('curriculum', 'theology')
@@ -354,7 +386,7 @@ export async function GET(request: NextRequest) {
         return withCors(request, NextResponse.json({ error: theologySubjectsError.message }, { status: 500 }))
       }
 
-      const { data: theologyMarks, error: theologyError } = await supabase
+      const { data: theologyMarks, error: theologyError } = await dataClient
         .from('theology_marks')
         .select('*')
         .eq('enrollment_id', enrollmentId)
@@ -464,19 +496,21 @@ export async function GET(request: NextRequest) {
       let totalTheologyStudents = null;
 
       if (enrollment.theology_class_id && theologySectionData && typeof theologySectionData.total === 'number') {
-        const { data: theologyEnrollments } = await supabase
+        const { data: theologyEnrollments, error: theologyEnrollmentsError } = await dataClient
           .from('enrollments')
           .select('id, student_id')
           .eq('theology_class_id', enrollment.theology_class_id)
           .eq('is_active', true)
+        assertQuerySucceeded('Theology class roster lookup for ranking', theologyEnrollmentsError)
 
         if (theologyEnrollments && theologyEnrollments.length > 0) {
           const tEnrollmentIds = theologyEnrollments.map(e => e.id)
-          const { data: allTheologyMarks } = await supabase
+          const { data: allTheologyMarks, error: allTheologyMarksError } = await dataClient
             .from('theology_marks')
             .select('enrollment_id, subject_id, mot_score, eot_score')
             .eq('term_id', termId)
             .in('enrollment_id', tEnrollmentIds)
+          assertQuerySucceeded('Theology marks lookup for ranking', allTheologyMarksError)
 
           if (allTheologyMarks) {
             const totals: {id: string, total: number}[] = []
@@ -542,22 +576,14 @@ export async function GET(request: NextRequest) {
           position: theologyPosition,
           total_students: totalTheologyStudents,
         },
-        debug: {
-          enrollmentId: enrollment.id,
-          circularMarksCount: 0,
-          supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
-        }
       }))
     }
 
-    const { data: signatureObjects } = await supabase.storage.from('signatures').list('', { limit: 100 })
-    const signatures: Record<string, string | null> = {
-      'head-teacher': null,
-      'principal': null,
-      'class-teacher-p3': null,
-      'class-teacher-p5': null,
-      'school-stamp': null,
-    }
+    const { data: signatureObjects, error: signatureListError } = await dataClient.storage.from('signatures').list('', { limit: 100 })
+    assertQuerySucceeded('Report signature lookup', signatureListError)
+    const signatures: Record<string, string | null> = Object.fromEntries(
+      getReportSignatureKeys().map((key) => [key, null])
+    )
     for (const object of signatureObjects ?? []) {
       for (const key of Object.keys(signatures)) {
         if (object.name.startsWith(`${key}.`)) {
@@ -621,12 +647,11 @@ export async function GET(request: NextRequest) {
       },
       signatures,
       settings: schoolSettings,
-      debug: {debugInfo},
     }
 
     return withCors(request, NextResponse.json(reportData))
-  } catch (err: any) {
-    console.error('Report API GET error:', err)
-    return withCors(request, NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 }))
+  } catch (err) {
+    console.error('Report data generation failed:', err)
+    return withCors(request, NextResponse.json({ error: 'Report data could not be verified. Please retry or contact an administrator.' }, { status: 500 }))
   }
 }

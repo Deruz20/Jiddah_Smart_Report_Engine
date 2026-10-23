@@ -32,7 +32,9 @@ export function PowerSyncProvider({ children }: { children: ReactNode }) {
       const { data: { session } } = await supabase.auth.getSession();
 
       if (session) {
-        powerSync.connect(connector);
+        if (process.env.NEXT_PUBLIC_POWERSYNC_URL) {
+          powerSync.connect(connector);
+        }
       } else {
         powerSync.disconnect();
       }
@@ -42,7 +44,11 @@ export function PowerSyncProvider({ children }: { children: ReactNode }) {
       if (!isMounted) return;
 
       if (session) {
-        powerSync.connect(connector);
+        if (process.env.NEXT_PUBLIC_POWERSYNC_URL) {
+          powerSync.connect(connector);
+        } else {
+          powerSync.disconnect();
+        }
       } else {
         powerSync.disconnect();
       }
@@ -80,4 +86,3 @@ export function PowerSyncProvider({ children }: { children: ReactNode }) {
     </PowerSyncContext.Provider>
   );
 }
-

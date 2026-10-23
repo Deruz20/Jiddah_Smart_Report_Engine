@@ -1,4 +1,4 @@
-import { createClient } from '@/utils/supabase/server'
+import { createAdminClient, createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import {
@@ -19,8 +19,11 @@ import {
 } from '@/lib/grading'
 import { resolveSectionType } from '@/lib/section-type'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
+import { canAccessCurriculumClass } from '@/lib/auth-server'
 import { evaluateCriteria, GradingCriterion } from '@/lib/grading-engine'
+import { assertQuerySucceeded } from '@/lib/query-integrity'
 import { applyRateLimit, rateLimitResponse } from '@/utils/rate-limit'
+import { getReportSignatureKeys } from '@/utils/signatures'
 import { z } from 'zod'
 
 const batchReportSchema = z.object({
@@ -74,10 +77,7 @@ export async function POST(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
     }
 
-    const { data: gradingCriteriaData } = await supabase.from('grading_criteria').select('*')
-    const gradingCriteria = (gradingCriteriaData as GradingCriterion[]) || []
-
-    const { data: schoolSettings } = await supabase.from('school_settings').select('*').limit(1).single()
+    const dataClient = createAdminClient()
 
     // Helper to fetch in chunks to avoid URL length limits and timeouts
     const fetchInChunks = async (table: string, select: string, column: string, ids: string[], extraBuilder?: (query: any) => any) => {
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
       let results: any[] = []
       for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
         const chunk = ids.slice(i, i + CHUNK_SIZE)
-        let query = supabase.from(table).select(select).in(column, chunk)
+        let query = dataClient.from(table).select(select).in(column, chunk)
         if (extraBuilder) query = extraBuilder(query)
         const { data, error } = await query
         if (error) throw error
@@ -114,9 +114,54 @@ export async function POST(request: NextRequest) {
     if (!requestedEnrollments || requestedEnrollments.length === 0) {
       return withCors(request, NextResponse.json({ error: 'No enrollments found or error fetching enrollments' }, { status: 404 }))
     }
+    if (requestedEnrollments.length !== enrollment_ids.length) {
+      return withCors(request, NextResponse.json({ error: 'One or more requested enrollments could not be loaded.' }, { status: 404 }))
+    }
+    const incompleteEnrollment = requestedEnrollments.find((enrollment) => {
+      const student = Array.isArray(enrollment.students) ? enrollment.students[0] : enrollment.students
+      const circularClass = Array.isArray(enrollment.circular_classes)
+        ? enrollment.circular_classes[0]
+        : enrollment.circular_classes
+      const theologyClass = Array.isArray(enrollment.theology_classes)
+        ? enrollment.theology_classes[0]
+        : enrollment.theology_classes
+      return !student ||
+        (curriculum !== 'theology' && !circularClass) ||
+        (curriculum !== 'secular' && Boolean(enrollment.theology_class_id) && !theologyClass)
+    })
+    if (incompleteEnrollment) {
+      return withCors(request, NextResponse.json({ error: 'One or more enrollments are missing required student or class data.' }, { status: 500 }))
+    }
+
+    const unauthorizedEnrollment = requestedEnrollments.find((enrollment) => {
+      const circularAllowed = canAccessCurriculumClass(authRes, 'circular', enrollment.circular_class_id)
+      const theologyAllowed = canAccessCurriculumClass(authRes, 'theology', enrollment.theology_class_id)
+      if (curriculum === 'secular') return !circularAllowed
+      if (curriculum === 'theology') return !theologyAllowed
+      return !circularAllowed || (Boolean(enrollment.theology_class_id) && !theologyAllowed)
+    })
+    if (unauthorizedEnrollment) {
+      return withCors(request, NextResponse.json(
+        { error: 'Unauthorized: One or more reports are outside your assigned classes or curriculum.' },
+        { status: 403 }
+      ))
+    }
+
+    const { data: gradingCriteriaData, error: gradingCriteriaError } = await dataClient
+      .from('grading_criteria')
+      .select('*')
+    assertQuerySucceeded('Grading criteria lookup', gradingCriteriaError)
+    const gradingCriteria = (gradingCriteriaData as GradingCriterion[]) || []
+
+    const { data: schoolSettings, error: settingsError } = await dataClient
+      .from('school_settings')
+      .select('*')
+      .limit(1)
+      .single()
+    assertQuerySucceeded('School settings lookup', settingsError)
 
     // 2. Fetch term info
-    const { data: term, error: termError } = await supabase
+    const { data: term, error: termError } = await dataClient
       .from('terms')
       .select('id, academic_year, term_number, label, is_current, start_date, end_date, next_term_start')
       .eq('id', term_id)
@@ -149,7 +194,8 @@ export async function POST(request: NextRequest) {
     const circularSubjectsCache: Record<string, any[]> = {}
     if (curriculum !== 'theology') {
       for (const st of Array.from(sectionTypes)) {
-        const { data: subs } = await supabase.from('subjects').select('id, subject_name').eq('curriculum', 'secular').eq('section', st)
+        const { data: subs, error: subjectsError } = await dataClient.from('subjects').select('id, subject_name').eq('curriculum', 'secular').eq('section', st)
+        assertQuerySucceeded(`Secular subjects lookup for ${st}`, subjectsError)
         circularSubjectsCache[st] = subs || []
       }
     }
@@ -162,11 +208,12 @@ export async function POST(request: NextRequest) {
 
     if (curriculum !== 'theology') {
       if (circularClassIds.length > 0) {
-        const { data: classmates } = await supabase
+        const { data: classmates, error: classmatesError } = await dataClient
           .from('enrollments')
           .select('id, circular_class_id')
           .in('circular_class_id', circularClassIds)
           .eq('is_active', true)
+        assertQuerySucceeded('Circular class roster lookup for rankings', classmatesError)
         if (classmates) allClassmates = classmates
       }
 
@@ -206,7 +253,8 @@ export async function POST(request: NextRequest) {
     if (curriculum !== 'secular') {
       for (const lvl of theologyLevels) {
         if (!lvl) continue;
-        const { data: subs } = await supabase.from('theology_subjects').select('id, subject_name_arabic').eq('level', lvl)
+        const { data: subs, error: theologySubjectsError } = await dataClient.from('theology_subjects').select('id, subject_name_arabic').eq('level', lvl)
+        assertQuerySucceeded(`Theology subjects lookup for ${lvl}`, theologySubjectsError)
         theologySubjectsCache[lvl] = subs?.map(s => ({ id: s.id, subject_name_arabic: s.subject_name_arabic })) || []
       }
     }
@@ -221,38 +269,36 @@ export async function POST(request: NextRequest) {
         requestedTheologyMarks = await fetchInChunks('theology_marks', '*', 'enrollment_id', enrollment_ids, (q) => q.eq('term_id', term_id))
       }
 
-      // If we are in theology mode or dual mode, we need theology class rankings.
-      if (curriculum !== 'secular') {
-        const theologyClassIds = [...new Set(requestedEnrollments.map(e => e.theology_class_id).filter(Boolean))]
-        if (theologyClassIds.length > 0) {
-          const { data: theoClassmates } = await supabase
-            .from('enrollments')
-            .select('id, theology_class_id')
-            .in('theology_class_id', theologyClassIds)
-            .eq('is_active', true)
+      const theologyClassIds = [...new Set(requestedEnrollments.map(e => e.theology_class_id).filter(Boolean))]
+      if (theologyClassIds.length > 0) {
+        const { data: theoClassmates, error: theologyClassmatesError } = await dataClient
+          .from('enrollments')
+          .select('id, theology_class_id')
+          .in('theology_class_id', theologyClassIds)
+          .eq('is_active', true)
+        assertQuerySucceeded('Theology class roster lookup for rankings', theologyClassmatesError)
 
-          if (theoClassmates) {
-            const allTheoClassmateIds = theoClassmates.map(c => c.id)
-            let allTheoMarks: any[] = []
-            if (allTheoClassmateIds.length > 0) {
-              allTheoMarks = await fetchInChunks('theology_marks', '*', 'enrollment_id', allTheoClassmateIds, (q) => q.eq('term_id', term_id))
-            }
+        if (theoClassmates) {
+          const allTheoClassmateIds = theoClassmates.map(c => c.id)
+          let allTheoMarks: any[] = []
+          if (allTheoClassmateIds.length > 0) {
+            allTheoMarks = await fetchInChunks('theology_marks', '*', 'enrollment_id', allTheoClassmateIds, (q) => q.eq('term_id', term_id))
+          }
 
-            for (const tId of theologyClassIds) {
-              const classMembers = theoClassmates.filter(c => c.theology_class_id === tId)
-              const memberTotals: { id: string, total: number }[] = []
+          for (const tId of theologyClassIds) {
+            const classMembers = theoClassmates.filter(c => c.theology_class_id === tId)
+            const memberTotals: { id: string, total: number }[] = []
 
-              for (const member of classMembers) {
-                const memberMarks = allTheoMarks.filter(m => m.enrollment_id === member.id)
-                const hasMarks = memberMarks.some(m => typeof m[score_type + '_score'] === 'number')
-                if (hasMarks) {
-                  const eTotal = memberMarks.reduce((sum, m) => sum + (typeof m[score_type + '_score'] === 'number' ? m[score_type + '_score'] : 0), 0)
-                  memberTotals.push({ id: member.id, total: eTotal })
-                }
+            for (const member of classMembers) {
+              const memberMarks = allTheoMarks.filter(m => m.enrollment_id === member.id)
+              const hasMarks = memberMarks.some(m => typeof m[score_type + '_score'] === 'number')
+              if (hasMarks) {
+                const eTotal = memberMarks.reduce((sum, m) => sum + (typeof m[score_type + '_score'] === 'number' ? m[score_type + '_score'] : 0), 0)
+                memberTotals.push({ id: member.id, total: eTotal })
               }
-              theologyRankings[tId] = memberTotals.sort((a, b) => b.total - a.total)
-              theologyClassSizes[tId] = classMembers.length
             }
+            theologyRankings[tId] = memberTotals.sort((a, b) => b.total - a.total)
+            theologyClassSizes[tId] = classMembers.length
           }
         }
       }
@@ -265,23 +311,21 @@ export async function POST(request: NextRequest) {
     }
     const theologyOrder = ['القرآن الكريم', 'اللغة العربية', 'الفقه', 'التربية الإسلامية']
 
-    const { data: signatureObjects } = await supabase.storage.from('signatures').list('', { limit: 100 })
-    const signatures: Record<string, string | null> = {
-      'head-teacher': null,
-      'principal': null,
-      'class-teacher-p3': null,
-      'class-teacher-p5': null,
-      'school-stamp': null,
-    }
+    const { data: signatureObjects, error: signatureListError } = await dataClient.storage.from('signatures').list('', { limit: 100 })
+    assertQuerySucceeded('Report signature lookup', signatureListError)
+    const signatures: Record<string, string | null> = Object.fromEntries(
+      getReportSignatureKeys().map((key) => [key, null])
+    )
     for (const object of signatureObjects ?? []) {
       for (const key of Object.keys(signatures)) {
         if (object.name.startsWith(`${key}.`)) {
-          signatures[key] = supabase.storage.from('signatures').getPublicUrl(object.name).data.publicUrl
+          signatures[key] = dataClient.storage.from('signatures').getPublicUrl(object.name).data.publicUrl
         }
       }
     }
 
-    const { data: initialsData } = await supabase.from('teacher_initials').select('*')
+    const { data: initialsData, error: initialsError } = await dataClient.from('teacher_initials').select('*')
+    assertQuerySucceeded('Teacher initials lookup', initialsError)
     const teacherInitialsMap: Record<string, string> = {}
     if (initialsData) {
       initialsData.forEach(item => {
@@ -532,11 +576,6 @@ export async function POST(request: NextRequest) {
           },
           signatures,
           settings: schoolSettings,
-          debug: {
-            enrollmentId: enrollment.id,
-            circularMarksCount: 0,
-            supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
-          }
         }
       }
 
@@ -591,17 +630,12 @@ export async function POST(request: NextRequest) {
         },
         signatures,
         settings: schoolSettings,
-        debug: {
-          enrollmentId: enrollment.id,
-          circularMarksCount: eCircularMarks.length,
-          supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
-        }
       }
     })
 
     return withCors(request, NextResponse.json({ reports: reports.filter(r => r !== null) }))
-  } catch (err: any) {
-    console.error('Batch Report API POST error:', err)
-    return withCors(request, NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 }))
+  } catch (err) {
+    console.error('Batch report data generation failed:', err)
+    return withCors(request, NextResponse.json({ error: 'Report data could not be verified. Please retry or contact an administrator.' }, { status: 500 }))
   }
 }

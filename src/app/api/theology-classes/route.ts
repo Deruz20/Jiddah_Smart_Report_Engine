@@ -1,6 +1,8 @@
-import { createClient } from '@supabase/supabase-js'
+import { createAdminClient, createClient } from '@/utils/supabase/server'
+import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
+import { verifyDataAccess } from '@/lib/auth-server'
 
 export async function OPTIONS(request: NextRequest) {
   return apiOptions(request)
@@ -11,18 +13,33 @@ export async function GET(request: NextRequest) {
   if (preflight) return preflight
 
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-    if (!supabaseUrl || !supabaseKey) {
-      return withCors(request, NextResponse.json({ error: 'Supabase configuration missing' }, { status: 500 }))
+    const cookieStore = await cookies()
+    const supabase = createClient(cookieStore)
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
-    const supabase = createClient(supabaseUrl, supabaseKey)
+    const access = await verifyDataAccess(supabase, user, 'read')
+    if (!access.isAuthorized) {
+      return withCors(request, NextResponse.json({ error: access.message }, { status: 403 }))
+    }
+    if (access.filterByDepartment === 'secular') {
+      return withCors(request, NextResponse.json({ data: [] }))
+    }
 
-    const { data, error } = await supabase
+    const supabaseAdmin = createAdminClient()
+    let query = supabaseAdmin
       .from('theology_classes')
       .select('id, class_name_arabic, class_name_english, level')
+    if (access.filterByTheologyClasses) {
+      if (access.filterByTheologyClasses.length === 0) {
+        return withCors(request, NextResponse.json({ data: [] }))
+      }
+      query = query.in('id', access.filterByTheologyClasses)
+    }
+
+    const { data, error } = await query
       .order('level', { ascending: true })
       .order('class_name_arabic', { ascending: true })
 

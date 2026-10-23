@@ -1,10 +1,9 @@
 import { reshapeEnrollmentRow } from '@/lib/enrollment-shape'
-import { createClient } from '@/utils/supabase/server'
-import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+import { createAdminClient, createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
-import { verifyDataAccess } from '@/lib/auth-server'
+import { canAccessCurriculumClass, verifyDataAccess } from '@/lib/auth-server'
 import { recordActivity } from '@/lib/api-server'
 
 export async function OPTIONS(request: NextRequest) {
@@ -32,7 +31,7 @@ export async function GET(request: NextRequest) {
     const archivedParam = searchParams.get('archived')
     const isArchived = archivedParam === 'true'
 
-    let query = supabase
+    let query = createAdminClient()
       .from('enrollments')
       .select(`
         id,
@@ -46,12 +45,25 @@ export async function GET(request: NextRequest) {
       .eq('students.is_archived', isArchived)
       .order('academic_year', { ascending: false })
 
-    if (authRes.filterByClasses) {
-      const assignedClasses = authRes.filterByClasses;
-      if (assignedClasses.length > 0) {
-        query = query.in('circular_class_id', assignedClasses)
+    if (authRes.filterByCircularClasses && authRes.filterByTheologyClasses) {
+      const filters = [
+        authRes.filterByCircularClasses.length
+          ? `circular_class_id.in.(${authRes.filterByCircularClasses.join(',')})`
+          : null,
+        authRes.filterByTheologyClasses.length
+          ? `theology_class_id.in.(${authRes.filterByTheologyClasses.join(',')})`
+          : null,
+      ].filter((filter): filter is string => filter !== null)
+
+      if (filters.length === 0) {
+        return withCors(request, NextResponse.json([]))
+      }
+      query = query.or(filters.join(','))
+    } else if (authRes.filterByClasses) {
+      if (authRes.filterByClasses.length > 0) {
+        query = query.in('circular_class_id', authRes.filterByClasses)
       } else {
-        query = query.eq('circular_class_id', 'UNASSIGNED_DUMMY_VALUE')
+        return withCors(request, NextResponse.json([]))
       }
     } else if (authRes.filterByDepartment) {
       if (authRes.filterByDepartment === 'theology') {
@@ -109,19 +121,21 @@ export async function POST(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
     }
 
-    const supabaseAdmin = createSupabaseClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { persistSession: false, autoRefreshToken: false } }
-    );
+    const supabaseAdmin = createAdminClient()
 
-    if (authRes.filterByClasses) {
-      const isTheology = authRes.filterByDepartment === 'theology';
-      const targetClassId = isTheology ? body.theology_class_id : body.circular_class_id;
-      if (!targetClassId || !authRes.filterByClasses.includes(targetClassId)) {
-        return withCors(request, NextResponse.json({ error: 'Unauthorized: Cannot enroll student into unassigned class' }, { status: 403 }))
-      }
-    } else if (authRes.filterByDepartment) {
+    if (
+      body.circular_class_id &&
+      !canAccessCurriculumClass(authRes, 'circular', body.circular_class_id)
+    ) {
+      return withCors(request, NextResponse.json({ error: 'Unauthorized: Cannot enroll student into unassigned circular class' }, { status: 403 }))
+    }
+    if (
+      body.theology_class_id &&
+      !canAccessCurriculumClass(authRes, 'theology', body.theology_class_id)
+    ) {
+      return withCors(request, NextResponse.json({ error: 'Unauthorized: Cannot enroll student into unassigned theology class' }, { status: 403 }))
+    }
+    if (authRes.filterByDepartment) {
       if (authRes.filterByDepartment === 'theology' && !body.theology_class_id) {
         return withCors(request, NextResponse.json({ error: 'Unauthorized: Must assign a Theology class' }, { status: 403 }))
       }
@@ -131,7 +145,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get circular class to check if it's P.7
-    const { data: circularClassData, error: circularError } = await supabase
+    const { data: circularClassData, error: circularError } = await supabaseAdmin
       .from('circular_classes')
       .select('class_name')
       .eq('id', body.circular_class_id)

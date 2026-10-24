@@ -310,6 +310,45 @@ export function getHeadTeacherComment(
   }
 }
 
+export function getClassTeacherReportComment({
+  scoreType,
+  termNumber,
+  promotionStatus,
+  gradingComment,
+  division,
+  scores,
+  gradingBands,
+}: {
+  scoreType: 'bot' | 'mot' | 'eot'
+  termNumber: number
+  promotionStatus: string | null
+  gradingComment: string | null
+  division: string | null
+  scores?: (number | null | undefined)[]
+  gradingBands?: ReportCommentBands
+}): string {
+  if (scoreType === 'eot' && termNumber === 3 && promotionStatus) {
+    if (promotionStatus === 'Promote') return 'Promoted to the next class.'
+    if (promotionStatus === 'Repeat') return 'Advised to repeat the class.'
+    return 'Try next class.'
+  }
+
+  if (gradingComment) return gradingComment
+  if (!division) return ''
+  if (scoreType === 'mot' && !scores?.some(score => typeof score === 'number')) {
+    switch (division) {
+      case 'I': return 'Excellent performance. Keep it up!'
+      case 'II':
+      case 'III': return 'Good performance. Keep it up!'
+      case 'IV': return 'Fair performance. Keep working hard!'
+      case 'U': return 'Keep working hard. You can improve!'
+      default: return 'Keep working hard.'
+    }
+  }
+
+  return getClassTeacherComment(division, scores, gradingBands)
+}
+
 export function getConductRemark(division: string | null): string {
   switch (division) {
     case 'I': return 'Excellent conduct. Very impressive!'

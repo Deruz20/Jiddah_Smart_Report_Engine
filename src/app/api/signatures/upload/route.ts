@@ -10,6 +10,7 @@ import {
   withSignatureVersion,
 } from '@/utils/signatures'
 import { sniffImageMimeType } from '@/lib/image-sniff'
+import { createTransparentSignaturePng } from '@/lib/signature-image'
 const BUCKET = 'signatures'
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp']
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB limit for signatures
@@ -72,19 +73,24 @@ export async function POST(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'File content verification failed: not a valid PNG, JPG, or WEBP image' }, { status: 400 }))
     }
 
-    const mimeToExt: Record<string, string> = {
-      'image/png': 'png',
-      'image/jpeg': 'jpg',
-      'image/webp': 'webp',
+    let transparentPng: Buffer
+    try {
+      transparentPng = await createTransparentSignaturePng(buffer)
+    } catch (error) {
+      console.error('Signature image could not be decoded or processed:', error)
+      return withCors(request, NextResponse.json({ error: 'The image could not be processed. Please upload a valid image.' }, { status: 400 }))
     }
-    const extension = mimeToExt[sniffedMime] || 'png'
-    // Format: slot_key.extension to overwrite existing
-    const filePath = `${slotKey}.${extension}`
 
-    const { error: uploadError } = await supabaseAdmin.storage.from(BUCKET).upload(filePath, buffer, {
+    if (transparentPng.length > MAX_FILE_SIZE) {
+      return withCors(request, NextResponse.json({ error: 'Processed image is too large. Please upload a smaller image.' }, { status: 400 }))
+    }
+
+    const filePath = `${slotKey}.png`
+
+    const { error: uploadError } = await supabaseAdmin.storage.from(BUCKET).upload(filePath, transparentPng, {
       upsert: true,
       cacheControl: '0',
-      contentType: sniffedMime
+      contentType: 'image/png'
     })
 
     if (uploadError) {
@@ -124,7 +130,9 @@ export async function POST(request: NextRequest) {
     }
 
     await recordActivity(supabase, user.id, 'upload_signature', { slot_key: slotKey, file_path: filePath })
-    return withCors(request, NextResponse.json({ data: { slot_key: slotKey, public_url } }))
+    return withCors(request, NextResponse.json({
+      data: { slot_key: slotKey, public_url, size: transparentPng.length },
+    }))
   } catch (err: any) {
     console.error('signatures/upload POST exception:', err)
     return withCors(request, NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 }))

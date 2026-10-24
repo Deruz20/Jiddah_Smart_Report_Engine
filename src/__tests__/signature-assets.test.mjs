@@ -6,6 +6,7 @@ import {
   getDynamicSignatureSlots,
   getReportSignatureKeys,
   getReportSignatures,
+  getSignatureObjectNamesForSlot,
   mapLatestSignatureObjects,
 } from '../utils/signatures.ts'
 
@@ -50,6 +51,18 @@ test('latest supported image wins per slot and unsupported files are ignored', (
 
   assert.equal(latest.get('school-stamp')?.name, 'school-stamp.png')
   assert.equal(latest.has('head-teacher'), false)
+})
+
+test('signature removal only targets supported image files for the selected slot', () => {
+  const paths = getSignatureObjectNamesForSlot([
+    { name: 'school-stamp.png' },
+    { name: 'school-stamp.jpg' },
+    { name: 'school-stamp-backup.png' },
+    { name: 'school-stamp.svg' },
+    { name: 'head-teacher.png' },
+  ], 'school-stamp')
+
+  assert.deepEqual(paths, ['school-stamp.png', 'school-stamp.jpg'])
 })
 
 test('signature-slot discovery uses active enrollments and reports query failures', async () => {

@@ -6,6 +6,7 @@ import {
 import { ReportContainer } from "@/components/reports/shared/ReportContainer";
 import { resolveReportBranding, resolveReportGradingBands } from "@/lib/school-settings-helper";
 import { getClassTeacherSignatureKey } from "@/utils/signatures";
+import { ReportSchoolLogo } from "@/components/reports/ReportSchoolLogo";
 
 export default function PrimaryMOTReport({ reportData }: any) {
   const branding = resolveReportBranding(reportData);
@@ -128,8 +129,8 @@ export default function PrimaryMOTReport({ reportData }: any) {
         .mot-logo {
             width: 85px;
             height: 85px;
-            border-radius: 50%;
-            background: #f6f6f6;
+            border-radius: 0;
+            background: transparent;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -241,7 +242,7 @@ export default function PrimaryMOTReport({ reportData }: any) {
         .mot-sig-line {
             width: 180px;
             border-bottom: 2px dotted #444;
-            min-height: 22px;
+            min-height: 30px;
             position: relative;
             display: flex;
             justify-content: center;
@@ -249,10 +250,13 @@ export default function PrimaryMOTReport({ reportData }: any) {
         }
         .mot-sig-line img {
             position: absolute;
-            bottom: 0;
-            height: 36px;
+            bottom: -2px;
+            height: 48px;
             max-width: 100%;
             object-fit: contain;
+            mix-blend-mode: multiply;
+            filter: contrast(1.18) saturate(1.08);
+            transform: rotate(-1deg);
         }
 
         .mot-conduct-row {
@@ -269,8 +273,8 @@ export default function PrimaryMOTReport({ reportData }: any) {
         }
 
         .mot-stamp {
-            width: 120px;
-            height: 90px;
+            width: 154px;
+            height: 104px;
             border: 3px dashed #c0c0c0;
             border-radius: 12px;
             display: flex;
@@ -281,6 +285,18 @@ export default function PrimaryMOTReport({ reportData }: any) {
             font-weight: 700;
             text-align: center;
             background: white;
+        }
+        .mot-stamp.has-image {
+            border: 0;
+            background: transparent;
+        }
+        .mot-stamp img {
+            mix-blend-mode: multiply;
+            filter: contrast(1.3) saturate(1.25);
+            transform: rotate(-1.5deg) scale(1.04);
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
         }
 
         .mot-final-footer {
@@ -310,7 +326,7 @@ export default function PrimaryMOTReport({ reportData }: any) {
           </div>
 
           <div className="mot-logo">
-            <img src={branding.logoUrl} alt="Logo" data-testid="report-school-logo" />
+            <ReportSchoolLogo src={branding.logoUrl} alt="Logo" data-testid="report-school-logo" />
           </div>
 
           <div className="mot-school-right">
@@ -411,9 +427,9 @@ export default function PrimaryMOTReport({ reportData }: any) {
           </div>
 
           <div className="mot-footer-stamp">
-            <div className="mot-stamp">
+            <div className={`mot-stamp${reportData?.signatures?.['school-stamp'] ? ' has-image' : ''}`}>
               {reportData?.signatures?.['school-stamp'] ? (
-                <img src={reportData.signatures['school-stamp']} alt="Official school stamp" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                <img src={reportData.signatures['school-stamp']} alt="Official school stamp" />
               ) : (
                 <>OFFICIAL<br />SCHOOL STAMP</>
               )}

@@ -9,6 +9,7 @@ import NurseryEOTReport from '@/components/reports/NurseryEOTReport'
 import TheologyMOTReport, { Theology2UpPrintSheet } from '@/components/reports/TheologyMOTReport'
 import { ReportPreviewCell } from '@/components/reports/ReportPreviewCell'
 import { PrintPortal } from '@/components/reports/PrintPortal'
+import { STABILIZED_REPORT_ORIENTATIONS } from '@/lib/report-constants'
 import { Printer, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react'
 import { notFound } from 'next/navigation'
 
@@ -194,7 +195,7 @@ export default function PreviewTestPage() {
       </div>
 
       {/* Print Portal — ONLY visible during window.print() */}
-      <PrintPortal>
+      <PrintPortal pageOrientation={STABILIZED_REPORT_ORIENTATIONS[active.type].pageOrientation}>
         {active.component}
       </PrintPortal>
     </div>

@@ -394,7 +394,13 @@ export function SharedMarksEntry({
   }
 
   return (
-    <div className="w-full max-w-full min-w-0 space-y-2.5 pb-4">
+    <div
+      className={`w-full max-w-full min-w-0 space-y-2.5 ${
+        selectedEnrollment
+          ? 'pb-[calc(8rem+env(safe-area-inset-bottom))] md:pb-24'
+          : 'pb-4'
+      }`}
+    >
       <style>{`
         input[type="number"].score-input::-webkit-inner-spin-button,
         input[type="number"].score-input::-webkit-outer-spin-button {
@@ -769,7 +775,7 @@ export function SharedMarksEntry({
                     >
                       <table
                         className={`w-full border-collapse text-left tabular-nums ${
-                          examType === 'all' ? 'min-w-[420px]' : ''
+                          examType === 'all' ? 'min-w-[520px]' : 'min-w-[360px]'
                         }`}
                       >
                         <thead>
@@ -869,9 +875,7 @@ export function SharedMarksEntry({
 
                       <div className="w-full max-w-full overflow-x-auto overscroll-x-contain">
                         <table
-                          className={`w-full border-collapse text-left tabular-nums ${
-                            examType === 'all' ? 'min-w-[340px]' : ''
-                          }`}
+                          className="w-full min-w-[360px] border-collapse text-left tabular-nums"
                         >
                           <thead>
                             <tr className="bg-stone-50/80 border-b border-stone-200 text-[10px] font-bold text-stone-500 uppercase tracking-wider">
@@ -923,7 +927,7 @@ export function SharedMarksEntry({
         {selectedEnrollment && (
           <div
             data-testid="sticky-save-bar"
-            className="sticky bottom-14 md:bottom-2 z-20 pt-1"
+            className="fixed inset-x-3 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-40 pt-1 md:sticky md:inset-x-auto md:bottom-2 md:z-20"
           >
             <div className="bg-white/95 backdrop-blur-md border border-stone-300 rounded-2xl p-2.5 sm:px-4 shadow-lg flex flex-wrap items-center justify-between gap-2.5">
               <div className="flex items-center gap-2 min-w-0">

@@ -3,7 +3,12 @@ import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { verifyDataAccess } from '@/lib/auth-server'
-import { canAccessClass, canAccessEnrollment, canHardDeleteStudent, isAdministratorRole } from '@/lib/teacher-access'
+import {
+  canAccessEnrollment,
+  canHardDeleteStudent,
+  isAdministratorRole,
+  resolveEnrollmentClassUpdate,
+} from '@/lib/teacher-access'
 
 export async function OPTIONS(request: NextRequest) {
   return apiOptions(request)
@@ -20,11 +25,15 @@ export async function PUT(
     const studentId = (await params).id
     const body = await request.json()
 
-    if (!body.name || !body.admission_number || !body.circular_class_id) {
+    if (
+      !body.name ||
+      !body.admission_number ||
+      (!body.circular_class_id && !body.theology_class_id)
+    ) {
       return withCors(
         request,
         NextResponse.json(
-          { error: 'name, circular_class_id, and admission_number are required' },
+          { error: 'name, admission_number, and at least one class are required' },
           { status: 400 }
         )
       )
@@ -59,9 +68,14 @@ export async function PUT(
       return withCors(request, NextResponse.json({ error: 'Unable to verify student class access.' }, { status: 500 }))
     }
 
+    let enrollmentClassUpdate: ReturnType<typeof resolveEnrollmentClassUpdate> = null
+
     if (!currentEnrollments?.length) {
       if (!isAdministratorRole(authRes.role)) {
         return withCors(request, NextResponse.json({ error: 'Unauthorized: Student has no active enrollment in your assigned classes.' }, { status: 403 }))
+      }
+      if (!body.circular_class_id) {
+        return withCors(request, NextResponse.json({ error: 'A circular class is required for a new enrollment.' }, { status: 400 }))
       }
     } else {
       if (currentEnrollments.some((enrollment) => !canAccessEnrollment(authRes, enrollment))) {
@@ -73,28 +87,15 @@ export async function PUT(
         return withCors(request, NextResponse.json({ error: 'Unable to update a student with multiple active enrollments.' }, { status: 409 }))
       }
 
-      const nextCircularClass = body.circular_class_id
-      const nextTheologyClass = body.theology_class_id || null
-      const canManageCircular = canAccessClass(authRes, 'circular', currentEnrollment.circular_class_id)
-      const canManageTheology = canAccessClass(
+      enrollmentClassUpdate = resolveEnrollmentClassUpdate(
         authRes,
-        'theology',
-        currentEnrollment.theology_class_id,
-        currentEnrollment.circular_class_id
+        currentEnrollment,
+        {
+          circular_class_id: body.circular_class_id,
+          theology_class_id: body.theology_class_id,
+        }
       )
-      const circularAllowed = canManageCircular
-        ? canAccessClass(authRes, 'circular', nextCircularClass)
-        : nextCircularClass === currentEnrollment.circular_class_id
-      const theologyAllowed = canManageTheology
-        ? !nextTheologyClass || canAccessClass(
-          authRes,
-          'theology',
-          nextTheologyClass,
-          nextCircularClass
-        )
-        : nextTheologyClass === currentEnrollment.theology_class_id
-
-      if (!circularAllowed || !theologyAllowed) {
+      if (!enrollmentClassUpdate) {
         return withCors(request, NextResponse.json({ error: 'Unauthorized: Cannot assign classes outside your permissions.' }, { status: 403 }))
       }
     }
@@ -130,8 +131,12 @@ export async function PUT(
 
     const currentEnrollment = currentEnrollments?.[0] ?? null
 
-    const newCircularClass = body.circular_class_id
-    const newTheologyClass = body.theology_class_id || null
+    const newCircularClass = enrollmentClassUpdate
+      ? enrollmentClassUpdate.circular_class_id
+      : body.circular_class_id
+    const newTheologyClass = enrollmentClassUpdate
+      ? enrollmentClassUpdate.theology_class_id
+      : body.theology_class_id || null
 
     if (currentEnrollment) {
       const circularChanged = currentEnrollment.circular_class_id !== newCircularClass

@@ -14,6 +14,7 @@ import {
   getSubjectRemark,
   getTheologySubjectRemark,
   getClassTeacherComment,
+  getClassTeacherReportComment,
   getHeadTeacherComment,
   getConductRemark,
 } from '../lib/grading.ts';
@@ -196,6 +197,36 @@ describe('5. Promotion Logic', () => {
     ];
     assert.equal(getClassTeacherComment('II', [84, 80], customBands), 'Outstanding performance. Keep it up!');
     assert.equal(getHeadTeacherComment('II', [40, 30], customBands), 'Developing performance. Work closely with your teachers to make progress.');
+  });
+
+  it('Term 3 MOT uses encouraging performance feedback instead of EOT promotion text', () => {
+    assert.equal(getClassTeacherReportComment({
+      scoreType: 'mot',
+      termNumber: 3,
+      promotionStatus: 'Promote',
+      gradingComment: null,
+      division: 'II',
+    }), 'Good performance. Keep it up!');
+  });
+
+  it('Term 3 EOT retains promotion comments', () => {
+    assert.equal(getClassTeacherReportComment({
+      scoreType: 'eot',
+      termNumber: 3,
+      promotionStatus: 'Promote',
+      gradingComment: null,
+      division: 'II',
+    }), 'Promoted to the next class.');
+  });
+
+  it('configured grading comments remain available on MOT reports', () => {
+    assert.equal(getClassTeacherReportComment({
+      scoreType: 'mot',
+      termNumber: 2,
+      promotionStatus: null,
+      gradingComment: 'Custom class comment.',
+      division: 'II',
+    }), 'Custom class comment.');
   });
 });
 

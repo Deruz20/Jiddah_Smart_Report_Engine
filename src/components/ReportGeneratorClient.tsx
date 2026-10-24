@@ -75,6 +75,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
   const [activeReportId, setActiveReportId] = useState<string | null>(null)
   const [zoom, setZoom] = useState(0.75)
   const [printScope, setPrintScope] = useState<'current' | 'all' | string[]>('current')
+  const [printRequest, setPrintRequest] = useState<{ title: string } | null>(null)
   const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false)
   const [sidePanelOpen, setSidePanelOpen] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
@@ -450,10 +451,36 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
       return current ? [current] : []
     }
     if (Array.isArray(printScope)) {
-      return rawReports.filter(r => printScope.includes(r.id))
+      return rawReports.filter(report => printScope.includes(report.id))
     }
     return rawReports
   }, [rawReports, printScope, activeReportId])
+
+  useEffect(() => {
+    if (!printRequest || isPrintDialogOpen) return
+    if (printableReports.length === 0) {
+      toast.error('No reports selected for printing.')
+      setPrintRequest(null)
+      return
+    }
+
+    const originalTitle = document.title
+    document.title = printRequest.title
+    const restoreTitle = () => {
+      document.title = originalTitle
+      setPrintRequest(null)
+    }
+    const printFrame = window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => window.print())
+    })
+
+    window.addEventListener('afterprint', restoreTitle, { once: true })
+    return () => {
+      window.cancelAnimationFrame(printFrame)
+      window.removeEventListener('afterprint', restoreTitle)
+      document.title = originalTitle
+    }
+  }, [isPrintDialogOpen, printableReports, printRequest])
 
   return (
     <div className="h-full bg-[#FDFBF7] font-sans flex flex-col relative overflow-hidden text-stone-800">
@@ -466,7 +493,10 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
 
           let sanitizedFilename = 'Report.pdf'
 
-          if (mode === 'current') {
+          if (Array.isArray(mode)) {
+            const term = filterState.term ? `_Term_${filterState.term}` : ''
+            sanitizedFilename = `Selected_Reports${term}.pdf`
+          } else if (mode === 'current') {
             const currentReport = rawReports.find(r => r.id === activeReportId)
             const studentName = (currentReport as any)?.student?.name || 'Student'
             const term = filterState.term ? `_Term_${filterState.term}` : ''
@@ -475,24 +505,10 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
             const className = (filterState as any).classIds?.[0] ? figmaClasses.find(c => c.id === (filterState as any).classIds[0])?.name || 'Batch' : 'Batch'
             const term = filterState.term ? `_Term_${filterState.term}` : ''
             sanitizedFilename = `${className}${term}_Batch_Reports.pdf`
-          } else {
-            sanitizedFilename = `Custom_Batch_Reports_${new Date().toISOString().split('T')[0]}.pdf`
           }
 
           sanitizedFilename = sanitizedFilename.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_')
-
-          const originalTitle = document.title
-          document.title = sanitizedFilename
-
-          setTimeout(() => {
-            window.print()
-          }, 300)
-
-          const restoreTitle = () => {
-            document.title = originalTitle
-            window.removeEventListener('afterprint', restoreTitle)
-          }
-          window.addEventListener('afterprint', restoreTitle)
+          setPrintRequest({ title: sanitizedFilename })
         }}
       />
 
@@ -570,29 +586,20 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
       </div>
 
       {(() => {
-        const reportsToPrint = printableReports.length > 0
-          ? printableReports
-          : (rawReports.filter(r => r.id === activeReportId).length > 0
-              ? rawReports.filter(r => r.id === activeReportId)
-              : (rawReports.length > 0 ? [rawReports[0]] : []))
+        const reportsToPrint = printableReports
+        const firstPrintableReport = reportsToPrint
+          .map(resolveReport)
+          .find((resolved) => resolved !== null)
+        const pageOrientation = firstPrintableReport
+          ? STABILIZED_REPORT_ORIENTATIONS[firstPrintableReport.type].pageOrientation
+          : 'portrait'
 
         if (reportsToPrint.length === 0) {
-          return (
-            <PrintPortal>
-              <div style={{ padding: '60px 40px', textAlign: 'center', fontFamily: 'sans-serif' }}>
-                <h2 style={{ fontSize: '22px', fontWeight: 'bold', color: '#1c1917', marginBottom: '12px' }}>
-                  Jiddah Islamic Schools — Report Generation Engine
-                </h2>
-                <p style={{ fontSize: '14px', color: '#57534e', maxWidth: '480px', margin: '0 auto' }}>
-                  Select classes or students in the filter panel and generate reports to preview or print.
-                </p>
-              </div>
-            </PrintPortal>
-          )
+          return <PrintPortal pageOrientation={pageOrientation}>{null}</PrintPortal>
         }
 
         return (
-          <PrintPortal>
+          <PrintPortal pageOrientation={pageOrientation}>
             {(() => {
               const nodes: React.ReactNode[] = []
               let i = 0

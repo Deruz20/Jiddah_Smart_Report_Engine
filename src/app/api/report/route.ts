@@ -16,7 +16,7 @@ import {
   getDivision,
   getPromotionStatus,
   getConductRemark,
-  getClassTeacherComment,
+  getClassTeacherReportComment,
   getHeadTeacherComment,
 } from '@/lib/grading'
 import { resolveSectionType } from '@/lib/section-type'
@@ -58,14 +58,16 @@ export async function GET(request: NextRequest) {
   const enrollmentId = searchParams.get('enrollment_id')
   const termId = searchParams.get('term_id')
   const score_type = searchParams.get('score_type') || 'mot'
-  const scoreType = score_type
   const curriculum = searchParams.get('curriculum') || 'secular'
 
   if (!enrollmentId || !termId) {
     return withCors(request, NextResponse.json({ error: 'enrollmentId and termId are required' }, { status: 400 }))
   }
 
-  if (!['bot', 'mot', 'eot'].includes(score_type)) {
+  const scoreType = score_type === 'bot' || score_type === 'mot' || score_type === 'eot'
+    ? score_type
+    : null
+  if (!scoreType) {
     return withCors(request, NextResponse.json({ error: 'score_type must be bot, mot, or eot' }, { status: 400 }))
   }
   if (!['secular', 'theology'].includes(curriculum)) {
@@ -635,9 +637,15 @@ export async function GET(request: NextRequest) {
         aggregate,
         division,
         conduct_remark: evaluateCriteria(reportAggregate ?? null, 'aggregate', 'secular', enrollment.circular_class_id, gradingCriteria, 'comment') || getConductRemark(division),
-        class_teacher_comment: scoreType === 'eot' && isTerm3 && promotion_status
-          ? (promotion_status === 'Promote' ? 'Promoted to the next class.' : promotion_status === 'Repeat' ? 'Advised to repeat the class.' : 'Try next class.')
-          : (evaluateCriteria(reportAggregate ?? null, 'aggregate', 'secular', enrollment.circular_class_id, gradingCriteria, 'comment') || (division ? getClassTeacherComment(division, sortedCircularSubjects.filter(row => row.is_core).map(row => row.score), schoolSettings?.grading_scale) : '')),
+        class_teacher_comment: getClassTeacherReportComment({
+          scoreType,
+          termNumber: term.term_number,
+          promotionStatus: promotion_status,
+          gradingComment: evaluateCriteria(reportAggregate ?? null, 'aggregate', 'secular', enrollment.circular_class_id, gradingCriteria, 'comment'),
+          division,
+          scores: sortedCircularSubjects.filter(row => row.is_core).map(row => row.score),
+          gradingBands: schoolSettings?.grading_scale,
+        }),
         head_teacher_comment: evaluateCriteria(reportAggregate ?? null, 'aggregate', 'secular', enrollment.circular_class_id, gradingCriteria, 'comment') || (division ? getHeadTeacherComment(division, sortedCircularSubjects.filter(row => row.is_core).map(row => row.score), schoolSettings?.grading_scale) : ''),
         position,
         total_students,

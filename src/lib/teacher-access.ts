@@ -307,6 +307,7 @@ export function canAccessClass(
   cohortCircularClassId?: string | null
 ): boolean {
   if (!access.isAuthorized || !classId) return false;
+  if (isAdministratorRole(access.role)) return true;
 
   if (access.classAssignments) {
     const directlyAssigned = access.classAssignments.some(
@@ -344,6 +345,55 @@ export function canAccessEnrollment(
       enrollment.circular_class_id
     )
   );
+}
+
+export function resolveEnrollmentClassUpdate(
+  access: AuthAccessResult,
+  current: { circular_class_id: string | null; theology_class_id: string | null },
+  requested: { circular_class_id?: string | null; theology_class_id?: string | null }
+): { circular_class_id: string | null; theology_class_id: string | null } | null {
+  const currentCircularClass = current.circular_class_id ?? null;
+  const currentTheologyClass = current.theology_class_id ?? null;
+  if (!access.isAuthorized) return null;
+
+  if (isAdministratorRole(access.role)) {
+    return {
+      circular_class_id: requested.circular_class_id === undefined
+        ? currentCircularClass
+        : requested.circular_class_id || null,
+      theology_class_id: requested.theology_class_id === undefined
+        ? currentTheologyClass
+        : requested.theology_class_id || null,
+    };
+  }
+
+  const canManageCircular = canAccessClass(access, 'circular', currentCircularClass);
+  const canManageTheology = canAccessClass(
+    access,
+    'theology',
+    currentTheologyClass,
+    currentCircularClass
+  );
+
+  const requestedCircularClass = requested.circular_class_id || null;
+  const requestedTheologyClass = requested.theology_class_id || null;
+  const circularClassId = requestedCircularClass ?? (
+    canManageCircular ? null : currentCircularClass
+  );
+  const theologyClassId = requestedTheologyClass ?? (
+    canManageTheology ? null : currentTheologyClass
+  );
+
+  const circularAllowed = canManageCircular
+    ? canAccessClass(access, 'circular', circularClassId)
+    : circularClassId === currentCircularClass;
+  const theologyAllowed = canManageTheology
+    ? !theologyClassId || canAccessClass(access, 'theology', theologyClassId, circularClassId)
+    : theologyClassId === currentTheologyClass;
+
+  return circularAllowed && theologyAllowed
+    ? { circular_class_id: circularClassId, theology_class_id: theologyClassId }
+    : null;
 }
 
 export function canAssignEnrollmentClasses(
@@ -394,6 +444,9 @@ export function classIdsForType(
   access: AuthAccessResult,
   classType: ClassType
 ): string[] | null {
+  if (!access.isAuthorized) return [];
+  if (isAdministratorRole(access.role)) return null;
+
   if (access.classAssignments) {
     return [
       ...new Set(

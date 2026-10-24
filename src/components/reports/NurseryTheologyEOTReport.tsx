@@ -338,8 +338,8 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
 }
 
 .nursery-theology-eot-report .footer-stamp {
-    width: 120px;
-    height: 120px;
+    width: 145px;
+    height: 100px;
     border-radius: 16px;
     border: 2px dashed #94a3b8;
     background: white;
@@ -351,6 +351,19 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
     font-weight: 800;
     color: #94a3b8;
     flex-shrink: 0;
+}
+.nursery-theology-eot-report .footer-stamp.has-image {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+}
+.nursery-theology-eot-report .footer-stamp img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    mix-blend-mode: multiply;
+    filter: contrast(1.3) saturate(1.25);
+    transform: rotate(-1.5deg) scale(1.04);
 }
         `
       }} />
@@ -435,24 +448,24 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
         <div className="signature-row">
           <div className="sign-field">
             <div>تقرير مرب الفصل</div>
-            <div className="sign-line" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', height: '40px' }}>
+            <div className="sign-line" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', height: '48px' }}>
               {reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.theology_class_english ?? reportData.student.class_name, true) ?? ''] && (
-                <img src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.theology_class_english ?? reportData.student.class_name, true)!]} alt="Signature" style={{ maxHeight: '30px', maxWidth: '100%', objectFit: 'contain' }} />
+                <img src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.theology_class_english ?? reportData.student.class_name, true)!]} alt="Signature" style={{ maxHeight: '42px', maxWidth: '100%', objectFit: 'contain', mixBlendMode: 'multiply', filter: 'contrast(1.18) saturate(1.08)', transform: 'rotate(-1deg)' }} />
               )}
             </div>
           </div>
-          <div className="footer-stamp">
+          <div className={`footer-stamp${reportData?.signatures?.['school-stamp'] ? ' has-image' : ''}`}>
             {reportData?.signatures?.['school-stamp'] ? (
-              <img src={reportData.signatures['school-stamp']} alt="" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+              <img src={reportData.signatures['school-stamp']} alt="" />
             ) : (
               'الختم الرسمي للمدرسة'
             )}
           </div>
           <div className="sign-field">
             <div>تقرير مدير المدرسة</div>
-            <div className="sign-line" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', height: '40px' }}>
+            <div className="sign-line" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', height: '48px' }}>
               {reportData?.signatures?.['head-teacher'] && (
-                <img src={reportData.signatures['head-teacher']} alt="Signature" style={{ maxHeight: '30px', maxWidth: '100%', objectFit: 'contain' }} />
+                <img src={reportData.signatures['head-teacher']} alt="Signature" style={{ maxHeight: '42px', maxWidth: '100%', objectFit: 'contain', mixBlendMode: 'multiply', filter: 'contrast(1.18) saturate(1.08)', transform: 'rotate(-1deg)' }} />
               )}
             </div>
           </div>

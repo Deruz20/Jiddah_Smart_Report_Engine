@@ -3,18 +3,30 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Upload, Check, AlertCircle, RefreshCw, Trash2, Eye, HardDrive, Sliders, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
+import { toast } from 'sonner'
 import { HeroSection } from '@/components/HeroSection'
 
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp']
 const MAX_FILE_SIZE = 5 * 1024 * 1024
 
-export default function SignaturesClient({ initialSlots }: { initialSlots: any[] }) {
+interface SignatureSlot {
+  slot_key: string
+  label: string
+  description: string
+  required: boolean
+  uploaded: boolean
+  public_url: string | null
+  size?: number
+}
+
+export default function SignaturesClient({ initialSlots }: { initialSlots: SignatureSlot[] }) {
   const [slots, setSlots] = useState(initialSlots)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   
   const [dragOver, setDragOver] = useState<string | null>(null)
   const [uploadingSlot, setUploadingSlot] = useState<string | null>(null)
+  const [removingSlot, setRemovingSlot] = useState<string | null>(null)
   const [previews, setPreviews] = useState<Record<string, string>>({})
 
   const refetch = async () => {
@@ -98,6 +110,41 @@ export default function SignaturesClient({ initialSlots }: { initialSlots: any[]
     handleFileChange(slotKey, file)
   }
 
+  const removeSignature = async (slot: SignatureSlot) => {
+    if (!window.confirm(`Remove ${slot.label} from future reports? You can upload it again at any time.`)) {
+      return
+    }
+
+    setRemovingSlot(slot.slot_key)
+    setError(null)
+    try {
+      const response = await fetch('/api/signatures', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slot_key: slot.slot_key }),
+      })
+      const payload = await response.json()
+      if (
+        !response.ok ||
+        payload?.data?.slot_key !== slot.slot_key ||
+        !Number.isInteger(payload?.data?.removed)
+      ) {
+        throw new Error(payload?.error || 'Unable to remove signature or stamp.')
+      }
+
+      setSlots((current) => current.map((item) => item.slot_key === slot.slot_key
+        ? { ...item, uploaded: false, public_url: null, size: 0 }
+        : item))
+      toast.success(`${slot.label} removed from future reports.`)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unable to remove signature or stamp.'
+      setError(message)
+      toast.error(message)
+    } finally {
+      setRemovingSlot(null)
+    }
+  }
+
   const uploadedCount = slots.filter((slot) => slot.uploaded).length
   const requiredCount = slots.filter((slot) => slot.required).length
   const uploadedRequired = slots.filter((slot) => slot.required && slot.uploaded).length
@@ -150,6 +197,7 @@ export default function SignaturesClient({ initialSlots }: { initialSlots: any[]
               {slots.map((slot) => {
                 const previewUrl = previews[slot.slot_key] ?? slot.public_url
                 const isUploading = uploadingSlot === slot.slot_key
+                const isRemoving = removingSlot === slot.slot_key
 
                 return (
                   <div key={slot.slot_key} className="rounded-3xl border border-slate-200 overflow-hidden">
@@ -207,10 +255,21 @@ export default function SignaturesClient({ initialSlots }: { initialSlots: any[]
                       </div>
 
                       <div className="flex items-center justify-end gap-3">
+                        {slot.uploaded && (
+                          <button
+                            type="button"
+                            onClick={() => void removeSignature(slot)}
+                            disabled={isUploading || isRemoving}
+                            className="inline-flex items-center gap-2 rounded-xl border border-rose-200 px-4 py-2 text-sm font-semibold text-rose-700 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {isRemoving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                            Remove from Reports
+                          </button>
+                        )}
                         <label
                           htmlFor={`file-${slot.slot_key}`}
                           className={`inline-flex cursor-pointer items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${
-                            isUploading ? 'opacity-50 pointer-events-none' : ''
+                            isUploading || isRemoving ? 'opacity-50 pointer-events-none' : ''
                           } ${
                             slot.uploaded
                               ? 'bg-slate-100 text-slate-700 hover:bg-slate-200'

@@ -575,10 +575,16 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
           : (rawReports.filter(r => r.id === activeReportId).length > 0
               ? rawReports.filter(r => r.id === activeReportId)
               : (rawReports.length > 0 ? [rawReports[0]] : []))
+        const firstPrintableReport = reportsToPrint
+          .map(resolveReport)
+          .find((resolved) => resolved !== null)
+        const pageOrientation = firstPrintableReport
+          ? STABILIZED_REPORT_ORIENTATIONS[firstPrintableReport.type].pageOrientation
+          : 'portrait'
 
         if (reportsToPrint.length === 0) {
           return (
-            <PrintPortal>
+            <PrintPortal pageOrientation={pageOrientation}>
               <div style={{ padding: '60px 40px', textAlign: 'center', fontFamily: 'sans-serif' }}>
                 <h2 style={{ fontSize: '22px', fontWeight: 'bold', color: '#1c1917', marginBottom: '12px' }}>
                   Jiddah Islamic Schools — Report Generation Engine
@@ -592,7 +598,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
         }
 
         return (
-          <PrintPortal>
+          <PrintPortal pageOrientation={pageOrientation}>
             {(() => {
               const nodes: React.ReactNode[] = []
               let i = 0

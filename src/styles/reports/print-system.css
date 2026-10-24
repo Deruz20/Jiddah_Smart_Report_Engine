@@ -167,6 +167,25 @@
     background-attachment: scroll !important;
   }
 
+  #print-portal .report-container .comments-and-stamp img,
+  #print-portal .report-container .mot-sig-line img,
+  #print-portal .report-container .mot-stamp img,
+  #print-portal .report-container .stamp-box img,
+  #print-portal .report-container .sign-line img,
+  #print-portal .report-container .footer-stamp img,
+  #print-portal .report-container .tc-stamp img,
+  #print-portal .report-container img[alt*='Signature'] {
+    background: transparent !important;
+    box-shadow: none !important;
+    filter: grayscale(1) !important;
+    mix-blend-mode: normal !important;
+  }
+
+  #print-portal .theology-card-inner::before {
+    filter: grayscale(1) contrast(1.1);
+    opacity: 0.16 !important;
+  }
+
   /* 8. Typography */
   * {
     -webkit-font-smoothing: antialiased;
@@ -186,6 +205,7 @@
    ============================================================================ */
 
 @page {
+  size: A4 portrait;
   margin: 0;
 }
 

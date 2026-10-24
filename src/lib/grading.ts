@@ -258,6 +258,28 @@ function getBandRemark(band: Pick<GradingBand, 'grade' | 'min' | 'max' | 'remark
   return band.remark.trim() || band.grade
 }
 
+export function getGradingRemarkForScore(
+  score: number | null | undefined,
+  gradingBands?: ReportCommentBands
+): string {
+  if (typeof score !== 'number' || !Number.isFinite(score)) return ''
+  const bands = (gradingBands?.length ? gradingBands : DEFAULT_GRADING_BANDS)
+    .filter(band => Number.isFinite(band.min) && Number.isFinite(band.max))
+    .sort((a, b) => b.min - a.min)
+  const band = bands.find(candidate => score >= candidate.min && score <= candidate.max)
+  return band?.remark.trim() ?? ''
+}
+
+export function getGradingRemarkForScores(
+  scores: (number | null | undefined)[] | undefined,
+  gradingBands?: ReportCommentBands
+): string {
+  const validScores = scores?.filter((score): score is number => typeof score === 'number' && Number.isFinite(score))
+  if (!validScores?.length) return ''
+  const average = validScores.reduce((sum, score) => sum + score, 0) / validScores.length
+  return getGradingRemarkForScore(average, gradingBands)
+}
+
 export function getClassTeacherComment(
   division: string | null,
   scores?: (number | null | undefined)[],
@@ -334,18 +356,9 @@ export function getClassTeacherReportComment({
   }
 
   if (gradingComment) return gradingComment
-  if (!division) return ''
-  if (scoreType === 'mot' && !scores?.some(score => typeof score === 'number')) {
-    switch (division) {
-      case 'I': return 'Excellent performance. Keep it up!'
-      case 'II':
-      case 'III': return 'Good performance. Keep it up!'
-      case 'IV': return 'Fair performance. Keep working hard!'
-      case 'U': return 'Keep working hard. You can improve!'
-      default: return 'Keep working hard.'
-    }
+  if (scoreType === 'mot') {
+    return getGradingRemarkForScores(scores, gradingBands)
   }
-
   return getClassTeacherComment(division, scores, gradingBands)
 }
 

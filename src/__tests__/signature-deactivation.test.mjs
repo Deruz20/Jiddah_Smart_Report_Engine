@@ -38,12 +38,14 @@ function createMemoryStorage(initialObjects) {
   }
 }
 
-test('report signatures remain omitted regardless of stored activation state', async () => {
+test('disabled signatures stay omitted while an active school stamp remains in report data', async () => {
   const storage = createMemoryStorage([
     { path: 'head-teacher.png', updated_at: '2026-10-24T10:00:00Z' },
+    { path: 'school-stamp.png', updated_at: '2026-10-24T10:00:00Z' },
   ])
   const client = { storage: { from: () => storage } }
 
+  assert.equal((await getReportSignatures(client))['school-stamp'], 'https://assets.example/school-stamp.png?v=2026-10-24T10%3A00%3A00Z')
   assert.equal((await getReportSignatures(client))['head-teacher'], null)
 
   assert.deepEqual(await setSignatureObjectActiveState(storage, 'head-teacher', false), { active: false })

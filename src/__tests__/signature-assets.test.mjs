@@ -104,19 +104,28 @@ test('signature-slot discovery uses active enrollments and reports query failure
   await assert.rejects(() => getDynamicSignatureSlots(client), /lookup failed/)
 })
 
-test('report signatures are omitted from all newly generated report data', async () => {
-  let storageAccessed = false
+test('report generation includes the school stamp but omits signature images', async () => {
+  const objects = [
+    { name: 'head-teacher.png', updated_at: '2026-10-24T10:00:00Z' },
+    { name: 'class-teacher-p1.png', updated_at: '2026-10-24T10:00:00Z' },
+    { name: 'school-stamp.png', updated_at: '2026-10-24T10:00:00Z' },
+  ]
   const client = {
     storage: {
-      from() {
-        storageAccessed = true
-        throw new Error('Report generation must not load signature assets')
+      from(bucket) {
+        assert.equal(bucket, 'signatures')
+        return {
+          list: async () => ({ data: objects, error: null }),
+          getPublicUrl(name) {
+            return { data: { publicUrl: `https://assets.example/${name}` } }
+          },
+        }
       },
     },
   }
 
   const signatures = await getReportSignatures(client)
-  assert.equal(storageAccessed, false)
-  assert.ok(Object.keys(signatures).length > 0)
-  assert.ok(Object.values(signatures).every((url) => url === null))
+  assert.equal(signatures['school-stamp'], 'https://assets.example/school-stamp.png?v=2026-10-24T10%3A00%3A00Z')
+  assert.equal(signatures['head-teacher'], null)
+  assert.equal(signatures['class-teacher-p1'], null)
 })

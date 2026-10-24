@@ -52,11 +52,11 @@ export interface ReportData {
     position: number | null;
     total_students: number | null;
     bot_total: number | null;
-    bot_aggregate: string | null;
+    bot_aggregate: number | string | null;
     mot_total: number | null;
-    mot_aggregate: string | null;
+    mot_aggregate: number | string | null;
     eot_total: number | null;
-    eot_aggregate: string | null;
+    eot_aggregate: number | string | null;
     class_teacher_comment: string | null;
     head_teacher_comment: string | null;
     conduct_remark: string | null;

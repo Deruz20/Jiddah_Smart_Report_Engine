@@ -1,5 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+const SUPPORTED_SIGNATURE_FILENAME = /^[a-z0-9-]+\.(?:png|jpe?g|webp)$/i;
+
 export function getClassTeacherSignatureKey(className: string | undefined | null, isTheology: boolean = false): string | null {
   if (!className) return null;
   const c = className.toLowerCase().trim();
@@ -65,15 +67,25 @@ export interface SignatureStorageObject {
   } | null;
 }
 
+export function getSignatureObjectNamesForSlot(
+  objects: SignatureStorageObject[],
+  slotKey: string
+): string[] {
+  const prefix = `${slotKey}.`;
+
+  return objects
+    .map((object) => object.name)
+    .filter((name) => name.startsWith(prefix) && SUPPORTED_SIGNATURE_FILENAME.test(name));
+}
+
 export function mapLatestSignatureObjects(
   objects: SignatureStorageObject[],
   keys: string[] = getReportSignatureKeys()
 ): Map<string, SignatureStorageObject> {
   const latestByKey = new Map<string, SignatureStorageObject>();
-  const supportedFileName = /^[a-z0-9-]+\.(?:png|jpe?g|webp)$/i;
 
   for (const object of objects) {
-    if (!supportedFileName.test(object.name)) continue;
+    if (!SUPPORTED_SIGNATURE_FILENAME.test(object.name)) continue;
     const key = keys.find((candidate) => object.name.startsWith(`${candidate}.`));
     if (!key) continue;
 

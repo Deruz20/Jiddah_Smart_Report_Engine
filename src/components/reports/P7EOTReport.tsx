@@ -3,6 +3,7 @@ import { ReportContainer } from '@/components/reports/shared/ReportContainer'
 import { resolveReportBranding, resolveReportGradingBands } from '@/lib/school-settings-helper'
 
 import { getClassTeacherSignatureKey } from '@/utils/signatures'
+import { ReportSchoolLogo } from '@/components/reports/ReportSchoolLogo'
 
 export default function P7EOTReport({ reportData }: any) {
   const branding = resolveReportBranding(reportData)
@@ -507,7 +508,7 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
 
           <div className="header-center">
             <div className="logo">
-              <img src={branding.logoUrl} alt="School Badge" />
+              <ReportSchoolLogo src={branding.logoUrl} alt="School Badge" />
             </div>
           </div>
 
@@ -731,7 +732,7 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
                     <span>Signature:</span>
                     <div className="w-line" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end' }}>
                       {reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.class_name) ?? ''] && (
-                        <img src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} alt="Signature" style={{ maxHeight: '24px', maxWidth: '100%', objectFit: 'contain' }} />
+                        <img src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} alt="Signature" style={{ maxHeight: '24px', maxWidth: '100%', objectFit: 'contain', mixBlendMode: 'multiply' }} />
                       )}
                     </div>
                   </div>
@@ -748,7 +749,7 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
                     <span>Signature:</span>
                     <div className="w-line" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end' }}>
                       {reportData?.signatures?.['head-teacher'] && (
-                        <img src={reportData.signatures['head-teacher']} alt="Signature" style={{ maxHeight: '24px', maxWidth: '100%', objectFit: 'contain' }} />
+                        <img src={reportData.signatures['head-teacher']} alt="Signature" style={{ maxHeight: '24px', maxWidth: '100%', objectFit: 'contain', mixBlendMode: 'multiply' }} />
                       )}
                     </div>
                   </div>
@@ -795,7 +796,7 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
 
             <div className="stamp-box">
               {reportData?.signatures?.['school-stamp'] ? (
-                <img src={reportData.signatures['school-stamp']} alt="Official school stamp" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                <img src={reportData.signatures['school-stamp']} alt="Official school stamp" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', mixBlendMode: 'multiply' }} />
               ) : (
                 'OFFICIAL STAMP'
               )}

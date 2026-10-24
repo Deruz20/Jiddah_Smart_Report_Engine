@@ -437,13 +437,13 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
             <div>تقرير مرب الفصل</div>
             <div className="sign-line" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', height: '40px' }}>
               {reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.theology_class_english ?? reportData.student.class_name, true) ?? ''] && (
-                <img src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.theology_class_english ?? reportData.student.class_name, true)!]} alt="Signature" style={{ maxHeight: '30px', maxWidth: '100%', objectFit: 'contain' }} />
+                <img src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.theology_class_english ?? reportData.student.class_name, true)!]} alt="Signature" style={{ maxHeight: '30px', maxWidth: '100%', objectFit: 'contain', mixBlendMode: 'multiply' }} />
               )}
             </div>
           </div>
           <div className="footer-stamp">
             {reportData?.signatures?.['school-stamp'] ? (
-              <img src={reportData.signatures['school-stamp']} alt="" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+              <img src={reportData.signatures['school-stamp']} alt="" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', mixBlendMode: 'multiply' }} />
             ) : (
               'الختم الرسمي للمدرسة'
             )}
@@ -452,7 +452,7 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
             <div>تقرير مدير المدرسة</div>
             <div className="sign-line" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', height: '40px' }}>
               {reportData?.signatures?.['head-teacher'] && (
-                <img src={reportData.signatures['head-teacher']} alt="Signature" style={{ maxHeight: '30px', maxWidth: '100%', objectFit: 'contain' }} />
+                <img src={reportData.signatures['head-teacher']} alt="Signature" style={{ maxHeight: '30px', maxWidth: '100%', objectFit: 'contain', mixBlendMode: 'multiply' }} />
               )}
             </div>
           </div>

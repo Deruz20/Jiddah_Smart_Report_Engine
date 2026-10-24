@@ -4,6 +4,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { verifyDataAccess } from '@/lib/auth-server'
 import { classIdsForType } from '@/lib/teacher-access'
+import { fetchAllSupabaseRows } from '@/lib/supabase-pagination'
+import { getMarkScore } from '@/lib/mark-scores'
 
 export async function OPTIONS(request: NextRequest) {
   return apiOptions(request)
@@ -39,54 +41,58 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ enrollments: [], marks: [], subjects: [] }))
     }
 
-    let enrollmentsQuery = supabase
-      .from('enrollments')
-      .select(`
-        id,
-        student_id,
-        theology_class_id,
-        is_active,
-        students ( name, arabic_name, admission_number ),
-        theology_classes ( id, class_name_arabic, class_name_english, level )
-      `)
-      .not('theology_class_id', 'is', null)
-      .eq('is_active', true)
+    const [enrollments, subjectsRes] = await Promise.all([
+      fetchAllSupabaseRows(() => {
+        let query = supabase
+          .from('enrollments')
+          .select(`
+            id,
+            student_id,
+            theology_class_id,
+            is_active,
+            students ( name, arabic_name, admission_number ),
+            theology_classes ( id, class_name_arabic, class_name_english, level )
+          `)
+          .not('theology_class_id', 'is', null)
+          .eq('is_active', true)
 
-    if (allowedTheologyIds !== null) {
-      enrollmentsQuery = enrollmentsQuery.in('theology_class_id', allowedTheologyIds)
-    }
-
-    const [enrollmentsRes, subjectsRes] = await Promise.all([
-      enrollmentsQuery,
+        if (allowedTheologyIds !== null) {
+          query = query.in('theology_class_id', allowedTheologyIds)
+        }
+        return query.order('id', { ascending: true })
+      }),
       supabase
         .from('theology_subjects')
         .select('id, subject_name_arabic, level')
         .order('sort_order', { ascending: true }),
     ])
 
-    if (enrollmentsRes.error) throw enrollmentsRes.error
     if (subjectsRes.error) throw subjectsRes.error
 
-    const enrollments = enrollmentsRes.data ?? []
     const subjects = subjectsRes.data ?? []
     const enrollmentIds = enrollments.map((e) => e.id)
 
     let marks: any[] = []
     if (enrollmentIds.length > 0) {
-      const { data: marksData, error: marksError } = await supabase
-        .from('theology_marks')
-        .select(`
-          id,
-          enrollment_id,
-          subject_id,
-          mot_score,
-          eot_score
-        `)
-        .eq('term_id', termId)
-        .in('enrollment_id', enrollmentIds)
-
-      if (marksError) throw marksError
-      marks = marksData ?? []
+      for (let index = 0; index < enrollmentIds.length; index += 100) {
+        const enrollmentChunk = enrollmentIds.slice(index, index + 100)
+        const chunkMarks = await fetchAllSupabaseRows(() =>
+          supabase
+            .from('theology_marks')
+            // Read both legacy mark and current score columns, then return normalized values.
+            .select('*')
+            .eq('term_id', termId)
+            .in('enrollment_id', enrollmentChunk)
+            .order('id', { ascending: true })
+        )
+        marks.push(...chunkMarks.map((mark) => ({
+          id: mark.id,
+          enrollment_id: mark.enrollment_id,
+          subject_id: mark.subject_id,
+          mot_score: getMarkScore(mark, 'mot'),
+          eot_score: getMarkScore(mark, 'eot'),
+        })))
+      }
     }
 
     return withCors(

@@ -14,6 +14,7 @@ interface UploadedFile {
   status: 'uploading' | 'done' | 'error'
   progress: number
   category: string
+  targetLabel?: string
 }
 
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'application/pdf']
@@ -84,16 +85,33 @@ export default function UploadClient({ initialFiles }: { initialFiles: UploadedF
 
       xhr.onload = async () => {
         if (xhr.status >= 200 && xhr.status < 300) {
-          setFiles((current) => current.filter((item) => item.id !== localId))
-          // For now, if it's a signature we don't list it in the general documents table, 
-          // or we can refresh documents anyway.
-          if (!isSignature) {
-            await loadUploadedFiles()
+          let payload: any
+          try {
+            payload = JSON.parse(xhr.responseText)
+          } catch {
+            setFiles((current) => current.map((item) => (item.id === localId ? { ...item, status: 'error', progress: 0 } : item)))
+            reject(new Error('Upload response could not be verified.'))
+            return
+          }
+
+          if (isSignature) {
+            if (payload?.data?.slot_key !== selectedSlot || typeof payload?.data?.public_url !== 'string' || !payload.data.public_url.trim()) {
+              setFiles((current) => current.map((item) => (item.id === localId ? { ...item, status: 'error', progress: 0 } : item)))
+              reject(new Error('The server did not confirm the selected signature slot.'))
+              return
+            }
+
+            const slot = signatureSlots.find((item) => item.slot_key === selectedSlot)
+            const label = slot?.label ?? selectedSlot
+            setSignatureSlots((current) => current.map((item) => item.slot_key === selectedSlot
+              ? { ...item, uploaded: true, public_url: payload.data.public_url }
+              : item))
+            setFiles((current) => current.map((item) => item.id === localId
+              ? { ...item, status: 'done', progress: 100, public_url: payload.data.public_url, targetLabel: label, updated_at: 'Imported just now' }
+              : item))
           } else {
-             // Refresh signature slots to show "uploaded: true" if needed
-             fetch('/api/signatures').then(r => r.json()).then(res => {
-               if (res.data) setSignatureSlots(res.data)
-             }).catch(console.error)
+            setFiles((current) => current.filter((item) => item.id !== localId))
+            await loadUploadedFiles()
           }
           resolve()
           return
@@ -155,6 +173,7 @@ export default function UploadClient({ initialFiles }: { initialFiles: UploadedF
   }
 
   const removeFile = async (id: string, name: string) => {
+    if (files.find((file) => file.id === id)?.category === 'Signatures') return
     if (!window.confirm(`Delete ${name}?`)) return
 
     setFiles((current) => current.filter((file) => file.id !== id))
@@ -302,6 +321,11 @@ export default function UploadClient({ initialFiles }: { initialFiles: UploadedF
                           <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold bg-slate-100 text-slate-600 uppercase tracking-wider">{file.category}</span>
                           <span className="text-xs text-slate-400">{formatSize(file.size)} · {file.updated_at ?? 'Uploaded'}</span>
                         </div>
+                        {file.status === 'done' && file.category === 'Signatures' && (
+                          <p className="mt-1 text-xs font-semibold text-emerald-700">
+                            Imported: {file.targetLabel ?? 'signature slot'}
+                          </p>
+                        )}
                         {file.status === 'uploading' && (
                           <div className="flex items-center gap-2 mt-2">
                             <div className="flex-1 h-1.5 rounded-full overflow-hidden bg-slate-100">
@@ -314,13 +338,15 @@ export default function UploadClient({ initialFiles }: { initialFiles: UploadedF
                       <div className="flex items-center gap-2">
                         {file.status === 'done' && <Check className="w-4 h-4 text-emerald-500" />}
                         {file.status === 'uploading' && <RefreshCw className="w-4 h-4 animate-spin text-amber-500" />}
-                        <button
-                          onClick={() => removeFile(file.id, file.name)}
-                          className="p-2 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors"
-                          title={`Delete ${file.name}`}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {file.category !== 'Signatures' && (
+                          <button
+                            onClick={() => removeFile(file.id, file.name)}
+                            className="p-2 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors"
+                            title={`Delete ${file.name}`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))}

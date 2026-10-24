@@ -6,6 +6,7 @@ import {
 import { ReportContainer } from "@/components/reports/shared/ReportContainer";
 import { resolveReportBranding, resolveReportGradingBands } from "@/lib/school-settings-helper";
 import { getClassTeacherSignatureKey } from "@/utils/signatures";
+import { ReportSchoolLogo } from "@/components/reports/ReportSchoolLogo";
 
 export default function PrimaryBOTReport({ reportData }: any) {
   const branding = resolveReportBranding(reportData);
@@ -126,8 +127,8 @@ export default function PrimaryBOTReport({ reportData }: any) {
         .bot-logo {
             width: 85px;
             height: 85px;
-            border-radius: 50%;
-            background: #f6f6f6;
+            border-radius: 0;
+            background: transparent;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -246,6 +247,7 @@ export default function PrimaryBOTReport({ reportData }: any) {
             height: 36px;
             max-width: 100%;
             object-fit: contain;
+            mix-blend-mode: multiply;
         }
 
         .bot-conduct-row {
@@ -284,6 +286,7 @@ export default function PrimaryBOTReport({ reportData }: any) {
             width: 100%;
             height: 100%;
             object-fit: contain;
+            mix-blend-mode: multiply;
         }
 
         .bot-final-footer {
@@ -313,7 +316,7 @@ export default function PrimaryBOTReport({ reportData }: any) {
           </div>
 
           <div className="bot-logo">
-            <img src={branding.logoUrl} alt="Logo" data-testid="report-school-logo" />
+            <ReportSchoolLogo src={branding.logoUrl} alt="Logo" data-testid="report-school-logo" />
           </div>
 
           <div className="bot-school-right">

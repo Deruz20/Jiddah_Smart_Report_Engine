@@ -6,6 +6,7 @@ import {
 import { ReportContainer } from "@/components/reports/shared/ReportContainer";
 import { resolveReportBranding, resolveReportGradingBands } from "@/lib/school-settings-helper";
 import { getClassTeacherSignatureKey } from "@/utils/signatures";
+import { ReportSchoolLogo } from "@/components/reports/ReportSchoolLogo";
 
 export default function PrimaryMOTReport({ reportData }: any) {
   const branding = resolveReportBranding(reportData);
@@ -128,8 +129,8 @@ export default function PrimaryMOTReport({ reportData }: any) {
         .mot-logo {
             width: 85px;
             height: 85px;
-            border-radius: 50%;
-            background: #f6f6f6;
+            border-radius: 0;
+            background: transparent;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -253,6 +254,7 @@ export default function PrimaryMOTReport({ reportData }: any) {
             height: 36px;
             max-width: 100%;
             object-fit: contain;
+            mix-blend-mode: multiply;
         }
 
         .mot-conduct-row {
@@ -282,6 +284,9 @@ export default function PrimaryMOTReport({ reportData }: any) {
             text-align: center;
             background: white;
         }
+        .mot-stamp img {
+            mix-blend-mode: multiply;
+        }
 
         .mot-final-footer {
             position: absolute;
@@ -310,7 +315,7 @@ export default function PrimaryMOTReport({ reportData }: any) {
           </div>
 
           <div className="mot-logo">
-            <img src={branding.logoUrl} alt="Logo" data-testid="report-school-logo" />
+            <ReportSchoolLogo src={branding.logoUrl} alt="Logo" data-testid="report-school-logo" />
           </div>
 
           <div className="mot-school-right">
@@ -413,7 +418,7 @@ export default function PrimaryMOTReport({ reportData }: any) {
           <div className="mot-footer-stamp">
             <div className="mot-stamp">
               {reportData?.signatures?.['school-stamp'] ? (
-                <img src={reportData.signatures['school-stamp']} alt="Official school stamp" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                <img src={reportData.signatures['school-stamp']} alt="Official school stamp" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', mixBlendMode: 'multiply' }} />
               ) : (
                 <>OFFICIAL<br />SCHOOL STAMP</>
               )}

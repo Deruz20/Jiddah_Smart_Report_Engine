@@ -9,6 +9,7 @@ const BUCKET = 'signatures'
 
 import {
   getDynamicSignatureSlots,
+  getSignatureObjectNamesForSlot,
   mapLatestSignatureObjects,
   withSignatureVersion,
 } from '@/utils/signatures'
@@ -105,6 +106,65 @@ export async function PATCH(request: NextRequest) {
     return withCors(request, NextResponse.json({ data: { success: true } }))
   } catch (err: any) {
     console.error('signatures PATCH exception:', err)
+    return withCors(request, NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 }))
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  const preflight = corsPreflight(request)
+  if (preflight) return preflight
+
+  try {
+    const cookieStore = await cookies()
+    const supabase = createClient(cookieStore)
+    const user = await getAuthenticatedUser(supabase)
+
+    if (!user) {
+      return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+    }
+
+    const access = await verifyDataAccess(supabase, user, 'write')
+    if (!access.isAuthorized || access.canonicalRole !== 'Administrator') {
+      return withCors(request, NextResponse.json({ error: 'Only administrators may remove official signatures.' }, { status: 403 }))
+    }
+
+    const body = await request.json()
+    if (!body || typeof body !== 'object' || typeof body.slot_key !== 'string') {
+      return withCors(request, NextResponse.json({ error: 'Invalid payload' }, { status: 400 }))
+    }
+
+    const admin = createAdminClient()
+    const signatureSlots = await getDynamicSignatureSlots(admin)
+    if (!signatureSlots.some((slot) => slot.slot_key === body.slot_key)) {
+      return withCors(request, NextResponse.json({ error: 'Unknown signature slot' }, { status: 400 }))
+    }
+
+    const storage = admin.storage.from(BUCKET)
+    const { data: objects, error: listError } = await storage.list('', { limit: 1000 })
+    if (listError) {
+      console.error('signatures DELETE list error:', listError.message)
+      return withCors(request, NextResponse.json({ error: listError.message }, { status: 500 }))
+    }
+
+    const paths = getSignatureObjectNamesForSlot(objects ?? [], body.slot_key)
+    if (paths.length > 0) {
+      const { error: removeError } = await storage.remove(paths)
+      if (removeError) {
+        console.error('signatures DELETE remove error:', removeError.message)
+        return withCors(request, NextResponse.json({ error: removeError.message }, { status: 500 }))
+      }
+    }
+
+    await recordActivity(supabase, user.id, 'remove_signature', {
+      slot_key: body.slot_key,
+      removed_files: paths.length,
+    })
+
+    return withCors(request, NextResponse.json({
+      data: { slot_key: body.slot_key, removed: paths.length },
+    }))
+  } catch (err: any) {
+    console.error('signatures DELETE exception:', err)
     return withCors(request, NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 }))
   }
 }

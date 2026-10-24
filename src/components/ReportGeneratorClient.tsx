@@ -74,7 +74,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
   const [rawReports, setRawReports] = useState<ReportData[]>([])
   const [activeReportId, setActiveReportId] = useState<string | null>(null)
   const [zoom, setZoom] = useState(0.75)
-  const [printScope, setPrintScope] = useState<'current' | 'all' | string[]>('current')
+  const [printScope, setPrintScope] = useState<'current' | 'all'>('current')
   const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false)
   const [sidePanelOpen, setSidePanelOpen] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
@@ -449,9 +449,6 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
       const current = rawReports.find(r => r.id === activeReportId)
       return current ? [current] : []
     }
-    if (Array.isArray(printScope)) {
-      return rawReports.filter(r => printScope.includes(r.id))
-    }
     return rawReports
   }, [rawReports, printScope, activeReportId])
 
@@ -475,8 +472,6 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
             const className = (filterState as any).classIds?.[0] ? figmaClasses.find(c => c.id === (filterState as any).classIds[0])?.name || 'Batch' : 'Batch'
             const term = filterState.term ? `_Term_${filterState.term}` : ''
             sanitizedFilename = `${className}${term}_Batch_Reports.pdf`
-          } else {
-            sanitizedFilename = `Custom_Batch_Reports_${new Date().toISOString().split('T')[0]}.pdf`
           }
 
           sanitizedFilename = sanitizedFilename.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_')

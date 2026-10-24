@@ -1,3 +1,5 @@
+import { DEFAULT_GRADING_BANDS, type GradingBand } from './school-settings-helper.ts'
+
 export type GradeCode = 'D1' | 'D2' | 'C3' | 'C4' | 'C5' | 'C6' | 'P7' | 'P8' | 'F9'
 export type Division = 'I' | 'II' | 'III' | 'IV' | 'U'
 export type NurseryGrade = 'A' | 'B' | 'C' | 'D' | 'E'
@@ -234,25 +236,80 @@ export function getTheologySubjectRemark(gradeNum: number): string {
   }
 }
 
-export function getClassTeacherComment(division: string | null): string {
+type ReportCommentBands = Pick<GradingBand, 'grade' | 'min' | 'max' | 'remark'>[]
+
+function getReportCommentBand(
+  scores: (number | null | undefined)[] | undefined,
+  customBands: ReportCommentBands | undefined
+) {
+  const validScores = scores?.filter((score): score is number => typeof score === 'number' && Number.isFinite(score))
+  if (!validScores?.length) return null
+
+  const bands = (customBands?.length ? customBands : DEFAULT_GRADING_BANDS)
+    .filter(band => Number.isFinite(band.min) && Number.isFinite(band.max))
+    .sort((a, b) => b.min - a.min)
+  if (!bands.length) return null
+
+  const average = validScores.reduce((sum, score) => sum + score, 0) / validScores.length
+  const bandIndex = bands.findIndex(band => average >= band.min)
+  const index = bandIndex === -1 ? bands.length - 1 : bandIndex
+  const tier = bands.length > 1 ? Math.round(index * 8 / (bands.length - 1)) : 0
+  return { band: bands[index], tier }
+}
+
+function getBandRemark(band: Pick<GradingBand, 'grade' | 'min' | 'max' | 'remark'>) {
+  return band.remark.trim() || band.grade
+}
+
+export function getClassTeacherComment(
+  division: string | null,
+  scores?: (number | null | undefined)[],
+  gradingBands?: ReportCommentBands
+): string {
+  const performance = getReportCommentBand(scores, gradingBands)
+  if (performance) {
+    const remark = getBandRemark(performance.band)
+    if (performance.tier <= 1) return `${remark} performance. Keep it up!`
+    if (performance.tier <= 3) return `${remark} performance. Keep working hard.`
+    if (performance.tier <= 5) return `${remark} performance. More practice will help you improve.`
+    if (performance.tier === 6) return `${remark} is needed. Practise regularly and ask for help.`
+    if (performance.tier === 7) return `${remark}. Practise regularly and ask for support to improve.`
+    return `${remark} performance. Work closely with your teachers to improve.`
+  }
+
   switch (division) {
-    case 'I': return 'Excellent performance. Keep it up!'
-    case 'II': return 'Very good performance. Aim higher!'
-    case 'III': return 'Good performance. Work harder.'
-    case 'IV': return 'Fair performance. More effort needed.'
-    case 'U': return 'Please put in more effort. You can do it.'
-    default: return 'Keep working hard.'
+    case 'I': return 'Outstanding performance. Keep it up!'
+    case 'II': return 'Very good performance. Keep it up.'
+    case 'III': return 'Average performance. Keep practising to improve.'
+    case 'IV': return 'Promising result. More effort will bring progress.'
+    case 'U': return 'Strive harder. Practise regularly and ask for help.'
+    default: return 'Keep practising and strive for improvement.'
   }
 }
 
-export function getHeadTeacherComment(division: string | null): string {
+export function getHeadTeacherComment(
+  division: string | null,
+  scores?: (number | null | undefined)[],
+  gradingBands?: ReportCommentBands
+): string {
+  const performance = getReportCommentBand(scores, gradingBands)
+  if (performance) {
+    const remark = getBandRemark(performance.band)
+    if (performance.tier === 0) return `${remark} result. Maintain this high standard.`
+    if (performance.tier === 1) return `${remark} result. Continue working toward excellence.`
+    if (performance.tier <= 3) return `${remark} result. Consistent practice will support further progress.`
+    if (performance.tier <= 6) return `${remark}. Regular practice will help you make progress.`
+    if (performance.tier === 7) return `${remark}. Work with your teachers to improve.`
+    return `${remark} performance. Work closely with your teachers to make progress.`
+  }
+
   switch (division) {
-    case 'I': return 'Outstanding. Well done!'
-    case 'II': return 'Good work. Strive for excellence.'
-    case 'III': return 'Satisfactory. Push yourself further.'
-    case 'IV': return 'Needs improvement. Stay focused.'
-    case 'U': return 'You can do better with more focus and hard work.'
-    default: return 'Continue to work diligently.'
+    case 'I': return 'Excellent achievement. Keep up the high standard.'
+    case 'II': return 'Very good result. Continue working toward excellence.'
+    case 'III': return 'Fair result. Consistent practice will help you improve.'
+    case 'IV': return 'Promising result. Work harder to make stronger progress.'
+    case 'U': return 'Strive harder. Seek support from your teachers.'
+    default: return 'Continue working diligently toward improvement.'
   }
 }
 

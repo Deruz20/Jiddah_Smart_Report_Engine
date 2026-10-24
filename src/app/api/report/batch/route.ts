@@ -333,7 +333,11 @@ export async function POST(request: NextRequest) {
 
       const circularRows = circularSubjects.map((subject: any) => {
         const existing = eCircularMarks.find(m => m.subject_id === subject.id)
-        const score = score_type === 'mot' ? existing?.mot_score ?? null : existing?.eot_score ?? null
+        const score = score_type === 'mot'
+          ? existing?.mot_score ?? null
+          : score_type === 'bot'
+            ? existing?.bot_score ?? null
+            : existing?.eot_score ?? null
         const numericScore = typeof score === 'number' ? score : null
 
         const defaultGrade = numericScore !== null
@@ -602,10 +606,10 @@ export async function POST(request: NextRequest) {
           aggregate,
           division,
           conduct_remark: evaluateCriteria(reportAggregate ?? null, 'aggregate', 'secular', enrollment.circular_class_id, gradingCriteria, 'comment') || getConductRemark(division),
-          class_teacher_comment: isTerm3 && promotion_status
+          class_teacher_comment: score_type === 'eot' && isTerm3 && promotion_status
             ? (promotion_status === 'Promote' ? 'Promoted to the next class.' : promotion_status === 'Repeat' ? 'Advised to repeat the class.' : 'Try next class.')
-            : (evaluateCriteria(reportAggregate ?? null, 'aggregate', 'secular', enrollment.circular_class_id, gradingCriteria, 'comment') || (division ? getClassTeacherComment(division) : '')),
-          head_teacher_comment: evaluateCriteria(reportAggregate ?? null, 'aggregate', 'secular', enrollment.circular_class_id, gradingCriteria, 'comment') || (division ? getHeadTeacherComment(division) : ''),
+            : (evaluateCriteria(reportAggregate ?? null, 'aggregate', 'secular', enrollment.circular_class_id, gradingCriteria, 'comment') || (division ? getClassTeacherComment(division, sortedCircularSubjects.filter(row => row.is_core).map(row => row.score), schoolSettings?.grading_scale) : '')),
+          head_teacher_comment: evaluateCriteria(reportAggregate ?? null, 'aggregate', 'secular', enrollment.circular_class_id, gradingCriteria, 'comment') || (division ? getHeadTeacherComment(division, sortedCircularSubjects.filter(row => row.is_core).map(row => row.score), schoolSettings?.grading_scale) : ''),
           position,
           total_students,
         },

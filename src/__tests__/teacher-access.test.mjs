@@ -11,6 +11,7 @@ import {
   enrollmentMatchesRosterFilters,
   isAdministratorRole,
   resolveTeacherProfile,
+  resolveEnrollmentClassUpdate,
   rosterClassFilters,
   subjectMatchesClassScope,
 } from '../lib/teacher-access.ts';
@@ -178,6 +179,70 @@ test('student enrollment writes require access to every assigned curriculum clas
   );
 });
 
+test('student edits preserve classes outside the editor scope and allow theology-only edits', () => {
+  const theologyId = 'c2000000-0000-0000-0000-000000000001';
+  const circularId = 'c1000000-0000-0000-0000-000000000001';
+  const unassignedCircularId = 'c1000000-0000-0000-0000-000000000099';
+  const theologyTeacher = authorizeTeacherProfile(
+    teacherProfile,
+    [{ classId: theologyId, classType: 'theology' }],
+    'write'
+  );
+
+  assert.deepEqual(
+    resolveEnrollmentClassUpdate(
+      theologyTeacher,
+      { circular_class_id: null, theology_class_id: theologyId },
+      { circular_class_id: null, theology_class_id: theologyId }
+    ),
+    { circular_class_id: null, theology_class_id: theologyId }
+  );
+  assert.deepEqual(
+    resolveEnrollmentClassUpdate(
+      theologyTeacher,
+      { circular_class_id: unassignedCircularId, theology_class_id: theologyId },
+      { circular_class_id: null, theology_class_id: theologyId }
+    ),
+    { circular_class_id: unassignedCircularId, theology_class_id: theologyId }
+  );
+  assert.equal(
+    resolveEnrollmentClassUpdate(
+      theologyTeacher,
+      { circular_class_id: unassignedCircularId, theology_class_id: theologyId },
+      { circular_class_id: circularId, theology_class_id: theologyId }
+    ),
+    null
+  );
+
+  const theologyDos = authorizeTeacherProfile(
+    { id: 'theology-dos-id', role: 'DOS Theology', status: 'active' },
+    [],
+    'write'
+  );
+  assert.deepEqual(
+    resolveEnrollmentClassUpdate(
+      theologyDos,
+      { circular_class_id: unassignedCircularId, theology_class_id: theologyId },
+      { circular_class_id: null, theology_class_id: theologyId }
+    ),
+    { circular_class_id: unassignedCircularId, theology_class_id: theologyId }
+  );
+
+  const secularDos = authorizeTeacherProfile(
+    { id: 'secular-dos-id', role: 'DOS Secular', status: 'active' },
+    [],
+    'write'
+  );
+  assert.deepEqual(
+    resolveEnrollmentClassUpdate(
+      secularDos,
+      { circular_class_id: circularId, theology_class_id: theologyId },
+      { circular_class_id: circularId, theology_class_id: null }
+    ),
+    { circular_class_id: circularId, theology_class_id: theologyId }
+  );
+});
+
 test('mark subjects must match the assigned class section or theology level', () => {
   assert.equal(subjectMatchesClassScope('lower_primary', 'lower_primary'), true);
   assert.equal(subjectMatchesClassScope(2, '2'), true);
@@ -282,6 +347,41 @@ test('keeps administrative and read-only leadership rules distinct', () => {
 
   assert.equal(canAccessClass(administrator, 'circular', 'any-class-id'), true);
   assert.equal(headTeacher.isAuthorized, false);
+});
+
+test('administrator class access is not narrowed by incidental assignment filters', () => {
+  const administrator = authorizeTeacherProfile(
+    { id: 'admin-id', role: 'Administrator', status: 'active' },
+    [],
+    'write'
+  );
+  const scopedAdministrator = {
+    ...administrator,
+    filterByDepartment: 'secular',
+    filterByClasses: ['assigned-class-id'],
+    classAssignments: [{ classId: 'assigned-class-id', classType: 'circular' }],
+  };
+
+  assert.equal(canAccessClass(scopedAdministrator, 'circular', 'unassigned-class-id'), true);
+  assert.equal(canAccessClass(scopedAdministrator, 'theology', 'unassigned-theology-id'), true);
+  assert.equal(classIdsForType(scopedAdministrator, 'circular'), null);
+  assert.equal(classIdsForType({ ...scopedAdministrator, isAuthorized: false }, 'circular')?.length, 0);
+  assert.deepEqual(
+    resolveEnrollmentClassUpdate(
+      scopedAdministrator,
+      { circular_class_id: 'old-class-id', theology_class_id: null },
+      { circular_class_id: 'new-class-id', theology_class_id: 'new-theology-id' }
+    ),
+    { circular_class_id: 'new-class-id', theology_class_id: 'new-theology-id' }
+  );
+  assert.equal(
+    resolveEnrollmentClassUpdate(
+      { ...scopedAdministrator, isAuthorized: false },
+      { circular_class_id: 'old-class-id', theology_class_id: null },
+      { circular_class_id: 'new-class-id', theology_class_id: 'new-theology-id' }
+    ),
+    null
+  );
 });
 
 test('recognizes only the supported administrator role strings for admin-only operations', () => {

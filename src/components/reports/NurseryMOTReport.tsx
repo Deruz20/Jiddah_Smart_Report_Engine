@@ -4,6 +4,7 @@ import { resolveReportBranding } from '@/lib/school-settings-helper'
 import { formatDateWithOrdinal } from '@/utils/dateHelpers';
 
 import { getClassTeacherSignatureKey } from "@/utils/signatures";
+import { ReportSchoolLogo } from '@/components/reports/ReportSchoolLogo'
 
 export default function NurseryMOTReport({ reportData }: any) {
   const branding = resolveReportBranding(reportData)
@@ -291,7 +292,7 @@ export default function NurseryMOTReport({ reportData }: any) {
           </div>
           <div className="header-center">
             <div className="logo">
-              <img src={branding.logoUrl} alt="Badge" />
+              <ReportSchoolLogo src={branding.logoUrl} alt="Badge" />
             </div>
             <div className="report-badge">MID TERM REPORT</div>
           </div>
@@ -376,7 +377,7 @@ export default function NurseryMOTReport({ reportData }: any) {
                 <div className="line" style={{ position: 'relative' }}>
                   {getNurseryTeacherComment(grades)}
                   {reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.class_name) ?? ''] && (
-                    <img src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} alt="Signature" style={{ position: 'absolute', bottom: 0, height: '40px', maxWidth: '100%', objectFit: 'contain', right: 0 }} />
+                    <img src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} alt="Signature" style={{ position: 'absolute', bottom: 0, height: '40px', maxWidth: '100%', objectFit: 'contain', right: 0, mixBlendMode: 'multiply' }} />
                   )}
                 </div>
               </div>
@@ -385,7 +386,7 @@ export default function NurseryMOTReport({ reportData }: any) {
                 <div className="line" style={{ position: 'relative' }}>
                   {getNurseryTeacherComment(grades)}
                   {reportData?.signatures?.['head-teacher'] && (
-                    <img src={reportData.signatures['head-teacher']} alt="Signature" style={{ position: 'absolute', bottom: 0, height: '40px', maxWidth: '100%', objectFit: 'contain', right: 0 }} />
+                    <img src={reportData.signatures['head-teacher']} alt="Signature" style={{ position: 'absolute', bottom: 0, height: '40px', maxWidth: '100%', objectFit: 'contain', right: 0, mixBlendMode: 'multiply' }} />
                   )}
                 </div>
               </div>
@@ -398,7 +399,7 @@ export default function NurseryMOTReport({ reportData }: any) {
 
             <div className="stamp-box">
               {reportData?.signatures?.['school-stamp'] ? (
-                <img src={reportData.signatures['school-stamp']} alt="Official school stamp" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                <img src={reportData.signatures['school-stamp']} alt="Official school stamp" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', mixBlendMode: 'multiply' }} />
               ) : (
                 'OFFICIAL STAMP'
               )}

@@ -4,6 +4,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { verifyDataAccess } from '@/lib/auth-server'
 import { classIdsForType } from '@/lib/teacher-access'
+import { fetchAllSupabaseRows } from '@/lib/supabase-pagination'
+import { getMarkScore } from '@/lib/mark-scores'
 
 export async function OPTIONS(request: NextRequest) {
   return apiOptions(request)
@@ -39,34 +41,32 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ enrollments: [], marks: [], subjects: [] }))
     }
 
-    let enrollmentsQuery = supabase
-      .from('enrollments')
-      .select(`
-        id,
-        student_id,
-        circular_class_id,
-        is_active,
-        students ( name, admission_number ),
-        circular_classes ( id, class_name, section )
-      `)
-      .not('circular_class_id', 'is', null)
-      .eq('is_active', true)
+    const [enrollments, circularSubjectsRes] = await Promise.all([
+      fetchAllSupabaseRows(() => {
+        let query = supabase
+          .from('enrollments')
+          .select(`
+            id,
+            student_id,
+            circular_class_id,
+            is_active,
+            students ( name, admission_number ),
+            circular_classes ( id, class_name, section )
+          `)
+          .not('circular_class_id', 'is', null)
+          .eq('is_active', true)
 
-    if (allowedCircularIds !== null) {
-      enrollmentsQuery = enrollmentsQuery.in('circular_class_id', allowedCircularIds)
-    }
-
-    const [enrollmentsRes, circularSubjectsRes] = await Promise.all([
-      enrollmentsQuery,
+        if (allowedCircularIds !== null) {
+          query = query.in('circular_class_id', allowedCircularIds)
+        }
+        return query.order('id', { ascending: true })
+      }),
       supabase
         .from('circular_subjects')
         .select('id, subject_name, section')
         .order('subject_name', { ascending: true }),
     ])
 
-    if (enrollmentsRes.error) throw enrollmentsRes.error
-
-    const enrollments = enrollmentsRes.data ?? []
     const enrollmentIds = enrollments.map((e) => e.id)
 
     let subjects = (circularSubjectsRes.data ?? []).map((s: any) => ({
@@ -87,21 +87,26 @@ export async function GET(request: NextRequest) {
 
     let marks: any[] = []
     if (enrollmentIds.length > 0) {
-      const { data: marksData, error: marksError } = await supabase
-        .from('circular_marks')
-        .select(`
-          id,
-          enrollment_id,
-          subject_id,
-          bot_score,
-          mot_score,
-          eot_score
-        `)
-        .eq('term_id', termId)
-        .in('enrollment_id', enrollmentIds)
-
-      if (marksError) throw marksError
-      marks = marksData ?? []
+      for (let index = 0; index < enrollmentIds.length; index += 100) {
+        const enrollmentChunk = enrollmentIds.slice(index, index + 100)
+        const chunkMarks = await fetchAllSupabaseRows(() =>
+          supabase
+            .from('circular_marks')
+            // Read both legacy mark and current score columns, then return normalized values.
+            .select('*')
+            .eq('term_id', termId)
+            .in('enrollment_id', enrollmentChunk)
+            .order('id', { ascending: true })
+        )
+        marks.push(...chunkMarks.map((mark) => ({
+          id: mark.id,
+          enrollment_id: mark.enrollment_id,
+          subject_id: mark.subject_id,
+          bot_score: getMarkScore(mark, 'bot'),
+          mot_score: getMarkScore(mark, 'mot'),
+          eot_score: getMarkScore(mark, 'eot'),
+        })))
+      }
     }
 
     return withCors(

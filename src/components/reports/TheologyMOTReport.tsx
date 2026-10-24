@@ -405,7 +405,7 @@ export function TheologyCard({ reportData }: { reportData: any }) {
               </div>
               <div className="tc-stamp">
                 {reportData?.signatures?.['school-stamp'] ? (
-                  <img src={reportData.signatures['school-stamp']} alt="" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                  <img src={reportData.signatures['school-stamp']} alt="" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', mixBlendMode: 'multiply' }} />
                 ) : (
                   <>
                     <span>الختم الرسمي</span>

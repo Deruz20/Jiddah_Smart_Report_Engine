@@ -13,7 +13,7 @@ export function removeWhiteMatte(rgba: Buffer) {
     const blue = rgba[offset + 2]
     const sourceAlpha = rgba[offset + 3]
     const whiteMatteAlpha = 255 - Math.min(red, green, blue)
-    const alpha = Math.round(sourceAlpha * whiteMatteAlpha / 255)
+    const alpha = Math.min(255, Math.round(sourceAlpha * whiteMatteAlpha * 1.45 / 255))
 
     output[offset + 3] = alpha
     if (alpha === 0) {
@@ -37,7 +37,17 @@ export async function createTransparentSignaturePng(input: Buffer) {
   const { data, info } = await image.toBuffer({ resolveWithObject: true })
   const transparent = removeWhiteMatte(data)
 
-  return sharp(transparent, {
+  const outputImage = sharp(transparent, {
     raw: { width: info.width, height: info.height, channels: 4 },
+  })
+
+  if (info.width < 3 || info.height < 3) {
+    return outputImage.png().toBuffer()
+  }
+
+  return outputImage.trim({
+    background: { r: 0, g: 0, b: 0, alpha: 0 },
+    threshold: 12,
+    margin: 6,
   }).png().toBuffer()
 }

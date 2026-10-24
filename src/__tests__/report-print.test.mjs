@@ -7,9 +7,9 @@ const printStyles = await readFile(
   'utf8'
 );
 
-test('prints signature and stamp images without blend shadows in grayscale', () => {
+test('softens signature and stamp images for grayscale print', () => {
   assert.match(printStyles, /#print-portal \.report-container \.comments-and-stamp img/);
-  assert.match(printStyles, /filter:\s*grayscale\(1\)\s*!important/);
+  assert.match(printStyles, /filter:\s*grayscale\(1\) brightness\(1\.12\)\s*!important/);
   assert.match(printStyles, /mix-blend-mode:\s*normal\s*!important/);
   assert.match(printStyles, /background:\s*transparent\s*!important/);
 });

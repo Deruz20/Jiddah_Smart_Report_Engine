@@ -16,7 +16,7 @@ import {
   getDivision,
   getPromotionStatus,
   getConductRemark,
-  getClassTeacherComment,
+  getClassTeacherReportComment,
   getHeadTeacherComment,
 } from '@/lib/grading'
 import { resolveSectionType } from '@/lib/section-type'
@@ -598,9 +598,13 @@ export async function POST(request: NextRequest) {
           aggregate,
           division,
           conduct_remark: evaluateCriteria(reportAggregate ?? null, 'aggregate', 'secular', enrollment.circular_class_id, gradingCriteria, 'comment') || getConductRemark(division),
-          class_teacher_comment: isTerm3 && promotion_status
-            ? (promotion_status === 'Promote' ? 'Promoted to the next class.' : promotion_status === 'Repeat' ? 'Advised to repeat the class.' : 'Try next class.')
-            : (evaluateCriteria(reportAggregate ?? null, 'aggregate', 'secular', enrollment.circular_class_id, gradingCriteria, 'comment') || (division ? getClassTeacherComment(division) : '')),
+          class_teacher_comment: getClassTeacherReportComment({
+            scoreType: score_type,
+            termNumber: term.term_number,
+            promotionStatus: promotion_status,
+            gradingComment: evaluateCriteria(reportAggregate ?? null, 'aggregate', 'secular', enrollment.circular_class_id, gradingCriteria, 'comment'),
+            division,
+          }),
           head_teacher_comment: evaluateCriteria(reportAggregate ?? null, 'aggregate', 'secular', enrollment.circular_class_id, gradingCriteria, 'comment') || (division ? getHeadTeacherComment(division) : ''),
           position,
           total_students,

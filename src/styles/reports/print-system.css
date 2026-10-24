@@ -117,6 +117,35 @@
     visibility: visible !important;
   }
 
+  #secular-hub-print-root {
+    position: relative !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+  }
+
+  #secular-hub-print-root,
+  #secular-hub-print-root * {
+    visibility: visible !important;
+  }
+
+  body:has(#secular-hub-print-root) *:has(#secular-hub-print-root) {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  #secular-hub-print-root .hidden {
+    display: block !important;
+  }
+
   /* 3. Report containers inside the portal print true A4 */
   #print-portal .report-container {
     transform: none !important;

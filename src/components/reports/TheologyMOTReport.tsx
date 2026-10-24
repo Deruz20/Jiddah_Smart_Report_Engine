@@ -437,8 +437,8 @@ export function TheologyCard({ reportData }: { reportData: any }) {
 
 /**
  * 2-Up A4 Print Sheet for Theology Cards.
- * Stacks two A5-landscape cards vertically on a single A4 portrait sheet (794×1123px).
- * Each slot is (1123 - 7) / 2 = 558px tall.
+ * Stacks two A5-landscape cards on an A4 portrait sheet with a 1mm cut line.
+ * Print CSS gives each card a fixed 148mm slot so the lower card cannot spill off-page.
  */
 export function Theology2UpPrintSheet({
   topReport,
@@ -472,6 +472,7 @@ export function Theology2UpPrintSheet({
 
       {/* TOP CARD SLOT — exactly 558px */}
       <div
+        className="theology-2up-card-slot"
         style={{
           width: '794px',
           height: '558px',
@@ -486,6 +487,7 @@ export function Theology2UpPrintSheet({
 
       {/* CUT LINE — 7px */}
       <div
+        className="theology-2up-cutline"
         style={{
           height: '7px',
           flexShrink: 0,
@@ -515,6 +517,7 @@ export function Theology2UpPrintSheet({
 
       {/* BOTTOM CARD SLOT — exactly 558px */}
       <div
+        className="theology-2up-card-slot"
         style={{
           width: '794px',
           height: '558px',

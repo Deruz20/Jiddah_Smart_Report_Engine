@@ -142,22 +142,42 @@
   #print-portal .report-container.theology-2up-sheet {
     width: 210mm !important;
     height: 297mm !important;
+    min-height: 297mm !important;
     max-height: 297mm !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
     overflow: hidden !important;
     zoom: 1 !important;
   }
 
-  #print-portal .report-container.theology-2up-sheet > div:nth-of-type(1),
-  #print-portal .report-container.theology-2up-sheet > div:nth-of-type(3) {
+  #print-portal .theology-2up-card-slot {
     width: 100% !important;
-    height: auto !important;
-    max-height: none !important;
-    min-height: 0 !important;
-    flex: 1 1 0 !important;
+    height: 148mm !important;
+    min-height: 148mm !important;
+    max-height: 148mm !important;
+    flex: 0 0 148mm !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
   }
 
-  #print-portal .report-container.theology-2up-sheet > div:nth-of-type(2) {
-    flex: 0 0 7px !important;
+  #print-portal .theology-2up-cutline {
+    height: 1mm !important;
+    min-height: 1mm !important;
+    max-height: 1mm !important;
+    flex: 0 0 1mm !important;
+  }
+
+  #print-portal .theology-2up-card-slot .theology-card-page,
+  #print-portal .theology-2up-card-slot .theology-card-outer,
+  #print-portal .theology-2up-card-slot .theology-card-inner,
+  #print-portal .theology-2up-card-slot .theology-card {
+    min-height: 0 !important;
+  }
+
+  #print-portal .theology-2up-card-slot .theology-card {
+    height: auto !important;
+    flex: 1 1 auto !important;
   }
 
   /* 4. Last report should not add extra blank page */

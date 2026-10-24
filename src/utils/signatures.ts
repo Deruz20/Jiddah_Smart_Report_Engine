@@ -78,6 +78,97 @@ export function getSignatureObjectNamesForSlot(
     .filter((name) => name.startsWith(prefix) && SUPPORTED_SIGNATURE_FILENAME.test(name));
 }
 
+export function getLatestSignatureObjectNameForSlot(
+  objects: SignatureStorageObject[],
+  slotKey: string
+): string | null {
+  const latest = objects
+    .filter((object) => object.name.startsWith(`${slotKey}.`) && SUPPORTED_SIGNATURE_FILENAME.test(object.name))
+    .reduce<SignatureStorageObject | null>((current, object) => {
+      if (!current) return object;
+
+      const updatedAt = Date.parse(object.updated_at ?? '');
+      const currentUpdatedAt = Date.parse(current.updated_at ?? '');
+      if (
+        (Number.isFinite(updatedAt) && !Number.isFinite(currentUpdatedAt)) ||
+        updatedAt > currentUpdatedAt
+      ) {
+        return object;
+      }
+      return current;
+    }, null);
+
+  return latest?.name ?? null;
+}
+
+type SignatureStorageBucket = ReturnType<SupabaseClient['storage']['from']>;
+
+export async function setSignatureObjectActiveState(
+  storage: SignatureStorageBucket,
+  slotKey: string,
+  active: boolean
+): Promise<{ active: boolean; error?: string; status?: number }> {
+  const [activeResult, disabledResult] = await Promise.all([
+    storage.list('', { limit: 1000 }),
+    storage.list('disabled', { limit: 1000 }),
+  ]);
+  if (activeResult.error || disabledResult.error) {
+    return {
+      active,
+      error: activeResult.error?.message ?? disabledResult.error?.message ?? 'Unable to list report images.',
+      status: 500,
+    };
+  }
+
+  const activePaths = getSignatureObjectNamesForSlot(activeResult.data ?? [], slotKey);
+  const disabledPaths = getSignatureObjectNamesForSlot(disabledResult.data ?? [], slotKey);
+
+  if (active) {
+    if (activePaths.length > 0) return { active: true };
+    const selectedPath = getLatestSignatureObjectNameForSlot(disabledResult.data ?? [], slotKey);
+    if (!selectedPath) {
+      return { active, error: 'No stored image is available to reactivate.', status: 409 };
+    }
+
+    const { error: moveError } = await storage.move(`disabled/${selectedPath}`, selectedPath);
+    if (moveError) {
+      return { active, error: `Unable to reactivate stored image: ${moveError.message}`, status: 500 };
+    }
+
+    const stalePaths = disabledPaths
+      .filter((path) => path !== selectedPath)
+      .map((path) => `disabled/${path}`);
+    if (stalePaths.length > 0) {
+      const { error: removeError } = await storage.remove(stalePaths);
+      if (removeError) {
+        return { active, error: `Image reactivated, but older copies could not be removed: ${removeError.message}`, status: 500 };
+      }
+    }
+    return { active: true };
+  }
+
+  if (activePaths.length === 0) {
+    return disabledPaths.length > 0
+      ? { active: false }
+      : { active, error: 'No stored image is available to deactivate.', status: 409 };
+  }
+
+  if (disabledPaths.length > 0) {
+    const { error: removeError } = await storage.remove(disabledPaths.map((path) => `disabled/${path}`));
+    if (removeError) {
+      return { active, error: `Unable to prepare the deactivated image folder: ${removeError.message}`, status: 500 };
+    }
+  }
+
+  for (const path of activePaths) {
+    const { error: moveError } = await storage.move(path, `disabled/${path}`);
+    if (moveError) {
+      return { active, error: `Unable to deactivate stored image: ${moveError.message}`, status: 500 };
+    }
+  }
+  return { active: false };
+}
+
 export function mapLatestSignatureObjects(
   objects: SignatureStorageObject[],
   keys: string[] = getReportSignatureKeys()

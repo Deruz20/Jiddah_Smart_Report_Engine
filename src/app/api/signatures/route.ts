@@ -9,8 +9,9 @@ const BUCKET = 'signatures'
 
 import {
   getDynamicSignatureSlots,
+  getLatestSignatureObjectNameForSlot,
   getSignatureObjectNamesForSlot,
-  mapLatestSignatureObjects,
+  setSignatureObjectActiveState,
   withSignatureVersion,
 } from '@/utils/signatures'
 
@@ -43,30 +44,37 @@ export async function GET(request: NextRequest) {
 
     const admin = createAdminClient()
     const SIGNATURE_SLOTS = await getDynamicSignatureSlots(admin)
-    const { data: objects, error } = await admin.storage.from(BUCKET).list('', { limit: 1000 })
-    if (error) {
-      console.error('signatures GET list error:', error.message)
-      return withCors(request, NextResponse.json({ error: error.message }, { status: 500 }))
+    const storage = admin.storage.from(BUCKET)
+    const [activeResult, disabledResult] = await Promise.all([
+      storage.list('', { limit: 1000 }),
+      storage.list('disabled', { limit: 1000 }),
+    ])
+    if (activeResult.error || disabledResult.error) {
+      const message = activeResult.error?.message ?? disabledResult.error?.message ?? 'Unable to list report images.'
+      console.error('signatures GET list error:', message)
+      return withCors(request, NextResponse.json({ error: message }, { status: 500 }))
     }
 
-    const uploadedBySlot = mapLatestSignatureObjects(
-      objects ?? [],
-      SIGNATURE_SLOTS.map((slot) => slot.slot_key)
-    )
-
     const slots = SIGNATURE_SLOTS.map((slot) => {
-      const file = uploadedBySlot.get(slot.slot_key)
+      const activeFile = getLatestSignatureObjectNameForSlot(activeResult.data ?? [], slot.slot_key)
+      const disabledFile = getLatestSignatureObjectNameForSlot(disabledResult.data ?? [], slot.slot_key)
+      const file = activeFile
+        ? activeResult.data?.find((object) => object.name === activeFile)
+        : null
       const url = file ? buildPublicUrl(admin, file.name) : null
       const public_url = url ? withSignatureVersion(url, file?.updated_at) : null
       return {
         ...slot,
         public_url,
-        uploaded: Boolean(public_url),
+        uploaded: Boolean(activeFile || disabledFile),
+        active: Boolean(activeFile),
         size: Number(file?.metadata?.size ?? file?.metadata?.contentLength ?? 0),
       }
     })
 
-    return withCors(request, NextResponse.json({ data: slots }))
+    return withCors(request, NextResponse.json({ data: slots }, {
+      headers: { 'Cache-Control': 'no-store' },
+    }))
   } catch (err: any) {
     console.error('signatures GET exception:', err)
     return withCors(request, NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 }))
@@ -92,18 +100,34 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json()
-    if (!body || typeof body !== 'object' || typeof body.slot_key !== 'string') {
-      return withCors(request, NextResponse.json({ error: 'Invalid payload' }, { status: 400 }))
+    if (!body || typeof body !== 'object' || typeof body.slot_key !== 'string' || typeof body.active !== 'boolean') {
+      return withCors(request, NextResponse.json({ error: 'A slot key and active boolean are required.' }, { status: 400 }))
     }
 
-    const SIGNATURE_SLOTS = await getDynamicSignatureSlots(createAdminClient())
+    const admin = createAdminClient()
+    const SIGNATURE_SLOTS = await getDynamicSignatureSlots(admin)
     const slotExists = SIGNATURE_SLOTS.some((slot) => slot.slot_key === body.slot_key)
     if (!slotExists) {
       return withCors(request, NextResponse.json({ error: 'Unknown signature slot' }, { status: 400 }))
     }
 
-    await recordActivity(supabase, user.id, 'update_signature_slot', { slot_key: body.slot_key, payload: body })
-    return withCors(request, NextResponse.json({ data: { success: true } }))
+    const result = await setSignatureObjectActiveState(
+      admin.storage.from(BUCKET),
+      body.slot_key,
+      body.active
+    )
+    if (result.error) {
+      console.error('signatures PATCH state change error:', result.error)
+      return withCors(request, NextResponse.json({ error: result.error }, { status: result.status ?? 500 }))
+    }
+
+    await recordActivity(supabase, user.id, 'update_signature_slot', {
+      slot_key: body.slot_key,
+      active: body.active,
+    })
+    return withCors(request, NextResponse.json({
+      data: { slot_key: body.slot_key, active: body.active },
+    }))
   } catch (err: any) {
     console.error('signatures PATCH exception:', err)
     return withCors(request, NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 }))
@@ -146,7 +170,17 @@ export async function DELETE(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: listError.message }, { status: 500 }))
     }
 
-    const paths = getSignatureObjectNamesForSlot(objects ?? [], body.slot_key)
+    const { data: disabledObjects, error: disabledListError } = await storage.list('disabled', { limit: 1000 })
+    if (disabledListError) {
+      console.error('signatures DELETE disabled-list error:', disabledListError.message)
+      return withCors(request, NextResponse.json({ error: disabledListError.message }, { status: 500 }))
+    }
+
+    const paths = [
+      ...getSignatureObjectNamesForSlot(objects ?? [], body.slot_key),
+      ...getSignatureObjectNamesForSlot(disabledObjects ?? [], body.slot_key)
+        .map((path) => `disabled/${path}`),
+    ]
     if (paths.length > 0) {
       const { error: removeError } = await storage.remove(paths)
       if (removeError) {

@@ -731,7 +731,7 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
                     <span>Signature:</span>
                     <div className="w-line" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end' }}>
                       {reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.class_name) ?? ''] && (
-                        <img src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} alt="Signature" style={{ maxHeight: '24px' }} />
+                        <img src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} alt="Signature" style={{ maxHeight: '24px', maxWidth: '100%', objectFit: 'contain' }} />
                       )}
                     </div>
                   </div>
@@ -748,7 +748,7 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
                     <span>Signature:</span>
                     <div className="w-line" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end' }}>
                       {reportData?.signatures?.['head-teacher'] && (
-                        <img src={reportData.signatures['head-teacher']} alt="Signature" style={{ maxHeight: '24px' }} />
+                        <img src={reportData.signatures['head-teacher']} alt="Signature" style={{ maxHeight: '24px', maxWidth: '100%', objectFit: 'contain' }} />
                       )}
                     </div>
                   </div>
@@ -794,7 +794,11 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
             </div>
 
             <div className="stamp-box">
-              OFFICIAL STAMP
+              {reportData?.signatures?.['school-stamp'] ? (
+                <img src={reportData.signatures['school-stamp']} alt="Official school stamp" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+              ) : (
+                'OFFICIAL STAMP'
+              )}
             </div>
           </footer>
         </div>

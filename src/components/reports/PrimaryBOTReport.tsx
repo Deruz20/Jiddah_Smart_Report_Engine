@@ -34,6 +34,7 @@ export default function PrimaryBOTReport({ reportData }: any) {
     ? reportData?.signatures?.[classTeacherSigKey]
     : null;
   const headTeacherSig = reportData?.signatures?.['head-teacher'] ?? null;
+  const schoolStamp = reportData?.signatures?.['school-stamp'] ?? null;
 
   const renderSubjectRow = (subject: any) => (
     <tr key={subject.subject_name}>
@@ -243,6 +244,8 @@ export default function PrimaryBOTReport({ reportData }: any) {
             position: absolute;
             bottom: 0;
             height: 36px;
+            max-width: 100%;
+            object-fit: contain;
         }
 
         .bot-conduct-row {
@@ -271,6 +274,16 @@ export default function PrimaryBOTReport({ reportData }: any) {
             font-weight: 700;
             text-align: center;
             background: white;
+        }
+        .bot-stamp.has-image {
+            border: 0;
+            background: transparent;
+        }
+        .bot-stamp img {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
         }
 
         .bot-final-footer {
@@ -398,7 +411,11 @@ export default function PrimaryBOTReport({ reportData }: any) {
           </div>
 
           <div className="bot-footer-stamp">
-            <div className="bot-stamp">OFFICIAL<br/>SCHOOL STAMP</div>
+            <div className={`bot-stamp${schoolStamp ? ' has-image' : ''}`}>
+              {schoolStamp
+                ? <img src={schoolStamp} alt="Official school stamp" />
+                : <>OFFICIAL<br />SCHOOL STAMP</>}
+            </div>
           </div>
         </div>
 

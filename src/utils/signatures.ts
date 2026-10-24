@@ -1,4 +1,4 @@
-import { SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 export function getClassTeacherSignatureKey(className: string | undefined | null, isTheology: boolean = false): string | null {
   if (!className) return null;
@@ -33,8 +33,103 @@ export function getClassTeacherSignatureKey(className: string | undefined | null
   return isTheology ? `theology-teacher-${baseClass}` : `class-teacher-${baseClass}`;
 }
 
+export function getReportSignatureKeys(): string[] {
+  const classNames = [
+    'Baby Class',
+    'Middle Class',
+    'Top Class',
+    'Primary 1',
+    'Primary 2',
+    'Primary 3',
+    'Primary 4',
+    'Primary 5',
+    'Primary 6',
+    'Primary 7',
+  ];
+
+  const classTeacherKeys = classNames.flatMap((className) => [
+    getClassTeacherSignatureKey(className),
+    getClassTeacherSignatureKey(className, true),
+  ]);
+
+  return ['head-teacher', 'principal', 'school-stamp', ...classTeacherKeys]
+    .filter((key): key is string => Boolean(key));
+}
+
+export interface SignatureStorageObject {
+  name: string;
+  updated_at?: string | null;
+}
+
+export function mapLatestSignatureObjects(
+  objects: SignatureStorageObject[],
+  keys: string[] = getReportSignatureKeys()
+): Map<string, SignatureStorageObject> {
+  const latestByKey = new Map<string, SignatureStorageObject>();
+  const supportedFileName = /^[a-z0-9-]+\.(?:png|jpe?g|webp)$/i;
+
+  for (const object of objects) {
+    if (!supportedFileName.test(object.name)) continue;
+    const key = keys.find((candidate) => object.name.startsWith(`${candidate}.`));
+    if (!key) continue;
+
+    const current = latestByKey.get(key);
+    if (!current) {
+      latestByKey.set(key, object);
+      continue;
+    }
+
+    const updatedAt = Date.parse(object.updated_at ?? '');
+    const currentUpdatedAt = Date.parse(current.updated_at ?? '');
+    if (
+      (Number.isFinite(updatedAt) && !Number.isFinite(currentUpdatedAt)) ||
+      updatedAt > currentUpdatedAt
+    ) {
+      latestByKey.set(key, object);
+    }
+  }
+
+  return latestByKey;
+}
+
+export function withSignatureVersion(url: string, updatedAt: string | null | undefined): string {
+  if (!updatedAt) return url;
+  const separator = url.includes('?') ? '&' : '?';
+  return `${url}${separator}v=${encodeURIComponent(updatedAt)}`;
+}
+
+export async function getReportSignatures(supabase: SupabaseClient) {
+  const { data: objects, error } = await supabase.storage
+    .from('signatures')
+    .list('', { limit: 1000 });
+
+  if (error) {
+    throw new Error(`Unable to load report signatures: ${error.message}`);
+  }
+
+  const keys = getReportSignatureKeys();
+  const latest = mapLatestSignatureObjects(objects ?? [], keys);
+  const storage = supabase.storage.from('signatures');
+
+  return Object.fromEntries(
+    keys.map((key) => {
+      const object = latest.get(key);
+      if (!object) return [key, null];
+      const publicUrl = storage.getPublicUrl(object.name).data?.publicUrl ?? null;
+      return [key, publicUrl ? withSignatureVersion(publicUrl, object.updated_at) : null];
+    })
+  ) as Record<string, string | null>;
+}
+
 export async function getDynamicSignatureSlots(supabase: SupabaseClient) {
   const slots = [
+    {
+      slot_key: 'school-stamp',
+      label: 'Official School Stamp',
+      role: 'School',
+      description: 'PNG stamp image used on official student reports.',
+      required: true,
+    },
     {
       slot_key: 'head-teacher',
       label: 'Head Teacher Signature',
@@ -51,71 +146,50 @@ export async function getDynamicSignatureSlots(supabase: SupabaseClient) {
     }
   ];
 
-  // Fetch unique active classes to dynamically create class teacher slots
-  // We'll query students instead of classes since we need to know what classes are actually in use
-  const { data: students } = await supabase.from('students').select('class_name, status').eq('status', 'active');
-  
-  const classNames = new Set(students?.map(s => s.class_name).filter(Boolean) || []);
-  const addedBaseClasses = new Set<string>();
+  const { data: enrollments, error } = await supabase
+    .from('enrollments')
+    .select(`
+      circular_classes ( class_name ),
+      theology_classes ( class_name_english ),
+      students!inner ( is_archived )
+    `)
+    .eq('is_active', true)
+    .eq('students.is_archived', false);
 
-  // Add secular teacher slots
-  for (const name of classNames) {
-    const key = getClassTeacherSignatureKey(name);
-    if (key && !addedBaseClasses.has(key)) {
-      addedBaseClasses.add(key);
-      
-      let prettyName = name;
-      if (key.includes('baby')) prettyName = 'Baby Class';
-      else if (key.includes('middle')) prettyName = 'Middle Class';
-      else if (key.includes('top')) prettyName = 'Top Class';
-      else if (key.includes('p1')) prettyName = 'Primary 1';
-      else if (key.includes('p2')) prettyName = 'Primary 2';
-      else if (key.includes('p3')) prettyName = 'Primary 3';
-      else if (key.includes('p4')) prettyName = 'Primary 4';
-      else if (key.includes('p5')) prettyName = 'Primary 5';
-      else if (key.includes('p6')) prettyName = 'Primary 6';
-      else if (key.includes('p7')) prettyName = 'Primary 7';
+  if (error) {
+    throw new Error(`Unable to load active enrollments for signature slots: ${error.message}`);
+  }
 
+  const circularClassNames = new Set<string>();
+  const theologyClassNames = new Set<string>();
+  for (const enrollment of enrollments ?? []) {
+    const circularClass = Array.isArray(enrollment.circular_classes)
+      ? enrollment.circular_classes[0]
+      : enrollment.circular_classes;
+    const theologyClass = Array.isArray(enrollment.theology_classes)
+      ? enrollment.theology_classes[0]
+      : enrollment.theology_classes;
+    if (circularClass?.class_name) circularClassNames.add(circularClass.class_name);
+    if (theologyClass?.class_name_english) theologyClassNames.add(theologyClass.class_name_english);
+  }
+
+  const addTeacherSlots = (classNames: Set<string>, isTheology: boolean) => {
+    for (const name of classNames) {
+      const key = getClassTeacherSignatureKey(name, isTheology);
+      if (!key || slots.some((slot) => slot.slot_key === key)) continue;
+      const prettyName = name.trim();
       slots.push({
         slot_key: key,
-        label: `Class Teacher — ${prettyName}`,
-        role: 'Class Teacher',
-        description: `Signature for ${prettyName} reports.`,
+        label: `${isTheology ? 'Theology Teacher' : 'Class Teacher'} — ${prettyName}`,
+        role: isTheology ? 'Theology Teacher' : 'Class Teacher',
+        description: `Signature for ${prettyName}${isTheology ? ' Theology' : ''} reports.`,
         required: true,
       });
     }
-  }
+  };
 
-  // Theology uses same class names but theology teachers. We will add those too.
-  // Assuming Theology classes match the secular structure.
-  addedBaseClasses.clear();
-  for (const name of classNames) {
-    const key = getClassTeacherSignatureKey(name, true);
-    if (key && !addedBaseClasses.has(key)) {
-      addedBaseClasses.add(key);
-      
-      let prettyName = name;
-      if (key.includes('baby')) prettyName = 'Baby Class';
-      else if (key.includes('middle')) prettyName = 'Middle Class';
-      else if (key.includes('top')) prettyName = 'Top Class';
-      else if (key.includes('p1')) prettyName = 'Primary 1';
-      else if (key.includes('p2')) prettyName = 'Primary 2';
-      else if (key.includes('p3')) prettyName = 'Primary 3';
-      else if (key.includes('p4')) prettyName = 'Primary 4';
-      else if (key.includes('p5')) prettyName = 'Primary 5';
-      else if (key.includes('p6')) prettyName = 'Primary 6';
-      else if (key.includes('p7')) prettyName = 'Primary 7';
-
-      slots.push({
-        slot_key: key,
-        label: `Theology Teacher — ${prettyName}`,
-        role: 'Theology Teacher',
-        description: `Signature for ${prettyName} Theology reports.`,
-        required: true,
-      });
-    }
-  }
+  addTeacherSlots(circularClassNames, false);
+  addTeacherSlots(theologyClassNames, true);
 
   return slots;
 }
-

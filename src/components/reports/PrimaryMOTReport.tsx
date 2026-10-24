@@ -251,6 +251,8 @@ export default function PrimaryMOTReport({ reportData }: any) {
             position: absolute;
             bottom: 0;
             height: 36px;
+            max-width: 100%;
+            object-fit: contain;
         }
 
         .mot-conduct-row {
@@ -409,7 +411,13 @@ export default function PrimaryMOTReport({ reportData }: any) {
           </div>
 
           <div className="mot-footer-stamp">
-            <div className="mot-stamp">OFFICIAL<br/>SCHOOL STAMP</div>
+            <div className="mot-stamp">
+              {reportData?.signatures?.['school-stamp'] ? (
+                <img src={reportData.signatures['school-stamp']} alt="Official school stamp" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+              ) : (
+                <>OFFICIAL<br />SCHOOL STAMP</>
+              )}
+            </div>
           </div>
         </div>
 

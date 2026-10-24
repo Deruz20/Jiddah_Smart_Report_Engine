@@ -205,27 +205,10 @@ export function withSignatureVersion(url: string, updatedAt: string | null | und
   return `${url}${separator}v=${encodeURIComponent(updatedAt)}`;
 }
 
-export async function getReportSignatures(supabase: SupabaseClient) {
-  const { data: objects, error } = await supabase.storage
-    .from('signatures')
-    .list('', { limit: 1000 });
-
-  if (error) {
-    throw new Error(`Unable to load report signatures: ${error.message}`);
-  }
-
+export async function getReportSignatures(_supabase: SupabaseClient) {
   const keys = getReportSignatureKeys();
-  const latest = mapLatestSignatureObjects(objects ?? [], keys);
-  const storage = supabase.storage.from('signatures');
-
-  return Object.fromEntries(
-    keys.map((key) => {
-      const object = latest.get(key);
-      if (!object) return [key, null];
-      const publicUrl = storage.getPublicUrl(object.name).data?.publicUrl ?? null;
-      return [key, publicUrl ? withSignatureVersion(publicUrl, object.updated_at) : null];
-    })
-  ) as Record<string, string | null>;
+  // Keep stored assets intact while omitting signatures from reports for printing.
+  return Object.fromEntries(keys.map((key) => [key, null])) as Record<string, string | null>;
 }
 
 export async function getDynamicSignatureSlots(supabase: SupabaseClient) {

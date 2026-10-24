@@ -133,6 +133,7 @@
     height: 1123px !important;
     max-height: 1123px !important;
     overflow: hidden !important;
+    zoom: 0.95 !important;
   }
 
   /* 4. Last report should not add extra blank page */

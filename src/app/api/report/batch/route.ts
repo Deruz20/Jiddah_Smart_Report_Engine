@@ -18,6 +18,8 @@ import {
   getConductRemark,
   getClassTeacherReportComment,
   getHeadTeacherComment,
+  getGradingRemarkForScore,
+  getGradingRemarkForScores,
 } from '@/lib/grading'
 import { resolveSectionType } from '@/lib/section-type'
 import { hasRequiredClassForReport } from '@/lib/report-class-context'
@@ -333,7 +335,11 @@ export async function POST(request: NextRequest) {
           ? sectionType === 'nursery' ? getNurseryGrade(numericScore).grade : getGradeDisplay(getSubjectGradeNumber(numericScore))
           : '—'
         const defaultRemark = numericScore !== null
-          ? sectionType === 'nursery' ? getNurseryGrade(numericScore).remark : getSubjectRemark(getSubjectGradeNumber(numericScore))
+          ? sectionType === 'nursery'
+            ? getNurseryGrade(numericScore).remark
+            : score_type === 'mot'
+              ? getGradingRemarkForScore(numericScore, schoolSettings?.grading_scale)
+              : getSubjectRemark(getSubjectGradeNumber(numericScore))
           : ''
 
         const overrideGrade = evaluateCriteria(numericScore, 'subject_score', 'secular', enrollment.circular_class_id, gradingCriteria, 'grade_label')
@@ -597,7 +603,9 @@ export async function POST(request: NextRequest) {
           eot_total,
           aggregate,
           division,
-          conduct_remark: evaluateCriteria(reportAggregate ?? null, 'aggregate', 'secular', enrollment.circular_class_id, gradingCriteria, 'comment') || getConductRemark(division),
+          conduct_remark: score_type === 'mot'
+            ? ''
+            : evaluateCriteria(reportAggregate ?? null, 'aggregate', 'secular', enrollment.circular_class_id, gradingCriteria, 'comment') || getConductRemark(division),
           class_teacher_comment: getClassTeacherReportComment({
             scoreType: score_type,
             termNumber: term.term_number,
@@ -607,7 +615,9 @@ export async function POST(request: NextRequest) {
             scores: sortedCircularSubjects.filter(row => row.is_core).map(row => row.score),
             gradingBands: schoolSettings?.grading_scale,
           }),
-          head_teacher_comment: evaluateCriteria(reportAggregate ?? null, 'aggregate', 'secular', enrollment.circular_class_id, gradingCriteria, 'comment') || (division ? getHeadTeacherComment(division, sortedCircularSubjects.filter(row => row.is_core).map(row => row.score), schoolSettings?.grading_scale) : ''),
+          head_teacher_comment: score_type === 'mot'
+            ? evaluateCriteria(reportAggregate ?? null, 'aggregate', 'secular', enrollment.circular_class_id, gradingCriteria, 'comment') || getGradingRemarkForScores(sortedCircularSubjects.filter(row => row.is_core).map(row => row.score), schoolSettings?.grading_scale)
+            : evaluateCriteria(reportAggregate ?? null, 'aggregate', 'secular', enrollment.circular_class_id, gradingCriteria, 'comment') || (division ? getHeadTeacherComment(division, sortedCircularSubjects.filter(row => row.is_core).map(row => row.score), schoolSettings?.grading_scale) : ''),
           position,
           total_students,
         },

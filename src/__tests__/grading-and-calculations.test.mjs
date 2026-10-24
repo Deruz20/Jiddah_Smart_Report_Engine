@@ -1,5 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 
 import {
   getSubjectGradeNumber,
@@ -16,10 +17,13 @@ import {
   getClassTeacherComment,
   getClassTeacherReportComment,
   getHeadTeacherComment,
+  getGradingRemarkForScore,
+  getGradingRemarkForScores,
   getConductRemark,
 } from '../lib/grading.ts';
 
 import { evaluateCriteria } from '../lib/grading-engine.ts';
+import { DEFAULT_GRADING_BANDS } from '../lib/school-settings-helper.ts';
 
 describe('1. UNEB Grading Scales & Boundaries', () => {
   const table = [
@@ -199,14 +203,55 @@ describe('5. Promotion Logic', () => {
     assert.equal(getHeadTeacherComment('II', [40, 30], customBands), 'Developing performance. Work closely with your teachers to make progress.');
   });
 
-  it('Term 3 MOT uses encouraging performance feedback instead of EOT promotion text', () => {
+  it('MOT class and head teacher comments use exact configured grade-band remarks from the pupil marks', () => {
+    for (const band of DEFAULT_GRADING_BANDS) {
+      const score = (band.min + band.max) / 2;
+      assert.equal(getGradingRemarkForScore(score), band.remark);
+    }
+
+    assert.equal(getGradingRemarkForScores([90, 88, 85, 89]), 'Excellent');
+    assert.equal(getGradingRemarkForScores([72, 71, 74, 70]), 'Good');
+    assert.equal(getGradingRemarkForScores([10, 20, 25, 30]), 'Poor / Pull Up');
+    assert.equal(getGradingRemarkForScores([]), '');
+
+    const customBands = [
+      { grade: 'A', min: 80, max: 100, remark: 'Outstanding' },
+      { grade: 'B', min: 0, max: 79, remark: 'Developing' },
+    ];
+    assert.equal(getGradingRemarkForScores([84, 80], customBands), 'Outstanding');
+    assert.equal(getGradingRemarkForScores([40, 30], customBands), 'Developing');
+    assert.equal(getGradingRemarkForScore(90, [{ grade: 'A', min: 80, max: 100, remark: '' }]), '');
+  });
+
+  it('MOT teacher comment uses the grading-band remark and never derives it from division', () => {
     assert.equal(getClassTeacherReportComment({
       scoreType: 'mot',
       termNumber: 3,
       promotionStatus: 'Promote',
       gradingComment: null,
       division: 'II',
-    }), 'Good performance. Keep it up!');
+      scores: [85, 85, 85, 85],
+    }), 'Excellent');
+    assert.equal(getClassTeacherReportComment({
+      scoreType: 'mot',
+      termNumber: 3,
+      promotionStatus: 'Promote',
+      gradingComment: null,
+      division: 'II',
+    }), '');
+  });
+
+  it('single and batch secular report APIs use saved bands for MOT remarks and suppress conduct fallback', () => {
+    for (const [path, phaseVariable] of [
+      ['src/app/api/report/route.ts', 'scoreType'],
+      ['src/app/api/report/batch/route.ts', 'score_type'],
+    ]) {
+      const source = fs.readFileSync(path, 'utf8');
+      assert.match(source, new RegExp(`${phaseVariable} === 'mot'`));
+      assert.match(source, /getGradingRemarkForScore\(numericScore, schoolSettings\?\.grading_scale\)/);
+      assert.match(source, /getGradingRemarkForScores\(sortedCircularSubjects\.filter\(row => row\.is_core\)\.map\(row => row\.score\), schoolSettings\?\.grading_scale\)/);
+      assert.match(source, new RegExp(`conduct_remark: ${phaseVariable} === 'mot'\\s*\\?\\s*''`));
+    }
   });
 
   it('Term 3 EOT retains promotion comments', () => {

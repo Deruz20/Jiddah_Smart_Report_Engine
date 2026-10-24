@@ -177,7 +177,7 @@
   #print-portal .report-container img[alt*='Signature'] {
     background: transparent !important;
     box-shadow: none !important;
-    filter: grayscale(1) !important;
+    filter: grayscale(1) brightness(1.12) !important;
     mix-blend-mode: normal !important;
   }
 

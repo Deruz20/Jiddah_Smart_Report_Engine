@@ -222,8 +222,23 @@
   #print-portal .report-container img[alt*='Signature'] {
     background: transparent !important;
     box-shadow: none !important;
-    filter: grayscale(1) brightness(1.12) !important;
     mix-blend-mode: normal !important;
+  }
+
+  #print-portal .report-container .mot-sig-line img,
+  #print-portal .report-container .sign-line img,
+  #print-portal .report-container .comments-and-stamp .c-sig img,
+  #print-portal .report-container img[alt*='Signature'] {
+    filter: grayscale(1) brightness(1.12) !important;
+  }
+
+  #print-portal .report-container .mot-stamp img,
+  #print-portal .report-container .stamp-box img,
+  #print-portal .report-container .footer-stamp img,
+  #print-portal .report-container .tc-stamp img,
+  #print-portal .report-container .comments-and-stamp .stamp-wrapper img,
+  #print-portal .report-container img[alt*='stamp' i] {
+    filter: none !important;
   }
 
   #print-portal .theology-card-inner::before {

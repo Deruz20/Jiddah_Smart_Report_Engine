@@ -15,9 +15,11 @@ const reportGenerator = await readFile(
   'utf8'
 );
 
-test('softens signature and stamp images for grayscale print', () => {
+test('softens signature images while preserving full-color stamps in print', () => {
   assert.match(printStyles, /#print-portal \.report-container \.comments-and-stamp img/);
-  assert.match(printStyles, /filter:\s*grayscale\(1\) brightness\(1\.12\)\s*!important/);
+  assert.match(printStyles, /#print-portal \.report-container \.comments-and-stamp \.c-sig img[\s\S]*filter:\s*grayscale\(1\) brightness\(1\.12\)\s*!important/);
+  assert.match(printStyles, /#print-portal \.report-container \.tc-stamp img[\s\S]*filter:\s*none\s*!important/);
+  assert.match(printStyles, /#print-portal \.report-container \.stamp-box img[\s\S]*filter:\s*none\s*!important/);
   assert.match(printStyles, /mix-blend-mode:\s*normal\s*!important/);
   assert.match(printStyles, /background:\s*transparent\s*!important/);
 });

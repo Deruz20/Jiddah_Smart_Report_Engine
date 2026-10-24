@@ -38,19 +38,19 @@ function createMemoryStorage(initialObjects) {
   }
 }
 
-test('deactivating a signature excludes it from newly generated report data and reactivation restores it', async () => {
+test('report signatures remain omitted regardless of stored activation state', async () => {
   const storage = createMemoryStorage([
     { path: 'head-teacher.png', updated_at: '2026-10-24T10:00:00Z' },
   ])
   const client = { storage: { from: () => storage } }
 
-  assert.match((await getReportSignatures(client))['head-teacher'], /head-teacher\.png/)
+  assert.equal((await getReportSignatures(client))['head-teacher'], null)
 
   assert.deepEqual(await setSignatureObjectActiveState(storage, 'head-teacher', false), { active: false })
   assert.equal((await getReportSignatures(client))['head-teacher'], null)
 
   assert.deepEqual(await setSignatureObjectActiveState(storage, 'head-teacher', true), { active: true })
-  assert.match((await getReportSignatures(client))['head-teacher'], /head-teacher\.png/)
+  assert.equal((await getReportSignatures(client))['head-teacher'], null)
 })
 
 test('signature manager and API expose the reversible activation control without caching state', () => {

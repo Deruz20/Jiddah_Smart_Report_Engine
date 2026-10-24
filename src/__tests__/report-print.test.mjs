@@ -6,6 +6,10 @@ const printStyles = await readFile(
   new URL('../styles/reports/print-system.css', import.meta.url),
   'utf8'
 );
+const printDialog = await readFile(
+  new URL('../components/figma-ui/PrintDialog.tsx', import.meta.url),
+  'utf8'
+);
 
 test('softens signature and stamp images for grayscale print', () => {
   assert.match(printStyles, /#print-portal \.report-container \.comments-and-stamp img/);
@@ -27,6 +31,12 @@ test('defaults browser print output to A4 portrait paper', () => {
 test('fits Theology two-up sheets inside printer-safe A4 bounds', () => {
   assert.match(
     printStyles,
-    /#print-portal \.report-container\.theology-2up-sheet\s*\{[^}]*zoom:\s*0\.95\s*!important/s
+    /#print-portal \.report-container\.theology-2up-sheet\s*\{[^}]*width:\s*210mm\s*!important;[^}]*height:\s*297mm\s*!important;[^}]*zoom:\s*1\s*!important/s
   );
+  assert.match(printStyles, /theology-2up-sheet > div:nth-of-type\(1\)[\s\S]*height:\s*auto\s*!important/);
+});
+
+test('print configuration offers current report or batch only', () => {
+  assert.match(printDialog, /useState<'current' \| 'all'>/);
+  assert.doesNotMatch(printDialog, /Custom Selection|selectedIds|toggleSelect/);
 });

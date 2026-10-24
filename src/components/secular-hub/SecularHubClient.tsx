@@ -377,6 +377,20 @@ export default function SecularHubClient({
   }, [data, activeLevel, circularClasses, examPhase])
 
   const handlePrint = () => {
+    if (isLoading || !data) {
+      toast.error('Assessment data is still loading.')
+      return
+    }
+
+    if (
+      (activeTab === 'assessment' && !assessmentData.students.length) ||
+      (activeTab === 'analysis' && !analysisData.length) ||
+      (activeTab === 'top_students' && !topStudentsData.length)
+    ) {
+      toast.error('There is no data to print for this view.')
+      return
+    }
+
     const originalTitle = document.title
     document.title = `Secular_Hub_${activeLevel}_${activeTab}_${new Date().toISOString().split('T')[0]}`.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_')
     window.print()
@@ -384,6 +398,12 @@ export default function SecularHubClient({
   }
 
   const handleBatchPrint = () => {
+    if (isLoading || !data || !circularClasses.some(cls => computeAssessmentDataForClass(cls.id).students.length > 0)) {
+      toast.error('There is no assessment data to print.')
+      return
+    }
+
+    setActiveTab('assessment')
     setIsBatchPrinting(true)
     setTimeout(() => {
       const originalTitle = document.title
@@ -596,7 +616,11 @@ export default function SecularHubClient({
             </p>
           </div>
         ) : (
-          <div className="w-full max-w-7xl mx-auto print:max-w-[210mm] print:m-0 report-container" data-report-orientation="portrait">
+          <div
+            id="secular-hub-print-root"
+            className="w-full max-w-7xl mx-auto print:max-w-[210mm] print:m-0 report-container"
+            data-report-orientation="portrait"
+          >
             {activeTab === 'assessment' && (isBatchPrinting || activeClassId) && (
               <>
                 {(isBatchPrinting ? circularClasses : circularClasses.filter(c => c.id === activeClassId)).map((cls, classIdx, arr) => {

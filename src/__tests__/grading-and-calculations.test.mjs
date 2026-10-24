@@ -156,6 +156,49 @@ describe('5. Promotion Logic', () => {
     assert.equal(getPromotionStatus('U', 'Try Next Class'), 'Try Next Class');
   });
 
+  it('Class and head teacher comments reflect the grade descriptors for each division', () => {
+    const expected = {
+      I: [
+        'Outstanding performance. Keep it up!',
+        'Excellent achievement. Keep up the high standard.',
+      ],
+      II: [
+        'Very good performance. Keep it up.',
+        'Very good result. Continue working toward excellence.',
+      ],
+      III: [
+        'Average performance. Keep practising to improve.',
+        'Fair result. Consistent practice will help you improve.',
+      ],
+      IV: [
+        'Promising result. More effort will bring progress.',
+        'Promising result. Work harder to make stronger progress.',
+      ],
+      U: [
+        'Strive harder. Practise regularly and ask for help.',
+        'Strive harder. Seek support from your teachers.',
+      ],
+    };
+
+    for (const [division, [classTeacher, headTeacher]] of Object.entries(expected)) {
+      assert.equal(getClassTeacherComment(division), classTeacher);
+      assert.equal(getHeadTeacherComment(division), headTeacher);
+    }
+  });
+
+  it('Class and head teacher comments reflect the pupil marks and configured grading remarks', () => {
+    assert.equal(getClassTeacherComment('I', [90, 88, 85, 89]), 'Excellent performance. Keep it up!');
+    assert.equal(getHeadTeacherComment('I', [72, 71, 74, 70]), 'Good result. Consistent practice will support further progress.');
+    assert.equal(getClassTeacherComment('IV', [10, 20, 25, 30]), 'Poor / Pull Up performance. Work closely with your teachers to improve.');
+
+    const customBands = [
+      { grade: 'A', min: 80, max: 100, remark: 'Outstanding' },
+      { grade: 'B', min: 0, max: 79, remark: 'Developing' },
+    ];
+    assert.equal(getClassTeacherComment('II', [84, 80], customBands), 'Outstanding performance. Keep it up!');
+    assert.equal(getHeadTeacherComment('II', [40, 30], customBands), 'Developing performance. Work closely with your teachers to make progress.');
+  });
+
   it('Term 3 MOT uses encouraging performance feedback instead of EOT promotion text', () => {
     assert.equal(getClassTeacherReportComment({
       scoreType: 'mot',

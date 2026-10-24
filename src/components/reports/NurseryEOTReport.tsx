@@ -277,8 +277,8 @@ export default function NurseryEOTReport({ reportData }: any) {
         border: 1px solid var(--border-light);
     }
     .nursery-eot-report .stamp-box {
-        width: 120px;
-        height: 120px;
+        width: 150px;
+        height: 100px;
         border: 2px dashed #94a3b8;
         border-radius: 16px;
         display: flex;
@@ -291,6 +291,19 @@ export default function NurseryEOTReport({ reportData }: any) {
         font-weight: 700;
         background: white;
         flex-shrink: 0;
+    }
+    .nursery-eot-report .stamp-box.has-image {
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+    }
+    .nursery-eot-report .stamp-box img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        mix-blend-mode: multiply;
+        filter: contrast(1.3) saturate(1.25);
+        transform: rotate(-1.5deg) scale(1.04);
     }
         `
       }} />
@@ -424,7 +437,7 @@ export default function NurseryEOTReport({ reportData }: any) {
                 <div className="line" style={{ position: 'relative' }}>
                   {getNurseryTeacherComment(grades)}
                   {reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.class_name) ?? ''] && (
-                    <img src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} alt="Signature" style={{ position: 'absolute', bottom: 0, height: '40px', maxWidth: '100%', objectFit: 'contain', right: 0, mixBlendMode: 'multiply' }} />
+                    <img src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} alt="Signature" style={{ position: 'absolute', bottom: 0, height: '48px', maxWidth: '100%', objectFit: 'contain', right: 0, mixBlendMode: 'multiply', filter: 'contrast(1.18) saturate(1.08)', transform: 'rotate(-1deg)' }} />
                   )}
                 </div>
               </div>
@@ -433,7 +446,7 @@ export default function NurseryEOTReport({ reportData }: any) {
                 <div className="line" style={{ position: 'relative' }}>
                   {getNurseryTeacherComment(grades)}
                   {reportData?.signatures?.['head-teacher'] && (
-                    <img src={reportData.signatures['head-teacher']} alt="Signature" style={{ position: 'absolute', bottom: 0, height: '40px', maxWidth: '100%', objectFit: 'contain', right: 0, mixBlendMode: 'multiply' }} />
+                    <img src={reportData.signatures['head-teacher']} alt="Signature" style={{ position: 'absolute', bottom: 0, height: '48px', maxWidth: '100%', objectFit: 'contain', right: 0, mixBlendMode: 'multiply', filter: 'contrast(1.18) saturate(1.08)', transform: 'rotate(-1deg)' }} />
                   )}
                 </div>
               </div>
@@ -444,9 +457,9 @@ export default function NurseryEOTReport({ reportData }: any) {
               </div>
             </div>
 
-            <div className="stamp-box">
+            <div className={`stamp-box${reportData?.signatures?.['school-stamp'] ? ' has-image' : ''}`}>
               {reportData?.signatures?.['school-stamp'] ? (
-                <img src={reportData.signatures['school-stamp']} alt="Official school stamp" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', mixBlendMode: 'multiply' }} />
+                <img src={reportData.signatures['school-stamp']} alt="Official school stamp" />
               ) : (
                 'OFFICIAL STAMP'
               )}

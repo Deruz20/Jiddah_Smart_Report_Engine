@@ -727,7 +727,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
                         <span className="c-label">SIGNATURE:</span>
                         <div className="c-sig" style={{ display: 'flex', justifyContent: 'center' }}>
                           {reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.class_name) ?? ''] ? (
-                            <img src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} style={{ maxHeight: '24px', maxWidth: '100%', objectFit: 'contain', mixBlendMode: 'multiply' }} alt="" />
+                            <img src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} style={{ maxHeight: '38px', maxWidth: '100%', objectFit: 'contain', mixBlendMode: 'multiply', filter: 'contrast(1.18) saturate(1.08)', transform: 'rotate(-1deg)' }} alt="" />
                           ) : null}
                         </div>
                       </div>
@@ -736,14 +736,14 @@ export default function PrimaryEOTReport({ reportData }: any) {
                         <div className="c-value" style={{ textTransform: 'uppercase' }}>{headComment}</div>
                         <span className="c-label">SIGNATURE:</span>
                         <div className="c-sig" style={{ display: 'flex', justifyContent: 'center' }}>
-                          {reportData?.signatures?.['head-teacher'] ? <img src={reportData.signatures['head-teacher']} style={{ maxHeight: '24px', maxWidth: '100%', objectFit: 'contain', mixBlendMode: 'multiply' }} alt="" /> : null}
+                          {reportData?.signatures?.['head-teacher'] ? <img src={reportData.signatures['head-teacher']} style={{ maxHeight: '38px', maxWidth: '100%', objectFit: 'contain', mixBlendMode: 'multiply', filter: 'contrast(1.18) saturate(1.08)', transform: 'rotate(-1deg)' }} alt="" /> : null}
                         </div>
                       </div>
                     </div>
 
-                    <div className="stamp-wrapper" style={{ flexShrink: 0, paddingLeft: '10px', minWidth: '100px', minHeight: '60px', border: '2px dashed #cbd5e1', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div className="stamp-wrapper" style={{ flexShrink: 0, width: '150px', height: '100px', paddingLeft: 0, border: reportData?.signatures?.['school-stamp'] ? 0 : '2px dashed #cbd5e1', borderRadius: reportData?.signatures?.['school-stamp'] ? 0 : '8px', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       {reportData?.signatures?.['school-stamp'] ? (
-                        <img src={reportData.signatures['school-stamp']} alt="Official school stamp" style={{ maxWidth: '95px', maxHeight: '55px', objectFit: 'contain', mixBlendMode: 'multiply' }} />
+                        <img src={reportData.signatures['school-stamp']} alt="Official school stamp" style={{ width: '100%', height: '100%', objectFit: 'contain', mixBlendMode: 'multiply', filter: 'contrast(1.3) saturate(1.25)', transform: 'rotate(-1.5deg) scale(1.04)' }} />
                       ) : (
                         <span style={{ fontSize: '9px', color: '#94a3b8', fontWeight: 600, textAlign: 'center' }}>OFFICIAL<br />STAMP</span>
                       )}

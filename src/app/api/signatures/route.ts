@@ -61,6 +61,7 @@ export async function GET(request: NextRequest) {
         ...slot,
         public_url,
         uploaded: Boolean(public_url),
+        size: Number(file?.metadata?.size ?? file?.metadata?.contentLength ?? 0),
       }
     })
 

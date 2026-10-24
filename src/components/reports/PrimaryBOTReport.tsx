@@ -235,7 +235,7 @@ export default function PrimaryBOTReport({ reportData }: any) {
         .bot-sig-line {
             width: 180px;
             border-bottom: 2px dotted #444;
-            min-height: 22px;
+            min-height: 30px;
             position: relative;
             display: flex;
             justify-content: center;
@@ -243,11 +243,13 @@ export default function PrimaryBOTReport({ reportData }: any) {
         }
         .bot-sig-line img {
             position: absolute;
-            bottom: 0;
-            height: 36px;
+            bottom: -2px;
+            height: 48px;
             max-width: 100%;
             object-fit: contain;
             mix-blend-mode: multiply;
+            filter: contrast(1.18) saturate(1.08);
+            transform: rotate(-1deg);
         }
 
         .bot-conduct-row {
@@ -264,8 +266,8 @@ export default function PrimaryBOTReport({ reportData }: any) {
         }
 
         .bot-stamp {
-            width: 120px;
-            height: 90px;
+            width: 154px;
+            height: 104px;
             border: 3px dashed #c0c0c0;
             border-radius: 12px;
             display: flex;
@@ -287,6 +289,8 @@ export default function PrimaryBOTReport({ reportData }: any) {
             height: 100%;
             object-fit: contain;
             mix-blend-mode: multiply;
+            filter: contrast(1.3) saturate(1.25);
+            transform: rotate(-1.5deg) scale(1.04);
         }
 
         .bot-final-footer {

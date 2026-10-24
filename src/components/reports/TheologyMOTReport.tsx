@@ -287,8 +287,8 @@ const theologyCSS = `
 }
 
 .tc-stamp {
-    width: 110px;
-    height: 110px;
+    width: 145px;
+    height: 95px;
     border-radius: 16px;
     border: 2px dashed #94a3b8;
     background: white;
@@ -302,6 +302,19 @@ const theologyCSS = `
     color: #94a3b8;
     flex-shrink: 0;
     line-height: 1.4;
+}
+.tc-stamp.has-image {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+}
+.tc-stamp img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    mix-blend-mode: multiply;
+    filter: contrast(1.3) saturate(1.25);
+    transform: rotate(-1.5deg) scale(1.04);
 }
 `
 
@@ -403,9 +416,9 @@ export function TheologyCard({ reportData }: { reportData: any }) {
                   {getTheologyComment(totalScore, reportData?.student?.gender, reportData?.settings?.theology_remarks)}
                 </div>
               </div>
-              <div className="tc-stamp">
+              <div className={`tc-stamp${reportData?.signatures?.['school-stamp'] ? ' has-image' : ''}`}>
                 {reportData?.signatures?.['school-stamp'] ? (
-                  <img src={reportData.signatures['school-stamp']} alt="" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', mixBlendMode: 'multiply' }} />
+                  <img src={reportData.signatures['school-stamp']} alt="" />
                 ) : (
                   <>
                     <span>الختم الرسمي</span>

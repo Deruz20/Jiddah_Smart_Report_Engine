@@ -14,6 +14,7 @@ const ACCEPTED_TYPES = [
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 ]
 const MAX_FILE_SIZE = 10 * 1024 * 1024
+const DOCUMENT_CATEGORIES = ['Branding', 'Documents', 'Other']
 
 export async function OPTIONS(request: NextRequest) {
   return apiOptions(request)
@@ -34,6 +35,10 @@ export async function POST(request: NextRequest) {
 
     const formData = await request.formData()
     const file = formData.get('file')
+    const requestedCategory = formData.get('category')
+    const category = typeof requestedCategory === 'string' && DOCUMENT_CATEGORIES.includes(requestedCategory)
+      ? requestedCategory
+      : 'Documents'
 
     if (!(file instanceof File)) {
       return withCors(request, NextResponse.json({ error: 'No file provided' }, { status: 400 }))
@@ -57,14 +62,15 @@ export async function POST(request: NextRequest) {
     
     const { error } = await supabaseAdmin.storage.from(BUCKET).upload(filePath, buffer, {
       upsert: true,
-      contentType: file.type
+      contentType: file.type,
+      metadata: { category },
     })
 
     if (error) {
       return withCors(request, NextResponse.json({ error: error.message }, { status: 500 }))
     }
 
-    return withCors(request, NextResponse.json({ data: { fileName: filePath } }))
+    return withCors(request, NextResponse.json({ data: { fileName: filePath, size: buffer.length, category } }))
   } catch (err: any) {
     console.error('documents/upload POST exception:', err)
     return withCors(request, NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 }))

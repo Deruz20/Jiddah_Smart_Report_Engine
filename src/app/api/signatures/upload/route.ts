@@ -130,7 +130,9 @@ export async function POST(request: NextRequest) {
     }
 
     await recordActivity(supabase, user.id, 'upload_signature', { slot_key: slotKey, file_path: filePath })
-    return withCors(request, NextResponse.json({ data: { slot_key: slotKey, public_url } }))
+    return withCors(request, NextResponse.json({
+      data: { slot_key: slotKey, public_url, size: transparentPng.length },
+    }))
   } catch (err: any) {
     console.error('signatures/upload POST exception:', err)
     return withCors(request, NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 }))

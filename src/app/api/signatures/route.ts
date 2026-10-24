@@ -1,12 +1,17 @@
-import { createClient } from '@/utils/supabase/server'
+import { createAdminClient, createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { getAuthenticatedUser, recordActivity } from '@/lib/api-server'
+import { verifyDataAccess } from '@/lib/auth-server'
 
 const BUCKET = 'signatures'
 
-import { getDynamicSignatureSlots } from '@/utils/signatures'
+import {
+  getDynamicSignatureSlots,
+  mapLatestSignatureObjects,
+  withSignatureVersion,
+} from '@/utils/signatures'
 
 function buildPublicUrl(supabase: ReturnType<typeof createClient>, filePath: string) {
   const { data } = supabase.storage.from(BUCKET).getPublicUrl(filePath)
@@ -30,25 +35,28 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
-    const { data: objects, error } = await supabase.storage.from(BUCKET).list('', { limit: 1000 })
+    const access = await verifyDataAccess(supabase, user, 'read')
+    if (!access.isAuthorized || access.canonicalRole !== 'Administrator') {
+      return withCors(request, NextResponse.json({ error: 'Only administrators may manage official signatures.' }, { status: 403 }))
+    }
+
+    const admin = createAdminClient()
+    const SIGNATURE_SLOTS = await getDynamicSignatureSlots(admin)
+    const { data: objects, error } = await admin.storage.from(BUCKET).list('', { limit: 1000 })
     if (error) {
       console.error('signatures GET list error:', error.message)
       return withCors(request, NextResponse.json({ error: error.message }, { status: 500 }))
     }
 
-    const SIGNATURE_SLOTS = await getDynamicSignatureSlots(supabase)
-
-    const uploadedBySlot = new Map<string, string>()
-    for (const object of objects ?? []) {
-      const matchingSlot = SIGNATURE_SLOTS.find((slot) => object.name.startsWith(`${slot.slot_key}.`))
-      if (matchingSlot && !uploadedBySlot.has(matchingSlot.slot_key)) {
-        uploadedBySlot.set(matchingSlot.slot_key, object.name)
-      }
-    }
+    const uploadedBySlot = mapLatestSignatureObjects(
+      objects ?? [],
+      SIGNATURE_SLOTS.map((slot) => slot.slot_key)
+    )
 
     const slots = SIGNATURE_SLOTS.map((slot) => {
-      const fileName = uploadedBySlot.get(slot.slot_key)
-      const public_url = fileName ? buildPublicUrl(supabase, fileName) : null
+      const file = uploadedBySlot.get(slot.slot_key)
+      const url = file ? buildPublicUrl(admin, file.name) : null
+      const public_url = url ? withSignatureVersion(url, file?.updated_at) : null
       return {
         ...slot,
         public_url,
@@ -76,12 +84,17 @@ export async function PATCH(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
+    const access = await verifyDataAccess(supabase, user, 'write')
+    if (!access.isAuthorized || access.canonicalRole !== 'Administrator') {
+      return withCors(request, NextResponse.json({ error: 'Only administrators may manage official signatures.' }, { status: 403 }))
+    }
+
     const body = await request.json()
     if (!body || typeof body !== 'object' || typeof body.slot_key !== 'string') {
       return withCors(request, NextResponse.json({ error: 'Invalid payload' }, { status: 400 }))
     }
 
-    const SIGNATURE_SLOTS = await getDynamicSignatureSlots(supabase)
+    const SIGNATURE_SLOTS = await getDynamicSignatureSlots(createAdminClient())
     const slotExists = SIGNATURE_SLOTS.some((slot) => slot.slot_key === body.slot_key)
     if (!slotExists) {
       return withCors(request, NextResponse.json({ error: 'Unknown signature slot' }, { status: 400 }))

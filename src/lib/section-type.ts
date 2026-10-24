@@ -3,6 +3,10 @@ export function getSectionTypeFromClassName(section: string | null | undefined):
   if (!section) return 'unknown'
   const lower = section.toLowerCase().trim()
 
+  if (lower === 'raudha') return 'nursery'
+  if (lower === 'ibtidaai_lower') return 'lower_primary'
+  if (lower === 'ibtidaai_upper') return 'upper_primary'
+
   if (lower.includes('nursery') || lower.includes('baby') || lower.includes('middle') || lower.includes('top')) {
     return 'nursery'
   }

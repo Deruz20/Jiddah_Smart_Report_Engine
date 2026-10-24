@@ -1,4 +1,4 @@
-import { createClient } from '@/utils/supabase/server'
+import { createAdminClient, createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import {
@@ -20,10 +20,12 @@ import {
   getHeadTeacherComment,
 } from '@/lib/grading'
 import { resolveSectionType } from '@/lib/section-type'
+import { hasRequiredClassForReport } from '@/lib/report-class-context'
 import { canAccessClass } from '@/lib/teacher-access'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { evaluateCriteria, GradingCriterion } from '@/lib/grading-engine'
 import { fetchMergedSchoolSettings } from '@/lib/school-settings-helper'
+import { getReportSignatures } from '@/utils/signatures'
 import { applyRateLimit, rateLimitResponse } from '@/utils/rate-limit'
 import { z } from 'zod'
 
@@ -286,21 +288,7 @@ export async function POST(request: NextRequest) {
     }
     const theologyOrder = ['القرآن الكريم', 'اللغة العربية', 'الفقه', 'التربية الإسلامية']
 
-    const { data: signatureObjects } = await supabase.storage.from('signatures').list('', { limit: 100 })
-    const signatures: Record<string, string | null> = {
-      'head-teacher': null,
-      'principal': null,
-      'class-teacher-p3': null,
-      'class-teacher-p5': null,
-      'school-stamp': null,
-    }
-    for (const object of signatureObjects ?? []) {
-      for (const key of Object.keys(signatures)) {
-        if (object.name.startsWith(`${key}.`)) {
-          signatures[key] = supabase.storage.from('signatures').getPublicUrl(object.name).data.publicUrl
-        }
-      }
-    }
+    const signatures = await getReportSignatures(createAdminClient())
 
     const { data: initialsData } = await supabase.from('teacher_initials').select('*')
     const teacherInitialsMap: Record<string, string> = {}
@@ -314,17 +302,18 @@ export async function POST(request: NextRequest) {
     const reports = requestedEnrollments.map(enrollment => {
       const studentData = Array.isArray(enrollment.students) ? enrollment.students[0] : enrollment.students
       const circularClassData = Array.isArray(enrollment.circular_classes) ? enrollment.circular_classes[0] : enrollment.circular_classes
+      const theologyClassData = Array.isArray(enrollment.theology_classes) ? enrollment.theology_classes[0] : enrollment.theology_classes
 
-      if (!studentData || !circularClassData) {
+      if (!studentData || !hasRequiredClassForReport(curriculum, Boolean(circularClassData), Boolean(theologyClassData))) {
         return {
           id: enrollment.id,
           status: 'error',
-          error: 'Corrupted enrollment data: missing student or class'
+          error: 'Enrollment is missing a student or a class for the requested curriculum'
         }
       }
 
-      const section = circularClassData?.section
-      const className = circularClassData?.class_name
+      const section = circularClassData?.section ?? theologyClassData?.level
+      const className = circularClassData?.class_name ?? theologyClassData?.class_name_english
       const sectionType = (section || className) ? resolveSectionType(section, className) : 'unknown'
       
       const circularSubjects = circularSubjectsCache[sectionType] || []
@@ -529,7 +518,7 @@ export async function POST(request: NextRequest) {
 
   
             religion: studentData?.is_muslim === false ? 'Non-Muslim' : 'Muslim',
-            class_name: '—',
+            class_name: theologyClassEnglish ?? '—',
             gender: studentData?.gender ?? null,
             theology_class_arabic: theologyClassArabic ?? null,
             theology_class_english: theologyClassEnglish ?? null,

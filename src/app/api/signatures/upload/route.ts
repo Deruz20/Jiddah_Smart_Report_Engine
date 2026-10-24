@@ -3,8 +3,12 @@ import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { getAuthenticatedUser, recordActivity } from '@/lib/api-server'
+import { verifyDataAccess } from '@/lib/auth-server'
 
-import { getDynamicSignatureSlots } from '@/utils/signatures'
+import {
+  getDynamicSignatureSlots,
+  withSignatureVersion,
+} from '@/utils/signatures'
 import { sniffImageMimeType } from '@/lib/image-sniff'
 const BUCKET = 'signatures'
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp']
@@ -27,6 +31,11 @@ export async function POST(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
+    const access = await verifyDataAccess(supabase, user, 'write')
+    if (!access.isAuthorized || access.canonicalRole !== 'Administrator') {
+      return withCors(request, NextResponse.json({ error: 'Only administrators may upload or replace official signatures.' }, { status: 403 }))
+    }
+
     const formData = await request.formData()
     const file = formData.get('file')
     const slotKey = formData.get('slot_key')
@@ -39,7 +48,8 @@ export async function POST(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Slot key is required' }, { status: 400 }))
     }
 
-    const SIGNATURE_SLOTS = await getDynamicSignatureSlots(supabase)
+    const supabaseAdmin = createAdminClient()
+    const SIGNATURE_SLOTS = await getDynamicSignatureSlots(supabaseAdmin)
     const isValidSlot = SIGNATURE_SLOTS.some(slot => slot.slot_key === slotKey)
     if (!isValidSlot) {
       return withCors(request, NextResponse.json({ error: 'Invalid signature slot' }, { status: 400 }))
@@ -50,7 +60,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (file.size > MAX_FILE_SIZE) {
-      return withCors(request, NextResponse.json({ error: 'File must be smaller than 5MB', status: 400 }))
+      return withCors(request, NextResponse.json({ error: 'File must be smaller than 5MB' }, { status: 400 }))
     }
 
     const arrayBuffer = await file.arrayBuffer()
@@ -71,11 +81,9 @@ export async function POST(request: NextRequest) {
     // Format: slot_key.extension to overwrite existing
     const filePath = `${slotKey}.${extension}`
 
-    const supabaseAdmin = createAdminClient()
-
     const { error: uploadError } = await supabaseAdmin.storage.from(BUCKET).upload(filePath, buffer, {
       upsert: true,
-      cacheControl: '3600', // 1 hour cache
+      cacheControl: '0',
       contentType: sniffedMime
     })
 
@@ -83,8 +91,33 @@ export async function POST(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: uploadError.message }, { status: 500 }))
     }
 
-    const { data } = supabase.storage.from(BUCKET).getPublicUrl(filePath)
-    const public_url = data?.publicUrl ?? null
+    const storage = supabaseAdmin.storage.from(BUCKET)
+    const { data: objects, error: listError } = await storage.list('', { limit: 1000 })
+    if (listError) {
+      console.error('Uploaded signature could not be verified:', listError.message)
+      return withCors(request, NextResponse.json({ error: 'Upload completed but the stored signature could not be verified.' }, { status: 500 }))
+    }
+
+    const selectedFile = (objects ?? []).find((object) => object.name === filePath)
+    if (!selectedFile) {
+      return withCors(request, NextResponse.json({ error: 'Uploaded signature could not be verified as the current slot image.' }, { status: 500 }))
+    }
+
+    const stalePaths = (objects ?? [])
+      .filter((object) => object.name.startsWith(`${slotKey}.`) && object.name !== filePath)
+      .map((object) => object.name)
+    if (stalePaths.length > 0) {
+      const { error: removeError } = await storage.remove(stalePaths)
+      if (removeError) {
+        console.error('Old signature versions could not be removed:', removeError.message)
+        return withCors(request, NextResponse.json({ error: 'New image uploaded, but older versions could not be removed.' }, { status: 500 }))
+      }
+    }
+
+    const publicUrl = storage.getPublicUrl(filePath).data?.publicUrl ?? null
+    const public_url = publicUrl
+      ? withSignatureVersion(publicUrl, selectedFile.updated_at)
+      : null
 
     if (!public_url) {
       return withCors(request, NextResponse.json({ error: 'Failed to generate signature URL' }, { status: 500 }))

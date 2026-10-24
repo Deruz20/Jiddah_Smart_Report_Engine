@@ -1,4 +1,4 @@
-import { createClient } from '@/utils/supabase/server'
+import { createAdminClient, createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import {
@@ -20,10 +20,12 @@ import {
   getHeadTeacherComment,
 } from '@/lib/grading'
 import { resolveSectionType } from '@/lib/section-type'
+import { hasRequiredClassForReport } from '@/lib/report-class-context'
 import { canAccessClass } from '@/lib/teacher-access'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { evaluateCriteria, GradingCriterion } from '@/lib/grading-engine'
 import { fetchMergedSchoolSettings } from '@/lib/school-settings-helper'
+import { getReportSignatures } from '@/utils/signatures'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -69,6 +71,7 @@ export async function GET(request: NextRequest) {
   if (!['secular', 'theology'].includes(curriculum)) {
     return withCors(request, NextResponse.json({ error: 'curriculum must be secular or theology' }, { status: 400 }))
   }
+  const reportCurriculum = curriculum === 'theology' ? 'theology' : 'secular'
 
   try {
     const cookieStore = await cookies()
@@ -108,27 +111,26 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Enrollment not found' }, { status: 404 }))
     }
 
-    const allowedReportClass = curriculum === 'theology'
+    const allowedReportClass = reportCurriculum === 'theology'
       ? canAccessClass(authRes, 'theology', enrollment.theology_class_id, enrollment.circular_class_id)
-      : curriculum === 'secular'
-        ? canAccessClass(authRes, 'circular', enrollment.circular_class_id)
-        : false
+      : canAccessClass(authRes, 'circular', enrollment.circular_class_id)
     if (!allowedReportClass) {
       return withCors(request, NextResponse.json({ error: 'Unauthorized: Report is outside your assigned classes or curriculum.' }, { status: 403 }))
     }
 
-    const section = Array.isArray(enrollment.circular_classes)
-      ? enrollment.circular_classes[0]?.section
-      : (enrollment.circular_classes as any)?.section
-    
-    const className = Array.isArray(enrollment.circular_classes)
-      ? enrollment.circular_classes[0]?.class_name
-      : (enrollment.circular_classes as any)?.class_name
-    
-    if (!section && !className) {
-      return withCors(request, NextResponse.json({ error: 'Circular class section and name are missing' }, { status: 400 }))
+    const reportCircularClass = Array.isArray(enrollment.circular_classes)
+      ? enrollment.circular_classes[0]
+      : enrollment.circular_classes
+    const reportTheologyClass = Array.isArray(enrollment.theology_classes)
+      ? enrollment.theology_classes[0]
+      : enrollment.theology_classes
+
+    if (!hasRequiredClassForReport(reportCurriculum, Boolean(reportCircularClass), Boolean(reportTheologyClass))) {
+      return withCors(request, NextResponse.json({ error: 'Enrollment is missing a class for the requested curriculum' }, { status: 400 }))
     }
 
+    const section = reportCircularClass?.section ?? reportTheologyClass?.level
+    const className = reportCircularClass?.class_name ?? reportTheologyClass?.class_name_english
     const sectionType = resolveSectionType(section, className)
 
     const { data: term, error: termError } = await supabase
@@ -478,21 +480,7 @@ export async function GET(request: NextRequest) {
         division: theologyAggregate !== null ? getDivision(theologyAggregate) : null,
       }
     }
-    const { data: signatureObjects } = await supabase.storage.from('signatures').list('', { limit: 100 })
-    const signatures: Record<string, string | null> = {
-      'head-teacher': null,
-      'principal': null,
-      'class-teacher-p3': null,
-      'class-teacher-p5': null,
-      'school-stamp': null,
-    }
-    for (const object of signatureObjects ?? []) {
-      for (const key of Object.keys(signatures)) {
-        if (object.name.startsWith(`${key}.`)) {
-          signatures[key] = supabase.storage.from('signatures').getPublicUrl(object.name).data.publicUrl
-        }
-      }
-    }
+    const signatures = await getReportSignatures(createAdminClient())
 
     // Only return data for the requested curriculum
     if (curriculum === 'theology') {
@@ -568,7 +556,7 @@ export async function GET(request: NextRequest) {
 
     
             religion: studentData?.is_muslim === false ? 'Non-Muslim' : 'Muslim',
-            class_name: '—',
+            class_name: theologyClassEnglish ?? '—',
             gender: studentData?.gender ?? null,
             theology_class_arabic: theologyClassArabic ?? null,
             theology_class_english: theologyClassEnglish ?? null,

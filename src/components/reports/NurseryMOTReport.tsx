@@ -376,7 +376,7 @@ export default function NurseryMOTReport({ reportData }: any) {
                 <div className="line" style={{ position: 'relative' }}>
                   {getNurseryTeacherComment(grades)}
                   {reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.class_name) ?? ''] && (
-                    <img src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} alt="Signature" style={{ position: 'absolute', bottom: 0, height: '40px', right: 0 }} />
+                    <img src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} alt="Signature" style={{ position: 'absolute', bottom: 0, height: '40px', maxWidth: '100%', objectFit: 'contain', right: 0 }} />
                   )}
                 </div>
               </div>
@@ -385,7 +385,7 @@ export default function NurseryMOTReport({ reportData }: any) {
                 <div className="line" style={{ position: 'relative' }}>
                   {getNurseryTeacherComment(grades)}
                   {reportData?.signatures?.['head-teacher'] && (
-                    <img src={reportData.signatures['head-teacher']} alt="Signature" style={{ position: 'absolute', bottom: 0, height: '40px', right: 0 }} />
+                    <img src={reportData.signatures['head-teacher']} alt="Signature" style={{ position: 'absolute', bottom: 0, height: '40px', maxWidth: '100%', objectFit: 'contain', right: 0 }} />
                   )}
                 </div>
               </div>
@@ -397,7 +397,11 @@ export default function NurseryMOTReport({ reportData }: any) {
             </div>
 
             <div className="stamp-box">
-              OFFICIAL STAMP
+              {reportData?.signatures?.['school-stamp'] ? (
+                <img src={reportData.signatures['school-stamp']} alt="Official school stamp" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+              ) : (
+                'OFFICIAL STAMP'
+              )}
             </div>
           </div>
           

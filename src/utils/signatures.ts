@@ -59,6 +59,10 @@ export function getReportSignatureKeys(): string[] {
 export interface SignatureStorageObject {
   name: string;
   updated_at?: string | null;
+  metadata?: {
+    size?: number;
+    contentLength?: number;
+  } | null;
 }
 
 export function mapLatestSignatureObjects(

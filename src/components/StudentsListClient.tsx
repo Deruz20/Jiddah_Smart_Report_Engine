@@ -261,9 +261,14 @@ export function StudentsListClient({ students, department }: StudentsTableProps)
         </div>
       </div>
 
-      {/* Responsive Zero-Scrollbar Table */}
-      <div className="w-full min-w-0 flex-1">
-        <table className="w-full divide-y divide-stone-100 table-auto">
+      {/* Keep the full row accessible on narrow screens instead of clipping action columns. */}
+      <div
+        role="region"
+        aria-label="Students list"
+        tabIndex={0}
+        className="w-full min-w-0 flex-1 overflow-x-auto overscroll-x-contain"
+      >
+        <table className="w-full min-w-[560px] divide-y divide-stone-100 table-auto md:min-w-[720px] lg:min-w-0">
           <thead className="bg-white">
             <tr>
               <ThCell label="Student" col="name" />

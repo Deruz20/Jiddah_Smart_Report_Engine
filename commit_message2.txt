@@ -1,0 +1,4 @@
+fix(reports): add missing PrimaryBOTReport settings and fix theology print container logic
+
+* Migrated `PrimaryBOTReport` conditional signatures and stamp render logic to align with all other report views checking `reportData?.settings?.print_preferences?.includeStamp` and `reportData?.settings?.print_preferences?.includeSignatures` logic to ensure stamps and signatures render strictly based on user toggles.
+* Added missing `#secular-hub-print-root` ID wrapper logic and `.report-container` styles to the `TheologyHubClient` table so it prints correctly via the core app's unified Print System engine and matches styling.

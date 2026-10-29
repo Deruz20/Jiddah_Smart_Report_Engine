@@ -201,8 +201,18 @@ export function getNurseryGrade(mark: number): { grade: NurseryGrade; remark: st
   return { grade: 'E', remark: 'Poor' }
 }
 
+type ReportCommentBands = Pick<GradingBand, 'grade' | 'min' | 'max' | 'remark'>[]
+
 // Subject remarks for secular (primary)
-export function getSubjectRemark(gradeNum: number): string {
+export function getSubjectRemark(gradeNum: number, customBands?: ReportCommentBands): string {
+  if (customBands && customBands.length > 0) {
+    const code = getGradeDisplay(gradeNum)
+    const band = customBands.find((b) => b.grade === code)
+    if (band && band.remark) {
+      return band.remark.trim()
+    }
+  }
+
   switch (gradeNum) {
     case 1: return 'Excellent'
     case 2: return 'Very Good'
@@ -218,7 +228,15 @@ export function getSubjectRemark(gradeNum: number): string {
 }
 
 // Subject remarks for theology (IPLE)
-export function getTheologySubjectRemark(gradeNum: number): string {
+export function getTheologySubjectRemark(gradeNum: number, customBands?: ReportCommentBands): string {
+  if (customBands && customBands.length > 0) {
+    const code = getGradeDisplay(gradeNum)
+    const band = customBands.find((b) => b.grade === code)
+    if (band && band.remark) {
+      return band.remark.trim()
+    }
+  }
+
   switch (gradeNum) {
     case 1: return 'ممتاز' // Excellent
     case 2: return 'جيد جداً' // Very Good
@@ -232,8 +250,6 @@ export function getTheologySubjectRemark(gradeNum: number): string {
     default: return 'راسب'
   }
 }
-
-type ReportCommentBands = Pick<GradingBand, 'grade' | 'min' | 'max' | 'remark'>[]
 
 function getReportCommentBand(
   scores: (number | null | undefined)[] | undefined,

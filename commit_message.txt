@@ -1,0 +1,5 @@
+fix(reports): dynamically evaluate custom grading remarks and print asset visibility
+
+* Updated the print layout engine to use dynamically scaling container wrappers to prevent truncations of dynamically sized elements on EOT and MOT components.
+* Refactored report template components (e.g. PrimaryEOTReport, PrimaryMOTReport, etc) to respect print preferences config (toggles `includeStamp` and `includeSignatures`) via user settings.
+* Refactored the core grading remarks assignment API payload generator logic to dynamically consume the global grading scales over arbitrary hardcoded mappings.

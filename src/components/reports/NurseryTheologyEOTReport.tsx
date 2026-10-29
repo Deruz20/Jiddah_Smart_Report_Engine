@@ -449,22 +449,24 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
           <div className="sign-field">
             <div>تقرير مرب الفصل</div>
             <div className="sign-line" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', height: '48px' }}>
-              {reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.theology_class_english ?? reportData.student.class_name, true) ?? ''] && (
+              {reportData?.settings?.print_preferences?.includeSignatures !== false && reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.theology_class_english ?? reportData.student.class_name, true) ?? ''] && (
                 <img src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.theology_class_english ?? reportData.student.class_name, true)!]} alt="Signature" style={{ maxHeight: '42px', maxWidth: '100%', objectFit: 'contain', mixBlendMode: 'multiply', filter: 'contrast(1.18) saturate(1.08)', transform: 'rotate(-1deg)' }} />
               )}
             </div>
           </div>
-          <div className={`footer-stamp${reportData?.signatures?.['school-stamp'] ? ' has-image' : ''}`}>
-            {reportData?.signatures?.['school-stamp'] ? (
-              <img src={reportData.signatures['school-stamp']} alt="" />
-            ) : (
-              'الختم الرسمي للمدرسة'
-            )}
-          </div>
+          {reportData?.settings?.print_preferences?.includeStamp !== false && (
+            <div className={`footer-stamp${reportData?.signatures?.['school-stamp'] ? ' has-image' : ''}`}>
+              {reportData?.signatures?.['school-stamp'] ? (
+                <img src={reportData.signatures['school-stamp']} alt="" />
+              ) : (
+                'الختم الرسمي للمدرسة'
+              )}
+            </div>
+          )}
           <div className="sign-field">
             <div>تقرير مدير المدرسة</div>
             <div className="sign-line" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', height: '48px' }}>
-              {reportData?.signatures?.['head-teacher'] && (
+              {reportData?.settings?.print_preferences?.includeSignatures !== false && reportData?.signatures?.['head-teacher'] && (
                 <img src={reportData.signatures['head-teacher']} alt="Signature" style={{ maxHeight: '42px', maxWidth: '100%', objectFit: 'contain', mixBlendMode: 'multiply', filter: 'contrast(1.18) saturate(1.08)', transform: 'rotate(-1deg)' }} />
               )}
             </div>

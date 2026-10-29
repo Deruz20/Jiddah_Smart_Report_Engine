@@ -339,7 +339,7 @@ export async function POST(request: NextRequest) {
             ? getNurseryGrade(numericScore).remark
             : score_type === 'mot'
               ? getGradingRemarkForScore(numericScore, schoolSettings?.grading_scale)
-              : getSubjectRemark(getSubjectGradeNumber(numericScore))
+              : getSubjectRemark(getSubjectGradeNumber(numericScore), schoolSettings?.grading_scale)
           : ''
 
         const overrideGrade = evaluateCriteria(numericScore, 'subject_score', 'secular', enrollment.circular_class_id, gradingCriteria, 'grade_label')
@@ -355,7 +355,7 @@ export async function POST(request: NextRequest) {
         const eotNumeric = getMarkScore(existing, 'eot')
 
         const defaultMotGrade = motNumeric !== null ? (sectionType === 'nursery' ? getNurseryGrade(motNumeric).grade : getGradeDisplay(getSubjectGradeNumber(motNumeric))) : null
-        const defaultMotRemark = motNumeric !== null ? (sectionType === 'nursery' ? getNurseryGrade(motNumeric).remark : getSubjectRemark(getSubjectGradeNumber(motNumeric))) : null
+        const defaultMotRemark = motNumeric !== null ? (sectionType === 'nursery' ? getNurseryGrade(motNumeric).remark : getSubjectRemark(getSubjectGradeNumber(motNumeric), schoolSettings?.grading_scale)) : null
         const overrideMotGrade = evaluateCriteria(motNumeric, 'subject_score', 'secular', enrollment.circular_class_id, gradingCriteria, 'grade_label')
         const overrideMotRemark = evaluateCriteria(motNumeric, 'subject_score', 'secular', enrollment.circular_class_id, gradingCriteria, 'comment')
 
@@ -365,7 +365,7 @@ export async function POST(request: NextRequest) {
         }
 
         const defaultEotGrade = eotNumeric !== null ? (sectionType === 'nursery' ? getNurseryGrade(eotNumeric).grade : getGradeDisplay(getSubjectGradeNumber(eotNumeric))) : null
-        const defaultEotRemark = eotNumeric !== null ? (sectionType === 'nursery' ? getNurseryGrade(eotNumeric).remark : getSubjectRemark(getSubjectGradeNumber(eotNumeric))) : null
+        const defaultEotRemark = eotNumeric !== null ? (sectionType === 'nursery' ? getNurseryGrade(eotNumeric).remark : getSubjectRemark(getSubjectGradeNumber(eotNumeric), schoolSettings?.grading_scale)) : null
         const overrideEotGrade = evaluateCriteria(eotNumeric, 'subject_score', 'secular', enrollment.circular_class_id, gradingCriteria, 'grade_label')
         const overrideEotRemark = evaluateCriteria(eotNumeric, 'subject_score', 'secular', enrollment.circular_class_id, gradingCriteria, 'comment')
 
@@ -466,7 +466,7 @@ export async function POST(request: NextRequest) {
           const overrideEotGrade = evaluateCriteria(eotScore, 'subject_score', 'theology', enrollment.theology_class_id, gradingCriteria, 'grade_label')
           const eot_grade_display = overrideEotGrade || defaultEotGrade
 
-          const defaultRemark = eotScore !== null ? getTheologySubjectRemark(getTheologyGradeNumber(eotScore, (schoolSettings as any)?.theology_grading_scale)) : motScore !== null ? getTheologySubjectRemark(getTheologyGradeNumber(motScore, (schoolSettings as any)?.theology_grading_scale)) : null
+          const defaultRemark = eotScore !== null ? getTheologySubjectRemark(getTheologyGradeNumber(eotScore, (schoolSettings as any)?.theology_grading_scale), (schoolSettings as any)?.theology_grading_scale) : motScore !== null ? getTheologySubjectRemark(getTheologyGradeNumber(motScore, (schoolSettings as any)?.theology_grading_scale), (schoolSettings as any)?.theology_grading_scale) : null
           const overrideRemark = evaluateCriteria(numericScore, 'subject_score', 'theology', enrollment.theology_class_id, gradingCriteria, 'comment')
 
           return {

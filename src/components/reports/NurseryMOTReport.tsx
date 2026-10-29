@@ -389,7 +389,7 @@ export default function NurseryMOTReport({ reportData }: any) {
                 <span className="label" style={{ minWidth: '100px' }}>Class Teacher</span>
                 <div className="line" style={{ position: 'relative' }}>
                   {getNurseryTeacherComment(grades)}
-                  {reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.class_name) ?? ''] && (
+                  {reportData?.settings?.print_preferences?.includeSignatures !== false && reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.class_name) ?? ''] && (
                     <img src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} alt="Signature" style={{ position: 'absolute', bottom: 0, height: '48px', maxWidth: '100%', objectFit: 'contain', right: 0, mixBlendMode: 'multiply', filter: 'contrast(1.18) saturate(1.08)', transform: 'rotate(-1deg)' }} />
                   )}
                 </div>
@@ -398,7 +398,7 @@ export default function NurseryMOTReport({ reportData }: any) {
                 <span className="label" style={{ minWidth: '100px' }}>Head Teacher</span>
                 <div className="line" style={{ position: 'relative' }}>
                   {getNurseryTeacherComment(grades)}
-                  {reportData?.signatures?.['head-teacher'] && (
+                  {reportData?.settings?.print_preferences?.includeSignatures !== false && reportData?.signatures?.['head-teacher'] && (
                     <img src={reportData.signatures['head-teacher']} alt="Signature" style={{ position: 'absolute', bottom: 0, height: '48px', maxWidth: '100%', objectFit: 'contain', right: 0, mixBlendMode: 'multiply', filter: 'contrast(1.18) saturate(1.08)', transform: 'rotate(-1deg)' }} />
                   )}
                 </div>
@@ -410,13 +410,15 @@ export default function NurseryMOTReport({ reportData }: any) {
               </div>
             </div>
 
-            <div className={`stamp-box${reportData?.signatures?.['school-stamp'] ? ' has-image' : ''}`}>
-              {reportData?.signatures?.['school-stamp'] ? (
-                <img src={reportData.signatures['school-stamp']} alt="Official school stamp" />
-              ) : (
-                'OFFICIAL STAMP'
-              )}
-            </div>
+            {reportData?.settings?.print_preferences?.includeStamp !== false && (
+              <div className={`stamp-box${reportData?.signatures?.['school-stamp'] ? ' has-image' : ''}`}>
+                {reportData?.signatures?.['school-stamp'] ? (
+                  <img src={reportData.signatures['school-stamp']} alt="Official school stamp" />
+                ) : (
+                  'OFFICIAL STAMP'
+                )}
+              </div>
+            )}
           </div>
           
           <div style={{ textAlign: 'center', marginTop: '12px', fontSize: '9px', color: '#94a3b8', fontWeight: 600, letterSpacing: '0.05em' }}>

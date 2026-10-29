@@ -31,11 +31,15 @@ export default function PrimaryBOTReport({ reportData }: any) {
   const classTeacherSigKey = reportData?.student?.class_name
     ? getClassTeacherSignatureKey(reportData.student.class_name) ?? ''
     : '';
-  const classTeacherSig = classTeacherSigKey
+  const classTeacherSig = reportData?.settings?.print_preferences?.includeSignatures !== false && classTeacherSigKey
     ? reportData?.signatures?.[classTeacherSigKey]
     : null;
-  const headTeacherSig = reportData?.signatures?.['head-teacher'] ?? null;
-  const schoolStamp = reportData?.signatures?.['school-stamp'] ?? null;
+  const headTeacherSig = reportData?.settings?.print_preferences?.includeSignatures !== false && reportData?.signatures?.['head-teacher']
+    ? reportData?.signatures?.['head-teacher']
+    : null;
+  const schoolStamp = reportData?.settings?.print_preferences?.includeStamp !== false && reportData?.signatures?.['school-stamp']
+    ? reportData?.signatures?.['school-stamp']
+    : null;
 
   const renderSubjectRow = (subject: any) => (
     <tr key={subject.subject_name}>
@@ -417,13 +421,15 @@ export default function PrimaryBOTReport({ reportData }: any) {
             </div>
           </div>
 
-          <div className="bot-footer-stamp">
-            <div className={`bot-stamp${schoolStamp ? ' has-image' : ''}`}>
-              {schoolStamp
-                ? <img src={schoolStamp} alt="Official school stamp" />
-                : <>OFFICIAL<br />SCHOOL STAMP</>}
+          {reportData?.settings?.print_preferences?.includeStamp !== false && (
+            <div className="bot-footer-stamp">
+              <div className={`bot-stamp${schoolStamp ? ' has-image' : ''}`}>
+                {schoolStamp
+                  ? <img src={schoolStamp} alt="Official school stamp" />
+                  : <>OFFICIAL<br />SCHOOL STAMP</>}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         <div className="bot-final-footer">

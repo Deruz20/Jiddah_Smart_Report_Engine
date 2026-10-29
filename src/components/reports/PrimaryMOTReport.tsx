@@ -31,10 +31,12 @@ export default function PrimaryMOTReport({ reportData }: any) {
   const classTeacherSigKey = reportData?.student?.class_name
     ? getClassTeacherSignatureKey(reportData.student.class_name) ?? ''
     : '';
-  const classTeacherSig = classTeacherSigKey
+  const classTeacherSig = reportData?.settings?.print_preferences?.includeSignatures !== false && classTeacherSigKey
     ? reportData?.signatures?.[classTeacherSigKey]
     : null;
-  const headTeacherSig = reportData?.signatures?.['head-teacher'] ?? null;
+  const headTeacherSig = reportData?.settings?.print_preferences?.includeSignatures !== false && reportData?.signatures?.['head-teacher']
+    ? reportData?.signatures?.['head-teacher']
+    : null;
 
   const renderSubjectRow = (subject: any) => (
     <tr key={subject.subject_name}>
@@ -426,15 +428,17 @@ export default function PrimaryMOTReport({ reportData }: any) {
             </div>
           </div>
 
-          <div className="mot-footer-stamp">
-            <div className={`mot-stamp${reportData?.signatures?.['school-stamp'] ? ' has-image' : ''}`}>
-              {reportData?.signatures?.['school-stamp'] ? (
-                <img src={reportData.signatures['school-stamp']} alt="Official school stamp" />
-              ) : (
-                <>OFFICIAL<br />SCHOOL STAMP</>
-              )}
+          {reportData?.settings?.print_preferences?.includeStamp !== false && (
+            <div className="mot-footer-stamp">
+              <div className={`mot-stamp${reportData?.signatures?.['school-stamp'] ? ' has-image' : ''}`}>
+                {reportData?.signatures?.['school-stamp'] ? (
+                  <img src={reportData.signatures['school-stamp']} alt="Official school stamp" />
+                ) : (
+                  <>OFFICIAL<br />SCHOOL STAMP</>
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         <div className="mot-final-footer">

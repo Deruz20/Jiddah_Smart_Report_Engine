@@ -744,7 +744,7 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
                   <div className="c-field" style={{ width: '200px' }}>
                     <span>Signature:</span>
                     <div className="w-line" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end' }}>
-                      {reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.class_name) ?? ''] && (
+                      {reportData?.settings?.print_preferences?.includeSignatures !== false && reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.class_name) ?? ''] && (
                         <img src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} alt="Signature" style={{ maxHeight: '38px', maxWidth: '100%', objectFit: 'contain', mixBlendMode: 'multiply', filter: 'contrast(1.18) saturate(1.08)', transform: 'rotate(-1deg)' }} />
                       )}
                     </div>
@@ -761,7 +761,7 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
                   <div className="c-field" style={{ width: '200px' }}>
                     <span>Signature:</span>
                     <div className="w-line" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end' }}>
-                      {reportData?.signatures?.['head-teacher'] && (
+                      {reportData?.settings?.print_preferences?.includeSignatures !== false && reportData?.signatures?.['head-teacher'] && (
                         <img src={reportData.signatures['head-teacher']} alt="Signature" style={{ maxHeight: '38px', maxWidth: '100%', objectFit: 'contain', mixBlendMode: 'multiply', filter: 'contrast(1.18) saturate(1.08)', transform: 'rotate(-1deg)' }} />
                       )}
                     </div>
@@ -807,13 +807,15 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
               </div>
             </div>
 
-            <div className={`stamp-box${reportData?.signatures?.['school-stamp'] ? ' has-image' : ''}`}>
-              {reportData?.signatures?.['school-stamp'] ? (
-                <img src={reportData.signatures['school-stamp']} alt="Official school stamp" />
-              ) : (
-                'OFFICIAL STAMP'
-              )}
-            </div>
+            {reportData?.settings?.print_preferences?.includeStamp !== false && (
+              <div className={`stamp-box${reportData?.signatures?.['school-stamp'] ? ' has-image' : ''}`}>
+                {reportData?.signatures?.['school-stamp'] ? (
+                  <img src={reportData.signatures['school-stamp']} alt="Official school stamp" />
+                ) : (
+                  'OFFICIAL STAMP'
+                )}
+              </div>
+            )}
           </footer>
         </div>
       </div>

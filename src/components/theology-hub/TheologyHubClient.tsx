@@ -511,11 +511,16 @@ export default function TheologyHubClient({
         ) : !data || (!activeClassId && activeTab === 'assessment') || (!activeLevel && (activeTab === 'analysis' || activeTab === 'top_students')) ? (
           <TheologyHubEmptyState />
         ) : (
-          <div className="w-full max-w-7xl mx-auto print:max-w-[210mm] print:m-0">
+          <div
+            id="secular-hub-print-root"
+            className="w-full max-w-7xl mx-auto print:max-w-[210mm] print:m-0 report-container"
+            data-report-orientation="portrait"
+            data-report-type="TheologyHub"
+          >
             {/* Assessment Tab */}
             {activeTab === 'assessment' && activeClassId && (
               <div className="font-arabic text-right print:py-0 print:px-2" dir="rtl">
-                <div className="text-center mb-6">
+                <div className="text-center mb-6 hidden print:block">
                   <h1 className="text-xl font-extrabold text-[#059669] mb-1 print:text-black">مدرسة جدة الإسلامية للروضة والابتدائية _ انساغو واكيسو</h1>
                   <h3 className="text-base font-bold mb-2 underline underline-offset-4 text-stone-700 print:text-black">
                     {examPhase === 'bot' ? 'كشف الدرجات لبداية الفترة' : examPhase === 'eot' ? 'كشف الدرجات لنهاية الفترة' : 'كشف الدرجات لمنتصف الفترة'}

@@ -154,23 +154,34 @@
     padding: 0 !important;
     overflow: visible !important;
     page-break-after: always;
-    page-break-inside: avoid;
   }
 
-  #print-portal .report-container[data-report-orientation='portrait']:not(.theology-2up-sheet):not([data-report-type='TheologyMOTReport']) {
+  #secular-hub-print-root.report-container {
+    transform: none !important;
+    zoom: 1 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  #print-portal .report-container[data-report-orientation='portrait']:not(.theology-2up-sheet):not([data-report-type='TheologyMOTReport']),
+  #secular-hub-print-root.report-container[data-report-orientation='portrait'] {
     width: 210mm !important;
-    height: 297mm !important;
+    min-height: 297mm !important;
+    height: auto !important;
   }
 
-  #print-portal .report-container[data-report-orientation='landscape'] {
+  #print-portal .report-container[data-report-orientation='landscape'],
+  #secular-hub-print-root.report-container[data-report-orientation='landscape'] {
     width: 297mm !important;
-    height: 210mm !important;
+    min-height: 210mm !important;
+    height: auto !important;
   }
 
   /* 3b. Theology 2-up sheet strictly constrains height to prevent spillover */
   #print-portal .report-container.theology-2up-sheet {
     width: 210mm !important;
-    height: 297mm !important;
+    height: auto !important;
     min-height: 297mm !important;
     max-height: 297mm !important;
     display: flex !important;

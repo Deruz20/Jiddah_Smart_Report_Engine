@@ -201,8 +201,29 @@ export function getNurseryGrade(mark: number): { grade: NurseryGrade; remark: st
   return { grade: 'E', remark: 'Poor' }
 }
 
+type ReportCommentBands = Pick<GradingBand, 'grade' | 'min' | 'max' | 'remark'>[]
+
 // Subject remarks for secular (primary)
-export function getSubjectRemark(gradeNum: number): string {
+export function getSubjectRemark(scoreOrGradeNum: number, customBands?: ReportCommentBands): string {
+  if (customBands && customBands.length > 0) {
+    // Determine if it's a score or a grade num by checking if it's > 9
+    // A mark would be out of 100, while a grade num is 1-9
+    const score = scoreOrGradeNum > 9 ? scoreOrGradeNum : null;
+    if (score !== null) {
+      const band = customBands.find(candidate => score >= candidate.min && score <= candidate.max)
+      if (band && band.remark) {
+        return band.remark.trim()
+      }
+    } else {
+      const code = getGradeDisplay(scoreOrGradeNum)
+      const band = customBands.find((b) => b.grade === code)
+      if (band && band.remark) {
+        return band.remark.trim()
+      }
+    }
+  }
+
+  const gradeNum = scoreOrGradeNum > 9 ? getSubjectGradeNumber(scoreOrGradeNum) : scoreOrGradeNum;
   switch (gradeNum) {
     case 1: return 'Excellent'
     case 2: return 'Very Good'
@@ -218,7 +239,24 @@ export function getSubjectRemark(gradeNum: number): string {
 }
 
 // Subject remarks for theology (IPLE)
-export function getTheologySubjectRemark(gradeNum: number): string {
+export function getTheologySubjectRemark(scoreOrGradeNum: number, customBands?: ReportCommentBands): string {
+  if (customBands && customBands.length > 0) {
+    const score = scoreOrGradeNum > 9 ? scoreOrGradeNum : null;
+    if (score !== null) {
+      const band = customBands.find(candidate => score >= candidate.min && score <= candidate.max)
+      if (band && band.remark) {
+        return band.remark.trim()
+      }
+    } else {
+      const code = getTheologyGradeDisplay(scoreOrGradeNum, customBands)
+      const band = customBands.find((b) => b.grade === code)
+      if (band && band.remark) {
+        return band.remark.trim()
+      }
+    }
+  }
+
+  const gradeNum = scoreOrGradeNum > 9 ? getTheologyGradeNumber(scoreOrGradeNum) : scoreOrGradeNum;
   switch (gradeNum) {
     case 1: return 'ممتاز' // Excellent
     case 2: return 'جيد جداً' // Very Good
@@ -232,8 +270,6 @@ export function getTheologySubjectRemark(gradeNum: number): string {
     default: return 'راسب'
   }
 }
-
-type ReportCommentBands = Pick<GradingBand, 'grade' | 'min' | 'max' | 'remark'>[]
 
 function getReportCommentBand(
   scores: (number | null | undefined)[] | undefined,

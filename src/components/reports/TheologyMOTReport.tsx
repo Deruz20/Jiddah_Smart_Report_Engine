@@ -416,16 +416,18 @@ export function TheologyCard({ reportData }: { reportData: any }) {
                   {getTheologyComment(totalScore, reportData?.student?.gender, reportData?.settings?.theology_remarks)}
                 </div>
               </div>
-              <div className={`tc-stamp${reportData?.signatures?.['school-stamp'] ? ' has-image' : ''}`}>
-                {reportData?.signatures?.['school-stamp'] ? (
-                  <img src={reportData.signatures['school-stamp']} alt="" />
-                ) : (
-                  <>
-                    <span>الختم الرسمي</span>
-                    <span>للمدرسة</span>
-                  </>
-                )}
-              </div>
+              {reportData?.settings?.print_preferences?.includeStamp !== false && (
+                <div className={`tc-stamp${reportData?.signatures?.['school-stamp'] ? ' has-image' : ''}`}>
+                  {reportData?.signatures?.['school-stamp'] ? (
+                    <img src={reportData.signatures['school-stamp']} alt="" />
+                  ) : (
+                    <>
+                      <span>الختم الرسمي</span>
+                      <span>للمدرسة</span>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
 
           </div>

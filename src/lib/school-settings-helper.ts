@@ -99,6 +99,14 @@ export async function fetchMergedSchoolSettings(supabase: any, gradingCriteria: 
   const merged = {
     ...(rawSchoolSettings || {}),
     ...customConfig,
+    print_preferences: {
+      includeStamp: true,
+      includeSignatures: true,
+      watermarkEnabled: false,
+      highFidelityColors: true,
+      ...(rawSchoolSettings?.print_preferences || {}),
+      ...(customConfig?.print_preferences || {}),
+    },
     ...(rawSchoolSettings?.name ? { name: rawSchoolSettings.name, school_name: rawSchoolSettings.name } : {}),
     ...(rawSchoolSettings?.school_name ? { name: rawSchoolSettings.school_name, school_name: rawSchoolSettings.school_name } : {}),
     ...(rawSchoolSettings?.address ? { address: rawSchoolSettings.address } : {}),

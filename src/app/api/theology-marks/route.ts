@@ -142,9 +142,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Subject is outside the assigned theology class level.' }, { status: 403 })
     }
 
+    const parseScore = (val: any) => {
+      if (val === undefined) return undefined
+      if (val === null || val === '') return null
+      const parsed = parseFloat(val)
+      return Number.isFinite(parsed) ? parsed : null
+    }
+
     const updateData: any = {}
-    if (mot_score !== undefined) updateData.mot_score = mot_score === '' ? null : parseFloat(mot_score)
-    if (eot_score !== undefined) updateData.eot_score = eot_score === '' ? null : parseFloat(eot_score)
+    if (mot_score !== undefined) updateData.mot_score = parseScore(mot_score)
+    if (eot_score !== undefined) updateData.eot_score = parseScore(eot_score)
 
     // Check if record already exists to handle re-entry update gracefully
     const { data: existing, error: existErr } = await supabase
@@ -250,9 +257,16 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Subject is outside the assigned theology class level.' }, { status: 403 })
     }
 
+    const parseScore = (val: any) => {
+      if (val === undefined) return undefined
+      if (val === null || val === '') return null
+      const parsed = parseFloat(val)
+      return Number.isFinite(parsed) ? parsed : null
+    }
+
     const updateData: any = {}
-    if (mot_score !== undefined) updateData.mot_score = mot_score === '' ? null : parseFloat(mot_score)
-    if (eot_score !== undefined) updateData.eot_score = eot_score === '' ? null : parseFloat(eot_score)
+    if (mot_score !== undefined) updateData.mot_score = parseScore(mot_score)
+    if (eot_score !== undefined) updateData.eot_score = parseScore(eot_score)
 
     const { data, error } = await supabase.from('theology_marks').update(updateData).eq('id', id).select()
 

@@ -5,6 +5,10 @@ import { transliterateEnglishToArabic } from '@/lib/transliterate'
 import { getClassTeacherSignatureKey } from '@/utils/signatures'
 
 export default function NurseryTheologyEOTReport({ reportData }: any) {
+  const printPrefs = reportData?.settings?.print_preferences
+  const includeSignatures = printPrefs?.includeSignatures !== undefined ? Boolean(printPrefs.includeSignatures) : true
+  const includeStamp = Boolean(printPrefs?.includeStamp)
+
   const getTheologyRemark = (score: number | null): string => {
     if (score == null) return '--'
     if (score >= 90) return 'ممتاز'
@@ -464,18 +468,22 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
           <div className="sign-field">
             <div>تقرير مرب الفصل</div>
             <div className="sign-line" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', height: '40px' }}>
-              {reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.class_name) ?? ''] && (
+              {includeSignatures && reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.class_name) ?? ''] && (
                 <img src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} alt="Signature" style={{ maxHeight: '30px' }} />
               )}
             </div>
           </div>
-          <div className="footer-stamp">
-            الختم الرسمي للمدرسة
+          <div className="footer-stamp" style={{ overflow: 'hidden', padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {includeStamp && reportData?.signatures?.['school-stamp'] ? (
+              <img src={reportData.signatures['school-stamp']} alt="" style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
+            ) : (
+              'الختم الرسمي للمدرسة'
+            )}
           </div>
           <div className="sign-field">
             <div>تقرير مدير المدرسة</div>
             <div className="sign-line" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', height: '40px' }}>
-              {reportData?.signatures?.['head-teacher'] && (
+              {includeSignatures && reportData?.signatures?.['head-teacher'] && (
                 <img src={reportData.signatures['head-teacher']} alt="Signature" style={{ maxHeight: '30px' }} />
               )}
             </div>

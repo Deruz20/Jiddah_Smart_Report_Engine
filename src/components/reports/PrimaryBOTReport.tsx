@@ -17,12 +17,16 @@ export default function PrimaryBOTReport({ reportData }: any) {
     reportData?.student?.class_name ||
     "";
 
+  const printPrefs = reportData?.settings?.print_preferences;
+  const includeSignatures = printPrefs?.includeSignatures !== undefined ? Boolean(printPrefs.includeSignatures) : true;
+  const includeStamp = Boolean(printPrefs?.includeStamp);
+
   const teacherComment =
     reportData?.circular?.class_teacher_comment ??
-    getClassTeacherComment(reportData?.circular?.division ?? null);
+    getClassTeacherComment(reportData?.circular?.division ?? null, undefined, reportData?.settings?.grading_scale);
   const headComment =
     reportData?.circular?.head_teacher_comment ??
-    getHeadTeacherComment(reportData?.circular?.division ?? null);
+    getHeadTeacherComment(reportData?.circular?.division ?? null, undefined, reportData?.settings?.grading_scale);
   const conductRemark =
     reportData?.circular?.conduct_remark ??
     getConductRemark(reportData?.circular?.division ?? null);
@@ -394,7 +398,7 @@ export default function PrimaryBOTReport({ reportData }: any) {
             <div className="bot-comment-value">{teacherComment}</div>
             <span className="bot-sig-label">Signature:</span>
             <div className="bot-sig-line">
-              {classTeacherSig && (
+              {includeSignatures && classTeacherSig && (
                 <img src={classTeacherSig} alt="Class Teacher Signature" />
               )}
             </div>
@@ -405,14 +409,20 @@ export default function PrimaryBOTReport({ reportData }: any) {
             <div className="bot-comment-value">{headComment}</div>
             <span className="bot-sig-label">Signature:</span>
             <div className="bot-sig-line">
-              {headTeacherSig && (
+              {includeSignatures && headTeacherSig && (
                 <img src={headTeacherSig} alt="Head Teacher Signature" />
               )}
             </div>
           </div>
 
           <div className="bot-footer-stamp">
-            <div className="bot-stamp">OFFICIAL<br/>SCHOOL STAMP</div>
+            <div className="bot-stamp" style={{ overflow: 'hidden', padding: '2px' }}>
+              {includeStamp && reportData?.signatures?.['school-stamp'] ? (
+                <img src={reportData.signatures['school-stamp']} alt="Official School Stamp" style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
+              ) : (
+                <>OFFICIAL<br/>SCHOOL STAMP</>
+              )}
+            </div>
           </div>
         </div>
 

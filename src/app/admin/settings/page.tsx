@@ -11,20 +11,15 @@ export default async function TermSettingsPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return <div className="p-10 text-stone-300 bg-[var(--bg-canvas,#090C0A)] min-h-screen">Unauthorized</div>;
 
-  const metaRole = user.app_metadata?.role || user.user_metadata?.role;
+  const { verifyDataAccess } = await import('@/lib/auth-server');
+  const authRes = await verifyDataAccess(supabase, user, 'read');
   const { isAdministratorRole } = await import('@/lib/teacher-access');
-  const isAdmin = isAdministratorRole(metaRole);
-
-  if (!isAdmin) {
-    const { verifyDataAccess } = await import('@/lib/auth-server');
-    const authRes = await verifyDataAccess(supabase, user, 'read');
-    if (!authRes.isAuthorized || !isAdministratorRole(authRes.role)) {
-      return (
-        <div className="p-10 text-rose-400 bg-[var(--bg-canvas,#090C0A)] min-h-screen font-medium">
-          Access Denied: You must be an Administrator to access School Settings.
-        </div>
-      );
-    }
+  if (!authRes.isAuthorized || !isAdministratorRole(authRes.canonicalRole || authRes.role)) {
+    return (
+      <div className="p-10 text-rose-400 bg-[var(--bg-canvas,#090C0A)] min-h-screen font-medium">
+        Access Denied: You must be an Administrator to access School Settings.
+      </div>
+    );
   }
 
   const { data: terms, error } = await supabase

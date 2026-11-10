@@ -518,7 +518,11 @@ export default function TheologyHubClient({
         ) : !data || (!activeClassId && activeTab === 'assessment') || (!activeLevel && (activeTab === 'analysis' || activeTab === 'top_students')) ? (
           <TheologyHubEmptyState />
         ) : (
-          <div className="w-full max-w-7xl mx-auto print:max-w-[210mm] print:m-0">
+          <div
+            id="theology-hub-print-root"
+            className="w-full max-w-7xl mx-auto print:max-w-[210mm] print:m-0 report-container"
+            data-report-orientation="portrait"
+          >
             {/* Assessment Tab */}
             {activeTab === 'assessment' && activeClassId && (
               <div className="font-arabic text-right print:py-0 print:px-2" dir="rtl">

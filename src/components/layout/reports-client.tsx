@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import Link from 'next/link';
+import { toast } from 'sonner';
 import { FileText, Download, Printer, RefreshCw, Check, ChevronDown, Eye, Zap, BarChart2, Search } from "lucide-react";
 import { HeroSection } from "@/components/HeroSection";
 import { PageState } from "@/components/PageState";
@@ -52,12 +53,12 @@ export default function ReportsClient({
 
   const handleGenerate = async () => {
     if (!selectedTermId) {
-      alert("Select a term first");
+      toast.warning("Please select an academic term first.");
       return;
     }
     const targets = classStudents.filter((s) => s.enrollmentId);
     if (targets.length === 0) {
-      alert("No students with enrollments in this class");
+      toast.warning("No students with active enrollments in this class.");
       return;
     }
     setGenerating(true);
@@ -81,8 +82,9 @@ export default function ReportsClient({
       }
       setGenerationDone(true);
       setValidatedCount(done);
+      toast.success(`Successfully prepared ${done} reports.`);
     } catch (err: any) {
-      alert(err.message || "Report generation failed");
+      toast.error(err.message || "Report generation failed.");
     } finally {
       setGenerating(false);
     }
@@ -124,12 +126,12 @@ export default function ReportsClient({
   const previewFirstInClass = (className: string, termId?: string) => {
     const termIdToUse = termId || selectedTermId;
     if (!termIdToUse) {
-      alert("Select a term first");
+      toast.warning("Please select an academic term first.");
       return;
     }
     const student = students.find((s) => s.class === className && s.enrollmentId);
     if (!student?.enrollmentId) {
-      alert(`No enrolled students found in ${className}`);
+      toast.warning(`No enrolled students found in ${className}.`);
       return;
     }
     window.open(buildReportPreviewUrl({
@@ -142,12 +144,12 @@ export default function ReportsClient({
   const printFirstInClass = (className: string, termId?: string) => {
     const termIdToUse = termId || selectedTermId;
     if (!termIdToUse) {
-      alert("Select a term first");
+      toast.warning("Please select an academic term first.");
       return;
     }
     const student = students.find((s) => s.class === className && s.enrollmentId);
     if (!student?.enrollmentId) {
-      alert(`No enrolled students found in ${className}`);
+      toast.warning(`No enrolled students found in ${className}.`);
       return;
     }
     window.open(buildReportPreviewUrl({
@@ -160,12 +162,12 @@ export default function ReportsClient({
 
   const openClassBatchPreview = () => {
     if (!selectedTermId) {
-      alert("Select a term first");
+      toast.warning("Please select an academic term first.");
       return;
     }
     const first = classStudents.find((s) => s.enrollmentId);
     if (!first?.enrollmentId) {
-      alert("No students with enrollments in this class");
+      toast.warning("No students with enrollments in this class.");
       return;
     }
     window.open(buildReportPreviewUrl({
@@ -357,7 +359,7 @@ export default function ReportsClient({
                             onClick={() => {
                               const student = students.find((s) => s.class === r.class && s.enrollmentId);
                               if (!student?.enrollmentId || !(r.termId || selectedTermId)) {
-                                alert("Cannot open report — missing student or term");
+                                toast.warning("Cannot open report — missing enrolled student or academic term.");
                                 return;
                               }
                               window.open(

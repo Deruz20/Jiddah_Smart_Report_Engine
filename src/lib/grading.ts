@@ -1,4 +1,4 @@
-import { DEFAULT_GRADING_BANDS, type GradingBand } from './school-settings-helper.ts'
+import { DEFAULT_GRADING_BANDS, type GradingBand } from './school-settings-helper'
 
 export type GradeCode = 'D1' | 'D2' | 'C3' | 'C4' | 'C5' | 'C6' | 'P7' | 'P8' | 'F9'
 export type Division = 'I' | 'II' | 'III' | 'IV' | 'U'
@@ -6,7 +6,20 @@ export type NurseryGrade = 'A' | 'B' | 'C' | 'D' | 'E'
 export type PromotionStatus = 'Promote' | 'Probation' | 'Repeat' | 'Try Next Class'
 
 // UNEB subject grade (1-9) from mark (Secular)
-export function getSubjectGradeNumber(mark: number): number {
+export function getSubjectGradeNumber(mark: number, customBands?: GradingBand[]): number {
+  if (customBands && customBands.length > 0) {
+    const sorted = [...customBands]
+      .filter((b) => Number.isFinite(b.min) && Number.isFinite(b.max))
+      .sort((a, b) => b.min - a.min)
+    for (let i = 0; i < sorted.length; i++) {
+      const b = sorted[i]
+      if (mark >= b.min) {
+        const num = parseInt(String(b.grade).replace(/\D/g, ''), 10)
+        return !isNaN(num) ? num : i + 1
+      }
+    }
+  }
+
   if (mark >= 85) return 1
   if (mark >= 75) return 2
   if (mark >= 70) return 3
@@ -205,7 +218,17 @@ export function getNurseryGrade(mark: number): { grade: NurseryGrade; remark: st
 }
 
 // Subject remarks for secular (primary)
-export function getSubjectRemark(gradeNum: number): string {
+export function getSubjectRemark(gradeNum: number, customBands?: GradingBand[]): string {
+  if (customBands && customBands.length > 0) {
+    const match = customBands.find((b) => {
+      const num = parseInt(String(b.grade).replace(/\D/g, ''), 10)
+      return num === gradeNum
+    })
+    if (match && match.remark && match.remark.trim()) {
+      return match.remark.trim()
+    }
+  }
+
   switch (gradeNum) {
     case 1: return 'Excellent'
     case 2: return 'Very Good'
@@ -221,7 +244,17 @@ export function getSubjectRemark(gradeNum: number): string {
 }
 
 // Subject remarks for theology (IPLE)
-export function getTheologySubjectRemark(gradeNum: number): string {
+export function getTheologySubjectRemark(gradeNum: number, customTheologyBands?: any[]): string {
+  if (customTheologyBands && customTheologyBands.length > 0) {
+    const match = customTheologyBands.find((b) => {
+      const num = parseInt(String(b.grade).replace(/\D/g, ''), 10)
+      return num === gradeNum
+    })
+    if (match && match.remark && match.remark.trim()) {
+      return match.remark.trim()
+    }
+  }
+
   switch (gradeNum) {
     case 1: return 'ممتاز' // Excellent
     case 2: return 'جيد جداً' // Very Good

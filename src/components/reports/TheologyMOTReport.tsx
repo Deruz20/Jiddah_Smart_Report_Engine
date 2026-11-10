@@ -357,6 +357,9 @@ export function TheologyCard({ reportData }: { reportData: any }) {
     ? (reportData?.theology?.eot_total ?? 0)
     : (reportData?.theology?.mot_total ?? 0)
 
+  const printPrefs = reportData?.settings?.print_preferences
+  const includeStamp = Boolean(printPrefs?.includeStamp)
+
   return (
     <div className="theology-card-page">
       <div className="theology-card-outer">
@@ -443,9 +446,15 @@ export function TheologyCard({ reportData }: { reportData: any }) {
                   {getTheologyComment(totalScore, reportData?.student?.gender, reportData?.settings?.theology_remarks)}
                 </div>
               </div>
-              <div className="tc-stamp">
-                <span>الختم الرسمي</span>
-                <span>للمدرسة</span>
+              <div className="tc-stamp" style={{ overflow: 'hidden', padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {includeStamp && reportData?.signatures?.['school-stamp'] ? (
+                  <img src={reportData.signatures['school-stamp']} alt="" style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
+                ) : (
+                  <>
+                    <span>الختم الرسمي</span>
+                    <span>للمدرسة</span>
+                  </>
+                )}
               </div>
             </div>
 

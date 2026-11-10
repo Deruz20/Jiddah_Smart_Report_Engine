@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { Plus, Edit, Trash2, Search, BookOpen } from "lucide-react";
 import { HeroSection } from "@/components/HeroSection";
 import { Button } from "@/components/figma-ui/ui/button";
@@ -124,7 +125,10 @@ export default function TheologyClient({
   });
 
   const handleSaveBatch = async () => {
-    if (!selectedEnrollmentId) return alert("Student is required");
+    if (!selectedEnrollmentId) {
+      toast.warning("Student is required");
+      return;
+    }
     setIsSubmitting(true);
     try {
       const student = enrollments.find(e => e.id === selectedEnrollmentId);
@@ -198,9 +202,10 @@ export default function TheologyClient({
       setIsCreateOpen(false);
       setSelectedEnrollmentId("");
       setBatchScores({});
+      toast.success("Theology marks saved successfully.");
       refetch();
     } catch (err: any) {
-      alert(err.message || "Failed to save marks");
+      toast.error(err.message || "Failed to save marks");
     } finally {
       setIsSubmitting(false);
     }
@@ -218,9 +223,10 @@ export default function TheologyClient({
       );
       
       setIsEditOpen(false);
+      toast.success("Theology marks updated successfully.");
       refetch();
     } catch (err: any) {
-      alert(err.message || "Failed to update marks");
+      toast.error(err.message || "Failed to update marks");
     } finally {
       setIsSubmitting(false);
     }
@@ -232,9 +238,10 @@ export default function TheologyClient({
       await powerSync.execute('DELETE FROM theology_marks WHERE id = ?', [selectedMark.id]);
       
       setIsDeleteOpen(false);
+      toast.success("Theology marks deleted successfully.");
       refetch();
     } catch (err: any) {
-      alert(err.message || "Failed to delete marks");
+      toast.error(err.message || "Failed to delete marks");
     } finally {
       setIsSubmitting(false);
     }
@@ -242,7 +249,8 @@ export default function TheologyClient({
 
   const openCreate = () => {
     if (!activeTerm) {
-      return alert("No active term found. Please configure a term first.");
+      toast.warning("No active term found. Please configure a term first.");
+      return;
     }
     setSelectedEnrollmentId("");
     setBatchScores({});

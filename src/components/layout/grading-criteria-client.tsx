@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { Plus, Edit, Trash2, GraduationCap, ChevronDown, Save } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 
@@ -80,7 +81,7 @@ export function GradingCriteriaClient({
 
   const handleSave = async () => {
     if (formValues.min_value === undefined || formValues.max_value === undefined || !formValues.metric_type || !formValues.output_type || !formValues.output_text) {
-      alert("Please fill all required fields");
+      toast.warning("Please fill all required fields");
       return;
     }
 
@@ -99,16 +100,18 @@ export function GradingCriteriaClient({
       if (isEditing === "new") {
         const { error } = await supabase.from("grading_criteria").insert([payload]);
         if (error) throw error;
+        toast.success("Grading rule added successfully.");
       } else {
         const { error } = await supabase.from("grading_criteria").update(payload).eq("id", isEditing);
         if (error) throw error;
+        toast.success("Grading rule updated successfully.");
       }
 
       setIsEditing(null);
       setFormValues({});
       fetchData();
     } catch (error: any) {
-      alert("Error saving rule: " + error.message);
+      toast.error("Error saving rule: " + error.message);
     }
   };
 
@@ -118,9 +121,10 @@ export function GradingCriteriaClient({
       const supabase = createClient();
       const { error } = await supabase.from("grading_criteria").delete().eq("id", id);
       if (error) throw error;
+      toast.success("Grading rule deleted.");
       fetchData();
     } catch (error: any) {
-      alert("Error deleting rule: " + error.message);
+      toast.error("Error deleting rule: " + error.message);
     }
   };
 

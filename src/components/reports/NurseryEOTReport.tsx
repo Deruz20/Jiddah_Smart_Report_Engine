@@ -7,6 +7,9 @@ import { getClassTeacherSignatureKey } from "@/utils/signatures";
 
 export default function NurseryEOTReport({ reportData }: any) {
   const branding = resolveReportBranding(reportData)
+  const printPrefs = reportData?.settings?.print_preferences
+  const includeSignatures = printPrefs?.includeSignatures !== undefined ? Boolean(printPrefs.includeSignatures) : true
+  const includeStamp = Boolean(printPrefs?.includeStamp)
   const subjects = (reportData?.circular?.subjects || []).filter((s: any) => {
     if (reportData?.student?.class_name?.toLowerCase().includes('top') && s.subject_name.toLowerCase().includes('writing')) {
       return false;
@@ -422,7 +425,7 @@ export default function NurseryEOTReport({ reportData }: any) {
                 <span className="label" style={{ minWidth: '100px' }}>Class Teacher</span>
                 <div className="line" style={{ position: 'relative' }}>
                   {getNurseryTeacherComment(grades)}
-                  {reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.class_name) ?? ''] && (
+                  {includeSignatures && reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.class_name) ?? ''] && (
                     <img src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} alt="Signature" style={{ position: 'absolute', bottom: 0, height: '40px', right: 0 }} />
                   )}
                 </div>
@@ -431,7 +434,7 @@ export default function NurseryEOTReport({ reportData }: any) {
                 <span className="label" style={{ minWidth: '100px' }}>Head Teacher</span>
                 <div className="line" style={{ position: 'relative' }}>
                   {getNurseryTeacherComment(grades)}
-                  {reportData?.signatures?.['head-teacher'] && (
+                  {includeSignatures && reportData?.signatures?.['head-teacher'] && (
                     <img src={reportData.signatures['head-teacher']} alt="Signature" style={{ position: 'absolute', bottom: 0, height: '40px', right: 0 }} />
                   )}
                 </div>
@@ -443,8 +446,12 @@ export default function NurseryEOTReport({ reportData }: any) {
               </div>
             </div>
 
-            <div className="stamp-box">
-              OFFICIAL STAMP
+            <div className="stamp-box" style={{ overflow: 'hidden', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {includeStamp && reportData?.signatures?.['school-stamp'] ? (
+                <img src={reportData.signatures['school-stamp']} alt="Official Stamp" style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
+              ) : (
+                'OFFICIAL STAMP'
+              )}
             </div>
           </div>
           

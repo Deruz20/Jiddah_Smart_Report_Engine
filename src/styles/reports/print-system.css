@@ -117,7 +117,9 @@
     visibility: visible !important;
   }
 
-  #secular-hub-print-root {
+  #secular-hub-print-root,
+  #theology-hub-print-root,
+  .report-renderer-container {
     position: relative !important;
     display: block !important;
     width: 100% !important;
@@ -131,18 +133,26 @@
   }
 
   #secular-hub-print-root,
-  #secular-hub-print-root * {
+  #secular-hub-print-root *,
+  #theology-hub-print-root,
+  #theology-hub-print-root *,
+  .report-renderer-container,
+  .report-renderer-container * {
     visibility: visible !important;
   }
 
-  body:has(#secular-hub-print-root) *:has(#secular-hub-print-root) {
+  body:has(#secular-hub-print-root) *:has(#secular-hub-print-root),
+  body:has(#theology-hub-print-root) *:has(#theology-hub-print-root),
+  body:has(.report-renderer-container) *:has(.report-renderer-container) {
     height: auto !important;
     min-height: 0 !important;
     max-height: none !important;
     overflow: visible !important;
   }
 
-  #secular-hub-print-root .hidden {
+  #secular-hub-print-root .hidden,
+  #theology-hub-print-root .hidden,
+  .report-renderer-container .hidden {
     display: block !important;
   }
 
@@ -229,10 +239,14 @@
 }
 
 /* Assign named @page to report containers by orientation attribute */
-#print-portal .report-container[data-report-orientation='portrait'] {
+#print-portal .report-container[data-report-orientation='portrait'],
+#secular-hub-print-root[data-report-orientation='portrait'],
+#theology-hub-print-root[data-report-orientation='portrait'] {
   page: portrait-page;
 }
 
-#print-portal .report-container[data-report-orientation='landscape'] {
+#print-portal .report-container[data-report-orientation='landscape'],
+#secular-hub-print-root[data-report-orientation='landscape'],
+#theology-hub-print-root[data-report-orientation='landscape'] {
   page: landscape-page;
 }

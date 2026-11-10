@@ -17,12 +17,16 @@ export default function PrimaryMOTReport({ reportData }: any) {
     reportData?.student?.class_name ||
     "";
 
+  const printPrefs = reportData?.settings?.print_preferences;
+  const includeSignatures = printPrefs?.includeSignatures !== undefined ? Boolean(printPrefs.includeSignatures) : true;
+  const includeStamp = Boolean(printPrefs?.includeStamp);
+
   const teacherComment =
     reportData?.circular?.class_teacher_comment ??
-    getClassTeacherComment(reportData?.circular?.division ?? null);
+    getClassTeacherComment(reportData?.circular?.division ?? null, undefined, reportData?.settings?.grading_scale);
   const headComment =
     reportData?.circular?.head_teacher_comment ??
-    getHeadTeacherComment(reportData?.circular?.division ?? null);
+    getHeadTeacherComment(reportData?.circular?.division ?? null, undefined, reportData?.settings?.grading_scale);
   const conductRemark =
     reportData?.circular?.conduct_remark ??
     getConductRemark(reportData?.circular?.division ?? null);
@@ -335,7 +339,10 @@ export default function PrimaryMOTReport({ reportData }: any) {
               Year: <div className="mot-line" style={{ fontWeight: 800, textAlign: 'center' }}>{reportData?.term?.academic_year ?? "--"}</div>
             </div>
             <div className="mot-field" style={{ flex: 1.2 }}>
-              DIV: <div className="mot-line" style={{ fontWeight: 900, textAlign: 'center', color: '#b10000' }}>{reportData?.circular?.division || reportData?.student?.division || "_________"}</div>
+              Division: <div className="mot-line" style={{ fontWeight: 900, textAlign: 'center', color: '#b10000' }}>{reportData?.circular?.division ?? "_________"}</div>
+            </div>
+            <div className="mot-field" style={{ flex: 1 }}>
+              AGG: <div className="mot-line" style={{ fontWeight: 900, textAlign: 'center', color: '#b10000' }}>{reportData?.circular?.mot_aggregate ?? "_________"}</div>
             </div>
           </div>
           <div className="mot-info-row" style={{ marginBottom: 0 }}>
@@ -405,7 +412,7 @@ export default function PrimaryMOTReport({ reportData }: any) {
             <div className="mot-comment-value">{teacherComment}</div>
             <span className="mot-sig-label">Signature:</span>
             <div className="mot-sig-line">
-              {classTeacherSig && (
+              {includeSignatures && classTeacherSig && (
                 <img src={classTeacherSig} alt="Class Teacher Signature" />
               )}
             </div>
@@ -416,14 +423,20 @@ export default function PrimaryMOTReport({ reportData }: any) {
             <div className="mot-comment-value">{headComment}</div>
             <span className="mot-sig-label">Signature:</span>
             <div className="mot-sig-line">
-              {headTeacherSig && (
+              {includeSignatures && headTeacherSig && (
                 <img src={headTeacherSig} alt="Head Teacher Signature" />
               )}
             </div>
           </div>
 
           <div className="mot-footer-stamp">
-            <div className="mot-stamp">OFFICIAL<br/>SCHOOL STAMP</div>
+            <div className="mot-stamp" style={{ overflow: 'hidden', padding: '2px' }}>
+              {includeStamp && reportData?.signatures?.['school-stamp'] ? (
+                <img src={reportData.signatures['school-stamp']} alt="Official School Stamp" style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
+              ) : (
+                <>OFFICIAL<br/>SCHOOL STAMP</>
+              )}
+            </div>
           </div>
         </div>
 

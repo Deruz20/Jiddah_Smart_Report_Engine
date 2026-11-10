@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { Plus, Edit, Trash2, Search, BookOpen, Loader2 } from "lucide-react";
 import { HeroSection } from "@/components/HeroSection";
 import { Button } from "@/components/figma-ui/ui/button";
@@ -91,7 +92,7 @@ export default function CircularClient({
     } catch (err: any) {
       console.error('supabase error', { name: err?.name, message: err?.message, code: err?.code, details: err?.details, hint: err?.hint, status: err?.status, full: err })
       if (err.message && err.message.includes('no such column')) {
-        alert('System update required. Please log out and clear your browser cache/site data to sync the latest version.');
+        toast.warning('System update required. Please log out and clear browser cache to sync the latest version.');
       } else {
         console.error(err);
       }
@@ -129,7 +130,10 @@ export default function CircularClient({
   });
 
   const handleSaveBatch = async () => {
-    if (!selectedEnrollmentId) return alert("Student is required");
+    if (!selectedEnrollmentId) {
+      toast.warning("Student is required");
+      return;
+    }
     setIsSubmitting(true);
     try {
       const student = enrollments.find(e => e.id === selectedEnrollmentId);
@@ -207,9 +211,10 @@ export default function CircularClient({
       setIsCreateOpen(false);
       setSelectedEnrollmentId("");
       setBatchScores({});
+      toast.success("Marks saved successfully.");
       refetch();
     } catch (err: any) {
-      alert(err.message || "Failed to save marks");
+      toast.error(err.message || "Failed to save marks");
     } finally {
       setIsSubmitting(false);
     }
@@ -228,9 +233,10 @@ export default function CircularClient({
       );
       
       setIsEditOpen(false);
+      toast.success("Marks updated successfully.");
       refetch();
     } catch (err: any) {
-      alert(err.message || "Failed to update marks");
+      toast.error(err.message || "Failed to update marks");
     } finally {
       setIsSubmitting(false);
     }
@@ -242,9 +248,10 @@ export default function CircularClient({
       await powerSync.execute('DELETE FROM circular_marks WHERE id = ?', [selectedMark.id]);
       
       setIsDeleteOpen(false);
+      toast.success("Marks deleted successfully.");
       refetch();
     } catch (err: any) {
-      alert(err.message || "Failed to delete marks");
+      toast.error(err.message || "Failed to delete marks");
     } finally {
       setIsSubmitting(false);
     }
@@ -252,7 +259,8 @@ export default function CircularClient({
 
   const openCreate = () => {
     if (!activeTerm) {
-      return alert("No active term found. Please configure a term first.");
+      toast.warning("No active term found. Please configure a term first.");
+      return;
     }
     setSelectedEnrollmentId("");
     setBatchScores({});

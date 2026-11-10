@@ -7,13 +7,17 @@ import { getClassTeacherSignatureKey } from '@/utils/signatures'
 export default function P7EOTReport({ reportData }: any) {
   const branding = resolveReportBranding(reportData)
   const gradingBands = resolveReportGradingBands(reportData)
+  const printPrefs = reportData?.settings?.print_preferences
+  const includeSignatures = printPrefs?.includeSignatures !== undefined ? Boolean(printPrefs.includeSignatures) : true
+  const includeStamp = Boolean(printPrefs?.includeStamp)
+
   const teacherComment =
     reportData?.circular?.class_teacher_comment ??
-    getClassTeacherComment(reportData?.circular?.division ?? null)
+    getClassTeacherComment(reportData?.circular?.division ?? null, undefined, gradingBands)
 
   const headComment =
     reportData?.circular?.head_teacher_comment ??
-    getHeadTeacherComment(reportData?.circular?.division ?? null)
+    getHeadTeacherComment(reportData?.circular?.division ?? null, undefined, gradingBands)
 
   const conductRemark =
     reportData?.circular?.conduct_remark ??
@@ -730,7 +734,7 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
                   <div className="c-field" style={{ width: '200px' }}>
                     <span>Signature:</span>
                     <div className="w-line" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end' }}>
-                      {reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.class_name) ?? ''] && (
+                      {includeSignatures && reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.class_name) ?? ''] && (
                         <img src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} alt="Signature" style={{ maxHeight: '24px' }} />
                       )}
                     </div>
@@ -747,7 +751,7 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
                   <div className="c-field" style={{ width: '200px' }}>
                     <span>Signature:</span>
                     <div className="w-line" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end' }}>
-                      {reportData?.signatures?.['head-teacher'] && (
+                      {includeSignatures && reportData?.signatures?.['head-teacher'] && (
                         <img src={reportData.signatures['head-teacher']} alt="Signature" style={{ maxHeight: '24px' }} />
                       )}
                     </div>
@@ -793,8 +797,12 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
               </div>
             </div>
 
-            <div className="stamp-box">
-              OFFICIAL STAMP
+            <div className="stamp-box" style={{ overflow: 'hidden', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {includeStamp && reportData?.signatures?.['school-stamp'] ? (
+                <img src={reportData.signatures['school-stamp']} alt="Official Stamp" style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
+              ) : (
+                'OFFICIAL STAMP'
+              )}
             </div>
           </footer>
         </div>

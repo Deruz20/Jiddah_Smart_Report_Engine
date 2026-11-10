@@ -2,10 +2,11 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
+import { escapeCSV } from '../utils/csvExport.ts'
+import { sniffImageMimeType } from '../lib/image-sniff.ts'
 
 test('Wave 6: Security Hardening & Defenses Suite', async (t) => {
   await t.test('1. CSV / Excel Formula Injection (CWE-1236) Neutralization', async () => {
-    const { escapeCSV } = await import('../../src/utils/csvExport.ts')
 
     // Formula injection vectors starting with =, +, -, @, \t, \r are prepended with single quote
     assert.equal(escapeCSV('=SUM(A1:A10)'), `"=SUM(A1:A10)`.startsWith(`'`) ? `'=SUM(A1:A10)` : `'=SUM(A1:A10)`)
@@ -65,8 +66,6 @@ test('Wave 6: Security Hardening & Defenses Suite', async (t) => {
   })
 
   await t.test('5. Upload Magic Byte Content Sniffing (CWE-434 Defense)', async () => {
-    const { sniffImageMimeType } = await import('../../src/lib/image-sniff.ts')
-
     // Valid PNG buffer
     const pngBuffer = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d])
     assert.equal(sniffImageMimeType(pngBuffer), 'image/png')

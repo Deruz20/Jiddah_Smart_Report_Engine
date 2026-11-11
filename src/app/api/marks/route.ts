@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { isCoreSubject } from '@/lib/grading'
 import { resolveSectionType } from '@/lib/section-type'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
-import { verifyDataAccess } from '@/lib/auth-server'
+import { verifyDataAccess, resolveUserScope, canAccessSubjectInScope } from '@/lib/auth-server'
 import { recordActivity } from '@/lib/api-server'
 import { canAccessClass } from '@/lib/teacher-access'
 
@@ -164,6 +164,20 @@ export async function GET(request: NextRequest) {
       circular_marks = [];
     }
 
+    const scope = resolveUserScope(authRes);
+    if (!scope.isFullAccess && scope.assignedSubjects.length > 0) {
+      circular_marks = circular_marks.filter(
+        (m: any) =>
+          canAccessSubjectInScope(scope, enrollment.circular_class_id, m.subject_id, 'secular') ||
+          canAccessSubjectInScope(scope, enrollment.circular_class_id, m.subject_name, 'secular')
+      );
+      theology_marks = theology_marks.filter(
+        (m: any) =>
+          canAccessSubjectInScope(scope, enrollment.theology_class_id, m.subject_id, 'theology') ||
+          canAccessSubjectInScope(scope, enrollment.theology_class_id, m.subject_name_arabic, 'theology')
+      );
+    }
+
     return withCors(request, NextResponse.json({
       circular_marks,
       theology_marks,
@@ -255,6 +269,17 @@ export async function POST(request: NextRequest) {
         })
 
       if (circularUpsert.length > 0) {
+        for (const row of circularUpsert) {
+          for (const key of ['bot_score', 'mot_score', 'eot_score'] as const) {
+            const v = row[key]
+            if (v !== undefined && v !== null && (typeof v !== 'number' || Number.isNaN(v) || v < 0 || v > 100)) {
+              return withCors(
+                request,
+                NextResponse.json({ error: `Invalid ${key}: scores must be between 0 and 100.` }, { status: 400 })
+              )
+            }
+          }
+        }
         // Validation: Ensure all subject_ids match the enrollment's section
         const subjectIds = circularUpsert.map((u: any) => u.subject_id)
         const subjects: any[] = []

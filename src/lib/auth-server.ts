@@ -15,6 +15,14 @@ import {
 } from './teacher-access.ts';
 
 export type { AuthAccessResult, ClassAssignment, Department, ActionType } from './teacher-access.ts';
+export {
+  resolveUserScope,
+  canAccessClassInScope,
+  canAccessSubjectInScope,
+  canAccessFullClassBroadsheet,
+  type ResolvedUserScope,
+  type SubjectClassPair,
+} from './access-scope.ts';
 
 function parseLegacyClassList(raw: unknown): string[] {
   if (!raw) return [];
@@ -191,16 +199,24 @@ export async function verifyDataAccess(
 
   let assignments: ClassAssignment[] = [];
   if (isTeacherLevelRole(profile.role)) {
-    const [assignmentRes, homeroomRes] = await Promise.all([
+    let [assignmentRes, homeroomRes] = await Promise.all([
       directory
         .from('teacher_class_assignments')
-        .select('class_id, class_type')
+        .select('class_id, class_type, subject_id')
         .eq('teacher_id', profile.id),
       directory
         .from('circular_classes')
         .select('id')
         .eq('class_teacher_id', profile.id),
     ]);
+
+    if (assignmentRes.error && assignmentRes.error.message?.includes('subject_id')) {
+      const retryAssign = await directory
+        .from('teacher_class_assignments')
+        .select('class_id, class_type')
+        .eq('teacher_id', profile.id);
+      assignmentRes = retryAssign as any;
+    }
 
     const assignmentLookupDenied = accessDeniedForLookupError(
       assignmentRes.error,
@@ -220,18 +236,23 @@ export async function verifyDataAccess(
       return homeroomLookupDenied;
     }
 
+    const homeroomIds = new Set((homeroomRes.data ?? []).map((row: { id: string }) => row.id));
+
     assignments = [
       ...(assignmentRes.data ?? [])
         .filter((row: { class_id: string; class_type: string }) =>
           row.class_type === 'circular' || row.class_type === 'theology'
         )
-        .map((row: { class_id: string; class_type: 'circular' | 'theology' }) => ({
+        .map((row: { class_id: string; class_type: 'circular' | 'theology'; subject_id?: string | null }) => ({
           classId: row.class_id,
           classType: row.class_type,
+          subjectId: row.subject_id ?? null,
+          isHomeroom: homeroomIds.has(row.class_id),
         })),
       ...(homeroomRes.data ?? []).map((row: { id: string }) => ({
         classId: row.id,
         classType: 'circular' as const,
+        isHomeroom: true,
       })),
     ];
 

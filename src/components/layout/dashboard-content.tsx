@@ -31,6 +31,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/figma-ui/ui/dropdown-menu";
 import { cn } from "@/components/figma-ui/ui/utils";
+import { UnassignedTeacherState } from "@/components/UnassignedTeacherState";
 
 export interface ClassReportingStatus {
   className: string;
@@ -46,6 +47,12 @@ export interface ClassReportingStatus {
 
 export interface DashboardData {
   role: "admin" | "dos" | "teacher";
+  department?: "secular" | "theology" | "both";
+  isUnassigned?: boolean;
+  canAccessReports?: boolean;
+  canAccessStudents?: boolean;
+  canManageTeachers?: boolean;
+  canViewAuditLogs?: boolean;
   kpis: {
     totalStudents: number;
     activeTeachers: number;
@@ -134,11 +141,20 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
   // Dynamic Next Priority Action Banner
   const nextAction = useMemo(() => {
     if (classStatuses.length === 0) {
+      if (data.isUnassigned) {
+        return {
+          title: "Awaiting Class & Subject Assignment",
+          desc: "Contact the Administrator or Director of Studies (DOS) to assign your class cohorts and subject pairs.",
+          ctaText: "Open Marks Entry",
+          ctaHref: "/admin/marks",
+          badge: "Assignment Pending",
+        };
+      }
       return {
         title: "Initialize Academic Term Roster",
         desc: "No active student enrollments found. Enroll students or configure classes to begin term tracking.",
-        ctaText: "Enroll Students",
-        ctaHref: "/admin/students",
+        ctaText: data.canAccessStudents !== false ? "Enroll Students" : "View Subjects",
+        ctaHref: data.canAccessStudents !== false ? "/admin/students" : "/admin/subjects",
         badge: "Roster Setup",
       };
     }
@@ -148,7 +164,7 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
       const more = pendingClasses.length > 2 ? ` +${pendingClasses.length - 2} more` : "";
       return {
         title: `${totalMissingMarks} Pending Scores in ${sampleNames}${more}`,
-        desc: "Complete pending mark sheets across secular and theology subjects to unlock report verification.",
+        desc: "Complete pending mark sheets across your assigned subjects to unlock report verification.",
         ctaText: "Enter Class Marks",
         ctaHref: "/admin/marks",
         badge: isTeacher ? "Teacher Priority" : "Assessment Milestone",
@@ -166,11 +182,11 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
     return {
       title: `Term Assessment Cycle: ${overallCyclePercent}% Complete`,
       desc: "All core subject scores are verified. Report dossiers can now be generated, stamped, and printed.",
-      ctaText: "Open Report Studio",
-      ctaHref: "/admin/reports/studio",
+      ctaText: data.canAccessReports !== false ? "Open Report Studio" : "Review Marks",
+      ctaHref: data.canAccessReports !== false ? "/admin/reports/studio" : "/admin/marks",
       badge: "Ready for Compilation",
     };
-  }, [classStatuses, totalStudents, totalMissingMarks, totalAnomalies, isTeacher, overallCyclePercent]);
+  }, [classStatuses, totalStudents, totalMissingMarks, totalAnomalies, isTeacher, overallCyclePercent, data.isUnassigned, data.canAccessStudents, data.canAccessReports]);
 
   // Assessment Distribution for Donut Chart
   const totalRequiredAll = classStatuses.reduce((acc, curr) => acc + curr.totalRequired, 0);
@@ -214,15 +230,25 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
             <ClipboardEdit className="size-3.5 text-emerald-600 dark:text-emerald-400" strokeWidth={2} />
             <span>Enter Marks</span>
           </Link>
-          <Link
-            href="/admin/reports/studio"
-            className="h-9 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white dark:bg-gradient-to-r dark:from-emerald-500 dark:to-lime-500 dark:text-slate-950 font-black text-xs flex items-center gap-2 hover:brightness-105 active:scale-95 transition-all shadow-md"
-          >
-            <Sparkles className="size-3.5" strokeWidth={2.2} />
-            <span>Report Studio</span>
-          </Link>
+          {data.canAccessReports !== false && (
+            <Link
+              href="/admin/reports/studio"
+              className="h-9 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white dark:bg-gradient-to-r dark:from-emerald-500 dark:to-lime-500 dark:text-slate-950 font-black text-xs flex items-center gap-2 hover:brightness-105 active:scale-95 transition-all shadow-md"
+            >
+              <Sparkles className="size-3.5" strokeWidth={2.2} />
+              <span>Report Studio</span>
+            </Link>
+          )}
         </div>
       </div>
+
+      {data.isUnassigned && (
+        <UnassignedTeacherState
+          moduleName="Dashboard & Cohort Telemetry"
+          department={data.department || "both"}
+          roleLabel={isTeacher ? "Teacher" : "Staff"}
+        />
+      )}
 
       {/* ─── ZONE 1: 4 CENTER TOP KPI CARDS ─────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
@@ -283,7 +309,13 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
             <div className="flex items-center gap-2 text-[11px] text-slate-600 dark:text-slate-400 font-medium">
               <span>{classStatuses.length} cohorts active</span>
               <span className="size-1 rounded-full bg-slate-400" />
-              <span className="text-sky-700 dark:text-sky-400 font-semibold">100% secular</span>
+              <span className="text-sky-700 dark:text-sky-400 font-semibold">
+                {data.department === "theology"
+                  ? "Theology Track"
+                  : data.department === "secular"
+                    ? "Secular Track"
+                    : "Secular & Theology"}
+              </span>
             </div>
           </div>
           <div className="size-11 rounded-xl bg-sky-50 dark:bg-sky-500/10 border border-sky-200 dark:border-sky-500/20 flex items-center justify-center text-sky-600 dark:text-sky-400 shrink-0">
@@ -738,12 +770,14 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
                     </div>
                   ))
                 )}
-                <Link
-                  href="/admin/activity"
-                  className="block text-center text-[11px] font-bold text-emerald-700 dark:text-emerald-400 hover:underline pt-1"
-                >
-                  View Complete Audit Log →
-                </Link>
+                {data.canViewAuditLogs !== false && (
+                  <Link
+                    href="/admin/activity"
+                    className="block text-center text-[11px] font-bold text-emerald-700 dark:text-emerald-400 hover:underline pt-1"
+                  >
+                    View Complete Audit Log →
+                  </Link>
+                )}
               </div>
             )}
 
@@ -755,34 +789,38 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
                   <span className="text-emerald-700 dark:text-emerald-400 font-bold">{data.kpis.activeTeachers} Active</span>
                 </div>
                 <div className="space-y-2">
-                  {(data.staffMembers && data.staffMembers.length > 0 ? data.staffMembers : [
-                    { id: "1", name: "Head Teacher", role: "Administration", initials: "HT" },
-                    { id: "2", name: "DOS Secular", role: "Curriculum Moderation", initials: "DS" },
-                    { id: "3", name: "DOS Theology", role: "Islamic Studies", initials: "DT" },
-                  ]).slice(0, 4).map((staff) => (
-                    <div
-                      key={staff.id}
-                      className="p-2.5 rounded-xl bg-slate-50 dark:bg-white/[0.02] border border-slate-200/80 dark:border-white/5 flex items-center justify-between"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <div className="size-7 rounded-lg bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-400 font-black text-xs flex items-center justify-center">
-                          {staff.initials}
-                        </div>
-                        <div>
-                          <div className="text-xs font-bold text-slate-900 dark:text-white">{staff.name}</div>
-                          <div className="text-[10px] text-slate-500 dark:text-slate-400">{staff.role}</div>
-                        </div>
-                      </div>
-                      <span className="size-2 rounded-full bg-emerald-500" />
+                  {(!data.staffMembers || data.staffMembers.length === 0) ? (
+                    <div className="py-6 text-center text-slate-500 dark:text-slate-400 text-xs">
+                      No active faculty records found.
                     </div>
-                  ))}
+                  ) : (
+                    data.staffMembers.slice(0, 4).map((staff) => (
+                      <div
+                        key={staff.id}
+                        className="p-2.5 rounded-xl bg-slate-50 dark:bg-white/[0.02] border border-slate-200/80 dark:border-white/5 flex items-center justify-between"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="size-7 rounded-lg bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-400 font-black text-xs flex items-center justify-center">
+                            {staff.initials}
+                          </div>
+                          <div>
+                            <div className="text-xs font-bold text-slate-900 dark:text-white">{staff.name}</div>
+                            <div className="text-[10px] text-slate-500 dark:text-slate-400">{staff.role}</div>
+                          </div>
+                        </div>
+                        <span className="size-2 rounded-full bg-emerald-500" />
+                      </div>
+                    ))
+                  )}
                 </div>
-                <Link
-                  href="/admin/teachers"
-                  className="block text-center text-[11px] font-bold text-emerald-700 dark:text-emerald-400 hover:underline pt-1"
-                >
-                  Manage Faculty Roster →
-                </Link>
+                {data.canManageTeachers !== false && (
+                  <Link
+                    href="/admin/teachers"
+                    className="block text-center text-[11px] font-bold text-emerald-700 dark:text-emerald-400 hover:underline pt-1"
+                  >
+                    Manage Faculty Roster →
+                  </Link>
+                )}
               </div>
             )}
           </div>

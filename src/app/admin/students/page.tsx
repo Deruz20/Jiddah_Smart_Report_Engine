@@ -6,8 +6,9 @@ import { MetricCard } from '@/components/figma-ui/MetricCard'
 import { RegistrationTips } from '@/components/figma-ui/RegistrationTips'
 import { GraduationCap, BookOpen, TrendingUp, Calendar, UserPlus, ChevronDown } from 'lucide-react'
 
-import { verifyDataAccess } from '@/lib/auth-server'
+import { verifyDataAccess, resolveUserScope } from '@/lib/auth-server'
 import { classIdsForType } from '@/lib/teacher-access'
+import { UnassignedTeacherState } from '@/components/UnassignedTeacherState'
 
 export default async function StudentsManagementPage() {
   const cookieStore = await cookies()
@@ -36,13 +37,24 @@ export default async function StudentsManagementPage() {
     .order('academic_year', { ascending: false });
 
   if (authRes.filterByClasses) {
+    const scope = resolveUserScope(authRes)
     const circularIds = classIdsForType(authRes, 'circular') ?? []
     const theologyIds = classIdsForType(authRes, 'theology') ?? []
     const filters = [
       ...(circularIds.length ? [`circular_class_id.in.(${circularIds.join(',')})`] : []),
       ...(theologyIds.length ? [`theology_class_id.in.(${theologyIds.join(',')})`] : []),
     ]
-    if (filters.length === 0) return <div className="p-6 text-stone-600">No assigned classes.</div>
+    if (filters.length === 0) {
+      return (
+        <div className="p-4 sm:p-6">
+          <UnassignedTeacherState
+            moduleName="Students Directory"
+            department={scope.department}
+            roleLabel={scope.rawRole || scope.canonicalRole}
+          />
+        </div>
+      )
+    }
     query = query.or(filters.join(','))
   } else if (authRes.filterByDepartment === 'secular') {
     query = query.not('circular_class_id', 'is', null);
@@ -77,7 +89,11 @@ export default async function StudentsManagementPage() {
       arabic_name: e.students.arabic_name ?? null,
     }))
 
-  const runningClassesCount = new Set(students.map((s: any) => s.circular_class).filter((c: any) => c && c !== '—')).size || 2;
+  const runningClassesCount = new Set(
+    students
+      .map((s: any) => (s.circular_class && s.circular_class !== '—' ? s.circular_class : s.theology_class_english || s.theology_class_arabic))
+      .filter(Boolean)
+  ).size;
 
   const heroStats = [
     { label: 'Active Students', value: students.length, icon: GraduationCap, color: 'emerald' },

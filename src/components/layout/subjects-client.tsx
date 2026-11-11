@@ -1,8 +1,10 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { Plus, Edit, Trash2, BookOpen, Search } from "lucide-react";
+import { toast } from "sonner";
 import { HeroSection } from "@/components/HeroSection";
 import { Button } from "@/components/figma-ui/ui/button";
 import { Input } from "@/components/figma-ui/ui/input";
@@ -48,7 +50,16 @@ export type SubjectData = {
   level?: string;
 };
 
-export default function SubjectsClient({ initialSubjects }: { initialSubjects: SubjectData[] }) {
+export default function SubjectsClient({
+  initialSubjects,
+  allowedDepartment = "both",
+  canManageSubjects = true,
+}: {
+  initialSubjects: SubjectData[];
+  allowedDepartment?: "secular" | "theology" | "both";
+  canManageSubjects?: boolean;
+}) {
+  const router = useRouter();
   const [subjects, setSubjects] = useState<SubjectData[]>(initialSubjects);
   const [search, setSearch] = useState("");
   
@@ -59,15 +70,14 @@ export default function SubjectsClient({ initialSubjects }: { initialSubjects: S
   
   // Form states
   const [selectedSubject, setSelectedSubject] = useState<SubjectData | null>(null);
+  const defaultCurriculum = allowedDepartment === "theology" ? "theology" : "secular";
   const [formData, setFormData] = useState({
     subject_name: "",
-    curriculum: "secular",
+    curriculum: defaultCurriculum,
     section: "nursery",
     theologyLevel: "raudha",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-
 
   const filteredSubjects = subjects.filter(s => 
     s.subject_name.toLowerCase().includes(search.toLowerCase()) || 
@@ -75,29 +85,37 @@ export default function SubjectsClient({ initialSubjects }: { initialSubjects: S
   );
 
   const refetch = async () => {
-    // We fetch both circular and theology subjects and combine them since the UI manages both
     const supabase = createClient();
-    const { data: circular } = await supabase.from('circular_subjects').select('id, subject_name, section');
-    const { data: theology } = await supabase
-      .from('theology_subjects')
-      .select('id, subject_name_arabic, level, sort_order')
-      .order('sort_order', { ascending: true });
-    
-    const combined = [
-      ...(circular || []).map((s: any) => ({ ...s, curriculum: 'secular' })),
-      ...(theology || []).map((s: any) => ({
+    const combined: SubjectData[] = [];
+
+    if (allowedDepartment === "both" || allowedDepartment === "secular") {
+      const { data: circular } = await supabase.from('circular_subjects').select('id, subject_name, section');
+      (circular || []).forEach((s: any) => combined.push({ ...s, curriculum: 'secular' }));
+    }
+
+    if (allowedDepartment === "both" || allowedDepartment === "theology") {
+      const { data: theology } = await supabase
+        .from('theology_subjects')
+        .select('id, subject_name_arabic, level, sort_order')
+        .order('sort_order', { ascending: true });
+      (theology || []).forEach((s: any) => combined.push({
         id: s.id,
         subject_name: s.subject_name_arabic,
         section: s.level,
         level: s.level,
         curriculum: 'theology'
-      }))
-    ];
+      }));
+    }
+
     setSubjects(combined);
+    router.refresh();
   };
 
   const handleCreate = async () => {
-    if (!formData.subject_name.trim()) return alert("Subject name is required");
+    if (!formData.subject_name.trim()) {
+      toast.error("Subject name is required");
+      return;
+    }
     setIsSubmitting(true);
     const supabase = createClient();
     try {
@@ -109,25 +127,27 @@ export default function SubjectsClient({ initialSubjects }: { initialSubjects: S
       const { error } = await supabase.from(table).insert([payload]);
       if (error) throw error;
       
+      toast.success("Subject created successfully");
       setIsCreateOpen(false);
-      setFormData({ subject_name: "", curriculum: "secular", section: "nursery", theologyLevel: "raudha" });
-      refetch();
+      setFormData({ subject_name: "", curriculum: defaultCurriculum, section: "nursery", theologyLevel: "raudha" });
+      await refetch();
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message || "Failed to create subject");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleEdit = async () => {
-    if (!formData.subject_name.trim() || !selectedSubject) return alert("Subject name is required");
+    if (!formData.subject_name.trim() || !selectedSubject) {
+      toast.error("Subject name is required");
+      return;
+    }
     setIsSubmitting(true);
     const supabase = createClient();
     try {
       const table = formData.curriculum === 'theology' ? 'theology_subjects' : 'circular_subjects';
       
-      // If curriculum changed, we'd theoretically need to delete from old and insert to new.
-      // But let's assume simple update for now without curriculum change.
       if (selectedSubject.curriculum !== formData.curriculum) {
         throw new Error("Changing curriculum after creation is not supported. Delete and recreate.");
       }
@@ -139,10 +159,11 @@ export default function SubjectsClient({ initialSubjects }: { initialSubjects: S
       const { error } = await supabase.from(table).update(payload).eq('id', selectedSubject.id);
       if (error) throw error;
       
+      toast.success("Subject updated successfully");
       setIsEditOpen(false);
-      refetch();
+      await refetch();
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message || "Failed to update subject");
     } finally {
       setIsSubmitting(false);
     }
@@ -156,10 +177,11 @@ export default function SubjectsClient({ initialSubjects }: { initialSubjects: S
       const table = selectedSubject.curriculum === 'theology' ? 'theology_subjects' : 'circular_subjects';
       const { error } = await supabase.from(table).delete().eq('id', selectedSubject.id);
       if (error) throw error;
+      toast.success("Subject deleted successfully");
       setIsDeleteOpen(false);
-      refetch();
+      await refetch();
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message || "Failed to delete subject");
     } finally {
       setIsSubmitting(false);
     }
@@ -185,17 +207,19 @@ export default function SubjectsClient({ initialSubjects }: { initialSubjects: S
     <div className="pb-12 w-full">
       <HeroSection
         title="Subjects Management"
-        subtitle={`${subjects.length} subjects configured across both curriculums`}
+        subtitle={`${subjects.length} subjects configured`}
         actions={
-          <Button
-            className="bg-[#065F46] hover:bg-[#047857] text-white shadow-md shadow-[#065F46]/20 transition-all rounded-xl"
-            onClick={() => {
-              setFormData({ subject_name: "", curriculum: "secular", section: "nursery", theologyLevel: "raudha" });
-              setIsCreateOpen(true);
-            }}
-          >
-            <Plus className="w-4 h-4 mr-2" /> Add Subject
-          </Button>
+          canManageSubjects ? (
+            <Button
+              className="bg-[#065F46] hover:bg-[#047857] text-white shadow-md shadow-[#065F46]/20 transition-all rounded-xl"
+              onClick={() => {
+                setFormData({ subject_name: "", curriculum: defaultCurriculum, section: "nursery", theologyLevel: "raudha" });
+                setIsCreateOpen(true);
+              }}
+            >
+              <Plus className="w-4 h-4 mr-2" /> Add Subject
+            </Button>
+          ) : undefined
         }
       />
 
@@ -256,14 +280,16 @@ export default function SubjectsClient({ initialSubjects }: { initialSubjects: S
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-end gap-2 mt-6 pt-4 border-t border-gray-100">
-                    <Button variant="ghost" size="icon" onClick={() => openEdit(sub)} className="h-8 w-8 text-gray-500 hover:text-[#065F46] hover:bg-[#065F46]/10 rounded-lg">
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => openDelete(sub)} className="h-8 w-8 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg">
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
+                  {canManageSubjects && (
+                    <div className="flex items-center justify-end gap-2 mt-6 pt-4 border-t border-gray-100">
+                      <Button variant="ghost" size="icon" onClick={() => openEdit(sub)} className="h-8 w-8 text-gray-500 hover:text-[#065F46] hover:bg-[#065F46]/10 rounded-lg">
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => openDelete(sub)} className="h-8 w-8 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg">
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  )}
                 </motion.div>
               ))}
             </AnimatePresence>
@@ -295,8 +321,12 @@ export default function SubjectsClient({ initialSubjects }: { initialSubjects: S
                   <SelectValue placeholder="Select curriculum" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="secular">Secular</SelectItem>
-                  <SelectItem value="theology">Theology</SelectItem>
+                  {(allowedDepartment === "both" || allowedDepartment === "secular") && (
+                    <SelectItem value="secular">Secular</SelectItem>
+                  )}
+                  {(allowedDepartment === "both" || allowedDepartment === "theology") && (
+                    <SelectItem value="theology">Theology</SelectItem>
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -362,8 +392,12 @@ export default function SubjectsClient({ initialSubjects }: { initialSubjects: S
                   <SelectValue placeholder="Select curriculum" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="secular">Secular</SelectItem>
-                  <SelectItem value="theology">Theology</SelectItem>
+                  {(allowedDepartment === "both" || allowedDepartment === "secular") && (
+                    <SelectItem value="secular">Secular</SelectItem>
+                  )}
+                  {(allowedDepartment === "both" || allowedDepartment === "theology") && (
+                    <SelectItem value="theology">Theology</SelectItem>
+                  )}
                 </SelectContent>
               </Select>
             </div>

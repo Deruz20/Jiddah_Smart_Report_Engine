@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { Upload, Check, AlertCircle, RefreshCw, Trash2, Eye, HardDrive, Sliders, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
 import { HeroSection } from '@/components/HeroSection'
+import { ConfirmDestructiveDialog } from '@/components/ConfirmDestructiveDialog'
 
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp']
 const MAX_FILE_SIZE = 5 * 1024 * 1024
@@ -29,6 +30,7 @@ export default function SignaturesClient({ initialSlots }: { initialSlots: Signa
   const [togglingSlot, setTogglingSlot] = useState<string | null>(null)
   const [deletingSlot, setDeletingSlot] = useState<string | null>(null)
   const [previews, setPreviews] = useState<Record<string, string>>({})
+  const [slotToDelete, setSlotToDelete] = useState<SignatureSlot | null>(null)
 
   const refetch = async () => {
     setLoading(true)
@@ -105,19 +107,13 @@ export default function SignaturesClient({ initialSlots }: { initialSlots: Signa
     }
   }
 
-  const handleFileSelection = (slotKey: string, slotUploaded: boolean, file: File) => {
-    if (slotUploaded && !window.confirm('Replace the existing signature?')) {
-      return
-    }
+  const handleFileSelection = (slotKey: string, _slotUploaded: boolean, file: File) => {
     handleFileChange(slotKey, file)
   }
 
   const toggleActivation = async (slot: SignatureSlot) => {
     const active = !slot.active
     const action = active ? 'reactivate' : 'deactivate'
-    if (!window.confirm(`${active ? 'Reactivate' : 'Deactivate'} ${slot.label} for future reports?`)) {
-      return
-    }
 
     setTogglingSlot(slot.slot_key)
     setError(null)
@@ -135,20 +131,24 @@ export default function SignaturesClient({ initialSlots }: { initialSlots: Signa
       setSlots((current) => current.map((item) => item.slot_key === slot.slot_key
         ? { ...item, active }
         : item))
+      toast.success(`${slot.label} ${active ? 'activated' : 'deactivated'} for reports.`)
       await refetch()
     } catch (err) {
       const message = err instanceof Error ? err.message : `Unable to ${action} this report image.`
       setError(message)
+      toast.error(message)
     } finally {
       setTogglingSlot(null)
     }
   }
 
-  const deleteSlotAsset = async (slot: SignatureSlot) => {
-    if (!window.confirm(`Are you sure you want to permanently remove the uploaded file for ${slot.label}? This cannot be undone.`)) {
-      return
-    }
+  const deleteSlotAsset = (slot: SignatureSlot) => {
+    setSlotToDelete(slot)
+  }
 
+  const confirmDeleteSlotAsset = async () => {
+    if (!slotToDelete) return
+    const slot = slotToDelete
     setDeletingSlot(slot.slot_key)
     setError(null)
     try {
@@ -167,10 +167,13 @@ export default function SignaturesClient({ initialSlots }: { initialSlots: Signa
             : item
         )
       )
+      toast.success(`${slot.label} removed successfully.`)
+      setSlotToDelete(null)
       await refetch()
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unable to delete report image.'
       setError(message)
+      toast.error(message)
     } finally {
       setDeletingSlot(null)
     }
@@ -385,6 +388,16 @@ export default function SignaturesClient({ initialSlots }: { initialSlots: Signa
           </section>
         </div>
       </div>
+
+      <ConfirmDestructiveDialog
+        open={Boolean(slotToDelete)}
+        title={`Remove ${slotToDelete?.label || 'Signature'}?`}
+        description={`Are you sure you want to permanently remove the uploaded file for ${slotToDelete?.label || 'this slot'}? This cannot be undone.`}
+        confirmLabel="Remove Signature"
+        loading={Boolean(deletingSlot)}
+        onConfirm={confirmDeleteSlotAsset}
+        onCancel={() => setSlotToDelete(null)}
+      />
     </div>
   )
 }

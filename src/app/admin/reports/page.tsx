@@ -1,7 +1,8 @@
 import { createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { ReportGeneratorClient } from '@/components/ReportGeneratorClient'
-import { verifyDataAccess } from '@/lib/auth-server'
+import { verifyDataAccess, resolveUserScope } from '@/lib/auth-server'
+import { UnassignedTeacherState } from '@/components/UnassignedTeacherState'
 
 export const dynamic = 'force-dynamic'
 
@@ -40,6 +41,18 @@ export default async function ReportsManagementPage() {
         return (
           <div className="p-6 text-rose-700 font-medium max-w-xl mx-auto mt-8 bg-rose-50 border border-rose-200 rounded-xl">
             Access Denied: {access.message || 'You do not have permission to access the Report Center.'}
+          </div>
+        );
+      }
+      const scope = resolveUserScope(access);
+      if (scope.isUnassigned) {
+        return (
+          <div className="p-4 sm:p-6">
+            <UnassignedTeacherState
+              moduleName="Report Center"
+              department={scope.department}
+              roleLabel={scope.rawRole || scope.canonicalRole}
+            />
           </div>
         );
       }

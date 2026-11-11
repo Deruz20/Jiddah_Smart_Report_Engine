@@ -18,6 +18,7 @@ import {
   GraduationCap,
 } from 'lucide-react'
 import { EnrollmentData, CircularMarkRow, TheologyMarkRow, TermData } from '@/types/models'
+import { UnassignedTeacherState } from './UnassignedTeacherState'
 
 export type ExamType = 'bot' | 'mot' | 'eot' | 'all'
 
@@ -52,6 +53,9 @@ export interface SharedMarksEntryProps {
 
   onSave: (event?: React.FormEvent<HTMLFormElement>) => void
   allowedDepartment?: 'secular' | 'theology' | 'both'
+  isUnassigned?: boolean
+  assignedSubjects?: string[]
+  roleLabel?: string
 }
 
 function computeTheologyBadge(score: number | null | undefined): {
@@ -112,6 +116,9 @@ export function SharedMarksEntry({
   setSuccess,
   onSave,
   allowedDepartment = 'both',
+  isUnassigned = false,
+  assignedSubjects = [],
+  roleLabel = 'Teacher',
 }: SharedMarksEntryProps) {
   const [activeView, setActiveView] = useState<'secular' | 'theology' | 'both'>(allowedDepartment)
   const [selectedClassFilter, setSelectedClassFilter] = useState<string>('all')
@@ -153,16 +160,42 @@ export function SharedMarksEntry({
   const classOptions = useMemo(() => {
     const set = new Set<string>()
     enrollments.forEach((e) => {
-      if (e.circular_class) set.add(e.circular_class)
+      if (activeView === 'theology') {
+        const theoCls = e.theology_class_level || e.theology_class_arabic || e.circular_class
+        if (theoCls) set.add(theoCls)
+      } else {
+        const cls = e.circular_class || e.theology_class_level || e.theology_class_arabic
+        if (cls) set.add(cls)
+      }
     })
     return Array.from(set).sort()
-  }, [enrollments])
+  }, [enrollments, activeView])
+
+  // Auto-select first assigned subject for Subject Teachers
+  useEffect(() => {
+    if (assignedSubjects && assignedSubjects.length > 0 && circularMarks.length > 0 && selectedSubjectFilter === 'all') {
+      const lowerAssigned = assignedSubjects.map((s) => s.trim().toLowerCase())
+      const matched = circularMarks.find(
+        (m) =>
+          lowerAssigned.includes((m.subject_id || '').toLowerCase()) ||
+          lowerAssigned.includes((m.subject_name || '').toLowerCase())
+      )
+      if (matched && assignedSubjects.length === 1) {
+        setSelectedSubjectFilter(matched.subject_id)
+      }
+    }
+  }, [assignedSubjects, circularMarks, selectedSubjectFilter])
 
   // Filtered enrollments by class selector AND search input
   const filteredEnrollments = useMemo(() => {
     let list = enrollments
     if (selectedClassFilter !== 'all') {
-      list = list.filter((e) => e.circular_class === selectedClassFilter)
+      list = list.filter(
+        (e) =>
+          e.circular_class === selectedClassFilter ||
+          e.theology_class_level === selectedClassFilter ||
+          e.theology_class_arabic === selectedClassFilter
+      )
     }
     const q = studentSearchQuery.trim().toLowerCase()
     if (q) {
@@ -754,7 +787,13 @@ export function SharedMarksEntry({
           </div>
         )}
 
-        {!error && (
+        {!error && isUnassigned && enrollments.length === 0 ? (
+          <UnassignedTeacherState
+            moduleName="Marks Entry"
+            department={allowedDepartment}
+            roleLabel={roleLabel}
+          />
+        ) : !error && (
           !selectedEnrollmentId ? (
             <div className="flex flex-col items-center justify-center py-16 px-4 text-center rounded-2xl border border-dashed border-[var(--border)] bg-[var(--bg-card)]">
               <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center mb-3">

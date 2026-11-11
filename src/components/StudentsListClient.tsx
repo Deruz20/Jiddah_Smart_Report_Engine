@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState, useMemo, useDeferredValue } from 'react';
+import React, { useState, useMemo, useDeferredValue, useEffect } from 'react';
 import { Search, Filter, Download, ChevronDown, ChevronUp, ChevronsUpDown, UserX, Edit2, Archive, RotateCcw, Trash2 } from 'lucide-react';
 import { Badge } from './figma-ui/Badge';
 import { EditStudentModal } from './EditStudentModal';
 import { ConfirmDestructiveDialog } from '@/components/ui/confirm-destructive-dialog';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 
 export type Student = {
@@ -60,8 +60,18 @@ interface StudentsTableProps {
 }
 
 export function StudentsListClient({ students, department }: StudentsTableProps) {
-  const [searchTerm, setSearchTerm] = useState('');
+  const searchParams = useSearchParams();
+  const initialSearch = searchParams?.get('search') || '';
+  const [searchTerm, setSearchTerm] = useState(initialSearch);
   const deferredSearchTerm = useDeferredValue(searchTerm);
+
+  useEffect(() => {
+    const q = searchParams?.get('search');
+    if (q !== null && q !== undefined) {
+      setSearchTerm(q);
+      setPage(1);
+    }
+  }, [searchParams]);
   const [activeTab, setActiveTab] = useState<FilterTab>('All');
   const [sortKey, setSortKey] = useState<SortKey>('created_at');
   const [sortDir, setSortDir] = useState<SortDir>('desc');

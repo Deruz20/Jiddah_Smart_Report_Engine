@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { toast } from "sonner";
 import { HeroSection } from "@/components/HeroSection";
 import { RefreshCw, Plus, Calendar, Clock, BookOpen } from "lucide-react";
 import { Button } from "@/components/figma-ui/ui/button";
@@ -62,9 +63,10 @@ export default function TermsClient({ initialTerms }: { initialTerms: AcademicTe
         start_date: '',
         end_date: '',
       });
+      toast.success("Academic term created successfully");
       refetch();
     } catch (err: any) {
-      alert(err.message || "An error occurred");
+      toast.error(err.message || "An error occurred");
     } finally {
       setIsSubmitting(false);
     }

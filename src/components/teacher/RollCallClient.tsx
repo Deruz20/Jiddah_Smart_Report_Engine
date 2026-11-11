@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { SignaturePad } from "@/components/teacher/SignaturePad";
+import { toast } from "sonner";
 
 export interface StudentAttendance {
   id: string;
@@ -133,10 +134,11 @@ export function RollCallClient({
 
       if (error) throw error;
       setSaveSuccess(true);
+      toast.success("Roll call attendance saved successfully");
       setTimeout(() => setSaveSuccess(false), 2500);
     } catch (e: any) {
       console.error("Save attendance error:", e);
-      alert("Error saving attendance: " + (e.message || "Unknown error"));
+      toast.error("Error saving attendance", { description: e.message || "Unknown error" });
     } finally {
       setIsSaving(false);
     }

@@ -1,10 +1,12 @@
 "use client";
 
 import React, { ChangeEvent, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { User, Shield, Eye, EyeOff, Check, RefreshCw, LogOut, Camera, Lock } from "lucide-react";
+import { toast } from "sonner";
 import { AnimatedButton } from "@/components/AnimatedButton";
 import { HeroSection } from "@/components/HeroSection";
 import { createClient } from "@/utils/supabase/client";
@@ -48,6 +50,7 @@ export type UserProfileData = {
 };
 
 export default function AccountClient({ initialProfile, userEmail }: { initialProfile: UserProfileData | null, userEmail: string }) {
+  const router = useRouter();
   const [profile, setProfile] = useState<UserProfileData | null>(initialProfile);
   
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -58,8 +61,6 @@ export default function AccountClient({ initialProfile, userEmail }: { initialPr
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [dangerLoading, setDangerLoading] = useState(false);
-
-
 
   const profileForm = useForm<AccountProfileForm>({
     resolver: zodResolver(accountProfileSchema),
@@ -84,12 +85,12 @@ export default function AccountClient({ initialProfile, userEmail }: { initialPr
     if (!file) return;
 
     if (!ACCEPTED_AVATAR_TYPES.includes(file.type)) {
-      alert('Avatar must be a PNG, JPG, or WEBP image.');
+      toast.error('Avatar must be a PNG, JPG, or WEBP image.');
       return;
     }
 
     if (file.size > MAX_AVATAR_SIZE) {
-      alert('Avatar must be smaller than 2MB.');
+      toast.error('Avatar must be smaller than 2MB.');
       return;
     }
 
@@ -115,9 +116,11 @@ export default function AccountClient({ initialProfile, userEmail }: { initialPr
 
       setAvatarPreview(publicUrl);
       setAvatarFile(null);
-      alert('Avatar uploaded successfully.');
+      setProfile((prev) => prev ? { ...prev, avatar_url: publicUrl } : prev);
+      toast.success('Avatar uploaded successfully.');
+      router.refresh();
     } catch (err: any) {
-      alert(err.message || 'Avatar upload failed');
+      toast.error(err.message || 'Avatar upload failed');
     } finally {
       setAvatarUploading(false);
     }
@@ -133,9 +136,18 @@ export default function AccountClient({ initialProfile, userEmail }: { initialPr
         phone: values.phone,
       }).eq('id', profile.id);
       if (error) throw error;
-      alert('Profile saved successfully.');
+
+      // Sync teacher record if present
+      await supabase.from('teachers').update({
+        name: values.full_name,
+        phone: values.phone || null,
+      }).eq('auth_user_id', profile.id);
+
+      setProfile((prev) => prev ? { ...prev, full_name: values.full_name, phone: values.phone } : prev);
+      toast.success('Profile saved successfully.');
+      router.refresh();
     } catch (err: any) {
-      alert(err.message || 'Unable to save profile');
+      toast.error(err.message || 'Unable to save profile');
     } finally {
       setProfileSaving(false);
     }
@@ -163,10 +175,10 @@ export default function AccountClient({ initialProfile, userEmail }: { initialPr
     try {
       const { error } = await supabase.auth.updateUser({ password: values.newPassword });
       if (error) throw error;
-      alert('Password updated successfully.');
+      toast.success('Password updated successfully.');
       resetPasswordForm();
     } catch (err: any) {
-      alert(err.message || 'Unable to update password');
+      toast.error(err.message || 'Unable to update password');
     } finally {
       setPasswordSaving(false);
     }
@@ -179,7 +191,7 @@ export default function AccountClient({ initialProfile, userEmail }: { initialPr
       await supabase.auth.signOut();
       window.location.href = '/login';
     } catch (err: any) {
-      alert(err.message || 'Unable to sign out.');
+      toast.error(err.message || 'Unable to sign out.');
       setDangerLoading(false);
     }
   };

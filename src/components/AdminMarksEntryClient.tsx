@@ -10,12 +10,18 @@ interface AdminMarksEntryClientProps {
   terms: TermData[]
   initialEnrollments?: EnrollmentData[]
   allowedDepartment?: 'secular' | 'theology' | 'both'
+  isUnassigned?: boolean
+  assignedSubjects?: string[]
+  roleLabel?: string
 }
 
 export function AdminMarksEntryClient({
   terms,
   initialEnrollments,
   allowedDepartment = 'both',
+  isUnassigned = false,
+  assignedSubjects = [],
+  roleLabel = 'Teacher',
 }: AdminMarksEntryClientProps) {
   const hasInitial = Array.isArray(initialEnrollments) && initialEnrollments.length > 0
   const [enrollments, setEnrollments] = useState<EnrollmentData[]>(initialEnrollments || [])
@@ -226,6 +232,9 @@ export function AdminMarksEntryClient({
       setSuccess={setSuccess}
       onSave={handleSaveMarks}
       allowedDepartment={allowedDepartment}
+      isUnassigned={isUnassigned}
+      assignedSubjects={assignedSubjects}
+      roleLabel={roleLabel}
     />
   )
 }

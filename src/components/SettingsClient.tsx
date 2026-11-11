@@ -12,6 +12,7 @@ import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { TeacherInitialsConfig } from "./TeacherInitialsConfig"
 import { RankingSettingsPreview } from "@/components/reports/RankingSettingsPreview"
+import { ConfirmDestructiveDialog } from "@/components/ConfirmDestructiveDialog"
 import { getContrastRatio } from "@/lib/contrast-guard"
 import { RankingPreferences } from "@/lib/ranking"
 import {
@@ -163,6 +164,12 @@ export default function SettingsClient({ terms }: { terms: Term[] }) {
     mode: "onBlur",
     defaultValues: defaultSchoolValues,
   })
+  const [confirmDialog, setConfirmDialog] = useState<{
+    type: "activate_term" | "batch_transliterate"
+    termId?: string
+    termLabel?: string
+  } | null>(null)
+  const [confirmBusy, setConfirmBusy] = useState(false)
 
   const fetchSchoolSettings = async () => {
     setLoadingSchoolSettings(true)
@@ -445,22 +452,7 @@ export default function SettingsClient({ terms }: { terms: Term[] }) {
                                 ) : (
                                   <button
                                     type="button"
-                                    onClick={async () => {
-                                      try {
-                                        if (!confirm("Are you sure you want to set this as the active term?")) return
-                                        const res = await fetch(`/api/settings/terms/active`, {
-                                          method: 'POST',
-                                          headers: { 'Content-Type': 'application/json' },
-                                          body: JSON.stringify({ termId: term.id })
-                                        })
-                                        const data = await res.json()
-                                        if (!res.ok) throw new Error(data.error || 'Failed')
-                                        toast.success("Active term updated")
-                                        router.refresh()
-                                      } catch(e: any) {
-                                        toast.error(e.message || "Failed to update active term")
-                                      }
-                                    }}
+                                    onClick={() => setConfirmDialog({ type: "activate_term", termId: term.id, termLabel: term.label })}
                                     className="min-h-[44px] px-4 py-2 rounded-xl text-xs font-semibold border border-stone-200 text-stone-700 transition-all hover:bg-stone-50 cursor-pointer">
                                     Set as Active
                                   </button>
@@ -1290,21 +1282,7 @@ export default function SettingsClient({ terms }: { terms: Term[] }) {
                   </div>
                   <button
                     type="button"
-                    onClick={async () => {
-                      if (!confirm('This will find all students missing an Arabic name and translate them. Proceed?')) return
-                      toast.loading('Batch translating names...', { id: 'batch-trans' })
-                      try {
-                        const res = await fetch('/api/settings/transliterate/batch', { method: 'POST' })
-                        const data = await res.json()
-                        if (res.ok) {
-                          toast.success(`Successfully translated ${data.count} names`, { id: 'batch-trans' })
-                        } else {
-                          throw new Error(data.error || 'Failed')
-                        }
-                      } catch (e: any) {
-                        toast.error(e.message, { id: 'batch-trans' })
-                      }
-                    }}
+                    onClick={() => setConfirmDialog({ type: "batch_transliterate" })}
                     className="min-h-[44px] px-4 py-2 bg-[#059669] hover:bg-[#047857] text-white rounded-xl text-xs font-semibold transition-colors shadow-sm cursor-pointer"
                   >
                     Run Batch Update
@@ -1561,6 +1539,54 @@ export default function SettingsClient({ terms }: { terms: Term[] }) {
           </div>
         </div>
       </div>
+
+      <ConfirmDestructiveDialog
+        open={Boolean(confirmDialog)}
+        title={
+          confirmDialog?.type === "activate_term"
+            ? `Set ${confirmDialog.termLabel || "Term"} as Active?`
+            : "Run Batch Arabic Name Translation?"
+        }
+        description={
+          confirmDialog?.type === "activate_term"
+            ? "Setting a new active term updates the default academic period across Marks Entry, Hubs, and Report Center for all staff."
+            : "This will locate all active students missing an Arabic name and generate their Arabic transliteration automatically."
+        }
+        confirmLabel={confirmDialog?.type === "activate_term" ? "Set as Active" : "Run Batch Update"}
+        variant="primary"
+        loading={confirmBusy}
+        onCancel={() => setConfirmDialog(null)}
+        onConfirm={async () => {
+          if (!confirmDialog) return
+          setConfirmBusy(true)
+          try {
+            if (confirmDialog.type === "activate_term" && confirmDialog.termId) {
+              const res = await fetch(`/api/settings/terms/active`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ termId: confirmDialog.termId }),
+              })
+              const data = await res.json()
+              if (!res.ok) throw new Error(data.error || "Failed")
+              toast.success("Active term updated")
+              setConfirmDialog(null)
+              router.refresh()
+            } else if (confirmDialog.type === "batch_transliterate") {
+              toast.loading("Batch translating names...", { id: "batch-trans" })
+              const res = await fetch("/api/settings/transliterate/batch", { method: "POST" })
+              const data = await res.json()
+              if (!res.ok) throw new Error(data.error || "Failed")
+              toast.success(`Successfully translated ${data.count} names`, { id: "batch-trans" })
+              setConfirmDialog(null)
+              router.refresh()
+            }
+          } catch (e: any) {
+            toast.error(e.message || "Operation failed", { id: "batch-trans" })
+          } finally {
+            setConfirmBusy(false)
+          }
+        }}
+      />
     </div>
   )
 }

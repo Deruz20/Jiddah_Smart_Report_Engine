@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { createClient } from "@/utils/supabase/client";
 import { Badge } from "@/components/figma-ui/Badge";
 import { EditStudentModal } from "@/components/EditStudentModal";
+import { ConfirmDestructiveDialog } from "@/components/ConfirmDestructiveDialog";
 
 function avatarColors(name: string) {
   const palettes = [
@@ -51,6 +52,8 @@ export default function ClassDashboardClient({
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [editingStudent, setEditingStudent] = useState<any | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{ type: "archive" | "delete"; student: any } | null>(null);
+  const [confirmLoading, setConfirmLoading] = useState(false);
   const router = useRouter();
   const [formData, setFormData] = useState({ class_name: classData.class_name, section: classData.section, class_teacher_id: classData.class_teacher_id || "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -133,9 +136,10 @@ export default function ClassDashboardClient({
       if (error) throw error;
       if (data) setClassData(data);
       setIsEditModalOpen(false);
-      alert("Class updated successfully");
+      toast.success("Class updated successfully");
+      router.refresh();
     } catch (err: any) {
-      alert(err.message || "An error occurred");
+      toast.error(err.message || "An error occurred");
     } finally {
       setIsSubmitting(false);
     }
@@ -204,31 +208,32 @@ export default function ClassDashboardClient({
     toast.success('Exported class list successfully');
   };
 
-  const handleArchive = async (student: any) => {
+  const handleArchive = (student: any) => {
     if (!student) return;
-    const studentName = student.name || student.full_name || 'Student';
-    if (!confirm(`Are you sure you want to archive ${studentName}?`)) return;
-    try {
-      const res = await fetch(`/api/students/${student.id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Failed to archive student');
-      toast.success(`${studentName} has been archived`);
-      router.refresh();
-    } catch (err) {
-      toast.error('Failed to archive student');
-    }
+    setConfirmAction({ type: "archive", student });
   };
 
-  const handleHardDelete = async (student: any) => {
+  const handleHardDelete = (student: any) => {
     if (!student) return;
-    const studentName = student.name || student.full_name || 'Student';
-    if (!confirm(`WARNING: Are you sure you want to PERMANENTLY delete ${studentName}? This cannot be undone.`)) return;
+    setConfirmAction({ type: "delete", student });
+  };
+
+  const executeConfirmAction = async () => {
+    if (!confirmAction?.student) return;
+    const { type, student } = confirmAction;
+    const studentName = student.name || student.full_name || "Student";
+    setConfirmLoading(true);
     try {
-      const res = await fetch(`/api/students/${student.id}?hard_delete=true`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Failed to delete student permanently');
-      toast.success(`${studentName} has been permanently deleted`);
+      const url = type === "delete" ? `/api/students/${student.id}?hard_delete=true` : `/api/students/${student.id}`;
+      const res = await fetch(url, { method: "DELETE" });
+      if (!res.ok) throw new Error(type === "delete" ? "Failed to delete student permanently" : "Failed to archive student");
+      toast.success(type === "delete" ? `${studentName} has been permanently deleted` : `${studentName} has been archived`);
+      setConfirmAction(null);
       router.refresh();
-    } catch (err) {
-      toast.error('Failed to delete student');
+    } catch (err: any) {
+      toast.error(err.message || "Operation failed");
+    } finally {
+      setConfirmLoading(false);
     }
   };
 
@@ -709,15 +714,64 @@ export default function ClassDashboardClient({
             {activeTab === "teachers" && renderTeachersTab()}
             {activeTab === "settings" && renderSettingsTab()}
             {activeTab === "performance" && (
-              <div className="bg-white/80 backdrop-blur-xl border border-gray-200/50 rounded-2xl p-8 text-center text-gray-500">
-                <Clock className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                <h3 className="text-lg font-bold text-gray-900 mb-2">Detailed Performance Analytics</h3>
-                <p>This module is currently being built out. Check back soon for detailed charts and grade distributions.</p>
+              <div className="bg-white border border-stone-200 rounded-2xl p-6 space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-stone-100">
+                  <div>
+                    <h3 className="text-lg font-bold text-stone-900">Cohort Assessment Summary</h3>
+                    <p className="text-xs text-stone-500">Live subject averages and mark entry coverage across {totalStudents} enrolled students.</p>
+                  </div>
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                    Cohort Mean: {classAverage}%
+                  </span>
+                </div>
+                {uniqueSubjects.length === 0 ? (
+                  <p className="text-sm text-stone-500 py-8 text-center">No subjects configured for this section yet.</p>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {uniqueSubjects.map((sub: any) => {
+                      const subMarks = marks.filter((m: any) => m.subject_id === sub.id && (m.eot_score !== null || m.mot_score !== null));
+                      const avg = subMarks.length > 0
+                        ? (subMarks.reduce((acc: number, m: any) => acc + Number(m.eot_score ?? m.mot_score ?? 0), 0) / subMarks.length).toFixed(1)
+                        : null;
+                      return (
+                        <div key={sub.id} className="rounded-xl border border-stone-200 p-4 bg-[#FAF7F2]/60 flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-bold text-stone-900">{sub.subject_name}</p>
+                            <p className="text-xs text-stone-500 mt-0.5">{subMarks.length} / {totalStudents} students graded</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-base font-extrabold text-[#065F46] tabular-nums">{avg !== null ? `${avg}%` : "—"}</p>
+                            <p className="text-[10px] uppercase tracking-wider text-stone-400 font-semibold">Mean Score</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
           </motion.div>
         </AnimatePresence>
       </main>
+
+      <ConfirmDestructiveDialog
+        open={Boolean(confirmAction)}
+        title={
+          confirmAction?.type === "delete"
+            ? `Permanently Delete ${confirmAction?.student?.name || confirmAction?.student?.full_name || "Student"}?`
+            : `Archive ${confirmAction?.student?.name || confirmAction?.student?.full_name || "Student"}?`
+        }
+        description={
+          confirmAction?.type === "delete"
+            ? "WARNING: This will permanently remove the student and their associated enrollment records. This action cannot be undone."
+            : "This student will be moved to archived status and hidden from active class rosters."
+        }
+        confirmLabel={confirmAction?.type === "delete" ? "Delete Permanently" : "Archive Student"}
+        variant={confirmAction?.type === "delete" ? "danger" : "warning"}
+        loading={confirmLoading}
+        onConfirm={executeConfirmAction}
+        onCancel={() => setConfirmAction(null)}
+      />
     </div>
   );
 }

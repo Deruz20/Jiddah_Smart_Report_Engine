@@ -1,12 +1,14 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Search, Plus, Edit, Trash2, ChevronDown, UserX } from "lucide-react";
 import { HeroSection } from "@/components/HeroSection";
 import { AnimatedButton } from "@/components/AnimatedButton";
+import { ConfirmDestructiveDialog } from "@/components/ConfirmDestructiveDialog";
 import { createClient } from "@/utils/supabase/client";
 import { escapeHtml } from "@/lib/sanitize";
 import { CANONICAL_ACCOUNT_ROLES, normalizeAccountRole } from "@/lib/teacher-access";
@@ -102,15 +104,26 @@ export default function TeachersClient({
   currentUserRole?: string;
   currentUserSubject?: string;
 }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [teachers, setTeachers] = useState<DashboardTeacher[]>(initialTeachers);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(() => searchParams?.get("search") || "");
   const [roleFilter, setRoleFilter] = useState("All Roles");
   
   const [showFormModal, setShowFormModal] = useState(false);
   const [selectedTeacher, setSelectedTeacher] = useState<DashboardTeacher | null>(null);
+  const [teacherToDeactivate, setTeacherToDeactivate] = useState<DashboardTeacher | null>(null);
+  const [deactivating, setDeactivating] = useState(false);
 
   const [circularClasses, setCircularClasses] = useState<any[]>([]);
   const [theologyClasses, setTheologyClasses] = useState<any[]>([]);
+
+  useEffect(() => {
+    const q = searchParams?.get("search");
+    if (q !== null && q !== undefined) {
+      setSearchQuery(q);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     const fetchClasses = async () => {
@@ -274,26 +287,34 @@ export default function TeachersClient({
       }
       
       await refetch();
+      router.refresh();
       closeModal();
     } catch (err: any) {
       toast.error('Failed to save teacher', { description: err.message });
     }
   };
 
-  const handleDeactivate = async (teacher: DashboardTeacher) => {
-    const confirmed = window.confirm(`Are you sure you want to deactivate ${teacher.name}?`);
-    if (!confirmed) return;
+  const handleDeactivate = (teacher: DashboardTeacher) => {
+    setTeacherToDeactivate(teacher);
+  };
 
+  const confirmDeactivate = async () => {
+    if (!teacherToDeactivate) return;
+    setDeactivating(true);
     try {
-      const response = await fetch(`/api/admin/teachers/${teacher.id}`, {
+      const response = await fetch(`/api/admin/teachers/${teacherToDeactivate.id}`, {
         method: 'DELETE'
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Failed to delete teacher');
       await refetch();
+      router.refresh();
       toast.success("Teacher deactivated successfully");
+      setTeacherToDeactivate(null);
     } catch (err: any) {
       toast.error('Failed to deactivate teacher', { description: err.message });
+    } finally {
+      setDeactivating(false);
     }
   };
 
@@ -335,6 +356,7 @@ export default function TeachersClient({
               {CANONICAL_ACCOUNT_ROLES.map((r) => (
                 <option key={r} value={r}>{r}</option>
               ))}
+              <option value="Subject Teacher">Subject Teacher</option>
             </select>
             <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
           </div>
@@ -473,11 +495,17 @@ export default function TeachersClient({
                         className="w-full min-h-[44px] rounded-xl border border-[#E7E2D7] bg-white px-4 py-2.5 pr-10 text-sm text-stone-900 outline-none appearance-none focus:border-[#0F4D25]"
                       >
                         {currentUserRole === 'admin' ? (
-                          CANONICAL_ACCOUNT_ROLES.map((r) => (
-                            <option key={r} value={r}>{r}</option>
-                          ))
+                          <>
+                            {CANONICAL_ACCOUNT_ROLES.map((r) => (
+                              <option key={r} value={r}>{r}</option>
+                            ))}
+                            <option value="Subject Teacher">Subject Teacher</option>
+                          </>
                         ) : (
-                          <option value="Class Teacher">Class Teacher</option>
+                          <>
+                            <option value="Class Teacher">Class Teacher</option>
+                            <option value="Subject Teacher">Subject Teacher</option>
+                          </>
                         )}
                       </select>
                       <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
@@ -518,6 +546,7 @@ export default function TeachersClient({
                         >
                           <option value="Secular">Secular</option>
                           <option value="Theology">Theology</option>
+                          <option value="Both">Both (Secular & Theology)</option>
                           <option value="Administration">Administration</option>
                         </select>
                         <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
@@ -601,6 +630,16 @@ export default function TeachersClient({
           </div>
         </div>
       )}
+
+      <ConfirmDestructiveDialog
+        open={Boolean(teacherToDeactivate)}
+        title={`Deactivate ${teacherToDeactivate?.name || 'Teacher'}?`}
+        description={`Are you sure you want to deactivate ${teacherToDeactivate?.name || 'this teacher'}? Their login access will be suspended and their active class assignments will be unassigned.`}
+        confirmLabel="Deactivate Teacher"
+        loading={deactivating}
+        onConfirm={confirmDeactivate}
+        onCancel={() => setTeacherToDeactivate(null)}
+      />
     </div>
   );
 }

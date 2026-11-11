@@ -1,7 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { AdminMarksEntryClient } from '@/components/AdminMarksEntryClient'
-import { verifyDataAccess } from '@/lib/auth-server'
+import { verifyDataAccess, resolveUserScope } from '@/lib/auth-server'
 import { classIdsForType } from '@/lib/teacher-access'
 import { reshapeEnrollmentRow } from '@/lib/enrollment-shape'
 import { EnrollmentData } from '@/types/models'
@@ -20,6 +20,9 @@ export default async function MarksEntryPage() {
   let terms: TermData[] = []
   let initialEnrollments: EnrollmentData[] = []
   let allowedDepartment: 'secular' | 'theology' | 'both' = 'both'
+  let isUnassigned = false
+  let assignedSubjects: string[] = []
+  let roleLabel = 'Teacher'
   let error: string | null = null
 
   try {
@@ -27,15 +30,20 @@ export default async function MarksEntryPage() {
     const supabase = createClient(cookieStore)
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
-      return <div className="p-6 text-stone-700">Unauthorized</div>
+      return <div className="p-6 text-[var(--text-secondary)]">Unauthorized</div>
     }
     const access = await verifyDataAccess(supabase, user, 'read')
     if (!access.isAuthorized) {
-      return <div className="p-6 text-rose-700">Access Denied: {access.message}</div>
+      return <div className="p-6 text-rose-600 font-semibold">Access Denied: {access.message}</div>
     }
 
-    if (access.filterByDepartment === 'secular' || access.filterByDepartment === 'theology') {
-      allowedDepartment = access.filterByDepartment
+    const scope = resolveUserScope(access)
+    isUnassigned = scope.isUnassigned
+    assignedSubjects = scope.assignedSubjects
+    roleLabel = scope.rawRole || scope.canonicalRole
+
+    if (scope.department === 'secular' || scope.department === 'theology') {
+      allowedDepartment = scope.department
     }
 
     let enrollQuery = supabase
@@ -119,34 +127,39 @@ export default async function MarksEntryPage() {
   }
 
   return (
-    <div className="w-full max-w-full overflow-x-hidden">
-      <div className="bg-white border-b border-stone-200/80">
-        <div className="max-w-6xl mx-auto px-3 sm:px-6 py-2.5 sm:py-3 flex flex-wrap items-center justify-between gap-2">
+    <div className="w-full min-h-screen bg-[var(--bg-canvas)]">
+      <div className="bg-[var(--bg-card)] border-b border-[var(--border)]">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-base sm:text-xl font-bold text-stone-900 tracking-tight">Marks Entry</h1>
-            <p className="text-stone-500 text-xs">
-              Select a term, student, and enter scores per subject.
+            <h1 className="text-lg sm:text-xl font-extrabold text-[var(--text-primary)] tracking-tight">
+              Marks Entry
+            </h1>
+            <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+              Select an academic term, student cohort, and record marks per subject.
             </p>
           </div>
           {allowedDepartment !== 'both' && (
-            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200">
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 border border-emerald-500/25">
               {allowedDepartment === 'secular' ? 'Secular Department' : 'Theology Department'}
             </span>
           )}
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-2.5 sm:px-6 py-2.5 sm:py-4 w-full min-w-0">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-5 w-full min-w-0">
         {error ? (
-          <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl">
-            <p className="text-rose-800 font-semibold text-sm">System Error: {error}</p>
-            <p className="text-rose-600 text-xs mt-1">Please verify the database connection and active academic term.</p>
+          <div className="p-4 bg-rose-500/10 border border-rose-500/25 rounded-2xl">
+            <p className="text-rose-700 dark:text-rose-300 font-bold text-sm">System Error: {error}</p>
+            <p className="text-rose-600/90 dark:text-rose-400 text-xs mt-1">Please verify the database connection and active academic term.</p>
           </div>
         ) : (
           <AdminMarksEntryClient
             terms={terms}
             initialEnrollments={initialEnrollments}
             allowedDepartment={allowedDepartment}
+            isUnassigned={isUnassigned}
+            assignedSubjects={assignedSubjects}
+            roleLabel={roleLabel}
           />
         )}
       </div>

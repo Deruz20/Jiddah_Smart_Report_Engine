@@ -156,6 +156,13 @@ export default function CircularClient({
           const bot = scoreObj.bot_score === "" ? null : parseFloat(scoreObj.bot_score);
           const mot = scoreObj.mot_score === "" ? null : parseFloat(scoreObj.mot_score);
           const eot = scoreObj.eot_score === "" ? null : parseFloat(scoreObj.eot_score);
+          if (
+            (bot !== null && (Number.isNaN(bot) || bot < 0 || bot > 100)) ||
+            (mot !== null && (Number.isNaN(mot) || mot < 0 || mot > 100)) ||
+            (eot !== null && (Number.isNaN(eot) || eot < 0 || eot > 100))
+          ) {
+            throw new Error(`Invalid score for ${sub.subject_name}: marks must be between 0 and 100.`);
+          }
           const existing = existingC?.find(e => e.subject_id === sub.id);
           
           if (existing) {
@@ -226,6 +233,15 @@ export default function CircularClient({
       const bot = formData.bot_score === "" ? null : parseFloat(formData.bot_score);
       const mot = formData.mot_score === "" ? null : parseFloat(formData.mot_score);
       const eot = formData.eot_score === "" ? null : parseFloat(formData.eot_score);
+      if (
+        (bot !== null && (Number.isNaN(bot) || bot < 0 || bot > 100)) ||
+        (mot !== null && (Number.isNaN(mot) || mot < 0 || mot > 100)) ||
+        (eot !== null && (Number.isNaN(eot) || eot < 0 || eot > 100))
+      ) {
+        toast.error("Marks must be between 0 and 100.");
+        setIsSubmitting(false);
+        return;
+      }
       
       await powerSync.execute(
         'UPDATE circular_marks SET bot_mark = ?, mot_mark = ?, eot_mark = ? WHERE id = ?',

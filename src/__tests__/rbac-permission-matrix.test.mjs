@@ -2,6 +2,12 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import {
+  resolveUserScope,
+  canAccessClassInScope,
+  canAccessSubjectInScope,
+  canAccessFullClassBroadsheet,
+} from '../lib/access-scope.ts';
 
 // Load enumerated routes from Wave 1 sweep
 const ARTIFACTS_DIR = path.resolve(process.cwd(), '../jiddah_agent_artifacts/sweeps');
@@ -219,6 +225,112 @@ describe('Wave 3: RBAC & Permission Matrix Data-Driven Suite [MOCK - In-Memory P
       assert.equal(normalizeRole('Teacher'), 'class_teacher');
       assert.equal(normalizeRole('Theology Instructor'), 'theology_instructor');
       assert.equal(normalizeRole('Unknown Hacker'), 'guest');
+    });
+  });
+
+  describe('6. Unified Teacher & Department Scoping Engine (resolveUserScope)', () => {
+    it('grants Administrator & Head Teacher full institutional access across Secular and Theology', () => {
+      const adminScope = resolveUserScope({ role: 'Administrator', status: 'active' });
+      assert.equal(adminScope.isAuthorized, true);
+      assert.equal(adminScope.isFullAccess, true);
+      assert.equal(adminScope.department, 'both');
+      assert.equal(adminScope.canAccessSecular, true);
+      assert.equal(adminScope.canAccessTheology, true);
+      assert.equal(adminScope.canManageSettings, true);
+      assert.equal(adminScope.canManageTeachers, true);
+      assert.equal(canAccessClassInScope(adminScope, 'any-class-id', 'circular'), true);
+      assert.equal(canAccessClassInScope(adminScope, 'any-theology-id', 'theology'), true);
+      assert.equal(canAccessFullClassBroadsheet(adminScope, 'any-class-id'), true);
+    });
+
+    it('isolates DOS Secular vs DOS Theology by department while preserving leadership capabilities', () => {
+      const dosSecular = resolveUserScope({ role: 'DOS Secular', subject: 'Secular', status: 'active' });
+      assert.equal(dosSecular.isFullAccess, true);
+      assert.equal(dosSecular.department, 'secular');
+      assert.equal(dosSecular.canAccessSecular, true);
+      assert.equal(dosSecular.canAccessTheology, false);
+      assert.equal(dosSecular.canAccessSecularHub, true);
+      assert.equal(dosSecular.canAccessTheologyHub, false);
+      assert.equal(canAccessClassInScope(dosSecular, 'sec-cls-1', 'circular'), true);
+      assert.equal(canAccessClassInScope(dosSecular, 'theo-cls-1', 'theology'), false);
+
+      const dosTheology = resolveUserScope({ role: 'DOS Theology', subject: 'Theology', status: 'active' });
+      assert.equal(dosTheology.isFullAccess, true);
+      assert.equal(dosTheology.department, 'theology');
+      assert.equal(dosTheology.canAccessSecular, false);
+      assert.equal(dosTheology.canAccessTheology, true);
+      assert.equal(dosTheology.canAccessSecularHub, false);
+      assert.equal(dosTheology.canAccessTheologyHub, true);
+      assert.equal(canAccessClassInScope(dosTheology, 'sec-cls-1', 'circular'), false);
+      assert.equal(canAccessClassInScope(dosTheology, 'theo-cls-1', 'theology'), true);
+    });
+
+    it('enforces Subject Teacher scope: restricted to assigned class_id + subject_id pairs and auto-selects default class & subject', () => {
+      const subjectTeacher = resolveUserScope({
+        role: 'Subject Teacher',
+        subject: 'Secular, Mathematics, Science',
+        status: 'active',
+        classAssignments: [
+          { classId: 'cls-p6', classType: 'circular', subjectId: 'sub-math', subjectName: 'Mathematics' },
+          { classId: 'cls-p7', classType: 'circular', subjectId: 'sub-sci', subjectName: 'Science' },
+        ],
+      });
+
+      assert.equal(subjectTeacher.isAuthorized, true);
+      assert.equal(subjectTeacher.isSubjectTeacher, true);
+      assert.equal(subjectTeacher.isClassTeacher, false);
+      assert.equal(subjectTeacher.department, 'secular');
+      assert.equal(subjectTeacher.defaultClassId, 'cls-p6');
+      assert.equal(subjectTeacher.defaultSubjectId, 'sub-math');
+      assert.equal(subjectTeacher.canAccessMarksEntry, true);
+      assert.equal(subjectTeacher.canAccessSubjects, true);
+      assert.equal(subjectTeacher.canAccessSecularHub, true);
+      assert.equal(subjectTeacher.canAccessTheologyHub, false);
+      assert.equal(subjectTeacher.canAccessStudents, false);
+      assert.equal(subjectTeacher.canAccessReports, false);
+      assert.equal(canAccessSubjectInScope(subjectTeacher, 'cls-p6', 'sub-math', 'secular'), true);
+      assert.equal(canAccessSubjectInScope(subjectTeacher, 'cls-p6', 'English', 'secular'), false);
+      assert.equal(canAccessSubjectInScope(subjectTeacher, 'cls-p5', 'sub-math', 'secular'), false);
+      assert.equal(canAccessFullClassBroadsheet(subjectTeacher, 'cls-p6'), false);
+    });
+
+    it('grants Class Teacher (Homeroom / Muraqib) access to Classes, Students, Report Center, and full-class Hub broadsheets for assigned homeroom class', () => {
+      const classTeacher = resolveUserScope({
+        role: 'Class Teacher',
+        subject: 'Secular',
+        status: 'active',
+        classAssignments: [
+          { classId: 'cls-p4', classType: 'circular', isHomeroom: true },
+        ],
+        homeroomClassIds: ['cls-p4'],
+      });
+
+      assert.equal(classTeacher.isAuthorized, true);
+      assert.equal(classTeacher.isClassTeacher, true);
+      assert.equal(classTeacher.canAccessClasses, true);
+      assert.equal(classTeacher.canAccessStudents, true);
+      assert.equal(classTeacher.canAccessReports, true);
+      assert.equal(classTeacher.canEditClassTeacherRemarks, true);
+      assert.equal(classTeacher.canEditHeadTeacherRemarks, false);
+      assert.equal(canAccessClassInScope(classTeacher, 'cls-p4', 'circular'), true);
+      assert.equal(canAccessClassInScope(classTeacher, 'cls-p5', 'circular'), false);
+      assert.equal(canAccessFullClassBroadsheet(classTeacher, 'cls-p4'), true);
+      assert.equal(canAccessFullClassBroadsheet(classTeacher, 'cls-p5'), false);
+    });
+
+    it('flags unassigned active teachers with isUnassigned=true without throwing 403 unauthorized', () => {
+      const unassigned = resolveUserScope({
+        role: 'Class Teacher',
+        subject: 'Theology',
+        status: 'active',
+        classAssignments: [],
+      });
+
+      assert.equal(unassigned.isAuthorized, true);
+      assert.equal(unassigned.isUnassigned, true);
+      assert.equal(unassigned.department, 'theology');
+      assert.deepEqual(unassigned.allowedClassIds, []);
+      assert.equal(unassigned.defaultClassId, null);
     });
   });
 });

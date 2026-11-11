@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Plus, Edit, Trash2, GraduationCap, ChevronDown, Save } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
+import { ConfirmDestructiveDialog } from "@/components/ConfirmDestructiveDialog";
 
 type GradingCriteria = {
   id: string;
@@ -34,6 +35,8 @@ export function GradingCriteriaClient({
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState<string | null>(null);
   const [formValues, setFormValues] = useState<Partial<GradingCriteria>>({});
+  const [ruleToDelete, setRuleToDelete] = useState<string | null>(null);
+  const [deletingRule, setDeletingRule] = useState(false);
   
   // Admin and HT can edit both. DOS Secular can only edit secular. DOS Theology can only edit theology.
   const canEditCircular = ['Administrator', 'Head Teacher', 'DOS Secular'].includes(role);
@@ -115,16 +118,24 @@ export function GradingCriteriaClient({
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this rule?")) return;
+  const handleDelete = (id: string) => {
+    setRuleToDelete(id);
+  };
+
+  const confirmDeleteRule = async () => {
+    if (!ruleToDelete) return;
+    setDeletingRule(true);
     try {
       const supabase = createClient();
-      const { error } = await supabase.from("grading_criteria").delete().eq("id", id);
+      const { error } = await supabase.from("grading_criteria").delete().eq("id", ruleToDelete);
       if (error) throw error;
       toast.success("Grading rule deleted.");
+      setRuleToDelete(null);
       fetchData();
     } catch (error: any) {
       toast.error("Error deleting rule: " + error.message);
+    } finally {
+      setDeletingRule(false);
     }
   };
 
@@ -372,6 +383,16 @@ export function GradingCriteriaClient({
           </div>
         </div>
       </div>
+
+      <ConfirmDestructiveDialog
+        open={Boolean(ruleToDelete)}
+        title="Delete Grading Rule?"
+        description="Are you sure you want to delete this grading rule? This cannot be undone."
+        confirmLabel="Delete Rule"
+        loading={deletingRule}
+        onConfirm={confirmDeleteRule}
+        onCancel={() => setRuleToDelete(null)}
+      />
     </div>
   );
 }

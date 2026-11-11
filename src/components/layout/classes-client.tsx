@@ -1,8 +1,10 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { Plus, Edit, Trash2, BookMarked, Search } from "lucide-react";
+import { toast } from "sonner";
 import { HeroSection } from "@/components/HeroSection";
 import { Button } from "@/components/figma-ui/ui/button";
 import { Input } from "@/components/figma-ui/ui/input";
@@ -17,6 +19,7 @@ const getSectionColor = (section: string) => {
     nursery: "bg-pink-100 text-pink-800 border-pink-200",
     lower_primary: "bg-[#065F46]/10 text-[#065F46] border-[#065F46]/20",
     upper_primary: "bg-[#F97316]/10 text-[#F97316] border-[#F97316]/20",
+    theology: "bg-amber-50 text-amber-800 border-amber-200",
   };
   return colors[section] || "bg-gray-100 text-gray-800 border-gray-200";
 };
@@ -26,6 +29,7 @@ const getSectionLabel = (section: string) => {
     nursery: "Nursery",
     lower_primary: "Lower Primary",
     upper_primary: "Upper Primary",
+    theology: "Theology Cohort",
   };
   return labels[section] || section;
 };
@@ -34,9 +38,17 @@ export type ClassData = {
   id: string;
   class_name: string;
   section: string;
+  track?: "secular" | "theology";
 };
 
-export default function ClassesClient({ initialClasses }: { initialClasses: ClassData[] }) {
+export default function ClassesClient({
+  initialClasses,
+  canManageClasses = true,
+}: {
+  initialClasses: ClassData[];
+  canManageClasses?: boolean;
+}) {
+  const router = useRouter();
   const [classes, setClasses] = useState<ClassData[]>(initialClasses);
   const [search, setSearch] = useState("");
   
@@ -50,8 +62,6 @@ export default function ClassesClient({ initialClasses }: { initialClasses: Clas
   const [formData, setFormData] = useState({ class_name: "", section: "nursery" });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-
-
   const filteredClasses = classes.filter(c => 
     c.class_name.toLowerCase().includes(search.toLowerCase()) || 
     getSectionLabel(c.section || "").toLowerCase().includes(search.toLowerCase())
@@ -61,36 +71,45 @@ export default function ClassesClient({ initialClasses }: { initialClasses: Clas
     const supabase = createClient();
     const { data } = await supabase.from('circular_classes').select('*').order('section').order('class_name');
     if (data) setClasses(data);
+    router.refresh();
   };
 
   const handleCreate = async () => {
-    if (!formData.class_name.trim()) return alert("Class name is required");
+    if (!formData.class_name.trim()) {
+      toast.error("Class name is required");
+      return;
+    }
     setIsSubmitting(true);
     const supabase = createClient();
     try {
       const { error } = await supabase.from('circular_classes').insert([formData]);
       if (error) throw error;
+      toast.success("Class created successfully");
       setIsCreateOpen(false);
       setFormData({ class_name: "", section: "nursery" });
-      refetch();
+      await refetch();
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message || "Failed to create class");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleEdit = async () => {
-    if (!formData.class_name.trim() || !selectedClass) return alert("Class name is required");
+    if (!formData.class_name.trim() || !selectedClass) {
+      toast.error("Class name is required");
+      return;
+    }
     setIsSubmitting(true);
     const supabase = createClient();
     try {
       const { error } = await supabase.from('circular_classes').update(formData).eq('id', selectedClass.id);
       if (error) throw error;
+      toast.success("Class updated successfully");
       setIsEditOpen(false);
-      refetch();
+      await refetch();
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message || "Failed to update class");
     } finally {
       setIsSubmitting(false);
     }
@@ -103,10 +122,11 @@ export default function ClassesClient({ initialClasses }: { initialClasses: Clas
     try {
       const { error } = await supabase.from('circular_classes').delete().eq('id', selectedClass.id);
       if (error) throw error;
+      toast.success("Class deleted successfully");
       setIsDeleteOpen(false);
-      refetch();
+      await refetch();
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message || "Failed to delete class");
     } finally {
       setIsSubmitting(false);
     }
@@ -129,15 +149,17 @@ export default function ClassesClient({ initialClasses }: { initialClasses: Clas
         title="Classes Management"
         subtitle={`${classes.length} classes configured`}
         actions={
-          <Button
-            className="bg-[#065F46] hover:bg-[#047857] text-white shadow-md shadow-[#065F46]/20 transition-all rounded-xl"
-            onClick={() => {
-              setFormData({ class_name: "", section: "nursery" });
-              setIsCreateOpen(true);
-            }}
-          >
-            <Plus className="w-4 h-4 mr-2" /> Add Class
-          </Button>
+          canManageClasses ? (
+            <Button
+              className="bg-[#065F46] hover:bg-[#047857] text-white shadow-md shadow-[#065F46]/20 transition-all rounded-xl"
+              onClick={() => {
+                setFormData({ class_name: "", section: "nursery" });
+                setIsCreateOpen(true);
+              }}
+            >
+              <Plus className="w-4 h-4 mr-2" /> Add Class
+            </Button>
+          ) : undefined
         }
       />
 
@@ -192,14 +214,16 @@ export default function ClassesClient({ initialClasses }: { initialClasses: Clas
                     </div>
                   </Link>
 
-                  <div className="flex items-center justify-end gap-2 mt-6 pt-4 border-t border-gray-100">
-                    <Button variant="ghost" size="icon" onClick={(e) => { e.preventDefault(); openEdit(cls); }} className="h-8 w-8 text-gray-500 hover:text-[#065F46] hover:bg-[#065F46]/10 rounded-lg">
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={(e) => { e.preventDefault(); openDelete(cls); }} className="h-8 w-8 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg">
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
+                  {canManageClasses && cls.track !== "theology" && (
+                    <div className="flex items-center justify-end gap-2 mt-6 pt-4 border-t border-gray-100">
+                      <Button variant="ghost" size="icon" onClick={(e) => { e.preventDefault(); openEdit(cls); }} className="h-8 w-8 text-gray-500 hover:text-[#065F46] hover:bg-[#065F46]/10 rounded-lg">
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={(e) => { e.preventDefault(); openDelete(cls); }} className="h-8 w-8 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg">
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  )}
                 </motion.div>
               ))}
             </AnimatePresence>

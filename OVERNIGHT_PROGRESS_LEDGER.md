@@ -91,6 +91,17 @@ This ledger documents every contract inspection, architectural ruling, implement
   2. Hardened `/admin/settings/page.tsx`: Removed the client-metadata bypass; unconditionally verifies data access server-side.
 - **Verification:** RBAC and permission matrix tests in `rbac-permission-matrix.test.mjs` pass cleanly.
 
+### Ruling 08: Staff Portal Editorial Split-Screen & Autofill Hardening
+- **Context:** `src/app/login/page.tsx` previously suffered from an awkward floating card obscuring students' faces, muddy olive browser autofill styling, and poor focus contrast.
+- **Ruling:**
+  1. Re-architected `src/app/login/page.tsx` into an editorial split-screen layout (`lg:grid-cols-12`):
+     - Left column (`lg:col-span-7`): Frames the authentic campus photograph (`public/images/jiddah_campus_community.jpg`) with a directional multi-layer dark forest vignette (`#072619`) that cleanly masks the bottom-left pavement traffic cone, accompanied by an editorial brand lockup with gold/marigold accent pill (`TERM 3, 2026 • ACADEMIC & THEOLOGY PORTAL`).
+     - Right column (`lg:col-span-5`): High-contrast architectural dark emerald surface (`#072619` / `#093220`) harmonized directly with student uniforms.
+     - Mobile layout (`< lg`): Stacks a top photo banner with form below, ensuring students' faces are never obscured.
+  2. Enforced explicit browser autofill CSS overrides (`-webkit-box-shadow: 0 0 0 1000px #062317 inset !important`, `-webkit-text-fill-color: #FAF6EE !important`, `caret-color: #EA6A15 !important`) to eliminate white-on-white text and muddy olive browser artifacts.
+  3. Replaced generic error boxes with high-contrast diagnostic alert banners including network troubleshooting guidance and tactile multi-state submit indicators.
+- **Verification:** `npx tsc --noEmit` exits with 0 errors; `next build --webpack` compiles all 67 routes successfully.
+
 ---
 
 ## 4. UI/UX Anti-Slop Renovation Highlights (Workstream 3)

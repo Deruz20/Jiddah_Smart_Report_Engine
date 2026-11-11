@@ -14,6 +14,7 @@ import {
   Mail,
   RefreshCw,
   ShieldAlert,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/utils/supabase/client";
@@ -29,6 +30,71 @@ import {
 } from "@/lib/validation";
 
 type Screen = "login" | "forgot" | "reset";
+type PolicyModalKey = "privacy" | "terms" | "data";
+
+const POLICY_CONTENT: Record<
+  PolicyModalKey,
+  {
+    title: string;
+    subtitle: string;
+    sections: { heading: string; body: string }[];
+  }
+> = {
+  privacy: {
+    title: "Academic Data Privacy Policy",
+    subtitle: "Jiddah Islamic Nursery & Primary School • Information Governance",
+    sections: [
+      {
+        heading: "1. Scope & Purpose of Collection",
+        body: "All personal and academic data accessed or recorded through this portal is collected exclusively for official educational management, pupil assessment, grading, continuous monitoring, and regulatory reporting in accordance with Uganda Ministry of Education and Sports (MoES) standards.",
+      },
+      {
+        heading: "2. Authorized Access & Confidentiality",
+        body: "Access to student academic records, theological evaluations, and guardian contact details is strictly restricted to authenticated staff with verified pedagogical duties. Disclosure, sharing, or replication of records outside authorized school business is strictly prohibited.",
+      },
+      {
+        heading: "3. Retention & Data Integrity",
+        body: "Assessment records, terminal report marks, and competency descriptors are permanently archived for historical pupil transcripts. Any record modifications are auditable to safeguard institutional evaluation integrity.",
+      },
+    ],
+  },
+  terms: {
+    title: "Terms & Conditions of Portal Access",
+    subtitle: "Authorized Staff Portal Usage Agreement",
+    sections: [
+      {
+        heading: "1. Authenticated Staff Access",
+        body: "This portal is a private institutional facility reserved solely for active administrators, Directors of Studies (DOS), and appointed classroom and subject teachers of Jiddah Islamic Nursery & Primary School. Credential sharing or delegation of login access is a violation of staff policy.",
+      },
+      {
+        heading: "2. Assessment Entry & Academic Honesty",
+        body: "Teachers and evaluators are professionally obligated to record genuine, objective continuous assessment and examination marks. Intentional misrepresentation, falsification, or unauthorized alteration of scores will result in administrative disciplinary review.",
+      },
+      {
+        heading: "3. Session Security & Account Custody",
+        body: "Staff must maintain custody of their authentication credentials. Always sign out of active sessions when using shared or laboratory devices. Any suspected unauthorized access must be reported to the School Administrator immediately.",
+      },
+    ],
+  },
+  data: {
+    title: "Student Records Data Protection",
+    subtitle: "Pupil & Institutional Records Governance",
+    sections: [
+      {
+        heading: "1. Minor Pupil Protection",
+        body: "As an institution entrusted with the education of nursery and primary pupils, Jiddah Islamic Schools enforces the highest standard of data protection for minor children. Biographical data, photographs, and performance logs are safeguarded against public dissemination.",
+      },
+      {
+        heading: "2. Report Cards & Examination Security",
+        body: "Mid-term (MOT) and End-of-Term (EOT) report cards, official school stamps, and administrative signatures generated within this portal are legally binding academic records. Unauthorized generation, alteration, or external distribution is strictly monitored.",
+      },
+      {
+        heading: "3. Rectification & Administrative Recourse",
+        body: "Corrections to student bio-data, class enrollments, or historical scores must follow official administrative workflows approved by the Head Teacher or Director of Studies.",
+      },
+    ],
+  },
+};
 
 const authFormOptions = {
   mode: "onTouched" as const,
@@ -71,10 +137,22 @@ function LoginContent() {
   const [loading, setLoading] = useState(false);
   const [authErrorMessage, setAuthErrorMessage] = useState<string | null>(null);
   const [forgotSuccessMessage, setForgotSuccessMessage] = useState<string | null>(null);
+  const [activeModal, setActiveModal] = useState<PolicyModalKey | null>(null);
 
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("from") ?? "/admin";
+
+  useEffect(() => {
+    if (!activeModal) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setActiveModal(null);
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [activeModal]);
 
   useEffect(() => {
     const supabase = createClient();
@@ -161,7 +239,6 @@ function LoginContent() {
         ? NETWORK_MESSAGE
         : error?.message || "Invalid email or password. Please verify your credentials.";
       setAuthErrorMessage(msg);
-      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -170,7 +247,6 @@ function LoginContent() {
   const handleLoginInvalid = (errors: FieldErrors<LoginForm>) => {
     const message = firstFieldError(errors) ?? "Please enter your email address and password.";
     setAuthErrorMessage(message);
-    toast.error(message);
   };
 
   const handleForgot = async (values: ForgotPasswordForm) => {
@@ -235,6 +311,7 @@ function LoginContent() {
   const compactAlert = authErrorMessage && (
     <div
       role="alert"
+      data-testid="login-error-banner"
       className="mb-5 bg-[#FFF8F6] border border-[#F5C6CB] text-[#9F1D2C] rounded-lg px-3.5 py-2.5 text-xs flex items-center gap-2.5 leading-snug"
     >
       <ShieldAlert className="w-4 h-4 text-[#C92A2A] flex-shrink-0" />
@@ -564,8 +641,107 @@ function LoginContent() {
 
         {/* Minimal Footer Below Card */}
         <footer className="mt-6 text-xs text-[#8C857B] text-center font-normal">
-          © 2026 Jiddah Islamic Nursery &amp; Primary School
+          <div>© 2026 Jiddah Islamic Nursery &amp; Primary School</div>
+          <div className="mt-2 flex items-center justify-center gap-3 text-xs text-[#8C857B]">
+            <button
+              type="button"
+              onClick={() => setActiveModal("privacy")}
+              className="hover:text-[#0D5C3A] hover:underline transition-colors cursor-pointer focus:outline-none"
+            >
+              Privacy Policy
+            </button>
+            <span aria-hidden="true" className="text-[#DCD6CC]">•</span>
+            <button
+              type="button"
+              onClick={() => setActiveModal("terms")}
+              className="hover:text-[#0D5C3A] hover:underline transition-colors cursor-pointer focus:outline-none"
+            >
+              Terms &amp; Conditions
+            </button>
+            <span aria-hidden="true" className="text-[#DCD6CC]">•</span>
+            <button
+              type="button"
+              onClick={() => setActiveModal("data")}
+              className="hover:text-[#0D5C3A] hover:underline transition-colors cursor-pointer focus:outline-none"
+            >
+              Data Protection
+            </button>
+          </div>
         </footer>
+
+        {/* Accessible Light-Mode Policy Modal Dialog */}
+        {activeModal && (
+          <div
+            role="dialog"
+            data-testid="policy-modal"
+            aria-modal="true"
+            aria-labelledby="policy-dialog-title"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/40 backdrop-blur-xs animate-in fade-in duration-150"
+            onClick={() => setActiveModal(null)}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="relative w-full max-w-[500px] bg-[#FFFFFF] rounded-2xl border border-[#EAE4DC] shadow-[0_20px_50px_-12px_rgba(15,41,30,0.18),0_4px_12px_-2px_rgba(15,41,30,0.06)] overflow-hidden animate-in zoom-in-95 duration-150"
+            >
+              {/* Delicate 3px Top Accent Bar matching Login Card */}
+              <div
+                className="absolute top-0 left-0 right-0 h-[3px]"
+                style={{
+                  background:
+                    "linear-gradient(90deg, #0D5C3A 0%, #D97706 60%, #EA580C 100%)",
+                }}
+              />
+
+              {/* Header */}
+              <div className="pt-6 px-6 pb-4 border-b border-[#EAE4DC] flex items-start justify-between gap-4">
+                <div>
+                  <h2
+                    id="policy-dialog-title"
+                    className="text-base font-semibold text-[#111827] tracking-tight"
+                  >
+                    {POLICY_CONTENT[activeModal].title}
+                  </h2>
+                  <p className="text-xs text-[#6B7280] mt-0.5 font-medium">
+                    {POLICY_CONTENT[activeModal].subtitle}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveModal(null)}
+                  aria-label="Close dialog"
+                  className="w-8 h-8 -mr-1 -mt-1 flex items-center justify-center text-[#9CA3AF] hover:text-[#111827] hover:bg-[#F3F0E9] rounded-lg transition-colors cursor-pointer focus:outline-none"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="p-6 max-h-[60vh] overflow-y-auto space-y-4 text-xs text-[#374151] leading-relaxed">
+                {POLICY_CONTENT[activeModal].sections.map((section, idx) => (
+                  <div key={idx} className="space-y-1">
+                    <h3 className="font-semibold text-[#111827] text-[13px]">
+                      {section.heading}
+                    </h3>
+                    <p className="text-[#4B5563] text-xs leading-relaxed">
+                      {section.body}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 py-3.5 bg-[#FAF7F2] border-t border-[#EAE4DC] flex items-center justify-end">
+                <button
+                  type="button"
+                  onClick={() => setActiveModal(null)}
+                  className="h-9 px-4 rounded-lg bg-[#0D5C3A] hover:bg-[#09472C] active:bg-[#073822] text-xs font-medium text-white shadow-xs transition-colors cursor-pointer focus:outline-none"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </>
   );

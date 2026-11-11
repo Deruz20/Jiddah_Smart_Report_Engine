@@ -2,12 +2,10 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Image from "next/image";
 import { useForm, type FieldErrors, type FieldPath, type FieldValues, type UseFormReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   AlertCircle,
-  ArrowRight,
   CheckCircle2,
   ChevronLeft,
   Eye,
@@ -16,7 +14,6 @@ import {
   Mail,
   RefreshCw,
   ShieldAlert,
-  ShieldCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/utils/supabase/client";
@@ -39,7 +36,7 @@ const authFormOptions = {
 };
 
 const NETWORK_MESSAGE =
-  "Can't reach the sign-in service. Check your connection or verify the authentication endpoint.";
+  "Unable to reach the authentication service. Please check your network connection and try again.";
 
 function isNetworkFailure(error: unknown): boolean {
   const e = error as { name?: string; message?: string } | null;
@@ -192,7 +189,7 @@ function LoginContent() {
       }
       const confirmMsg =
         payload.message ||
-        `Password reset instructions sent for ${values.email}. If email delivery is offline, your School Administrator has been notified to issue a temporary password.`;
+        `Password reset instructions sent for ${values.email}. If email delivery is unavailable, contact your School Administrator for a temporary password.`;
       setForgotSuccessMessage(confirmMsg);
       toast.success("Password reset request submitted");
     } catch (error: any) {
@@ -235,510 +232,340 @@ function LoginContent() {
     setScreen(next);
   };
 
-  const alertBanner = authErrorMessage && (
+  const compactAlert = authErrorMessage && (
     <div
       role="alert"
-      className="mb-5 p-3.5 rounded-xl bg-[#2A0E0B] border border-[#7A2722] text-[#FFC7C2] text-xs leading-relaxed flex items-start gap-2.5 shadow-sm"
+      className="mb-5 bg-[#FFF8F6] border border-[#F5C6CB] text-[#9F1D2C] rounded-lg px-3.5 py-2.5 text-xs flex items-center gap-2.5 leading-snug"
     >
-      <ShieldAlert className="w-4 h-4 text-[#F87171] flex-shrink-0 mt-0.5" />
-      <div className="flex-1">
-        <p className="font-semibold text-[#FEE2E2] mb-0.5">Authentication Issue</p>
-        <p className="text-[#FFC7C2]">{authErrorMessage}</p>
-        {isNetworkFailure({ message: authErrorMessage }) && (
-          <p className="mt-1.5 text-[11px] text-[#FCA5A5] border-t border-[#7A2722]/60 pt-1.5">
-            Diagnostic hint: If testing locally, verify Supabase credentials or verify your internet connection.
-          </p>
-        )}
-      </div>
+      <ShieldAlert className="w-4 h-4 text-[#C92A2A] flex-shrink-0" />
+      <span className="flex-1">{authErrorMessage}</span>
     </div>
   );
 
   return (
     <>
       <style jsx global>{`
-        /* Browser Autofill Overrides for high contrast on dark forest surface */
-        .jiddah-auth-input:-webkit-autofill,
-        .jiddah-auth-input:-webkit-autofill:hover,
-        .jiddah-auth-input:-webkit-autofill:focus,
-        .jiddah-auth-input:-webkit-autofill:active {
-          -webkit-box-shadow: 0 0 0 1000px #062317 inset !important;
-          box-shadow: 0 0 0 1000px #062317 inset !important;
-          -webkit-text-fill-color: #FAF6EE !important;
-          caret-color: #EA6A15 !important;
+        /* Explicit Browser Autofill Overrides: keeps crisp white surface without yellow/green tint */
+        .clerk-input:-webkit-autofill,
+        .clerk-input:-webkit-autofill:hover,
+        .clerk-input:-webkit-autofill:focus,
+        .clerk-input:-webkit-autofill:active {
+          -webkit-box-shadow: 0 0 0 1000px #FFFFFF inset !important;
+          box-shadow: 0 0 0 1000px #FFFFFF inset !important;
+          -webkit-text-fill-color: #111827 !important;
+          caret-color: #D97706 !important;
           transition: background-color 5000s ease-in-out 0s;
         }
 
-        .jiddah-auth-input:autofill {
-          box-shadow: 0 0 0 1000px #062317 inset !important;
+        .clerk-input:autofill {
+          box-shadow: 0 0 0 1000px #FFFFFF inset !important;
           filter: none !important;
-          color: #FAF6EE !important;
-        }
-
-        .jiddah-auth-input {
-          color: #FAF6EE;
-          background-color: #062317;
-          border: 1px solid #164E35;
-        }
-
-        .jiddah-auth-input::placeholder {
-          color: #5D8070;
-        }
-
-        .jiddah-auth-input:hover:not(:disabled) {
-          border-color: #247A4D;
-        }
-
-        .jiddah-auth-input:focus {
-          background-color: #041B12;
-          border-color: #EA6A15;
-          box-shadow: 0 0 0 3px rgba(234, 106, 21, 0.22);
-          outline: none;
+          color: #111827 !important;
         }
       `}</style>
 
-      <main className="min-h-screen min-h-[100dvh] w-full bg-[#072619] text-[#FAF6EE] flex flex-col lg:grid lg:grid-cols-12 overflow-x-hidden">
-        {/* MOBILE HERO BANNER (< lg): Shows photo cleanly framed at the top without any floating card over faces */}
-        <div className="lg:hidden relative w-full h-56 sm:h-72 overflow-hidden bg-[#072619] flex-shrink-0">
-          <Image
-            src="/images/jiddah_campus_community.jpg"
-            alt="Jiddah Islamic Nursery and Primary School students and campus"
-            fill
-            priority
-            sizes="100vw"
-            className="object-cover object-[center_28%]"
-          />
-          {/* Bottom vignette blending seamlessly into the dark forest background */}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#072619] via-[#072619]/60 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#072619]/50 via-transparent to-transparent" />
-
-          {/* Compact brand header overlay on mobile */}
-          <div className="absolute top-4 left-4 right-4 flex items-center justify-between">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#072619]/80 backdrop-blur-md border border-[#164E35] text-[11px] font-semibold text-[#FAF6EE]">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#EA6A15] animate-pulse" />
-              <span>TERM 3, 2026</span>
-            </div>
-            <div className="inline-flex items-center gap-1.5 text-[11px] font-medium text-emerald-200/80 bg-[#072619]/80 backdrop-blur-md px-2.5 py-1 rounded-full border border-[#164E35]/60">
-              <ShieldCheck className="w-3.5 h-3.5 text-[#34D399]" />
-              <span>Official Staff Portal</span>
-            </div>
-          </div>
-
-          <div className="absolute bottom-4 left-4 right-4">
-            <h2 className="text-lg sm:text-xl font-extrabold text-[#FAF6EE] drop-shadow-md">
-              Jiddah Islamic Nursery &amp; Primary School
-            </h2>
-            <p className="text-xs text-emerald-200/90 font-medium mt-0.5">
-              Strive for Life &amp; Hereafter • Day and Boarding
-            </p>
-          </div>
-        </div>
-
-        {/* DESKTOP SHOWCASE COLUMN (lg:col-span-7): Full height, editorial framing, traffic-cone vignette, gold pill lockup */}
-        <section className="hidden lg:flex lg:col-span-7 relative flex-col justify-between overflow-hidden bg-[#072619] border-r border-[#134E35]/50">
-          {/* Main School Photograph */}
-          <div className="absolute inset-0">
-            <Image
-              src="/images/jiddah_campus_community.jpg"
-              alt="Jiddah Islamic Nursery and Primary School students in green uniforms and orange hijabs with faculty in front of the campus mosque"
-              fill
-              priority
-              sizes="(min-width: 1024px) 58vw, 100vw"
-              className="object-cover object-[center_30%]"
-            />
-          </div>
-
-          {/* Multi-layered directional vignettes:
-              1. Heavy bottom-left gradient to completely mask the traffic cone on the pavement
-              2. Right-edge gradient for smooth architectural seam into the authentication column
-              3. Subtle top gradient for header pill legibility
-          */}
+      {/* Page Canvas: Warm Cream/Alabaster (#FAF7F2) with subtle top warm-gold ambient wash */}
+      <main
+        className="min-h-screen min-h-[100dvh] w-full flex flex-col items-center justify-center p-4 sm:p-6 bg-[#FAF7F2] text-[#111827]"
+        style={{
+          backgroundImage:
+            "radial-gradient(ellipse 70% 40% at 50% 0%, rgba(217, 119, 6, 0.07), transparent 70%)",
+        }}
+      >
+        {/* Single Centered Authentication Card */}
+        <div className="w-full max-w-[400px] bg-[#FFFFFF] rounded-2xl border border-[#EAE4DC] p-8 relative overflow-hidden shadow-[0_12px_36px_-8px_rgba(15,41,30,0.07),0_2px_6px_-1px_rgba(15,41,30,0.03)]">
+          {/* Delicate 3px Top Accent Bar */}
           <div
-            className="absolute inset-0 pointer-events-none"
+            className="absolute top-0 left-0 right-0 h-[3px]"
             style={{
-              background: `
-                linear-gradient(0deg, #072619 0%, rgba(7, 38, 25, 0.98) 16%, rgba(7, 38, 25, 0.75) 32%, rgba(7, 38, 25, 0.2) 55%, transparent 80%),
-                linear-gradient(90deg, rgba(7, 38, 25, 0.95) 0%, rgba(7, 38, 25, 0.7) 25%, rgba(7, 38, 25, 0.2) 50%, transparent 75%),
-                linear-gradient(270deg, #072619 0%, rgba(7, 38, 25, 0.4) 10%, transparent 25%),
-                linear-gradient(180deg, rgba(7, 38, 25, 0.8) 0%, rgba(7, 38, 25, 0.25) 20%, transparent 40%)
-              `,
+              background:
+                "linear-gradient(90deg, #0D5C3A 0%, #D97706 60%, #EA580C 100%)",
             }}
           />
 
-          {/* Top Header Badge Lockup */}
-          <header className="relative z-10 p-8 xl:p-10 flex items-center justify-between">
-            <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-[#072619]/85 backdrop-blur-md border border-[#164E35] text-xs font-semibold tracking-wide text-[#FAF6EE] shadow-md">
-              <span className="w-2 h-2 rounded-full bg-[#EA6A15] animate-pulse" />
-              <span>JIDDAH ACADEMIC ENGINE</span>
-              <span className="text-white/20">•</span>
-              <span className="text-[#D4AF37] font-mono">PORTAL v2.4</span>
+          {/* Clean Header Lockup: School Badge + Heading + Subheading */}
+          <header className="flex flex-col items-center text-center mb-6 pt-1">
+            <div className="w-[68px] h-[68px] rounded-[14px] bg-[#FBF9F5] border border-[#E8DFCE] flex items-center justify-center shadow-xs">
+              <JiddahLogo width={48} height={52} />
             </div>
-
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#072619]/75 backdrop-blur-md border border-[#164E35]/70 text-xs font-medium text-emerald-200/90 shadow-sm">
-              <ShieldCheck className="w-3.5 h-3.5 text-[#34D399]" />
-              <span>Uganda MOES &amp; IPLE Standards</span>
-            </div>
+            <h1 className="text-xl font-semibold tracking-tight text-[#111827] mt-4">
+              {screen === "login" && "Staff Sign In"}
+              {screen === "forgot" && "Reset Password"}
+              {screen === "reset" && "Choose New Password"}
+            </h1>
+            <p className="text-xs font-medium text-[#6B7280] mt-1">
+              Jiddah Islamic Nursery &amp; Primary School
+            </p>
           </header>
 
-          {/* Bottom Editorial Lockup (Positioned cleanly over masked pavement area) */}
-          <footer className="relative z-10 p-8 xl:p-12 mt-auto">
-            {/* Gold / Marigold Accent Pill */}
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#EA6A15]/20 border border-[#EA6A15]/45 text-[#F27A24] text-xs font-bold uppercase tracking-wider mb-3.5 shadow-sm">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#F27A24]" />
-              TERM 3, 2026 • ACADEMIC &amp; THEOLOGY PORTAL
-            </div>
+          {/* SCREEN 1: LOGIN */}
+          {screen === "login" && (
+            <>
+              {compactAlert}
 
-            <h2 className="text-2xl xl:text-4xl font-extrabold text-[#FAF6EE] tracking-tight leading-tight mb-2 drop-shadow-sm">
-              Jiddah Islamic Nursery &amp; Primary School
-            </h2>
-
-            <p className="text-sm xl:text-base font-medium text-emerald-200/90 leading-relaxed mb-4 max-w-xl">
-              Day and Boarding School • Strive for Life &amp; Hereafter
-            </p>
-
-            <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-emerald-500/20 text-xs text-emerald-300/80 font-medium">
-              <span>Kampala, Uganda</span>
-              <span className="text-emerald-500/40">•</span>
-              <span>Integrated Secular &amp; Theology Standards</span>
-              <span className="text-emerald-500/40">•</span>
-              <span>Standard Competition Ranking (1224)</span>
-            </div>
-          </footer>
-        </section>
-
-        {/* RIGHT AUTHENTICATION COLUMN (lg:col-span-5): High-contrast institutional dark emerald surface */}
-        <section
-          className="lg:col-span-5 flex flex-col justify-between px-6 py-8 sm:px-10 lg:px-10 xl:px-14 min-h-full bg-[#072619] relative z-20"
-          style={{
-            backgroundImage: `
-              radial-gradient(circle at 85% 15%, rgba(234, 106, 21, 0.08) 0%, transparent 45%),
-              radial-gradient(circle at 15% 85%, rgba(13, 92, 58, 0.35) 0%, transparent 55%)
-            `,
-          }}
-        >
-          {/* Top spacer or institutional bar */}
-          <div className="w-full flex items-center justify-between pb-4">
-            <div className="text-[11px] font-semibold text-emerald-300/70 tracking-wider uppercase">
-              Official Staff Gateway
-            </div>
-            <div className="inline-flex items-center gap-1.5 text-[11px] text-emerald-400/80">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              <span>System Online</span>
-            </div>
-          </div>
-
-          {/* Centered Authentication Form Box */}
-          <div className="w-full max-w-md mx-auto my-auto py-4">
-            {/* School Crest & Header Lockup: Clean proportioned frame with gold/emerald ring */}
-            <div className="flex items-center gap-4 mb-6">
-              <div className="relative flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-[#093522] border border-[#1B5E3C] shadow-lg ring-1 ring-[#D4AF37]/35 flex-shrink-0">
-                <JiddahLogo width={36} height={42} />
-              </div>
-              <div>
-                <span className="inline-block text-[11px] font-bold tracking-wider uppercase text-[#EA6A15]">
-                  Jiddah Islamic Schools
-                </span>
-                <h1 className="text-xl sm:text-2xl font-bold text-[#FAF6EE] tracking-tight">
-                  Staff Sign In
-                </h1>
-                <p className="text-xs text-emerald-300/70 mt-0.5">
-                  Academic Assessment &amp; Reporting Portal
-                </p>
-              </div>
-            </div>
-
-            {/* Form Card */}
-            <div className="w-full bg-[#093220]/75 backdrop-blur-md border border-[#164E35] rounded-2xl p-6 sm:p-7 shadow-2xl shadow-black/40">
-              {/* SCREEN 1: LOGIN */}
-              {screen === "login" && (
-                <>
-                  {alertBanner}
-
-                  <form
-                    noValidate
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      loginForm.handleSubmit(handleLogin, handleLoginInvalid)(event);
-                    }}
-                    className="space-y-4"
-                  >
-                    <div>
-                      <label
-                        htmlFor="email"
-                        className="block text-xs font-semibold text-[#FAF6EE] mb-1.5 tracking-wide"
-                      >
-                        Official Email Address
-                      </label>
-                      <div className="relative flex items-center">
-                        <Mail className="absolute left-3.5 w-4 h-4 text-[#7A9E8E] pointer-events-none" />
-                        <input
-                          id="email"
-                          type="email"
-                          autoComplete="email"
-                          aria-label="Official Email Address"
-                          placeholder="teacher@jiddahschool.ac.ug"
-                          disabled={loading}
-                          className="jiddah-auth-input w-full h-11 sm:h-12 pl-10 pr-4 rounded-xl text-sm font-normal text-[#FAF6EE] focus:outline-none transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-                          {...loginForm.register("email")}
-                        />
-                      </div>
-                      {emailError && (
-                        <p className="mt-1.5 text-xs text-[#F87171] font-medium flex items-center gap-1">
-                          <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
-                          <span>{emailError}</span>
-                        </p>
-                      )}
-                    </div>
-
-                    <div>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <label
-                          htmlFor="password"
-                          className="block text-xs font-semibold text-[#FAF6EE] tracking-wide"
-                        >
-                          Password
-                        </label>
-                        <button
-                          type="button"
-                          data-testid="forgot-password-trigger"
-                          onClick={() => goTo("forgot")}
-                          className="text-xs font-medium text-[#EA6A15] hover:text-[#F27A24] hover:underline focus:outline-none transition-colors"
-                        >
-                          Forgot password?
-                        </button>
-                      </div>
-                      <div className="relative flex items-center">
-                        <LockKeyhole className="absolute left-3.5 w-4 h-4 text-[#7A9E8E] pointer-events-none" />
-                        <input
-                          id="password"
-                          type={showPassword ? "text" : "password"}
-                          autoComplete="current-password"
-                          aria-label="Password"
-                          placeholder="••••••••••••"
-                          disabled={loading}
-                          className="jiddah-auth-input w-full h-11 sm:h-12 pl-10 pr-11 rounded-xl text-sm font-normal text-[#FAF6EE] focus:outline-none transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-                          {...loginForm.register("password")}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword((prev) => !prev)}
-                          aria-label={showPassword ? "Hide password" : "Show password"}
-                          className="absolute right-1.5 w-9 h-9 flex items-center justify-center text-[#7A9E8E] hover:text-[#FAF6EE] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#EA6A15] transition-colors"
-                        >
-                          {showPassword ? (
-                            <EyeOff className="w-4 h-4" />
-                          ) : (
-                            <Eye className="w-4 h-4" />
-                          )}
-                        </button>
-                      </div>
-                      {passwordError && (
-                        <p className="mt-1.5 text-xs text-[#F87171] font-medium flex items-center gap-1">
-                          <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
-                          <span>{passwordError}</span>
-                        </p>
-                      )}
-                    </div>
-
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      className="w-full h-11 sm:h-12 mt-2 rounded-xl font-bold text-sm text-[#FAF6EE] bg-gradient-to-r from-[#0D5C3A] via-[#107047] to-[#0D5C3A] hover:from-[#116F47] hover:to-[#148354] border border-[#2B8B5B]/60 shadow-lg shadow-black/30 hover:shadow-emerald-950/50 active:scale-[0.99] transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed group cursor-pointer"
-                    >
-                      {loading ? (
-                        <>
-                          <RefreshCw className="w-4 h-4 animate-spin text-[#F27A24]" />
-                          <span>Signing in to Jiddah Portal...</span>
-                        </>
-                      ) : (
-                        <>
-                          <span>Sign In to Jiddah Portal</span>
-                          <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform text-[#F27A24]" />
-                        </>
-                      )}
-                    </button>
-                  </form>
-                </>
-              )}
-
-              {/* SCREEN 2: FORGOT PASSWORD */}
-              {screen === "forgot" && (
-                <div data-testid="forgot-password-form">
-                  <button
-                    type="button"
-                    onClick={() => goTo("login")}
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-300 hover:text-[#EA6A15] mb-5 transition-colors focus:outline-none"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                    Back to Sign In
-                  </button>
-
-                  <h2 className="text-lg font-bold text-[#FAF6EE] mb-1">
-                    Reset Staff Password
-                  </h2>
-                  <p className="text-xs text-emerald-200/70 leading-relaxed mb-5">
-                    Enter your official staff email address. If email delivery is offline, the School Administrator will assist with an instant temporary passcode.
-                  </p>
-
-                  {forgotSuccessMessage && (
-                    <div
-                      role="status"
-                      data-testid="forgot-password-confirmation"
-                      className="mb-4 p-3.5 rounded-xl bg-[#07361E] border border-[#1E6B43] text-emerald-100 text-xs leading-relaxed flex items-start gap-2.5"
-                    >
-                      <CheckCircle2 className="w-4 h-4 text-[#34D399] flex-shrink-0 mt-0.5" />
-                      <span>{forgotSuccessMessage}</span>
-                    </div>
-                  )}
-
-                  {alertBanner}
-
-                  <form
-                    noValidate
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      forgotForm.handleSubmit(handleForgot)(event);
-                    }}
-                    className="space-y-4"
-                  >
-                    <div>
-                      <label
-                        htmlFor="forgot-email"
-                        className="block text-xs font-semibold text-[#FAF6EE] mb-1.5 tracking-wide"
-                      >
-                        Official Email Address
-                      </label>
-                      <div className="relative flex items-center">
-                        <Mail className="absolute left-3.5 w-4 h-4 text-[#7A9E8E] pointer-events-none" />
-                        <input
-                          id="forgot-email"
-                          type="email"
-                          autoComplete="email"
-                          aria-label="Staff email address"
-                          placeholder="teacher@jiddahschool.ac.ug"
-                          disabled={loading}
-                          className="jiddah-auth-input w-full h-11 sm:h-12 pl-10 pr-4 rounded-xl text-sm font-normal text-[#FAF6EE] focus:outline-none transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-                          {...forgotForm.register("email")}
-                        />
-                      </div>
-                      {forgotEmailError && (
-                        <p className="mt-1.5 text-xs text-[#F87171] font-medium flex items-center gap-1">
-                          <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
-                          <span>{forgotEmailError}</span>
-                        </p>
-                      )}
-                    </div>
-
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      className="w-full h-11 sm:h-12 rounded-xl font-bold text-sm text-[#FAF6EE] bg-gradient-to-r from-[#0D5C3A] via-[#107047] to-[#0D5C3A] hover:from-[#116F47] hover:to-[#148354] border border-[#2B8B5B]/60 shadow-lg shadow-black/30 flex items-center justify-center gap-2 disabled:opacity-60 transition-all cursor-pointer"
-                    >
-                      {loading ? (
-                        <>
-                          <RefreshCw className="w-4 h-4 animate-spin text-[#F27A24]" />
-                          <span>Submitting Request...</span>
-                        </>
-                      ) : (
-                        <>
-                          <span>Send Reset Instructions</span>
-                          <ArrowRight className="w-4 h-4 text-[#F27A24]" />
-                        </>
-                      )}
-                    </button>
-                  </form>
-                </div>
-              )}
-
-              {/* SCREEN 3: RESET PASSWORD */}
-              {screen === "reset" && (
+              <form
+                noValidate
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  loginForm.handleSubmit(handleLogin, handleLoginInvalid)(event);
+                }}
+                className="space-y-4"
+              >
                 <div>
-                  <h2 className="text-lg font-bold text-[#FAF6EE] mb-1">
-                    Choose New Password
-                  </h2>
-                  <p className="text-xs text-emerald-200/70 leading-relaxed mb-5">
-                    Please enter a strong new password for your institutional staff account.
-                  </p>
-
-                  {alertBanner}
-
-                  <form
-                    noValidate
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      resetForm.handleSubmit(handleReset)(event);
-                    }}
-                    className="space-y-4"
+                  <label
+                    htmlFor="email"
+                    className="block text-[13px] font-medium text-[#374151] mb-1.5"
                   >
-                    <div>
-                      <label
-                        htmlFor="reset-password"
-                        className="block text-xs font-semibold text-[#FAF6EE] mb-1.5 tracking-wide"
-                      >
-                        New Password
-                      </label>
-                      <div className="relative flex items-center">
-                        <LockKeyhole className="absolute left-3.5 w-4 h-4 text-[#7A9E8E] pointer-events-none" />
-                        <input
-                          id="reset-password"
-                          type={showPassword ? "text" : "password"}
-                          autoComplete="new-password"
-                          aria-label="New password"
-                          placeholder="Minimum 6 characters"
-                          disabled={loading}
-                          className="jiddah-auth-input w-full h-11 sm:h-12 pl-10 pr-11 rounded-xl text-sm font-normal text-[#FAF6EE] focus:outline-none transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-                          {...resetForm.register("password")}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword((prev) => !prev)}
-                          aria-label={showPassword ? "Hide password" : "Show password"}
-                          className="absolute right-1.5 w-9 h-9 flex items-center justify-center text-[#7A9E8E] hover:text-[#FAF6EE] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#EA6A15] transition-colors"
-                        >
-                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        </button>
-                      </div>
-                      {resetPasswordError && (
-                        <p className="mt-1.5 text-xs text-[#F87171] font-medium flex items-center gap-1">
-                          <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
-                          <span>{resetPasswordError}</span>
-                        </p>
-                      )}
-                    </div>
-
-                    <button
-                      type="submit"
+                    Email address
+                  </label>
+                  <div className="relative flex items-center group">
+                    <Mail className="absolute left-3.5 w-4 h-4 text-[#9CA3AF] group-focus-within:text-[#D97706] transition-colors pointer-events-none" />
+                    <input
+                      id="email"
+                      type="email"
+                      autoComplete="email"
+                      aria-label="Email address"
+                      placeholder="name@jiddahschool.ac.ug"
                       disabled={loading}
-                      className="w-full h-11 sm:h-12 rounded-xl font-bold text-sm text-[#FAF6EE] bg-gradient-to-r from-[#0D5C3A] via-[#107047] to-[#0D5C3A] hover:from-[#116F47] hover:to-[#148354] border border-[#2B8B5B]/60 shadow-lg shadow-black/30 flex items-center justify-center gap-2 disabled:opacity-60 transition-all cursor-pointer"
+                      className="clerk-input w-full h-11 pl-10 pr-3.5 rounded-lg border border-[#DCD6CC] bg-[#FFFFFF] text-sm text-[#111827] placeholder:text-[#9CA3AF] focus:border-[#D97706] focus:ring-3 focus:ring-[#D97706]/15 focus:outline-none transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                      {...loginForm.register("email")}
+                    />
+                  </div>
+                  {emailError && (
+                    <p className="mt-1.5 text-xs text-[#DC2626] font-medium flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span>{emailError}</span>
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label
+                      htmlFor="password"
+                      className="block text-[13px] font-medium text-[#374151]"
                     >
-                      {loading ? (
-                        <>
-                          <RefreshCw className="w-4 h-4 animate-spin text-[#F27A24]" />
-                          <span>Updating Password...</span>
-                        </>
+                      Password
+                    </label>
+                    <button
+                      type="button"
+                      data-testid="forgot-password-trigger"
+                      onClick={() => goTo("forgot")}
+                      className="text-xs font-medium text-[#C25E00] hover:text-[#9A4A00] hover:underline focus:outline-none transition-colors"
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
+                  <div className="relative flex items-center group">
+                    <LockKeyhole className="absolute left-3.5 w-4 h-4 text-[#9CA3AF] group-focus-within:text-[#D97706] transition-colors pointer-events-none" />
+                    <input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      autoComplete="current-password"
+                      aria-label="Password"
+                      placeholder="••••••••••••"
+                      disabled={loading}
+                      className="clerk-input w-full h-11 pl-10 pr-10 rounded-lg border border-[#DCD6CC] bg-[#FFFFFF] text-sm text-[#111827] placeholder:text-[#9CA3AF] focus:border-[#D97706] focus:ring-3 focus:ring-[#D97706]/15 focus:outline-none transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                      {...loginForm.register("password")}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      className="absolute right-2.5 w-7 h-7 flex items-center justify-center text-[#9CA3AF] hover:text-[#4B5563] rounded focus:outline-none focus:ring-1 focus:ring-[#D97706] transition-colors"
+                    >
+                      {showPassword ? (
+                        <EyeOff className="w-4 h-4" />
                       ) : (
-                        <>
-                          <span>Save New Password</span>
-                          <ArrowRight className="w-4 h-4 text-[#F27A24]" />
-                        </>
+                        <Eye className="w-4 h-4" />
                       )}
                     </button>
-                  </form>
+                  </div>
+                  {passwordError && (
+                    <p className="mt-1.5 text-xs text-[#DC2626] font-medium flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span>{passwordError}</span>
+                    </p>
+                  )}
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full h-11 mt-2 rounded-lg font-medium text-sm text-[#FFFFFF] bg-[#0D5C3A] hover:bg-[#09472C] active:bg-[#073822] shadow-sm transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  {loading ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin text-[#FFFFFF]" />
+                      <span>Signing in...</span>
+                    </>
+                  ) : (
+                    <span>Sign in</span>
+                  )}
+                </button>
+              </form>
+            </>
+          )}
+
+          {/* SCREEN 2: FORGOT PASSWORD */}
+          {screen === "forgot" && (
+            <div data-testid="forgot-password-form">
+              <button
+                type="button"
+                onClick={() => goTo("login")}
+                className="inline-flex items-center gap-1 text-xs font-medium text-[#6B7280] hover:text-[#111827] mb-4 transition-colors focus:outline-none"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+                <span>Back to sign in</span>
+              </button>
+
+              <p className="text-xs text-[#6B7280] leading-relaxed mb-4">
+                Enter your staff email address and we will provide instructions to reset your password.
+              </p>
+
+              {forgotSuccessMessage && (
+                <div
+                  role="status"
+                  data-testid="forgot-password-confirmation"
+                  className="mb-4 bg-[#F0FDF4] border border-[#BBF7D0] text-[#166534] rounded-lg px-3.5 py-2.5 text-xs flex items-center gap-2.5 leading-snug"
+                >
+                  <CheckCircle2 className="w-4 h-4 text-[#16A34A] flex-shrink-0" />
+                  <span>{forgotSuccessMessage}</span>
                 </div>
               )}
-            </div>
-          </div>
 
-          {/* Bottom Security & Role Badge */}
-          <footer className="mt-6 pt-4 border-t border-[#134E35]/60 text-center text-xs text-emerald-200/60 flex flex-col items-center gap-1.5">
-            <div className="inline-flex items-center gap-2 text-[11px] text-emerald-300/80 font-medium">
-              <ShieldCheck className="w-3.5 h-3.5 text-[#34D399]" />
-              <span>Role-Based Access Control • Administrator, DOS &amp; Teachers Only</span>
+              {compactAlert}
+
+              <form
+                noValidate
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  forgotForm.handleSubmit(handleForgot)(event);
+                }}
+                className="space-y-4"
+              >
+                <div>
+                  <label
+                    htmlFor="forgot-email"
+                    className="block text-[13px] font-medium text-[#374151] mb-1.5"
+                  >
+                    Email address
+                  </label>
+                  <div className="relative flex items-center group">
+                    <Mail className="absolute left-3.5 w-4 h-4 text-[#9CA3AF] group-focus-within:text-[#D97706] transition-colors pointer-events-none" />
+                    <input
+                      id="forgot-email"
+                      type="email"
+                      autoComplete="email"
+                      aria-label="Staff email address"
+                      placeholder="name@jiddahschool.ac.ug"
+                      disabled={loading}
+                      className="clerk-input w-full h-11 pl-10 pr-3.5 rounded-lg border border-[#DCD6CC] bg-[#FFFFFF] text-sm text-[#111827] placeholder:text-[#9CA3AF] focus:border-[#D97706] focus:ring-3 focus:ring-[#D97706]/15 focus:outline-none transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                      {...forgotForm.register("email")}
+                    />
+                  </div>
+                  {forgotEmailError && (
+                    <p className="mt-1.5 text-xs text-[#DC2626] font-medium flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span>{forgotEmailError}</span>
+                    </p>
+                  )}
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full h-11 rounded-lg font-medium text-sm text-[#FFFFFF] bg-[#0D5C3A] hover:bg-[#09472C] active:bg-[#073822] shadow-sm transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  {loading ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin text-[#FFFFFF]" />
+                      <span>Sending instructions...</span>
+                    </>
+                  ) : (
+                    <span>Send reset instructions</span>
+                  )}
+                </button>
+              </form>
             </div>
-            <p className="text-[11px] text-emerald-400/50">
-              Need credentials or account recovery? Contact School Administrator.
-            </p>
-          </footer>
-        </section>
+          )}
+
+          {/* SCREEN 3: RESET PASSWORD */}
+          {screen === "reset" && (
+            <div>
+              <p className="text-xs text-[#6B7280] leading-relaxed mb-4">
+                Please enter a new password for your staff account.
+              </p>
+
+              {compactAlert}
+
+              <form
+                noValidate
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  resetForm.handleSubmit(handleReset)(event);
+                }}
+                className="space-y-4"
+              >
+                <div>
+                  <label
+                    htmlFor="reset-password"
+                    className="block text-[13px] font-medium text-[#374151] mb-1.5"
+                  >
+                    New password
+                  </label>
+                  <div className="relative flex items-center group">
+                    <LockKeyhole className="absolute left-3.5 w-4 h-4 text-[#9CA3AF] group-focus-within:text-[#D97706] transition-colors pointer-events-none" />
+                    <input
+                      id="reset-password"
+                      type={showPassword ? "text" : "password"}
+                      autoComplete="new-password"
+                      aria-label="New password"
+                      placeholder="Minimum 6 characters"
+                      disabled={loading}
+                      className="clerk-input w-full h-11 pl-10 pr-10 rounded-lg border border-[#DCD6CC] bg-[#FFFFFF] text-sm text-[#111827] placeholder:text-[#9CA3AF] focus:border-[#D97706] focus:ring-3 focus:ring-[#D97706]/15 focus:outline-none transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                      {...resetForm.register("password")}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      className="absolute right-2.5 w-7 h-7 flex items-center justify-center text-[#9CA3AF] hover:text-[#4B5563] rounded focus:outline-none focus:ring-1 focus:ring-[#D97706] transition-colors"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  {resetPasswordError && (
+                    <p className="mt-1.5 text-xs text-[#DC2626] font-medium flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span>{resetPasswordError}</span>
+                    </p>
+                  )}
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full h-11 rounded-lg font-medium text-sm text-[#FFFFFF] bg-[#0D5C3A] hover:bg-[#09472C] active:bg-[#073822] shadow-sm transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  {loading ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin text-[#FFFFFF]" />
+                      <span>Saving password...</span>
+                    </>
+                  ) : (
+                    <span>Save new password</span>
+                  )}
+                </button>
+              </form>
+            </div>
+          )}
+        </div>
+
+        {/* Minimal Footer Below Card */}
+        <footer className="mt-6 text-xs text-[#8C857B] text-center font-normal">
+          © 2026 Jiddah Islamic Nursery &amp; Primary School
+        </footer>
       </main>
     </>
   );
@@ -746,7 +573,7 @@ function LoginContent() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#072619]" />}>
+    <Suspense fallback={<div className="min-h-screen bg-[#FAF7F2]" />}>
       <LoginContent />
     </Suspense>
   );

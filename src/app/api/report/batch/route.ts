@@ -409,13 +409,16 @@ export async function POST(request: NextRequest) {
       const motAggregateMarks = sortedCircularSubjects.filter(r => typeof r.mot_score === 'number').map(r => ({ subject_name: r.subject_name, score: r.mot_score as number }))
       const botAggregateMarks = sortedCircularSubjects.filter(r => typeof r.bot_score === 'number').map(r => ({ subject_name: r.subject_name, score: r.bot_score as number }))
 
-      const aggregate = sectionType === 'nursery' ? null : calculateAggregate(aggregateMarks, sectionType)
-      const mot_aggregate = sectionType === 'nursery' ? null : calculateAggregate(motAggregateMarks, sectionType)
-      const bot_aggregate = sectionType === 'nursery' ? null : calculateAggregate(botAggregateMarks, sectionType)
+      const aggregate = sectionType === 'nursery' ? null : calculateAggregate(aggregateMarks, sectionType, schoolSettings?.grading_scale)
+      const mot_aggregate = sectionType === 'nursery' ? null : calculateAggregate(motAggregateMarks, sectionType, schoolSettings?.grading_scale)
+      const bot_aggregate = sectionType === 'nursery' ? null : calculateAggregate(botAggregateMarks, sectionType, schoolSettings?.grading_scale)
       const reportAggregate = score_type === 'mot' ? mot_aggregate : (score_type === 'bot' ? bot_aggregate : aggregate)
       
-      const division = reportAggregate !== null ? getDivision(reportAggregate) : null
+      const division = reportAggregate !== null ? getDivision(reportAggregate, schoolSettings?.division_boundaries) : null
       const promotion_status = isTerm3 && division ? getPromotionStatus(division) : null
+      const showClassPosition =
+        schoolSettings?.print_preferences?.showClassPosition !== false &&
+        schoolSettings?.ranking_preferences?.show_rank !== false
 
       const bot_total = sortedCircularSubjects
         .filter((r) => isGradableSubject(r.subject_name, className))
@@ -431,7 +434,7 @@ export async function POST(request: NextRequest) {
       let position: number | null = null
       let total_students: number | null = null
       
-      if (curriculum !== 'theology') {
+      if (curriculum !== 'theology' && showClassPosition) {
         if (enrollment.circular_class_id && classRankings[enrollment.circular_class_id]) {
           const rankings = classRankings[enrollment.circular_class_id]
           total_students = circularClassSizes[enrollment.circular_class_id]
@@ -502,7 +505,7 @@ export async function POST(request: NextRequest) {
           mot_total: sortedTheoSubjects.reduce((sum, r) => sum + (typeof r.mot_score === 'number' ? r.mot_score : 0), 0),
           eot_total: sortedTheoSubjects.reduce((sum, r) => sum + (typeof r.eot_score === 'number' ? r.eot_score : 0), 0),
           aggregate: theologyAggregate,
-          division: theologyAggregate !== null ? getDivision(theologyAggregate) : null,
+          division: theologyAggregate !== null ? getDivision(theologyAggregate, schoolSettings?.division_boundaries) : null,
         }
       }
 
@@ -511,7 +514,7 @@ export async function POST(request: NextRequest) {
 
       let theologyPosition = null;
       let totalTheologyStudents = null;
-      if (curriculum !== 'secular' && enrollment.theology_class_id && theologyRankings[enrollment.theology_class_id] && theologySectionData) {
+      if (curriculum !== 'secular' && showClassPosition && enrollment.theology_class_id && theologyRankings[enrollment.theology_class_id] && theologySectionData) {
          const rankings = theologyRankings[enrollment.theology_class_id]
          totalTheologyStudents = theologyClassSizes[enrollment.theology_class_id]
          if (rankings.length > 0) {
@@ -609,8 +612,8 @@ export async function POST(request: NextRequest) {
           conduct_remark: evaluateCriteria(reportAggregate ?? null, 'aggregate', 'secular', enrollment.circular_class_id, gradingCriteria, 'comment') || getConductRemark(division),
           class_teacher_comment: score_type === 'eot' && isTerm3 && promotion_status
             ? (promotion_status === 'Promote' ? 'Promoted to the next class.' : promotion_status === 'Repeat' ? 'Advised to repeat the class.' : 'Try next class.')
-            : (evaluateCriteria(reportAggregate ?? null, 'aggregate', 'secular', enrollment.circular_class_id, gradingCriteria, 'comment') || (division ? getClassTeacherComment(division, sortedCircularSubjects.filter(row => row.is_core).map(row => row.score), schoolSettings?.grading_scale) : '')),
-          head_teacher_comment: evaluateCriteria(reportAggregate ?? null, 'aggregate', 'secular', enrollment.circular_class_id, gradingCriteria, 'comment') || (division ? getHeadTeacherComment(division, sortedCircularSubjects.filter(row => row.is_core).map(row => row.score), schoolSettings?.grading_scale) : ''),
+            : (evaluateCriteria(reportAggregate ?? null, 'aggregate', 'secular', enrollment.circular_class_id, gradingCriteria, 'comment') || (division ? getClassTeacherComment(division, sortedCircularSubjects.filter(row => row.is_core).map(row => row.score), schoolSettings?.grading_scale, schoolSettings?.division_boundaries) : '')),
+          head_teacher_comment: evaluateCriteria(reportAggregate ?? null, 'aggregate', 'secular', enrollment.circular_class_id, gradingCriteria, 'comment') || (division ? getHeadTeacherComment(division, sortedCircularSubjects.filter(row => row.is_core).map(row => row.score), schoolSettings?.grading_scale, schoolSettings?.division_boundaries) : ''),
           position,
           total_students,
         },

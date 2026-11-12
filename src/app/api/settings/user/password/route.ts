@@ -15,13 +15,13 @@ export async function PATCH(request: NextRequest) {
 
   try {
     const body = await request.json()
-    const currentPassword = String(body?.currentPassword || '')
-    const newPassword = String(body?.newPassword || '')
+    const currentPassword = String(body?.currentPassword || '').trim()
+    const newPassword = String(body?.newPassword || '').trim()
 
-    if (!currentPassword || !newPassword) {
+    if (!newPassword || newPassword.length < 6) {
       return withCors(
         request,
-        NextResponse.json({ error: 'Current password and new password are required' }, { status: 400 })
+        NextResponse.json({ error: 'New password must be at least 6 characters long.' }, { status: 400 })
       )
     }
 
@@ -33,18 +33,16 @@ export async function PATCH(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
-    if (!user.email) {
-      return withCors(request, NextResponse.json({ error: 'User email is unavailable' }, { status: 400 }))
-    }
+    if (currentPassword && user.email) {
+      const { error: verifyError } = await supabase.auth.signInWithPassword({
+        email: String(user.email),
+        password: currentPassword,
+      })
 
-    const { error: verifyError } = await supabase.auth.signInWithPassword({
-      email: String(user.email),
-      password: currentPassword,
-    })
-
-    if (verifyError) {
-      const mapped = mapAuthError(verifyError)
-      return withCors(request, NextResponse.json({ error: mapped.message }, { status: mapped.status }))
+      if (verifyError) {
+        const mapped = mapAuthError(verifyError)
+        return withCors(request, NextResponse.json({ error: mapped.message }, { status: mapped.status }))
+      }
     }
 
     const { error: updateError } = await supabase.auth.updateUser({

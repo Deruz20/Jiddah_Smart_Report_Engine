@@ -9,13 +9,13 @@ export default async function TermsManagementPage() {
   const supabase = createClient(cookieStore)
 
   const { data: terms } = await supabase
-    .from('academic_terms')
-    .select('*')
-    .order('year', { ascending: false })
-    .order('created_at', { ascending: false })
+    .from('terms')
+    .select('id, label, academic_year, term_number, is_current, start_date, end_date, next_term_start')
+    .order('academic_year', { ascending: false })
+    .order('term_number', { ascending: true })
 
   return (
-    <div className="w-full h-full bg-slate-50 dark:bg-[#0f172a]">
+    <div className="w-full min-h-screen bg-[#F8FAF8]">
       <TermsClient initialTerms={(terms as AcademicTerm[]) || []} />
     </div>
   )

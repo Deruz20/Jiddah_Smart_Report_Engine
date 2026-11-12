@@ -1,4 +1,8 @@
-import { DEFAULT_GRADING_BANDS, type GradingBand } from './school-settings-helper'
+import {
+  DEFAULT_GRADING_BANDS,
+  type GradingBand,
+  type DivisionBoundaryItem,
+} from './school-settings-helper'
 
 export type GradeCode = 'D1' | 'D2' | 'C3' | 'C4' | 'C5' | 'C6' | 'P7' | 'P8' | 'F9'
 export type Division = 'I' | 'II' | 'III' | 'IV' | 'U'
@@ -170,7 +174,8 @@ export function getSubjectGradeNumberForAggregate(
 // Returns null if any core subject missing
 export function calculateAggregate(
   marks: { subject_name: string; score: number }[],
-  section: string
+  section: string,
+  customBands?: GradingBand[]
 ): number | null {
   const coreGroups = CORE_SUBJECTS_BY_SECTION[section]
   if (!coreGroups) return null
@@ -179,7 +184,7 @@ export function calculateAggregate(
       variants.some(v => v.toLowerCase() === m.subject_name.trim().toLowerCase()) &&
       typeof m.score === 'number'
     )
-    return found ? getSubjectGradeNumber(found.score) : null
+    return found ? getSubjectGradeNumber(found.score, customBands) : null
   })
   if (grades.some(g => g === null)) return null
   return grades.reduce((sum, g) => sum! + g!, 0) as number
@@ -192,7 +197,21 @@ export function calculateTheologyAggregate(scores: number[], customBands?: any[]
 }
 
 // Division from aggregate (Roman numerals)
-export function getDivision(aggregate: number): Division {
+export function getDivision(
+  aggregate: number,
+  customBoundaries?: Pick<DivisionBoundaryItem, 'division' | 'min' | 'max'>[]
+): Division {
+  if (Array.isArray(customBoundaries) && customBoundaries.length > 0) {
+    const sorted = [...customBoundaries]
+      .filter((b) => Number.isFinite(b.min) && Number.isFinite(b.max))
+      .sort((a, b) => a.max - b.max)
+    for (const b of sorted) {
+      if (aggregate <= b.max) {
+        return b.division
+      }
+    }
+    return 'U'
+  }
   if (aggregate <= 12) return 'I'
   if (aggregate <= 23) return 'II'
   if (aggregate <= 29) return 'III'
@@ -297,8 +316,16 @@ function getBandRemark(band: Pick<GradingBand, 'grade' | 'min' | 'max' | 'remark
 export function getClassTeacherComment(
   division: string | null,
   scores?: (number | null | undefined)[],
-  gradingBands?: ReportCommentBands
+  gradingBands?: ReportCommentBands,
+  divisionBoundaries?: DivisionBoundaryItem[]
 ): string {
+  if (division && Array.isArray(divisionBoundaries) && divisionBoundaries.length > 0) {
+    const matched = divisionBoundaries.find((b) => b.division === division)
+    if (matched?.classTeacherComment?.trim()) {
+      return matched.classTeacherComment.trim()
+    }
+  }
+
   const performance = getReportCommentBand(scores, gradingBands)
   if (performance) {
     const remark = getBandRemark(performance.band)
@@ -323,8 +350,16 @@ export function getClassTeacherComment(
 export function getHeadTeacherComment(
   division: string | null,
   scores?: (number | null | undefined)[],
-  gradingBands?: ReportCommentBands
+  gradingBands?: ReportCommentBands,
+  divisionBoundaries?: DivisionBoundaryItem[]
 ): string {
+  if (division && Array.isArray(divisionBoundaries) && divisionBoundaries.length > 0) {
+    const matched = divisionBoundaries.find((b) => b.division === division)
+    if (matched?.headTeacherComment?.trim()) {
+      return matched.headTeacherComment.trim()
+    }
+  }
+
   const performance = getReportCommentBand(scores, gradingBands)
   if (performance) {
     const remark = getBandRemark(performance.band)

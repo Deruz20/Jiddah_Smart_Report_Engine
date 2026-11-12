@@ -6,7 +6,8 @@ import { resolveSectionType } from '@/lib/section-type'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { verifyDataAccess, resolveUserScope, canAccessSubjectInScope } from '@/lib/auth-server'
 import { recordActivity } from '@/lib/api-server'
-import { canAccessClass } from '@/lib/teacher-access'
+import { canAccessClass, isAdministratorRole } from '@/lib/teacher-access'
+import { fetchMergedSchoolSettings, isExamSetLockedForUser } from '@/lib/school-settings-helper'
 
 export async function OPTIONS(request: NextRequest) {
   return apiOptions(request)
@@ -222,6 +223,38 @@ export async function POST(request: NextRequest) {
     const authRes = await verifyDataAccess(supabase, user, 'write');
     if (!authRes.isAuthorized) {
       return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
+    }
+
+    // Marks Entry Lock Check (Admins retain override access)
+    const isAdmin =
+      isAdministratorRole(authRes.canonicalRole || authRes.role) ||
+      authRes.role === 'Administrator' ||
+      authRes.role === 'admin'
+    if (!isAdmin) {
+      const schoolSettings = await fetchMergedSchoolSettings(supabase)
+      const directLock = isExamSetLockedForUser(schoolSettings, score_type, isAdmin)
+      if (directLock.locked) {
+        return withCors(request, NextResponse.json({ error: directLock.message }, { status: 423 }))
+      }
+      const hasBot = Array.isArray(circular_marks) && circular_marks.some((m: any) => m.bot_score !== undefined)
+      const hasMot =
+        (Array.isArray(circular_marks) && circular_marks.some((m: any) => m.mot_score !== undefined)) ||
+        (Array.isArray(theology_marks) && theology_marks.some((m: any) => m.mot_score !== undefined))
+      const hasEot =
+        (Array.isArray(circular_marks) && circular_marks.some((m: any) => m.eot_score !== undefined)) ||
+        (Array.isArray(theology_marks) && theology_marks.some((m: any) => m.eot_score !== undefined))
+      for (const [flag, setKey] of [
+        [hasBot, 'bot'],
+        [hasMot, 'mot'],
+        [hasEot, 'eot'],
+      ] as const) {
+        if (flag) {
+          const check = isExamSetLockedForUser(schoolSettings, setKey, isAdmin)
+          if (check.locked) {
+            return withCors(request, NextResponse.json({ error: check.message }, { status: 423 }))
+          }
+        }
+      }
     }
     const canWriteCircular = canAccessClass(authRes, 'circular', enrollment.circular_class_id)
     const canWriteTheology = canAccessClass(

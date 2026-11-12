@@ -179,30 +179,54 @@ export async function getDynamicSignatureSlots(supabase: SupabaseClient) {
       slot_key: 'school-stamp',
       label: 'Official School Stamp',
       role: 'School',
-      description: 'Stamp image used on official student reports.',
+      description: 'Official circular or rectangular school stamp rendered on terminal report cards.',
       required: true,
     },
     {
       slot_key: 'head-teacher',
-      label: 'Head Teacher Signature',
+      label: 'Headteacher Signature',
       role: 'Head Teacher',
-      description: 'Used on all student report cards. Must be a clear scan or photo.',
+      description: 'Authorized signature of the Headteacher rendered across all secular and theology reports.',
+      required: true,
+    },
+    {
+      slot_key: 'dos-signature',
+      label: 'Director of Studies (DOS) Signature',
+      role: 'DOS',
+      description: 'Authorized signature for the Director of Studies (Secular Curriculum).',
+      required: true,
+    },
+    {
+      slot_key: 'theology-head',
+      label: 'Theology Head Signature',
+      role: 'DOS Theology',
+      description: 'Authorized signature for the Head of Theology / Islamic Studies.',
       required: true,
     },
     {
       slot_key: 'principal',
       label: 'Principal Signature',
       role: 'Principal',
-      description: 'Authority signature for official reports and certificates.',
-      required: true,
+      description: 'Authority signature for official transcripts and school certificates.',
+      required: false,
     }
   ];
 
   // Fetch unique active classes to dynamically create class teacher slots
-  // We'll query students instead of classes since we need to know what classes are actually in use
-  const { data: students } = await supabase.from('students').select('class_name, status').eq('status', 'active');
-  
-  const classNames = new Set(students?.map(s => s.class_name).filter(Boolean) || []);
+  const classNames = new Set<string>();
+  try {
+    const { data: students } = await supabase.from('students').select('class_name, status').eq('status', 'active');
+    for (const s of students || []) {
+      if (s?.class_name) classNames.add(s.class_name);
+    }
+  } catch {}
+
+  try {
+    const { data: cClasses } = await supabase.from('circular_classes').select('class_name');
+    for (const c of cClasses || []) {
+      if (c?.class_name) classNames.add(c.class_name);
+    }
+  } catch {}
   const addedBaseClasses = new Set<string>();
 
   // Add secular teacher slots

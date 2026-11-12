@@ -3,8 +3,9 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyDataAccess, verifyEnrollmentClassAccess } from '@/lib/auth-server'
-import { canAccessClass, subjectMatchesClassScope } from '@/lib/teacher-access'
+import { canAccessClass, isAdministratorRole, subjectMatchesClassScope } from '@/lib/teacher-access'
 import { resolveSectionType } from '@/lib/section-type'
+import { fetchMergedSchoolSettings, isExamSetLockedForUser } from '@/lib/school-settings-helper'
 
 async function verifyCircularSubjectScope(
   supabase: SupabaseClient,
@@ -131,6 +132,26 @@ export async function POST(request: NextRequest) {
     )
     if (!authRes.isAuthorized) return NextResponse.json({ error: authRes.message }, { status: 403 })
 
+    const isAdmin =
+      isAdministratorRole(authRes.canonicalRole || authRes.role) ||
+      authRes.role === 'Administrator' ||
+      authRes.role === 'admin'
+    if (!isAdmin) {
+      const schoolSettings = await fetchMergedSchoolSettings(supabase)
+      for (const [present, setKey] of [
+        [bot_score !== undefined, 'bot'],
+        [mot_score !== undefined, 'mot'],
+        [eot_score !== undefined, 'eot'],
+      ] as const) {
+        if (present) {
+          const lockCheck = isExamSetLockedForUser(schoolSettings, setKey, isAdmin)
+          if (lockCheck.locked) {
+            return NextResponse.json({ error: lockCheck.message }, { status: 423 })
+          }
+        }
+      }
+    }
+
     const subjectScope = await verifyCircularSubjectScope(
       supabase,
       enrollment?.circular_class_id ?? null,
@@ -239,6 +260,26 @@ export async function PUT(request: NextRequest) {
       supabase, user, 'write', mark.enrollment_id, 'circular'
     )
     if (!access.isAuthorized) return NextResponse.json({ error: access.message }, { status: 403 })
+
+    const isAdmin =
+      isAdministratorRole(access.canonicalRole || access.role) ||
+      access.role === 'Administrator' ||
+      access.role === 'admin'
+    if (!isAdmin) {
+      const schoolSettings = await fetchMergedSchoolSettings(supabase)
+      for (const [present, setKey] of [
+        [bot_score !== undefined, 'bot'],
+        [mot_score !== undefined, 'mot'],
+        [eot_score !== undefined, 'eot'],
+      ] as const) {
+        if (present) {
+          const lockCheck = isExamSetLockedForUser(schoolSettings, setKey, isAdmin)
+          if (lockCheck.locked) {
+            return NextResponse.json({ error: lockCheck.message }, { status: 423 })
+          }
+        }
+      }
+    }
     const subjectScope = await verifyCircularSubjectScope(
       supabase,
       enrollment?.circular_class_id ?? null,
@@ -304,6 +345,18 @@ export async function DELETE(request: NextRequest) {
       supabase, user, 'write', mark.enrollment_id, 'circular'
     )
     if (!access.isAuthorized) return NextResponse.json({ error: access.message }, { status: 403 })
+
+    const isAdmin =
+      isAdministratorRole(access.canonicalRole || access.role) ||
+      access.role === 'Administrator' ||
+      access.role === 'admin'
+    if (!isAdmin) {
+      const schoolSettings = await fetchMergedSchoolSettings(supabase)
+      const lockCheck = isExamSetLockedForUser(schoolSettings, 'all', isAdmin)
+      if (lockCheck.locked) {
+        return NextResponse.json({ error: lockCheck.message }, { status: 423 })
+      }
+    }
     const subjectScope = await verifyCircularSubjectScope(
       supabase,
       enrollment?.circular_class_id ?? null,

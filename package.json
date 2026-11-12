@@ -9,8 +9,14 @@
     "start": "next start",
     "lint": "echo 'Skipping lint for Vercel deployment'",
     "typecheck": "tsc --noEmit",
-    "test": "node --import ./src/lib/test-guard.mjs --experimental-strip-types --test --test-concurrency=1 src/__tests__/*.test.mjs",
-    "verify:local": "node scripts/verify-local.mjs"
+    "test": "node --import ./src/lib/test-guard.mjs --test --test-concurrency=1 src/__tests__/*.test.mjs",
+    "verify:local": "node scripts/verify-local.mjs",
+    "supabase": "supabase",
+    "db:types": "supabase gen types typescript --linked > src/types/supabase.ts",
+    "db:push": "supabase db push",
+    "db:pull": "supabase db pull",
+    "deploy:preview": "vercel --yes",
+    "deploy:prod": "vercel --prod --yes"
   },
   "dependencies": {
     "@google/genai": "^2.17.1",
@@ -82,6 +88,7 @@
     "eslint-config-next": "^15.5.29",
     "playwright": "^1.64.1",
     "puppeteer": "^25.3.0",
+    "supabase": "^3.1.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

@@ -4,6 +4,63 @@
  * NEVER prints credentials, tokens, or URL values.
  */
 
+import fs from 'node:fs';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { registerHooks } from 'node:module';
+import ts from 'typescript';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Register TypeScript ESM loader hooks for Node builds compiled without native amaro strip-types
+registerHooks({
+  resolve(specifier, context, nextResolve) {
+    if (specifier.startsWith('@/')) {
+      const targetBase = path.resolve(__dirname, '..', specifier.slice(2));
+      for (const candidate of [targetBase, `${targetBase}.ts`, `${targetBase}.tsx`, `${targetBase}.js`]) {
+        if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+          return { url: pathToFileURL(candidate).href, shortCircuit: true };
+        }
+      }
+    }
+    if ((specifier.startsWith('./') || specifier.startsWith('../')) && context.parentURL) {
+      const parentDir = path.dirname(fileURLToPath(context.parentURL));
+      const resolvedBase = path.resolve(parentDir, specifier);
+      if (!fs.existsSync(resolvedBase)) {
+        for (const ext of ['.ts', '.tsx', '.js', '.mjs']) {
+          if (fs.existsSync(resolvedBase + ext)) {
+            return { url: pathToFileURL(resolvedBase + ext).href, shortCircuit: true };
+          }
+        }
+      }
+    }
+    return nextResolve(specifier, context);
+  },
+  load(url, context, nextLoad) {
+    if (url.endsWith('.ts') || url.endsWith('.tsx')) {
+      const filePath = fileURLToPath(url);
+      const rawSource = fs.readFileSync(filePath, 'utf8');
+      const transpiled = ts.transpileModule(rawSource, {
+        fileName: filePath,
+        compilerOptions: {
+          module: ts.ModuleKind.ESNext,
+          target: ts.ScriptTarget.ES2022,
+          jsx: ts.JsxEmit.ReactJSX,
+          esModuleInterop: true,
+        },
+      });
+      return {
+        format: 'module',
+        source: transpiled.outputText,
+        shortCircuit: true,
+      };
+    }
+    return nextLoad(url, context);
+  },
+});
+
 const ALLOWED_HOSTNAMES = new Set([
   'localhost',
   '127.0.0.1',
@@ -35,7 +92,6 @@ export function enforceLocalSafeEnvironment() {
         process.exit(1);
       }
     } catch {
-      // If it's not a valid URL (e.g. malformed connection string), verify it doesn't contain remote domain markers
       if (/supabase\.co|aws|azure|gcp|\.com|\.io|\.net/i.test(val)) {
         console.error(
           `[FAIL-CLOSED SAFETY GUARD] Aborting: Environment variable "${key}" contains non-local host patterns. Aborting execution.`
@@ -47,14 +103,6 @@ export function enforceLocalSafeEnvironment() {
 
   return true;
 }
-
-import fs from 'node:fs';
-import path from 'node:path';
-import crypto from 'node:crypto';
-import { fileURLToPath } from 'node:url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 export function getRehearsalCredentials() {
   const envUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -70,7 +118,6 @@ export function getRehearsalCredentials() {
     };
   }
 
-  // Read committed rehearsal config
   let config = {
     api_url: 'http://127.0.0.1:54321',
     db_url: 'postgresql://postgres:postgres@127.0.0.1:54322/postgres',
@@ -122,4 +169,3 @@ try {
   console.error('[FAIL-CLOSED SAFETY GUARD] Verification error:', err.message);
   process.exit(1);
 }
-

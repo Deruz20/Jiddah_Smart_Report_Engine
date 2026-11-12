@@ -3,8 +3,9 @@ import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { getAuthenticatedUser, recordActivity } from '@/lib/api-server'
+import { verifyDataAccess } from '@/lib/auth-server'
 
-import { getDynamicSignatureSlots } from '@/utils/signatures'
+import { getDynamicSignatureSlots, getSignatureObjectNamesForSlot } from '@/utils/signatures'
 import { sniffImageMimeType } from '@/lib/image-sniff'
 const BUCKET = 'signatures'
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp']
@@ -27,6 +28,11 @@ export async function POST(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
+    const access = await verifyDataAccess(supabase, user, 'write')
+    if (!access.isAuthorized || access.canonicalRole !== 'Administrator') {
+      return withCors(request, NextResponse.json({ error: 'Only administrators may upload or replace official report images.' }, { status: 403 }))
+    }
+
     const formData = await request.formData()
     const file = formData.get('file')
     const slotKey = formData.get('slot_key')
@@ -40,7 +46,7 @@ export async function POST(request: NextRequest) {
     }
 
     const SIGNATURE_SLOTS = await getDynamicSignatureSlots(supabase)
-    const isValidSlot = SIGNATURE_SLOTS.some(slot => slot.slot_key === slotKey)
+    const isValidSlot = SIGNATURE_SLOTS.some(slot => slot.slot_key === slotKey) || slotKey === 'school-logo'
     if (!isValidSlot) {
       return withCors(request, NextResponse.json({ error: 'Invalid signature slot' }, { status: 400 }))
     }
@@ -81,6 +87,22 @@ export async function POST(request: NextRequest) {
 
     if (uploadError) {
       return withCors(request, NextResponse.json({ error: uploadError.message }, { status: 500 }))
+    }
+
+    const storage = supabaseAdmin.storage.from(BUCKET)
+    const { data: disabledObjects, error: disabledListError } = await storage.list('disabled', { limit: 1000 })
+    if (disabledListError) {
+      console.error('Disabled signature could not be checked after upload:', disabledListError.message)
+      return withCors(request, NextResponse.json({ error: 'Image uploaded, but a previously deactivated copy could not be checked.' }, { status: 500 }))
+    }
+    const disabledPaths = getSignatureObjectNamesForSlot(disabledObjects ?? [], slotKey)
+      .map((name) => `disabled/${name}`)
+    if (disabledPaths.length > 0) {
+      const { error: removeError } = await storage.remove(disabledPaths)
+      if (removeError) {
+        console.error('Previous deactivated signature could not be removed after upload:', removeError.message)
+        return withCors(request, NextResponse.json({ error: 'Image uploaded, but the previous deactivated copy could not be removed.' }, { status: 500 }))
+      }
     }
 
     const { data } = supabase.storage.from(BUCKET).getPublicUrl(filePath)

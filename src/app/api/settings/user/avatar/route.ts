@@ -3,7 +3,6 @@ import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { getAuthenticatedUser, recordActivity } from '@/lib/api-server'
-
 import { sniffImageMimeType } from '@/lib/image-sniff'
 
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp']
@@ -48,7 +47,13 @@ export async function POST(request: NextRequest) {
     // Content Sniffing: Verify genuine image magic bytes (CWE-434 defense)
     const sniffedMime = sniffImageMimeType(buffer)
     if (!sniffedMime || !ACCEPTED_TYPES.includes(sniffedMime)) {
-      return withCors(request, NextResponse.json({ error: 'File content verification failed: not a valid PNG, JPG, or WEBP image' }, { status: 400 }))
+      return withCors(
+        request,
+        NextResponse.json(
+          { error: 'File content verification failed: not a valid PNG, JPG, or WEBP image' },
+          { status: 400 }
+        )
+      )
     }
 
     const mimeToExt: Record<string, string> = {
@@ -60,33 +65,46 @@ export async function POST(request: NextRequest) {
     const filePath = `avatars/${user.id}.${extension}`
 
     const supabaseAdmin = createAdminClient()
-    
+
+    let finalAvatarUrl = ''
     const { error: uploadError } = await supabaseAdmin.storage.from(AVATAR_BUCKET).upload(filePath, buffer, {
       upsert: true,
-      contentType: sniffedMime
+      contentType: sniffedMime,
     })
 
-    if (uploadError) {
-      return withCors(request, NextResponse.json({ error: uploadError.message }, { status: 500 }))
+    if (!uploadError) {
+      const { data: publicData } = supabaseAdmin.storage.from(AVATAR_BUCKET).getPublicUrl(filePath)
+      finalAvatarUrl = publicData?.publicUrl ? `${publicData.publicUrl}?t=${Date.now()}` : ''
+    } else {
+      // Fallback to signatures bucket if user-avatars bucket is not provisioned
+      const fallbackPath = `avatars/${user.id}.${extension}`
+      const { error: fallbackErr } = await supabaseAdmin.storage.from('signatures').upload(fallbackPath, buffer, {
+        upsert: true,
+        contentType: sniffedMime,
+      })
+      if (!fallbackErr) {
+        const { data: publicData } = supabaseAdmin.storage.from('signatures').getPublicUrl(fallbackPath)
+        finalAvatarUrl = publicData?.publicUrl ? `${publicData.publicUrl}?t=${Date.now()}` : ''
+      }
     }
 
-    const { data: publicData } = supabase.storage.from(AVATAR_BUCKET).getPublicUrl(filePath)
-    if (!publicData?.publicUrl) {
-      return withCors(request, NextResponse.json({ error: 'Failed to generate avatar URL' }, { status: 500 }))
+    if (!finalAvatarUrl) {
+      return withCors(request, NextResponse.json({ error: 'Failed to store avatar image' }, { status: 500 }))
     }
 
-    const { error: authUpdateError } = await supabase.auth.updateUser({
+    await supabase.auth.updateUser({
       data: {
-        avatar_url: publicData.publicUrl,
+        avatar_url: finalAvatarUrl,
       },
     })
 
-    if (authUpdateError) {
-      return withCors(request, NextResponse.json({ error: authUpdateError.message }, { status: 500 }))
-    }
+    await supabaseAdmin
+      .from('profiles')
+      .update({ avatar_url: finalAvatarUrl })
+      .eq('id', user.id)
 
-    await recordActivity(supabase, user.id, 'upload_avatar', { avatar_url: publicData.publicUrl })
-    return withCors(request, NextResponse.json({ data: { avatar_url: publicData.publicUrl } }))
+    await recordActivity(supabase, user.id, 'upload_avatar', { avatar_url: finalAvatarUrl })
+    return withCors(request, NextResponse.json({ data: { avatar_url: finalAvatarUrl } }))
   } catch (err: any) {
     console.error('settings/user/avatar POST exception:', err)
     return withCors(request, NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 }))

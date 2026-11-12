@@ -18,6 +18,7 @@ import { createClient } from "@/utils/supabase/client";
 import { Badge } from "@/components/figma-ui/Badge";
 import { EditStudentModal } from "@/components/EditStudentModal";
 import { ConfirmDestructiveDialog } from "@/components/ConfirmDestructiveDialog";
+import { OfficialPrintLetterhead, OfficialPrintSignaturesFooter } from "@/components/print/OfficialPrintLetterhead";
 
 function avatarColors(name: string) {
   const palettes = [
@@ -159,7 +160,7 @@ export default function ClassDashboardClient({
       { id: "students", label: "Students", icon: <Users className="w-4 h-4" /> },
       { id: "performance", label: "Performance", icon: <CheckCircle className="w-4 h-4" /> },
       { id: "teachers", label: "Teachers", icon: <GraduationCap className="w-4 h-4" /> },
-      { id: "curriculum", label: "BookOpen", icon: <BookOpen className="w-4 h-4" /> },
+      { id: "curriculum", label: "Subjects", icon: <BookOpen className="w-4 h-4" /> },
       { id: "settings", label: "Settings", icon: <Settings className="w-4 h-4" /> },
     ] as const;
 
@@ -591,7 +592,7 @@ export default function ClassDashboardClient({
         }
       />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 print:hidden">
         {/* Navigation Back */}
         <div className="mb-4">
           <Link href="/admin/classes" className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-[#065F46] transition-colors">
@@ -618,7 +619,11 @@ export default function ClassDashboardClient({
             <Button variant="outline" className="rounded-xl bg-white shadow-sm border-gray-200 text-gray-600 hover:text-gray-900 hover:bg-gray-50" onClick={() => { setActiveTab('settings') }}>
               <Edit className="w-4 h-4 mr-2" /> Edit Class
             </Button>
-            <Button className="rounded-xl bg-[#065F46] text-white hover:bg-[#047857] shadow-md shadow-[#065F46]/20">
+            <Button
+              type="button"
+              onClick={() => window.print()}
+              className="rounded-xl bg-[#065F46] text-white hover:bg-[#047857] shadow-md shadow-[#065F46]/20 cursor-pointer"
+            >
               <Printer className="w-4 h-4 mr-2" /> Print Roster
             </Button>
           </div>
@@ -730,14 +735,20 @@ export default function ClassDashboardClient({
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {uniqueSubjects.map((sub: any) => {
                       const subMarks = marks.filter((m: any) => m.subject_id === sub.id && (m.eot_score !== null || m.mot_score !== null));
+                      const gradedStudentIds = new Set(
+                        subMarks
+                          .map((m: any) => m.enrollment_id || m.student_id || m.id)
+                          .filter(Boolean)
+                      );
+                      const gradedStudentsCount = Math.min(gradedStudentIds.size, totalStudents);
                       const avg = subMarks.length > 0
                         ? (subMarks.reduce((acc: number, m: any) => acc + Number(m.eot_score ?? m.mot_score ?? 0), 0) / subMarks.length).toFixed(1)
                         : null;
                       return (
-                        <div key={sub.id} className="rounded-xl border border-stone-200 p-4 bg-[#FAF7F2]/60 flex items-center justify-between">
+                        <div key={sub.id} className="rounded-xl border border-stone-200 dark:border-[#24312C] p-4 bg-[#FAF7F2]/60 dark:bg-[#141D1A] flex items-center justify-between">
                           <div>
-                            <p className="text-sm font-bold text-stone-900">{sub.subject_name}</p>
-                            <p className="text-xs text-stone-500 mt-0.5">{subMarks.length} / {totalStudents} students graded</p>
+                            <p className="text-sm font-bold text-stone-900 dark:text-[#F3F7F5]">{sub.subject_name}</p>
+                            <p className="text-xs text-stone-500 dark:text-[#9CA3AF] mt-0.5">{gradedStudentsCount} / {totalStudents} students graded</p>
                           </div>
                           <div className="text-right">
                             <p className="text-base font-extrabold text-[#065F46] tabular-nums">{avg !== null ? `${avg}%` : "—"}</p>
@@ -772,6 +783,55 @@ export default function ClassDashboardClient({
         onConfirm={executeConfirmAction}
         onCancel={() => setConfirmAction(null)}
       />
+
+      {/* Official Print-Only Class Student Roster */}
+      <div
+        id="class-roster-print-root"
+        data-report-orientation="portrait"
+        className="hidden print:block p-2 text-black"
+      >
+        <div className="hub-sheet-page">
+          <OfficialPrintLetterhead
+            documentTitle="OFFICIAL CLASS STUDENT ROSTER"
+            metadata={[
+              { label: "Class", value: classData.class_name },
+              { label: "Section", value: getSectionLabel(classData.section) },
+              { label: "Enrolled", value: `${totalStudents} (${boysCount}B / ${girlsCount}G)` },
+              { label: "Class Teacher", value: assignedClassTeacher?.name || "Unassigned" },
+            ]}
+          />
+          <table className="w-full border-collapse border border-black text-[11px] mt-3">
+            <thead>
+              <tr className="bg-stone-100">
+                <th className="border border-black px-2 py-1.5 text-center w-10">#</th>
+                <th className="border border-black px-2.5 py-1.5 text-left w-28">Adm No.</th>
+                <th className="border border-black px-3 py-1.5 text-left">Student Name</th>
+                <th className="border border-black px-2 py-1.5 text-center w-20">Gender</th>
+                <th className="border border-black px-2 py-1.5 text-center w-24">Status</th>
+                <th className="border border-black px-3 py-1.5 text-center w-32">Remarks / Check</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredEnrollments.map((enrollment, idx) => {
+                const studentName = enrollment.student?.name || enrollment.student?.full_name || "Unknown";
+                return (
+                  <tr key={enrollment.id}>
+                    <td className="border border-black px-2 py-1.5 text-center">{idx + 1}</td>
+                    <td className="border border-black px-2.5 py-1.5 font-mono text-[10px]">
+                      {enrollment.student?.admission_number || "N/A"}
+                    </td>
+                    <td className="border border-black px-3 py-1.5 font-semibold">{studentName}</td>
+                    <td className="border border-black px-2 py-1.5 text-center">{enrollment.student?.gender || "—"}</td>
+                    <td className="border border-black px-2 py-1.5 text-center">{enrollment.student?.status || "Active"}</td>
+                    <td className="border border-black px-3 py-1.5" />
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <OfficialPrintSignaturesFooter />
+        </div>
+      </div>
     </div>
   );
 }

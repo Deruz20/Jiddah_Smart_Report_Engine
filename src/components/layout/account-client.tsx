@@ -276,7 +276,7 @@ export default function AccountClient({
     }
   };
 
-  const roleBadge = profile?.canonical_role || profile?.role || "Staff";
+  const roleBadge = profile?.canonical_role || profile?.role || "Administrator";
   const departmentBadge = profile?.department || "All Departments";
   const assignedClasses = profile?.assigned_classes || [];
 
@@ -284,52 +284,52 @@ export default function AccountClient({
     <div className={embedded ? "space-y-5" : "max-w-[760px] w-full mx-auto space-y-5 py-6 px-4"}>
       {!embedded && (
         <div className="mb-2">
-          <h1 className="text-xl font-bold text-[#111827]">My Account & Security</h1>
-          <p className="text-xs text-[#6B7280] mt-1">
+          <h1 className="text-xl font-bold text-[#111827] dark:text-[#F3F7F5]">My Account & Security</h1>
+          <p className="text-xs text-[#6B7280] dark:text-[#9CA3AF] mt-1">
             Manage your personal profile, assigned academic scope, and account credentials.
           </p>
         </div>
       )}
 
       {/* Card 1: Role & Assigned Department/Classes Summary + Profile Form */}
-      <div className="bg-white rounded-2xl border border-[#E3E8E3] shadow-[0_1px_3px_rgba(15,41,30,0.04)] p-6">
+      <div className="bg-white dark:bg-[#111815] rounded-2xl border border-[#E3E8E3] dark:border-[#1E2B26] shadow-[0_1px_3px_rgba(15,41,30,0.04)] p-6">
         <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
           <div>
-            <h2 className="text-[15px] font-semibold text-[#111827]">Staff Profile & Scope</h2>
-            <p className="text-xs text-[#6B7280] mt-0.5">
+            <h2 className="text-[15px] font-semibold text-[#111827] dark:text-[#F3F7F5]">Staff Profile & Scope</h2>
+            <p className="text-xs text-[#6B7280] dark:text-[#9CA3AF] mt-0.5">
               Your identity, contact phone, and assigned academic permissions.
             </p>
           </div>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#E2EEE2] px-3 py-1 text-xs font-semibold text-[#0D5C3A]">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#E2EEE2] dark:bg-[#10B981]/15 px-3 py-1 text-xs font-semibold text-[#0D5C3A] dark:text-[#34D399]">
             <User className="w-3.5 h-3.5" />
             <span>{roleBadge}</span>
           </span>
         </div>
 
         {/* 2-Column Summary Counters */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-xl bg-[#F8FAF8] border border-[#E3E8E3] mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-xl bg-[#F8FAF8] dark:bg-[#141D1A] border border-[#E3E8E3] dark:border-[#24312C] mb-6">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-[#E2EEE2] text-[#0D5C3A] flex items-center justify-center shrink-0">
+            <div className="w-9 h-9 rounded-lg bg-[#E2EEE2] dark:bg-[#10B981]/15 text-[#0D5C3A] dark:text-[#34D399] flex items-center justify-center shrink-0">
               <Building2 className="w-4 h-4" />
             </div>
             <div>
-              <div className="text-[11px] font-medium text-[#6B7280] uppercase tracking-wider">
+              <div className="text-[11px] font-medium text-[#6B7280] dark:text-[#9CA3AF] uppercase tracking-wider">
                 Role & Department
               </div>
-              <div className="text-sm font-bold text-[#111827]">
+              <div className="text-sm font-bold text-[#111827] dark:text-[#F3F7F5]">
                 {roleBadge} ({departmentBadge})
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-3 sm:border-l border-[#E3E8E3] sm:pl-3">
-            <div className="w-9 h-9 rounded-lg bg-[#FEF3C7] text-[#B45309] flex items-center justify-center shrink-0">
+          <div className="flex items-center gap-3 sm:border-l border-[#E3E8E3] dark:border-[#24312C] sm:pl-3">
+            <div className="w-9 h-9 rounded-lg bg-[#FEF3C7] dark:bg-amber-500/15 text-[#B45309] dark:text-amber-300 flex items-center justify-center shrink-0">
               <BookOpen className="w-4 h-4" />
             </div>
             <div className="min-w-0">
-              <div className="text-[11px] font-medium text-[#6B7280] uppercase tracking-wider">
+              <div className="text-[11px] font-medium text-[#6B7280] dark:text-[#9CA3AF] uppercase tracking-wider">
                 Assigned Classes
               </div>
-              <div className="text-sm font-bold text-[#111827] truncate">
+              <div className="text-sm font-bold text-[#111827] dark:text-[#F3F7F5] truncate">
                 {assignedClasses.length > 0
                   ? assignedClasses.join(", ")
                   : roleBadge === "Administrator" || roleBadge.startsWith("DOS")
@@ -341,22 +341,22 @@ export default function AccountClient({
         </div>
 
         {/* Avatar Row */}
-        <div className="flex flex-wrap items-center gap-4 pb-5 mb-5 border-b border-[#F1F5F1]">
-          <div className="h-16 w-16 overflow-hidden rounded-2xl bg-[#EEF3EE] border border-[#D5DFD5] shrink-0 flex items-center justify-center">
+        <div className="flex flex-wrap items-center gap-4 pb-5 mb-5 border-b border-[#F1F5F1] dark:border-[#1E2B26]">
+          <div className="h-16 w-16 overflow-hidden rounded-2xl bg-[#EEF3EE] dark:bg-[#141D1A] border border-[#D5DFD5] dark:border-[#24312C] shrink-0 flex items-center justify-center">
             {avatarPreview ? (
               <img src={avatarPreview} alt="Avatar preview" className="h-full w-full object-cover" />
             ) : (
-              <span className="text-base font-bold text-[#0D5C3A]">
+              <span className="text-base font-bold text-[#0D5C3A] dark:text-[#34D399]">
                 {getInitials(fullName || profile?.email || userEmail)}
               </span>
             )}
           </div>
           <div className="flex-1 min-w-[200px]">
-            <div className="text-sm font-medium text-[#111827]">Profile Photo</div>
-            <p className="text-xs text-[#6B7280] mt-0.5">PNG, JPG, or WEBP up to 2MB.</p>
+            <div className="text-sm font-medium text-[#111827] dark:text-[#F3F7F5]">Profile Photo</div>
+            <p className="text-xs text-[#6B7280] dark:text-[#9CA3AF] mt-0.5">PNG, JPG, or WEBP up to 2MB.</p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-[#D5DFD5] bg-white px-3 py-1.5 text-xs font-semibold text-[#374151] hover:bg-[#F8FAF8] transition">
-                <Camera className="h-3.5 w-3.5 text-[#0D5C3A]" />
+              <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-[#D5DFD5] dark:border-[#2A3B35] bg-white dark:bg-[#0D1412] px-3 py-1.5 text-xs font-semibold text-[#374151] dark:text-[#CBD5E1] hover:bg-[#F8FAF8] dark:hover:bg-[#16211D] transition">
+                <Camera className="h-3.5 w-3.5 text-[#0D5C3A] dark:text-[#34D399]" />
                 <span>Choose Image</span>
                 <input
                   type="file"
@@ -388,7 +388,7 @@ export default function AccountClient({
         <form onSubmit={handleProfileSave} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-[#374151] mb-1.5">
+              <label className="block text-xs font-semibold text-[#374151] dark:text-[#CBD5E1] mb-1.5">
                 Full Name
               </label>
               <input
@@ -396,12 +396,12 @@ export default function AccountClient({
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="Enter your full name"
-                className="w-full h-10 rounded-lg border border-[#D5DFD5] bg-white px-3 text-sm text-[#111827] focus:border-[#0D5C3A] focus:ring-2 focus:ring-[#0D5C3A]/15 outline-none"
+                className="w-full h-10 rounded-lg border border-[#D5DFD5] dark:border-[#2A3B35] bg-white dark:bg-[#0D1412] px-3 text-sm text-[#111827] dark:text-[#F3F7F5] focus:border-[#0D5C3A] dark:focus:border-[#10B981] focus:ring-2 focus:ring-[#0D5C3A]/15 outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[#374151] mb-1.5">
+              <label className="block text-xs font-semibold text-[#374151] dark:text-[#CBD5E1] mb-1.5">
                 Official Email (Read-Only)
               </label>
               <input
@@ -409,12 +409,12 @@ export default function AccountClient({
                 value={profile?.email || userEmail || ""}
                 readOnly
                 disabled
-                className="w-full h-10 rounded-lg border border-[#E3E8E3] bg-[#F8FAF8] px-3 text-sm text-[#6B7280] cursor-not-allowed"
+                className="w-full h-10 rounded-lg border border-[#E3E8E3] dark:border-[#24312C] bg-[#F8FAF8] dark:bg-[#141D1A] px-3 text-sm text-[#4B5563] dark:text-[#D1DBD6] cursor-not-allowed"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[#374151] mb-1.5">
+              <label className="block text-xs font-semibold text-[#374151] dark:text-[#CBD5E1] mb-1.5">
                 Phone Number
               </label>
               <input
@@ -422,12 +422,12 @@ export default function AccountClient({
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="+256 700 000000"
-                className="w-full h-10 rounded-lg border border-[#D5DFD5] bg-white px-3 text-sm text-[#111827] focus:border-[#0D5C3A] focus:ring-2 focus:ring-[#0D5C3A]/15 outline-none"
+                className="w-full h-10 rounded-lg border border-[#D5DFD5] dark:border-[#2A3B35] bg-white dark:bg-[#0D1412] px-3 text-sm text-[#111827] dark:text-[#F3F7F5] focus:border-[#0D5C3A] dark:focus:border-[#10B981] focus:ring-2 focus:ring-[#0D5C3A]/15 outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[#374151] mb-1.5">
+              <label className="block text-xs font-semibold text-[#374151] dark:text-[#CBD5E1] mb-1.5">
                 Assigned Role
               </label>
               <input
@@ -435,13 +435,13 @@ export default function AccountClient({
                 value={`${roleBadge} (${departmentBadge})`}
                 readOnly
                 disabled
-                className="w-full h-10 rounded-lg border border-[#E3E8E3] bg-[#F8FAF8] px-3 text-sm text-[#6B7280] cursor-not-allowed"
+                className="w-full h-10 rounded-lg border border-[#E3E8E3] dark:border-[#24312C] bg-[#F8FAF8] dark:bg-[#141D1A] px-3 text-sm text-[#4B5563] dark:text-[#D1DBD6] cursor-not-allowed"
               />
             </div>
           </div>
 
-          <div className="flex items-center justify-between pt-4 border-t border-[#F1F5F1]">
-            <span className="text-xs text-[#6B7280]">
+          <div className="flex items-center justify-between pt-4 border-t border-[#F1F5F1] dark:border-[#1E2B26]">
+            <span className="text-xs text-[#6B7280] dark:text-[#9CA3AF]">
               {loadingProfile
                 ? "Loading profile..."
                 : isProfileDirty
@@ -465,15 +465,15 @@ export default function AccountClient({
       </div>
 
       {/* Card 2: Change Password */}
-      <div className="bg-white rounded-2xl border border-[#E3E8E3] shadow-[0_1px_3px_rgba(15,41,30,0.04)] p-6">
+      <div className="bg-white dark:bg-[#111815] rounded-2xl border border-[#E3E8E3] dark:border-[#1E2B26] shadow-[0_1px_3px_rgba(15,41,30,0.04)] p-6">
         <div className="flex items-center justify-between gap-4 mb-4">
           <div>
-            <h2 className="text-[15px] font-semibold text-[#111827]">Change Password</h2>
-            <p className="text-xs text-[#6B7280] mt-0.5">
+            <h2 className="text-[15px] font-semibold text-[#111827] dark:text-[#F3F7F5]">Change Password</h2>
+            <p className="text-xs text-[#6B7280] dark:text-[#9CA3AF] mt-0.5">
               Update your authentication password via Supabase Auth.
             </p>
           </div>
-          <div className="w-9 h-9 rounded-lg bg-[#E2EEE2] text-[#0D5C3A] flex items-center justify-center shrink-0">
+          <div className="w-9 h-9 rounded-lg bg-[#E2EEE2] dark:bg-[#10B981]/15 text-[#0D5C3A] dark:text-[#34D399] flex items-center justify-center shrink-0">
             <Shield className="h-4 w-4" />
           </div>
         </div>
@@ -481,7 +481,7 @@ export default function AccountClient({
         <form onSubmit={handlePasswordSave} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-[#374151] mb-1.5">
+              <label className="block text-xs font-semibold text-[#374151] dark:text-[#CBD5E1] mb-1.5">
                 Current Password (Optional)
               </label>
               <div className="relative">
@@ -490,12 +490,12 @@ export default function AccountClient({
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
                   placeholder="Current password"
-                  className="w-full h-10 rounded-lg border border-[#D5DFD5] bg-white pl-3 pr-9 text-sm text-[#111827] focus:border-[#0D5C3A] focus:ring-2 focus:ring-[#0D5C3A]/15 outline-none"
+                  className="w-full h-10 rounded-lg border border-[#D5DFD5] dark:border-[#2A3B35] bg-white dark:bg-[#0D1412] pl-3 pr-9 text-sm text-[#111827] dark:text-[#F3F7F5] focus:border-[#0D5C3A] dark:focus:border-[#10B981] focus:ring-2 focus:ring-[#0D5C3A]/15 outline-none"
                 />
                 <button
                   type="button"
                   onClick={() => setShowCurrentPassword((prev) => !prev)}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#6B7280] hover:text-[#111827]"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#6B7280] dark:text-[#9CA3AF] hover:text-[#111827] dark:hover:text-[#F3F7F5]"
                   aria-label="Toggle current password visibility"
                 >
                   {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -504,7 +504,7 @@ export default function AccountClient({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[#374151] mb-1.5">
+              <label className="block text-xs font-semibold text-[#374151] dark:text-[#CBD5E1] mb-1.5">
                 New Password
               </label>
               <div className="relative">
@@ -513,12 +513,12 @@ export default function AccountClient({
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="Min. 6 characters"
-                  className="w-full h-10 rounded-lg border border-[#D5DFD5] bg-white pl-3 pr-9 text-sm text-[#111827] focus:border-[#0D5C3A] focus:ring-2 focus:ring-[#0D5C3A]/15 outline-none"
+                  className="w-full h-10 rounded-lg border border-[#D5DFD5] dark:border-[#2A3B35] bg-white dark:bg-[#0D1412] pl-3 pr-9 text-sm text-[#111827] dark:text-[#F3F7F5] focus:border-[#0D5C3A] dark:focus:border-[#10B981] focus:ring-2 focus:ring-[#0D5C3A]/15 outline-none"
                 />
                 <button
                   type="button"
                   onClick={() => setShowNewPassword((prev) => !prev)}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#6B7280] hover:text-[#111827]"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#6B7280] dark:text-[#9CA3AF] hover:text-[#111827] dark:hover:text-[#F3F7F5]"
                   aria-label="Toggle new password visibility"
                 >
                   {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -527,7 +527,7 @@ export default function AccountClient({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[#374151] mb-1.5">
+              <label className="block text-xs font-semibold text-[#374151] dark:text-[#CBD5E1] mb-1.5">
                 Confirm New Password
               </label>
               <input
@@ -535,13 +535,13 @@ export default function AccountClient({
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Repeat new password"
-                className="w-full h-10 rounded-lg border border-[#D5DFD5] bg-white px-3 text-sm text-[#111827] focus:border-[#0D5C3A] focus:ring-2 focus:ring-[#0D5C3A]/15 outline-none"
+                className="w-full h-10 rounded-lg border border-[#D5DFD5] dark:border-[#2A3B35] bg-white dark:bg-[#0D1412] px-3 text-sm text-[#111827] dark:text-[#F3F7F5] focus:border-[#0D5C3A] dark:focus:border-[#10B981] focus:ring-2 focus:ring-[#0D5C3A]/15 outline-none"
               />
             </div>
           </div>
 
-          <div className="flex items-center justify-between pt-3 border-t border-[#F1F5F1]">
-            <span className="text-xs text-[#6B7280]">
+          <div className="flex items-center justify-between pt-3 border-t border-[#F1F5F1] dark:border-[#1E2B26]">
+            <span className="text-xs text-[#6B7280] dark:text-[#9CA3AF]">
               Minimum 6 characters required for staff accounts.
             </span>
             <button
@@ -561,11 +561,11 @@ export default function AccountClient({
       </div>
 
       {/* Card 3: Active Session Control */}
-      <div className="bg-white rounded-2xl border border-[#E3E8E3] shadow-[0_1px_3px_rgba(15,41,30,0.04)] p-6">
+      <div className="bg-white dark:bg-[#111815] rounded-2xl border border-[#E3E8E3] dark:border-[#1E2B26] shadow-[0_1px_3px_rgba(15,41,30,0.04)] p-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h2 className="text-sm font-semibold text-[#111827]">Session Management</h2>
-            <p className="text-xs text-[#6B7280] mt-0.5">
+            <h2 className="text-sm font-semibold text-[#111827] dark:text-[#F3F7F5]">Session Management</h2>
+            <p className="text-xs text-[#6B7280] dark:text-[#9CA3AF] mt-0.5">
               Sign out of your current browser session and return to the staff sign-in gateway.
             </p>
           </div>
@@ -573,7 +573,7 @@ export default function AccountClient({
             type="button"
             onClick={handleSignOutAll}
             disabled={dangerLoading}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 px-3.5 py-2 text-xs font-semibold text-rose-700 transition disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 px-3.5 py-2 text-xs font-semibold text-rose-700 dark:text-rose-300 transition disabled:opacity-50"
           >
             <LogOut className="h-3.5 w-3.5" />
             <span>{dangerLoading ? "Signing out..." : "Sign Out"}</span>

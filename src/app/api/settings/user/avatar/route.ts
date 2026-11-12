@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
     const extension = mimeToExt[sniffedMime] || 'png'
     const filePath = `avatars/${user.id}.${extension}`
 
-    const supabaseAdmin = createAdminClient()
+    const supabaseAdmin = createAdminClient(cookieStore)
 
     let finalAvatarUrl = ''
     const { error: uploadError } = await supabaseAdmin.storage.from(AVATAR_BUCKET).upload(filePath, buffer, {

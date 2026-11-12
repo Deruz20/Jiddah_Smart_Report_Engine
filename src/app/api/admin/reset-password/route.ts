@@ -1,11 +1,12 @@
 // @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/utils/supabase/server'
+import { createAdminClient, createClient } from '@/utils/supabase/server'
+import { cookies } from 'next/headers'
 import { verifyDataAccess } from '@/lib/auth-server'
-import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 
 export async function POST(req: NextRequest) {
-  const supabase = createClient()
+  const cookieStore = await cookies()
+  const supabase = createClient(cookieStore)
 
   try {
     const { data: { user } } = await supabase.auth.getUser()
@@ -25,11 +26,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing userId or newPassword' }, { status: 400 })
     }
 
-    // We must use the service role key to update another user's password
-    const adminSupabase = createSupabaseClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
+    // Use Service Role (with safe fallback) to update another user's password
+    const adminSupabase = createAdminClient(cookieStore)
 
     const { data, error } = await adminSupabase.auth.admin.updateUserById(userId, {
       password: newPassword,

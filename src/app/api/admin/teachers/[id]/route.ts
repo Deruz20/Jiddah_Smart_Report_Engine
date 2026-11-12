@@ -1,5 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
-import { createClient as createServerClient } from '@/utils/supabase/server';
+import { createAdminClient, createClient as createServerClient } from '@/utils/supabase/server';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { executeTeacherDeactivation } from '@/lib/teacher-deactivation';
@@ -34,10 +33,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const body = await req.json();
     const { name, role, email, phone, subject, classes, status } = body;
 
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    const supabaseAdmin = createAdminClient(cookieStore);
 
     const { data: currentTeacher } = await supabaseAdmin
       .from('teachers')
@@ -126,10 +122,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    const supabaseAdmin = createAdminClient(cookieStore);
 
     const result = await executeTeacherDeactivation(supabaseAdmin, user, id);
     if (!result.success) {

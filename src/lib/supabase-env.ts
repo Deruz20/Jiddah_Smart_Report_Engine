@@ -9,6 +9,31 @@ export function getSupabaseAnonKey(): string | undefined {
   );
 }
 
+/**
+ * Resolves the highest-privilege Supabase key available in the server environment
+ * without throwing when SUPABASE_SERVICE_ROLE_KEY is omitted in local/preview envs.
+ */
+export function getServerSupabaseKey(env: Record<string, string | undefined> = process.env): string | undefined {
+  const candidates = [
+    env.SUPABASE_SERVICE_ROLE_KEY,
+    env.SUPABASE_SECRET_KEY,
+    env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+    env.SUPABASE_ANON_KEY,
+  ];
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string' && candidate.trim().length > 0) {
+      return candidate.trim();
+    }
+  }
+  return undefined;
+}
+
+export function getServiceRoleKey(env: Record<string, string | undefined> = process.env): string | undefined {
+  const key = env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SECRET_KEY;
+  return typeof key === 'string' && key.trim().length > 0 ? key.trim() : undefined;
+}
+
 export type SupabaseKeyFormat = 'publishable' | 'anon_jwt' | 'missing' | 'invalid';
 
 export function detectSupabaseKeyFormat(key: string | undefined): SupabaseKeyFormat {

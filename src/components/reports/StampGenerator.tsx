@@ -533,32 +533,6 @@ export function StampGeneratorPanel({
         throw new Error(errBody?.error || "Failed to save stamp design settings.");
       }
 
-      // 2. Best-effort sync to optional stamp_configs table
-      try {
-        const supabase = createClient();
-        await supabase.from("stamp_configs").upsert(
-          [
-            {
-              config_key: "current",
-              shape: merged.shape,
-              school_name: merged.school_name,
-              title: merged.title,
-              po_box: merged.po_box,
-              phone: merged.phone,
-              ink_color: merged.ink_color,
-              size_scale: merged.size_scale,
-              rotation: merged.rotation,
-              opacity: merged.opacity,
-              grain_realism: merged.grain_realism,
-              updated_at: new Date().toISOString(),
-            },
-          ],
-          { onConflict: "config_key" }
-        );
-      } catch {
-        // Optional legacy table; primary persistence already succeeded in school_settings
-      }
-
       if (onSave) await onSave(merged);
       setSaveSuccess(true);
       toast.success("Official stamp design saved across all report cards.");

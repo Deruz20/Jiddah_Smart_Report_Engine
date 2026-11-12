@@ -2,7 +2,6 @@
 
 import React, { useState } from "react";
 import { Sliders, RotateCw, Save, RefreshCw, Check, Shield } from "lucide-react";
-import { createClient } from "@/utils/supabase/client";
 
 export interface WatermarkConfig {
   id?: string;
@@ -95,24 +94,22 @@ export function WatermarkConfigPanel({
   const handlePersist = async () => {
     setIsSaving(true);
     try {
-      const supabase = createClient();
-      const { error } = await supabase.from("watermark_configs").upsert(
-        [
-          {
-            config_key: "current",
-            enabled: config.enabled,
-            use_badge: config.use_badge,
-            custom_text: config.custom_text,
-            opacity: config.opacity,
-            scale: config.scale,
-            rotation: config.rotation,
-            layout: config.layout,
-            updated_at: new Date().toISOString(),
-          },
-        ],
-        { onConflict: "config_key" }
-      );
-      if (error) throw error;
+      const resGet = await fetch("/api/settings/school");
+      const rawGet = resGet.ok ? await resGet.json() : {};
+      const currentSettings = rawGet?.data || rawGet || {};
+      const nextPrintPrefs = {
+        ...(currentSettings?.print_preferences || {}),
+        watermark_config: config,
+      };
+      const resPatch = await fetch("/api/settings/school", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ print_preferences: nextPrintPrefs }),
+      });
+      if (!resPatch.ok) {
+        const errBody = await resPatch.json().catch(() => ({}));
+        throw new Error(errBody?.error || "Failed to save watermark config");
+      }
       if (onSave) await onSave();
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2000);

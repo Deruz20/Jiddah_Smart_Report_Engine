@@ -9,6 +9,7 @@ import { generateSecularAssessmentCSV, generateSecularAnalysisCSV, generateSecul
 import { computeStandardRankings } from '@/lib/ranking'
 import { isGradableSubject, getSubjectGradeNumber, calculateAggregate, getDivision, getGradeDisplay, isCoreSubject, getNurseryGrade } from '@/lib/grading'
 import { TopToolbar } from '../figma-ui/TopToolbar'
+import { OfficialPrintLetterhead, OfficialPrintSignaturesFooter } from '@/components/print/OfficialPrintLetterhead'
 
 const THEME = {
   gold: 'text-amber-800 bg-amber-50 border-amber-200',
@@ -631,8 +632,8 @@ export default function SecularHubClient({
         ) : (
           <div
             id="secular-hub-print-root"
-            className="w-full max-w-7xl mx-auto print:max-w-[210mm] print:m-0 report-container"
-            data-report-orientation="portrait"
+            className="w-full max-w-7xl mx-auto print:max-w-none print:m-0"
+            data-report-orientation="landscape"
           >
             {activeTab === 'assessment' && (isBatchPrinting || activeClassId) && (
               <>
@@ -641,15 +642,31 @@ export default function SecularHubClient({
                   if (!currentAssessmentData || !currentAssessmentData.orderedSubjects) return null
 
                   return (
-                    <div key={cls.id} className={isBatchPrinting ? 'hidden print:block print:py-0 print:px-2 text-left' : 'print:py-0 print:px-2 text-left'} style={{ pageBreakAfter: isBatchPrinting && classIdx < arr.length - 1 ? 'always' : 'auto' }}>
-                      <div className="text-center mb-8 hidden print:block">
-                        <h1 className="text-2xl font-extrabold text-stone-900 print:text-black mb-1 uppercase tracking-wide">Jiddah Islamic Schools</h1>
-                        <h3 className="text-xl font-bold mb-4 underline underline-offset-4 text-stone-700 print:text-black uppercase">
-                          {examPhase === 'bot' ? 'Beginning of Term Assessment Report' : examPhase === 'eot' ? 'End of Term Assessment Report' : 'Mid-Term Assessment Report'}
-                        </h3>
-                      </div>
+                    <div
+                      key={cls.id}
+                      className={`hub-sheet-page ${isBatchPrinting ? 'hidden print:block print:py-0 print:px-2 text-left' : 'print:py-0 print:px-2 text-left'}`}
+                      style={{
+                        pageBreakAfter: isBatchPrinting && classIdx < arr.length - 1 ? 'always' : 'auto',
+                        breakAfter: isBatchPrinting && classIdx < arr.length - 1 ? 'page' : 'auto',
+                      }}
+                    >
+                      <OfficialPrintLetterhead
+                        documentTitle={
+                          examPhase === 'bot'
+                            ? 'BEGINNING OF TERM ASSESSMENT BROADSHEET'
+                            : examPhase === 'eot'
+                              ? 'END OF TERM ASSESSMENT BROADSHEET'
+                              : 'MID-TERM ASSESSMENT BROADSHEET'
+                        }
+                        metadata={[
+                          { label: 'Term', value: terms.find(t => t.id === activeTermId)?.label },
+                          { label: 'Class', value: cls.class_name },
+                          { label: 'Phase', value: examPhase.toUpperCase() },
+                          { label: 'Year', value: terms.find(t => t.id === activeTermId)?.academic_year },
+                        ]}
+                      />
 
-                      <div className="flex flex-wrap justify-between items-center gap-3 mb-6 font-semibold text-stone-700 print:text-black bg-white print:bg-transparent px-4 py-3 rounded-xl border border-stone-200 print:border-none shadow-xs print:shadow-none text-xs">
+                      <div className="flex print:hidden flex-wrap justify-between items-center gap-3 mb-6 font-semibold text-stone-700 bg-white px-4 py-3 rounded-xl border border-stone-200 shadow-xs text-xs">
                         <div>
                           <span className="uppercase text-[11px] tracking-wider text-stone-500 mr-2">Term:</span>
                           <span className="text-[#059669] print:text-black font-bold">{terms.find(t => t.id === activeTermId)?.label}</span>
@@ -750,6 +767,7 @@ export default function SecularHubClient({
                           </table>
                         </div>
                       </div>
+                      <OfficialPrintSignaturesFooter />
                     </div>
                   )
                 })}
@@ -758,8 +776,17 @@ export default function SecularHubClient({
 
             {/* Analysis Tab */}
             {activeTab === 'analysis' && activeLevel && (
-              <div className="print:py-0 print:px-2 text-left space-y-6">
-                <div className="flex flex-wrap justify-between items-center gap-3 font-semibold text-stone-700 bg-white px-4 py-3 rounded-xl border border-stone-200 shadow-xs text-xs">
+              <div className="hub-sheet-page print:py-0 print:px-2 text-left space-y-6">
+                <OfficialPrintLetterhead
+                  documentTitle="SECULAR COHORT PERFORMANCE ANALYSIS"
+                  metadata={[
+                    { label: 'Level', value: activeLevel.replace('_', ' ').toUpperCase() },
+                    { label: 'Term', value: terms.find(t => t.id === activeTermId)?.label },
+                    { label: 'Phase', value: examPhase.toUpperCase() },
+                    { label: 'Year', value: terms.find(t => t.id === activeTermId)?.academic_year },
+                  ]}
+                />
+                <div className="flex print:hidden flex-wrap justify-between items-center gap-3 font-semibold text-stone-700 bg-white px-4 py-3 rounded-xl border border-stone-200 shadow-xs text-xs">
                   <div>
                     <span className="uppercase text-[11px] tracking-wider text-stone-500 mr-2">Level:</span>
                     <span className="text-[#059669] font-bold uppercase">{activeLevel.replace('_', ' ')}</span>
@@ -841,12 +868,25 @@ export default function SecularHubClient({
                     </div>
                   )}
                 </div>
+                <OfficialPrintSignaturesFooter />
               </div>
             )}
 
             {/* Top Students Tab */}
             {activeTab === 'top_students' && activeLevel && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="hub-sheet-page grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="col-span-full hidden print:block">
+                  <OfficialPrintLetterhead
+                    visibleOnScreen
+                    documentTitle="TOP PERFORMING STUDENTS SUMMARY"
+                    metadata={[
+                      { label: 'Level', value: activeLevel.replace('_', ' ').toUpperCase() },
+                      { label: 'Term', value: terms.find(t => t.id === activeTermId)?.label },
+                      { label: 'Phase', value: examPhase.toUpperCase() },
+                      { label: 'Year', value: terms.find(t => t.id === activeTermId)?.academic_year },
+                    ]}
+                  />
+                </div>
                 {topStudentsData.map((cls) => (
                   <div
                     key={cls.classId}
@@ -877,6 +917,9 @@ export default function SecularHubClient({
                     </div>
                   </div>
                 ))}
+                <div className="col-span-full">
+                  <OfficialPrintSignaturesFooter />
+                </div>
               </div>
             )}
           </div>

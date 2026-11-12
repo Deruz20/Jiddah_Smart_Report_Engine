@@ -6,6 +6,7 @@ import { Loader2, ScrollText, BookOpen, Award, Download, Printer, FileSpreadshee
 import { toast } from 'sonner'
 import { TheologyHubEmptyState } from './TheologyHubEmptyState'
 import { TopToolbar } from '../figma-ui/TopToolbar'
+import { OfficialPrintLetterhead, OfficialPrintSignaturesFooter } from '@/components/print/OfficialPrintLetterhead'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { generateAssessmentCSV, generateAnalysisCSV, generateTopStudentsCSV } from '@/utils/csvExport'
 import { computeStandardRankings } from '@/lib/ranking'
@@ -520,20 +521,31 @@ export default function TheologyHubClient({
         ) : (
           <div
             id="theology-hub-print-root"
-            className="w-full max-w-7xl mx-auto print:max-w-[210mm] print:m-0 report-container"
-            data-report-orientation="portrait"
+            className="w-full max-w-7xl mx-auto print:max-w-none print:m-0"
+            data-report-orientation="landscape"
           >
             {/* Assessment Tab */}
             {activeTab === 'assessment' && activeClassId && (
-              <div className="font-arabic text-right print:py-0 print:px-2" dir="rtl">
-                <div className="text-center mb-6">
-                  <h1 className="text-xl font-extrabold text-[#059669] mb-1 print:text-black">مدرسة جدة الإسلامية للروضة والابتدائية _ انساغو واكيسو</h1>
-                  <h3 className="text-base font-bold mb-2 underline underline-offset-4 text-stone-700 print:text-black">
+              <div className="hub-sheet-page font-arabic text-right print:py-0 print:px-2" dir="rtl">
+                <OfficialPrintLetterhead
+                  rtl
+                  documentTitle={examPhase === 'bot' ? 'BOT THEOLOGY BROADSHEET' : examPhase === 'eot' ? 'EOT THEOLOGY BROADSHEET' : 'MOT THEOLOGY BROADSHEET'}
+                  arabicDocumentTitle={examPhase === 'bot' ? 'كشف الدرجات لبداية الفترة' : examPhase === 'eot' ? 'كشف الدرجات لنهاية الفترة' : 'كشف الدرجات لمنتصف الفترة'}
+                  metadata={[
+                    { label: 'الفترة', value: terms.find(t => t.id === activeTermId)?.label === 'Term 1' ? 'الأولى' : terms.find(t => t.id === activeTermId)?.label === 'Term 2' ? 'الثانية' : 'الثالثة' },
+                    { label: 'الصف', value: theologyClasses.find(c => c.id === activeClassId)?.class_name_arabic || theologyClasses.find(c => c.id === activeClassId)?.class_name_english },
+                    { label: 'الاختبار', value: examPhase === 'bot' ? 'بداية الفترة (BOT)' : examPhase === 'mot' ? 'منتصف الفترة (MOT)' : 'نهاية الفترة (EOT)' },
+                    { label: 'السنة', value: `${toArabicNumerals(terms.find(t => t.id === activeTermId)?.academic_year || '')}م` },
+                  ]}
+                />
+                <div className="text-center mb-6 print:hidden">
+                  <h1 className="text-xl font-extrabold text-[#059669] mb-1">مدرسة جدة الإسلامية للروضة والابتدائية _ انساغو واكيسو</h1>
+                  <h3 className="text-base font-bold mb-2 underline underline-offset-4 text-stone-700">
                     {examPhase === 'bot' ? 'كشف الدرجات لبداية الفترة' : examPhase === 'eot' ? 'كشف الدرجات لنهاية الفترة' : 'كشف الدرجات لمنتصف الفترة'}
                   </h3>
                 </div>
 
-                <div className="flex flex-wrap justify-between items-center gap-3 mb-6 font-semibold text-stone-700 print:text-black bg-white print:bg-transparent px-4 py-3 rounded-xl border border-stone-200 print:border-none shadow-xs print:shadow-none text-xs">
+                <div className="flex print:hidden flex-wrap justify-between items-center gap-3 mb-6 font-semibold text-stone-700 bg-white px-4 py-3 rounded-xl border border-stone-200 shadow-xs text-xs">
                   <div>
                     <span>الفترة: </span>
                     <span className="text-[#059669] print:text-black font-bold px-2">
@@ -611,12 +623,24 @@ export default function TheologyHubClient({
                     </table>
                   </div>
                 </div>
+                <OfficialPrintSignaturesFooter rtl />
               </div>
             )}
 
             {/* Analysis Tab */}
             {activeTab === 'analysis' && activeLevel && (
-              <div className="font-arabic text-right print:py-0 print:px-2" dir="rtl">
+              <div className="hub-sheet-page font-arabic text-right print:py-0 print:px-2" dir="rtl">
+                <OfficialPrintLetterhead
+                  rtl
+                  documentTitle="THEOLOGY PERFORMANCE ANALYSIS"
+                  arabicDocumentTitle="تحليل نتائج الاختبارات"
+                  metadata={[
+                    { label: 'المرحلة', value: activeLevel },
+                    { label: 'الفترة', value: terms.find(t => t.id === activeTermId)?.label },
+                    { label: 'الاختبار', value: examPhase.toUpperCase() },
+                    { label: 'السنة', value: toArabicNumerals(terms.find(t => t.id === activeTermId)?.academic_year || '') },
+                  ]}
+                />
                 <div className="bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden">
                   <div className="overflow-x-auto">
                     <table className="w-full text-right border-collapse">
@@ -649,12 +673,27 @@ export default function TheologyHubClient({
                     </table>
                   </div>
                 </div>
+                <OfficialPrintSignaturesFooter rtl />
               </div>
             )}
 
             {/* Top Students Tab */}
             {activeTab === 'top_students' && activeLevel && (
-              <div className="font-arabic text-right print:py-0 print:px-2 grid grid-cols-1 lg:grid-cols-2 gap-6" dir="rtl">
+              <div className="hub-sheet-page font-arabic text-right print:py-0 print:px-2 grid grid-cols-1 lg:grid-cols-2 gap-6" dir="rtl">
+                <div className="col-span-full hidden print:block">
+                  <OfficialPrintLetterhead
+                    rtl
+                    visibleOnScreen
+                    documentTitle="TOP PERFORMING STUDENTS (THEOLOGY)"
+                    arabicDocumentTitle="قائمة الطلاب الأوائل"
+                    metadata={[
+                      { label: 'المرحلة', value: activeLevel },
+                      { label: 'الفترة', value: terms.find(t => t.id === activeTermId)?.label },
+                      { label: 'الاختبار', value: examPhase.toUpperCase() },
+                      { label: 'السنة', value: toArabicNumerals(terms.find(t => t.id === activeTermId)?.academic_year || '') },
+                    ]}
+                  />
+                </div>
                 {topStudentsData.map((cls) => (
                   <div
                     key={cls.classId}
@@ -685,6 +724,9 @@ export default function TheologyHubClient({
                     </div>
                   </div>
                 ))}
+                <div className="col-span-full">
+                  <OfficialPrintSignaturesFooter rtl />
+                </div>
               </div>
             )}
           </div>

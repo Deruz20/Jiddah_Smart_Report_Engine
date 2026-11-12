@@ -1,5 +1,4 @@
-import { createClient } from '@/utils/supabase/server'
-import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+import { createAdminClient, createClient } from '@/utils/supabase/server'
 import { executeTeacherDeactivation } from '@/lib/teacher-deactivation'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
@@ -312,10 +311,7 @@ export async function DELETE(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Teacher id is required' }, { status: 400 }))
     }
 
-    const supabaseAdmin = createSupabaseClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
+    const supabaseAdmin = createAdminClient(cookieStore)
 
     const result = await executeTeacherDeactivation(supabaseAdmin, user, teacherId)
     if (!result.success) {

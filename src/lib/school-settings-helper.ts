@@ -6,18 +6,57 @@ const BROKEN_LOGO_PATHS = new Set([
   'logo.png',
   '/school_badge.png',
   'school_badge.png',
+  '/school_budge.jpeg',
+  'school_budge.jpeg',
+  '/school_budge.jpg',
+  'school_budge.jpg',
   '/images/logo.png',
   '/badge.png',
 ]);
 
+function extractLogoValueFromPossiblyJson(raw: string): string {
+  let candidate = raw.trim();
+  if (!candidate) return '';
+
+  // Decode URL-encoded JSON strings such as %7B%22logo%22:...%7D
+  if (candidate.startsWith('%7B') || candidate.startsWith('%7b') || candidate.startsWith('/%7B') || candidate.startsWith('/%7b')) {
+    const stripped = candidate.startsWith('/') ? candidate.slice(1) : candidate;
+    try {
+      candidate = decodeURIComponent(stripped).trim();
+    } catch {
+      // Keep original candidate if malformed URI component
+    }
+  }
+
+  // Strip accidental leading slash before raw JSON string ("/{...}")
+  if (candidate.startsWith('/{')) {
+    candidate = candidate.slice(1).trim();
+  }
+
+  if (candidate.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(candidate) as Record<string, unknown>;
+      const nested = parsed?.logo ?? parsed?.logo_url ?? parsed?.url ?? '';
+      return typeof nested === 'string' ? nested.trim() : '';
+    } catch {
+      // Fallback regex if JSON string was truncated
+      const match = candidate.match(/"(?:logo|logo_url|url)"\s*:\s*"([^"]*)"/i);
+      return match?.[1]?.trim() || '';
+    }
+  }
+
+  return candidate;
+}
+
 export function normalizeSchoolLogoUrl(rawUrl?: string | null): string {
-  const trimmed = typeof rawUrl === 'string' ? rawUrl.trim() : '';
-  if (!trimmed || trimmed === 'null' || trimmed === 'undefined') {
+  const rawString = typeof rawUrl === 'string' ? rawUrl.trim() : '';
+  const extracted = extractLogoValueFromPossiblyJson(rawString);
+  if (!extracted || extracted === 'null' || extracted === 'undefined') {
     return CANONICAL_SCHOOL_LOGO;
   }
 
-  const lower = trimmed.toLowerCase();
-  if (BROKEN_LOGO_PATHS.has(lower)) {
+  const lower = extracted.toLowerCase();
+  if (BROKEN_LOGO_PATHS.has(lower) || BROKEN_LOGO_PATHS.has(`/${lower.replace(/^\/+/, '')}`)) {
     return CANONICAL_SCHOOL_LOGO;
   }
 
@@ -28,10 +67,10 @@ export function normalizeSchoolLogoUrl(rawUrl?: string | null): string {
     lower.startsWith('data:image/') ||
     lower.startsWith('blob:')
   ) {
-    return trimmed;
+    return extracted;
   }
 
-  return `/${trimmed.replace(/^\/+/, '')}`;
+  return `/${extracted.replace(/^\/+/, '')}`;
 }
 
 export interface GradingBand {

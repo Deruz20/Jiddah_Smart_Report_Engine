@@ -33,6 +33,7 @@ import {
   DEFAULT_FEE_STRUCTURE,
   DEFAULT_MARKS_LOCKS,
   DEFAULT_PRINT_PREFERENCES,
+  normalizeSchoolLogoUrl,
   validateGradingBands,
   type GradingBandItem,
   type TheologyRemarkItem,
@@ -250,9 +251,7 @@ export default function SettingsClient({
     phone: initialSettings?.phone || "+256 700 000000",
     email: initialSettings?.email || "info@jiddahislamic.ac.ug",
     website_url: initialSettings?.website_url || "",
-    logo_url: initialSettings?.logo_url && initialSettings.logo_url !== "/logo.png"
-      ? initialSettings.logo_url
-      : "/school_logo.svg",
+    logo_url: normalizeSchoolLogoUrl(initialSettings?.logo_url),
   });
   const [savedIdentity, setSavedIdentity] = useState(identity);
   const [savingIdentity, setSavingIdentity] = useState(false);
@@ -329,7 +328,7 @@ export default function SettingsClient({
             phone: d.phone || "",
             email: d.email || "",
             website_url: d.website_url || "",
-            logo_url: d.logo_url && d.logo_url !== "/logo.png" ? d.logo_url : "/school_logo.svg",
+            logo_url: normalizeSchoolLogoUrl(d.logo_url),
           };
           setIdentity(nextIdentity);
           setSavedIdentity(nextIdentity);
@@ -824,14 +823,14 @@ export default function SettingsClient({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-xl bg-[#F8FAF8] border border-[#E3E8E3] mb-6">
                   <div className="flex items-center gap-3 min-w-0">
                     <img
-                      src={identity.logo_url && identity.logo_url !== "/logo.png" ? identity.logo_url : "/school_logo.svg"}
+                      src={normalizeSchoolLogoUrl(identity.logo_url)}
                       alt="School Crest"
                       onError={(e) => {
-                        if (!e.currentTarget.src.endsWith("/school_logo.svg")) {
-                          e.currentTarget.src = "/school_logo.svg";
+                        if (!e.currentTarget.src.endsWith("/logo-512h.png")) {
+                          e.currentTarget.src = "/logo-512h.png";
                         }
                       }}
-                      className="w-10 h-10 rounded-lg object-contain bg-white border border-[#E3E8E3] p-1 shrink-0"
+                      className="w-10 h-10 rounded-lg object-contain bg-white dark:bg-[#0D1412] border border-[#E3E8E3] dark:border-[#24312C] p-1 shrink-0"
                     />
                     <div className="min-w-0">
                       <div className="text-[11px] font-medium text-[#6B7280] uppercase tracking-wider">
@@ -891,7 +890,7 @@ export default function SettingsClient({
                 <form onSubmit={handleSaveIdentity} className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-semibold text-[#374151] mb-1.5">
+                      <label className="block text-xs font-semibold text-[#374151] dark:text-[#CBD5E1] mb-1.5">
                         School Name (English)
                       </label>
                       <input
@@ -906,7 +905,7 @@ export default function SettingsClient({
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-[#374151] mb-1.5">
+                      <label className="block text-xs font-semibold text-[#374151] dark:text-[#CBD5E1] mb-1.5">
                         School Name (Arabic)
                       </label>
                       <input
@@ -922,7 +921,7 @@ export default function SettingsClient({
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-[#374151] mb-1.5">
+                      <label className="block text-xs font-semibold text-[#374151] dark:text-[#CBD5E1] mb-1.5">
                         School Motto
                       </label>
                       <input
@@ -937,7 +936,7 @@ export default function SettingsClient({
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-[#374151] mb-1.5">
+                      <label className="block text-xs font-semibold text-[#374151] dark:text-[#CBD5E1] mb-1.5">
                         MOES Center / Registration Number
                       </label>
                       <input
@@ -955,7 +954,7 @@ export default function SettingsClient({
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-[#374151] mb-1.5">
+                      <label className="block text-xs font-semibold text-[#374151] dark:text-[#CBD5E1] mb-1.5">
                         P.O. Box
                       </label>
                       <input
@@ -970,7 +969,7 @@ export default function SettingsClient({
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-[#374151] mb-1.5">
+                      <label className="block text-xs font-semibold text-[#374151] dark:text-[#CBD5E1] mb-1.5">
                         Physical Address
                       </label>
                       <input
@@ -985,7 +984,7 @@ export default function SettingsClient({
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-[#374151] mb-1.5">
+                      <label className="block text-xs font-semibold text-[#374151] dark:text-[#CBD5E1] mb-1.5">
                         Official Phone Numbers
                       </label>
                       <input
@@ -1000,7 +999,7 @@ export default function SettingsClient({
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-[#374151] mb-1.5">
+                      <label className="block text-xs font-semibold text-[#374151] dark:text-[#CBD5E1] mb-1.5">
                         Official Email
                       </label>
                       <input
@@ -1015,7 +1014,7 @@ export default function SettingsClient({
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-[#374151] mb-1.5">
+                      <label className="block text-xs font-semibold text-[#374151] dark:text-[#CBD5E1] mb-1.5">
                         Website URL
                       </label>
                       <input
@@ -1030,7 +1029,7 @@ export default function SettingsClient({
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-[#374151] mb-1.5">
+                      <label className="block text-xs font-semibold text-[#374151] dark:text-[#CBD5E1] mb-1.5">
                         Crest / Logo URL
                       </label>
                       <input

@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
@@ -14,11 +14,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Password must be at least 8 characters long' }, { status: 400 });
     }
 
-    // Use Service Role to bypass RLS and create user
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    // Use Service Role (with safe fallback) to bypass RLS and create user
+    const supabaseAdmin = createAdminClient();
 
     // 1. Look up teacher_invites where email matches and status='pending'
     const { data: invite, error: inviteError } = await supabaseAdmin

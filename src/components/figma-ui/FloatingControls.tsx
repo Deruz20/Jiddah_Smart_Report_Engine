@@ -152,7 +152,7 @@ function PillBtn({
       style={{
         minWidth: 38,
         minHeight: 38,
-        background: 'transparent',
+        backgroundColor: 'rgba(255, 255, 255, 0)',
         border: 'none',
         borderRadius: 10,
         cursor: disabled ? 'not-allowed' : 'pointer',
@@ -162,7 +162,7 @@ function PillBtn({
         alignItems: 'center',
         justifyContent: 'center',
       }}
-      whileHover={disabled ? {} : { background: 'rgba(255,255,255,0.1)' }}
+      whileHover={disabled ? {} : { backgroundColor: 'rgba(255, 255, 255, 0.1)' }}
       whileTap={disabled ? {} : { scale: 0.9 }}
     >
       {children}

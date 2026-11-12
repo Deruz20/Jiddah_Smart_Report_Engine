@@ -99,21 +99,19 @@ export default function AdminLayout({
       <AppSidebar />
       <SidebarInset
         className={cn(
-          "h-screen print:h-auto print:min-h-screen overflow-hidden print:overflow-visible print:bg-white flex flex-col min-w-0 max-w-full relative transition-colors",
+          "h-[100dvh] print:h-auto print:min-h-screen overflow-hidden print:overflow-visible print:bg-white flex flex-col min-w-0 max-w-full relative transition-colors",
           "bg-[var(--bg-canvas)] text-[var(--text-primary)]"
         )}
       >
         <AppTopbar />
-        <div
+        <main
           className={cn(
-            "flex-1 flex flex-col min-h-0 min-w-0 w-full overflow-x-hidden pb-[calc(6.5rem+env(safe-area-inset-bottom))] md:pb-6 relative",
+            "flex-1 flex flex-col min-h-0 min-w-0 w-full overflow-x-hidden pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0 relative",
             isReportsPage ? "overflow-y-hidden" : "overflow-y-auto"
           )}
         >
-          <div className="flex-1 flex flex-col min-h-0 min-w-0 w-full relative">
-            {children}
-          </div>
-        </div>
+          {children}
+        </main>
         <MobileBottomNav role={role} subject={subject} />
         <ProductTour isOpen={showTour} onClose={handleCloseTour} role={role} />
       </SidebarInset>

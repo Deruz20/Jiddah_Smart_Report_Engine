@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
     // Format: slot_key.extension to overwrite existing
     const filePath = `${slotKey}.${extension}`
 
-    const supabaseAdmin = createAdminClient()
+    const supabaseAdmin = createAdminClient(cookieStore)
 
     const { error: uploadError } = await supabaseAdmin.storage.from(BUCKET).upload(filePath, buffer, {
       upsert: true,

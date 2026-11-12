@@ -220,10 +220,10 @@ function NavItem({
       onClick={() => isMobile && setOpenMobile(false)}
       className={cn(
         "group/nav relative flex items-center rounded-lg outline-none transition-colors duration-150",
-        "focus-visible:ring-2 focus-visible:ring-[var(--sb-active-bar)]",
-        collapsed ? "size-10 mx-auto justify-center" : "h-9 w-full gap-3 pl-3 pr-2",
+        "focus-visible:ring-2 focus-visible:ring-[#0D5C3A] dark:focus-visible:ring-[#10B981]",
+        collapsed ? "size-9 mx-auto justify-center" : "h-[34px] w-full gap-2.5 pl-3 pr-2",
         active
-          ? "bg-[var(--sb-active-bg)] text-[var(--sb-active-text)] font-semibold"
+          ? "bg-[#0D5C3A]/10 text-[#0D5C3A] dark:bg-[#10B981]/15 dark:text-[#34D399] font-semibold"
           : "text-[var(--sb-text)] hover:bg-[var(--sb-hover)] hover:text-[var(--sb-text-strong)] font-medium"
       )}
     >
@@ -385,16 +385,16 @@ export function AppSidebar() {
   return (
     <Sidebar
       collapsible="icon"
-      className="print:hidden z-40"
+      className="print:hidden z-40 border-r border-[#E4EAE6] dark:border-[#1B2420] bg-[#FBFDFB] dark:bg-[#0D1210]"
       style={
         {
-          "--sidebar-width": "15rem",
-          "--sidebar-width-icon": "4rem",
+          "--sidebar-width": "232px",
+          "--sidebar-width-icon": "60px",
         } as React.CSSProperties
       }
     >
       {/* Brand */}
-      <SidebarHeader className="h-14 shrink-0 justify-center border-b border-[var(--sb-border)] bg-[var(--sb-bg)] px-3 py-0">
+      <SidebarHeader className="h-14 shrink-0 justify-center border-b border-[#E4EAE6] dark:border-[#1B2420] bg-[#FBFDFB] dark:bg-[#0D1210] px-3 py-0">
         <Link
           href="/admin"
           aria-label={`${schoolName} — dashboard`}
@@ -420,8 +420,8 @@ export function AppSidebar() {
       </SidebarHeader>
 
       {/* Navigation */}
-      <SidebarContent className="gap-0 overflow-x-hidden bg-[var(--sb-bg)] px-3 py-3">
-        <nav aria-label="Primary" className="flex flex-col gap-4">
+      <SidebarContent className="gap-0 overflow-x-hidden bg-[#FBFDFB] dark:bg-[#0D1210] px-2.5 py-2.5">
+        <nav aria-label="Primary" className="flex flex-col gap-3.5">
           {sections.map((section, index) => (
             <div key={section.label} className="flex flex-col gap-1">
               {collapsed ? (
@@ -447,7 +447,7 @@ export function AppSidebar() {
       </SidebarContent>
 
       {/* Account + collapse — no popover; account actions live in the topbar menu */}
-      <SidebarFooter className="shrink-0 gap-1 border-t border-[var(--sb-border)] bg-[var(--sb-bg)] p-3">
+      <SidebarFooter className="shrink-0 gap-1 border-t border-[#E4EAE6] dark:border-[#1B2420] bg-[#FBFDFB] dark:bg-[#0D1210] p-2.5">
         {collapsed ? (
           <Tooltip delayDuration={200}>
             <TooltipTrigger asChild>

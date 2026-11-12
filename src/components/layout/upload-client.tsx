@@ -215,20 +215,22 @@ export default function UploadClient({ initialFiles }: { initialFiles: UploadedF
         label="Storage & Assets"
       />
 
-      {/* 4 Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+      {/* Compact 4-Stat Strip */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           { label: 'Total Files', value: files.length, color: '#10B981', bg: 'rgba(16,185,129,0.12)' },
           { label: 'Storage Used', value: formatSize(totalSize), color: '#38BDF8', bg: 'rgba(56,189,248,0.12)' },
           { label: 'Signatures', value: signatureSlots.filter(s => s.uploaded).length, color: '#F59E0B', bg: 'rgba(245,158,11,0.12)' },
           { label: 'Documents', value: files.filter((f) => f.category === 'Documents').length, color: '#A855F7', bg: 'rgba(168,85,247,0.12)' },
         ].map(({ label, value, color, bg }) => (
-          <div key={label} className="rounded-2xl p-4 sm:p-5 bg-[var(--bg-card)] border border-[var(--border)] shadow-xs">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3" style={{ background: bg }}>
+          <div key={label} className="h-20 rounded-xl px-4 bg-[var(--bg-card)] border border-[var(--border)] flex items-center gap-3.5">
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: bg }}>
               <HardDrive className="w-4 h-4" style={{ color }} />
             </div>
-            <p className="text-xl sm:text-2xl font-extrabold tracking-tight text-[var(--text-primary)]">{value}</p>
-            <p className="text-xs text-[var(--text-secondary)] mt-1 font-medium">{label}</p>
+            <div className="min-w-0">
+              <p className="text-lg font-extrabold tracking-tight text-[var(--text-primary)] leading-none">{value}</p>
+              <p className="text-[11px] text-[var(--text-secondary)] mt-1 font-medium truncate">{label}</p>
+            </div>
           </div>
         ))}
       </div>

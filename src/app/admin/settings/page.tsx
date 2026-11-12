@@ -42,7 +42,7 @@ export default async function SchoolSettingsPage() {
   ])
 
   return (
-    <div className="min-h-screen bg-[#F8FAF8] w-full max-w-full overflow-x-hidden">
+    <div className="min-h-screen bg-[#F8FAF8] dark:bg-[#0B100E] w-full max-w-full overflow-x-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <SettingsClient
           terms={terms ?? []}

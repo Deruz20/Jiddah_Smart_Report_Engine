@@ -3,7 +3,7 @@ import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { getAuthenticatedUser, normalizePhone, normalizeString, recordActivity } from '@/lib/api-server'
-import { normalizeAccountRole } from '@/lib/teacher-access'
+import { normalizeAccountRole, resolveRoleDepartment } from '@/lib/teacher-access'
 
 const allowedProfileKeys = ['full_name', 'first_name', 'last_name', 'phone']
 
@@ -24,51 +24,65 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
-    const [{ data: profile, error }, { data: teacherRow }] = await Promise.all([
+    const [{ data: profile, error: profileError }, { data: teacherRowByAuth }, { data: teacherRowByEmail }] = await Promise.all([
       supabase
         .from('profiles')
-        .select('id, full_name, first_name, last_name, phone, role, avatar_url')
+        .select('id, full_name, phone, role, avatar_url')
         .eq('id', user.id)
         .maybeSingle(),
       supabase
         .from('teachers')
-        .select('id, name, phone, role, subject, department, assigned_classes, assigned_subjects')
+        .select('id, name, phone, role, subject, classes, status')
         .eq('auth_user_id', user.id)
         .maybeSingle(),
+      user.email
+        ? supabase
+            .from('teachers')
+            .select('id, name, phone, role, subject, classes, status')
+            .eq('email', user.email)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
     ])
 
-    if (error && error.code !== 'PGRST116') {
-      console.error('settings/user GET error:', error.message)
-      return withCors(request, NextResponse.json({ error: error.message }, { status: 500 }))
+    if (profileError && profileError.code !== 'PGRST116') {
+      console.warn('settings/user GET profiles lookup fallback:', profileError.message)
     }
+
+    const teacherRow = teacherRowByAuth || teacherRowByEmail
 
     const rawRole =
       teacherRow?.role ||
       profile?.role ||
       user.app_metadata?.role ||
       user.user_metadata?.role ||
-      'Class Teacher'
-    const canonicalRole = normalizeAccountRole(rawRole, teacherRow?.subject || user.user_metadata?.subject || '')
+      'Administrator'
+    const subjectStr = teacherRow?.subject || user.user_metadata?.subject || ''
+    const canonicalRole = normalizeAccountRole(rawRole, subjectStr)
+    const derivedDept = resolveRoleDepartment(rawRole, subjectStr)
+    const departmentDisplay =
+      canonicalRole === 'Administrator' || canonicalRole === 'Head Teacher' || derivedDept === 'both'
+        ? 'All Departments'
+        : derivedDept === 'theology'
+          ? 'Theology Track'
+          : 'Secular Track'
     const derivedFullName =
       profile?.full_name ||
       teacherRow?.name ||
-      [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') ||
       user.user_metadata?.full_name ||
       user.user_metadata?.name ||
+      user.email?.split('@')[0] ||
       ''
 
     const payload = {
       id: user.id,
       email: user.email || '',
       full_name: derivedFullName,
-      first_name: profile?.first_name || '',
-      last_name: profile?.last_name || '',
       phone: profile?.phone || teacherRow?.phone || '',
       role: rawRole,
       canonical_role: canonicalRole,
-      department: teacherRow?.department || (canonicalRole === 'DOS Theology' ? 'theology' : canonicalRole === 'DOS Secular' ? 'secular' : 'both'),
-      assigned_classes: Array.isArray(teacherRow?.assigned_classes) ? teacherRow.assigned_classes : [],
-      assigned_subjects: Array.isArray(teacherRow?.assigned_subjects) ? teacherRow.assigned_subjects : [],
+      department: departmentDisplay,
+      assigned_classes: Array.isArray(teacherRow?.classes) ? teacherRow.classes : [],
+      assigned_subjects: subjectStr ? [subjectStr] : [],
       avatar_url: user.user_metadata?.avatar_url || profile?.avatar_url || null,
     }
 
@@ -115,11 +129,20 @@ export async function PATCH(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'No valid profile fields provided' }, { status: 400 }))
     }
 
-    const { error } = await supabase.from('profiles').upsert([{ id: user.id, ...updates }], { onConflict: 'id' })
-    if (error) {
-      console.error('settings/user PATCH error:', error.message)
-      return withCors(request, NextResponse.json({ error: error.message }, { status: 500 }))
+    const { error: profileUpsertError } = await supabase
+      .from('profiles')
+      .upsert([{ id: user.id, ...updates }], { onConflict: 'id' })
+    if (profileUpsertError) {
+      console.warn('settings/user PATCH profiles fallback:', profileUpsertError.message)
     }
+
+    // Keep Supabase Auth user_metadata in sync so server/client sessions always reflect updated name & phone
+    await supabase.auth.updateUser({
+      data: {
+        ...(updates.full_name ? { full_name: updates.full_name, name: updates.full_name } : {}),
+        ...(updates.phone !== undefined ? { phone: updates.phone } : {}),
+      },
+    })
 
     // Sync teacher record if present
     try {

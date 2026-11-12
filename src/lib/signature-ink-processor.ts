@@ -101,9 +101,10 @@ export function extractCleanSignaturePixels(
     lumBuffer[i] = a < 20 ? 255 : getLuminance(sourceRgba[idx], sourceRgba[idx + 1], sourceRgba[idx + 2]);
   }
 
-  // Build local illumination grid (~16px tiles) using 80th percentile per block to handle uneven lighting
-  const gridCols = Math.max(4, Math.min(24, Math.ceil(width / 16)));
-  const gridRows = Math.max(4, Math.min(24, Math.ceil(height / 16)));
+  // Build coarse illumination grid using 80th percentile per block to handle uneven lighting
+  const targetCellSize = Math.min(32, Math.max(8, Math.round(Math.min(width, height) / 3)));
+  const gridCols = Math.max(2, Math.min(20, Math.ceil(width / targetCellSize)));
+  const gridRows = Math.max(2, Math.min(20, Math.ceil(height / targetCellSize)));
   const cellBg = new Float32Array(gridCols * gridRows);
 
   for (let gy = 0; gy < gridRows; gy++) {
@@ -131,7 +132,7 @@ export function extractCleanSignaturePixels(
     }
   }
 
-  // Gentle 3x3 smoothing weighted strongly to local tile so lighting gradients don't bleed into dark edges
+  // Smooth the illumination grid slightly so tile seams never create halos
   const smoothedBg = new Float32Array(gridCols * gridRows);
   for (let gy = 0; gy < gridRows; gy++) {
     for (let gx = 0; gx < gridCols; gx++) {
@@ -142,7 +143,7 @@ export function extractCleanSignaturePixels(
           const ny = gy + dy;
           const nx = gx + dx;
           if (ny >= 0 && ny < gridRows && nx >= 0 && nx < gridCols) {
-            const w = dx === 0 && dy === 0 ? 8 : 1;
+            const w = dx === 0 && dy === 0 ? 4 : 1;
             sum += cellBg[ny * gridCols + nx] * w;
             weight += w;
           }
@@ -184,7 +185,7 @@ export function extractCleanSignaturePixels(
       const localBg = top * (1 - ty) + bottom * ty;
 
       const delta = localBg - lumBuffer[p];
-      if (delta <= Math.max(16, localBg * 0.08)) {
+      if (delta <= 8) {
         rawAlpha[p] = 0;
         continue;
       }
@@ -240,7 +241,7 @@ export function extractCleanSignaturePixels(
           ? Math.min(255, Math.round(cAlpha * 0.72 + (neighborAlphaSum / 8) * 0.28))
           : cAlpha;
 
-      if (smoothedAlpha < 18) continue;
+      if (smoothedAlpha < 12) continue;
 
       const idx = p * 4;
       const strength = smoothedAlpha / 255;
@@ -475,4 +476,3 @@ export async function cleanSignatureImageUrl(
     return src;
   }
 }
-

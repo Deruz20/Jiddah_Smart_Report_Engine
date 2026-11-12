@@ -141,30 +141,26 @@ export default function ReportStudioClient({ initialSettings }: ReportStudioClie
     };
   }, [selectedTemplate]);
 
-  // Load persisted Watermark and fallback Stamp configs from Supabase
+  // Load persisted Stamp & Watermark configs from school_settings.print_preferences
   useEffect(() => {
-    const supabase = createClient();
-    supabase
-      .from('stamp_configs')
-      .select('*')
-      .limit(1)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data) {
-          setStampConfig((prev) => ({ ...prev, ...data }));
+    let active = true;
+    fetch('/api/settings/school', { cache: 'no-store' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((payload) => {
+        if (!active || !payload) return;
+        const settings = payload?.data || payload;
+        const prefs = settings?.print_preferences || {};
+        if (prefs.stamp_config && typeof prefs.stamp_config === 'object') {
+          setStampConfig((prev) => ({ ...prev, ...prefs.stamp_config }));
         }
-      });
-
-    supabase
-      .from('watermark_configs')
-      .select('*')
-      .limit(1)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data) {
-          setWatermarkConfig((prev) => ({ ...prev, ...data }));
+        if (prefs.watermark_config && typeof prefs.watermark_config === 'object') {
+          setWatermarkConfig((prev) => ({ ...prev, ...prefs.watermark_config }));
         }
-      });
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
   }, []);
 
   // Contrast calculation

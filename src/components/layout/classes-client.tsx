@@ -185,27 +185,27 @@ export default function ClassesClient({
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             <AnimatePresence>
               {filteredClasses.map((cls, idx) => (
                 <motion.div
                   key={cls.id}
-                  initial={{ opacity: 0, y: 15 }}
+                  initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ duration: 0.2, delay: idx * 0.05 }}
-                  className="group relative bg-white border border-gray-200 rounded-2xl p-5 hover:border-[#065F46]/30 hover:shadow-lg hover:shadow-[#065F46]/5 transition-all duration-300 overflow-hidden"
+                  exit={{ opacity: 0, scale: 0.96 }}
+                  transition={{ duration: 0.18, delay: idx * 0.04 }}
+                  className="group relative bg-white dark:bg-[#111815] border border-[#E4EAE6] dark:border-[#1E2B26] rounded-2xl p-4 sm:p-5 hover:border-[#0D5C3A]/40 dark:hover:border-[#10B981]/40 hover:shadow-md transition-all duration-200 overflow-hidden"
                 >
                   <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-[#065F46] to-[#F97316] opacity-0 group-hover:opacity-100 transition-opacity" />
                   
                   <Link href={`/admin/classes/${cls.id}`} className="block">
-                    <div className="flex justify-between items-start mb-4">
+                    <div className="flex justify-between items-start mb-3">
                       <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <div className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center text-[#065F46] shrink-0">
+                        <div className="w-10 h-10 rounded-xl bg-[#F4F7F5] dark:bg-[#16211D] border border-[#E4EAE6] dark:border-[#24312C] flex items-center justify-center text-[#065F46] dark:text-[#34D399] shrink-0">
                           <BookMarked className="w-5 h-5" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <h3 className="font-bold text-gray-900 text-lg leading-tight truncate group-hover:text-[#065F46] transition-colors">{cls.class_name}</h3>
+                          <h3 className="font-bold text-[#111827] dark:text-[#F3F7F5] text-base leading-tight truncate group-hover:text-[#065F46] dark:group-hover:text-[#34D399] transition-colors">{cls.class_name}</h3>
                           <span className={`inline-block mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase border truncate max-w-full ${getSectionColor(cls.section || "")}`}>
                             {getSectionLabel(cls.section || "")}
                           </span>
@@ -215,7 +215,7 @@ export default function ClassesClient({
                   </Link>
 
                   {canManageClasses && cls.track !== "theology" && (
-                    <div className="flex items-center justify-end gap-2 mt-6 pt-4 border-t border-gray-100">
+                    <div className="flex items-center justify-end gap-1.5 mt-4 pt-3 border-t border-[#E4EAE6]/70 dark:border-[#1E2B26]">
                       <Button variant="ghost" size="icon" onClick={(e) => { e.preventDefault(); openEdit(cls); }} className="h-8 w-8 text-gray-500 hover:text-[#065F46] hover:bg-[#065F46]/10 rounded-lg">
                         <Edit className="w-4 h-4" />
                       </Button>

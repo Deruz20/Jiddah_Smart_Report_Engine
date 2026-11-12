@@ -295,10 +295,10 @@ export default function NotificationsClient({
                 <div
                   key={notif.id}
                   data-testid={`notification-item-${notif.id}`}
-                  className={`flex items-start gap-3.5 p-4 sm:p-5 rounded-2xl transition-all cursor-pointer shadow-sm ${
+                  className={`flex items-start gap-3.5 p-4 rounded-xl transition-all cursor-pointer ${
                     notif.read
-                      ? "bg-white border border-stone-200 hover:bg-stone-50/70"
-                      : "bg-[#FAF7F2] border border-emerald-300 hover:bg-emerald-50/40"
+                      ? "bg-white dark:bg-[#111815] border border-[#E4EAE6] dark:border-[#1E2B26] hover:bg-stone-50/70 dark:hover:bg-[#16211D]"
+                      : "bg-[#FAF7F2] dark:bg-[#141E1A] border border-[#E4EAE6] dark:border-[#24312C] border-l-[3px] border-l-[#0D5C3A] dark:border-l-[#10B981] hover:bg-emerald-50/40 dark:hover:bg-[#182520]"
                   }`}
                   onClick={() => markRead(notif.id)}
                 >
@@ -374,32 +374,41 @@ export default function NotificationsClient({
       )}
 
       {tab === "activity" && (
-        <div className="rounded-2xl overflow-hidden bg-white border border-stone-200 shadow-sm">
-          <div className="px-5 py-4 border-b border-stone-200 bg-[#FAF7F2]">
-            <h3 className="text-sm font-bold text-stone-900">Audit & Activity Trail</h3>
-            <p className="text-xs text-stone-600 mt-0.5">
-              Recorded directly in the <code className="font-mono">activity_logs</code> table.
+        <div className="rounded-2xl overflow-hidden bg-white dark:bg-[#111815] border border-[#E4EAE6] dark:border-[#1E2B26] shadow-xs">
+          <div className="px-5 py-4 border-b border-[#E4EAE6] dark:border-[#1E2B26] bg-[#FAF7F2] dark:bg-[#141D1A]">
+            <h3 className="text-sm font-bold text-stone-900 dark:text-[#F3F7F5]">Audit & Activity Trail</h3>
+            <p className="text-xs text-stone-600 dark:text-[#9CA3AF] mt-0.5">
+              Verified staff actions and system events recorded in the audit log.
             </p>
           </div>
-          <div className="divide-y divide-stone-100">
+          <div className="divide-y divide-[#E4EAE6]/70 dark:divide-[#1E2B26]">
             {activities.length === 0 ? (
-              <div className="p-10 text-center text-sm font-medium text-stone-500">
+              <div className="p-10 text-center text-sm font-medium text-stone-500 dark:text-[#9CA3AF]">
                 No activity recorded yet.
               </div>
             ) : (
               activities.map((activity) => (
                 <div
                   key={activity.id}
-                  className="flex items-start gap-3.5 px-5 py-3.5 hover:bg-stone-50/70 transition-colors"
+                  className="flex items-start gap-3.5 px-5 py-3.5 hover:bg-stone-50/70 dark:hover:bg-[#16211D] transition-colors"
                 >
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-emerald-50 border border-emerald-100">
-                    <Activity className="w-4 h-4 text-emerald-700" />
+                  <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 bg-emerald-500/10 border border-emerald-500/20">
+                    <Activity className="w-4 h-4 text-[#0D5C3A] dark:text-[#34D399]" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold text-stone-900">{activity.user_name}</p>
-                    <p className="text-xs text-stone-600 mt-0.5 break-words">{activity.action}</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-xs font-bold text-stone-900 dark:text-[#F3F7F5]">{activity.user_name}</p>
+                      {activity.user_role && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#E2EEE2] dark:bg-[#10B981]/15 text-[#0D5C3A] dark:text-[#34D399]">
+                          {activity.user_role}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-stone-600 dark:text-[#CBD5E1] mt-0.5 break-words">
+                      {activity.action}
+                    </p>
                   </div>
-                  <span className="text-[11px] font-medium text-stone-500 flex-shrink-0 mt-0.5 tabular-nums">
+                  <span className="text-[11px] font-medium text-stone-500 dark:text-[#9CA3AF] flex-shrink-0 mt-0.5 tabular-nums">
                     {formatRelativeTime(activity.created_at)}
                   </span>
                 </div>

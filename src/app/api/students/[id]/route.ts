@@ -32,11 +32,7 @@ export async function PUT(
 
     const cookieStore = await cookies()
     const supabase = createClient(cookieStore)
-    const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
-    const supabaseAdmin = createSupabaseClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
+    const supabaseAdmin = createAdminClient(cookieStore)
 
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
@@ -200,11 +196,7 @@ export async function DELETE(
     
     const cookieStore = await cookies()
     const supabase = createClient(cookieStore)
-    const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
-    const supabaseAdmin = createSupabaseClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
+    const supabaseAdmin = createAdminClient(cookieStore)
 
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {

@@ -28,6 +28,20 @@ import {
   filterEnrollmentsByCompletion,
 } from '../lib/report-selection.ts';
 
+import {
+  getServerSupabaseKey,
+  getServiceRoleKey,
+} from '../lib/supabase-env.ts';
+
+import {
+  buildActivityActorMap,
+  resolveActivityActor,
+} from '../lib/activity-actors.ts';
+
+import {
+  DEFAULT_OVERLAYS_BY_TEMPLATE,
+} from '../lib/report-overlays.ts';
+
 describe('Workstream 1: School Badge / Logo Normalization', () => {
   it('replaces broken /logo.png and empty inputs with canonical /logo-512h.png', () => {
     assert.equal(CANONICAL_SCHOOL_LOGO, '/logo-512h.png');
@@ -224,6 +238,84 @@ describe('Workstream 5: Report Center Unified Selection & Completion Filtering',
     assert.deepEqual(filterEnrollmentsByCompletion(items, statusMap, 'complete'), [{ enrollment_id: 's1' }]);
     assert.deepEqual(filterEnrollmentsByCompletion(items, statusMap, 'incomplete'), [{ enrollment_id: 's2' }]);
     assert.equal(filterEnrollmentsByCompletion(items, statusMap, 'all').length, 3);
+  });
+});
+
+describe('Forensic Remediation: JSON Logo Parsing, Key Resolution, Activity Actors, Overlays', () => {
+  it('extracts .logo from stringified or URL-encoded JSON and maps legacy budge paths to /logo-512h.png', () => {
+    assert.equal(normalizeSchoolLogoUrl('/school_budge.jpeg'), '/logo-512h.png');
+    assert.equal(normalizeSchoolLogoUrl('school_budge.jpeg'), '/logo-512h.png');
+    assert.equal(normalizeSchoolLogoUrl('/school_badge.png'), '/logo-512h.png');
+    assert.equal(
+      normalizeSchoolLogoUrl('{"logo":"/school_budge.jpeg","stamp":"/stamp.png"}'),
+      '/logo-512h.png'
+    );
+    assert.equal(
+      normalizeSchoolLogoUrl('/%7B%22logo%22%3A%22%2Fschool_budge.jpeg%22%7D'),
+      '/logo-512h.png'
+    );
+    assert.equal(
+      normalizeSchoolLogoUrl('{"logo":"https://cdn.example.edu/jiddah-crest.png"}'),
+      'https://cdn.example.edu/jiddah-crest.png'
+    );
+  });
+
+  it('resolves server Supabase key gracefully when SUPABASE_SERVICE_ROLE_KEY is absent', () => {
+    assert.equal(
+      getServerSupabaseKey({
+        SUPABASE_SERVICE_ROLE_KEY: 'service-key-1',
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: 'anon-key-1',
+      }),
+      'service-key-1'
+    );
+    assert.equal(
+      getServiceRoleKey({
+        SUPABASE_SERVICE_ROLE_KEY: '   ',
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: 'anon-key-1',
+      }),
+      undefined
+    );
+    assert.equal(
+      getServerSupabaseKey({
+        SUPABASE_SERVICE_ROLE_KEY: '',
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_demo_key',
+      }),
+      'sb_publishable_demo_key'
+    );
+  });
+
+  it('maps activity log user_ids to teacher/profile names and never emits raw UUIDs', () => {
+    const uid = '39da752c-2b12-4361-a146-9bb230519672';
+    const unknownUid = '99999999-1111-2222-3333-444444444444';
+    const actorMap = buildActivityActorMap(
+      [
+        {
+          id: 't-1',
+          auth_user_id: uid,
+          name: 'Hassan Hatim',
+          role: 'admin',
+          subject: 'Both',
+        },
+      ],
+      []
+    );
+
+    const resolved = resolveActivityActor(uid, {}, actorMap);
+    assert.equal(resolved.name, 'Hassan Hatim');
+    assert.equal(resolved.role, 'Administrator');
+    assert.equal(resolved.displayLabel, 'Hassan Hatim (Administrator)');
+
+    const fallback = resolveActivityActor(unknownUid, { user_name: unknownUid }, actorMap);
+    assert.equal(fallback.name, 'School Staff');
+    assert.equal(fallback.role, 'System');
+  });
+
+  it('positions Report Studio default stamps safely in the bottom-right stamp zone away from remarks text', () => {
+    for (const key of ['primary-eot', 'primary-mot', 'primary-bot', 'p7-eot', 'nursery-eot', 'theology-mot']) {
+      const overlay = DEFAULT_OVERLAYS_BY_TEMPLATE[key];
+      assert.ok(overlay.stamp.xPercent >= 80, `${key} stamp xPercent should sit in right stamp box`);
+      assert.ok(overlay.stamp.yPercent >= 80, `${key} stamp yPercent should sit in footer zone`);
+    }
   });
 });
 

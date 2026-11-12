@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Only administrators may manage official report images.' }, { status: 403 }))
     }
 
-    const admin = createAdminClient()
+    const admin = createAdminClient(cookieStore)
     const storage = admin.storage.from(BUCKET)
     const [activeResult, disabledResult] = await Promise.all([
       storage.list('', { limit: 1000 }),
@@ -108,7 +108,7 @@ export async function PATCH(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'A slot key and active boolean are required.' }, { status: 400 }))
     }
 
-    const admin = createAdminClient()
+    const admin = createAdminClient(cookieStore)
     const SIGNATURE_SLOTS = await getDynamicSignatureSlots(admin)
     const slotExists = SIGNATURE_SLOTS.some((slot) => slot.slot_key === body.slot_key)
     if (!slotExists) {
@@ -173,7 +173,7 @@ export async function DELETE(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'A valid slot_key is required.' }, { status: 400 }))
     }
 
-    const admin = createAdminClient()
+    const admin = createAdminClient(cookieStore)
     const result = await deleteSignatureSlotObject(admin.storage.from(BUCKET), slotKey)
     if (result.error) {
       console.error('signatures DELETE error:', result.error)

@@ -1,5 +1,7 @@
 import { getNurseryGrade, getNurseryTeacherComment, getConductRemark } from '@/lib/grading'
 import { ReportContainer } from '@/components/reports/shared/ReportContainer'
+import { CleanSignatureImg } from '@/components/reports/shared/CleanSignatureImg'
+import { OfficialReportStamp } from '@/components/reports/StampGenerator'
 import { resolveReportBranding } from '@/lib/school-settings-helper'
 import { formatDateWithOrdinal } from '@/utils/dateHelpers';
 
@@ -267,19 +269,14 @@ export default function NurseryMOTReport({ reportData }: any) {
         border: 1px solid var(--border-light);
     }
     .nursery-mot-report .stamp-box {
-        width: 120px;
-        height: 120px;
-        border: 2px dashed #94a3b8;
-        border-radius: 16px;
+        width: 146px;
+        height: 98px;
+        border: none;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        text-align: center;
-        font-size: 11px;
-        color: #94a3b8;
-        font-weight: 700;
-        background: white;
+        background: transparent;
         flex-shrink: 0;
     }
         `
@@ -294,7 +291,15 @@ export default function NurseryMOTReport({ reportData }: any) {
           </div>
           <div className="header-center">
             <div className="logo">
-              <img src={branding.logoUrl} alt="Badge" />
+              <img
+                src={branding.logoUrl || '/school_logo.svg'}
+                alt="Badge"
+                onError={(e) => {
+                  if (!e.currentTarget.src.endsWith('/school_logo.svg')) {
+                    e.currentTarget.src = '/school_logo.svg';
+                  }
+                }}
+              />
             </div>
             <div className="report-badge">MID TERM REPORT</div>
           </div>
@@ -379,7 +384,7 @@ export default function NurseryMOTReport({ reportData }: any) {
                 <div className="line" style={{ position: 'relative' }}>
                   {getNurseryTeacherComment(grades)}
                   {includeSignatures && reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.class_name) ?? ''] && (
-                    <img src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} alt="Signature" style={{ position: 'absolute', bottom: 0, height: '40px', right: 0 }} />
+                    <CleanSignatureImg src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} alt="Signature" style={{ position: 'absolute', bottom: 0, height: '40px', right: 0 }} />
                   )}
                 </div>
               </div>
@@ -388,7 +393,7 @@ export default function NurseryMOTReport({ reportData }: any) {
                 <div className="line" style={{ position: 'relative' }}>
                   {getNurseryTeacherComment(grades)}
                   {includeSignatures && reportData?.signatures?.['head-teacher'] && (
-                    <img src={reportData.signatures['head-teacher']} alt="Signature" style={{ position: 'absolute', bottom: 0, height: '40px', right: 0 }} />
+                    <CleanSignatureImg src={reportData.signatures['head-teacher']} alt="Signature" style={{ position: 'absolute', bottom: 0, height: '40px', right: 0 }} />
                   )}
                 </div>
               </div>
@@ -399,12 +404,10 @@ export default function NurseryMOTReport({ reportData }: any) {
               </div>
             </div>
 
-            <div className="stamp-box" style={{ overflow: 'hidden', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {includeStamp && reportData?.signatures?.['school-stamp'] ? (
-                <img src={reportData.signatures['school-stamp']} alt="Official Stamp" style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
-              ) : (
-                'OFFICIAL STAMP'
-              )}
+            <div className="stamp-box" style={{ padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {includeStamp ? (
+                <OfficialReportStamp reportData={reportData} maxWidth={140} maxHeight={92} />
+              ) : null}
             </div>
           </div>
           

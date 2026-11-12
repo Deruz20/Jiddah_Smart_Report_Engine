@@ -1,5 +1,6 @@
 import { getTheologyComment } from '@/lib/grading'
 import { ReportContainer } from '@/components/reports/shared/ReportContainer'
+import { OfficialReportStamp } from '@/components/reports/StampGenerator'
 
 const theologyCSS = `
 @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
@@ -313,21 +314,15 @@ const theologyCSS = `
 }
 
 .tc-stamp {
-    width: 110px;
-    height: 110px;
-    border-radius: 16px;
-    border: 2px dashed #94a3b8;
-    background: white;
+    width: 132px;
+    height: 84px;
+    border: none;
+    background: transparent;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    text-align: center;
-    font-size: 12px;
-    font-weight: 800;
-    color: #94a3b8;
     flex-shrink: 0;
-    line-height: 1.4;
 }
 `
 
@@ -373,7 +368,11 @@ export function TheologyCard({ reportData }: { reportData: any }) {
                   src={reportData?.settings?.logo_url || "/logo-512h.png"}
                   alt="School Badge"
                   onError={(e) => {
-                    e.currentTarget.src = "/logo-512h.png";
+                    if (!e.currentTarget.src.endsWith('/logo-512h.png') && !e.currentTarget.src.endsWith('/school_logo.svg')) {
+                      e.currentTarget.src = '/logo-512h.png';
+                    } else if (e.currentTarget.src.endsWith('/logo-512h.png')) {
+                      e.currentTarget.src = '/school_logo.svg';
+                    }
                   }}
                 />
               </div>
@@ -385,7 +384,7 @@ export function TheologyCard({ reportData }: { reportData: any }) {
                 </div>
               </div>
               <div className="tc-badge" style={{ visibility: 'hidden' }}>
-                <img src="/logo-512h.png" alt="" />
+                <img src="/school_logo.svg" alt="" />
               </div>
             </div>
 
@@ -446,15 +445,10 @@ export function TheologyCard({ reportData }: { reportData: any }) {
                   {getTheologyComment(totalScore, reportData?.student?.gender, reportData?.settings?.theology_remarks)}
                 </div>
               </div>
-              <div className="tc-stamp" style={{ overflow: 'hidden', padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {includeStamp && reportData?.signatures?.['school-stamp'] ? (
-                  <img src={reportData.signatures['school-stamp']} alt="" style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
-                ) : (
-                  <>
-                    <span>الختم الرسمي</span>
-                    <span>للمدرسة</span>
-                  </>
-                )}
+              <div className="tc-stamp" style={{ padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {includeStamp ? (
+                  <OfficialReportStamp reportData={reportData} maxWidth={128} maxHeight={80} />
+                ) : null}
               </div>
             </div>
 

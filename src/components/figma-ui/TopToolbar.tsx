@@ -37,7 +37,7 @@ export function TopToolbar({
 }: TopToolbarProps) {
   return (
     <Tooltip.Provider delayDuration={300}>
-      <div className="flex items-center justify-between shrink-0 w-full bg-white border-b border-stone-200/90 px-3 sm:px-5 min-h-[52px] z-20 print:hidden">
+      <div className="flex items-center justify-between shrink-0 w-full bg-white dark:bg-[#111916] border-b border-stone-200/90 dark:border-[#1C2622] px-3 sm:px-5 min-h-[52px] z-20 print:hidden">
         <div className="flex items-center gap-2.5 overflow-hidden min-w-0">
           {/* Contextual Title or Loaded Reports Badge (No duplicate hamburger icon!) */}
           <AnimatePresence>
@@ -67,12 +67,12 @@ export function TopToolbar({
                   }}
                   className={isGenerating ? 'animate-pulse' : ''}
                 />
-                <span className="text-xs sm:text-sm font-bold text-stone-800 truncate tabular-nums">
+                <span className="text-xs sm:text-sm font-bold text-stone-800 dark:text-stone-100 truncate tabular-nums">
                   {isGenerating ? 'Generating…' : `${reportCount} loaded`}
                 </span>
               </motion.div>
             ) : (
-              <div className="text-xs font-bold text-stone-700 truncate">
+              <div className="text-xs font-bold text-stone-700 dark:text-stone-200 truncate">
                 Report Center
               </div>
             )}
@@ -87,7 +87,7 @@ export function TopToolbar({
                   <motion.button
                     onClick={onLayoutToggle}
                     aria-label={layout === 'grid' ? 'Single scroll view' : 'Grid view'}
-                    className="flex items-center justify-center rounded-xl min-w-[40px] min-h-[40px] bg-[#F8FAFC] border border-stone-200 text-stone-700 hover:bg-emerald-50 hover:text-[#059669] cursor-pointer"
+                    className="flex items-center justify-center rounded-xl min-w-[36px] min-h-[36px] bg-[#F8FAFC] dark:bg-[#141F1C] border border-stone-200 dark:border-[#24332E] text-stone-700 dark:text-stone-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-[#059669] dark:hover:text-emerald-300 cursor-pointer"
                     whileTap={{ scale: 0.92 }}
                   >
                     {layout === 'grid' ? <List size={16} /> : <LayoutGrid size={16} />}
@@ -114,13 +114,13 @@ export function TopToolbar({
                 <DropdownMenu.Content
                   align="end"
                   sideOffset={6}
-                  className="print:hidden bg-white rounded-xl p-1 min-w-[200px] shadow-xl border border-stone-200 z-[300]"
+                  className="print:hidden bg-white dark:bg-[#111916] rounded-xl p-1 min-w-[200px] shadow-xl border border-stone-200 dark:border-[#24332E] z-[300]"
                 >
                   {downloadOptions.map((opt, i) => (
                     <DropdownMenu.Item
                       key={i}
                       onClick={opt.onClick}
-                      className="flex items-center gap-3 px-3 min-h-[42px] text-xs font-semibold text-stone-800 cursor-pointer rounded-lg outline-none focus:bg-emerald-50 focus:text-[#059669] transition-colors"
+                      className="flex items-center gap-3 px-3 min-h-[40px] text-xs font-semibold text-stone-800 dark:text-stone-100 cursor-pointer rounded-lg outline-none focus:bg-emerald-50 dark:focus:bg-emerald-950/40 focus:text-[#059669] dark:focus:text-emerald-300 transition-colors"
                     >
                       {opt.icon}
                       {opt.label}
@@ -154,13 +154,13 @@ export function TopToolbar({
                 <DropdownMenu.Content
                   align="end"
                   sideOffset={6}
-                  className="print:hidden bg-white rounded-xl p-1 min-w-[200px] shadow-xl border border-stone-200 z-[300]"
+                  className="print:hidden bg-white dark:bg-[#111916] rounded-xl p-1 min-w-[200px] shadow-xl border border-stone-200 dark:border-[#24332E] z-[300]"
                 >
                   {printOptions.map((opt, i) => (
                     <DropdownMenu.Item
                       key={i}
                       onClick={opt.onClick}
-                      className="flex items-center gap-3 px-3 min-h-[42px] text-xs font-semibold text-stone-800 cursor-pointer rounded-lg outline-none focus:bg-emerald-50 focus:text-[#059669] transition-colors"
+                      className="flex items-center gap-3 px-3 min-h-[40px] text-xs font-semibold text-stone-800 dark:text-stone-100 cursor-pointer rounded-lg outline-none focus:bg-emerald-50 dark:focus:bg-emerald-950/40 focus:text-[#059669] dark:focus:text-emerald-300 transition-colors"
                     >
                       {opt.icon}
                       {opt.label}
@@ -243,10 +243,10 @@ export function TopToolbar({
               <Tooltip.Trigger asChild>
                 <motion.button
                   onClick={onSearchToggle}
-                  className={`flex items-center gap-1.5 rounded-xl font-semibold min-h-[40px] px-3 text-xs border cursor-pointer transition-colors ${
+                  className={`flex items-center gap-1.5 rounded-xl font-semibold h-9 px-3 text-xs border cursor-pointer transition-colors ${
                     searchOpen
-                      ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                      : 'bg-[#F8FAFC] border-stone-200 text-stone-800 hover:bg-emerald-50 hover:text-[#059669]'
+                      ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-700 text-emerald-800 dark:text-emerald-300'
+                      : 'bg-[#F8FAFC] dark:bg-[#141F1C] border-stone-200 dark:border-[#24332E] text-stone-800 dark:text-stone-100 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-[#059669] dark:hover:text-emerald-300'
                   }`}
                   whileTap={{ scale: 0.96 }}
                 >
@@ -287,7 +287,7 @@ function IconBtn({
           disabled={disabled}
           title={tooltip}
           aria-label={tooltip}
-          className="flex items-center justify-center rounded-xl flex-shrink-0 min-w-[40px] min-h-[40px] bg-[#F8FAFC] border border-stone-200 text-stone-700 hover:bg-emerald-50 hover:text-[#059669] disabled:opacity-45 disabled:cursor-not-allowed cursor-pointer"
+          className="flex items-center justify-center rounded-xl flex-shrink-0 min-w-[36px] min-h-[36px] bg-[#F8FAFC] dark:bg-[#141F1C] border border-stone-200 dark:border-[#24332E] text-stone-700 dark:text-stone-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-[#059669] dark:hover:text-emerald-300 disabled:opacity-45 disabled:cursor-not-allowed cursor-pointer"
           whileTap={disabled ? {} : { scale: 0.92 }}
         >
           {icon}

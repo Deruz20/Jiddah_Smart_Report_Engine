@@ -250,7 +250,9 @@ export default function SettingsClient({
     phone: initialSettings?.phone || "+256 700 000000",
     email: initialSettings?.email || "info@jiddahislamic.ac.ug",
     website_url: initialSettings?.website_url || "",
-    logo_url: initialSettings?.logo_url || "/logo.png",
+    logo_url: initialSettings?.logo_url && initialSettings.logo_url !== "/logo.png"
+      ? initialSettings.logo_url
+      : "/school_logo.svg",
   });
   const [savedIdentity, setSavedIdentity] = useState(identity);
   const [savingIdentity, setSavingIdentity] = useState(false);
@@ -327,7 +329,7 @@ export default function SettingsClient({
             phone: d.phone || "",
             email: d.email || "",
             website_url: d.website_url || "",
-            logo_url: d.logo_url || "/logo.png",
+            logo_url: d.logo_url && d.logo_url !== "/logo.png" ? d.logo_url : "/school_logo.svg",
           };
           setIdentity(nextIdentity);
           setSavedIdentity(nextIdentity);
@@ -674,32 +676,32 @@ export default function SettingsClient({
   ].filter(Boolean).length;
 
   return (
-    <div className="min-h-screen bg-[#F8FAF8] text-[#111827] -mx-4 sm:-mx-6 -my-6 sm:-my-8 px-4 sm:px-6 py-6">
+    <div className="min-h-screen bg-[#F8FAF8] dark:bg-[#0A0E0C] text-[#111827] dark:text-[#F4F7F5] -mx-4 sm:-mx-6 -my-6 sm:-my-8 px-4 sm:px-6 py-6">
       {/* Top Chrome Material-3 Settings Search Header */}
-      <header className="sticky top-0 z-20 bg-[#F8FAF8]/95 backdrop-blur-sm pb-5 pt-1 border-b border-[#E3E8E3] mb-6">
+      <header className="sticky top-0 z-20 bg-[#F8FAF8]/95 dark:bg-[#0A0E0C]/95 backdrop-blur-sm pb-5 pt-1 border-b border-[#E3E8E3] dark:border-[#1C2622] mb-6">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-center">
             <div className="w-8 h-8 rounded-xl bg-[#0D5C3A] text-white flex items-center justify-center font-bold text-xs shadow-sm">
               JS
             </div>
             <div>
-              <h1 className="text-base font-bold text-[#111827] leading-none">School Settings</h1>
-              <p className="text-[11px] text-[#6B7280] mt-0.5">
+              <h1 className="text-base font-bold text-[#111827] dark:text-[#F4F7F5] leading-none">School Settings</h1>
+              <p className="text-[11px] text-[#6B7280] dark:text-[#9AA7A0] mt-0.5">
                 System Configuration & Academic Engine
               </p>
             </div>
           </div>
 
           {/* Centered Pill Search Input */}
-          <div className="max-w-[680px] w-full h-11 rounded-full bg-[#EEF3EE] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#0D5C3A]/20 border border-transparent focus-within:border-[#0D5C3A]/30 px-4 text-sm flex items-center gap-3 transition-all">
-            <Search className="w-4 h-4 text-[#6B7280] shrink-0" />
+          <div className="max-w-[680px] w-full h-10 rounded-full bg-[#EEF3EE] dark:bg-[#131A16] focus-within:bg-white dark:focus-within:bg-[#16221C] focus-within:ring-2 focus-within:ring-[#0D5C3A]/20 border border-transparent dark:border-[#24332E] focus-within:border-[#0D5C3A]/30 px-4 text-sm flex items-center gap-3 transition-all">
+            <Search className="w-4 h-4 text-[#6B7280] dark:text-[#9AA7A0] shrink-0" />
             <input
               type="search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search settings (e.g. grading, stamp, active term, fees, password)..."
               aria-label="Search settings"
-              className="w-full bg-transparent text-sm text-[#111827] placeholder:text-[#6B7280] outline-none"
+              className="w-full bg-transparent text-xs sm:text-sm text-[#111827] dark:text-[#F4F7F5] placeholder:text-[#6B7280] dark:placeholder:text-[#9AA7A0] outline-none"
             />
             {searchQuery && (
               <button
@@ -738,8 +740,8 @@ export default function SettingsClient({
                   }}
                   className={`inline-flex items-center gap-2 whitespace-nowrap rounded-full px-3.5 py-2 text-xs transition-colors shrink-0 ${
                     isActive || isMatch
-                      ? "bg-[#E2EEE2] text-[#0D5C3A] font-semibold"
-                      : "bg-white border border-[#E3E8E3] text-[#374151] hover:bg-[#F1F5F1]"
+                      ? "bg-[#E2EEE2] dark:bg-emerald-950/60 text-[#0D5C3A] dark:text-emerald-300 font-semibold"
+                      : "bg-white dark:bg-[#131A16] border border-[#E3E8E3] dark:border-[#24332E] text-[#374151] dark:text-stone-300 hover:bg-[#F1F5F1] dark:hover:bg-[#1C2620]"
                   }`}
                 >
                   <Icon className="w-[18px] h-[18px] shrink-0" />
@@ -765,8 +767,8 @@ export default function SettingsClient({
                   }}
                   className={`flex items-center gap-3 w-full text-left text-sm transition-colors ${
                     isActive || isMatch
-                      ? "bg-[#E2EEE2] text-[#0D5C3A] font-semibold rounded-r-full py-2.5 px-4"
-                      : "text-[#374151] hover:bg-[#F1F5F1] rounded-r-full py-2.5 px-4"
+                      ? "bg-[#E2EEE2] dark:bg-emerald-950/60 text-[#0D5C3A] dark:text-emerald-300 font-semibold rounded-r-full py-2.5 px-4"
+                      : "text-[#374151] dark:text-stone-300 hover:bg-[#F1F5F1] dark:hover:bg-[#1C2620] rounded-r-full py-2.5 px-4"
                   }`}
                 >
                   <Icon className="w-[18px] h-[18px] shrink-0" />
@@ -778,7 +780,7 @@ export default function SettingsClient({
         </aside>
 
         {/* Centered Modular Card Column */}
-        <main className="max-w-[760px] w-full mx-auto space-y-5 pb-16">
+        <main className="max-w-[760px] w-full mx-auto space-y-5 pb-28 md:pb-16">
           {normalizedQuery && visibleCategories.length === 0 && (
             <div className="bg-white rounded-2xl border border-[#E3E8E3] shadow-[0_1px_3px_rgba(15,41,30,0.04)] p-8 text-center">
               <p className="text-sm font-semibold text-[#111827]">
@@ -802,13 +804,13 @@ export default function SettingsClient({
           ===================================================================== */}
           {shouldShowCategory("identity") && (
             <section className="space-y-5" aria-label="School Identity and Profile">
-              <div className="bg-white rounded-2xl border border-[#E3E8E3] shadow-[0_1px_3px_rgba(15,41,30,0.04)] p-6">
+              <div className="bg-white dark:bg-[#131A16] rounded-2xl border border-[#E3E8E3] dark:border-[#24332E] shadow-[0_1px_3px_rgba(15,41,30,0.04)] p-6">
                 <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
                   <div>
-                    <h2 className="text-[15px] font-semibold text-[#111827]">
+                    <h2 className="text-[15px] font-semibold text-[#111827] dark:text-[#F4F7F5]">
                       School Identity & Official Branding
                     </h2>
-                    <p className="text-xs text-[#6B7280] mt-0.5">
+                    <p className="text-xs text-[#6B7280] dark:text-[#9AA7A0] mt-0.5">
                       Displayed in the Global Topbar and printed on all Secular and Theology report headers.
                     </p>
                   </div>
@@ -822,8 +824,13 @@ export default function SettingsClient({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-xl bg-[#F8FAF8] border border-[#E3E8E3] mb-6">
                   <div className="flex items-center gap-3 min-w-0">
                     <img
-                      src={identity.logo_url || "/logo.png"}
+                      src={identity.logo_url && identity.logo_url !== "/logo.png" ? identity.logo_url : "/school_logo.svg"}
                       alt="School Crest"
+                      onError={(e) => {
+                        if (!e.currentTarget.src.endsWith("/school_logo.svg")) {
+                          e.currentTarget.src = "/school_logo.svg";
+                        }
+                      }}
                       className="w-10 h-10 rounded-lg object-contain bg-white border border-[#E3E8E3] p-1 shrink-0"
                     />
                     <div className="min-w-0">
@@ -856,7 +863,7 @@ export default function SettingsClient({
                     <div className="text-sm font-medium text-[#111827]">
                       School Crest / Official Logo
                     </div>
-                    <p className="text-xs text-[#6B7280] mt-0.5">
+                    <p className="text-xs text-[#6B7280] dark:text-[#9AA7A0] mt-0.5">
                       Used on report card headers and watermarks. Upload a PNG/WEBP or specify path.
                     </p>
                   </div>
@@ -894,7 +901,7 @@ export default function SettingsClient({
                           setIdentity((prev) => ({ ...prev, school_name: e.target.value }))
                         }
                         placeholder="Jiddah Islamic Nursery and Primary School"
-                        className="w-full h-10 rounded-lg border border-[#D5DFD5] bg-white px-3 text-sm text-[#111827] focus:border-[#0D5C3A] focus:ring-2 focus:ring-[#0D5C3A]/15 outline-none"
+                        className="w-full h-9 rounded-lg border border-[#D5DFD5] dark:border-[#2A3B35] bg-white dark:bg-[#0D1412] px-3 text-xs sm:text-sm text-[#111827] dark:text-[#F4F7F5] focus:border-[#0D5C3A] dark:focus:border-emerald-500 focus:ring-2 focus:ring-[#0D5C3A]/15 outline-none"
                       />
                     </div>
 
@@ -910,7 +917,7 @@ export default function SettingsClient({
                           setIdentity((prev) => ({ ...prev, arabic_name: e.target.value }))
                         }
                         placeholder="مدرسة جدة الإسلامية للحضانة والابتدائية"
-                        className="w-full h-10 rounded-lg border border-[#D5DFD5] bg-white px-3 text-sm text-[#111827] focus:border-[#0D5C3A] focus:ring-2 focus:ring-[#0D5C3A]/15 outline-none"
+                        className="w-full h-9 rounded-lg border border-[#D5DFD5] dark:border-[#2A3B35] bg-white dark:bg-[#0D1412] px-3 text-xs sm:text-sm text-[#111827] dark:text-[#F4F7F5] focus:border-[#0D5C3A] dark:focus:border-emerald-500 focus:ring-2 focus:ring-[#0D5C3A]/15 outline-none"
                       />
                     </div>
 
@@ -925,7 +932,7 @@ export default function SettingsClient({
                           setIdentity((prev) => ({ ...prev, motto: e.target.value }))
                         }
                         placeholder="Strive for Life & Hereafter"
-                        className="w-full h-10 rounded-lg border border-[#D5DFD5] bg-white px-3 text-sm text-[#111827] focus:border-[#0D5C3A] focus:ring-2 focus:ring-[#0D5C3A]/15 outline-none"
+                        className="w-full h-9 rounded-lg border border-[#D5DFD5] dark:border-[#2A3B35] bg-white dark:bg-[#0D1412] px-3 text-xs sm:text-sm text-[#111827] dark:text-[#F4F7F5] focus:border-[#0D5C3A] dark:focus:border-emerald-500 focus:ring-2 focus:ring-[#0D5C3A]/15 outline-none"
                       />
                     </div>
 
@@ -943,7 +950,7 @@ export default function SettingsClient({
                           }))
                         }
                         placeholder="e.g. PPS/N/1042"
-                        className="w-full h-10 rounded-lg border border-[#D5DFD5] bg-white px-3 text-sm text-[#111827] focus:border-[#0D5C3A] focus:ring-2 focus:ring-[#0D5C3A]/15 outline-none"
+                        className="w-full h-9 rounded-lg border border-[#D5DFD5] dark:border-[#2A3B35] bg-white dark:bg-[#0D1412] px-3 text-xs sm:text-sm text-[#111827] dark:text-[#F4F7F5] focus:border-[#0D5C3A] dark:focus:border-emerald-500 focus:ring-2 focus:ring-[#0D5C3A]/15 outline-none"
                       />
                     </div>
 
@@ -958,7 +965,7 @@ export default function SettingsClient({
                           setIdentity((prev) => ({ ...prev, po_box: e.target.value }))
                         }
                         placeholder="P.O. Box 123, Entebbe"
-                        className="w-full h-10 rounded-lg border border-[#D5DFD5] bg-white px-3 text-sm text-[#111827] focus:border-[#0D5C3A] focus:ring-2 focus:ring-[#0D5C3A]/15 outline-none"
+                        className="w-full h-9 rounded-lg border border-[#D5DFD5] dark:border-[#2A3B35] bg-white dark:bg-[#0D1412] px-3 text-xs sm:text-sm text-[#111827] dark:text-[#F4F7F5] focus:border-[#0D5C3A] dark:focus:border-emerald-500 focus:ring-2 focus:ring-[#0D5C3A]/15 outline-none"
                       />
                     </div>
 
@@ -973,7 +980,7 @@ export default function SettingsClient({
                           setIdentity((prev) => ({ ...prev, address: e.target.value }))
                         }
                         placeholder="Nakiwogo, Entebbe, Uganda"
-                        className="w-full h-10 rounded-lg border border-[#D5DFD5] bg-white px-3 text-sm text-[#111827] focus:border-[#0D5C3A] focus:ring-2 focus:ring-[#0D5C3A]/15 outline-none"
+                        className="w-full h-9 rounded-lg border border-[#D5DFD5] dark:border-[#2A3B35] bg-white dark:bg-[#0D1412] px-3 text-xs sm:text-sm text-[#111827] dark:text-[#F4F7F5] focus:border-[#0D5C3A] dark:focus:border-emerald-500 focus:ring-2 focus:ring-[#0D5C3A]/15 outline-none"
                       />
                     </div>
 
@@ -988,7 +995,7 @@ export default function SettingsClient({
                           setIdentity((prev) => ({ ...prev, phone: e.target.value }))
                         }
                         placeholder="+256 700 000000 / +256 772 000000"
-                        className="w-full h-10 rounded-lg border border-[#D5DFD5] bg-white px-3 text-sm text-[#111827] focus:border-[#0D5C3A] focus:ring-2 focus:ring-[#0D5C3A]/15 outline-none"
+                        className="w-full h-9 rounded-lg border border-[#D5DFD5] dark:border-[#2A3B35] bg-white dark:bg-[#0D1412] px-3 text-xs sm:text-sm text-[#111827] dark:text-[#F4F7F5] focus:border-[#0D5C3A] dark:focus:border-emerald-500 focus:ring-2 focus:ring-[#0D5C3A]/15 outline-none"
                       />
                     </div>
 
@@ -1003,7 +1010,7 @@ export default function SettingsClient({
                           setIdentity((prev) => ({ ...prev, email: e.target.value }))
                         }
                         placeholder="info@jiddahislamic.ac.ug"
-                        className="w-full h-10 rounded-lg border border-[#D5DFD5] bg-white px-3 text-sm text-[#111827] focus:border-[#0D5C3A] focus:ring-2 focus:ring-[#0D5C3A]/15 outline-none"
+                        className="w-full h-9 rounded-lg border border-[#D5DFD5] dark:border-[#2A3B35] bg-white dark:bg-[#0D1412] px-3 text-xs sm:text-sm text-[#111827] dark:text-[#F4F7F5] focus:border-[#0D5C3A] dark:focus:border-emerald-500 focus:ring-2 focus:ring-[#0D5C3A]/15 outline-none"
                       />
                     </div>
 
@@ -1018,7 +1025,7 @@ export default function SettingsClient({
                           setIdentity((prev) => ({ ...prev, website_url: e.target.value }))
                         }
                         placeholder="https://jiddahislamic.ac.ug"
-                        className="w-full h-10 rounded-lg border border-[#D5DFD5] bg-white px-3 text-sm text-[#111827] focus:border-[#0D5C3A] focus:ring-2 focus:ring-[#0D5C3A]/15 outline-none"
+                        className="w-full h-9 rounded-lg border border-[#D5DFD5] dark:border-[#2A3B35] bg-white dark:bg-[#0D1412] px-3 text-xs sm:text-sm text-[#111827] dark:text-[#F4F7F5] focus:border-[#0D5C3A] dark:focus:border-emerald-500 focus:ring-2 focus:ring-[#0D5C3A]/15 outline-none"
                       />
                     </div>
 
@@ -1032,8 +1039,8 @@ export default function SettingsClient({
                         onChange={(e) =>
                           setIdentity((prev) => ({ ...prev, logo_url: e.target.value }))
                         }
-                        placeholder="/logo.png"
-                        className="w-full h-10 rounded-lg border border-[#D5DFD5] bg-white px-3 text-sm text-[#111827] focus:border-[#0D5C3A] focus:ring-2 focus:ring-[#0D5C3A]/15 outline-none"
+                        placeholder="/school_logo.svg"
+                        className="w-full h-9 rounded-lg border border-[#D5DFD5] dark:border-[#2A3B35] bg-white dark:bg-[#0D1412] px-3 text-xs sm:text-sm text-[#111827] dark:text-[#F4F7F5] focus:border-[#0D5C3A] dark:focus:border-emerald-500 focus:ring-2 focus:ring-[#0D5C3A]/15 outline-none"
                       />
                     </div>
                   </div>
@@ -1084,13 +1091,13 @@ export default function SettingsClient({
           {shouldShowCategory("grading") && (
             <section className="space-y-5" aria-label="Grading and Remarks Engine">
               {/* Card 3A: Secular Grading Scale (D1-F9) */}
-              <div className="bg-white rounded-2xl border border-[#E3E8E3] shadow-[0_1px_3px_rgba(15,41,30,0.04)] p-6">
+              <div className="bg-white dark:bg-[#131A16] rounded-2xl border border-[#E3E8E3] dark:border-[#24332E] shadow-[0_1px_3px_rgba(15,41,30,0.04)] p-6">
                 <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                   <div>
-                    <h2 className="text-[15px] font-semibold text-[#111827]">
+                    <h2 className="text-[15px] font-semibold text-[#111827] dark:text-[#F4F7F5]">
                       Secular Grading Scale (D1 to F9)
                     </h2>
-                    <p className="text-xs text-[#6B7280] mt-0.5">
+                    <p className="text-xs text-[#6B7280] dark:text-[#9AA7A0] mt-0.5">
                       Score ranges (0 to 100), aggregate points (1 to 9), and automated subject remarks.
                     </p>
                   </div>
@@ -1237,12 +1244,12 @@ export default function SettingsClient({
               </div>
 
               {/* Card 3B: Theology Grading Scale & Arabic Descriptors */}
-              <div className="bg-white rounded-2xl border border-[#E3E8E3] shadow-[0_1px_3px_rgba(15,41,30,0.04)] p-6">
+              <div className="bg-white dark:bg-[#131A16] rounded-2xl border border-[#E3E8E3] dark:border-[#24332E] shadow-[0_1px_3px_rgba(15,41,30,0.04)] p-6">
                 <div className="mb-4">
-                  <h2 className="text-[15px] font-semibold text-[#111827]">
+                  <h2 className="text-[15px] font-semibold text-[#111827] dark:text-[#F4F7F5]">
                     Theology Grading Scale & Arabic Remarks (التقديرات الشرعية)
                   </h2>
-                  <p className="text-xs text-[#6B7280] mt-0.5">
+                  <p className="text-xs text-[#6B7280] dark:text-[#9AA7A0] mt-0.5">
                     Arabic descriptors applied to Theology MOT and EOT report cards with native RTL layout.
                   </p>
                 </div>
@@ -1268,7 +1275,7 @@ export default function SettingsClient({
                               next[idx] = { ...item, level: e.target.value };
                               setTheologyRemarks(next);
                             }}
-                            className="w-28 h-8 rounded border border-[#D5DFD5] bg-white px-2.5 text-xs font-bold text-[#0D5C3A] text-right"
+                            className="w-28 h-8 rounded border border-[#D5DFD5] dark:border-[#2A3B35] bg-white dark:bg-[#0D1412] px-2.5 text-xs font-bold text-[#0D5C3A] dark:text-emerald-300 text-right"
                           />
                         </div>
                         <div>
@@ -1284,7 +1291,7 @@ export default function SettingsClient({
                               next[idx] = { ...item, boys: e.target.value };
                               setTheologyRemarks(next);
                             }}
-                            className="w-full h-8 rounded border border-[#D5DFD5] bg-white px-2.5 text-xs font-semibold text-[#111827] text-right"
+                            className="w-full h-8 rounded border border-[#D5DFD5] dark:border-[#2A3B35] bg-white dark:bg-[#0D1412] px-2.5 text-xs font-semibold text-[#111827] dark:text-[#F4F7F5] text-right"
                           />
                         </div>
                         <div>
@@ -1300,7 +1307,7 @@ export default function SettingsClient({
                               next[idx] = { ...item, girls: e.target.value };
                               setTheologyRemarks(next);
                             }}
-                            className="w-full h-8 rounded border border-[#D5DFD5] bg-white px-2.5 text-xs font-semibold text-[#111827] text-right"
+                            className="w-full h-8 rounded border border-[#D5DFD5] dark:border-[#2A3B35] bg-white dark:bg-[#0D1412] px-2.5 text-xs font-semibold text-[#111827] dark:text-[#F4F7F5] text-right"
                           />
                         </div>
                       </div>
@@ -1393,12 +1400,12 @@ export default function SettingsClient({
               </div>
 
               {/* Card 3C: Division Aggregate Boundaries & Comment Templates */}
-              <div className="bg-white rounded-2xl border border-[#E3E8E3] shadow-[0_1px_3px_rgba(15,41,30,0.04)] p-6">
+              <div className="bg-white dark:bg-[#131A16] rounded-2xl border border-[#E3E8E3] dark:border-[#24332E] shadow-[0_1px_3px_rgba(15,41,30,0.04)] p-6">
                 <div className="mb-4">
-                  <h2 className="text-[15px] font-semibold text-[#111827]">
+                  <h2 className="text-[15px] font-semibold text-[#111827] dark:text-[#F4F7F5]">
                     Division Aggregate Boundaries & Automated Comments
                   </h2>
-                  <p className="text-xs text-[#6B7280] mt-0.5">
+                  <p className="text-xs text-[#6B7280] dark:text-[#9AA7A0] mt-0.5">
                     4-core-subject aggregate cutoffs (4 to 36 points) and default Class Teacher / Headteacher remarks.
                   </p>
                 </div>
@@ -1425,7 +1432,7 @@ export default function SettingsClient({
                               next[idx] = { ...div, min: Number(e.target.value) };
                               setDivisionBoundaries(next);
                             }}
-                            className="w-16 h-8 rounded border border-[#D5DFD5] bg-white px-2 text-xs font-bold text-[#111827]"
+                            className="w-16 h-8 rounded border border-[#D5DFD5] dark:border-[#2A3B35] bg-white dark:bg-[#0D1412] px-2 text-xs font-bold text-[#111827] dark:text-[#F4F7F5]"
                           />
                           <span className="text-[#6B7280]">to</span>
                           <input
@@ -1438,7 +1445,7 @@ export default function SettingsClient({
                               next[idx] = { ...div, max: Number(e.target.value) };
                               setDivisionBoundaries(next);
                             }}
-                            className="w-16 h-8 rounded border border-[#D5DFD5] bg-white px-2 text-xs font-bold text-[#111827]"
+                            className="w-16 h-8 rounded border border-[#D5DFD5] dark:border-[#2A3B35] bg-white dark:bg-[#0D1412] px-2 text-xs font-bold text-[#111827] dark:text-[#F4F7F5]"
                           />
                         </div>
                       </div>
@@ -1456,7 +1463,7 @@ export default function SettingsClient({
                               next[idx] = { ...div, classTeacherComment: e.target.value };
                               setDivisionBoundaries(next);
                             }}
-                            className="w-full h-9 rounded-lg border border-[#D5DFD5] bg-white px-2.5 text-xs text-[#111827]"
+                            className="w-full h-9 rounded-lg border border-[#D5DFD5] dark:border-[#2A3B35] bg-white dark:bg-[#0D1412] px-2.5 text-xs text-[#111827] dark:text-[#F4F7F5]"
                           />
                         </div>
                         <div>
@@ -1471,7 +1478,7 @@ export default function SettingsClient({
                               next[idx] = { ...div, headTeacherComment: e.target.value };
                               setDivisionBoundaries(next);
                             }}
-                            className="w-full h-9 rounded-lg border border-[#D5DFD5] bg-white px-2.5 text-xs text-[#111827]"
+                            className="w-full h-9 rounded-lg border border-[#D5DFD5] dark:border-[#2A3B35] bg-white dark:bg-[#0D1412] px-2.5 text-xs text-[#111827] dark:text-[#F4F7F5]"
                           />
                         </div>
                       </div>
@@ -1521,13 +1528,13 @@ export default function SettingsClient({
           ===================================================================== */}
           {shouldShowCategory("print") && (
             <section className="space-y-5" aria-label="Report Card and Print Layout">
-              <div className="bg-white rounded-2xl border border-[#E3E8E3] shadow-[0_1px_3px_rgba(15,41,30,0.04)] p-6">
+              <div className="bg-white dark:bg-[#131A16] rounded-2xl border border-[#E3E8E3] dark:border-[#24332E] shadow-[0_1px_3px_rgba(15,41,30,0.04)] p-6">
                 <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                   <div>
-                    <h2 className="text-[15px] font-semibold text-[#111827]">
+                    <h2 className="text-[15px] font-semibold text-[#111827] dark:text-[#F4F7F5]">
                       Report Card & Print Layout Preferences
                     </h2>
-                    <p className="text-xs text-[#6B7280] mt-0.5">
+                    <p className="text-xs text-[#6B7280] dark:text-[#9AA7A0] mt-0.5">
                       Changes auto-save immediately and apply across all 8 Secular and Theology report templates.
                     </p>
                   </div>
@@ -1598,7 +1605,7 @@ export default function SettingsClient({
                       >
                         <div>
                           <div className="text-sm font-medium text-[#111827]">{item.title}</div>
-                          <p className="text-xs text-[#6B7280] mt-0.5">{item.desc}</p>
+                          <p className="text-xs text-[#6B7280] dark:text-[#9AA7A0] mt-0.5">{item.desc}</p>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           {isSaving && (
@@ -1627,13 +1634,13 @@ export default function SettingsClient({
           ===================================================================== */}
           {shouldShowCategory("locks") && (
             <section className="space-y-5" aria-label="Marks and Access Locks">
-              <div className="bg-white rounded-2xl border border-[#E3E8E3] shadow-[0_1px_3px_rgba(15,41,30,0.04)] p-6">
+              <div className="bg-white dark:bg-[#131A16] rounded-2xl border border-[#E3E8E3] dark:border-[#24332E] shadow-[0_1px_3px_rgba(15,41,30,0.04)] p-6">
                 <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                   <div>
-                    <h2 className="text-[15px] font-semibold text-[#111827]">
+                    <h2 className="text-[15px] font-semibold text-[#111827] dark:text-[#F4F7F5]">
                       Marks Entry & Exam Set Access Locks
                     </h2>
-                    <p className="text-xs text-[#6B7280] mt-0.5">
+                    <p className="text-xs text-[#6B7280] dark:text-[#9AA7A0] mt-0.5">
                       Freeze teacher mark entry per exam set once reports are printed. Administrators retain override access.
                     </p>
                   </div>
@@ -1713,7 +1720,7 @@ export default function SettingsClient({
                               {checked ? "Locked for Teachers" : "Open for Entry"}
                             </span>
                           </div>
-                          <p className="text-xs text-[#6B7280] mt-0.5">{item.desc}</p>
+                          <p className="text-xs text-[#6B7280] dark:text-[#9AA7A0] mt-0.5">{item.desc}</p>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           {isSaving && (

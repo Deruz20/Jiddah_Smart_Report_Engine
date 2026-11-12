@@ -57,6 +57,37 @@ export function MobileBottomNav({
   );
 
   // Pick up to 4 quick tabs prioritizing Home, Marks, Students, Reports if allowed
+  const [keyboardFocused, setKeyboardFocused] = React.useState(false);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const isFormInput = (el: EventTarget | null): boolean => {
+      if (!(el instanceof HTMLElement)) return false;
+      const tag = el.tagName;
+      return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable;
+    };
+
+    const handleFocusIn = (e: FocusEvent) => {
+      if (window.innerWidth < 768 && isFormInput(e.target)) {
+        setKeyboardFocused(true);
+      }
+    };
+    const handleFocusOut = () => {
+      window.setTimeout(() => {
+        if (!isFormInput(document.activeElement)) {
+          setKeyboardFocused(false);
+        }
+      }, 120);
+    };
+
+    window.addEventListener("focusin", handleFocusIn);
+    window.addEventListener("focusout", handleFocusOut);
+    return () => {
+      window.removeEventListener("focusin", handleFocusIn);
+      window.removeEventListener("focusout", handleFocusOut);
+    };
+  }, []);
+
   const quickTabs = React.useMemo(() => {
     const priorityOrder = ["dashboard", "marks", "students", "reports"];
     const selected: NavItemConfig[] = [];
@@ -194,7 +225,8 @@ export function MobileBottomNav({
           "md:hidden fixed bottom-3 left-1/2 -translate-x-1/2 z-50 print:hidden",
           "w-[calc(100vw-1.5rem)] max-w-[420px] h-16 px-2 rounded-full",
           "mb-[env(safe-area-inset-bottom)] border border-[var(--border,#e2e8f0)]",
-          "adaptive-glass adaptive-motion flex items-center justify-between gap-1"
+          "adaptive-glass adaptive-motion flex items-center justify-between gap-1 transition-all duration-200",
+          keyboardFocused && !moreOpen ? "opacity-0 translate-y-24 pointer-events-none" : "opacity-100 translate-y-0"
         )}
       >
         {quickTabs.map((tab) => {

@@ -7,6 +7,8 @@ import {
   getSubjectGradeNumber,
 } from '@/lib/grading'
 import { ReportContainer } from '@/components/reports/shared/ReportContainer'
+import { CleanSignatureImg } from '@/components/reports/shared/CleanSignatureImg'
+import { OfficialReportStamp } from '@/components/reports/StampGenerator'
 import { resolveReportBranding, resolveReportGradingBands } from '@/lib/school-settings-helper'
 import { getClassTeacherSignatureKey } from '@/utils/signatures'
 import { transliterateEnglishToArabic } from '@/lib/transliterate'
@@ -522,7 +524,17 @@ export default function PrimaryEOTReport({ reportData }: any) {
 
                   <div className="header-center">
                     <div className="bismillah">بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْم</div>
-                    <img src={branding.logoUrl} alt="School Badge" className="school-logo" data-testid="report-school-logo" />
+                    <img
+                      src={branding.logoUrl || '/school_logo.svg'}
+                      alt="School Badge"
+                      className="school-logo"
+                      data-testid="report-school-logo"
+                      onError={(e) => {
+                        if (!e.currentTarget.src.endsWith('/school_logo.svg')) {
+                          e.currentTarget.src = '/school_logo.svg';
+                        }
+                      }}
+                    />
                     <div className="report-badge">
                       {isLower ? 'LOWER' : 'UPPER'} REPORT FORM – END OF TERM
                     </div>
@@ -730,7 +742,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
                         <span className="c-label">SIGNATURE:</span>
                         <div className="c-sig" style={{ display: 'flex', justifyContent: 'center' }}>
                           {includeSignatures && reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.class_name) ?? ''] ? (
-                            <img src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} style={{ maxHeight: '24px' }} alt="" />
+                            <CleanSignatureImg src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} style={{ maxHeight: '28px' }} alt="Class Teacher Signature" />
                           ) : null}
                         </div>
                       </div>
@@ -739,17 +751,17 @@ export default function PrimaryEOTReport({ reportData }: any) {
                         <div className="c-value" style={{ textTransform: 'uppercase' }}>{headComment}</div>
                         <span className="c-label">SIGNATURE:</span>
                         <div className="c-sig" style={{ display: 'flex', justifyContent: 'center' }}>
-                          {includeSignatures && reportData?.signatures?.['head-teacher'] ? <img src={reportData.signatures['head-teacher']} style={{ maxHeight: '24px' }} alt="" /> : null}
+                          {includeSignatures && reportData?.signatures?.['head-teacher'] ? (
+                            <CleanSignatureImg src={reportData.signatures['head-teacher']} style={{ maxHeight: '28px' }} alt="Head Teacher Signature" />
+                          ) : null}
                         </div>
                       </div>
                     </div>
 
-                    <div className="stamp-wrapper" style={{ flexShrink: 0, padding: '4px', minWidth: '100px', minHeight: '60px', border: '2px dashed #cbd5e1', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                      {includeStamp && reportData?.signatures?.['school-stamp'] ? (
-                        <img src={reportData.signatures['school-stamp']} alt="Official Stamp" style={{ maxHeight: '58px', maxWidth: '98px', objectFit: 'contain' }} />
-                      ) : (
-                        <span style={{ fontSize: '9px', color: '#94a3b8', fontWeight: 600, textAlign: 'center' }}>OFFICIAL<br />STAMP</span>
-                      )}
+                    <div className="stamp-wrapper" style={{ flexShrink: 0, padding: '2px', minWidth: '132px', minHeight: '72px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent' }}>
+                      {includeStamp ? (
+                        <OfficialReportStamp reportData={reportData} maxWidth={145} maxHeight={80} />
+                      ) : null}
                     </div>
                   </div>
 

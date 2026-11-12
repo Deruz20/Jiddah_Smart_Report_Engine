@@ -553,14 +553,14 @@ export function SharedMarksEntry({
                 }
               }
             }}
-            className={`score-input w-[68px] sm:w-[74px] h-9 sm:h-10 px-2 text-center text-sm font-mono font-bold tabular-nums rounded-lg border transition-all outline-none focus:ring-2 ${
+            className={`score-input w-[64px] sm:w-[70px] h-8 sm:h-9 px-1.5 text-center text-xs font-mono font-bold tabular-nums rounded-lg border transition-all outline-none focus:ring-2 ${
               fieldError
                 ? 'border-rose-500 bg-rose-500/10 text-rose-700 dark:text-rose-300 focus:ring-rose-500/25'
                 : isHigh
-                ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-900 dark:text-emerald-200 focus:border-emerald-600 focus:ring-emerald-500/25'
+                ? 'border-[#0D5C3A]/45 dark:border-[#10B981]/50 bg-emerald-500/10 text-[#0D5C3A] dark:text-emerald-200 focus:border-[#0D5C3A] dark:focus:border-[#10B981] focus:ring-emerald-500/25'
                 : isLow
-                ? 'border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-200 focus:border-amber-600 focus:ring-amber-500/25'
-                : 'border-[var(--border)] bg-[var(--bg-sunken)] text-[var(--text-primary)] focus:bg-[var(--bg-card)] focus:border-emerald-600 focus:ring-emerald-500/25'
+                ? 'border-amber-500/45 bg-amber-500/10 text-amber-900 dark:text-amber-200 focus:border-amber-600 focus:ring-amber-500/25'
+                : 'border-[#D5DDD8] dark:border-[#24332E] bg-white dark:bg-[#0D1412] text-[#111827] dark:text-[#F3F7F5] focus:border-[#0D5C3A] dark:focus:border-[#10B981] focus:ring-emerald-500/25'
             }`}
           />
           {badge && (
@@ -585,7 +585,7 @@ export function SharedMarksEntry({
   }
 
   return (
-    <div className="w-full max-w-full min-w-0 space-y-4 pb-8">
+    <div className="w-full max-w-full min-w-0 space-y-3 pb-28 md:pb-10">
       <style>{`
         input[type="number"].score-input::-webkit-inner-spin-button,
         input[type="number"].score-input::-webkit-outer-spin-button {
@@ -597,9 +597,9 @@ export function SharedMarksEntry({
         }
       `}</style>
 
-      <form onSubmit={handleFormSubmit} className="space-y-4 w-full min-w-0">
-        {/* Step 1: Integrated Filter & Assessment Command Bar */}
-        <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 sm:p-5 shadow-xs space-y-4 w-full min-w-0">
+      <form onSubmit={handleFormSubmit} className="space-y-3 w-full min-w-0">
+        {/* Step 1: Compact Integrated Filter & Sticky Assessment Save Bar */}
+        <div className="sticky top-2 z-30 bg-white/95 dark:bg-[#111916]/95 backdrop-blur-sm border border-[#E6ECE8] dark:border-[#1C2622] rounded-2xl p-3 sm:p-4 shadow-xs space-y-3 w-full min-w-0">
           {/* Top Row: Academic Context & Student Selection */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end w-full min-w-0">
             {/* Term Selector */}
@@ -615,7 +615,7 @@ export function SharedMarksEntry({
                 aria-label="Term"
                 value={selectedTermId}
                 onChange={(e) => onSelectTerm(e.target.value)}
-                className="w-full min-h-[42px] px-3 py-2 text-xs font-semibold border border-[var(--border)] bg-[var(--bg-sunken)] hover:bg-[var(--bg-hover)] rounded-xl text-[var(--text-primary)] outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 truncate"
+                className="w-full h-9 px-2.5 text-xs font-semibold border border-[#D5DDD8] dark:border-[#24332E] bg-white dark:bg-[#0D1412] rounded-lg text-[#111827] dark:text-[#F3F7F5] outline-none focus:border-[#0D5C3A] dark:focus:border-[#10B981] focus:ring-2 focus:ring-emerald-500/20 truncate"
               >
                 <option value="">Select term...</option>
                 {terms.map((term) => (
@@ -649,7 +649,7 @@ export function SharedMarksEntry({
                     onSelectEnrollment(matching[0].id)
                   }
                 }}
-                className="w-full min-h-[42px] px-3 py-2 text-xs font-semibold border border-[var(--border)] bg-[var(--bg-sunken)] hover:bg-[var(--bg-hover)] rounded-xl text-[var(--text-primary)] outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 truncate"
+                className="w-full h-9 px-2.5 text-xs font-semibold border border-[#D5DDD8] dark:border-[#24332E] bg-white dark:bg-[#0D1412] rounded-lg text-[#111827] dark:text-[#F3F7F5] outline-none focus:border-[#0D5C3A] dark:focus:border-[#10B981] focus:ring-2 focus:ring-emerald-500/20 truncate"
               >
                 <option value="all">All Classes ({enrollments.length})</option>
                 {classOptions.map((cls) => (
@@ -682,7 +682,7 @@ export function SharedMarksEntry({
                     setSearchDropdownOpen(true)
                   }}
                   placeholder="Type to filter by name, class, adm no..."
-                  className="w-full min-h-[42px] pl-9 pr-8 py-2 text-xs font-medium border border-[var(--border)] bg-[var(--bg-sunken)] focus:bg-[var(--bg-card)] rounded-xl text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20"
+                  className="w-full h-9 pl-9 pr-8 text-xs font-medium border border-[#D5DDD8] dark:border-[#24332E] bg-white dark:bg-[#0D1412] rounded-lg text-[#111827] dark:text-[#F3F7F5] placeholder:text-[#6B7280] dark:placeholder:text-[#9CA3AF] outline-none focus:border-[#0D5C3A] dark:focus:border-[#10B981] focus:ring-2 focus:ring-emerald-500/20"
                 />
                 {studentSearchQuery && (
                   <button
@@ -757,7 +757,7 @@ export function SharedMarksEntry({
                     onSelectEnrollment(e.target.value)
                     setSuccess(false)
                   }}
-                  className="flex-1 min-w-0 min-h-[42px] px-3 py-2 text-xs font-semibold border border-[var(--border)] bg-[var(--bg-sunken)] hover:bg-[var(--bg-hover)] rounded-xl text-[var(--text-primary)] outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 truncate"
+                  className="flex-1 min-w-0 h-9 px-2.5 text-xs font-semibold border border-[#D5DDD8] dark:border-[#24332E] bg-white dark:bg-[#0D1412] rounded-lg text-[#111827] dark:text-[#F3F7F5] outline-none focus:border-[#0D5C3A] dark:focus:border-[#10B981] focus:ring-2 focus:ring-emerald-500/20 truncate"
                 >
                   <option value="">Select student...</option>
                   {filteredEnrollments.map((s) => (
@@ -772,7 +772,7 @@ export function SharedMarksEntry({
                   disabled={filteredEnrollments.length <= 1}
                   title="Previous student"
                   aria-label="Previous student"
-                  className="min-h-[42px] min-w-[38px] flex items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--bg-sunken)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] disabled:opacity-40 cursor-pointer shrink-0 transition"
+                  className="h-9 w-9 flex items-center justify-center rounded-lg border border-[#D5DDD8] dark:border-[#24332E] bg-white dark:bg-[#0D1412] hover:bg-[#F3F7F5] dark:hover:bg-[#1C2622] text-[#111827] dark:text-[#F3F7F5] disabled:opacity-40 cursor-pointer shrink-0 transition"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
@@ -782,7 +782,7 @@ export function SharedMarksEntry({
                   disabled={filteredEnrollments.length <= 1}
                   title="Next student"
                   aria-label="Next student"
-                  className="min-h-[42px] min-w-[38px] flex items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--bg-sunken)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] disabled:opacity-40 cursor-pointer shrink-0 transition"
+                  className="h-9 w-9 flex items-center justify-center rounded-lg border border-[#D5DDD8] dark:border-[#24332E] bg-white dark:bg-[#0D1412] hover:bg-[#F3F7F5] dark:hover:bg-[#1C2622] text-[#111827] dark:text-[#F3F7F5] disabled:opacity-40 cursor-pointer shrink-0 transition"
                 >
                   <ChevronRight className="w-4 h-4" />
                 </button>
@@ -1096,13 +1096,13 @@ export function SharedMarksEntry({
           ) : null
         )}
 
-        {/* Integrated Form Footer Action Bar */}
+        {/* Integrated Form Footer Action Bar — clears mobile floating pill dock */}
         {selectedEnrollment && (
           <div
             data-testid="sticky-save-bar"
-            className="pt-2 pb-2"
+            className="sticky bottom-[5.25rem] md:bottom-4 z-20 pt-2 pb-2"
           >
-            <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-3 sm:px-5 shadow-xs flex flex-wrap items-center justify-between gap-3">
+            <div className="bg-white/95 dark:bg-[#111916]/95 backdrop-blur-sm border border-[#E6ECE8] dark:border-[#1C2622] rounded-2xl p-3 sm:px-5 shadow-sm flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2.5 min-w-0">
                 <span
                   className={`w-2.5 h-2.5 rounded-full shrink-0 ${

@@ -1,6 +1,6 @@
 'use client'
 
-export type ThemeMode = 'hybrid' | 'light' | 'dark' | 'system'
+export type ThemeMode = 'light' | 'dark'
 
 const THEME_STORAGE_KEY = 'jiddah_theme_mode_v1'
 const SETTINGS_CACHE_KEY = 'jiddah_school_settings_cache_v1'
@@ -65,14 +65,18 @@ export async function safeJsonFetch<T = any>(
 }
 
 export function getStoredThemeMode(): ThemeMode {
-  if (typeof window === 'undefined') return 'system'
+  if (typeof window === 'undefined') return 'light'
   try {
     const raw = localStorage.getItem('jiddah_theme_mode') || localStorage.getItem(THEME_STORAGE_KEY)
-    if (raw === 'hybrid' || raw === 'light' || raw === 'dark' || raw === 'system') {
-      return raw
+    if (raw === 'dark') return 'dark'
+    if (raw === 'light' || raw === 'hybrid') return 'light'
+    if (raw === 'system') {
+      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+        ? 'dark'
+        : 'light'
     }
   } catch {}
-  return 'system'
+  return 'light'
 }
 
 export function resolveEffectiveTheme(mode: ThemeMode): {
@@ -80,24 +84,12 @@ export function resolveEffectiveTheme(mode: ThemeMode): {
   sidebarDark: boolean
   workspaceDark: boolean
 } {
-  if (mode === 'hybrid') {
-    return { mode, sidebarDark: true, workspaceDark: false }
-  }
-  if (mode === 'light') {
-    return { mode, sidebarDark: false, workspaceDark: false }
-  }
-  if (mode === 'dark') {
-    return { mode, sidebarDark: true, workspaceDark: true }
-  }
-  // system / device default
-  const prefersDark =
-    typeof window !== 'undefined' &&
-    window.matchMedia &&
-    window.matchMedia('(prefers-color-scheme: dark)').matches
+  const normalized: ThemeMode = mode === 'dark' ? 'dark' : 'light'
+  const isDark = normalized === 'dark'
   return {
-    mode: 'system',
-    sidebarDark: prefersDark,
-    workspaceDark: prefersDark,
+    mode: normalized,
+    sidebarDark: isDark,
+    workspaceDark: isDark,
   }
 }
 
@@ -106,21 +98,22 @@ export function applyThemeModeToDom(mode: ThemeMode) {
   const resolved = resolveEffectiveTheme(mode)
   const theme = resolved.workspaceDark ? 'dark' : 'light'
   document.documentElement.setAttribute('data-theme', theme)
-  document.documentElement.dataset.themeMode = mode
+  document.documentElement.dataset.themeMode = resolved.mode
   document.documentElement.dataset.sidebarTheme = resolved.sidebarDark ? 'dark' : 'light'
   document.documentElement.classList.toggle('dark', resolved.workspaceDark)
 }
 
 export function setStoredThemeMode(mode: ThemeMode) {
+  const normalized: ThemeMode = mode === 'dark' ? 'dark' : 'light'
   if (typeof window === 'undefined') return
   try {
-    localStorage.setItem(THEME_STORAGE_KEY, mode)
-    localStorage.setItem('jiddah_theme_mode', mode)
-    localStorage.setItem('theme', mode)
+    localStorage.setItem(THEME_STORAGE_KEY, normalized)
+    localStorage.setItem('jiddah_theme_mode', normalized)
+    localStorage.setItem('theme', normalized)
   } catch {}
-  applyThemeModeToDom(mode)
-  window.dispatchEvent(new CustomEvent('jiddah:theme-changed', { detail: { mode } }))
-  window.dispatchEvent(new CustomEvent('jiddah-theme-changed', { detail: { mode } }))
+  applyThemeModeToDom(normalized)
+  window.dispatchEvent(new CustomEvent('jiddah:theme-changed', { detail: { mode: normalized } }))
+  window.dispatchEvent(new CustomEvent('jiddah-theme-changed', { detail: { mode: normalized } }))
 }
 
 export function getCachedSchoolSettingsSync(): any | null {
@@ -170,7 +163,8 @@ export async function fetchSchoolSettingsCached(forceRefresh = false): Promise<a
       if (payload?.theme_mode && ['hybrid', 'light', 'dark', 'system'].includes(payload.theme_mode)) {
         // Only apply backend default if user hasn't explicitly set a local device preference
         if (typeof window !== 'undefined' && !localStorage.getItem(THEME_STORAGE_KEY)) {
-          setStoredThemeMode(payload.theme_mode as ThemeMode)
+          const normalizedMode: ThemeMode = payload.theme_mode === 'dark' ? 'dark' : 'light'
+          setStoredThemeMode(normalizedMode)
         }
       }
       return payload

@@ -25,6 +25,7 @@ import NurseryTheologyEOTReport from './reports/NurseryTheologyEOTReport'
 import { ReportPreviewCell } from './reports/ReportPreviewCell'
 import { PrintPortal } from './reports/PrintPortal'
 import { STABILIZED_REPORT_ORIENTATIONS } from '@/lib/report-constants'
+import { getReportCompletionStatus, type StudentCompletionStatus } from '@/lib/report-selection'
 
 type TermData = {
   id: string
@@ -78,6 +79,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
   const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false)
   const [sidePanelOpen, setSidePanelOpen] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
+  const [completionCache, setCompletionCache] = useState<Record<string, StudentCompletionStatus>>({})
 
   useEffect(() => {
     async function loadEnrollments() {
@@ -151,7 +153,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
     return { figmaClasses: Array.from(classMap.values()), figmaEnrollments: eList }
   }, [enrollments, filterState.curriculum])
 
-  const executeGeneration = useCallback(async () => {
+  const executeGeneration = useCallback(async (): Promise<ReportData[]> => {
     const { mode, studentIds, classIds, section, term, phase } = filterState
 
     let targets: string[] = []
@@ -165,13 +167,13 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
 
     if (targets.length === 0) {
       toast.warning('No students found for this selection.')
-      return
+      return []
     }
 
     const termObj = terms.find(t => String(t.term_number) === term)
     if (!termObj) {
       toast.error('Term not found in database.')
-      return
+      return []
     }
 
     setIsGenerating(true)
@@ -212,7 +214,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
       if (generatedReportsData.length === 0) {
         toast.warning('No report data found for the selected students.')
         setIsGenerating(false)
-        return
+        return []
       }
 
       if (typeof window !== 'undefined' && localStorage.getItem('auto_transliterate') === 'true') {
@@ -249,6 +251,14 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
 
       setRawReports(generatedReportsData)
       setActiveReportId(generatedReportsData[0].id)
+      setCompletionCache((prev) => {
+        const next = { ...prev }
+        const keyPrefix = `${term}:${phase}:`
+        for (const r of generatedReportsData) {
+          next[`${keyPrefix}${r.id}`] = getReportCompletionStatus(r)
+        }
+        return next
+      })
 
       toast.success(
         `${generatedReportsData.length} report${generatedReportsData.length !== 1 ? 's' : ''} generated.`,
@@ -283,14 +293,30 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
           })
         }
       }, 1500)
+      return generatedReportsData
     } catch (err: any) {
       toast.dismiss(loadingId)
       toast.error(err.message || 'Report generation failed')
       setRawReports([])
+      return []
     } finally {
       setIsGenerating(false)
     }
   }, [filterState, figmaClasses, figmaEnrollments, terms])
+
+  const completionByEnrollment = useMemo(() => {
+    const map: Record<string, StudentCompletionStatus> = {}
+    const prefix = `${filterState.term}:${filterState.phase}:`
+    for (const [k, v] of Object.entries(completionCache)) {
+      if (k.startsWith(prefix)) {
+        map[k.slice(prefix.length)] = v
+      }
+    }
+    for (const r of rawReports) {
+      map[r.id] = getReportCompletionStatus(r)
+    }
+    return map
+  }, [completionCache, rawReports, filterState.term, filterState.phase])
 
   const handleGenerate = useCallback(async () => {
     const { mode, studentIds, classIds, term, phase } = filterState
@@ -308,8 +334,49 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
       return
     }
 
-    executeGeneration()
+    await executeGeneration()
   }, [filterState, executeGeneration])
+
+  const handlePrintSelected = useCallback(async () => {
+    const { mode, studentIds, classIds, term, phase } = filterState
+    if (!term || !phase) {
+      toast.error('Please select both a Term and Phase before printing.')
+      return
+    }
+
+    const targets =
+      mode === 'individual'
+        ? studentIds
+        : figmaClasses.filter(c => classIds.includes(c.id)).flatMap(c => c.enrollmentIds)
+
+    if (targets.length === 0) {
+      toast.error(mode === 'individual' ? 'Please select at least one student.' : 'Please select at least one class.')
+      return
+    }
+
+    const loadedIds = new Set(rawReports.map(r => r.id))
+    const allTargetsLoaded = targets.every(id => loadedIds.has(id))
+    const reportsForPrint = allTargetsLoaded ? rawReports : await executeGeneration()
+    if (!reportsForPrint || reportsForPrint.length === 0) return
+
+    setPrintScope(targets)
+    const originalTitle = document.title
+    const termSuffix = term ? `_Term_${term}` : ''
+    const baseName = targets.length === 1
+      ? `${(reportsForPrint.find(r => r.id === targets[0]) as any)?.student?.name || 'Student'}${termSuffix}_Report.pdf`
+      : `Selected_${targets.length}_Reports${termSuffix}.pdf`
+    document.title = baseName.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_')
+
+    setTimeout(() => {
+      window.print()
+    }, 320)
+
+    const restoreTitle = () => {
+      document.title = originalTitle
+      window.removeEventListener('afterprint', restoreTitle)
+    }
+    window.addEventListener('afterprint', restoreTitle)
+  }, [filterState, figmaClasses, rawReports, executeGeneration])
 
   const handleDownload = useCallback(() => {
     if (rawReports.length === 0) { toast.error('No reports loaded. Generate reports first.'); return }
@@ -456,7 +523,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
   }, [rawReports, printScope, activeReportId])
 
   return (
-    <div className="h-full bg-[#FDFBF7] font-sans flex flex-col relative overflow-hidden text-stone-800">
+    <div className="h-full bg-[#FDFBF7] dark:bg-[#0A100E] font-sans flex flex-col relative overflow-hidden text-stone-800 dark:text-stone-100">
       <PrintDialog
         open={isPrintDialogOpen}
         onOpenChange={setIsPrintDialogOpen}
@@ -523,7 +590,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
 
       <AnimatePresence>
         {searchOpen && (
-          <div className="print:hidden relative z-40 flex-shrink-0 shadow-sm border-b border-stone-200 bg-[#FAF7F2]">
+          <div className="print:hidden relative z-40 flex-shrink-0 shadow-sm border-b border-stone-200 dark:border-[#1C2622] bg-[#FAF7F2] dark:bg-[#0D1412]">
             <SearchFilterBar
               open={searchOpen}
               enrollments={figmaEnrollments}
@@ -531,7 +598,9 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
               filterState={filterState}
               onChange={(patch) => setFilterState({ ...filterState, ...patch })}
               onGenerate={handleGenerate}
+              onPrintSelected={handlePrintSelected}
               isGenerating={isGenerating}
+              completionByEnrollment={completionByEnrollment}
             />
           </div>
         )}
@@ -554,7 +623,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
 
         <div
           className={`print:hidden absolute right-0 top-0 bottom-0 z-40 md:relative flex flex-col h-full ${
-            sidePanelOpen ? "shadow-2xl md:shadow-none bg-white" : ""
+            sidePanelOpen ? "shadow-2xl md:shadow-none bg-white dark:bg-[#111916]" : ""
           }`}
           style={{ pointerEvents: sidePanelOpen ? 'auto' : 'none' }}
         >

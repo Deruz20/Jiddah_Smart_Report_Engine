@@ -58,6 +58,7 @@ export async function GET(request: NextRequest) {
   const score_type = searchParams.get('score_type') || 'mot'
   const scoreType = score_type
   const curriculum = searchParams.get('curriculum') || 'secular'
+  const stamp_date = searchParams.get('stamp_date') || undefined
 
   if (!enrollmentId || !termId) {
     return withCors(request, NextResponse.json({ error: 'enrollmentId and termId are required' }, { status: 400 }))
@@ -155,6 +156,10 @@ export async function GET(request: NextRequest) {
 
     if (termError || !term) {
       return withCors(request, NextResponse.json({ error: 'Term not found' }, { status: 404 }))
+    }
+
+    if (stamp_date) {
+      term.end_date = stamp_date
     }
 
     const { data: circularSubjects, error: circularSubjectsError } = await supabase
@@ -611,6 +616,7 @@ export async function GET(request: NextRequest) {
           },
           signatures,
           settings: schoolSettings,
+          stamp_date: stamp_date || term.end_date || null,
           debug: {
             enrollmentId: enrollment.id,
             circularMarksCount: 0,
@@ -679,6 +685,7 @@ export async function GET(request: NextRequest) {
       },
       signatures,
       settings: schoolSettings,
+      stamp_date: stamp_date || term.end_date || null,
       debug: {debugInfo},
     }
 

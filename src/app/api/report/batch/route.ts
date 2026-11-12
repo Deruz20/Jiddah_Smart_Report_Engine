@@ -565,6 +565,7 @@ export async function POST(request: NextRequest) {
           },
           signatures,
           settings: schoolSettings,
+          stamp_date: stamp_date || term.end_date || null,
           debug: {
             enrollmentId: enrollment.id,
             circularMarksCount: 0,
@@ -626,6 +627,7 @@ export async function POST(request: NextRequest) {
         },
         signatures,
         settings: schoolSettings,
+        stamp_date: stamp_date || term.end_date || null,
         debug: {
           enrollmentId: enrollment.id,
           circularMarksCount: eCircularMarks.length,

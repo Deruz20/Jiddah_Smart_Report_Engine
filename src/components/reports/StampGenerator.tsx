@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
-import { Sliders, RotateCw, Save, RefreshCw, Check } from "lucide-react";
+import React, { useId, useState } from "react";
+import { Sliders, Save, RefreshCw, Check, Calendar } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
+import { toast } from "sonner";
 
 export interface StampConfig {
   id?: string;
@@ -16,307 +17,409 @@ export interface StampConfig {
   rotation: number;
   opacity: number;
   grain_realism: boolean;
+  grunge_intensity?: number;
   date?: string;
+  date_offset_x?: number;
+  date_offset_y?: number;
+  date_font_size?: number;
+  use_uploaded_image?: boolean;
 }
 
 export const DEFAULT_STAMP_CONFIG: StampConfig = {
   shape: "rectangle",
-  school_name: "JIDDAH ISLAMIC SCHOOLS",
-  title: "HEADTEACHER'S OFFICE",
-  po_box: "P.O.BOX 34008, NSAGGU",
-  phone: "+256 744950042 / 0705316961",
-  ink_color: "#1E3A8A", // Deep Royal Blue
+  school_name: "JIDDAH ISLAMIC NURSERY & PRIMARY SCHOOL",
+  title: "HEADTEACHER",
+  po_box: "P.O. BOX 34008, KAMPALA - UGANDA",
+  phone: "",
+  ink_color: "#1B3678",
   size_scale: 1,
   rotation: -2,
-  opacity: 0.88,
+  opacity: 0.9,
   grain_realism: true,
-  date: "03 JUN 2026",
+  grunge_intensity: 35,
+  date: "26 OCT 2026",
+  date_offset_x: 0,
+  date_offset_y: 0,
+  date_font_size: 10,
+  use_uploaded_image: false,
 };
+
+const STAMP_COLOR_PRESETS = [
+  { label: "Official Stamp Blue", hex: "#1B3678" },
+  { label: "Royal Violet", hex: "#5B21B6" },
+  { label: "Institutional Emerald", hex: "#0D5C3A" },
+  { label: "Archival Crimson", hex: "#991B1B" },
+  { label: "Jet Black", hex: "#0F172A" },
+];
+
+export function formatStampDisplayDate(rawDate?: string | null): string {
+  const trimmed = typeof rawDate === "string" ? rawDate.trim() : "";
+  if (!trimmed) return DEFAULT_STAMP_CONFIG.date || "26 OCT 2026";
+
+  // Convert ISO YYYY-MM-DD cleanly into uppercase stamp format "26 OCT 2026"
+  if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
+    const d = new Date(trimmed.slice(0, 10) + "T12:00:00");
+    if (!Number.isNaN(d.getTime())) {
+      const day = String(d.getDate()).padStart(2, "0");
+      const month = d.toLocaleString("en-US", { month: "short" }).toUpperCase();
+      const year = d.getFullYear();
+      return `${day} ${month} ${year}`;
+    }
+  }
+
+  return trimmed.toUpperCase();
+}
+
+function splitStampSchoolHeader(name: string): [string, string] {
+  const clean = (name || "JIDDAH ISLAMIC NURSERY & PRIMARY SCHOOL").trim().toUpperCase();
+  if (clean.includes("NURSERY & PRIMARY")) {
+    const idx = clean.indexOf("NURSERY & PRIMARY");
+    const top = clean.slice(0, idx).trim();
+    const bottom = clean.slice(idx).trim();
+    if (top && bottom) return [top, bottom];
+  }
+  if (clean.length <= 24) return [clean, ""];
+  const words = clean.split(/\s+/);
+  const mid = Math.ceil(words.length / 2);
+  return [words.slice(0, mid).join(" "), words.slice(mid).join(" ")];
+}
 
 export function VectorStamp({
   config,
   date,
+  maxWidth,
+  maxHeight,
 }: {
   config: StampConfig;
   date?: string;
+  maxWidth?: number;
+  maxHeight?: number;
 }) {
-  const displayDate = date || config.date || "03 JUN 2026";
-  const filterId = config.grain_realism ? "url(#stamp-ink-grain)" : undefined;
+  const rawUid = useId();
+  const safeUid = rawUid.replace(/[^a-zA-Z0-9_-]/g, "");
+  const filterId = `stamp-ink-grain-${safeUid}`;
+
+  const merged: StampConfig = {
+    ...DEFAULT_STAMP_CONFIG,
+    ...config,
+  };
+
+  const displayDate = formatStampDisplayDate(date || merged.date);
+  const grunge = Math.max(0, Math.min(100, merged.grunge_intensity ?? (merged.grain_realism ? 35 : 0)));
+  const useFilter = merged.grain_realism && grunge > 0;
+  const displacementScale = Number(((grunge / 100) * 1.85).toFixed(2));
+  const dateOffsetX = Number(merged.date_offset_x ?? 0);
+  const dateOffsetY = Number(merged.date_offset_y ?? 0);
+  const dateFontSize = Number(merged.date_font_size ?? 10);
+  const rotation = Number(merged.rotation ?? 0);
+  const scale = Number(merged.size_scale ?? 1);
+  const opacity = Number(merged.opacity ?? 0.9);
+  const [headerLine1, headerLine2] = splitStampSchoolHeader(merged.school_name);
+
+  const baseW = merged.shape === "circle" ? 136 : merged.shape === "oval" ? 182 : 204;
+  const baseH = merged.shape === "circle" ? 136 : merged.shape === "oval" ? 124 : 108;
+
+  const fitRatio =
+    maxWidth && maxHeight
+      ? Math.min(maxWidth / baseW, maxHeight / baseH, 1)
+      : maxWidth
+      ? Math.min(maxWidth / baseW, 1)
+      : maxHeight
+      ? Math.min(maxHeight / baseH, 1)
+      : 1;
+
+  const effectiveScale = Number((scale * fitRatio).toFixed(3));
+  const pathTopId = `circle-text-top-${safeUid}`;
+  const pathBottomId = `circle-text-bottom-${safeUid}`;
 
   return (
     <div
-      className="inline-block select-none pointer-events-auto"
+      data-testid="official-vector-stamp"
       style={{
-        transform: `rotate(${config.rotation}deg) scale(${config.size_scale})`,
-        opacity: config.opacity,
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        userSelect: "none",
+        backgroundColor: "transparent",
+        transform: `rotate(${rotation}deg) scale(${effectiveScale})`,
+        opacity,
         transformOrigin: "center center",
         mixBlendMode: "multiply",
       }}
     >
       <svg
-        width={config.shape === "circle" ? "140" : config.shape === "oval" ? "180" : "190"}
-        height={config.shape === "circle" ? "140" : config.shape === "oval" ? "130" : "100"}
-        viewBox={
-          config.shape === "circle"
-            ? "0 0 140 140"
-            : config.shape === "oval"
-            ? "0 0 180 130"
-            : "0 0 190 100"
-        }
-        className="overflow-visible"
-        style={{ filter: filterId }}
+        width={baseW}
+        height={baseH}
+        viewBox={`0 0 ${baseW} ${baseH}`}
+        style={{ overflow: "visible", filter: useFilter ? `url(#${filterId})` : undefined }}
       >
         <defs>
-          <filter id="stamp-ink-grain">
-            <feTurbulence type="fractalNoise" baseFrequency="0.75" numOctaves="3" result="noise" />
-            <feDisplacementMap in="SourceGraphic" in2="noise" scale="1.4" xChannelSelector="R" yChannelSelector="G" />
+          <filter id={filterId} x="-5%" y="-5%" width="110%" height="110%">
+            <feTurbulence
+              type="fractalNoise"
+              baseFrequency="0.65"
+              numOctaves="2"
+              seed="7"
+              result="noise"
+            />
+            <feDisplacementMap
+              in="SourceGraphic"
+              in2="noise"
+              scale={displacementScale}
+              xChannelSelector="R"
+              yChannelSelector="G"
+            />
           </filter>
-
-          {/* Paths for text curving */}
-          <path id="circle-text-top" d="M 18,70 A 52,52 0 1,1 122,70" fill="none" />
-          <path id="circle-text-bottom" d="M 122,70 A 52,52 0 0,1 18,70" fill="none" />
+          <path id={pathTopId} d="M 18,68 A 50,50 0 1,1 118,68" fill="none" />
+          <path id={pathBottomId} d="M 118,68 A 50,50 0 0,1 18,68" fill="none" />
         </defs>
 
-        {/* 1. RECTANGLE STAMP */}
-        {config.shape === "rectangle" && (
-          <g stroke={config.ink_color} fill={config.ink_color}>
+        {/* 1. JIDDAH RECTANGULAR RUBBER STAMP */}
+        {merged.shape === "rectangle" && (
+          <g stroke={merged.ink_color} fill={merged.ink_color}>
+            {/* Outer rounded stamp border */}
             <rect
-              x="2"
-              y="2"
-              width="186"
+              x="2.5"
+              y="2.5"
+              width="199"
+              height="103"
+              rx="7"
+              fill="none"
+              strokeWidth="2.4"
+            />
+            {/* Inner precision hairline border */}
+            <rect
+              x="6"
+              y="6"
+              width="192"
               height="96"
-              rx="4"
+              rx="4.5"
               fill="none"
-              strokeWidth="2.5"
-            />
-            <rect
-              x="5.5"
-              y="5.5"
-              width="179"
-              height="89"
-              rx="2.5"
-              fill="none"
-              strokeWidth="1"
-              strokeDasharray="4 2"
+              strokeWidth="0.9"
             />
 
-            {/* Left vertical label */}
+            {/* Header lines */}
             <text
-              x="12"
-              y="50"
-              fontSize="6"
+              x="102"
+              y={headerLine2 ? "20" : "24"}
+              fontSize={headerLine2 ? "10" : "10.5"}
               fontWeight="900"
-              fontFamily="Georgia, serif"
+              fontFamily="Georgia, 'Times New Roman', serif"
               textAnchor="middle"
-              transform="rotate(-90, 12, 50)"
               letterSpacing="0.8px"
+              stroke="none"
             >
-              OFFICIAL STAMP
+              {headerLine1}
             </text>
-            <line x1="18" y1="6" x2="18" y2="94" strokeWidth="1" />
+            {headerLine2 ? (
+              <text
+                x="102"
+                y="31"
+                fontSize="8.3"
+                fontWeight="800"
+                fontFamily="Georgia, 'Times New Roman', serif"
+                textAnchor="middle"
+                letterSpacing="0.5px"
+                stroke="none"
+              >
+                {headerLine2}
+              </text>
+            ) : null}
 
-            {/* Right vertical label */}
-            <line x1="172" y1="6" x2="172" y2="94" strokeWidth="1" />
+            {/* Upper rule above Date band */}
+            <line x1="12" y1="36.5" x2="192" y2="36.5" strokeWidth="1" />
+
+            {/* Decorative flanking stars */}
+            <text
+              x="26"
+              y="55"
+              fontSize="11"
+              textAnchor="middle"
+              stroke="none"
+            >
+              ★
+            </text>
             <text
               x="178"
-              y="50"
-              fontSize="6"
-              fontWeight="900"
-              fontFamily="Georgia, serif"
+              y="55"
+              fontSize="11"
               textAnchor="middle"
-              transform="rotate(90, 178, 50)"
-              letterSpacing="0.8px"
+              stroke="none"
             >
-              ☪ VERIFIED
+              ★
             </text>
 
-            {/* Center Header */}
+            {/* Adjustable Date Line */}
             <text
-              x="95"
-              y="20"
-              fontSize="9"
+              x={102 + dateOffsetX}
+              y={55 + dateOffsetY}
+              fontSize={dateFontSize}
               fontWeight="900"
-              fontFamily="Georgia, serif"
+              fontFamily="'Courier New', Courier, monospace"
               textAnchor="middle"
-              letterSpacing="0.5px"
-            >
-              {config.school_name}
-            </text>
-
-            {/* Date Box */}
-            <rect
-              x="45"
-              y="27"
-              width="100"
-              height="18"
-              fill="none"
-              strokeWidth="1.2"
-              rx="2"
-            />
-            <text
-              x="95"
-              y="39"
-              fontSize="8.5"
-              fontWeight="900"
-              fontFamily="Courier, monospace"
-              textAnchor="middle"
-              letterSpacing="1px"
+              letterSpacing="1.2px"
+              stroke="none"
             >
               {displayDate}
             </text>
 
-            {/* Title / Role */}
+            {/* Lower rule below Date band */}
+            <line x1="12" y1="63" x2="192" y2="63" strokeWidth="1" />
+
+            {/* Signatory Role (e.g. HEADTEACHER) */}
             <text
-              x="95"
-              y="57"
-              fontSize="8"
+              x="102"
+              y="77.5"
+              fontSize="9.8"
               fontWeight="900"
-              fontFamily="Georgia, serif"
+              fontFamily="Georgia, 'Times New Roman', serif"
               textAnchor="middle"
-              letterSpacing="0.6px"
+              letterSpacing="1.4px"
+              stroke="none"
             >
-              ★ {config.title} ★
+              {merged.title.toUpperCase()}
             </text>
 
-            {/* Address & Tel */}
+            {/* Footer Address / PO Box */}
             <text
-              x="95"
-              y="70"
-              fontSize="6.5"
-              fontWeight="700"
-              fontFamily="Georgia, serif"
+              x="102"
+              y={merged.phone ? "89" : "93"}
+              fontSize="6.7"
+              fontWeight="800"
+              fontFamily="Arial, Helvetica, sans-serif"
               textAnchor="middle"
+              letterSpacing="0.4px"
+              stroke="none"
             >
-              {config.po_box}
+              {merged.po_box.toUpperCase()}
             </text>
-            <text
-              x="95"
-              y="80"
-              fontSize="6"
-              fontWeight="700"
-              fontFamily="Georgia, serif"
-              textAnchor="middle"
-            >
-              {config.phone}
-            </text>
+
+            {merged.phone ? (
+              <text
+                x="102"
+                y="97.5"
+                fontSize="6.2"
+                fontWeight="700"
+                fontFamily="Arial, Helvetica, sans-serif"
+                textAnchor="middle"
+                stroke="none"
+              >
+                {merged.phone}
+              </text>
+            ) : null}
           </g>
         )}
 
         {/* 2. CIRCULAR STAMP */}
-        {config.shape === "circle" && (
-          <g stroke={config.ink_color} fill={config.ink_color}>
-            <circle cx="70" cy="70" r="66" fill="none" strokeWidth="2.5" />
-            <circle cx="70" cy="70" r="61" fill="none" strokeWidth="1" strokeDasharray="3 2" />
-            <circle cx="70" cy="70" r="42" fill="none" strokeWidth="1.5" />
+        {merged.shape === "circle" && (
+          <g stroke={merged.ink_color} fill={merged.ink_color}>
+            <circle cx="68" cy="68" r="64" fill="none" strokeWidth="2.4" />
+            <circle cx="68" cy="68" r="59.5" fill="none" strokeWidth="0.9" />
+            <circle cx="68" cy="68" r="41" fill="none" strokeWidth="1.2" />
 
-            <text fontSize="7" fontWeight="900" fontFamily="Georgia, serif" letterSpacing="0.8px">
-              <textPath href="#circle-text-top" startOffset="50%" textAnchor="middle">
-                {config.school_name}
+            <text fontSize="6.5" fontWeight="900" fontFamily="Georgia, serif" letterSpacing="0.6px" stroke="none">
+              <textPath href={`#${pathTopId}`} startOffset="50%" textAnchor="middle">
+                {headerLine1}
               </textPath>
             </text>
 
-            <text fontSize="6" fontWeight="800" fontFamily="Georgia, serif" letterSpacing="0.5px">
-              <textPath href="#circle-text-bottom" startOffset="50%" textAnchor="middle">
-                ★ {config.po_box} ★
+            <text fontSize="5.8" fontWeight="800" fontFamily="Georgia, serif" letterSpacing="0.4px" stroke="none">
+              <textPath href={`#${pathBottomId}`} startOffset="50%" textAnchor="middle">
+                ★ {merged.po_box.toUpperCase()} ★
               </textPath>
             </text>
 
-            {/* Inner Center */}
             <text
-              x="70"
-              y="58"
+              x="68"
+              y="55"
               fontSize="7"
               fontWeight="900"
               fontFamily="Georgia, serif"
               textAnchor="middle"
+              stroke="none"
             >
-              {config.title}
+              {merged.title.toUpperCase()}
             </text>
-            <rect x="36" y="63" width="68" height="15" fill="none" strokeWidth="1" />
+            <line x1="34" y1="60" x2="102" y2="60" strokeWidth="0.9" />
             <text
-              x="70"
-              y="74"
-              fontSize="8"
+              x={68 + dateOffsetX}
+              y={72 + dateOffsetY}
+              fontSize={Math.max(7, dateFontSize - 1.5)}
               fontWeight="900"
-              fontFamily="Courier, monospace"
+              fontFamily="'Courier New', Courier, monospace"
               textAnchor="middle"
+              stroke="none"
             >
               {displayDate}
             </text>
+            <line x1="34" y1="77" x2="102" y2="77" strokeWidth="0.9" />
             <text
-              x="70"
-              y="87"
-              fontSize="5.5"
-              fontWeight="700"
+              x="68"
+              y="88"
+              fontSize="6"
+              fontWeight="800"
               fontFamily="Georgia, serif"
               textAnchor="middle"
+              stroke="none"
             >
-              ☪ OFFICIAL ☪
+              ★ OFFICIAL ★
             </text>
           </g>
         )}
 
         {/* 3. OVAL STAMP */}
-        {config.shape === "oval" && (
-          <g stroke={config.ink_color} fill={config.ink_color}>
-            <ellipse cx="90" cy="65" rx="85" ry="58" fill="none" strokeWidth="2.5" />
-            <ellipse cx="90" cy="65" rx="80" ry="53" fill="none" strokeWidth="1" strokeDasharray="4 2" />
-            <ellipse cx="90" cy="65" rx="55" ry="34" fill="none" strokeWidth="1.2" />
+        {merged.shape === "oval" && (
+          <g stroke={merged.ink_color} fill={merged.ink_color}>
+            <ellipse cx="91" cy="62" rx="86" ry="56" fill="none" strokeWidth="2.4" />
+            <ellipse cx="91" cy="62" rx="81" ry="51" fill="none" strokeWidth="0.9" />
+            <ellipse cx="91" cy="62" rx="56" ry="32" fill="none" strokeWidth="1" />
 
             <text
-              x="90"
-              y="24"
-              fontSize="8"
+              x="91"
+              y="22"
+              fontSize="7.4"
               fontWeight="900"
               fontFamily="Georgia, serif"
               textAnchor="middle"
               letterSpacing="0.5px"
+              stroke="none"
             >
-              {config.school_name}
+              {headerLine1}
             </text>
-
             <text
-              x="90"
-              y="54"
-              fontSize="7.5"
+              x="91"
+              y="50"
+              fontSize="7.8"
               fontWeight="900"
               fontFamily="Georgia, serif"
               textAnchor="middle"
+              stroke="none"
             >
-              ★ {config.title} ★
+              ★ {merged.title.toUpperCase()} ★
             </text>
-
-            <rect x="52" y="58" width="76" height="15" fill="none" strokeWidth="1" />
+            <line x1="46" y1="54" x2="136" y2="54" strokeWidth="0.9" />
             <text
-              x="90"
-              y="69"
-              fontSize="8"
+              x={91 + dateOffsetX}
+              y={66 + dateOffsetY}
+              fontSize={Math.max(7, dateFontSize - 1)}
               fontWeight="900"
-              fontFamily="Courier, monospace"
+              fontFamily="'Courier New', Courier, monospace"
               textAnchor="middle"
+              stroke="none"
             >
               {displayDate}
             </text>
-
+            <line x1="46" y1="71" x2="136" y2="71" strokeWidth="0.9" />
             <text
-              x="90"
+              x="91"
               y="83"
               fontSize="6"
               fontWeight="700"
-              fontFamily="Georgia, serif"
+              fontFamily="Arial, sans-serif"
               textAnchor="middle"
+              stroke="none"
             >
-              {config.po_box}
-            </text>
-            <text
-              x="90"
-              y="110"
-              fontSize="6"
-              fontWeight="700"
-              fontFamily="Georgia, serif"
-              textAnchor="middle"
-            >
-              {config.phone}
+              {merged.po_box.toUpperCase()}
             </text>
           </g>
         )}
@@ -325,89 +428,230 @@ export function VectorStamp({
   );
 }
 
+export function OfficialReportStamp({
+  reportData,
+  maxWidth = 152,
+  maxHeight = 84,
+}: {
+  reportData: any;
+  maxWidth?: number;
+  maxHeight?: number;
+}) {
+  const savedStampConfig =
+    reportData?.stamp_config ||
+    reportData?.settings?.print_preferences?.stamp_config ||
+    {};
+
+  const config: StampConfig = {
+    ...DEFAULT_STAMP_CONFIG,
+    ...savedStampConfig,
+  };
+
+  const resolvedDate =
+    reportData?.stamp_date ||
+    reportData?.settings?.stamp_date ||
+    config.date ||
+    reportData?.term?.end_date ||
+    DEFAULT_STAMP_CONFIG.date;
+
+  if (config.use_uploaded_image && reportData?.signatures?.["school-stamp"]) {
+    return (
+      <img
+        src={reportData.signatures["school-stamp"]}
+        alt="Official School Stamp"
+        style={{
+          maxWidth: `${maxWidth}px`,
+          maxHeight: `${maxHeight}px`,
+          objectFit: "contain",
+          mixBlendMode: "multiply",
+          backgroundColor: "transparent",
+        }}
+      />
+    );
+  }
+
+  return (
+    <VectorStamp
+      config={config}
+      date={resolvedDate}
+      maxWidth={maxWidth}
+      maxHeight={maxHeight}
+    />
+  );
+}
+
 export function StampGeneratorPanel({
   config,
   onChange,
   onSave,
+  tone = "light",
 }: {
   config: StampConfig;
   onChange: (cfg: StampConfig) => void;
-  onSave?: () => Promise<void>;
+  onSave?: (cfg: StampConfig) => Promise<void> | void;
+  tone?: "light" | "dark";
 }) {
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
+  const isDark = tone === "dark";
+  const labelCls = isDark
+    ? "text-stone-300 font-semibold text-[11px]"
+    : "text-[#374151] dark:text-[#CBD5E1] font-semibold text-[11px]";
+  const subLabelCls = isDark
+    ? "text-stone-400 text-[10px] uppercase font-bold"
+    : "text-[#6B7280] dark:text-[#9CA3AF] text-[10px] uppercase font-bold";
+  const inputCls = isDark
+    ? "w-full h-8 px-2.5 rounded-lg bg-white/5 border border-white/10 text-white font-medium text-xs focus:border-emerald-400 outline-none"
+    : "w-full h-9 px-2.5 rounded-lg bg-white dark:bg-[#0D1412] border border-[#D5DDD8] dark:border-[#24332E] text-[#111827] dark:text-[#F3F7F5] font-medium text-xs focus:border-[#0D5C3A] dark:focus:border-[#10B981] outline-none";
+
+  const merged: StampConfig = {
+    ...DEFAULT_STAMP_CONFIG,
+    ...config,
+  };
+  const grunge = Math.max(0, Math.min(100, merged.grunge_intensity ?? (merged.grain_realism ? 35 : 0)));
+
   const handlePersist = async () => {
     setIsSaving(true);
     try {
-      const supabase = createClient();
-      const { error } = await supabase.from("stamp_configs").upsert(
-        [
-          {
-            config_key: "current",
-            shape: config.shape,
-            school_name: config.school_name,
-            title: config.title,
-            po_box: config.po_box,
-            phone: config.phone,
-            ink_color: config.ink_color,
-            size_scale: config.size_scale,
-            rotation: config.rotation,
-            opacity: config.opacity,
-            grain_realism: config.grain_realism,
-            updated_at: new Date().toISOString(),
-          },
-        ],
-        { onConflict: "config_key" }
-      );
-      if (error) throw error;
-      if (onSave) await onSave();
+      // 1. Primary schema-safe persistence via /api/settings/school print_preferences.stamp_config
+      const resGet = await fetch("/api/settings/school");
+      const rawGet = resGet.ok ? await resGet.json() : {};
+      const currentSettings = rawGet?.data || rawGet || {};
+      const nextPrintPrefs = {
+        ...(currentSettings?.print_preferences || {}),
+        stamp_config: merged,
+      };
+      const resPatch = await fetch("/api/settings/school", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ print_preferences: nextPrintPrefs }),
+      });
+
+      if (!resPatch.ok) {
+        const errBody = await resPatch.json().catch(() => ({}));
+        throw new Error(errBody?.error || "Failed to save stamp design settings.");
+      }
+
+      // 2. Best-effort sync to optional stamp_configs table
+      try {
+        const supabase = createClient();
+        await supabase.from("stamp_configs").upsert(
+          [
+            {
+              config_key: "current",
+              shape: merged.shape,
+              school_name: merged.school_name,
+              title: merged.title,
+              po_box: merged.po_box,
+              phone: merged.phone,
+              ink_color: merged.ink_color,
+              size_scale: merged.size_scale,
+              rotation: merged.rotation,
+              opacity: merged.opacity,
+              grain_realism: merged.grain_realism,
+              updated_at: new Date().toISOString(),
+            },
+          ],
+          { onConflict: "config_key" }
+        );
+      } catch {
+        // Optional legacy table; primary persistence already succeeded in school_settings
+      }
+
+      if (onSave) await onSave(merged);
       setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 2000);
-    } catch (e) {
-      console.error("Failed to save stamp config:", e);
+      toast.success("Official stamp design saved across all report cards.");
+      setTimeout(() => setSaveSuccess(false), 2200);
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to save stamp design.");
     } finally {
       setIsSaving(false);
     }
   };
 
+  const setTodayDate = () => {
+    const now = new Date();
+    const day = String(now.getDate()).padStart(2, "0");
+    const month = now.toLocaleString("en-US", { month: "short" }).toUpperCase();
+    const year = now.getFullYear();
+    onChange({ ...merged, date: `${day} ${month} ${year}` });
+  };
+
   return (
     <div className="p-4 space-y-4 text-xs font-sans">
-      <div className="flex items-center justify-between pb-2 border-b border-white/10">
+      <div
+        className={`flex items-center justify-between pb-2.5 border-b ${
+          isDark ? "border-white/10" : "border-[#E6ECE8] dark:border-[#1C2622]"
+        }`}
+      >
         <div className="flex items-center gap-2">
-          <Sliders className="size-4 text-emerald-400" strokeWidth={1.75} />
-          <span className="font-bold text-white text-sm">Stamp Customizer</span>
+          <Sliders className="size-4 text-[#0D5C3A] dark:text-[#10B981]" strokeWidth={1.75} />
+          <span className={`font-bold text-sm ${isDark ? "text-white" : "text-[#111827] dark:text-[#F3F7F5]"}`}>
+            Official Code Stamp Studio
+          </span>
         </div>
         <button
           type="button"
           onClick={handlePersist}
           disabled={isSaving}
-          className="h-8 px-3 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-black font-extrabold flex items-center gap-1.5 transition cursor-pointer"
+          className="h-9 px-3.5 rounded-lg bg-[#0D5C3A] hover:bg-[#0A472C] text-white font-bold flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
         >
           {isSaving ? (
-            <RefreshCw className="size-3 animate-spin" />
+            <RefreshCw className="size-3.5 animate-spin" />
           ) : saveSuccess ? (
-            <Check className="size-3" strokeWidth={3} />
+            <Check className="size-3.5" strokeWidth={3} />
           ) : (
-            <Save className="size-3" strokeWidth={2} />
+            <Save className="size-3.5" strokeWidth={2} />
           )}
-          <span>{saveSuccess ? "Saved!" : "Save Stamp"}</span>
+          <span>{saveSuccess ? "Saved" : "Save Stamp"}</span>
         </button>
+      </div>
+
+      {/* Live Paper Stamp Preview */}
+      <div className="rounded-xl border border-[#D5DDD8] dark:border-[#24332E] bg-[#FCFBF7] p-4 flex items-center justify-center min-h-[132px]">
+        <VectorStamp config={merged} />
+      </div>
+
+      {/* Stamp Date + Today shortcut */}
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between">
+          <label className={subLabelCls}>Adjustable Date Line</label>
+          <button
+            type="button"
+            onClick={setTodayDate}
+            className="text-[11px] font-semibold text-[#0D5C3A] dark:text-[#10B981] hover:underline inline-flex items-center gap-1 cursor-pointer"
+          >
+            <Calendar className="size-3" />
+            <span>Today</span>
+          </button>
+        </div>
+        <input
+          type="text"
+          value={merged.date || ""}
+          onChange={(e) => onChange({ ...merged, date: e.target.value.toUpperCase() })}
+          placeholder="26 OCT 2026"
+          className={inputCls}
+        />
       </div>
 
       {/* Shape Selector */}
       <div className="space-y-1.5">
-        <label className="text-stone-300 font-semibold text-[11px]">Stamp Shape</label>
+        <label className={labelCls}>Stamp Shape</label>
         <div className="grid grid-cols-3 gap-2">
           {(["rectangle", "circle", "oval"] as const).map((s) => (
             <button
               key={s}
               type="button"
-              onClick={() => onChange({ ...config, shape: s })}
-              className={`py-1.5 rounded-lg border text-center font-bold capitalize transition cursor-pointer ${
-                config.shape === s
-                  ? "bg-emerald-500/20 border-emerald-400 text-emerald-300"
-                  : "bg-white/5 border-white/10 text-stone-400 hover:text-white"
+              onClick={() => onChange({ ...merged, shape: s })}
+              className={`h-8 rounded-lg border text-center font-bold capitalize transition cursor-pointer ${
+                merged.shape === s
+                  ? isDark
+                    ? "bg-emerald-500/20 border-emerald-400 text-emerald-300"
+                    : "bg-[#0D5C3A]/10 border-[#0D5C3A] text-[#0D5C3A] dark:bg-emerald-500/15 dark:border-emerald-400 dark:text-emerald-300"
+                  : isDark
+                  ? "bg-white/5 border-white/10 text-stone-400 hover:text-white"
+                  : "bg-white dark:bg-[#0D1412] border-[#D5DDD8] dark:border-[#24332E] text-[#6B7280] dark:text-[#9CA3AF]"
               }`}
             >
               {s}
@@ -418,22 +662,19 @@ export function StampGeneratorPanel({
 
       {/* Ink Color Palette */}
       <div className="space-y-1.5">
-        <label className="text-stone-300 font-semibold text-[11px]">Stamp Ink Color</label>
-        <div className="flex items-center gap-2">
-          {[
-            { label: "Royal Blue", hex: "#1E3A8A" },
-            { label: "Emerald", hex: "#047857" },
-            { label: "Crimson", hex: "#991B1B" },
-            { label: "Purple", hex: "#581C87" },
-            { label: "Black", hex: "#0F172A" },
-          ].map((c) => (
+        <label className={labelCls}>Stamp Ink Color</label>
+        <div className="flex items-center gap-2.5 flex-wrap">
+          {STAMP_COLOR_PRESETS.map((c) => (
             <button
               key={c.hex}
               type="button"
-              onClick={() => onChange({ ...config, ink_color: c.hex })}
+              onClick={() => onChange({ ...merged, ink_color: c.hex })}
               title={c.label}
+              aria-label={c.label}
               className={`size-7 rounded-full border-2 transition-transform cursor-pointer ${
-                config.ink_color === c.hex ? "scale-115 border-white shadow-md" : "border-transparent opacity-80 hover:opacity-100"
+                merged.ink_color === c.hex
+                  ? "scale-110 border-[#0D5C3A] ring-2 ring-[#0D5C3A]/30"
+                  : "border-transparent opacity-80 hover:opacity-100"
               }`}
               style={{ backgroundColor: c.hex }}
             />
@@ -441,96 +682,155 @@ export function StampGeneratorPanel({
         </div>
       </div>
 
-      {/* Titles & Contacts */}
+      {/* Text Content Lines */}
       <div className="space-y-2">
         <div>
-          <label className="text-stone-400 text-[10px] uppercase font-bold">School Header</label>
+          <label className={subLabelCls}>School Header</label>
           <input
             type="text"
-            value={config.school_name}
-            onChange={(e) => onChange({ ...config, school_name: e.target.value })}
-            className="w-full h-8 px-2.5 rounded-lg bg-white/5 border border-white/10 text-white font-medium text-xs focus:border-emerald-400 outline-none"
+            value={merged.school_name}
+            onChange={(e) => onChange({ ...merged, school_name: e.target.value })}
+            className={inputCls}
           />
         </div>
-        <div>
-          <label className="text-stone-400 text-[10px] uppercase font-bold">Signatory Title</label>
-          <input
-            type="text"
-            value={config.title}
-            onChange={(e) => onChange({ ...config, title: e.target.value })}
-            className="w-full h-8 px-2.5 rounded-lg bg-white/5 border border-white/10 text-white font-medium text-xs focus:border-emerald-400 outline-none"
-          />
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className={subLabelCls}>Signatory Role</label>
+            <input
+              type="text"
+              value={merged.title}
+              onChange={(e) => onChange({ ...merged, title: e.target.value })}
+              className={inputCls}
+            />
+          </div>
+          <div>
+            <label className={subLabelCls}>Optional Phone</label>
+            <input
+              type="text"
+              value={merged.phone}
+              onChange={(e) => onChange({ ...merged, phone: e.target.value })}
+              placeholder="Optional"
+              className={inputCls}
+            />
+          </div>
         </div>
         <div>
-          <label className="text-stone-400 text-[10px] uppercase font-bold">P.O. Box & Location</label>
+          <label className={subLabelCls}>P.O. Box &amp; Location</label>
           <input
             type="text"
-            value={config.po_box}
-            onChange={(e) => onChange({ ...config, po_box: e.target.value })}
-            className="w-full h-8 px-2.5 rounded-lg bg-white/5 border border-white/10 text-white font-medium text-xs focus:border-emerald-400 outline-none"
+            value={merged.po_box}
+            onChange={(e) => onChange({ ...merged, po_box: e.target.value })}
+            className={inputCls}
           />
         </div>
       </div>
 
-      {/* Sliders: Scale, Rotation, Opacity */}
-      <div className="space-y-3 pt-2 border-t border-white/10">
-        <div className="space-y-1">
-          <div className="flex justify-between text-[11px] text-stone-300">
-            <span>Size Scale</span>
-            <span className="font-mono">{Math.round(config.size_scale * 100)}%</span>
+      {/* Fine Position, Font Size, Rotation & Grunge */}
+      <div
+        className={`space-y-3 pt-3 border-t ${
+          isDark ? "border-white/10" : "border-[#E6ECE8] dark:border-[#1C2622]"
+        }`}
+      >
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <div className={`flex justify-between ${labelCls}`}>
+              <span>Date X Offset</span>
+              <span className="font-mono">{merged.date_offset_x ?? 0}px</span>
+            </div>
+            <input
+              type="range"
+              min="-30"
+              max="30"
+              step="1"
+              value={merged.date_offset_x ?? 0}
+              onChange={(e) => onChange({ ...merged, date_offset_x: parseInt(e.target.value, 10) })}
+              className="w-full accent-[#0D5C3A] cursor-pointer"
+            />
           </div>
-          <input
-            type="range"
-            min="0.6"
-            max="1.5"
-            step="0.05"
-            value={config.size_scale}
-            onChange={(e) => onChange({ ...config, size_scale: parseFloat(e.target.value) })}
-            className="w-full accent-emerald-400 cursor-pointer"
-          />
+          <div className="space-y-1">
+            <div className={`flex justify-between ${labelCls}`}>
+              <span>Date Y Offset</span>
+              <span className="font-mono">{merged.date_offset_y ?? 0}px</span>
+            </div>
+            <input
+              type="range"
+              min="-20"
+              max="20"
+              step="1"
+              value={merged.date_offset_y ?? 0}
+              onChange={(e) => onChange({ ...merged, date_offset_y: parseInt(e.target.value, 10) })}
+              className="w-full accent-[#0D5C3A] cursor-pointer"
+            />
+          </div>
         </div>
 
-        <div className="space-y-1">
-          <div className="flex justify-between text-[11px] text-stone-300">
-            <span>Rotation Angle</span>
-            <span className="font-mono">{config.rotation}°</span>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <div className={`flex justify-between ${labelCls}`}>
+              <span>Date Font Size</span>
+              <span className="font-mono">{merged.date_font_size ?? 10}px</span>
+            </div>
+            <input
+              type="range"
+              min="6"
+              max="14"
+              step="0.5"
+              value={merged.date_font_size ?? 10}
+              onChange={(e) => onChange({ ...merged, date_font_size: parseFloat(e.target.value) })}
+              className="w-full accent-[#0D5C3A] cursor-pointer"
+            />
           </div>
-          <input
-            type="range"
-            min="-15"
-            max="15"
-            step="1"
-            value={config.rotation}
-            onChange={(e) => onChange({ ...config, rotation: parseInt(e.target.value, 10) })}
-            className="w-full accent-emerald-400 cursor-pointer"
-          />
+          <div className="space-y-1">
+            <div className={`flex justify-between ${labelCls}`}>
+              <span>Rotation Angle</span>
+              <span className="font-mono">{merged.rotation}°</span>
+            </div>
+            <input
+              type="range"
+              min="-8"
+              max="8"
+              step="1"
+              value={merged.rotation}
+              onChange={(e) => onChange({ ...merged, rotation: parseInt(e.target.value, 10) })}
+              className="w-full accent-[#0D5C3A] cursor-pointer"
+            />
+          </div>
         </div>
 
-        <div className="space-y-1">
-          <div className="flex justify-between text-[11px] text-stone-300">
-            <span>Ink Opacity</span>
-            <span className="font-mono">{Math.round(config.opacity * 100)}%</span>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <div className={`flex justify-between ${labelCls}`}>
+              <span>Wet-Ink Texture</span>
+              <span className="font-mono">{grunge}%</span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              step="5"
+              value={grunge}
+              onChange={(e) => {
+                const val = parseInt(e.target.value, 10);
+                onChange({ ...merged, grunge_intensity: val, grain_realism: val > 0 });
+              }}
+              className="w-full accent-[#0D5C3A] cursor-pointer"
+            />
           </div>
-          <input
-            type="range"
-            min="0.4"
-            max="1"
-            step="0.05"
-            value={config.opacity}
-            onChange={(e) => onChange({ ...config, opacity: parseFloat(e.target.value) })}
-            className="w-full accent-emerald-400 cursor-pointer"
-          />
-        </div>
-
-        {/* Grain Realism Toggle */}
-        <div className="flex items-center justify-between pt-1">
-          <span className="text-[11px] text-stone-300 font-semibold">Rubber Stamp Grain Filter</span>
-          <input
-            type="checkbox"
-            checked={config.grain_realism}
-            onChange={(e) => onChange({ ...config, grain_realism: e.target.checked })}
-            className="size-4 accent-emerald-400 rounded cursor-pointer"
-          />
+          <div className="space-y-1">
+            <div className={`flex justify-between ${labelCls}`}>
+              <span>Size Scale</span>
+              <span className="font-mono">{Math.round(merged.size_scale * 100)}%</span>
+            </div>
+            <input
+              type="range"
+              min="0.7"
+              max="1.4"
+              step="0.05"
+              value={merged.size_scale}
+              onChange={(e) => onChange({ ...merged, size_scale: parseFloat(e.target.value) })}
+              className="w-full accent-[#0D5C3A] cursor-pointer"
+            />
+          </div>
         </div>
       </div>
     </div>

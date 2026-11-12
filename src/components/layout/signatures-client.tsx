@@ -16,6 +16,13 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { ConfirmDestructiveDialog } from '@/components/ConfirmDestructiveDialog'
+import { SignatureInkReviewCard } from '@/components/SignatureInkReviewCard'
+import { CleanSignatureImg } from '@/components/reports/shared/CleanSignatureImg'
+import {
+  StampGeneratorPanel,
+  DEFAULT_STAMP_CONFIG,
+  type StampConfig,
+} from '@/components/reports/StampGenerator'
 
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp']
 const MAX_FILE_SIZE = 5 * 1024 * 1024
@@ -51,6 +58,30 @@ export default function SignaturesClient({
   const [deletingSlot, setDeletingSlot] = useState<string | null>(null)
   const [previews, setPreviews] = useState<Record<string, string>>({})
   const [slotToDelete, setSlotToDelete] = useState<SignatureSlot | null>(null)
+  const [pendingSignatureReview, setPendingSignatureReview] = useState<{
+    slotKey: string
+    label: string
+    file: File
+  } | null>(null)
+  const [stampConfig, setStampConfig] = useState<StampConfig>(DEFAULT_STAMP_CONFIG)
+  const [showStampStudio, setShowStampStudio] = useState(true)
+
+  useEffect(() => {
+    let active = true
+    fetch('/api/settings/school')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((payload) => {
+        if (!active) return
+        const saved = payload?.data?.print_preferences?.stamp_config
+        if (saved && typeof saved === 'object') {
+          setStampConfig((prev) => ({ ...prev, ...saved }))
+        }
+      })
+      .catch(() => {})
+    return () => {
+      active = false
+    }
+  }, [])
 
   const refetch = async () => {
     setLoading(true)
@@ -135,6 +166,24 @@ export default function SignaturesClient({
   }
 
   const handleFileSelection = (slotKey: string, _slotUploaded: boolean, file: File) => {
+    if (!ACCEPTED_TYPES.includes(file.type)) {
+      toast.error('Please upload a PNG, JPG, or WEBP image.')
+      return
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error('Signature must be smaller than 5MB.')
+      return
+    }
+    // Signature slots go through Before/After automatic paper background extraction
+    if (slotKey !== 'school-stamp') {
+      const targetSlot = slots.find((s) => s.slot_key === slotKey)
+      setPendingSignatureReview({
+        slotKey,
+        label: targetSlot?.label || slotKey,
+        file,
+      })
+      return
+    }
     void handleFileChange(slotKey, file)
   }
 
@@ -301,6 +350,43 @@ export default function SignaturesClient({
         </div>
       </div>
 
+      {/* Card 2: Interactive Code-Replicated Official Stamp Studio */}
+      <div className="bg-white dark:bg-[#111916] rounded-2xl border border-[#E6ECE8] dark:border-[#1C2622] shadow-[0_1px_3px_rgba(15,41,30,0.04)] overflow-hidden">
+        <div className="px-6 py-4 border-b border-[#E6ECE8] dark:border-[#1C2622] flex items-center justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-semibold text-[#111827] dark:text-[#F3F7F5]">
+              Code-Replicated Official Stamp Designer
+            </h3>
+            <p className="text-xs text-[#6B7280] dark:text-[#9CA3AF] mt-0.5">
+              Crisp vector school stamp rendered directly on every printed report card — adjust date, offset, ink color, rotation, and wet-ink texture.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowStampStudio((v) => !v)}
+            className="h-8 px-3 rounded-lg border border-[#D5DDD8] dark:border-[#24332E] bg-[#F8FAF9] dark:bg-[#0D1412] text-xs font-semibold text-[#111827] dark:text-[#F3F7F5] cursor-pointer"
+          >
+            {showStampStudio ? 'Collapse' : 'Customize Stamp'}
+          </button>
+        </div>
+        {showStampStudio && (
+          <StampGeneratorPanel config={stampConfig} onChange={setStampConfig} tone="light" />
+        )}
+      </div>
+
+      {pendingSignatureReview && (
+        <SignatureInkReviewCard
+          file={pendingSignatureReview.file}
+          targetLabel={pendingSignatureReview.label}
+          onCancel={() => setPendingSignatureReview(null)}
+          onConfirmUpload={async (fileToUpload) => {
+            const slotKey = pendingSignatureReview.slotKey
+            setPendingSignatureReview(null)
+            await handleFileChange(slotKey, fileToUpload)
+          }}
+        />
+      )}
+
       {/* 2-Column Grid of Asset Cards */}
       {loading && slots.length === 0 ? (
         <div className="bg-white rounded-2xl border border-[#E3E8E3] p-8 text-center text-xs text-[#6B7280]">
@@ -396,13 +482,23 @@ export default function SignaturesClient({
                     }}
                   >
                     {previewUrl ? (
-                      <img
-                        src={previewUrl}
-                        alt={`${slot.label} preview`}
-                        className={`w-full h-[128px] object-contain p-3 transition-opacity ${
-                          slot.active ? 'opacity-100' : 'opacity-55 grayscale'
-                        }`}
-                      />
+                      slot.slot_key !== 'school-stamp' ? (
+                        <CleanSignatureImg
+                          src={previewUrl}
+                          alt={`${slot.label} preview`}
+                          className={`w-full h-[128px] object-contain p-3 transition-opacity ${
+                            slot.active ? 'opacity-100' : 'opacity-55 grayscale'
+                          }`}
+                        />
+                      ) : (
+                        <img
+                          src={previewUrl}
+                          alt={`${slot.label} preview`}
+                          className={`w-full h-[128px] object-contain p-3 transition-opacity ${
+                            slot.active ? 'opacity-100' : 'opacity-55 grayscale'
+                          }`}
+                        />
+                      )
                     ) : (
                       <label
                         htmlFor={`file-${slot.slot_key}`}

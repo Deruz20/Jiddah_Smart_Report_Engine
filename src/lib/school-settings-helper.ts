@@ -1,4 +1,38 @@
 export const SCHOOL_CUSTOMIZATION_ACTION = 'school_customization_config';
+export const CANONICAL_SCHOOL_LOGO = '/logo-512h.png';
+
+const BROKEN_LOGO_PATHS = new Set([
+  '/logo.png',
+  'logo.png',
+  '/school_badge.png',
+  'school_badge.png',
+  '/images/logo.png',
+  '/badge.png',
+]);
+
+export function normalizeSchoolLogoUrl(rawUrl?: string | null): string {
+  const trimmed = typeof rawUrl === 'string' ? rawUrl.trim() : '';
+  if (!trimmed || trimmed === 'null' || trimmed === 'undefined') {
+    return CANONICAL_SCHOOL_LOGO;
+  }
+
+  const lower = trimmed.toLowerCase();
+  if (BROKEN_LOGO_PATHS.has(lower)) {
+    return CANONICAL_SCHOOL_LOGO;
+  }
+
+  if (
+    lower.startsWith('/') ||
+    lower.startsWith('http://') ||
+    lower.startsWith('https://') ||
+    lower.startsWith('data:image/') ||
+    lower.startsWith('blob:')
+  ) {
+    return trimmed;
+  }
+
+  return `/${trimmed.replace(/^\/+/, '')}`;
+}
 
 export interface GradingBand {
   grade: string;
@@ -39,6 +73,7 @@ export interface PrintPreferencesConfig {
   watermarkEnabled: boolean;
   highFidelityColors: boolean;
   showClassPosition: boolean;
+  stamp_config?: Record<string, any>;
 }
 
 export const DEFAULT_PRINT_PREFERENCES: PrintPreferencesConfig = {
@@ -317,6 +352,9 @@ export async function fetchMergedSchoolSettings(supabase: any, gradingCriteria: 
     ...(rawSchoolSettings?.phone_1 ? { phone: rawSchoolSettings.phone_1, phone_1: rawSchoolSettings.phone_1 } : {}),
     ...(customConfig?.phone_1 ? { phone: customConfig.phone_1, phone_1: customConfig.phone_1 } : {}),
     grading_criteria: gradingCriteria,
+    logo_url: normalizeSchoolLogoUrl(
+      customConfig?.logo_url || rawSchoolSettings?.logo_url
+    ),
   };
 
   return merged;
@@ -342,7 +380,7 @@ export function resolveReportBranding(reportData: any) {
     email: s.email || 'jiddahislamicnurseryandpri@gmail.com',
     motto: s.motto || '',
     payCode: s.pay_code || '--',
-    logoUrl: s.logo_url || '/logo-512h.png',
+    logoUrl: normalizeSchoolLogoUrl(s.logo_url),
     primaryFont: s.primary_font || undefined,
     arabicFont: s.arabic_font || undefined,
     themePreset: s.report_theme_preset || undefined,

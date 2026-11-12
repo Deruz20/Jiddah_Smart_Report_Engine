@@ -18,8 +18,6 @@ import {
   LifeBuoy,
   Sun,
   Moon,
-  Sparkles,
-  Monitor,
 } from "lucide-react";
 import { useSidebar } from "../figma-ui/ui/sidebar";
 import { cn } from "../figma-ui/ui/utils";
@@ -134,14 +132,12 @@ function TermBadge() {
 /* ─── Theme switcher ────────────────────────────────────────────────────── */
 
 const THEME_OPTIONS: { mode: ThemeMode; label: string; desc: string; icon: React.ElementType }[] = [
-  { mode: "light", label: "Light", desc: "Light sidebar and workspace", icon: Sun },
-  { mode: "dark", label: "Dark", desc: "Dark sidebar and workspace", icon: Moon },
-  { mode: "hybrid", label: "Hybrid", desc: "Dark sidebar, light workspace", icon: Sparkles },
-  { mode: "system", label: "System", desc: "Follow device preference", icon: Monitor },
+  { mode: "light", label: "Light", desc: "Institutional paper light", icon: Sun },
+  { mode: "dark", label: "Dark", desc: "High-contrast forest dark", icon: Moon },
 ];
 
 function ThemeModeSwitcher() {
-  const [mode, setMode] = React.useState<ThemeMode>("hybrid");
+  const [mode, setMode] = React.useState<ThemeMode>("light");
   const [open, setOpen] = React.useState(false);
   const ref = React.useRef<HTMLDivElement>(null);
   const close = React.useCallback(() => setOpen(false), []);

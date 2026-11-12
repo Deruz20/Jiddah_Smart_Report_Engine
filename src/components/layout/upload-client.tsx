@@ -6,6 +6,7 @@ import { Upload, FileText, Image, Check, RefreshCw, Folder, HardDrive, Trash2 } 
 import { toast } from 'sonner'
 import { HeroSection } from '@/components/HeroSection'
 import { ConfirmDestructiveDialog } from '@/components/ConfirmDestructiveDialog'
+import { SignatureInkReviewCard } from '@/components/SignatureInkReviewCard'
 
 interface UploadedFile {
   id: string
@@ -38,6 +39,7 @@ export default function UploadClient({ initialFiles }: { initialFiles: UploadedF
   const [selectedSlot, setSelectedSlot] = useState<string>('')
   const [fileToDelete, setFileToDelete] = useState<{ id: string; name: string } | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [pendingSignatureFile, setPendingSignatureFile] = useState<File | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -124,6 +126,28 @@ export default function UploadClient({ initialFiles }: { initialFiles: UploadedF
     })
   }
 
+  const startUploadFile = (file: File, currentCategory: string) => {
+    const localId = `${Date.now()}-${Math.random().toString(36).slice(2)}`
+    setFiles((current) => [
+      {
+        id: localId,
+        name: file.name,
+        size: file.size,
+        type: file.type || 'application/octet-stream',
+        updated_at: 'Just now',
+        public_url: null,
+        status: 'uploading',
+        progress: 0,
+        category: currentCategory,
+      },
+      ...current,
+    ])
+
+    return uploadFile(file, localId, currentCategory).catch((err) => {
+      toast.error(err instanceof Error ? err.message : 'Upload failed.')
+    })
+  }
+
   const handleFiles = (fileList: FileList) => {
     const selectedFiles = Array.from(fileList)
 
@@ -138,25 +162,12 @@ export default function UploadClient({ initialFiles }: { initialFiles: UploadedF
         return
       }
 
-      const localId = `${Date.now()}-${Math.random().toString(36).slice(2)}`
-      setFiles((current) => [
-        {
-          id: localId,
-          name: file.name,
-          size: file.size,
-          type: file.type || 'application/octet-stream',
-          updated_at: 'Just now',
-          public_url: null,
-          status: 'uploading',
-          progress: 0,
-          category,
-        },
-        ...current,
-      ])
+      if (category === 'Signatures' && file.type.startsWith('image/') && selectedSlot !== 'school-stamp') {
+        setPendingSignatureFile(file)
+        return
+      }
 
-      uploadFile(file, localId, category).catch((err) => {
-        toast.error(err instanceof Error ? err.message : 'Upload failed.')
-      })
+      void startUploadFile(file, category)
     })
   }
 
@@ -262,6 +273,18 @@ export default function UploadClient({ initialFiles }: { initialFiles: UploadedF
                 Any image dropped below will be assigned to this role and appear on corresponding student report cards.
               </p>
             </div>
+          )}
+
+          {pendingSignatureFile && category === 'Signatures' && (
+            <SignatureInkReviewCard
+              file={pendingSignatureFile}
+              targetLabel={signatureSlots.find((s) => s.slot_key === selectedSlot)?.label || selectedSlot}
+              onCancel={() => setPendingSignatureFile(null)}
+              onConfirmUpload={async (fileToUpload) => {
+                setPendingSignatureFile(null)
+                await startUploadFile(fileToUpload, 'Signatures')
+              }}
+            />
           )}
 
           {/* High-Contrast Responsive Dropzone */}

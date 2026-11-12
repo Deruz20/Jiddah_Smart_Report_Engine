@@ -6,28 +6,31 @@ import { PowerSyncProvider } from "../components/providers/PowerSyncProvider";
 import { VersionChecker } from "@/components/system/version-checker";
 
 export const viewport: Viewport = {
-  themeColor: "#FDFBF7",
+  themeColor: "#039D4A",
   width: "device-width",
   initialScale: 1,
 };
 
 export const metadata: Metadata = {
-  title: "JIDDAH ISLAMIC SCHOOLS - Management & Reporting Engine",
-  description: "Official Management & Smart Reporting Engine for Jiddah Islamic Schools",
+  title: "Jiddah Islamic Schools | Academic Assessment & Staff Portal",
+  description: "Official Academic Assessment & Terminal Reporting Engine for Jiddah Islamic Nursery & Primary School",
+  manifest: "/site.webmanifest",
   icons: {
     icon: [
-      { url: '/school_logo.svg', type: 'image/svg+xml' },
-      { url: '/favicon.ico', sizes: 'any' },
+      { url: "/favicon.ico", sizes: "32x32" },
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
     ],
+    shortcut: ["/favicon.ico"],
     apple: [
-      { url: '/school_logo.svg' },
-      { url: '/apple-touch-icon.png' },
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
     ],
   },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "JIDDAH ISLAMIC SCHOOLS",
+    title: "Jiddah Islamic Schools",
   },
 };
 
@@ -51,9 +54,9 @@ export default function RootLayout({
                 var theme = 'light';
                 if (stored === 'dark') {
                   theme = 'dark';
-                } else if (stored === 'light') {
+                } else if (stored === 'light' || stored === 'hybrid') {
                   theme = 'light';
-                } else {
+                } else if (stored === 'system') {
                   var mq = window.matchMedia('(prefers-color-scheme: dark)');
                   theme = mq.matches ? 'dark' : 'light';
                 }

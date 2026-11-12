@@ -4,6 +4,8 @@ import {
   getConductRemark,
 } from "@/lib/grading";
 import { ReportContainer } from "@/components/reports/shared/ReportContainer";
+import { CleanSignatureImg } from "@/components/reports/shared/CleanSignatureImg";
+import { OfficialReportStamp } from "@/components/reports/StampGenerator";
 import { resolveReportBranding, resolveReportGradingBands } from "@/lib/school-settings-helper";
 import { getClassTeacherSignatureKey } from "@/utils/signatures";
 
@@ -261,18 +263,13 @@ export default function PrimaryBOTReport({ reportData }: any) {
         }
 
         .bot-stamp {
-            width: 120px;
-            height: 90px;
-            border: 3px dashed #c0c0c0;
-            border-radius: 12px;
+            width: 148px;
+            height: 92px;
+            border: none;
             display: flex;
             justify-content: center;
             align-items: center;
-            color: #999;
-            font-size: 11px;
-            font-weight: 700;
-            text-align: center;
-            background: white;
+            background: transparent;
         }
 
         .bot-final-footer {
@@ -307,7 +304,9 @@ export default function PrimaryBOTReport({ reportData }: any) {
               alt="Logo"
               data-testid="report-school-logo"
               onError={(e) => {
-                e.currentTarget.src = "/school_logo.svg";
+                if (!e.currentTarget.src.endsWith("/school_logo.svg")) {
+                  e.currentTarget.src = "/school_logo.svg";
+                }
               }}
             />
           </div>
@@ -399,7 +398,7 @@ export default function PrimaryBOTReport({ reportData }: any) {
             <span className="bot-sig-label">Signature:</span>
             <div className="bot-sig-line">
               {includeSignatures && classTeacherSig && (
-                <img src={classTeacherSig} alt="Class Teacher Signature" />
+                <CleanSignatureImg src={classTeacherSig} alt="Class Teacher Signature" style={{ maxHeight: '34px' }} />
               )}
             </div>
           </div>
@@ -410,18 +409,16 @@ export default function PrimaryBOTReport({ reportData }: any) {
             <span className="bot-sig-label">Signature:</span>
             <div className="bot-sig-line">
               {includeSignatures && headTeacherSig && (
-                <img src={headTeacherSig} alt="Head Teacher Signature" />
+                <CleanSignatureImg src={headTeacherSig} alt="Head Teacher Signature" style={{ maxHeight: '34px' }} />
               )}
             </div>
           </div>
 
           <div className="bot-footer-stamp">
-            <div className="bot-stamp" style={{ overflow: 'hidden', padding: '2px' }}>
-              {includeStamp && reportData?.signatures?.['school-stamp'] ? (
-                <img src={reportData.signatures['school-stamp']} alt="Official School Stamp" style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
-              ) : (
-                <>OFFICIAL<br/>SCHOOL STAMP</>
-              )}
+            <div className="bot-stamp" style={{ padding: '2px' }}>
+              {includeStamp ? (
+                <OfficialReportStamp reportData={reportData} maxWidth={144} maxHeight={88} />
+              ) : null}
             </div>
           </div>
         </div>

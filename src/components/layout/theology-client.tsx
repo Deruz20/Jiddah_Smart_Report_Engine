@@ -32,29 +32,29 @@ const TheologyMarkRowItem = React.memo(function TheologyMarkRowItem({
   onDelete: (m: any) => void;
 }) {
   return (
-    <tr className="hover:bg-gray-50/50 transition-colors">
-      <td className="px-6 py-4">
-        <div className="font-semibold text-gray-900">
+    <tr className="hover:bg-[#F3F7F5]/60 dark:hover:bg-[#17221E]/60 transition-colors">
+      <td className="px-4 py-2.5">
+        <div className="font-semibold text-xs text-[#111827] dark:text-[#F3F7F5]">
           {mark.enrollments?.students?.name || "Unknown"}
         </div>
       </td>
-      <td className="px-6 py-4 text-gray-600">
+      <td className="px-4 py-2.5 text-xs text-[#6B7280] dark:text-[#9CA3AF]">
         {mark.enrollments?.theology_classes?.class_name_english || "--"} (
         {mark.enrollments?.theology_classes?.level || "--"})
       </td>
-      <td className="px-6 py-4">
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#065F46]/10 text-[#065F46] font-medium text-sm">
+      <td className="px-4 py-2.5">
+        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[#0D5C3A]/10 dark:bg-emerald-500/15 text-[#0D5C3A] dark:text-emerald-300 font-medium text-xs">
           <BookOpen className="w-3.5 h-3.5" />
           {mark.theology_subjects?.subject_name_arabic || mark.subject_id}
         </span>
       </td>
-      <td className="px-6 py-4 font-mono text-gray-700 tabular-nums">{mark.mot_score ?? "--"}</td>
-      <td className="px-6 py-4 font-mono text-gray-700 tabular-nums">{mark.eot_score ?? "--"}</td>
-      <td className="px-6 py-4 text-right space-x-2">
+      <td className="px-4 py-2.5 font-mono text-xs text-[#111827] dark:text-[#F3F7F5] tabular-nums">{mark.mot_score ?? "--"}</td>
+      <td className="px-4 py-2.5 font-mono text-xs text-[#111827] dark:text-[#F3F7F5] tabular-nums">{mark.eot_score ?? "--"}</td>
+      <td className="px-4 py-2.5 text-right space-x-1">
         <button
           type="button"
           onClick={() => onEdit(mark)}
-          className="p-2 text-gray-500 hover:text-[#065F46] hover:bg-[#065F46]/10 rounded-lg cursor-pointer"
+          className="p-1.5 text-[#6B7280] dark:text-[#9CA3AF] hover:text-[#0D5C3A] dark:hover:text-[#10B981] hover:bg-[#0D5C3A]/10 rounded-lg cursor-pointer"
         >
           <Edit className="w-4 h-4" />
         </button>
@@ -365,53 +365,53 @@ export default function TheologyClient({
   }, []);
 
   return (
-    <div className="pb-12 w-full">
+    <div className="pb-28 md:pb-12 w-full">
       <HeroSection
         title="Theology Hub"
         subtitle={`Manage MOT and EOT marks for ${activeTerm?.label || activeTerm?.term || "the active term"}`}
         actions={
           <Button
             onClick={openCreate}
-            className="bg-[#065F46] hover:bg-[#047857] text-white shadow-md shadow-[#065F46]/20 transition-all rounded-xl flex items-center"
+            className="h-9 bg-[#0D5C3A] hover:bg-[#0A472C] text-white shadow-sm transition-all rounded-xl flex items-center text-xs font-bold px-3.5"
           >
-            <Plus className="w-4 h-4 mr-2" /> Add Marks
+            <Plus className="w-4 h-4 mr-1.5" /> Add Marks
           </Button>
         }
       />
 
-      <div className="w-full px-4 sm:px-6 lg:px-8 mt-6 sm:mt-8">
-        <div className="flex items-center justify-between mb-6">
+      <div className="w-full px-4 sm:px-6 lg:px-8 mt-5 sm:mt-6">
+        <div className="flex items-center justify-between mb-4">
           <div className="relative w-full max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6B7280] dark:text-[#9CA3AF]" />
             <input
               placeholder="Search students or subjects..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-10 py-3 text-sm text-slate-700 outline-none focus:border-[#10B981] transition-colors"
+              className="w-full h-9 rounded-xl border border-[#D5DDD8] dark:border-[#24332E] bg-white dark:bg-[#0D1412] pl-9 pr-3 text-xs text-[#111827] dark:text-[#F3F7F5] placeholder:text-[#6B7280] dark:placeholder:text-[#9CA3AF] outline-none focus:border-[#0D5C3A] dark:focus:border-[#10B981] transition-colors"
             />
           </div>
         </div>
 
         {filteredMarks.length === 0 ? (
           <div className="text-center py-12">
-            <h3 className="text-lg font-medium text-gray-900">No marks found</h3>
-            <p className="mt-1 text-sm text-gray-500">No marks have been recorded yet.</p>
+            <h3 className="text-lg font-medium text-[#111827] dark:text-[#F3F7F5]">No marks found</h3>
+            <p className="mt-1 text-sm text-[#6B7280] dark:text-[#9CA3AF]">No marks have been recorded yet.</p>
           </div>
         ) : (
-          <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+          <div className="bg-white dark:bg-[#111916] rounded-2xl border border-[#E6ECE8] dark:border-[#1C2622] overflow-hidden shadow-xs">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-gray-50 border-b border-gray-200 text-gray-600 text-sm font-semibold">
-                    <th className="px-6 py-4">Student</th>
-                    <th className="px-6 py-4">Class</th>
-                    <th className="px-6 py-4">Subject</th>
-                    <th className="px-6 py-4">MOT</th>
-                    <th className="px-6 py-4">EOT</th>
-                    <th className="px-6 py-4 text-right">Actions</th>
+                  <tr className="bg-[#F8FAF9] dark:bg-[#0D1412] border-b border-[#E6ECE8] dark:border-[#1C2622] text-[#6B7280] dark:text-[#9CA3AF] text-xs font-semibold">
+                    <th className="px-4 py-3">Student</th>
+                    <th className="px-4 py-3">Class</th>
+                    <th className="px-4 py-3">Subject</th>
+                    <th className="px-4 py-3">MOT</th>
+                    <th className="px-4 py-3">EOT</th>
+                    <th className="px-4 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-[#E6ECE8] dark:divide-[#1C2622]">
                   {filteredMarks.map((m) => (
                     <TheologyMarkRowItem
                       key={m.id}
@@ -503,7 +503,7 @@ export default function TheologyClient({
                                       [sub.id]: { ...scoreObj, mot_score: e.target.value },
                                     })
                                   }
-                                  className="h-8 w-16 p-1 text-center rounded-lg border outline-none focus:border-[#10B981] mx-auto block"
+                                  className="h-9 w-16 p-1 text-center text-xs font-mono font-bold rounded-lg border border-[#D5DDD8] dark:border-[#24332E] bg-white dark:bg-[#0D1412] text-[#111827] dark:text-[#F3F7F5] outline-none focus:border-[#0D5C3A] dark:focus:border-[#10B981] mx-auto block"
                                   placeholder="--"
                                   min="0"
                                   max="100"
@@ -519,7 +519,7 @@ export default function TheologyClient({
                                       [sub.id]: { ...scoreObj, eot_score: e.target.value },
                                     })
                                   }
-                                  className="h-8 w-16 p-1 text-center rounded-lg border outline-none focus:border-[#10B981] mx-auto block"
+                                  className="h-9 w-16 p-1 text-center text-xs font-mono font-bold rounded-lg border border-[#D5DDD8] dark:border-[#24332E] bg-white dark:bg-[#0D1412] text-[#111827] dark:text-[#F3F7F5] outline-none focus:border-[#0D5C3A] dark:focus:border-[#10B981] mx-auto block"
                                   placeholder="--"
                                   min="0"
                                   max="100"
@@ -560,36 +560,36 @@ export default function TheologyClient({
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="space-y-1">
-              <div className="text-sm font-semibold text-gray-500">Student</div>
-              <div className="font-semibold text-gray-900">
+              <div className="text-xs font-semibold text-[#6B7280] dark:text-[#9CA3AF]">Student</div>
+              <div className="font-semibold text-[#111827] dark:text-[#F3F7F5]">
                 {selectedMark?.enrollments?.students?.name || "--"}
               </div>
             </div>
             <div className="space-y-1">
-              <div className="text-sm font-semibold text-gray-500">Subject</div>
-              <div className="font-medium text-gray-800">
+              <div className="text-xs font-semibold text-[#6B7280] dark:text-[#9CA3AF]">Subject</div>
+              <div className="font-medium text-[#111827] dark:text-[#F3F7F5]">
                 {selectedMark?.theology_subjects?.subject_name_arabic || "--"}
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700">MOT Score</label>
+                <label className="text-xs font-medium text-[#374151] dark:text-[#CBD5E1]">MOT Score</label>
                 <input
                   type="number"
                   value={formData.mot_score}
                   onChange={(e) => setFormData({ ...formData, mot_score: e.target.value })}
-                  className="w-full rounded-xl border px-3 py-2 outline-none focus:border-[#10B981] transition"
+                  className="w-full h-9 rounded-xl border border-[#D5DDD8] dark:border-[#24332E] bg-white dark:bg-[#0D1412] text-[#111827] dark:text-[#F3F7F5] px-3 py-1.5 text-xs font-mono outline-none focus:border-[#0D5C3A] dark:focus:border-[#10B981] transition"
                   min="0"
                   max="100"
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700">EOT Score</label>
+                <label className="text-xs font-medium text-[#374151] dark:text-[#CBD5E1]">EOT Score</label>
                 <input
                   type="number"
                   value={formData.eot_score}
                   onChange={(e) => setFormData({ ...formData, eot_score: e.target.value })}
-                  className="w-full rounded-xl border px-3 py-2 outline-none focus:border-[#10B981] transition"
+                  className="w-full h-9 rounded-xl border border-[#D5DDD8] dark:border-[#24332E] bg-white dark:bg-[#0D1412] text-[#111827] dark:text-[#F3F7F5] px-3 py-1.5 text-xs font-mono outline-none focus:border-[#0D5C3A] dark:focus:border-[#10B981] transition"
                   min="0"
                   max="100"
                 />

@@ -114,13 +114,13 @@ export default function ReportStudioClient({ initialSettings }: ReportStudioClie
     setSelectedElementId('stamp');
   }, [selectedTemplate]);
 
-  // Sync saved overlays from backend on mount
+  // Load persisted Overlays + Stamp config from /api/settings/school
   useEffect(() => {
     let active = true;
     fetch('/api/settings/school')
       .then((res) => (res.ok ? res.json() : null))
       .then((result) => {
-        if (!active || !result?.data?.report_overlays) return;
+        if (!active || !result?.data) return;
         const remoteOverlays = result.data.report_overlays;
         if (remoteOverlays && typeof remoteOverlays === 'object') {
           try {
@@ -130,6 +130,10 @@ export default function ReportStudioClient({ initialSettings }: ReportStudioClie
             }
           } catch {}
         }
+        const savedStampCfg = result.data?.print_preferences?.stamp_config;
+        if (savedStampCfg && typeof savedStampCfg === 'object') {
+          setStampConfig((prev) => ({ ...prev, ...savedStampCfg }));
+        }
       })
       .catch(() => {});
     return () => {
@@ -137,7 +141,7 @@ export default function ReportStudioClient({ initialSettings }: ReportStudioClie
     };
   }, [selectedTemplate]);
 
-  // Load persisted Stamp and Watermark configs from Supabase
+  // Load persisted Watermark and fallback Stamp configs from Supabase
   useEffect(() => {
     const supabase = createClient();
     supabase
@@ -168,7 +172,19 @@ export default function ReportStudioClient({ initialSettings }: ReportStudioClie
   const isContrastLow = contrastRatio < 4.5;
 
   const currentTemplateMeta = TEMPLATE_OPTIONS.find((t) => t.id === selectedTemplate) || TEMPLATE_OPTIONS[0];
-  const currentFixture = SYNTHETIC_REPORT_FIXTURES[selectedTemplate] || SYNTHETIC_REPORT_FIXTURES['primary-eot'];
+  const baseFixture = SYNTHETIC_REPORT_FIXTURES[selectedTemplate] || SYNTHETIC_REPORT_FIXTURES['primary-eot'];
+  const currentFixture = {
+    ...baseFixture,
+    settings: {
+      ...(baseFixture.settings || {}),
+      print_preferences: {
+        ...(baseFixture.settings?.print_preferences || {}),
+        includeStamp: true,
+        includeSignatures: true,
+        stamp_config: stampConfig,
+      },
+    },
+  };
 
   // Handle overlay updates
   const handleOverlayChange = (updated: TemplateOverlays) => {
@@ -717,7 +733,7 @@ export default function ReportStudioClient({ initialSettings }: ReportStudioClie
 
           {/* Drawer: Stamp Vector Customizer */}
           {activeDrawer === 'stamp-design' && (
-            <StampGeneratorPanel config={stampConfig} onChange={setStampConfig} />
+            <StampGeneratorPanel config={stampConfig} onChange={setStampConfig} tone="light" />
           )}
 
           {/* Drawer: Watermark Controls */}

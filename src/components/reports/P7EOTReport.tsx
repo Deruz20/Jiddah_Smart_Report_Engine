@@ -1,5 +1,7 @@
 import { getClassTeacherComment, getHeadTeacherComment, getConductRemark, getTheologyComment } from '@/lib/grading'
 import { ReportContainer } from '@/components/reports/shared/ReportContainer'
+import { CleanSignatureImg } from '@/components/reports/shared/CleanSignatureImg'
+import { OfficialReportStamp } from '@/components/reports/StampGenerator'
 import { resolveReportBranding, resolveReportGradingBands } from '@/lib/school-settings-helper'
 
 import { getClassTeacherSignatureKey } from '@/utils/signatures'
@@ -479,18 +481,13 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
 }
 
 .p7-eot-report .stamp-box {
-  width: 120px;
-  height: 120px;
-  border-radius: 16px;
-  border: 2px dashed #94a3b8;
-  background: white;
+  width: 148px;
+  height: 98px;
+  border: none;
+  background: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
-  text-align: center;
-  font-size: 12px;
-  font-weight: 800;
-  color: #94a3b8;
   flex-shrink: 0;
   align-self: flex-end;
 }
@@ -511,7 +508,15 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
 
           <div className="header-center">
             <div className="logo">
-              <img src={branding.logoUrl} alt="School Badge" />
+              <img
+                src={branding.logoUrl || '/school_logo.svg'}
+                alt="School Badge"
+                onError={(e) => {
+                  if (!e.currentTarget.src.endsWith('/school_logo.svg')) {
+                    e.currentTarget.src = '/school_logo.svg';
+                  }
+                }}
+              />
             </div>
           </div>
 
@@ -735,7 +740,7 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
                     <span>Signature:</span>
                     <div className="w-line" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end' }}>
                       {includeSignatures && reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.class_name) ?? ''] && (
-                        <img src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} alt="Signature" style={{ maxHeight: '24px' }} />
+                        <CleanSignatureImg src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} alt="Signature" style={{ maxHeight: '28px' }} />
                       )}
                     </div>
                   </div>
@@ -752,7 +757,7 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
                     <span>Signature:</span>
                     <div className="w-line" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end' }}>
                       {includeSignatures && reportData?.signatures?.['head-teacher'] && (
-                        <img src={reportData.signatures['head-teacher']} alt="Signature" style={{ maxHeight: '24px' }} />
+                        <CleanSignatureImg src={reportData.signatures['head-teacher']} alt="Signature" style={{ maxHeight: '28px' }} />
                       )}
                     </div>
                   </div>
@@ -797,12 +802,10 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
               </div>
             </div>
 
-            <div className="stamp-box" style={{ overflow: 'hidden', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {includeStamp && reportData?.signatures?.['school-stamp'] ? (
-                <img src={reportData.signatures['school-stamp']} alt="Official Stamp" style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
-              ) : (
-                'OFFICIAL STAMP'
-              )}
+            <div className="stamp-box" style={{ padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {includeStamp ? (
+                <OfficialReportStamp reportData={reportData} maxWidth={144} maxHeight={92} />
+              ) : null}
             </div>
           </footer>
         </div>

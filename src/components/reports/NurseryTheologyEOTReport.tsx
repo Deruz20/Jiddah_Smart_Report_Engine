@@ -1,5 +1,8 @@
 import { getTheologyComment } from '@/lib/grading'
 import { ReportContainer } from '@/components/reports/shared/ReportContainer'
+import { CleanSignatureImg } from '@/components/reports/shared/CleanSignatureImg'
+import { OfficialReportStamp } from '@/components/reports/StampGenerator'
+import { normalizeSchoolLogoUrl } from '@/lib/school-settings-helper'
 import { transliterateEnglishToArabic } from '@/lib/transliterate'
 
 import { getClassTeacherSignatureKey } from '@/utils/signatures'
@@ -362,18 +365,13 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
 }
 
 .nursery-theology-eot-report .footer-stamp {
-    width: 120px;
-    height: 120px;
-    border-radius: 16px;
-    border: 2px dashed #94a3b8;
-    background: white;
+    width: 140px;
+    height: 90px;
+    border: none;
+    background: transparent;
     display: flex;
     align-items: center;
     justify-content: center;
-    text-align: center;
-    font-size: 12px;
-    font-weight: 800;
-    color: #94a3b8;
     flex-shrink: 0;
 }
         `
@@ -383,7 +381,15 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
         <div className="watermark-bg"></div>
         <div className="header">
           <div className="header-badge">
-            <img src={reportData?.settings?.logo_url || "/logo-512h.png"} alt="School Badge" />
+            <img
+              src={normalizeSchoolLogoUrl(reportData?.settings?.logo_url)}
+              alt="School Badge"
+              onError={(e) => {
+                if (!e.currentTarget.src.endsWith('/school_logo.svg')) {
+                  e.currentTarget.src = '/school_logo.svg';
+                }
+              }}
+            />
           </div>
           <div className="header-center">
             <div className="basmala">بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْم</div>
@@ -391,7 +397,7 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
             <div className="report-badge">بطاقة تقرير للروضة</div>
           </div>
           <div className="header-badge" style={{ visibility: 'hidden' }}>
-            <img src="/logo-512h.png" alt="" />
+            <img src="/school_logo.svg" alt="" />
           </div>
         </div>
 
@@ -469,22 +475,20 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
             <div>تقرير مرب الفصل</div>
             <div className="sign-line" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', height: '40px' }}>
               {includeSignatures && reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.class_name) ?? ''] && (
-                <img src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} alt="Signature" style={{ maxHeight: '30px' }} />
+                <CleanSignatureImg src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} alt="Signature" style={{ maxHeight: '30px' }} />
               )}
             </div>
           </div>
-          <div className="footer-stamp" style={{ overflow: 'hidden', padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            {includeStamp && reportData?.signatures?.['school-stamp'] ? (
-              <img src={reportData.signatures['school-stamp']} alt="" style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
-            ) : (
-              'الختم الرسمي للمدرسة'
-            )}
+          <div className="footer-stamp" style={{ padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {includeStamp ? (
+              <OfficialReportStamp reportData={reportData} maxWidth={136} maxHeight={84} />
+            ) : null}
           </div>
           <div className="sign-field">
             <div>تقرير مدير المدرسة</div>
             <div className="sign-line" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', height: '40px' }}>
               {includeSignatures && reportData?.signatures?.['head-teacher'] && (
-                <img src={reportData.signatures['head-teacher']} alt="Signature" style={{ maxHeight: '30px' }} />
+                <CleanSignatureImg src={reportData.signatures['head-teacher']} alt="Signature" style={{ maxHeight: '30px' }} />
               )}
             </div>
           </div>

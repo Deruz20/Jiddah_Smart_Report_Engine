@@ -17,6 +17,8 @@ import {
 import { createClient } from "@/utils/supabase/client";
 import { SignaturePad } from "@/components/teacher/SignaturePad";
 import { toast } from "sonner";
+import { submitMutationWithOfflineFallback } from "@/lib/offline-sync";
+import { invalidateClientCache } from "@/lib/client-cache";
 
 export interface StudentAttendance {
   id: string;
@@ -115,29 +117,35 @@ export function RollCallClient({
     if (students.length === 0) return;
     setIsSaving(true);
     try {
-      const supabase = createClient();
-      const { data: authData } = await supabase.auth.getUser();
-      const userId = authData?.user?.id || null;
-
       const rows = students.map((s) => ({
         student_id: s.id,
-        class_id: selectedClassId,
-        date: selectedDate,
         status: s.status,
-        recorded_by: userId,
-        updated_at: new Date().toISOString(),
       }));
 
-      const { error } = await supabase.from("attendance").upsert(rows, {
-        onConflict: "student_id,date",
+      const res = await submitMutationWithOfflineFallback({
+        url: "/api/attendance",
+        method: "POST",
+        label: `Roll call (${selectedDate})`,
+        body: {
+          class_id: selectedClassId,
+          date: selectedDate,
+          rows,
+        },
       });
 
-      if (error) throw error;
+      if (res.error) {
+        throw new Error(res.error);
+      }
+
+      invalidateClientCache();
       setSaveSuccess(true);
-      toast.success("Roll call attendance saved successfully");
+      if (res.queued) {
+        toast.info("Saved locally (Offline Mode). Will auto-sync when connection is restored.");
+      } else {
+        toast.success("Roll call attendance saved successfully");
+      }
       setTimeout(() => setSaveSuccess(false), 2500);
     } catch (e: any) {
-      console.error("Save attendance error:", e);
       toast.error("Error saving attendance", { description: e.message || "Unknown error" });
     } finally {
       setIsSaving(false);
@@ -157,7 +165,7 @@ export function RollCallClient({
   );
 
   return (
-    <div className="w-full min-h-full p-4 sm:p-6 lg:p-8 space-y-6 font-sans">
+    <div className="w-full min-h-full pt-4 sm:pt-6 px-3 sm:px-6 lg:px-8 pb-6 space-y-6 font-sans">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[var(--border-subtle,rgba(255,255,255,0.08))]">
         <div>

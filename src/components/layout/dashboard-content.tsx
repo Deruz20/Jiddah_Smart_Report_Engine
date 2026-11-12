@@ -1,8 +1,11 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import type { ExamBreakdownTelemetry } from "@/lib/dashboard-telemetry";
+import { MARKS_UPDATED_EVENT, OFFLINE_SYNC_EVENT } from "@/lib/offline-sync";
+import { invalidateClientCache } from "@/lib/client-cache";
 import {
   Users,
   ClipboardEdit,
@@ -62,6 +65,7 @@ export interface DashboardData {
     totalAnomalies: number;
     readyToPrintCount: number;
   };
+  examBreakdown?: ExamBreakdownTelemetry;
   classStatuses: ClassReportingStatus[];
   attendanceTrend: { month: string; rate: number }[];
   classPerformance: { class: string; avg: number }[];
@@ -105,7 +109,61 @@ export interface DashboardData {
 
 export default function DashboardContent({ data }: { data: DashboardData }) {
   const router = useRouter();
-  const { role, kpis, classStatuses, themeSettings, recentActivity, notifications } = data;
+  const [liveData, setLiveData] = useState<DashboardData>(data);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  useEffect(() => {
+    setLiveData(data);
+  }, [data]);
+
+  const refreshTelemetry = useCallback(async () => {
+    if (typeof navigator !== "undefined" && !navigator.onLine) return;
+    setIsRefreshing(true);
+    try {
+      invalidateClientCache();
+      const res = await fetch("/api/analytics/dashboard", { cache: "no-store" });
+      if (res.ok) {
+        const fresh = await res.json();
+        setLiveData((prev) => ({
+          ...prev,
+          kpis: {
+            ...prev.kpis,
+            ...(fresh.kpis || {}),
+          },
+          examBreakdown: fresh.examBreakdown ?? prev.examBreakdown,
+          classStatuses: Array.isArray(fresh.classStatuses) ? fresh.classStatuses : prev.classStatuses,
+          recentActivity: Array.isArray(fresh.recentActivity) ? fresh.recentActivity : prev.recentActivity,
+          notifications: Array.isArray(fresh.notifications) ? fresh.notifications : prev.notifications,
+          classPerformance: Array.isArray(fresh.classPerformance) ? fresh.classPerformance : prev.classPerformance,
+        }));
+      }
+      router.refresh();
+    } catch {
+      // Keep current snapshot if offline
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [router]);
+
+  useEffect(() => {
+    const onMarksUpdated = () => {
+      refreshTelemetry();
+    };
+    const onSyncChanged = (event: Event) => {
+      const custom = event as CustomEvent<{ isSyncing?: boolean; pendingCount?: number }>;
+      if (custom.detail && custom.detail.isSyncing === false && custom.detail.pendingCount === 0) {
+        refreshTelemetry();
+      }
+    };
+    window.addEventListener(MARKS_UPDATED_EVENT, onMarksUpdated);
+    window.addEventListener(OFFLINE_SYNC_EVENT, onSyncChanged);
+    return () => {
+      window.removeEventListener(MARKS_UPDATED_EVENT, onMarksUpdated);
+      window.removeEventListener(OFFLINE_SYNC_EVENT, onSyncChanged);
+    };
+  }, [refreshTelemetry]);
+
+  const { role, kpis, classStatuses, themeSettings, recentActivity, notifications, examBreakdown } = liveData;
   const isTeacher = role === "teacher";
   const isDOS = role === "dos";
   const isAdmin = role === "admin";
@@ -196,12 +254,76 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - recordedRatio * circumference;
 
+  const curveGeometry = useMemo(() => {
+    const botAvg = examBreakdown?.bot?.averageScore ?? null;
+    const motAvg = examBreakdown?.mot?.averageScore ?? null;
+    const eotAvg = examBreakdown?.eot?.averageScore ?? null;
+
+    const rawPoints: Array<{ x: number; avg: number | null; label: string }> = [
+      { x: 12, avg: botAvg, label: "BOT" },
+      { x: 120, avg: motAvg, label: "MOT" },
+      { x: 228, avg: eotAvg, label: "EOT" },
+    ];
+    const validPoints = rawPoints.filter((p): p is { x: number; avg: number; label: string } => p.avg !== null);
+
+    if (validPoints.length === 0) {
+      return {
+        hasData: false,
+        linePath: "M 0 68 L 240 68",
+        areaPath: "M 0 68 L 240 68 L 240 80 L 0 80 Z",
+        dots: [] as Array<{ x: number; y: number }>,
+        deltaLabel: "Awaiting Scores",
+        deltaPositive: true,
+      };
+    }
+
+    const toY = (score: number) => {
+      const clamped = Math.max(0, Math.min(100, score));
+      return Math.round(70 - (clamped / 100) * 56);
+    };
+
+    const coords =
+      validPoints.length === 1
+        ? [
+            { x: 0, y: toY(validPoints[0].avg) },
+            { x: validPoints[0].x, y: toY(validPoints[0].avg) },
+            { x: 240, y: toY(validPoints[0].avg) },
+          ]
+        : [
+            { x: 0, y: toY(validPoints[0].avg) },
+            ...validPoints.map((p) => ({ x: p.x, y: toY(p.avg) })),
+            ...(validPoints[validPoints.length - 1].x < 240
+              ? [{ x: 240, y: toY(validPoints[validPoints.length - 1].avg) }]
+              : []),
+          ];
+
+    const linePath = coords.map((pt, idx) => `${idx === 0 ? "M" : "L"} ${pt.x} ${pt.y}`).join(" ");
+    const areaPath = `${linePath} L 240 80 L 0 80 Z`;
+    const delta = examBreakdown?.progressionDelta ?? null;
+    const deltaLabel =
+      delta === null
+        ? "Baseline"
+        : delta > 0
+        ? `+${delta} pts`
+        : delta < 0
+        ? `${delta} pts`
+        : "0.0 pts";
+
+    return {
+      hasData: true,
+      linePath,
+      areaPath,
+      dots: validPoints.map((p) => ({ x: p.x, y: toY(p.avg) })),
+      deltaLabel,
+      deltaPositive: delta === null || delta >= 0,
+    };
+  }, [examBreakdown]);
+
   return (
-    <div className="w-full min-h-full p-3 sm:p-5 lg:p-6 space-y-4 lg:space-y-5 max-w-[1500px] mx-auto font-sans transition-colors">
-      {/* ─── HEADER BAR (Compact & Actionable) ─────────────────── */}
+    <div className="w-full min-h-full pt-4 sm:pt-6 px-3 sm:px-5 lg:px-6 pb-6 space-y-4 lg:space-y-5 max-w-[1500px] mx-auto font-sans transition-colors">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2 mb-1.5">
             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-300 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/30">
               <ShieldCheck className="size-3" strokeWidth={2} />
               Command Center
@@ -210,7 +332,7 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
               {themeSettings.currentTerm} • Academic Year {themeSettings.currentYear}
             </span>
           </div>
-          <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+          <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white leading-tight">
             {isAdmin
               ? "Academic & Reporting Control Room"
               : isDOS
@@ -222,7 +344,17 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={refreshTelemetry}
+            disabled={isRefreshing}
+            title="Refresh live telemetry"
+            className="h-9 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#151922] hover:bg-slate-50 dark:hover:bg-[#1A1F2C] text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-60"
+          >
+            <RefreshCw className={cn("size-3.5 text-slate-500", isRefreshing && "animate-spin")} />
+            <span className="hidden sm:inline">Refresh</span>
+          </button>
           <Link
             href="/admin/marks"
             className="h-9 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#151922] hover:border-emerald-500/50 hover:bg-slate-50 dark:hover:bg-[#1A1F2C] text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2 transition-all shadow-xs"
@@ -230,7 +362,7 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
             <ClipboardEdit className="size-3.5 text-emerald-600 dark:text-emerald-400" strokeWidth={2} />
             <span>Enter Marks</span>
           </Link>
-          {data.canAccessReports !== false && (
+          {liveData.canAccessReports !== false && (
             <Link
               href="/admin/reports/studio"
               className="h-9 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white dark:bg-gradient-to-r dark:from-emerald-500 dark:to-lime-500 dark:text-slate-950 font-black text-xs flex items-center gap-2 hover:brightness-105 active:scale-95 transition-all shadow-md"
@@ -391,7 +523,7 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
                       stroke="#10B981"
                       strokeWidth="10"
                       strokeDasharray="238.76"
-                      strokeDashoffset={238.76 - (totalEnteredAll > 0 ? (totalEnteredAll / (totalRequiredAll || 1)) * 238.76 : 0)}
+                      strokeDashoffset={238.76 - (totalRequiredAll > 0 ? (totalEnteredAll / totalRequiredAll) * 238.76 : 0)}
                       strokeLinecap="round"
                       fill="none"
                     />
@@ -402,67 +534,83 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
                   </div>
                 </div>
 
-                {/* Legend Pills */}
                 <div className="space-y-1.5 text-[11px]">
                   <div className="flex items-center gap-2">
                     <span className="size-2 rounded-full bg-emerald-600 dark:bg-emerald-400" />
-                    <span className="text-slate-700 dark:text-slate-300 font-semibold">BOT (30%)</span>
+                    <span className="text-slate-700 dark:text-slate-300 font-semibold tabular-nums">
+                      BOT ({examBreakdown?.bot?.completionPct ?? 0}% • {examBreakdown?.bot?.entered ?? 0})
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="size-2 rounded-full bg-sky-600 dark:bg-sky-400" />
-                    <span className="text-slate-700 dark:text-slate-300 font-semibold">MOT (30%)</span>
+                    <span className="text-slate-700 dark:text-slate-300 font-semibold tabular-nums">
+                      MOT ({examBreakdown?.mot?.completionPct ?? 0}% • {examBreakdown?.mot?.entered ?? 0})
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="size-2 rounded-full bg-amber-600 dark:bg-amber-400" />
-                    <span className="text-slate-700 dark:text-slate-300 font-semibold">EOT (40%)</span>
+                    <span className="text-slate-700 dark:text-slate-300 font-semibold tabular-nums">
+                      EOT ({examBreakdown?.eot?.completionPct ?? 0}% • {examBreakdown?.eot?.entered ?? 0})
+                    </span>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Performance Trend Area Chart */}
             <div className="p-4 rounded-2xl bg-white dark:bg-[#12151D] border border-slate-200/90 dark:border-[#212634] flex flex-col justify-between shadow-xs">
               <div className="flex items-center justify-between mb-1">
                 <div>
                   <h3 className="text-xs font-bold text-slate-900 dark:text-white">Cohort Performance Curve</h3>
-                  <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Average syllabus progression & accuracy</p>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Live mean progression across term exams</p>
                 </div>
-                <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 text-xs font-bold">
+                <div
+                  className={cn(
+                    "flex items-center gap-1 text-xs font-bold tabular-nums",
+                    !curveGeometry.hasData
+                      ? "text-slate-500 dark:text-slate-400"
+                      : curveGeometry.deltaPositive
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : "text-rose-600 dark:text-rose-400"
+                  )}
+                >
                   <TrendingUp className="size-3" strokeWidth={2.2} />
-                  <span>+4.2%</span>
+                  <span>{curveGeometry.deltaLabel}</span>
                 </div>
               </div>
 
-              {/* Area Trend SVG */}
               <div className="h-20 w-full relative flex items-end">
                 <svg className="w-full h-18 overflow-visible" preserveAspectRatio="none" viewBox="0 0 240 80">
                   <defs>
                     <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#10B981" stopOpacity="0.35" />
-                      <stop offset="100%" stopColor="#10B981" stopOpacity="0.0" />
+                      <stop offset="0%" stopColor={curveGeometry.hasData ? "#10B981" : "#94A3B8"} stopOpacity="0.32" />
+                      <stop offset="100%" stopColor={curveGeometry.hasData ? "#10B981" : "#94A3B8"} stopOpacity="0.0" />
                     </linearGradient>
                   </defs>
+                  <path d={curveGeometry.areaPath} fill="url(#areaGradient)" />
                   <path
-                    d="M 0 65 Q 40 50, 80 40 T 160 30 T 240 15 L 240 80 L 0 80 Z"
-                    fill="url(#areaGradient)"
-                  />
-                  <path
-                    d="M 0 65 Q 40 50, 80 40 T 160 30 T 240 15"
+                    d={curveGeometry.linePath}
                     fill="none"
-                    stroke="#10B981"
+                    stroke={curveGeometry.hasData ? "#10B981" : "#94A3B8"}
                     strokeWidth="2.5"
                     strokeLinecap="round"
+                    strokeDasharray={curveGeometry.hasData ? undefined : "4 4"}
                   />
-                  <circle cx="80" cy="40" r="3" fill="#84CC16" />
-                  <circle cx="160" cy="30" r="3" fill="#84CC16" />
-                  <circle cx="240" cy="15" r="4" fill="#84CC16" />
+                  {curveGeometry.dots.map((dot, idx) => (
+                    <circle key={idx} cx={dot.x} cy={dot.y} r={3.5} fill="#84CC16" />
+                  ))}
                 </svg>
               </div>
 
-              <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 pt-1.5 border-t border-slate-100 dark:border-white/5 font-medium">
-                <span>BOT Baseline</span>
-                <span>MOT Progress</span>
-                <span className="text-emerald-700 dark:text-emerald-400 font-bold">EOT Projection</span>
+              <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 pt-1.5 border-t border-slate-100 dark:border-white/5 font-medium tabular-nums">
+                <span>
+                  BOT {examBreakdown?.bot?.averageScore !== null && examBreakdown?.bot?.averageScore !== undefined ? `${examBreakdown.bot.averageScore}%` : "N/A"}
+                </span>
+                <span>
+                  MOT {examBreakdown?.mot?.averageScore !== null && examBreakdown?.mot?.averageScore !== undefined ? `${examBreakdown.mot.averageScore}%` : "N/A"}
+                </span>
+                <span className="text-emerald-700 dark:text-emerald-400 font-bold">
+                  EOT {examBreakdown?.eot?.averageScore !== null && examBreakdown?.eot?.averageScore !== undefined ? `${examBreakdown.eot.averageScore}%` : "Pending"}
+                </span>
               </div>
             </div>
           </div>
@@ -503,13 +651,12 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
                 </p>
               </div>
 
-              {/* Filter Tabs */}
-              <div className="flex items-center gap-1 p-0.5 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-xs font-semibold">
+              <div className="overflow-x-auto no-scrollbar max-w-full flex items-center gap-1 p-1 rounded-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-xs font-semibold">
                 <button
                   type="button"
                   onClick={() => setFilter("all")}
                   className={cn(
-                    "px-2.5 py-1 rounded-lg transition-colors cursor-pointer",
+                    "whitespace-nowrap shrink-0 px-3 py-1 rounded-full transition-colors cursor-pointer",
                     filter === "all"
                       ? "bg-emerald-600 dark:bg-emerald-500 text-white dark:text-slate-950 font-black"
                       : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
@@ -521,7 +668,7 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
                   type="button"
                   onClick={() => setFilter("needs_action")}
                   className={cn(
-                    "px-2.5 py-1 rounded-lg transition-colors cursor-pointer",
+                    "whitespace-nowrap shrink-0 px-3 py-1 rounded-full transition-colors cursor-pointer",
                     filter === "needs_action"
                       ? "bg-emerald-600 dark:bg-emerald-500 text-white dark:text-slate-950 font-black"
                       : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
@@ -533,7 +680,7 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
                   type="button"
                   onClick={() => setFilter("completed")}
                   className={cn(
-                    "px-2.5 py-1 rounded-lg transition-colors cursor-pointer",
+                    "whitespace-nowrap shrink-0 px-3 py-1 rounded-full transition-colors cursor-pointer",
                     filter === "completed"
                       ? "bg-emerald-600 dark:bg-emerald-500 text-white dark:text-slate-950 font-black"
                       : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
@@ -667,13 +814,13 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
         <div className="lg:col-span-4 space-y-4">
           <div className="rounded-2xl bg-white dark:bg-[#12151D] border border-slate-200/90 dark:border-[#212634] p-3.5 sm:p-4 space-y-3.5 shadow-xs">
             {/* Telemetry Tabs */}
-            <div className="flex items-center justify-between pb-2.5 border-b border-slate-200 dark:border-white/5">
-              <div className="flex items-center gap-1 p-0.5 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-xs font-semibold">
+            <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-slate-200 dark:border-white/5">
+              <div className="overflow-x-auto no-scrollbar max-w-full flex items-center gap-1 p-1 rounded-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-xs font-semibold">
                 <button
                   type="button"
                   onClick={() => setTelemetryTab("notifications")}
                   className={cn(
-                    "px-2.5 py-1 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5",
+                    "whitespace-nowrap shrink-0 px-3 py-1 rounded-full transition-colors cursor-pointer flex items-center gap-1.5",
                     telemetryTab === "notifications"
                       ? "bg-emerald-600 dark:bg-emerald-500 text-white dark:text-slate-950 font-black"
                       : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
@@ -686,7 +833,7 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
                   type="button"
                   onClick={() => setTelemetryTab("activity")}
                   className={cn(
-                    "px-2.5 py-1 rounded-lg transition-colors cursor-pointer",
+                    "whitespace-nowrap shrink-0 px-3 py-1 rounded-full transition-colors cursor-pointer",
                     telemetryTab === "activity"
                       ? "bg-emerald-600 dark:bg-emerald-500 text-white dark:text-slate-950 font-black"
                       : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
@@ -698,7 +845,7 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
                   type="button"
                   onClick={() => setTelemetryTab("presence")}
                   className={cn(
-                    "px-2.5 py-1 rounded-lg transition-colors cursor-pointer",
+                    "whitespace-nowrap shrink-0 px-3 py-1 rounded-full transition-colors cursor-pointer",
                     telemetryTab === "presence"
                       ? "bg-emerald-600 dark:bg-emerald-500 text-white dark:text-slate-950 font-black"
                       : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
@@ -786,15 +933,15 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400 pb-1">
                   <span>Assigned Faculty</span>
-                  <span className="text-emerald-700 dark:text-emerald-400 font-bold">{data.kpis.activeTeachers} Active</span>
+                  <span className="text-emerald-700 dark:text-emerald-400 font-bold">{kpis.activeTeachers} Active</span>
                 </div>
                 <div className="space-y-2">
-                  {(!data.staffMembers || data.staffMembers.length === 0) ? (
+                  {(!liveData.staffMembers || liveData.staffMembers.length === 0) ? (
                     <div className="py-6 text-center text-slate-500 dark:text-slate-400 text-xs">
                       No active faculty records found.
                     </div>
                   ) : (
-                    data.staffMembers.slice(0, 4).map((staff) => (
+                    liveData.staffMembers.slice(0, 4).map((staff) => (
                       <div
                         key={staff.id}
                         className="p-2.5 rounded-xl bg-slate-50 dark:bg-white/[0.02] border border-slate-200/80 dark:border-white/5 flex items-center justify-between"

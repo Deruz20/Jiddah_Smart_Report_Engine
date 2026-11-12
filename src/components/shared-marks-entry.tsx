@@ -1,7 +1,7 @@
 // @ts-nocheck
 'use client'
 
-import React, { useState, useEffect, useMemo, useRef } from 'react'
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { toast } from 'sonner'
 import {
   Check,
@@ -19,6 +19,121 @@ import {
 } from 'lucide-react'
 import { EnrollmentData, CircularMarkRow, TheologyMarkRow, TermData } from '@/types/models'
 import { UnassignedTeacherState } from './UnassignedTeacherState'
+
+const SecularMarkTableRow = React.memo(function SecularMarkTableRow({
+  mark,
+  studentName,
+  idx,
+  examType,
+  renderScoreCell,
+}: {
+  mark: CircularMarkRow
+  studentName: string
+  idx: number
+  examType: ExamType
+  renderScoreCell: (
+    curriculum: 'secular' | 'theology',
+    subjectId: string,
+    subjectLabel: string,
+    type: 'bot' | 'mot' | 'eot',
+    scoreValue: number | null,
+    rowIndex: number
+  ) => React.ReactNode
+}) {
+  return (
+    <tr className="hover:bg-[var(--bg-hover)] transition-colors">
+      <td
+        data-testid={`frozen-cell-${idx}`}
+        className="sticky left-0 z-10 bg-[var(--bg-card)] px-4 py-2 border-r border-[var(--border)] min-w-[180px] max-w-[260px]"
+      >
+        <div className="flex items-center gap-1.5">
+          <span className="font-bold text-[var(--text-primary)] truncate" title={mark.subject_name}>
+            {mark.subject_name}
+          </span>
+          {mark.is_core && (
+            <span
+              className="sm:hidden inline-flex items-center justify-center w-4 h-4 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-[9px] font-bold border border-emerald-500/30 shrink-0"
+              title="Core subject"
+            >
+              ✓
+            </span>
+          )}
+        </div>
+        <div className="text-[10px] text-[var(--text-muted)] truncate leading-tight" title={studentName}>
+          {studentName}
+        </div>
+      </td>
+      <td className="hidden sm:table-cell px-2 py-2 text-center">
+        {mark.is_core ? (
+          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold border border-emerald-500/30">
+            ✓
+          </span>
+        ) : (
+          <span className="text-[var(--text-muted)]">--</span>
+        )}
+      </td>
+      {['bot', 'all'].includes(examType) && (
+        <td className="px-2 py-2 text-center">
+          {renderScoreCell('secular', mark.subject_id, mark.subject_name, 'bot', mark.bot_score, idx)}
+        </td>
+      )}
+      {['mot', 'all'].includes(examType) && (
+        <td className="px-2 py-2 text-center">
+          {renderScoreCell('secular', mark.subject_id, mark.subject_name, 'mot', mark.mot_score, idx)}
+        </td>
+      )}
+      {['eot', 'all'].includes(examType) && (
+        <td className="px-2 py-2 text-center">
+          {renderScoreCell('secular', mark.subject_id, mark.subject_name, 'eot', mark.eot_score, idx)}
+        </td>
+      )}
+    </tr>
+  )
+})
+
+const TheologyMarkTableRow = React.memo(function TheologyMarkTableRow({
+  mark,
+  studentName,
+  idx,
+  examType,
+  renderScoreCell,
+}: {
+  mark: TheologyMarkRow
+  studentName: string
+  idx: number
+  examType: ExamType
+  renderScoreCell: (
+    curriculum: 'secular' | 'theology',
+    subjectId: string,
+    subjectLabel: string,
+    type: 'bot' | 'mot' | 'eot',
+    scoreValue: number | null,
+    rowIndex: number
+  ) => React.ReactNode
+}) {
+  return (
+    <tr className="hover:bg-[var(--bg-hover)] transition-colors">
+      <td className="sticky left-0 z-10 bg-[var(--bg-card)] px-4 py-2 border-r border-[var(--border)] min-w-[180px] max-w-[260px]">
+        <div className="font-bold text-[var(--text-primary)] truncate text-sm" dir="rtl">
+          {mark.subject_name_arabic}
+        </div>
+        <div className="text-[10px] text-[var(--text-muted)] truncate leading-tight">
+          {studentName}
+        </div>
+      </td>
+      {['mot', 'all'].includes(examType) && (
+        <td className="px-2 py-2 text-center">
+          {renderScoreCell('theology', mark.subject_id, mark.subject_name_arabic, 'mot', mark.mot_score, idx)}
+        </td>
+      )}
+      {['eot', 'all'].includes(examType) && (
+        <td className="px-2 py-2 text-center">
+          {renderScoreCell('theology', mark.subject_id, mark.subject_name_arabic, 'eot', mark.eot_score, idx)}
+        </td>
+      )}
+    </tr>
+  )
+})
 
 export type ExamType = 'bot' | 'mot' | 'eot' | 'all'
 
@@ -272,7 +387,7 @@ export function SharedMarksEntry({
     }
   }, [circularMarks, examType])
 
-  const validateAndApplyScore = (
+  const validateAndApplyScore = useCallback((
     curriculum: 'secular' | 'theology',
     subjectId: string,
     subjectLabel: string,
@@ -344,7 +459,7 @@ export function SharedMarksEntry({
         )
       )
     }
-  }
+  }, [setCircularMarks, setTheologyMarks])
 
   const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -678,9 +793,8 @@ export function SharedMarksEntry({
           {/* Row 2: Exam & View Controls + Save Button */}
           <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-[var(--border)]">
             <div className="flex flex-wrap items-center gap-2">
-              {/* Exam Column Pills */}
               <div
-                className="flex items-center gap-1 p-1 bg-[var(--bg-sunken)] border border-[var(--border)] rounded-xl"
+                className="overflow-x-auto no-scrollbar max-w-full flex items-center gap-1 p-1 bg-[var(--bg-sunken)] border border-[var(--border)] rounded-full"
                 aria-label="Exam Type"
               >
                 {(['bot', 'mot', 'eot', 'all'] as ExamType[]).map((type) => (
@@ -691,7 +805,7 @@ export function SharedMarksEntry({
                       setExamType(type)
                       setSuccess(false)
                     }}
-                    className={`h-8 px-3 text-xs font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer ${
+                    className={`whitespace-nowrap shrink-0 h-8 px-3 text-xs font-bold uppercase tracking-wider rounded-full transition-all cursor-pointer ${
                       examType === type
                         ? 'bg-emerald-600 text-white shadow-xs'
                         : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
@@ -702,10 +816,9 @@ export function SharedMarksEntry({
                 ))}
               </div>
 
-              {/* Department View Switcher */}
               {allowedDepartment === 'both' && (
                 <div
-                  className="flex items-center gap-1 p-1 bg-[var(--bg-sunken)] border border-[var(--border)] rounded-xl"
+                  className="overflow-x-auto no-scrollbar max-w-full flex items-center gap-1 p-1 bg-[var(--bg-sunken)] border border-[var(--border)] rounded-full"
                   aria-label="Department View"
                 >
                   {(['both', 'secular', 'theology'] as const).map((view) => (
@@ -713,7 +826,7 @@ export function SharedMarksEntry({
                       key={view}
                       type="button"
                       onClick={() => setActiveView(view)}
-                      className={`h-8 px-3 text-xs font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer ${
+                      className={`whitespace-nowrap shrink-0 h-8 px-3 text-xs font-bold uppercase tracking-wider rounded-full transition-all cursor-pointer ${
                         activeView === view
                           ? 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-xs'
                           : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
@@ -910,54 +1023,14 @@ export function SharedMarksEntry({
                         </thead>
                         <tbody className="divide-y divide-[var(--border)] text-xs">
                           {sortedCircularMarks.map((mark, idx) => (
-                            <tr key={mark.subject_id} className="hover:bg-[var(--bg-hover)] transition-colors">
-                              {/* Frozen First Column */}
-                              <td
-                                data-testid={`frozen-cell-${idx}`}
-                                className="sticky left-0 z-10 bg-[var(--bg-card)] px-4 py-2 border-r border-[var(--border)] min-w-[180px] max-w-[260px]"
-                              >
-                                <div className="flex items-center gap-1.5">
-                                  <span className="font-bold text-[var(--text-primary)] truncate" title={mark.subject_name}>
-                                    {mark.subject_name}
-                                  </span>
-                                  {mark.is_core && (
-                                    <span
-                                      className="sm:hidden inline-flex items-center justify-center w-4 h-4 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-[9px] font-bold border border-emerald-500/30 shrink-0"
-                                      title="Core subject"
-                                    >
-                                      ✓
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="text-[10px] text-[var(--text-muted)] truncate leading-tight" title={selectedEnrollment.name}>
-                                  {selectedEnrollment.name}
-                                </div>
-                              </td>
-                              <td className="hidden sm:table-cell px-2 py-2 text-center">
-                                {mark.is_core ? (
-                                  <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold border border-emerald-500/30">
-                                    ✓
-                                  </span>
-                                ) : (
-                                  <span className="text-[var(--text-muted)]">—</span>
-                                )}
-                              </td>
-                              {['bot', 'all'].includes(examType) && (
-                                <td className="px-2 py-2 text-center">
-                                  {renderScoreCell('secular', mark.subject_id, mark.subject_name, 'bot', mark.bot_score, idx)}
-                                </td>
-                              )}
-                              {['mot', 'all'].includes(examType) && (
-                                <td className="px-2 py-2 text-center">
-                                  {renderScoreCell('secular', mark.subject_id, mark.subject_name, 'mot', mark.mot_score, idx)}
-                                </td>
-                              )}
-                              {['eot', 'all'].includes(examType) && (
-                                <td className="px-2 py-2 text-center">
-                                  {renderScoreCell('secular', mark.subject_id, mark.subject_name, 'eot', mark.eot_score, idx)}
-                                </td>
-                              )}
-                            </tr>
+                            <SecularMarkTableRow
+                              key={mark.subject_id}
+                              mark={mark}
+                              studentName={selectedEnrollment.name}
+                              idx={idx}
+                              examType={examType}
+                              renderScoreCell={renderScoreCell}
+                            />
                           ))}
                         </tbody>
                       </table>
@@ -1004,26 +1077,14 @@ export function SharedMarksEntry({
                           </thead>
                           <tbody className="divide-y divide-[var(--border)] text-xs">
                             {theologyMarks.map((mark, idx) => (
-                              <tr key={mark.subject_id} className="hover:bg-[var(--bg-hover)] transition-colors">
-                                <td className="sticky left-0 z-10 bg-[var(--bg-card)] px-4 py-2 border-r border-[var(--border)] min-w-[180px] max-w-[260px]">
-                                  <div className="font-bold text-[var(--text-primary)] truncate text-sm" dir="rtl">
-                                    {mark.subject_name_arabic}
-                                  </div>
-                                  <div className="text-[10px] text-[var(--text-muted)] truncate leading-tight">
-                                    {selectedEnrollment.name}
-                                  </div>
-                                </td>
-                                {['mot', 'all'].includes(examType) && (
-                                  <td className="px-2 py-2 text-center">
-                                    {renderScoreCell('theology', mark.subject_id, mark.subject_name_arabic, 'mot', mark.mot_score, idx)}
-                                  </td>
-                                )}
-                                {['eot', 'all'].includes(examType) && (
-                                  <td className="px-2 py-2 text-center">
-                                    {renderScoreCell('theology', mark.subject_id, mark.subject_name_arabic, 'eot', mark.eot_score, idx)}
-                                  </td>
-                                )}
-                              </tr>
+                              <TheologyMarkTableRow
+                                key={mark.subject_id}
+                                mark={mark}
+                                studentName={selectedEnrollment.name}
+                                idx={idx}
+                                examType={examType}
+                                renderScoreCell={renderScoreCell}
+                              />
                             ))}
                           </tbody>
                         </table>

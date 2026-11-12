@@ -1,10 +1,20 @@
 import React from "react";
 import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
-import DashboardContent, { DashboardData, ClassReportingStatus } from "@/components/layout/dashboard-content";
+import DashboardContent, { DashboardData } from "@/components/layout/dashboard-content";
 import { enforceContrastGuard } from "@/lib/contrast-guard";
 import { verifyDataAccess, resolveUserScope } from "@/lib/auth-server";
 import { classIdsForType } from "@/lib/teacher-access";
+import { fetchMergedSchoolSettings } from "@/lib/school-settings-helper";
+import {
+  buildClassStatuses,
+  buildDashboardAlerts,
+  computeExamBreakdown,
+  filterMarksByMatchingTerms,
+  hasScoreAnomaly,
+  resolveActiveTermAndMatchingIds,
+  resolveActivityRows,
+} from "@/lib/dashboard-telemetry";
 
 export const dynamic = "force-dynamic";
 
@@ -12,10 +22,12 @@ export default async function AdminDashboard() {
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 
-  const { data: { user } } = await supabase.auth.getUser();
-  const authRes = user ? await verifyDataAccess(supabase, user, 'read') : { isAuthorized: false };
-  const rawRole = authRes.role || user?.user_metadata?.role || 'Administrator';
-  const rawSubject = authRes.subject || user?.user_metadata?.subject || '';
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const authRes = user ? await verifyDataAccess(supabase, user, "read") : { isAuthorized: false };
+  const rawRole = authRes.role || user?.user_metadata?.role || "Administrator";
+  const rawSubject = authRes.subject || user?.user_metadata?.subject || "";
 
   const scope = resolveUserScope({
     ...authRes,
@@ -27,231 +39,181 @@ export default async function AdminDashboard() {
   const isDOS = scope.isDOS;
   const isTeacher = scope.isTeacher;
   const isAdmin = !isDOS && !isTeacher;
+  const role: "admin" | "dos" | "teacher" = isAdmin ? "admin" : isDOS ? "dos" : "teacher";
 
-  const role: 'admin' | 'dos' | 'teacher' = isAdmin ? 'admin' : isDOS ? 'dos' : 'teacher';
+  const allowedCircularClassIds = authRes.isAuthorized ? classIdsForType(authRes, "circular") : null;
+  const allowedTheologyClassIds = authRes.isAuthorized ? classIdsForType(authRes, "theology") : null;
 
-  const allowedCircularClassIds = authRes.isAuthorized ? classIdsForType(authRes, 'circular') : null;
-  const allowedTheologyClassIds = authRes.isAuthorized ? classIdsForType(authRes, 'theology') : null;
+  let studentQuery = supabase
+    .from("enrollments")
+    .select("id, student_id, circular_class_id, theology_class_id")
+    .eq("is_active", true);
+  let teacherQuery = supabase
+    .from("teachers")
+    .select("id, auth_user_id, name, email, role, subject, status")
+    .eq("status", "active");
+  let classQuery = supabase
+    .from("circular_classes")
+    .select("id, class_name, section")
+    .order("class_name");
+  let theoClassQuery = supabase
+    .from("theology_classes")
+    .select("id, class_name_english, class_name_arabic, level")
+    .order("class_name_english");
+  const reportQuery = supabase
+    .from("activity_logs")
+    .select("*", { count: "exact", head: true })
+    .ilike("action", "%report%");
 
-  let studentQuery = supabase.from('enrollments').select('*', { count: 'exact', head: true }).eq('is_active', true);
-  let teacherQuery = supabase.from('teachers').select('*', { count: 'exact', head: true }).eq('status', 'active');
-  let classQuery = supabase.from('circular_classes').select('id, class_name, section').order('class_name');
-  let theoClassQuery = supabase.from('theology_classes').select('id, class_name_english, class_name_arabic, level').order('class_name_english');
-  let reportQuery = supabase.from('activity_logs').select('*', { count: 'exact', head: true }).ilike('action', '%report%');
-
-  const isUuid = (c: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(c);
+  const isUuid = (c: string) =>
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(c);
 
   if (allowedCircularClassIds !== null || allowedTheologyClassIds !== null) {
     const validCirc = (allowedCircularClassIds || []).filter(isUuid);
     const validTheo = (allowedTheologyClassIds || []).filter(isUuid);
     const filters = [
-      ...(validCirc.length > 0 ? [`circular_class_id.in.(${validCirc.join(',')})`] : []),
-      ...(validTheo.length > 0 ? [`theology_class_id.in.(${validTheo.join(',')})`] : []),
+      ...(validCirc.length > 0 ? [`circular_class_id.in.(${validCirc.join(",")})`] : []),
+      ...(validTheo.length > 0 ? [`theology_class_id.in.(${validTheo.join(",")})`] : []),
     ];
     if (filters.length > 0) {
-      studentQuery = studentQuery.or(filters.join(','));
+      studentQuery = studentQuery.or(filters.join(","));
     } else {
-      studentQuery = studentQuery.eq('circular_class_id', '00000000-0000-0000-0000-000000000000');
+      studentQuery = studentQuery.eq("circular_class_id", "00000000-0000-0000-0000-000000000000");
     }
 
     if (validCirc.length > 0) {
-      classQuery = classQuery.in('id', validCirc);
+      classQuery = classQuery.in("id", validCirc);
     } else if (allowedCircularClassIds !== null) {
-      classQuery = classQuery.eq('id', '00000000-0000-0000-0000-000000000000');
+      classQuery = classQuery.eq("id", "00000000-0000-0000-0000-000000000000");
     }
 
     if (validTheo.length > 0) {
-      theoClassQuery = theoClassQuery.in('id', validTheo);
+      theoClassQuery = theoClassQuery.in("id", validTheo);
     } else if (allowedTheologyClassIds !== null) {
-      theoClassQuery = theoClassQuery.eq('id', '00000000-0000-0000-0000-000000000000');
+      theoClassQuery = theoClassQuery.eq("id", "00000000-0000-0000-0000-000000000000");
     }
   } else if (isDOS) {
-    if (scope.department === 'theology') {
-      teacherQuery = teacherQuery.ilike('subject', '%Theology%');
-    } else if (scope.department === 'secular') {
-      teacherQuery = teacherQuery.not('subject', 'ilike', '%Theology%');
+    if (scope.department === "theology") {
+      teacherQuery = teacherQuery.ilike("subject", "%Theology%");
+    } else if (scope.department === "secular") {
+      teacherQuery = teacherQuery.not("subject", "ilike", "%Theology%");
     }
-  }
-
-  const { data: activeTerm } = await supabase.from('terms').select('*').eq('is_current', true).maybeSingle();
-
-  let circMarksQuery = supabase.from('circular_marks').select('id, enrollment_id, mark, mot_score, eot_score');
-  let theoMarksQuery = supabase.from('theology_marks').select('id, enrollment_id, mark, mot_score, eot_score');
-  if (activeTerm?.id) {
-    circMarksQuery = circMarksQuery.eq('term_id', activeTerm.id);
-    theoMarksQuery = theoMarksQuery.eq('term_id', activeTerm.id);
   }
 
   const [
-    { count: studentCount },
-    { count: teacherCount },
+    { data: termsRows },
+    { data: activeTeachersRows },
     { data: classRows },
     { data: theoClassRows },
     { count: reportCount },
     { data: recentActivityLogs },
     { data: recentNotifications },
-    { data: rawCircularMarks },
-    { data: rawTheologyMarks },
     { data: rawEnrollments },
-    { data: schoolSettings },
-    { data: customConfigLogs },
-    { data: activeTeachersRows },
-    { data: attendanceRows }
+    { data: circularSubjects },
+    { data: theologySubjects },
+    mergedSettings,
+    { data: attendanceRows },
   ] = await Promise.all([
-    studentQuery,
+    supabase.from("terms").select("*").order("academic_year", { ascending: false }),
     teacherQuery,
     scope.canAccessSecular ? classQuery : Promise.resolve({ data: [] }),
     scope.canAccessTheology ? theoClassQuery : Promise.resolve({ data: [] }),
     reportQuery,
-    supabase.from('activity_logs').select('*').order('created_at', { ascending: false }).limit(5),
-    supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(5),
-    circMarksQuery,
-    theoMarksQuery,
-    supabase.from('enrollments').select('id, student_id, circular_class_id, theology_class_id').eq('is_active', true),
-    supabase.from('school_settings').select('*').limit(1).maybeSingle(),
-    supabase.from('activity_logs').select('details').eq('action', 'school_customization_config').order('created_at', { ascending: false }).limit(1),
-    supabase.from('teachers').select('id, name, role, subject, status').eq('status', 'active').limit(6),
-    supabase.from('attendance').select('status').limit(500)
+    supabase
+      .from("activity_logs")
+      .select("id, user_id, action, metadata, created_at")
+      .neq("action", "school_customization_config")
+      .order("created_at", { ascending: false })
+      .limit(12),
+    supabase
+      .from("notifications")
+      .select("id, title, message, read, created_at")
+      .order("created_at", { ascending: false })
+      .limit(6),
+    studentQuery,
+    scope.canAccessSecular
+      ? supabase.from("circular_subjects").select("id, section")
+      : Promise.resolve({ data: [] }),
+    scope.canAccessTheology
+      ? supabase.from("theology_subjects").select("id, level")
+      : Promise.resolve({ data: [] }),
+    fetchMergedSchoolSettings(supabase),
+    supabase.from("attendance").select("status").limit(500),
   ]);
 
-  const customConfig = (customConfigLogs && customConfigLogs[0]?.details) || {};
+  const { activeTerm, matchingTermIds } = resolveActiveTermAndMatchingIds(termsRows || []);
+  const matchingTermIdArray = Array.from(matchingTermIds);
 
-  // Compute live per-class reporting status
-  const circularMarksList = rawCircularMarks || [];
-  const theologyMarksList = rawTheologyMarks || [];
+  let circMarksQuery = supabase
+    .from("circular_marks")
+    .select("id, enrollment_id, subject_id, term_id, bot_score, mot_score, eot_score");
+  let theoMarksQuery = supabase
+    .from("theology_marks")
+    .select("id, enrollment_id, subject_id, term_id, mot_score, eot_score");
+
+  if (matchingTermIdArray.length === 1) {
+    circMarksQuery = circMarksQuery.eq("term_id", matchingTermIdArray[0]);
+    theoMarksQuery = theoMarksQuery.eq("term_id", matchingTermIdArray[0]);
+  } else if (matchingTermIdArray.length > 1) {
+    circMarksQuery = circMarksQuery.in("term_id", matchingTermIdArray);
+    theoMarksQuery = theoMarksQuery.in("term_id", matchingTermIdArray);
+  }
+
+  const [{ data: rawCircularMarks }, { data: rawTheologyMarks }] = await Promise.all([
+    scope.canAccessSecular ? circMarksQuery : Promise.resolve({ data: [] }),
+    scope.canAccessTheology ? theoMarksQuery : Promise.resolve({ data: [] }),
+  ]);
+
+  const circularMarksList = filterMarksByMatchingTerms(rawCircularMarks || [], matchingTermIds);
+  const theologyMarksList = filterMarksByMatchingTerms(rawTheologyMarks || [], matchingTermIds);
   const enrollmentsList = rawEnrollments || [];
   const classesList = classRows || [];
   const theoClassesList = theoClassRows || [];
 
-  const secularClassStatuses: ClassReportingStatus[] = classesList.map((c: any) => {
-    const rawLabel = c.class_name || 'Unnamed Class';
-    const className = /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(rawLabel) ? `Class (${c.section || 'General'})` : rawLabel;
-    const classEnrollments = enrollmentsList.filter((e: any) => e.circular_class_id === c.id);
-    const totalStudents = classEnrollments.length;
-    const enrollmentIds = new Set(classEnrollments.map((e: any) => e.id));
-
-    const classMarks = circularMarksList.filter((m: any) => enrollmentIds.has(m.enrollment_id));
-    const marksEntered = classMarks.length;
-    const totalRequired = totalStudents * 4; // 4 Core Secular Subjects (ENG, MTC, SCI, SST)
-    const missingMarks = Math.max(0, totalRequired - marksEntered);
-
-    const anomalies = classMarks.filter((m: any) => {
-      const markVal = m.mark != null ? Number(m.mark) : null;
-      const motVal = m.mot_score != null ? Number(m.mot_score) : null;
-      const eotVal = m.eot_score != null ? Number(m.eot_score) : null;
-      return (
-        (markVal !== null && (markVal > 100 || markVal < 0)) ||
-        (motVal !== null && (motVal > 100 || motVal < 0)) ||
-        (eotVal !== null && (eotVal > 100 || eotVal < 0))
-      );
-    }).length;
-
-    const percent = totalRequired > 0 ? Math.min(100, Math.round((marksEntered / totalRequired) * 100)) : 0;
-    const stageLabel = totalStudents === 0
-      ? 'No Students'
-      : percent === 100
-      ? 'Marks Submitted'
-      : percent > 0
-      ? 'Marks In Progress'
-      : 'Pending Entry';
-
-    return {
-      className,
-      totalStudents,
-      marksEntered,
-      totalRequired,
-      missingMarks,
-      stage: 'marks_in',
-      stageLabel,
-      percent,
-      anomalies,
-    };
+  const { secularClassStatuses, theologyClassStatuses, classStatuses } = buildClassStatuses({
+    department: scope.department,
+    enrollments: enrollmentsList,
+    circularClasses: classesList,
+    theologyClasses: theoClassesList,
+    circularMarks: circularMarksList,
+    theologyMarks: theologyMarksList,
+    circularSubjects: circularSubjects || [],
+    theologySubjects: theologySubjects || [],
   });
 
-  const theologyClassStatuses: ClassReportingStatus[] = theoClassesList.map((tc: any) => {
-    const className = tc.class_name_english || tc.class_name_arabic || 'Theology Cohort';
-    const classEnrollments = enrollmentsList.filter((e: any) => e.theology_class_id === tc.id);
-    const totalStudents = classEnrollments.length;
-    const enrollmentIds = new Set(classEnrollments.map((e: any) => e.id));
+  const totalRequiredSecular = secularClassStatuses.reduce((sum, c) => sum + c.totalRequired, 0);
+  const totalRequiredTheology = theologyClassStatuses.reduce((sum, c) => sum + c.totalRequired, 0);
 
-    const classMarks = theologyMarksList.filter((m: any) => enrollmentIds.has(m.enrollment_id));
-    const marksEntered = classMarks.length;
-    const totalRequired = totalStudents * 4;
-    const missingMarks = Math.max(0, totalRequired - marksEntered);
-
-    const anomalies = classMarks.filter((m: any) => {
-      const markVal = m.mark != null ? Number(m.mark) : null;
-      const motVal = m.mot_score != null ? Number(m.mot_score) : null;
-      const eotVal = m.eot_score != null ? Number(m.eot_score) : null;
-      return (
-        (markVal !== null && (markVal > 100 || markVal < 0)) ||
-        (motVal !== null && (motVal > 100 || motVal < 0)) ||
-        (eotVal !== null && (eotVal > 100 || eotVal < 0))
-      );
-    }).length;
-
-    const percent = totalRequired > 0 ? Math.min(100, Math.round((marksEntered / totalRequired) * 100)) : 0;
-    const stageLabel = totalStudents === 0
-      ? 'No Students'
-      : percent === 100
-      ? 'Marks Submitted'
-      : percent > 0
-      ? 'Marks In Progress'
-      : 'Pending Entry';
-
-    return {
-      className,
-      totalStudents,
-      marksEntered,
-      totalRequired,
-      missingMarks,
-      stage: 'marks_in',
-      stageLabel,
-      percent,
-      anomalies,
-    };
+  const examBreakdown = computeExamBreakdown({
+    department: scope.department,
+    circularMarks: circularMarksList,
+    theologyMarks: theologyMarksList,
+    totalRequiredSecular,
+    totalRequiredTheology,
   });
-
-  const classStatuses: ClassReportingStatus[] =
-    scope.department === 'theology'
-      ? theologyClassStatuses
-      : scope.department === 'secular'
-        ? secularClassStatuses
-        : [...secularClassStatuses, ...(secularClassStatuses.length === 0 ? theologyClassStatuses : [])];
 
   const totalMissingMarks = classStatuses.reduce((acc, curr) => acc + curr.missingMarks, 0);
+  const totalAnomalies =
+    (scope.canAccessSecular ? circularMarksList.filter(hasScoreAnomaly).length : 0) +
+    (scope.canAccessTheology ? theologyMarksList.filter(hasScoreAnomaly).length : 0);
 
-  const circularAnomalies = circularMarksList.filter((m: any) => {
-    const markVal = m.mark != null ? Number(m.mark) : null;
-    const motVal = m.mot_score != null ? Number(m.mot_score) : null;
-    const eotVal = m.eot_score != null ? Number(m.eot_score) : null;
-    return (
-      (markVal !== null && (markVal > 100 || markVal < 0)) ||
-      (motVal !== null && (motVal > 100 || motVal < 0)) ||
-      (eotVal !== null && (eotVal > 100 || eotVal < 0))
-    );
-  }).length;
+  const rawThemeColor = mergedSettings?.theme_color || "#0F4D25";
+  const contrastResult = enforceContrastGuard(rawThemeColor, "#FDFBF7", 4.5);
 
-  const theologyAnomalies = theologyMarksList.filter((m: any) => {
-    const markVal = m.mark != null ? Number(m.mark) : null;
-    const motVal = m.mot_score != null ? Number(m.mot_score) : null;
-    const eotVal = m.eot_score != null ? Number(m.eot_score) : null;
-    return (
-      (markVal !== null && (markVal > 100 || markVal < 0)) ||
-      (motVal !== null && (motVal > 100 || motVal < 0)) ||
-      (eotVal !== null && (eotVal > 100 || eotVal < 0))
-    );
-  }).length;
-
-  const totalAnomalies = circularAnomalies + theologyAnomalies;
-
-  const rawThemeColor = schoolSettings?.theme_color || customConfig?.theme_color || '#0F4D25';
-  const contrastResult = enforceContrastGuard(rawThemeColor, '#FDFBF7', 4.5);
-
-  const upcomingEvents = activeTerm ? [
-    { title: `${activeTerm.label || 'Academic Term'} Milestone`, date: activeTerm.end_date || 'Term Ongoing', type: 'term' },
-    { title: 'Marks Verification Cutoff', date: activeTerm.end_date ? `End: ${activeTerm.end_date}` : 'Cycle Active', type: 'deadline' },
-  ] : [];
+  const upcomingEvents = activeTerm
+    ? [
+        {
+          title: `${activeTerm.label || activeTerm.name || "Academic Term"} Milestone`,
+          date: activeTerm.end_date || "Term Ongoing",
+          type: "term",
+        },
+        {
+          title: "Marks Verification Cutoff",
+          date: activeTerm.end_date ? `End: ${activeTerm.end_date}` : "Cycle Active",
+          type: "deadline",
+        },
+      ]
+    : [];
 
   const classPerformance = classStatuses.map((c) => ({
     class: c.className,
@@ -260,28 +222,53 @@ export default async function AdminDashboard() {
 
   const attendanceList = attendanceRows || [];
   const totalAttendance = attendanceList.length;
-  const presentCount = attendanceList.filter((a: any) => a.status === 'present' || a.status === 'late').length;
-  const avgAttendance = totalAttendance > 0 ? Math.round((presentCount / totalAttendance) * 100) : 0;
+  const presentCount = attendanceList.filter(
+    (a: any) => a.status === "present" || a.status === "late"
+  ).length;
+  const avgAttendance =
+    totalAttendance > 0 ? Math.round((presentCount / totalAttendance) * 100) : 0;
   const readyToPrintCount = classStatuses.filter((c) => c.percent === 100).length;
 
-  const staffMembers = (activeTeachersRows || []).map((t: any) => {
-    const name = t.name || 'Staff Member';
-    const role = t.role || 'Teacher';
-    const initials = name
-      .split(' ')
-      .map((w: string) => w[0])
-      .filter(Boolean)
-      .slice(0, 2)
-      .join('')
-      .toUpperCase() || 'ST';
+  const teachersList = activeTeachersRows || [];
+  const staffMembers = teachersList.slice(0, 8).map((t: any) => {
+    const name = t.name || "Staff Member";
+    const tRole = t.role || "Teacher";
+    const initials =
+      name
+        .split(" ")
+        .map((w: string) => w[0])
+        .filter(Boolean)
+        .slice(0, 2)
+        .join("")
+        .toUpperCase() || "ST";
     return {
       id: String(t.id),
       name,
-      role: t.subject ? `${role} (${t.subject})` : role,
-      department: t.subject?.toLowerCase().includes('theology') ? 'Islamic Studies' : 'Secular Curriculum',
+      role: t.subject ? `${tRole} (${t.subject})` : tRole,
+      department: t.subject?.toLowerCase().includes("theology")
+        ? "Islamic Studies"
+        : "Secular Curriculum",
       initials,
-      status: t.status || 'active',
+      status: t.status || "active",
     };
+  });
+
+  const storedNotifications = (recentNotifications || []).map((notif: any) => ({
+    id: String(notif.id),
+    title: notif.title || "System Notification",
+    message: notif.message || "",
+    time: new Date(notif.created_at).toLocaleDateString(),
+    read: Boolean(notif.read),
+  }));
+
+  const alerts = buildDashboardAlerts({
+    storedNotifications,
+    classStatuses,
+    examLocks: {
+      bot: mergedSettings?.marks_locks?.bot_locked,
+      mot: mergedSettings?.marks_locks?.mot_locked,
+      eot: mergedSettings?.marks_locks?.eot_locked,
+    },
   });
 
   const data: DashboardData = {
@@ -293,46 +280,35 @@ export default async function AdminDashboard() {
     canManageTeachers: scope.canManageTeachers,
     canViewAuditLogs: scope.canViewAuditLogs,
     kpis: {
-      totalStudents: studentCount ?? enrollmentsList.length,
-      activeTeachers: teacherCount ?? 0,
+      totalStudents: enrollmentsList.length,
+      activeTeachers: teachersList.length,
       reportsGenerated: reportCount ?? 0,
       avgAttendance,
       missingMarks: totalMissingMarks,
       totalAnomalies,
       readyToPrintCount,
     },
+    examBreakdown,
     classStatuses,
     attendanceTrend: [],
     classPerformance,
     staffMembers,
-    recentActivity: recentActivityLogs?.map((log: any) => ({
-      id: String(log.id),
-      entity_type: log.action || 'system',
-      user_name: 'Staff Member',
-      action: log.action,
-      created_at: log.created_at,
-    })) || [],
-    notifications: recentNotifications?.map((notif: any) => ({
-      id: String(notif.id),
-      title: notif.title,
-      message: notif.message,
-      time: new Date(notif.created_at).toLocaleDateString(),
-      read: notif.read,
-    })) || [],
+    recentActivity: resolveActivityRows(recentActivityLogs, teachersList),
+    notifications: alerts,
     upcomingEvents,
     themeSettings: {
-      schoolName: schoolSettings?.school_name || customConfig?.school_name || 'Jiddah Islamic Schools',
+      schoolName: mergedSettings?.school_name || "Jiddah Islamic Schools",
       rawThemeColor,
       safeThemeColor: contrastResult.safeColor,
       contrastRatio: contrastResult.actualRatio,
       wasAdjusted: contrastResult.wasAdjusted,
-      currentTerm: activeTerm?.label || schoolSettings?.current_term || 'Term 1',
-      currentYear: activeTerm?.academic_year || schoolSettings?.current_year || 2026,
+      currentTerm: activeTerm?.label || activeTerm?.name || mergedSettings?.current_term || "Term 1",
+      currentYear: activeTerm?.academic_year || mergedSettings?.current_year || new Date().getFullYear(),
     },
   };
 
   return (
-    <div className="w-full min-h-full bg-[var(--bg-canvas,#090C0A)] text-[var(--text-primary,#F1F5F9)] transition-colors">
+    <div className="w-full min-h-full bg-[var(--bg-canvas,#F8FAFC)] text-[var(--text-primary,#0F172A)] transition-colors">
       <DashboardContent data={data} />
     </div>
   );

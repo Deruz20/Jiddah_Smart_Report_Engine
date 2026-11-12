@@ -444,8 +444,8 @@ function UserMenu({ onOpenDiagnostics }: { onOpenDiagnostics: () => void }) {
     const supabase = createClient();
     invalidateClientCache();
     try {
-      const { powerSync } = await import("../providers/PowerSyncProvider");
-      await powerSync.disconnectAndClear();
+      const { clearOfflineCaches } = await import("@/lib/offline-sync");
+      await clearOfflineCaches();
     } catch {
       // offline cache clear is best-effort
     }

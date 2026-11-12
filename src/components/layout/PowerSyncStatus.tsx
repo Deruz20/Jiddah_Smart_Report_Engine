@@ -1,74 +1,88 @@
-// @ts-nocheck
-'use client'
+"use client";
 
-import React, { useContext, useEffect, useState } from 'react'
-import { PowerSyncContext, useStatus } from '@powersync/react'
-import { SyncStatus, SyncState } from './SyncStatus'
+import React, { useEffect, useState } from "react";
+import { SyncStatus, SyncState } from "./SyncStatus";
+import {
+  flushOfflineOutbox,
+  getOfflineSyncStatus,
+  OFFLINE_SYNC_EVENT,
+  OfflineSyncStatusSnapshot,
+} from "@/lib/offline-sync";
 
-function PowerSyncStatusContent() {
-  const status = useStatus()
-  const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true)
-  const [lastSynced, setLastSynced] = useState<Date>(new Date())
+export function PowerSyncStatus() {
+  const [mounted, setMounted] = useState(false);
+  const [status, setStatus] = useState<OfflineSyncStatusSnapshot>({
+    pendingCount: 0,
+    isOnline: true,
+    isSyncing: false,
+    lastError: null,
+    lastSyncedAt: null,
+  });
 
   useEffect(() => {
-    const handleOnline = () => setIsOnline(true)
-    const handleOffline = () => setIsOnline(false)
+    setMounted(true);
+    let active = true;
 
-    window.addEventListener('online', handleOnline)
-    window.addEventListener('offline', handleOffline)
+    const syncSnapshot = async () => {
+      const snap = await getOfflineSyncStatus();
+      if (active) setStatus(snap);
+    };
+
+    syncSnapshot();
+
+    const handleSyncEvent = (event: Event) => {
+      const custom = event as CustomEvent<OfflineSyncStatusSnapshot>;
+      if (custom.detail && active) {
+        setStatus(custom.detail);
+      } else {
+        syncSnapshot();
+      }
+    };
+
+    const handleOnline = () => {
+      syncSnapshot();
+    };
+    const handleOffline = () => {
+      syncSnapshot();
+    };
+
+    window.addEventListener(OFFLINE_SYNC_EVENT, handleSyncEvent);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
 
     return () => {
-      window.removeEventListener('online', handleOnline)
-      window.removeEventListener('offline', handleOffline)
-    }
-  }, [])
+      active = false;
+      window.removeEventListener(OFFLINE_SYNC_EVENT, handleSyncEvent);
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
 
-  useEffect(() => {
-    if (status?.lastSyncedAt) {
-      setLastSynced(new Date(status.lastSyncedAt))
-    }
-  }, [status?.lastSyncedAt])
+  if (!mounted) {
+    return null;
+  }
 
-  let state: SyncState = 'synced'
-  let pendingCount = 0
-
-  if (!isOnline) {
-    state = 'pending'
-    pendingCount = 1
-  } else if (status?.dataFlowStatus?.uploading || status?.dataFlowStatus?.downloading) {
-    state = 'syncing'
-  } else if (status?.hasSynced) {
-    state = 'synced'
-  } else {
-    // In Direct Supabase mode (BYPASS_POWERSYNC_WRITES = true), online cloud connection is active
-    state = 'synced'
+  let state: SyncState = "synced";
+  if (status.isSyncing) {
+    state = "syncing";
+  } else if (status.lastError && status.pendingCount > 0) {
+    state = "error";
+  } else if (!status.isOnline || status.pendingCount > 0) {
+    state = "pending";
   }
 
   return (
     <SyncStatus
       state={state}
-      pendingCount={pendingCount}
-      lastSyncedAt={lastSynced}
+      pendingCount={status.pendingCount}
+      isOnline={status.isOnline}
+      lastSyncedAt={status.lastSyncedAt ? new Date(status.lastSyncedAt) : undefined}
       onSyncNow={async () => {
-        setLastSynced(new Date())
+        await flushOfflineOutbox();
+      }}
+      onResolveError={async () => {
+        await flushOfflineOutbox();
       }}
     />
-  )
+  );
 }
-
-export function PowerSyncStatus() {
-  const [mounted, setMounted] = useState(false)
-  const context = useContext(PowerSyncContext)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  // Guard against SSR prerender and missing PowerSyncContext
-  if (!mounted || !context) {
-    return null
-  }
-
-  return <PowerSyncStatusContent />
-}
-

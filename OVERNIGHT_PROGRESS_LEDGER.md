@@ -157,3 +157,30 @@ Exit code: 0
 - **Active Branch:** `feat/overnight-system-renovation`
 - **Integrity Status:** Clean build, 0 TypeScript errors, 100% test pass rate, strict A4 report bounds preserved, security boundaries reinforced.
 - **Recommended Next Action:** Merge `feat/overnight-system-renovation` into main or staging following final human review of `OVERNIGHT_PROGRESS_LEDGER.md`.
+
+
+---
+
+## Milestone 7: Full Application Brand Propagation, Gemini `⋮` Action Menus & Backend Resilience Overhaul
+
+- **Commit:** `0905f02`
+- **Scope & Workstreams Completed:**
+  1. **Backend & Supabase Key Resilience (Workstream 1):**
+     - Hardened `src/utils/supabase/client.ts`, `src/lib/supabase.ts`, and `src/lib/supabase-browser.ts` to cleanly resolve `getSupabaseAnonKey()` and fallback to a deterministic JWT dummy, preventing `supabaseKey is required` crashes when env keys are omitted in preview/local runtimes.
+     - Protected `/api/signatures` storage queries: safely handles empty or uninitialized storage buckets without 500 crashes.
+     - Passed `cookieStore` into `createAdminClient(cookieStore)` in `src/app/api/students/[id]/route.ts:322` to ensure active enrollment lookups never throw.
+     - Enhanced `normalizeSchoolLogoUrl()` in `src/lib/school-settings-helper.ts` with multi-pass URL decoding and recursive JSON extraction, mapping all broken paths to `/logo-512h.png`. Replaced legacy `/school_budge.jpeg` on `/onboarding`.
+  2. **Universal Gemini `⋮` 3-Dot Action Menus (Workstream 2):**
+     - Upgraded `src/components/ui/more-actions-menu.tsx` with refined Forest Green and Gold tinting (`hover:bg-[#0D5C3A]/10`, `dark:hover:bg-[#F59E0B]/15`, `border-[#D97706]/20`, `shadow-[0_8px_28px_rgba(0,0,0,0.12)]`).
+     - Integrated `MoreActionsMenu` into `teachers-client.tsx`, `subjects-client.tsx`, and `class-dashboard-client.tsx` (student rows and class header actions).
+  3. **Print Engine & Institutional Letterhead (Workstream 3):**
+     - Updated `src/styles/reports/print-system.css` with `.print-landscape` and hub A4 landscape rules.
+     - Added official institutional print header (`OfficialPrintLetterhead`) and signatures footer (`OfficialPrintSignaturesFooter`) with student attendance sheet print root to `RollCallClient.tsx`.
+  4. **Module Bugfixes & Behavioral UX (Workstream 4):**
+     - Resolved the class grading coverage math bug in `class-dashboard-client.tsx` using `enrollmentStudentMap` to eliminate duplicate or inflated count reports.
+     - Upgraded class tabs with brand active pill styling (`bg-gradient-to-r from-[#0D5C3A]/14 via-[#D97706]/10 to-[#EA580C]/12`).
+     - Refactored `upload-client.tsx` 4-stat summary strip with nested radii `rounded-2xl` and `card-jiddah` borders.
+  5. **Verification Gate (Workstream 5):**
+     - `npm run typecheck` (`tsc --noEmit`): 0 errors.
+     - Pure unit tests (`node --import ./src/lib/test-guard.mjs --test src/__tests__/overhaul-workstreams.test.mjs`): 14/14 passed.
+     - `npm run build`: 68/68 static & dynamic routes compiled cleanly.

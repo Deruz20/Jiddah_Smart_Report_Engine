@@ -252,6 +252,11 @@ export function SharedMarksEntry({
   const [isExamSetLocked, setIsExamSetLocked] = useState<boolean>(false)
   const searchBoxRef = useRef<HTMLDivElement>(null)
 
+  const selectedEnrollment = useMemo(
+    () => enrollments.find((e) => e.id === selectedEnrollmentId) || null,
+    [enrollments, selectedEnrollmentId]
+  )
+
   const marksMoreActions = useMemo(
     () => [
       {
@@ -402,11 +407,6 @@ export function SharedMarksEntry({
     }
     return list
   }, [enrollments, selectedClassFilter, studentSearchQuery])
-
-  const selectedEnrollment = useMemo(
-    () => enrollments.find((e) => e.id === selectedEnrollmentId) || null,
-    [enrollments, selectedEnrollmentId]
-  )
 
   const currentStudentIndex = useMemo(
     () => filteredEnrollments.findIndex((e) => e.id === selectedEnrollmentId),

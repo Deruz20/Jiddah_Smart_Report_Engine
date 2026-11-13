@@ -162,3 +162,13 @@ All 68 app routes built cleanly with zero compilation or packaging errors.
 - **No Weakened Boundaries:** All strictly gated API routes (`/api/marks`, `/api/theology-marks`, `/api/circular-marks`, `/api/students`, `/api/students/[id]`, `/api/enrollments`, `/api/reports`, `/api/secular-hub`, `/api/theology-hub`, `/api/settings/*`) retain their complete server-side `verifyDataAccess()` pipeline.
 - **Locked Report Components Untouched:** The six locked report card components (`PrimaryEOTReport`, `PrimaryMOTReport`, `NurseryEOTReport`, `NurseryMOTReport`, `TheologyMOTReport`, `NurseryTheologyEOTReport`) remain strictly locked with inline styles and zero breaking changes.
 - **Non-Interactive Database Safety:** No interactive prompts, destructive migrations, or unauthorized schema modifications were executed.
+
+---
+
+## 7. Hotfix: Temporal Dead Zone (TDZ) Initialization Fix
+- **Issue:** `ReferenceError: Cannot access 'selectedEnrollment' before initialization` at `SharedMarksEntry (src/components/shared-marks-entry.tsx:322:36)`.
+- **Root Cause:** `marksMoreActions` `useMemo` hook referenced `selectedEnrollment` in its dependency array at line 322 before `selectedEnrollment` was initialized at line 406.
+- **Resolution:** Hoisted `const selectedEnrollment = useMemo(...)` up to line 255 right before `marksMoreActions`, eliminating the TDZ reference error.
+- **Verification:** Verified with `npm run typecheck`, full unit test suite (175/175 passing), and clean `npm run build` (68/68 routes compiled).
+
+

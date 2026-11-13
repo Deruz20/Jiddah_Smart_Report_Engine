@@ -36,3 +36,4 @@ Branch: `feat/overnight-system-renovation`
 - Targeted suite `node --import ./src/lib/test-guard.mjs --test src/__tests__/dashboard-and-offline-sync.test.mjs`: **7 / 7 passing**.
 - Full `npm test`: **313 passing, 27 failing, 1 skipped** (`341` tests across `60` suites). All failures occur in live local-Supabase rehearsal suites (`ECONNREFUSED 127.0.0.1:54321`) because the local Supabase stack is not running in this environment; all unit suites pass.
 - `npm run build` (`next build --webpack`): **Exit code 0**, cleanly compiled and prerendered/built all routes (`68/68` static pages + dynamic SSR/API routes).
+

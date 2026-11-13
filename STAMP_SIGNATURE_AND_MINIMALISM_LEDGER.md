@@ -40,3 +40,4 @@ Branch: `feat/overnight-system-renovation`
 - Pure unit test run (`16` `.test.mjs` files, `49` suites, including new `src/__tests__/overhaul-workstreams.test.mjs`): **215/215 PASSED** (`fail: 0`, `skipped: 0`).
 - Full `npm test` (`src/__tests__/*.test.mjs`): `320` passed, `30` failed, `1` skipped out of `351` (all 30 failures are local Supabase/Postgres integration rehearsal tests encountering `connect ECONNREFUSED 127.0.0.1:54321` with Docker/Supabase stopped).
 - HTTP smoke check (`next start -p 3100`): `/login` `200`, `/test-report` `200` (0 `/logo.png` matches), `/preview-test` `307`, `/admin/reports` `307`, `/logo-512h.png` `200`, `/school_logo.svg` `200`.
+

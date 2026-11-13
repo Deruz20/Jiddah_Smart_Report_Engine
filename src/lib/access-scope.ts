@@ -474,3 +474,4 @@ export function canAccessFullClassBroadsheet(
   if (!classId) return scope.homeroomClassIds.length > 0;
   return scope.homeroomClassIds.includes(classId) || scope.allowedClassIds.includes(classId);
 }
+

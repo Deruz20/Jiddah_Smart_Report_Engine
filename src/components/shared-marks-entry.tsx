@@ -16,9 +16,15 @@ import {
   Sparkles,
   BookOpen,
   GraduationCap,
+  Download,
+  Upload,
+  Lock,
+  Unlock,
+  FileSpreadsheet,
 } from 'lucide-react'
 import { EnrollmentData, CircularMarkRow, TheologyMarkRow, TermData } from '@/types/models'
 import { UnassignedTeacherState } from './UnassignedTeacherState'
+import { MoreActionsMenu } from '@/components/ui/more-actions-menu'
 
 const SecularMarkTableRow = React.memo(function SecularMarkTableRow({
   mark,
@@ -243,7 +249,78 @@ export function SharedMarksEntry({
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [rawInputs, setRawInputs] = useState<Record<string, string>>({})
+  const [isExamSetLocked, setIsExamSetLocked] = useState<boolean>(false)
   const searchBoxRef = useRef<HTMLDivElement>(null)
+
+  const marksMoreActions = useMemo(
+    () => [
+      {
+        label: 'Import CSV',
+        icon: Upload,
+        onClick: () => {
+          window.location.href = '/admin/upload'
+        },
+      },
+      {
+        label: 'Export Marksheet',
+        icon: FileSpreadsheet,
+        onClick: () => {
+          const rows = [
+            ['Student', 'Class', 'Curriculum', 'Subject', 'BOT', 'MOT', 'EOT'],
+            ...circularMarks.map((m) => [
+              selectedEnrollment?.name || '',
+              selectedEnrollment?.circular_class || '',
+              'Secular',
+              m.subject_name || '',
+              m.bot_score ?? '',
+              m.mot_score ?? '',
+              m.eot_score ?? '',
+            ]),
+            ...theologyMarks.map((m) => [
+              selectedEnrollment?.name || '',
+              selectedEnrollment?.circular_class || '',
+              'Theology',
+              m.subject_name_arabic || '',
+              '',
+              m.mot_score ?? '',
+              m.eot_score ?? '',
+            ]),
+          ]
+          const csvContent = 'data:text/csv;charset=utf-8,' + rows.map((e) => e.join(',')).join('\n')
+          const encodedUri = encodeURI(csvContent)
+          const link = document.createElement('a')
+          link.setAttribute('href', encodedUri)
+          link.setAttribute('download', `marksheet_${selectedEnrollment?.name || 'student'}.csv`)
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+          toast.success('Marksheet exported successfully')
+        },
+      },
+      {
+        label: 'Clear Unsaved',
+        icon: RotateCcw,
+        onClick: () => {
+          setRawInputs({})
+          setFieldErrors({})
+          setHasUnsavedChanges(false)
+          toast.info('Cleared unsaved changes')
+        },
+      },
+      {
+        label: isExamSetLocked ? 'Unlock Exam Set' : 'Lock Exam Set',
+        icon: isExamSetLocked ? Unlock : Lock,
+        onClick: () => {
+          setIsExamSetLocked((prev) => {
+            const next = !prev
+            toast.success(next ? 'Exam set locked from edits' : 'Exam set unlocked')
+            return next
+          })
+        },
+      },
+    ],
+    [circularMarks, theologyMarks, selectedEnrollment, isExamSetLocked]
+  )
 
   useEffect(() => {
     setActiveView(allowedDepartment)
@@ -553,14 +630,15 @@ export function SharedMarksEntry({
                 }
               }
             }}
-            className={`score-input w-[64px] sm:w-[70px] h-8 sm:h-9 px-1.5 text-center text-xs font-mono font-bold tabular-nums rounded-lg border transition-all outline-none focus:ring-2 ${
+            disabled={isExamSetLocked}
+            className={`score-input w-16 h-8 px-1 text-center text-sm font-mono font-bold tabular-nums rounded-lg border transition-all outline-none focus:ring-1 ${
               fieldError
                 ? 'border-rose-500 bg-rose-500/10 text-rose-700 dark:text-rose-300 focus:ring-rose-500/25'
                 : isHigh
-                ? 'border-[#0D5C3A]/45 dark:border-[#10B981]/50 bg-emerald-500/10 text-[#0D5C3A] dark:text-emerald-200 focus:border-[#0D5C3A] dark:focus:border-[#10B981] focus:ring-emerald-500/25'
+                ? 'border-[#0D5C3A] dark:border-[#34D399] bg-emerald-500/10 text-[#0D5C3A] dark:text-[#34D399] focus:border-[#0D5C3A]'
                 : isLow
-                ? 'border-amber-500/45 bg-amber-500/10 text-amber-900 dark:text-amber-200 focus:border-amber-600 focus:ring-amber-500/25'
-                : 'border-[#D5DDD8] dark:border-[#24332E] bg-white dark:bg-[#0D1412] text-[#111827] dark:text-[#F3F7F5] focus:border-[#0D5C3A] dark:focus:border-[#10B981] focus:ring-emerald-500/25'
+                ? 'border-amber-500 bg-amber-500/10 text-amber-900 dark:text-amber-200 focus:border-amber-600'
+                : 'border-[#C4C7C5]/50 dark:border-[#3C4043] bg-[#F8FAFD] dark:bg-[#131314] text-[#1F1F1F] dark:text-[#E3E3E3] focus:border-[#0D5C3A] dark:focus:border-[#A8C7FA]'
             }`}
           />
           {badge && (
@@ -615,7 +693,7 @@ export function SharedMarksEntry({
                 aria-label="Term"
                 value={selectedTermId}
                 onChange={(e) => onSelectTerm(e.target.value)}
-                className="w-full h-9 px-2.5 text-xs font-semibold border border-[#D5DDD8] dark:border-[#24332E] bg-white dark:bg-[#0D1412] rounded-lg text-[#111827] dark:text-[#F3F7F5] outline-none focus:border-[#0D5C3A] dark:focus:border-[#10B981] focus:ring-2 focus:ring-emerald-500/20 truncate"
+                className="w-full h-9 px-3.5 text-xs font-semibold rounded-full border border-[#E1E3E1] dark:border-[#282A2C] bg-[#F0F4F9] dark:bg-[#1E1F20] text-[#1F1F1F] dark:text-[#E3E3E3] outline-none focus:border-[#0D5C3A] dark:focus:border-[#34D399] truncate"
               >
                 <option value="">Select term...</option>
                 {terms.map((term) => (
@@ -649,7 +727,7 @@ export function SharedMarksEntry({
                     onSelectEnrollment(matching[0].id)
                   }
                 }}
-                className="w-full h-9 px-2.5 text-xs font-semibold border border-[#D5DDD8] dark:border-[#24332E] bg-white dark:bg-[#0D1412] rounded-lg text-[#111827] dark:text-[#F3F7F5] outline-none focus:border-[#0D5C3A] dark:focus:border-[#10B981] focus:ring-2 focus:ring-emerald-500/20 truncate"
+                className="w-full h-9 px-3.5 text-xs font-semibold rounded-full border border-[#E1E3E1] dark:border-[#282A2C] bg-[#F0F4F9] dark:bg-[#1E1F20] text-[#1F1F1F] dark:text-[#E3E3E3] outline-none focus:border-[#0D5C3A] dark:focus:border-[#34D399] truncate"
               >
                 <option value="all">All Classes ({enrollments.length})</option>
                 {classOptions.map((cls) => (
@@ -682,7 +760,7 @@ export function SharedMarksEntry({
                     setSearchDropdownOpen(true)
                   }}
                   placeholder="Type to filter by name, class, adm no..."
-                  className="w-full h-9 pl-9 pr-8 text-xs font-medium border border-[#D5DDD8] dark:border-[#24332E] bg-white dark:bg-[#0D1412] rounded-lg text-[#111827] dark:text-[#F3F7F5] placeholder:text-[#6B7280] dark:placeholder:text-[#9CA3AF] outline-none focus:border-[#0D5C3A] dark:focus:border-[#10B981] focus:ring-2 focus:ring-emerald-500/20"
+                  className="w-full h-9 pl-9 pr-8 text-xs font-medium rounded-full border border-[#E1E3E1] dark:border-[#282A2C] bg-[#F0F4F9] dark:bg-[#1E1F20] text-[#1F1F1F] dark:text-[#E3E3E3] placeholder:text-[#747775] dark:placeholder:text-[#8E918F] outline-none focus:border-[#0D5C3A] dark:focus:border-[#34D399]"
                 />
                 {studentSearchQuery && (
                   <button
@@ -700,7 +778,7 @@ export function SharedMarksEntry({
               </div>
 
               {searchDropdownOpen && (
-                <div className="absolute left-0 right-0 top-full mt-1.5 max-h-64 overflow-y-auto bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-40 divide-y divide-[var(--border)]">
+                <div className="absolute left-0 right-0 top-full mt-1.5 max-h-64 overflow-y-auto bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-xl z-40 divide-y divide-[var(--border)]">
                   {filteredEnrollments.length === 0 ? (
                     <div className="px-3.5 py-3 text-xs text-[var(--text-muted)] text-center">
                       No students match &ldquo;{studentSearchQuery}&rdquo;
@@ -757,7 +835,7 @@ export function SharedMarksEntry({
                     onSelectEnrollment(e.target.value)
                     setSuccess(false)
                   }}
-                  className="flex-1 min-w-0 h-9 px-2.5 text-xs font-semibold border border-[#D5DDD8] dark:border-[#24332E] bg-white dark:bg-[#0D1412] rounded-lg text-[#111827] dark:text-[#F3F7F5] outline-none focus:border-[#0D5C3A] dark:focus:border-[#10B981] focus:ring-2 focus:ring-emerald-500/20 truncate"
+                  className="flex-1 min-w-0 h-9 px-3.5 text-xs font-semibold rounded-full border border-[#E1E3E1] dark:border-[#282A2C] bg-[#F0F4F9] dark:bg-[#1E1F20] text-[#1F1F1F] dark:text-[#E3E3E3] outline-none focus:border-[#0D5C3A] dark:focus:border-[#34D399] truncate"
                 >
                   <option value="">Select student...</option>
                   {filteredEnrollments.map((s) => (
@@ -772,7 +850,7 @@ export function SharedMarksEntry({
                   disabled={filteredEnrollments.length <= 1}
                   title="Previous student"
                   aria-label="Previous student"
-                  className="h-9 w-9 flex items-center justify-center rounded-lg border border-[#D5DDD8] dark:border-[#24332E] bg-white dark:bg-[#0D1412] hover:bg-[#F3F7F5] dark:hover:bg-[#1C2622] text-[#111827] dark:text-[#F3F7F5] disabled:opacity-40 cursor-pointer shrink-0 transition"
+                  className="h-9 w-9 flex items-center justify-center rounded-full border border-[#E1E3E1] dark:border-[#282A2C] bg-[#F0F4F9] dark:bg-[#1E1F20] hover:bg-black/[0.06] dark:hover:bg-white/[0.06] text-[#1F1F1F] dark:text-[#E3E3E3] disabled:opacity-40 cursor-pointer shrink-0 transition"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
@@ -782,7 +860,7 @@ export function SharedMarksEntry({
                   disabled={filteredEnrollments.length <= 1}
                   title="Next student"
                   aria-label="Next student"
-                  className="h-9 w-9 flex items-center justify-center rounded-lg border border-[#D5DDD8] dark:border-[#24332E] bg-white dark:bg-[#0D1412] hover:bg-[#F3F7F5] dark:hover:bg-[#1C2622] text-[#111827] dark:text-[#F3F7F5] disabled:opacity-40 cursor-pointer shrink-0 transition"
+                  className="h-9 w-9 flex items-center justify-center rounded-full border border-[#E1E3E1] dark:border-[#282A2C] bg-[#F0F4F9] dark:bg-[#1E1F20] hover:bg-black/[0.06] dark:hover:bg-white/[0.06] text-[#1F1F1F] dark:text-[#E3E3E3] disabled:opacity-40 cursor-pointer shrink-0 transition"
                 >
                   <ChevronRight className="w-4 h-4" />
                 </button>
@@ -872,8 +950,8 @@ export function SharedMarksEntry({
               )}
               <button
                 type="submit"
-                disabled={isSaving || isPending || !selectedEnrollment}
-                className="h-9 px-4 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs inline-flex items-center justify-center gap-2 disabled:opacity-40 transition cursor-pointer"
+                disabled={isSaving || isPending || !selectedEnrollment || isExamSetLocked}
+                className="h-9 px-5 bg-[#0D5C3A] hover:bg-[#0A4A2F] dark:bg-[#34D399] dark:hover:bg-[#10B981] text-white dark:text-[#131314] text-xs font-semibold rounded-full shadow-xs inline-flex items-center justify-center gap-2 disabled:opacity-40 transition cursor-pointer"
               >
                 {isSaving || isPending ? (
                   <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -886,6 +964,8 @@ export function SharedMarksEntry({
                   {isSaving || isPending ? 'Saving...' : 'Save Marks'}
                 </span>
               </button>
+
+              <MoreActionsMenu items={marksMoreActions} align="end" />
             </div>
           </div>
         </div>

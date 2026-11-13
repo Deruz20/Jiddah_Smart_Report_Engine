@@ -81,8 +81,13 @@ export function CommandPalette({
         onOpenChange(false);
       }
     };
+    const onCustomOpen = () => onOpenChange(true);
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    window.addEventListener("jiddah:open-command-palette", onCustomOpen);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("jiddah:open-command-palette", onCustomOpen);
+    };
   }, [open, onOpenChange]);
 
   React.useEffect(() => {

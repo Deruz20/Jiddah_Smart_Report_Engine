@@ -2,7 +2,8 @@
 
 import React, { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Upload, FileText, Image, Check, RefreshCw, Folder, HardDrive, Trash2 } from 'lucide-react'
+import { Upload, FileText, Image, Check, RefreshCw, Folder, HardDrive, Trash2, Eye, Wand2, Download } from 'lucide-react'
+import { MoreActionsMenu } from '@/components/ui/more-actions-menu'
 import { toast } from 'sonner'
 import { HeroSection } from '@/components/HeroSection'
 import { ConfirmDestructiveDialog } from '@/components/ConfirmDestructiveDialog'
@@ -373,13 +374,57 @@ export default function UploadClient({ initialFiles }: { initialFiles: UploadedF
                     <div className="flex items-center gap-2">
                       {file.status === 'done' && <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />}
                       {file.status === 'uploading' && <RefreshCw className="w-4 h-4 animate-spin text-amber-500" />}
-                      <button
-                        onClick={() => removeFile(file.id, file.name)}
-                        className="p-1.5 rounded-lg hover:bg-rose-500/10 text-[var(--text-muted)] hover:text-rose-600 transition-colors cursor-pointer"
-                        title={`Delete ${file.name}`}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <MoreActionsMenu
+                        items={[
+                          ...(file.public_url
+                            ? [
+                                {
+                                  label: 'Preview',
+                                  icon: Eye,
+                                  onClick: () => window.open(file.public_url!, '_blank'),
+                                },
+                                {
+                                  label: 'Download',
+                                  icon: Download,
+                                  onClick: () => {
+                                    const a = document.createElement('a');
+                                    a.href = file.public_url!;
+                                    a.download = file.name;
+                                    a.click();
+                                  },
+                                },
+                              ]
+                            : []),
+                          ...(file.type.startsWith('image')
+                            ? [
+                                {
+                                  label: 'Clean Signature Ink',
+                                  icon: Wand2,
+                                  onClick: () => {
+                                    toast.info(`Preparing ink cleaning for ${file.name}...`);
+                                    if (file.public_url) {
+                                      fetch(file.public_url)
+                                        .then((res) => res.blob())
+                                        .then((blob) => {
+                                          const f = new File([blob], file.name, { type: file.type });
+                                          setPendingSignatureFile(f);
+                                          setCategory('Signatures');
+                                        })
+                                        .catch(() => toast.error('Unable to fetch file for cleaning.'));
+                                    }
+                                  },
+                                },
+                              ]
+                            : []),
+                          {
+                            label: 'Delete',
+                            icon: Trash2,
+                            destructive: true,
+                            onClick: () => removeFile(file.id, file.name),
+                          },
+                        ]}
+                        align="end"
+                      />
                     </div>
                   </div>
                 ))}

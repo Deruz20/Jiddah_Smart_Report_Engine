@@ -5,6 +5,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Plus, Edit, Trash2, Search, BookOpen } from "lucide-react";
+import { MoreActionsMenu } from "@/components/ui/more-actions-menu";
 import { HeroSection } from "@/components/HeroSection";
 import { Button } from "@/components/figma-ui/ui/button";
 import {
@@ -50,21 +51,23 @@ const TheologyMarkRowItem = React.memo(function TheologyMarkRowItem({
       </td>
       <td className="px-4 py-2.5 font-mono text-xs text-[#111827] dark:text-[#F3F7F5] tabular-nums">{mark.mot_score ?? "--"}</td>
       <td className="px-4 py-2.5 font-mono text-xs text-[#111827] dark:text-[#F3F7F5] tabular-nums">{mark.eot_score ?? "--"}</td>
-      <td className="px-4 py-2.5 text-right space-x-1">
-        <button
-          type="button"
-          onClick={() => onEdit(mark)}
-          className="p-1.5 text-[#6B7280] dark:text-[#9CA3AF] hover:text-[#0D5C3A] dark:hover:text-[#10B981] hover:bg-[#0D5C3A]/10 rounded-lg cursor-pointer"
-        >
-          <Edit className="w-4 h-4" />
-        </button>
-        <button
-          type="button"
-          onClick={() => onDelete(mark)}
-          className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg cursor-pointer"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
+      <td className="px-4 py-2.5 text-right">
+        <MoreActionsMenu
+          items={[
+            {
+              label: "Edit Mark",
+              icon: Edit,
+              onClick: () => onEdit(mark),
+            },
+            {
+              label: "Delete Mark",
+              icon: Trash2,
+              destructive: true,
+              onClick: () => onDelete(mark),
+            },
+          ]}
+          align="end"
+        />
       </td>
     </tr>
   );

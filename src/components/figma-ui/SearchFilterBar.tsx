@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sparkles, Users, User, Check, Search, Printer } from 'lucide-react';
+import { Sparkles, Users, User, Check, Search, Printer, Eye, Download, MessageSquare, UserCheck } from 'lucide-react';
+import { MoreActionsMenu } from '@/components/ui/more-actions-menu';
 import type { FilterState, Term, Phase, EnrollmentItem, ClassGroup } from './types';
 import {
   toggleSelectAllPreservingOthers,
@@ -375,38 +376,80 @@ export function SearchFilterBar({
                       const selected = studentIds.includes(enr.enrollment_id);
                       const status = completionByEnrollment[enr.enrollment_id];
                       return (
-                        <button
+                        <div
                           key={enr.enrollment_id}
-                          type="button"
-                          onClick={(e) => handleStudentClick(enr.enrollment_id, e.shiftKey)}
-                          className={`min-h-[40px] flex items-center gap-2.5 px-3 py-1.5 rounded-xl cursor-pointer border text-left transition-colors ${
+                          className={`min-h-[40px] flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl border text-left transition-colors ${
                             selected
                               ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-700'
-                              : 'bg-white dark:bg-[#111916] border-stone-200 dark:border-[#24332E] hover:bg-stone-50 dark:hover:bg-[#16221E]'
+                              : 'bg-white dark:bg-[#1E1F20] border-[#E1E3E1] dark:border-[#282A2C] hover:bg-[#F0F4F9] dark:hover:bg-[#282A2C]'
                           }`}
                         >
-                          <div
-                            className={`w-4 h-4 rounded flex items-center justify-center shrink-0 border ${
-                              selected ? 'bg-[#0F4D25] border-[#0F4D25]' : 'bg-white dark:bg-[#0D1412] border-stone-300 dark:border-stone-600'
-                            }`}
+                          <button
+                            type="button"
+                            onClick={(e) => handleStudentClick(enr.enrollment_id, e.shiftKey)}
+                            className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer outline-none text-left"
                           >
-                            {selected && <Check size={10} color="white" strokeWidth={3} />}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              <span className="text-xs font-semibold text-stone-900 dark:text-stone-100 truncate">{enr.name}</span>
-                              {status === 'complete' && (
-                                <span title="All marks recorded" className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                              )}
-                              {status === 'incomplete' && (
-                                <span title="Incomplete marks" className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
-                              )}
+                            <div
+                              className={`w-4 h-4 rounded flex items-center justify-center shrink-0 border ${
+                                selected
+                                  ? 'bg-[#0D5C3A] border-[#0D5C3A]'
+                                  : 'bg-white dark:bg-[#131314] border-[#C4C7C5] dark:border-[#3C4043]'
+                              }`}
+                            >
+                              {selected && <Check size={10} color="white" strokeWidth={3} />}
                             </div>
-                            <div className="text-[10px] text-stone-500 dark:text-stone-400 truncate tabular-nums">
-                              {enr.circular_class} · {enr.admission_number}
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <span className="text-xs font-semibold text-[#1F1F1F] dark:text-[#E3E3E3] truncate">{enr.name}</span>
+                                {status === 'complete' && (
+                                  <span title="All marks recorded" className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                                )}
+                                {status === 'incomplete' && (
+                                  <span title="Incomplete marks" className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                                )}
+                              </div>
+                              <div className="text-[10px] text-[#747775] dark:text-[#8E918F] truncate tabular-nums">
+                                {enr.circular_class} · {enr.admission_number || 'ADM'}
+                              </div>
                             </div>
-                          </div>
-                        </button>
+                          </button>
+
+                          <MoreActionsMenu
+                            items={[
+                              {
+                                label: 'Preview Report',
+                                icon: Eye,
+                                onClick: () => {
+                                  onChange({ studentIds: [enr.enrollment_id], mode: 'individual' });
+                                  onGenerate();
+                                },
+                              },
+                              {
+                                label: 'Download PDF',
+                                icon: Download,
+                                onClick: () => {
+                                  onChange({ studentIds: [enr.enrollment_id], mode: 'individual' });
+                                  if (onPrintSelected) onPrintSelected();
+                                },
+                              },
+                              {
+                                label: 'Edit Remarks',
+                                icon: MessageSquare,
+                                onClick: () => {
+                                  window.location.href = `/admin/marks?student=${enr.enrollment_id}`;
+                                },
+                              },
+                              {
+                                label: 'View Student Profile',
+                                icon: UserCheck,
+                                onClick: () => {
+                                  window.location.href = `/admin/students?search=${encodeURIComponent(enr.name)}`;
+                                },
+                              },
+                            ]}
+                            align="end"
+                          />
+                        </div>
                       );
                     })}
                     {filteredEnrollments.length === 0 && (

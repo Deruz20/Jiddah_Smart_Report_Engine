@@ -277,59 +277,61 @@ export default function AccountClient({
   };
 
   const roleBadge = profile?.canonical_role || profile?.role || "Administrator";
-  const departmentBadge = profile?.department || "All Departments";
+  const rawDept = profile?.department || "General";
+  const departmentBadge = roleBadge === "Administrator" ? "All Departments" : rawDept;
+  const displayRole = roleBadge === "Administrator" ? "Administrator (All Departments)" : `${roleBadge} (${departmentBadge})`;
   const assignedClasses = profile?.assigned_classes || [];
 
   return (
     <div className={embedded ? "space-y-5" : "max-w-[760px] w-full mx-auto space-y-5 py-6 px-4"}>
       {!embedded && (
         <div className="mb-2">
-          <h1 className="text-xl font-bold text-[#111827] dark:text-[#F3F7F5]">My Account & Security</h1>
-          <p className="text-xs text-[#6B7280] dark:text-[#9CA3AF] mt-1">
+          <h1 className="text-xl font-bold text-[#1F1F1F] dark:text-[#E3E3E3]">My Account & Security</h1>
+          <p className="text-xs text-[#747775] dark:text-[#8E918F] mt-1">
             Manage your personal profile, assigned academic scope, and account credentials.
           </p>
         </div>
       )}
 
       {/* Card 1: Role & Assigned Department/Classes Summary + Profile Form */}
-      <div className="bg-white dark:bg-[#111815] rounded-2xl border border-[#E3E8E3] dark:border-[#1E2B26] shadow-[0_1px_3px_rgba(15,41,30,0.04)] p-6">
+      <div className="bg-white dark:bg-[#1E1F20] rounded-2xl border border-[#E1E3E1] dark:border-[#282A2C] shadow-xs p-6">
         <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
           <div>
-            <h2 className="text-[15px] font-semibold text-[#111827] dark:text-[#F3F7F5]">Staff Profile & Scope</h2>
-            <p className="text-xs text-[#6B7280] dark:text-[#9CA3AF] mt-0.5">
+            <h2 className="text-[15px] font-semibold text-[#1F1F1F] dark:text-[#E3E3E3]">Staff Profile & Scope</h2>
+            <p className="text-xs text-[#747775] dark:text-[#8E918F] mt-0.5">
               Your identity, contact phone, and assigned academic permissions.
             </p>
           </div>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#E2EEE2] dark:bg-[#10B981]/15 px-3 py-1 text-xs font-semibold text-[#0D5C3A] dark:text-[#34D399]">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#E2EEE2] dark:bg-[#282A2C] px-3 py-1 text-xs font-semibold text-[#0D5C3A] dark:text-[#E3E3E3]">
             <User className="w-3.5 h-3.5" />
-            <span>{roleBadge}</span>
+            <span>{displayRole}</span>
           </span>
         </div>
 
         {/* 2-Column Summary Counters */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-xl bg-[#F8FAF8] dark:bg-[#141D1A] border border-[#E3E8E3] dark:border-[#24312C] mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-xl bg-[#F8FAFD] dark:bg-[#131314] border border-[#E1E3E1] dark:border-[#282A2C] mb-6">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-[#E2EEE2] dark:bg-[#10B981]/15 text-[#0D5C3A] dark:text-[#34D399] flex items-center justify-center shrink-0">
+            <div className="w-9 h-9 rounded-lg bg-[#E2EEE2] dark:bg-[#282A2C] text-[#0D5C3A] dark:text-[#34D399] flex items-center justify-center shrink-0">
               <Building2 className="w-4 h-4" />
             </div>
             <div>
-              <div className="text-[11px] font-medium text-[#6B7280] dark:text-[#9CA3AF] uppercase tracking-wider">
+              <div className="text-[11px] font-medium text-[#747775] dark:text-[#8E918F] uppercase tracking-wider">
                 Role & Department
               </div>
-              <div className="text-sm font-bold text-[#111827] dark:text-[#F3F7F5]">
-                {roleBadge} ({departmentBadge})
+              <div className="text-sm font-bold text-[#1F1F1F] dark:text-[#E3E3E3]">
+                {displayRole}
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-3 sm:border-l border-[#E3E8E3] dark:border-[#24312C] sm:pl-3">
-            <div className="w-9 h-9 rounded-lg bg-[#FEF3C7] dark:bg-amber-500/15 text-[#B45309] dark:text-amber-300 flex items-center justify-center shrink-0">
+          <div className="flex items-center gap-3 sm:border-l border-[#E1E3E1] dark:border-[#282A2C] sm:pl-3">
+            <div className="w-9 h-9 rounded-lg bg-[#FEF3C7] dark:bg-[#282A2C] text-[#B45309] dark:text-amber-300 flex items-center justify-center shrink-0">
               <BookOpen className="w-4 h-4" />
             </div>
             <div className="min-w-0">
-              <div className="text-[11px] font-medium text-[#6B7280] dark:text-[#9CA3AF] uppercase tracking-wider">
+              <div className="text-[11px] font-medium text-[#747775] dark:text-[#8E918F] uppercase tracking-wider">
                 Assigned Classes
               </div>
-              <div className="text-sm font-bold text-[#111827] dark:text-[#F3F7F5] truncate">
+              <div className="text-sm font-bold text-[#1F1F1F] dark:text-[#E3E3E3] truncate">
                 {assignedClasses.length > 0
                   ? assignedClasses.join(", ")
                   : roleBadge === "Administrator" || roleBadge.startsWith("DOS")
@@ -341,8 +343,8 @@ export default function AccountClient({
         </div>
 
         {/* Avatar Row */}
-        <div className="flex flex-wrap items-center gap-4 pb-5 mb-5 border-b border-[#F1F5F1] dark:border-[#1E2B26]">
-          <div className="h-16 w-16 overflow-hidden rounded-2xl bg-[#EEF3EE] dark:bg-[#141D1A] border border-[#D5DFD5] dark:border-[#24312C] shrink-0 flex items-center justify-center">
+        <div className="flex flex-wrap items-center gap-4 pb-5 mb-5 border-b border-[#E1E3E1] dark:border-[#282A2C]">
+          <div className="h-16 w-16 overflow-hidden rounded-2xl bg-[#F0F4F9] dark:bg-[#131314] border border-[#E1E3E1] dark:border-[#282A2C] shrink-0 flex items-center justify-center">
             {avatarPreview ? (
               <img src={avatarPreview} alt="Avatar preview" className="h-full w-full object-cover" />
             ) : (
@@ -352,10 +354,10 @@ export default function AccountClient({
             )}
           </div>
           <div className="flex-1 min-w-[200px]">
-            <div className="text-sm font-medium text-[#111827] dark:text-[#F3F7F5]">Profile Photo</div>
-            <p className="text-xs text-[#6B7280] dark:text-[#9CA3AF] mt-0.5">PNG, JPG, or WEBP up to 2MB.</p>
+            <div className="text-sm font-medium text-[#1F1F1F] dark:text-[#E3E3E3]">Profile Photo</div>
+            <p className="text-xs text-[#747775] dark:text-[#8E918F] mt-0.5">PNG, JPG, or WEBP up to 2MB.</p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-[#D5DFD5] dark:border-[#2A3B35] bg-white dark:bg-[#0D1412] px-3 py-1.5 text-xs font-semibold text-[#374151] dark:text-[#CBD5E1] hover:bg-[#F8FAF8] dark:hover:bg-[#16211D] transition">
+              <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-[#E1E3E1] dark:border-[#3C4043] bg-white dark:bg-[#131314] px-3 py-1.5 text-xs font-semibold text-[#1F1F1F] dark:text-[#E3E3E3] hover:bg-[#F0F4F9] dark:hover:bg-[#282A2C] transition">
                 <Camera className="h-3.5 w-3.5 text-[#0D5C3A] dark:text-[#34D399]" />
                 <span>Choose Image</span>
                 <input
@@ -370,7 +372,7 @@ export default function AccountClient({
                   type="button"
                   onClick={handleUploadAvatar}
                   disabled={avatarUploading}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-[#0D5C3A] hover:bg-[#0A472C] px-3 py-1.5 text-xs font-semibold text-white transition disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-[#0D5C3A] hover:bg-[#0A472C] dark:bg-[#34D399] dark:hover:bg-[#10B981] px-3 py-1.5 text-xs font-semibold text-white dark:text-[#131314] transition disabled:opacity-50"
                 >
                   {avatarUploading ? (
                     <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -388,7 +390,7 @@ export default function AccountClient({
         <form onSubmit={handleProfileSave} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-[#374151] dark:text-[#CBD5E1] mb-1.5">
+              <label className="block text-xs font-semibold text-[#1F1F1F] dark:text-[#CBD5E1] mb-1.5">
                 Full Name
               </label>
               <input
@@ -396,12 +398,12 @@ export default function AccountClient({
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="Enter your full name"
-                className="w-full h-10 rounded-lg border border-[#D5DFD5] dark:border-[#2A3B35] bg-white dark:bg-[#0D1412] px-3 text-sm text-[#111827] dark:text-[#F3F7F5] focus:border-[#0D5C3A] dark:focus:border-[#10B981] focus:ring-2 focus:ring-[#0D5C3A]/15 outline-none"
+                className="w-full h-10 rounded-lg border border-[#E1E3E1] dark:border-[#3C4043] bg-white dark:bg-[#131314] px-3 text-sm text-[#1F1F1F] dark:text-[#E3E3E3] focus:border-[#0D5C3A] dark:focus:border-[#A8C7FA] outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[#374151] dark:text-[#CBD5E1] mb-1.5">
+              <label className="block text-xs font-semibold text-[#1F1F1F] dark:text-[#CBD5E1] mb-1.5">
                 Official Email (Read-Only)
               </label>
               <input
@@ -409,12 +411,12 @@ export default function AccountClient({
                 value={profile?.email || userEmail || ""}
                 readOnly
                 disabled
-                className="w-full h-10 rounded-lg border border-[#E3E8E3] dark:border-[#24312C] bg-[#F8FAF8] dark:bg-[#141D1A] px-3 text-sm text-[#4B5563] dark:text-[#D1DBD6] cursor-not-allowed"
+                className="w-full h-10 rounded-lg border border-[#E1E3E1] dark:border-[#3C4043] bg-[#F8FAFD] dark:bg-[#131314] px-3 text-sm text-[#444746] dark:text-[#E3E3E3] cursor-not-allowed"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[#374151] dark:text-[#CBD5E1] mb-1.5">
+              <label className="block text-xs font-semibold text-[#1F1F1F] dark:text-[#CBD5E1] mb-1.5">
                 Phone Number
               </label>
               <input
@@ -422,20 +424,20 @@ export default function AccountClient({
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="+256 700 000000"
-                className="w-full h-10 rounded-lg border border-[#D5DFD5] dark:border-[#2A3B35] bg-white dark:bg-[#0D1412] px-3 text-sm text-[#111827] dark:text-[#F3F7F5] focus:border-[#0D5C3A] dark:focus:border-[#10B981] focus:ring-2 focus:ring-[#0D5C3A]/15 outline-none"
+                className="w-full h-10 rounded-lg border border-[#E1E3E1] dark:border-[#3C4043] bg-white dark:bg-[#131314] px-3 text-sm text-[#1F1F1F] dark:text-[#E3E3E3] focus:border-[#0D5C3A] dark:focus:border-[#A8C7FA] outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[#374151] dark:text-[#CBD5E1] mb-1.5">
+              <label className="block text-xs font-semibold text-[#1F1F1F] dark:text-[#CBD5E1] mb-1.5">
                 Assigned Role
               </label>
               <input
                 type="text"
-                value={`${roleBadge} (${departmentBadge})`}
+                value={displayRole}
                 readOnly
                 disabled
-                className="w-full h-10 rounded-lg border border-[#E3E8E3] dark:border-[#24312C] bg-[#F8FAF8] dark:bg-[#141D1A] px-3 text-sm text-[#4B5563] dark:text-[#D1DBD6] cursor-not-allowed"
+                className="w-full h-10 rounded-lg border border-[#E1E3E1] dark:border-[#3C4043] bg-[#F8FAFD] dark:bg-[#131314] px-3 text-sm text-[#444746] dark:text-[#E3E3E3] cursor-not-allowed"
               />
             </div>
           </div>

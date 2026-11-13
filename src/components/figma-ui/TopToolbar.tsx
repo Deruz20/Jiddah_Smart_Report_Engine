@@ -1,8 +1,9 @@
 import { motion, AnimatePresence } from 'motion/react';
-import { Download, Printer, Share2, Search, X, LayoutGrid, List, PanelTop, Sliders } from 'lucide-react';
+import { Download, Printer, Share2, Search, X, LayoutGrid, List, PanelTop, Sliders, FileSpreadsheet, Settings, History } from 'lucide-react';
 import Link from 'next/link';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+import { MoreActionsMenu } from '@/components/ui/more-actions-menu';
 
 interface TopToolbarProps {
   searchOpen?: boolean;
@@ -169,73 +170,73 @@ export function TopToolbar({
                 </DropdownMenu.Content>
               </DropdownMenu.Portal>
             </DropdownMenu.Root>
-          ) : onPrint || onBatchPrint ? (
-            <div className="flex gap-1.5">
-              {onPrint && (
-                <IconBtn
-                  icon={<Printer size={16} />}
-                  tooltip="Print Current"
-                  onClick={onPrint}
-                  disabled={reportCount === 0 && !title}
-                />
-              )}
-              {onBatchPrint && (
-                <IconBtn
-                  icon={
-                    <div className="relative flex items-center justify-center">
-                      <Printer size={16} />
-                      <div
-                        className="absolute -bottom-1 -right-1 bg-amber-600 rounded-full text-white"
-                        style={{ fontSize: '9px', padding: '1px 3px', fontWeight: 'bold', lineHeight: 1 }}
-                      >
-                        All
-                      </div>
-                    </div>
-                  }
-                  tooltip="Batch Print All Classes"
-                  onClick={onBatchPrint}
-                  disabled={reportCount === 0 && !title}
-                />
-              )}
-            </div>
           ) : null}
 
-          {/* Report Studio */}
-          {!title && (
-            <div className="hidden sm:block flex-shrink-0">
-              <Link
-                href="/admin/reports/studio"
-                className="flex items-center gap-1.5 px-3 min-h-[40px] rounded-xl text-xs font-semibold bg-emerald-50 text-[#059669] border border-emerald-200 hover:bg-emerald-100 transition shadow-xs"
-                title="Open Report Studio to position stamps/signatures and preview customizations"
-              >
-                <Sliders size={14} />
-                <span>Report Studio</span>
-              </Link>
-            </div>
+          {/* 1-Click Print Pill */}
+          {onPrint && (
+            <button
+              type="button"
+              onClick={onPrint}
+              disabled={reportCount === 0 && !title}
+              className="h-9 px-4 rounded-full bg-[#0D5C3A] hover:bg-[#0A4A2F] dark:bg-[#34D399] dark:hover:bg-[#10B981] text-white dark:text-[#131314] text-xs font-semibold inline-flex items-center gap-2 shadow-xs transition-colors disabled:opacity-40 cursor-pointer"
+            >
+              <Printer className="size-4" />
+              <span>Print</span>
+            </button>
           )}
 
-          {/* Share */}
-          {onShare && (
-            <div className="hidden md:block flex-shrink-0">
-              <IconBtn
-                icon={<Share2 size={16} />}
-                tooltip="Share link"
-                onClick={onShare}
-                disabled={reportCount === 0 && !title}
-              />
-            </div>
-          )}
-
-          {/* Toggle App Header */}
-          <div className="hidden lg:block flex-shrink-0">
-            <IconBtn
-              icon={<PanelTop size={16} />}
-              tooltip="Toggle App Header"
-              onClick={() => window.dispatchEvent(new CustomEvent('toggle-topbar'))}
-            />
-          </div>
-
-          <div className="w-px h-5 bg-stone-200 mx-0.5" />
+          {/* Secondary Tools in More Actions Menu */}
+          <MoreActionsMenu
+            items={[
+              {
+                label: 'Report Studio 2.0',
+                icon: Sliders,
+                onClick: () => {
+                  window.location.href = '/admin/reports/studio';
+                },
+              },
+              {
+                label: 'Export Broadsheet',
+                icon: FileSpreadsheet,
+                onClick: () => {
+                  window.location.href = '/admin/secular-hub';
+                },
+              },
+              {
+                label: 'Batch Settings',
+                icon: Settings,
+                onClick: () => {
+                  window.location.href = '/admin/settings';
+                },
+              },
+              {
+                label: 'Audit & Activity',
+                icon: History,
+                onClick: () => {
+                  window.location.href = '/admin/activity';
+                },
+              },
+              ...(onBatchPrint
+                ? [
+                    {
+                      label: 'Batch Print All Classes',
+                      icon: Printer,
+                      onClick: onBatchPrint,
+                    },
+                  ]
+                : []),
+              ...(onShare
+                ? [
+                    {
+                      label: 'Share Link',
+                      icon: Share2,
+                      onClick: onShare,
+                    },
+                  ]
+                : []),
+            ]}
+            align="end"
+          />
 
           {/* Filter toggle */}
           <div className="flex-shrink-0">

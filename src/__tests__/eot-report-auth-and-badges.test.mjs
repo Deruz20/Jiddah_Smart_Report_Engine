@@ -74,6 +74,13 @@ describe('Branding & Default School Names', () => {
 });
 
 describe('Report Badge Styling & Shape Preservation', () => {
+  test('PrimaryMOTReport includes Division and MOT aggregate in the pupil details section', () => {
+    const mot = fs.readFileSync('src/components/reports/PrimaryMOTReport.tsx', 'utf8');
+    assert.equal(mot.includes('Division:'), true);
+    assert.equal(mot.includes('AGG:'), true);
+    assert.equal(mot.includes('reportData?.circular?.mot_aggregate'), true);
+  });
+
   test('PrimaryMOTReport and PrimaryBOTReport do not force circular 50% border-radius on badge', () => {
     const mot = fs.readFileSync('src/components/reports/PrimaryMOTReport.tsx', 'utf8');
     const bot = fs.readFileSync('src/components/reports/PrimaryBOTReport.tsx', 'utf8');

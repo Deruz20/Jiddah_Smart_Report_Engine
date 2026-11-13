@@ -274,12 +274,12 @@
 
 @page hub-portrait-page {
   size: A4 portrait;
-  margin: 10mm;
+  margin: 8mm;
 }
 
 @page hub-landscape-page {
   size: A4 landscape;
-  margin: 10mm;
+  margin: 8mm;
 }
 
 /* Assign named @page to report containers by orientation attribute */

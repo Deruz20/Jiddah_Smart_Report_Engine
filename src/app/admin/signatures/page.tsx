@@ -1,12 +1,15 @@
-import { createClient } from '@/utils/supabase/server'
+import { createAdminClient, createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import SignaturesClient from '@/components/layout/signatures-client'
+import { verifyDataAccess } from '@/lib/auth-server'
+import {
+  getDynamicSignatureSlots,
+  getLatestSignatureObjectNameForSlot,
+} from '@/utils/signatures'
 
 export const dynamic = "force-dynamic";
 
 const BUCKET = 'signatures'
-
-import { getDynamicSignatureSlots } from '@/utils/signatures'
 
 function buildPublicUrl(supabase: ReturnType<typeof createClient>, filePath: string) {
   const { data } = supabase.storage.from(BUCKET).getPublicUrl(filePath)
@@ -17,25 +20,46 @@ export default async function SignaturesPage() {
   const cookieStore = await cookies()
   const supabase = createClient(cookieStore)
 
-  const SIGNATURE_SLOTS = await getDynamicSignatureSlots(supabase)
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) {
+    return <main role="alert">Sign in to manage official report images.</main>
+  }
 
-  const { data: objects, error } = await supabase.storage.from(BUCKET).list('', { limit: 1000 })
+  const access = await verifyDataAccess(supabase, user, 'read')
+  if (!access.isAuthorized || access.canonicalRole !== 'Administrator') {
+    return <main role="alert">Only administrators may manage official report images.</main>
+  }
+
+  const admin = createAdminClient()
+  const SIGNATURE_SLOTS = await getDynamicSignatureSlots(admin)
+  const storage = admin.storage.from(BUCKET)
+  const [activeResult, disabledResult] = await Promise.all([
+    storage.list('', { limit: 1000 }),
+    storage.list('disabled', { limit: 1000 }),
+  ])
+  if (activeResult.error || disabledResult.error) {
+    throw new Error(`Unable to load stored report images: ${activeResult.error?.message ?? disabledResult.error?.message}`)
+  }
   
-  const uploadedBySlot = new Map<string, string>()
-  for (const object of objects ?? []) {
-    const matchingSlot = SIGNATURE_SLOTS.find((slot) => object.name.startsWith(`${slot.slot_key}.`))
-    if (matchingSlot && !uploadedBySlot.has(matchingSlot.slot_key)) {
-      uploadedBySlot.set(matchingSlot.slot_key, object.name)
-    }
+  const activeBySlot = new Map<string, string>()
+  const disabledBySlot = new Map<string, string>()
+  for (const slot of SIGNATURE_SLOTS) {
+    const activePath = getLatestSignatureObjectNameForSlot(activeResult.data ?? [], slot.slot_key)
+    const disabledPath = getLatestSignatureObjectNameForSlot(disabledResult.data ?? [], slot.slot_key)
+    if (activePath) activeBySlot.set(slot.slot_key, activePath)
+    if (disabledPath) disabledBySlot.set(slot.slot_key, disabledPath)
   }
 
   const slots = SIGNATURE_SLOTS.map((slot) => {
-    const fileName = uploadedBySlot.get(slot.slot_key)
-    const public_url = fileName ? buildPublicUrl(supabase, fileName) : null
+    const activePath = activeBySlot.get(slot.slot_key)
+    const disabledPath = disabledBySlot.get(slot.slot_key)
+    const filePath = activePath ?? (disabledPath ? `disabled/${disabledPath}` : null)
+    const public_url = filePath ? buildPublicUrl(admin, filePath) : null
     return {
       ...slot,
       public_url,
       uploaded: Boolean(public_url),
+      active: Boolean(activePath),
     }
   })
 

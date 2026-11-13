@@ -16,7 +16,7 @@
 
 import React from 'react'
 import { STABILIZED_REPORT_ORIENTATIONS } from '@/lib/report-constants'
-import { getFontVariables } from '@/lib/fonts'
+import { getFontCssVars, getFontVariables } from '@/lib/fonts'
 import { getThemeColors } from '@/lib/themes'
 import type { ReportContainerProps } from '@/types/report'
 
@@ -47,9 +47,11 @@ export const ReportContainer: React.FC<ReportContainerProps> = ({
   const pageOrientation = dimensions.pageOrientation
   const theme = getThemeColors(themePreset)
   const fontVars = getFontVariables(primaryFont, arabicFont)
+  const fontCssVars = getFontCssVars(primaryFont, arabicFont)
 
   // Inline styles with exact dimensions from constants
   const containerStyle: React.CSSProperties & Record<string, any> = {
+    ...fontCssVars,
     width: `${dimensions.width}px`,
     height: `${dimensions.height}px`,
     position: 'relative',

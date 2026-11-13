@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Bell, Trash2, AlertCircle, FileText, Users, Upload, Settings, Activity, CheckCheck } from "lucide-react";
+import { Bell, Trash2, AlertCircle, FileText, Users, Upload, Settings, Activity, CheckCheck, Check } from "lucide-react";
+import { MoreActionsMenu } from "@/components/ui/more-actions-menu";
 import { toast } from "sonner";
 
 function formatRelativeTime(dateString: string) {
@@ -339,30 +340,27 @@ export default function NotificationsClient({
                           {formatRelativeTime(notif.time)}
                         </p>
                       </div>
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        {!notif.read && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              markRead(notif.id);
-                            }}
-                            className="min-h-[44px] px-3 py-1.5 rounded-xl text-xs font-semibold text-emerald-800 hover:bg-emerald-100/70 transition-colors cursor-pointer"
-                          >
-                            Mark read
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          aria-label="Delete notification"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteNotif(notif.id);
-                          }}
-                          className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl hover:bg-rose-50 text-stone-400 hover:text-rose-600 transition-colors cursor-pointer"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                      <div className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                        <MoreActionsMenu
+                          items={[
+                            ...(!notif.read
+                              ? [
+                                  {
+                                    label: "Mark as read",
+                                    icon: Check,
+                                    onClick: () => markRead(notif.id),
+                                  },
+                                ]
+                              : []),
+                            {
+                              label: "Delete",
+                              icon: Trash2,
+                              destructive: true,
+                              onClick: () => deleteNotif(notif.id),
+                            },
+                          ]}
+                          align="end"
+                        />
                       </div>
                     </div>
                   </div>

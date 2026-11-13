@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useMemo, useDeferredValue, useEffect } from 'react';
-import { Search, Filter, Download, ChevronDown, ChevronUp, ChevronsUpDown, UserX, Edit2, Archive, RotateCcw, Trash2 } from 'lucide-react';
+import { Search, Filter, Download, ChevronDown, ChevronUp, ChevronsUpDown, UserX, Edit2, Archive, RotateCcw, Trash2, User, FileText, ArrowRightLeft } from 'lucide-react';
+import { MoreActionsMenu } from '@/components/ui/more-actions-menu';
 import { Badge } from './figma-ui/Badge';
 import { EditStudentModal } from './EditStudentModal';
 import { ConfirmDestructiveDialog } from '@/components/ui/confirm-destructive-dialog';
@@ -380,43 +381,44 @@ export function StudentsListClient({ students, department }: StudentsTableProps)
                   </div>
                 </td>
                 <td className="px-2 sm:px-3 py-2.5 whitespace-nowrap text-right">
-                  <div className="inline-flex items-center justify-end gap-1">
-                    <button 
-                      type="button"
-                      onClick={() => setEditingStudent(student)}
-                      className="text-stone-400 hover:text-blue-600 transition-colors p-1.5 rounded-lg hover:bg-blue-50 cursor-pointer"
-                      title="Edit Student"
-                    >
-                      <Edit2 size={14} />
-                    </button>
-                    {student.is_archived ? (
-                      <button 
-                        type="button"
-                        onClick={() => handleRestore(student)}
-                        className="text-stone-400 hover:text-emerald-600 transition-colors p-1.5 rounded-lg hover:bg-emerald-50 cursor-pointer"
-                        title="Restore Student"
-                      >
-                        <RotateCcw size={14} />
-                      </button>
-                    ) : (
-                      <button 
-                        type="button"
-                        onClick={() => handleArchive(student)}
-                        className="text-stone-400 hover:text-amber-600 transition-colors p-1.5 rounded-lg hover:bg-amber-50 cursor-pointer"
-                        title="Archive Student"
-                      >
-                        <Archive size={14} />
-                      </button>
-                    )}
-                    <button 
-                      type="button"
-                      onClick={() => handleHardDelete(student)}
-                      className="text-stone-400 hover:text-rose-600 transition-colors p-1.5 rounded-lg hover:bg-rose-50 cursor-pointer"
-                      title="Permanently Delete Student"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
+                  <MoreActionsMenu
+                    items={[
+                      {
+                        label: 'View Profile',
+                        icon: User,
+                        onClick: () => setEditingStudent(student),
+                      },
+                      {
+                        label: 'Edit Details',
+                        icon: Edit2,
+                        onClick: () => setEditingStudent(student),
+                      },
+                      {
+                        label: 'Print Report Card',
+                        icon: FileText,
+                        onClick: () => {
+                          window.location.href = `/admin/reports?student=${student.id}`;
+                        },
+                      },
+                      {
+                        label: 'Transfer Class',
+                        icon: ArrowRightLeft,
+                        onClick: () => setEditingStudent(student),
+                      },
+                      {
+                        label: student.is_archived ? 'Restore Student' : 'Archive Student',
+                        icon: student.is_archived ? RotateCcw : Archive,
+                        onClick: () => (student.is_archived ? handleRestore(student) : handleArchive(student)),
+                      },
+                      {
+                        label: 'Remove',
+                        icon: Trash2,
+                        destructive: true,
+                        onClick: () => handleHardDelete(student),
+                      },
+                    ]}
+                    align="end"
+                  />
                 </td>
               </tr>
             ))}

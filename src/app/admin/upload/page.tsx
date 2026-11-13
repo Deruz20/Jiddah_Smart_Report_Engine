@@ -19,7 +19,7 @@ export default async function UploadPage() {
   const cookieStore = await cookies()
   const supabase = createClient(cookieStore)
 
-  const { data: objects, error } = await supabase.storage.from(BUCKET).list('', { limit: 1000 })
+  const { data: objects } = await supabase.storage.from(BUCKET).list('', { limit: 1000 })
   
   const files = (objects ?? []).map((object) => {
     const { data } = supabase.storage.from(BUCKET).getPublicUrl(object.name)
@@ -39,7 +39,7 @@ export default async function UploadPage() {
   })
 
   return (
-    <div className="w-full h-full bg-slate-50 dark:bg-[#0f172a]">
+    <div className="w-full min-h-screen bg-[var(--bg-canvas)]">
       <UploadClient initialFiles={files} />
     </div>
   )

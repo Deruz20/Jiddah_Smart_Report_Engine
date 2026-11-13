@@ -47,9 +47,9 @@ const POPOVER_MOTION = {
   transition: POPOVER_TRANSITION,
 };
 const POPOVER_SURFACE =
-  "absolute right-0 top-full z-50 mt-2 origin-top-right overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--bg-card)] text-[var(--text-primary)] shadow-xl";
+  "absolute right-0 top-full z-50 mt-2 origin-top-right overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] text-[var(--text-primary)] shadow-[0_8px_24px_rgba(0,0,0,0.12)] dark:shadow-[0_12px_32px_rgba(0,0,0,0.55)]";
 const ICON_BUTTON =
-  "relative grid size-9 shrink-0 cursor-pointer place-items-center rounded-lg text-[var(--text-secondary)] outline-none transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-emerald-500";
+  "relative grid size-9 shrink-0 cursor-pointer place-items-center rounded-full text-[var(--text-secondary)] outline-none transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[#0D5C3A] dark:focus-visible:ring-[#34D399]";
 
 const ROUTE_LABELS: Record<string, string> = {
   "/admin": "Dashboard",
@@ -629,7 +629,7 @@ export function AppTopbar({ breadcrumbs, currentPage }: AppTopbarProps) {
               type="button"
               onClick={() => setPaletteOpen(true)}
               aria-label="Search pages and actions"
-              className="hidden h-9 w-64 cursor-pointer items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-sunken)] px-3 text-left text-[13px] text-[var(--text-muted)] outline-none transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text-secondary)] focus-visible:ring-2 focus-visible:ring-emerald-500 lg:flex"
+              className="hidden h-9 w-64 cursor-pointer items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--bg-sunken)] px-3 text-left text-[13px] text-[var(--text-muted)] outline-none transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text-secondary)] focus-visible:ring-2 focus-visible:ring-[#0D5C3A] dark:focus-visible:ring-[#34D399] lg:flex"
             >
               <Search className="size-4 shrink-0" strokeWidth={1.75} />
               <span className="flex-1 truncate">Search pages and actions</span>

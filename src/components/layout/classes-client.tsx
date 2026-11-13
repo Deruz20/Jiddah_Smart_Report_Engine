@@ -3,7 +3,8 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
-import { Plus, Edit, Trash2, BookMarked, Search } from "lucide-react";
+import { Plus, Edit, Trash2, BookMarked, Search, Eye, FileText, ArrowRightLeft } from "lucide-react";
+import { MoreActionsMenu } from "@/components/ui/more-actions-menu";
 import { toast } from "sonner";
 import { HeroSection } from "@/components/HeroSection";
 import { Button } from "@/components/figma-ui/ui/button";
@@ -215,13 +216,44 @@ export default function ClassesClient({
                   </Link>
 
                   {canManageClasses && cls.track !== "theology" && (
-                    <div className="flex items-center justify-end gap-1.5 mt-4 pt-3 border-t border-[#E4EAE6]/70 dark:border-[#1E2B26]">
-                      <Button variant="ghost" size="icon" onClick={(e) => { e.preventDefault(); openEdit(cls); }} className="h-8 w-8 text-gray-500 hover:text-[#065F46] hover:bg-[#065F46]/10 rounded-lg">
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={(e) => { e.preventDefault(); openDelete(cls); }} className="h-8 w-8 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg">
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                    <div className="flex items-center justify-end mt-4 pt-3 border-t border-[#E4EAE6]/70 dark:border-[#1E2B26]">
+                      <MoreActionsMenu
+                        items={[
+                          {
+                            label: "View Dashboard",
+                            icon: Eye,
+                            onClick: () => {
+                              window.location.href = `/admin/classes/${cls.id}`;
+                            },
+                          },
+                          {
+                            label: "Edit Class",
+                            icon: Edit,
+                            onClick: () => openEdit(cls),
+                          },
+                          {
+                            label: "Print Class Roster",
+                            icon: FileText,
+                            onClick: () => {
+                              window.location.href = `/admin/classes/${cls.id}`;
+                            },
+                          },
+                          {
+                            label: "Assign Teacher",
+                            icon: ArrowRightLeft,
+                            onClick: () => {
+                              window.location.href = `/admin/classes/${cls.id}`;
+                            },
+                          },
+                          {
+                            label: "Remove Class",
+                            icon: Trash2,
+                            destructive: true,
+                            onClick: () => openDelete(cls),
+                          },
+                        ]}
+                        align="end"
+                      />
                     </div>
                   )}
                 </motion.div>

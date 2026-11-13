@@ -714,12 +714,12 @@ export function SharedMarksEntry({
               fieldError
                 ? 'border-rose-500 bg-rose-500/10 text-rose-700 dark:text-rose-300 focus:ring-rose-500/25'
                 : isDirty
-                ? 'border-[#D97706] ring-2 ring-[#D97706]/40 dark:ring-[#F59E0B]/50 bg-amber-500/10 text-[var(--text-primary)]'
+                ? 'border-[#D97706] ring-2 ring-[#D97706]/40 dark:ring-[#F59E0B]/50 bg-amber-500/10 text-[var(--text-primary)] font-bold'
                 : isHigh
-                ? 'border-[#0D5C3A]/25 dark:border-[#34D399]/30 bg-emerald-500/10 text-[#0D5C3A] dark:text-[#34D399] focus:border-[#0D5C3A]'
-                : isLow
-                ? 'border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200 focus:border-amber-600'
-                : 'border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 bg-[#F0F4F9] dark:bg-[#131314] text-[#1F1F1F] dark:text-[#E3E3E3] focus:bg-white dark:focus:bg-[#1E1F20] focus:ring-[#0D5C3A]/30 dark:focus:ring-[#F59E0B]/30'
+                ? 'bg-[#0D5C3A]/[0.06] dark:bg-[#10B981]/[0.12] border-[#0D5C3A]/30 dark:border-[#34D399]/40 text-[#093D26] dark:text-[#ECFDF5] font-bold focus:ring-[#EA580C]/35 focus:border-[#EA580C]'
+                : hasScore
+                ? 'bg-[#0D5C3A]/[0.04] dark:bg-[#10B981]/[0.08] border-[#0D5C3A]/25 dark:border-[#10B981]/30 text-[#093D26] dark:text-[#ECFDF5] font-bold focus:ring-[#EA580C]/35 focus:border-[#EA580C]'
+                : 'bg-[#F8FAFC] dark:bg-[#131314] border-dashed border-[#CBD5E1] dark:border-[#334155] text-[var(--text-primary)] focus:bg-white dark:focus:bg-[#1E1F20] focus:ring-[#EA580C]/35 focus:border-[#EA580C]'
             }`}
           />
           {badge && (
@@ -791,7 +791,7 @@ export function SharedMarksEntry({
   )
 
   return (
-    <div className="w-full max-w-full min-w-0 space-y-2 pb-4 md:pb-2">
+    <div className="w-full max-w-full min-w-0 space-y-2 pb-2 md:pb-1">
       <style>{`
         input[type="number"].score-input::-webkit-inner-spin-button,
         input[type="number"].score-input::-webkit-outer-spin-button {
@@ -805,13 +805,11 @@ export function SharedMarksEntry({
 
       <form id="shared-marks-form" onSubmit={handleFormSubmit} className="space-y-2 w-full min-w-0">
         {/* =========================================================================
-            ZONE 1: Single-Line Top Control Bar
-            Desktop: Single auto-fitting row with overflow-hidden
-            Mobile (< md): Auto-fitted 2-row layout with zero horizontal scrollbar
+            ZONE 1 (Desktop >= md): Single-Line Top Control Bar
+            Non-sticky, sits in normal document flow so it never overlaps Zone 2
             ========================================================================= */}
-        <div className="sticky top-2 z-30 bg-white/95 dark:bg-[#1E1F20]/95 backdrop-blur-sm border border-[#0D5C3A]/10 dark:border-[#F59E0B]/12 rounded-2xl px-2.5 sm:px-3 py-1.5 sm:py-2 shadow-2xs w-full min-w-0 overflow-hidden">
-          {/* Desktop Single-Row (>= md) */}
-          <div className="hidden md:flex items-center justify-between gap-1.5 lg:gap-2 w-full flex-nowrap">
+        <div className="hidden md:block bg-white/95 dark:bg-[#1E1F20]/95 backdrop-blur-sm border border-[#0D5C3A]/10 dark:border-[#F59E0B]/12 rounded-2xl px-2.5 sm:px-3 py-1.5 sm:py-2 shadow-2xs w-full min-w-0 overflow-hidden">
+          <div className="flex items-center justify-between gap-1.5 lg:gap-2 w-full flex-nowrap">
             {/* Left Group */}
             <div className="flex items-center gap-1.5 lg:gap-2 shrink min-w-0">
               {/* Class Selector Pill */}
@@ -997,11 +995,18 @@ export function SharedMarksEntry({
               <MoreActionsMenu items={moreActionsItems} align="end" />
             </div>
           </div>
+        </div>
 
-          {/* Mobile Auto-Fitted 2-Row Layout (< md) */}
-          <div className="flex md:hidden flex-col gap-1.5 w-full">
-            {/* Row 1: Class + Quick Search + Subject Filter + More Actions */}
-            <div className="flex items-center gap-1.5 w-full">
+        {/* =========================================================================
+            MOBILE DEDICATED ARCHITECTURE (< md)
+            Card A: Active Student & Class Hero Card (Gradient Accent)
+            Card B: 2-Track Phase & Department Switcher (Equal-Width Grid)
+            ========================================================================= */}
+        <div className="flex md:hidden flex-col gap-2 w-full min-w-0">
+          {/* Mobile Card A: Active Student & Class Hero Card */}
+          <div className="bg-gradient-to-r from-[#093D26] via-[#0D5C3A] to-[#136B43] dark:from-[#0F291E] dark:via-[#143829] dark:to-[#1E2923] text-white rounded-2xl p-3 shadow-[0_6px_20px_-4px_rgba(13,92,58,0.28)] border border-[#D97706]/30 flex flex-col gap-2 w-full min-w-0">
+            {/* Row 1: Class Pill + Search Student Input + More Actions */}
+            <div className="flex items-center gap-2 w-full">
               {/* Class Pill */}
               <select
                 aria-label="Class Filter Mobile"
@@ -1017,20 +1022,20 @@ export function SharedMarksEntry({
                     onSelectEnrollment(matching[0].id)
                   }
                 }}
-                className="h-8 rounded-full bg-[#F0F4F9] dark:bg-[#131314] text-[#1F1F1F] dark:text-[#E3E3E3] border-0 px-2 text-xs font-semibold w-[115px] shrink-0 truncate cursor-pointer"
+                className="h-8 rounded-full bg-white/15 hover:bg-white/20 text-white border border-white/20 px-2.5 text-xs font-semibold w-[110px] shrink-0 truncate cursor-pointer outline-none"
               >
-                <option value="all">All ({enrollments.length})</option>
+                <option value="all" className="text-[#1F1F1F] bg-white">All ({enrollments.length})</option>
                 {classOptions.map((cls) => (
-                  <option key={cls} value={cls}>
+                  <option key={cls} value={cls} className="text-[#1F1F1F] bg-white">
                     {cls}
                   </option>
                 ))}
               </select>
 
-              {/* Quick Search */}
+              {/* Quick Search Student Input */}
               <div ref={mobileSearchBoxRef} className="relative flex-1 min-w-0">
                 <div className="relative flex items-center">
-                  <Search className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500 absolute left-2 pointer-events-none" />
+                  <Search className="w-3.5 h-3.5 text-white/70 absolute left-2.5 pointer-events-none" />
                   <input
                     type="text"
                     value={studentSearchQuery}
@@ -1040,8 +1045,8 @@ export function SharedMarksEntry({
                       setStudentSearchQuery(q)
                       setSearchDropdownOpen(true)
                     }}
-                    placeholder="Search..."
-                    className="w-full h-8 pl-6.5 pr-6 text-xs font-medium rounded-full bg-[#F0F4F9] dark:bg-[#131314] text-[#1F1F1F] dark:text-[#E3E3E3] placeholder:text-stone-400 border-0 outline-none"
+                    placeholder="Search student..."
+                    className="w-full h-8 pl-7.5 pr-6 text-xs font-medium rounded-full bg-white/15 hover:bg-white/20 text-white placeholder:text-white/60 border border-white/20 outline-none"
                   />
                   {studentSearchQuery && (
                     <button
@@ -1051,7 +1056,7 @@ export function SharedMarksEntry({
                         setStudentSearchQuery('')
                         setSearchDropdownOpen(false)
                       }}
-                      className="absolute right-1.5 p-0.5 text-stone-400 rounded-full cursor-pointer"
+                      className="absolute right-1.5 p-0.5 text-white/80 hover:text-white rounded-full cursor-pointer"
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -1059,7 +1064,7 @@ export function SharedMarksEntry({
                 </div>
 
                 {searchDropdownOpen && (
-                  <div className="absolute left-0 right-0 top-full mt-1.5 max-h-64 overflow-y-auto bg-white dark:bg-[#1E1F20] border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 rounded-2xl shadow-xl z-50 divide-y divide-[#0D5C3A]/[0.06] dark:divide-[#F59E0B]/[0.07]">
+                  <div className="absolute left-0 right-0 top-full mt-1.5 max-h-64 overflow-y-auto bg-white dark:bg-[#1E1F20] text-[#1F1F1F] dark:text-[#E3E3E3] border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 rounded-2xl shadow-xl z-50 divide-y divide-[#0D5C3A]/[0.06] dark:divide-[#F59E0B]/[0.07]">
                     {filteredEnrollments.length === 0 ? (
                       <div className="px-3 py-2 text-xs text-stone-400 text-center">
                         No matches
@@ -1084,7 +1089,7 @@ export function SharedMarksEntry({
                           >
                             <div className="min-w-0">
                               <div className="truncate font-semibold">{s.name}</div>
-                              <div className="text-[10px] text-stone-500 truncate">{s.circular_class}</div>
+                              <div className="text-[10px] text-stone-500 dark:text-stone-400 truncate">{s.circular_class}</div>
                             </div>
                           </button>
                         )
@@ -1094,80 +1099,139 @@ export function SharedMarksEntry({
                 )}
               </div>
 
-              {/* Subject Pill (mobile) */}
-              {circularMarks.length > 0 && (
-                <select
-                  aria-label="Subject Filter Mobile"
-                  value={selectedSubjectFilter}
-                  onChange={(e) => setSelectedSubjectFilter(e.target.value)}
-                  className="h-8 rounded-full bg-[#F0F4F9] dark:bg-[#131314] text-[#1F1F1F] dark:text-[#E3E3E3] border-0 px-2 text-xs font-medium w-[100px] shrink-0 truncate cursor-pointer"
-                >
-                  <option value="all">Subjects ({circularMarks.length})</option>
-                  {circularMarks.map((m) => (
-                    <option key={m.subject_id} value={m.subject_id}>
-                      {m.subject_name}
-                    </option>
-                  ))}
-                </select>
-              )}
-
-              {/* More Actions Circle (mobile) */}
-              <MoreActionsMenu items={moreActionsItems} align="end" />
+              {/* More Actions Circle */}
+              <MoreActionsMenu
+                items={moreActionsItems}
+                triggerClassName="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center shrink-0 cursor-pointer border border-white/20 transition-colors"
+                align="end"
+              />
             </div>
 
-            {/* Row 2: Term + Exam Phase + Department View */}
-            <div className="flex items-center gap-1.5 w-full justify-between">
-              {/* Term */}
-              <div
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#0D5C3A]/8 text-[#0D5C3A] dark:bg-[#10B981]/15 dark:text-[#34D399] font-semibold text-xs border border-[#0D5C3A]/15 dark:border-[#10B981]/25 select-none shrink-0"
-              >
-                <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                <span className="whitespace-nowrap">
-                  {activeTerm ? activeTerm.label : 'Term 3'}
-                </span>
+            {/* Row 2: Avatar + Full-Width Student Select + Stepper Buttons (< >) */}
+            <div className="flex items-center gap-1.5 w-full pt-0.5">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#F59E0B] to-[#EA580C] text-white font-bold flex items-center justify-center shrink-0 text-xs shadow-xs">
+                {selectedEnrollment?.name?.charAt(0).toUpperCase() || 'S'}
               </div>
 
-              {/* Phase Track */}
-              <div className="inline-flex items-center bg-[#F0F4F9] dark:bg-[#131314] p-0.5 rounded-full border-0 gap-0.5 shrink-0">
-                {(['bot', 'mot', 'eot', 'all'] as ExamType[]).map((type) => (
+              <select
+                aria-label="Student Mobile Select"
+                value={selectedEnrollmentId}
+                onChange={(e) => {
+                  onSelectEnrollment(e.target.value)
+                  setSuccess(false)
+                }}
+                className="h-8 rounded-full bg-white/15 hover:bg-white/22 text-white border border-white/20 px-3 text-xs font-semibold flex-1 min-w-0 truncate cursor-pointer outline-none"
+              >
+                <option value="" className="text-[#1F1F1F] bg-white">Select student...</option>
+                {filteredEnrollments.map((s) => (
+                  <option key={s.id} value={s.id} className="text-[#1F1F1F] bg-white">
+                    {s.name} ({s.circular_class})
+                  </option>
+                ))}
+              </select>
+
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => handleStepStudent(-1)}
+                  disabled={filteredEnrollments.length <= 1}
+                  title="Previous student"
+                  aria-label="Previous student"
+                  className="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 text-white border border-white/20 flex items-center justify-center active:scale-95 disabled:opacity-40 cursor-pointer shrink-0 transition"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleStepStudent(1)}
+                  disabled={filteredEnrollments.length <= 1}
+                  title="Next student"
+                  aria-label="Next student"
+                  className="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 text-white border border-white/20 flex items-center justify-center active:scale-95 disabled:opacity-40 cursor-pointer shrink-0 transition"
+                >
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Row 3: Position & Stats on Left | Arabic Name on Right */}
+            <div className="flex items-center justify-between text-xs pt-0.5 text-white/90 border-t border-white/15">
+              <div className="flex items-center gap-1.5 truncate text-[11px] font-medium">
+                {currentStudentIndex !== -1 && (
+                  <span className="font-mono text-white/80 shrink-0">
+                    {currentStudentIndex + 1} of {filteredEnrollments.length}
+                  </span>
+                )}
+                {liveSummary.totalSubjects > 0 && (
+                  <>
+                    <span>&bull;</span>
+                    <span className="tabular-nums">
+                      {liveSummary.columnLabel}: {liveSummary.scoredCount}/{liveSummary.totalSubjects} &bull; Avg {liveSummary.avg}%
+                    </span>
+                  </>
+                )}
+              </div>
+
+              {selectedEnrollment?.theology_class_arabic && (
+                <div className="flex items-center gap-1.5 shrink-0 ml-auto" dir="rtl">
+                  <span className="text-xs font-bold text-white">
+                    {selectedEnrollment.arabic_name || selectedEnrollment.name}
+                  </span>
+                  <span className="bg-[#F59E0B]/25 text-[#FEF3C7] border border-[#F59E0B]/40 rounded-full px-2 py-0.5 text-[10px] font-semibold">
+                    {selectedEnrollment.theology_class_arabic}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Mobile Card B: 2-Track Phase & Department Switcher */}
+          <div className="grid grid-cols-2 gap-1.5 w-full bg-white/95 dark:bg-[#1E1F20]/95 backdrop-blur-sm border border-[#0D5C3A]/10 dark:border-[#F59E0B]/12 rounded-2xl p-1.5 shadow-2xs">
+            {/* Left Track: BOT | MOT | EOT | ALL */}
+            <div className="grid grid-cols-4 w-full bg-[#F0F4F9] dark:bg-[#131314] p-0.5 rounded-full border-0 gap-0.5" aria-label="Exam Phase Mobile">
+              {(['bot', 'mot', 'eot', 'all'] as ExamType[]).map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => {
+                    setExamType(type)
+                    setSuccess(false)
+                  }}
+                  className={`h-7 w-full flex items-center justify-center text-[11px] font-semibold uppercase tracking-wider rounded-full transition-all cursor-pointer ${
+                    examType === type
+                      ? 'bg-[#0D5C3A] text-white dark:bg-[#10B981]/25 dark:text-[#34D399] shadow-xs'
+                      : 'text-[#444746] dark:text-[#C4C7C5]'
+                  }`}
+                >
+                  {type.toUpperCase()}
+                </button>
+              ))}
+            </div>
+
+            {/* Right Track: Both | Sec | Theo */}
+            {allowedDepartment === 'both' ? (
+              <div className="grid grid-cols-3 w-full bg-[#F0F4F9] dark:bg-[#131314] p-0.5 rounded-full border-0 gap-0.5" aria-label="Department View Mobile">
+                {(['both', 'secular', 'theology'] as const).map((view) => (
                   <button
-                    key={type}
+                    key={view}
                     type="button"
-                    onClick={() => {
-                      setExamType(type)
-                      setSuccess(false)
-                    }}
-                    className={`h-7 px-2 text-xs font-semibold uppercase tracking-wider rounded-full transition-all cursor-pointer ${
-                      examType === type
+                    onClick={() => setActiveView(view)}
+                    className={`h-7 w-full flex items-center justify-center text-[11px] font-semibold capitalize rounded-full transition-all cursor-pointer ${
+                      activeView === view
                         ? 'bg-[#0D5C3A] text-white dark:bg-[#10B981]/25 dark:text-[#34D399] shadow-xs'
                         : 'text-[#444746] dark:text-[#C4C7C5]'
                     }`}
                   >
-                    {type.toUpperCase()}
+                    {view === 'both' ? 'Both' : view === 'secular' ? 'Sec' : 'Theo'}
                   </button>
                 ))}
               </div>
-
-              {/* Department View Track */}
-              {allowedDepartment === 'both' && (
-                <div className="inline-flex items-center bg-[#F0F4F9] dark:bg-[#131314] p-0.5 rounded-full border-0 gap-0.5 shrink-0">
-                  {(['both', 'secular', 'theology'] as const).map((view) => (
-                    <button
-                      key={view}
-                      type="button"
-                      onClick={() => setActiveView(view)}
-                      className={`h-7 px-2 text-xs font-semibold capitalize rounded-full transition-all cursor-pointer ${
-                        activeView === view
-                          ? 'bg-[#0D5C3A] text-white dark:bg-[#10B981]/25 dark:text-[#34D399] shadow-xs'
-                          : 'text-[#444746] dark:text-[#C4C7C5]'
-                      }`}
-                    >
-                      {view === 'both' ? 'Both' : view === 'secular' ? 'Sec' : 'Theo'}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            ) : (
+              <div className="flex items-center justify-center px-2 py-1 rounded-full bg-[#0D5C3A]/8 text-[#0D5C3A] dark:bg-[#10B981]/15 dark:text-[#34D399] font-semibold text-xs border border-[#0D5C3A]/15 dark:border-[#10B981]/25 select-none truncate">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0 mr-1.5" />
+                <span className="truncate">{activeTerm ? activeTerm.label : 'Term 3'}</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -1208,14 +1272,15 @@ export function SharedMarksEntry({
           ) : selectedEnrollment ? (
             <div className="space-y-2 w-full min-w-0">
               {/* =========================================================================
-                  ZONE 2: Unified Active Student Strip
+                  ZONE 2: Hero Student Identity Banner (Desktop >= md)
+                  Rich Forest Emerald & Warm Gold Accent Banner
                   Left: Avatar + Student Picker + Stepper (< >) + Position (12 of 38) + ADM + Live Score Summary
                   Right: Arabic Name & Class
+                  (Note: On mobile < md, Mobile Card A at top renders student selector & identity)
                   ========================================================================= */}
-              {/* Desktop Zone 2 (>= sm) */}
-              <div className="hidden sm:flex items-center justify-between gap-2 shadow-2xs min-h-[40px] px-3 sm:px-4 py-1.5 sm:py-2 bg-[var(--bg-card)] border border-[#0D5C3A]/10 dark:border-[#F59E0B]/12 rounded-2xl w-full min-w-0">
+              <div className="hidden md:flex items-center justify-between gap-2.5 shadow-[0_6px_20px_-4px_rgba(13,92,58,0.28)] min-h-[46px] px-4 py-2 bg-gradient-to-r from-[#093D26] via-[#0D5C3A] to-[#136B43] dark:from-[#0F291E] dark:via-[#143829] dark:to-[#1E2923] text-white border border-[#D97706]/30 rounded-2xl w-full min-w-0">
                 <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
-                  <div className="flex items-center justify-center w-7 h-7 rounded-full bg-gradient-to-br from-emerald-500/20 to-amber-500/20 text-emerald-800 dark:text-emerald-200 font-extrabold text-xs border-0 shrink-0">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white/20 text-white font-extrabold text-xs border border-white/25 shrink-0 shadow-xs">
                     {selectedEnrollment?.name?.charAt(0).toUpperCase() || 'S'}
                   </div>
 
@@ -1228,11 +1293,11 @@ export function SharedMarksEntry({
                       onSelectEnrollment(e.target.value)
                       setSuccess(false)
                     }}
-                    className="h-8 rounded-full bg-[#F0F4F9] dark:bg-[#1E1F20] hover:bg-[#E4EAE6] dark:hover:bg-[#282A2C] text-[#1F1F1F] dark:text-[#E3E3E3] border-0 ring-0 focus:ring-2 focus:ring-[#0D5C3A]/25 dark:focus:ring-[#F59E0B]/30 px-3 text-xs font-bold transition-colors max-w-[200px] md:max-w-[260px] lg:max-w-[320px] truncate cursor-pointer shrink-0"
+                    className="h-8 rounded-full bg-white/15 hover:bg-white/25 text-white border border-white/20 ring-0 focus:ring-2 focus:ring-[#F59E0B]/50 px-3 text-xs font-bold transition-colors max-w-[200px] md:max-w-[260px] lg:max-w-[320px] truncate cursor-pointer shrink-0"
                   >
-                    <option value="">Select student...</option>
+                    <option value="" className="text-[#1F1F1F] bg-white">Select student...</option>
                     {filteredEnrollments.map((s) => (
-                      <option key={s.id} value={s.id}>
+                      <option key={s.id} value={s.id} className="text-[#1F1F1F] bg-white">
                         {s.name} ({s.circular_class})
                       </option>
                     ))}
@@ -1246,7 +1311,7 @@ export function SharedMarksEntry({
                       disabled={filteredEnrollments.length <= 1}
                       title="Previous student"
                       aria-label="Previous student"
-                      className="w-7 h-7 rounded-full bg-[#F0F4F9] dark:bg-[#1E1F20] hover:bg-[#E4EAE6] dark:hover:bg-[#282A2C] border-0 flex items-center justify-center text-[#444746] dark:text-[#C4C7C5] active:scale-[0.97] disabled:opacity-40 cursor-pointer shrink-0 transition"
+                      className="w-7 h-7 rounded-full bg-white/15 hover:bg-white/25 border border-white/20 flex items-center justify-center text-white active:scale-95 disabled:opacity-40 cursor-pointer shrink-0 transition"
                     >
                       <ChevronLeft className="w-3.5 h-3.5" />
                     </button>
@@ -1256,7 +1321,7 @@ export function SharedMarksEntry({
                       disabled={filteredEnrollments.length <= 1}
                       title="Next student"
                       aria-label="Next student"
-                      className="w-7 h-7 rounded-full bg-[#F0F4F9] dark:bg-[#1E1F20] hover:bg-[#E4EAE6] dark:hover:bg-[#282A2C] border-0 flex items-center justify-center text-[#444746] dark:text-[#C4C7C5] active:scale-[0.97] disabled:opacity-40 cursor-pointer shrink-0 transition"
+                      className="w-7 h-7 rounded-full bg-white/15 hover:bg-white/25 border border-white/20 flex items-center justify-center text-white active:scale-95 disabled:opacity-40 cursor-pointer shrink-0 transition"
                     >
                       <ChevronRight className="w-3.5 h-3.5" />
                     </button>
@@ -1264,28 +1329,28 @@ export function SharedMarksEntry({
 
                   {/* Student position counter */}
                   {currentStudentIndex !== -1 && (
-                    <span className="text-[11px] text-[var(--text-muted)] font-mono shrink-0 hidden md:inline">
+                    <span className="text-[11px] text-white/80 font-mono shrink-0 hidden md:inline">
                       ({currentStudentIndex + 1} of {filteredEnrollments.length})
                     </span>
                   )}
 
                   {/* Admission ID pill (hidden below 2xl) */}
                   {selectedEnrollment?.admission_number && (
-                    <span className="bg-[#F0F4F9] dark:bg-[#1E1F20] text-[#444746] dark:text-[#C4C7C5] border-0 rounded-full px-2.5 py-0.5 text-[11px] font-mono shrink-0 hidden 2xl:inline">
+                    <span className="bg-white/15 text-white/90 border border-white/20 rounded-full px-2.5 py-0.5 text-[11px] font-mono shrink-0 hidden 2xl:inline">
                       {selectedEnrollment.admission_number}
                     </span>
                   )}
 
                   {/* Live Score Summary Pill */}
                   {liveSummary.totalSubjects > 0 && (
-                    <span className="bg-[#F0F4F9] dark:bg-[#1E1F20] text-[#444746] dark:text-[#C4C7C5] border-0 rounded-full px-2.5 py-0.5 text-[11px] font-medium tabular-nums shrink-0 hidden lg:inline-flex items-center gap-1.5">
+                    <span className="bg-white/15 text-white border border-white/20 rounded-full px-2.5 py-0.5 text-[11px] font-medium tabular-nums shrink-0 hidden lg:inline-flex items-center gap-1.5">
                       <span>{liveSummary.columnLabel}: {liveSummary.scoredCount}/{liveSummary.totalSubjects} scored</span>
                       <span>&bull;</span>
                       <span>Avg {liveSummary.avg}%</span>
                       {studentGradeBadge && (
                         <>
                           <span>&bull;</span>
-                          <strong className="text-emerald-700 dark:text-emerald-400 font-bold">Grade {studentGradeBadge}</strong>
+                          <strong className="text-[#FEF3C7] font-bold">Grade {studentGradeBadge}</strong>
                         </>
                       )}
                     </span>
@@ -1295,90 +1360,17 @@ export function SharedMarksEntry({
                 {/* Right side: Arabic Info */}
                 {selectedEnrollment.theology_class_arabic && (
                   <div className="text-right shrink-0 ml-auto flex items-center gap-2">
-                    <span className="text-xs font-bold text-[var(--text-primary)]" dir="rtl">
+                    <span className="text-xs font-bold text-white" dir="rtl">
                       {selectedEnrollment.arabic_name || selectedEnrollment.name}
                     </span>
                     <span
-                      className="inline-block text-xs font-semibold text-amber-800 dark:text-amber-300 bg-amber-500/15 px-2.5 py-0.5 rounded-full border-0"
+                      className="inline-block text-xs font-semibold text-[#FEF3C7] bg-[#F59E0B]/25 border border-[#F59E0B]/40 px-2.5 py-0.5 rounded-full"
                       dir="rtl"
                     >
                       {selectedEnrollment.theology_class_arabic}
                     </span>
                   </div>
                 )}
-              </div>
-
-              {/* Mobile Zone 2 (< sm) */}
-              <div className="flex sm:hidden flex-col gap-1.5 shadow-2xs px-3 py-1.5 bg-[var(--bg-card)] border border-[#0D5C3A]/10 dark:border-[#F59E0B]/12 rounded-2xl w-full min-w-0">
-                {/* Row 1: Avatar + Student Picker + Stepper + Position */}
-                <div className="flex items-center gap-1.5 w-full">
-                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-gradient-to-br from-emerald-500/20 to-amber-500/20 text-emerald-800 dark:text-emerald-200 font-extrabold text-[10px] border-0 shrink-0">
-                    {selectedEnrollment?.name?.charAt(0).toUpperCase() || 'S'}
-                  </div>
-
-                  <select
-                    aria-label="Student Mobile"
-                    value={selectedEnrollmentId}
-                    onChange={(e) => {
-                      onSelectEnrollment(e.target.value)
-                      setSuccess(false)
-                    }}
-                    className="h-8 rounded-full bg-[#F0F4F9] dark:bg-[#1E1F20] text-[#1F1F1F] dark:text-[#E3E3E3] border-0 px-2.5 text-xs font-bold flex-1 min-w-0 truncate cursor-pointer"
-                  >
-                    <option value="">Select student...</option>
-                    {filteredEnrollments.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name} ({s.circular_class})
-                      </option>
-                    ))}
-                  </select>
-
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => handleStepStudent(-1)}
-                      disabled={filteredEnrollments.length <= 1}
-                      title="Previous student"
-                      aria-label="Previous student"
-                      className="w-7 h-7 rounded-full bg-[#F0F4F9] dark:bg-[#1E1F20] border-0 flex items-center justify-center text-[#444746] dark:text-[#C4C7C5] active:scale-[0.97] disabled:opacity-40 cursor-pointer shrink-0"
-                    >
-                      <ChevronLeft className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleStepStudent(1)}
-                      disabled={filteredEnrollments.length <= 1}
-                      title="Next student"
-                      aria-label="Next student"
-                      className="w-7 h-7 rounded-full bg-[#F0F4F9] dark:bg-[#1E1F20] border-0 flex items-center justify-center text-[#444746] dark:text-[#C4C7C5] active:scale-[0.97] disabled:opacity-40 cursor-pointer shrink-0"
-                    >
-                      <ChevronRight className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-
-                  {currentStudentIndex !== -1 && (
-                    <span className="text-[10px] text-[var(--text-muted)] font-mono shrink-0">
-                      ({currentStudentIndex + 1}/{filteredEnrollments.length})
-                    </span>
-                  )}
-                </div>
-
-                {/* Row 2: Live Stats on left, Arabic on right */}
-                <div className="flex items-center justify-between gap-2 text-[11px] pt-0.5 border-t border-[#0D5C3A]/[0.06] dark:border-[#F59E0B]/[0.07]">
-                  {liveSummary.totalSubjects > 0 ? (
-                    <span className="text-[#444746] dark:text-[#C4C7C5] font-medium tabular-nums truncate">
-                      {liveSummary.columnLabel}: {liveSummary.scoredCount}/{liveSummary.totalSubjects} scored &bull; Avg {liveSummary.avg}%
-                    </span>
-                  ) : (
-                    <span className="text-[var(--text-muted)]">No subjects</span>
-                  )}
-
-                  {selectedEnrollment.theology_class_arabic && (
-                    <span className="text-xs font-bold text-[var(--text-primary)] shrink-0 ml-auto" dir="rtl">
-                      {selectedEnrollment.arabic_name || selectedEnrollment.name}
-                    </span>
-                  )}
-                </div>
               </div>
 
               {/* =========================================================================
@@ -1398,9 +1390,11 @@ export function SharedMarksEntry({
                 {/* Secular Marks Card */}
                 {(activeView === 'both' || activeView === 'secular') && (
                   <div className="card-jiddah rounded-2xl shadow-2xs border border-[#0D5C3A]/10 dark:border-[#F59E0B]/12 overflow-hidden w-full min-w-0">
-                    <div className="px-3.5 py-1.5 sm:py-2 bg-[var(--bg-sunken)] border-b border-[#0D5C3A]/[0.06] dark:border-[#F59E0B]/[0.07] flex items-center justify-between gap-2">
+                    <div className="px-3.5 py-2 bg-gradient-to-r from-[#0D5C3A]/[0.10] via-[#0D5C3A]/[0.04] to-transparent dark:from-[#10B981]/[0.16] border-b border-[#0D5C3A]/15 dark:border-[#10B981]/25 flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
-                        <BookOpen className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                        <div className="w-6 h-6 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0">
+                          <BookOpen className="w-3.5 h-3.5" />
+                        </div>
                         <span className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">
                           Secular Marks {isCurrentNursery ? '(Nursery Letter Scale)' : ''}
                         </span>
@@ -1458,9 +1452,9 @@ export function SharedMarksEntry({
                     </div>
 
                     {/* Secular Card Footer Summary */}
-                    <div className="px-3.5 py-1.5 bg-[var(--bg-sunken)] border-t border-[#0D5C3A]/[0.06] dark:border-[#F59E0B]/[0.07] flex items-center justify-between text-xs font-semibold text-[var(--text-secondary)]">
-                      <span>Secular Summary</span>
-                      <span className="tabular-nums">
+                    <div className="px-3.5 py-2 bg-gradient-to-r from-[#0D5C3A]/[0.06] to-[#D97706]/[0.06] dark:from-[#10B981]/[0.10] dark:to-[#F59E0B]/[0.10] border-t border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 flex items-center justify-between text-xs font-semibold text-[var(--text-primary)]">
+                      <span className="font-bold text-[#0D5C3A] dark:text-[#34D399]">Secular Summary</span>
+                      <span className="tabular-nums font-mono font-bold">
                         Total: {secularStats.total} / {secularStats.maxTotal} &bull; Mean: {secularStats.mean}% &bull; Grade: {secularStats.grade}
                       </span>
                     </div>
@@ -1473,9 +1467,9 @@ export function SharedMarksEntry({
                   examType !== 'bot' &&
                   selectedEnrollment?.theology_status !== 'not_applicable' && (
                     <div className="card-jiddah rounded-2xl shadow-2xs border border-[#0D5C3A]/10 dark:border-[#F59E0B]/12 overflow-hidden w-full min-w-0">
-                      <div className="px-3.5 py-1.5 sm:py-2 bg-[var(--bg-sunken)] border-b border-[#0D5C3A]/[0.06] dark:border-[#F59E0B]/[0.07] flex items-center justify-between gap-2">
+                      <div className="px-3.5 py-2 bg-gradient-to-l from-[#D97706]/[0.14] via-[#EA580C]/[0.06] to-transparent dark:from-[#F59E0B]/[0.18] border-b border-[#D97706]/20 dark:border-[#F59E0B]/25 flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
-                          <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                          <div className="w-2.5 h-2.5 rounded-full bg-gradient-to-r from-[#D97706] to-[#EA580C] shadow-xs shrink-0" />
                           <span className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">
                             Theology Marks (المواد الشرعية)
                           </span>
@@ -1519,9 +1513,9 @@ export function SharedMarksEntry({
                       </div>
 
                       {/* Theology Card Footer Summary */}
-                      <div className="px-3.5 py-1.5 bg-[var(--bg-sunken)] border-t border-[#0D5C3A]/[0.06] dark:border-[#F59E0B]/[0.07] flex items-center justify-between text-xs font-semibold text-[var(--text-secondary)]" dir="rtl">
-                        <span>ملخص المواد الشرعية</span>
-                        <span className="tabular-nums font-mono">
+                      <div className="px-3.5 py-2 bg-gradient-to-l from-[#D97706]/[0.08] to-[#0D5C3A]/[0.05] dark:from-[#F59E0B]/[0.12] dark:to-[#10B981]/[0.08] border-t border-[#D97706]/20 dark:border-[#F59E0B]/25 flex items-center justify-between text-xs font-semibold text-[var(--text-primary)]" dir="rtl">
+                        <span className="font-bold text-[#D97706] dark:text-[#F59E0B]">ملخص المواد الشرعية</span>
+                        <span className="tabular-nums font-mono font-bold">
                           المجموع: {toArabicNumerals(theologyStats.total)} / {toArabicNumerals(theologyStats.maxTotal)} &bull; المعدل: {toArabicNumerals(theologyStats.mean)}٪ &bull; التقدير: {theologyStats.remark}
                         </span>
                       </div>

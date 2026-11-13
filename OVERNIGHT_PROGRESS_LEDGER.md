@@ -325,3 +325,36 @@ Exit code: 0
      - `npm run typecheck` (`tsc --noEmit`): 0 errors across entire codebase.
      - Unit tests (`src/__tests__/overhaul-workstreams.test.mjs`): 20/20 passed (100%), including new test suite validating natural alphanumeric sorting and `MobileBottomNav` null rendering.
      - `grading-and-calculations`, `settings-renovation`, `customization-and-contrast` tests: 61/61 passed (100%).
+
+## Milestone 12: Phantom Scrollbar Elimination, Mobile Zero-Collision Layout & Rich Tonal Depth System
+
+- **Files Modified:**
+  - `src/app/admin/layout.tsx`
+  - `src/app/admin/marks/page.tsx`
+  - `src/styles/theme-tokens.css`
+  - `src/app/globals.css`
+  - `src/components/layout/app-topbar.tsx`
+  - `src/components/shared-marks-entry.tsx`
+  - `public/sw.js`
+- **Scope & Workstreams Completed:**
+  1. **Workstream 1: Elimination of Phantom Desktop Scrollbars & Sticky Overlap:**
+     - Fixed `SidebarProvider` to `h-[100dvh] w-full flex overflow-hidden` and `SidebarInset` to `h-[100dvh] overflow-hidden`.
+     - Stripped `min-h-screen` and `min-h-[100dvh]` from inner child containers (`src/app/admin/marks/page.tsx`), letting `<main>` control scrolling with `overflow-y-auto` only when content exceeds viewport.
+     - Removed sticky positioning from Zone 1 desktop so it stays in normal document flow, preventing it from floating over and swallowing Zone 2 student identity on scroll.
+  2. **Workstream 2: Purpose-Built Mobile Layout (< md) — Zero Squishing & Zero Collisions:**
+     - Re-engineered Mobile Topbar (`app-topbar.tsx`): tightened padding (`px-2.5 sm:px-4 md:px-5`), reduced gap (`gap-1 sm:gap-2.5`), circular icon buttons `size-8 sm:size-9` shrink-0, and right group `gap-1 sm:gap-1.5` so ☰, ←, Synced, 🔍, ☀️, 🔔, and ⋮ fit smoothly inside `100vw` without edge clipping.
+     - Mobile Card A (Active Student & Class Hero Card): Row 1 `[ Class Pill (w-[110px]) ]` + `[ 🔍 Search Student Input (flex-1) ]` + `( ⋮ Circle )`; Row 2 Avatar + `[ Full-Width Student Select (flex-1) ]` + `<` `>` steppers (`w-8 h-8`); Row 3 Left: `1 of 214 • MOT: 4/4 • Avg 85%` | Right: Arabic name & class badge.
+     - Mobile Card B (2-Track Phase & Department Switcher): `grid grid-cols-2 gap-1.5 w-full`: Left half `[ BOT | MOT | EOT | ALL ]` (`grid grid-cols-4`); Right half `[ Both | Sec | Theo ]` (`grid grid-cols-3`).
+     - Purged duplicate mobile Zone 2 block, rendering Desktop Zone 2 strictly as `hidden md:flex`.
+  3. **Workstream 3: Rich Tonal Depth, Color Blending & Visual Hierarchy:**
+     - Upgraded canvas in `theme-tokens.css` and `globals.css`: Light mode pearl-sage alabaster (`#F1F5F2`) with dual-radial ambient wash (`rgba(13, 92, 58, 0.08)` and `rgba(217, 119, 6, 0.08)`); Dark mode deep obsidian-forest (`#0B110E`) with `#131C18` elevated cards.
+     - Hero Student Identity Banner (Desktop Zone 2): Rich Forest Emerald & Warm Gold Accent Banner (`bg-gradient-to-r from-[#093D26] via-[#0D5C3A] to-[#136B43] dark:from-[#0F291E] dark:via-[#143829] dark:to-[#1E2923] text-white rounded-2xl px-4 py-2 shadow-[0_6px_20px_-4px_rgba(13,92,58,0.28)] border border-[#D97706]/30`).
+     - Assessment Grids (Zone 3):
+       - Secular Marks Card Header: Emerald gradient wash (`from-[#0D5C3A]/[0.10] via-[#0D5C3A]/[0.04] to-transparent`) with emerald icon badge.
+       - Theology Marks Card Header: Warm gold & marigold gradient wash (`from-[#D97706]/[0.14] via-[#EA580C]/[0.06] to-transparent`) with marigold dot.
+       - Card Footers: Emerald & gold dual-tinted surface (`from-[#0D5C3A]/[0.06] to-[#D97706]/[0.06]`) with bold totals and averages.
+     - Score Inputs: High-contrast scores with tinted fills and borders when entered vs dashed when empty; warm marigold focus rings.
+  4. **Workstream 4: Verification Gate:**
+     - `tsc --noEmit`: 0 errors.
+     - Automated unit tests: 107/107 passed (100%), including 20/20 in `overhaul-workstreams.test.mjs`.
+     - Next.js webpack build: 68/68 routes generated cleanly with zero errors.

@@ -52,7 +52,7 @@ const POPOVER_MOTION = {
 const POPOVER_SURFACE =
   "absolute right-0 top-full z-50 mt-2 origin-top-right overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] text-[var(--text-primary)] shadow-[0_8px_24px_rgba(0,0,0,0.12)] dark:shadow-[0_12px_32px_rgba(0,0,0,0.55)]";
 const ICON_BUTTON =
-  "relative grid size-9 shrink-0 cursor-pointer place-items-center rounded-full text-[var(--text-secondary)] outline-none transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[#0D5C3A] dark:focus-visible:ring-[#34D399]";
+  "relative grid size-8 sm:size-9 shrink-0 cursor-pointer place-items-center rounded-full text-[var(--text-secondary)] outline-none transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[#0D5C3A] dark:focus-visible:ring-[#34D399]";
 
 const ROUTE_LABELS: Record<string, string> = {
   "/admin": "Dashboard",
@@ -491,7 +491,7 @@ export function AppTopbar({ breadcrumbs, currentPage }: AppTopbarProps) {
       </AnimatePresence>
 
       {!hidden && (
-        <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2.5 sm:gap-3 bg-[var(--bg-card)] px-3 text-[var(--text-primary)] print:hidden md:px-5">
+        <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-1 sm:gap-2.5 bg-[var(--bg-card)] px-2.5 sm:px-4 md:px-5 text-[var(--text-primary)] print:hidden">
           <button
             type="button"
             onClick={toggleSidebar}
@@ -538,7 +538,7 @@ export function AppTopbar({ breadcrumbs, currentPage }: AppTopbarProps) {
             })}
           </nav>
 
-          <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
+          <div className="ml-auto flex items-center gap-1 sm:gap-1.5 md:gap-2 shrink-0">
             <TermBadge />
             <PowerSyncStatus />
 
@@ -549,7 +549,7 @@ export function AppTopbar({ breadcrumbs, currentPage }: AppTopbarProps) {
                   onClick={() => setPaletteOpen(true)}
                   aria-label="Search pages and actions"
                   data-testid="topbar-search-trigger"
-                  className="w-9 h-9 rounded-full flex items-center justify-center text-[#444746] dark:text-[#C4C7C5] hover:bg-black/[0.06] dark:hover:bg-white/[0.08] transition-colors border-0 cursor-pointer shrink-0"
+                  className="w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-[#444746] dark:text-[#C4C7C5] hover:bg-black/[0.06] dark:hover:bg-white/[0.08] transition-colors border-0 cursor-pointer shrink-0"
                 >
                   <Search className="size-[18px]" strokeWidth={1.75} />
                 </button>
@@ -562,7 +562,7 @@ export function AppTopbar({ breadcrumbs, currentPage }: AppTopbarProps) {
 
             <MoreActionsMenu
               ariaLabel="Quick actions"
-              triggerClassName="w-9 h-9 rounded-full flex items-center justify-center text-[#444746] dark:text-[#C4C7C5] hover:bg-black/[0.06] dark:hover:bg-white/[0.08] transition-colors border-0 cursor-pointer shrink-0"
+              triggerClassName="w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-[#444746] dark:text-[#C4C7C5] hover:bg-black/[0.06] dark:hover:bg-white/[0.08] transition-colors border-0 cursor-pointer shrink-0"
               items={[
                 {
                   label: "School Settings",

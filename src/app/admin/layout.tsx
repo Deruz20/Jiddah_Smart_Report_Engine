@@ -94,18 +94,18 @@ export default function AdminLayout({
   };
 
   return (
-    <SidebarProvider defaultOpen={true}>
+    <SidebarProvider defaultOpen={true} className="h-[100dvh] w-full flex overflow-hidden">
       <AppSidebar />
       <SidebarInset
         className={cn(
-          "h-[100dvh] print:h-auto print:min-h-screen overflow-hidden print:overflow-visible print:bg-white flex flex-col min-w-0 max-w-full relative transition-colors",
+          "flex-1 flex flex-col min-w-0 h-[100dvh] overflow-hidden print:h-auto print:min-h-screen print:overflow-visible print:bg-white relative transition-colors",
           "bg-[var(--bg-canvas)] text-[var(--text-primary)]"
         )}
       >
         <AppTopbar />
         <main
           className={cn(
-            "flex-1 flex flex-col min-h-0 min-w-0 w-full overflow-x-hidden pb-4 sm:pb-5 md:pb-0 relative",
+            "flex-1 min-h-0 min-w-0 w-full overflow-x-hidden relative",
             isReportsPage ? "overflow-y-hidden" : "overflow-y-auto"
           )}
         >

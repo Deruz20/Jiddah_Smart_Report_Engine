@@ -1,5 +1,5 @@
-// @ts-nocheck
 'use client'
+// @ts-nocheck
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { toast } from 'sonner'
@@ -241,6 +241,8 @@ export function SharedMarksEntry({
   assignedSubjects = [],
   roleLabel = 'Teacher',
 }: SharedMarksEntryProps) {
+  const selectedEnrollment = (Array.isArray(enrollments) ? enrollments.find((e) => e.id === selectedEnrollmentId) : null) || null
+
   const [activeView, setActiveView] = useState<'secular' | 'theology' | 'both'>(allowedDepartment)
   const [selectedClassFilter, setSelectedClassFilter] = useState<string>('all')
   const [selectedSubjectFilter, setSelectedSubjectFilter] = useState<string>('all')
@@ -251,11 +253,6 @@ export function SharedMarksEntry({
   const [rawInputs, setRawInputs] = useState<Record<string, string>>({})
   const [isExamSetLocked, setIsExamSetLocked] = useState<boolean>(false)
   const searchBoxRef = useRef<HTMLDivElement>(null)
-
-  const selectedEnrollment = useMemo(
-    () => enrollments.find((e) => e.id === selectedEnrollmentId) || null,
-    [enrollments, selectedEnrollmentId]
-  )
 
   const handleExportMarksheet = useCallback(() => {
     const student = enrollments.find((e) => e.id === selectedEnrollmentId)
@@ -1028,18 +1025,18 @@ export function SharedMarksEntry({
               <div className="bg-[var(--bg-card)] border border-[#D97706]/18 dark:border-[#F59E0B]/16 rounded-3xl p-4 sm:px-6 flex flex-wrap items-center justify-between gap-4 shadow-xs">
                 <div className="flex items-center gap-3.5 min-w-0">
                   <div className="flex items-center justify-center w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-amber-500/20 text-emerald-800 dark:text-emerald-200 font-extrabold text-base border border-emerald-500/30 shrink-0">
-                    {selectedEnrollment.name.charAt(0).toUpperCase()}
+                    {selectedEnrollment?.name?.charAt(0).toUpperCase() || 'S'}
                   </div>
                   <div className="min-w-0">
                     <h2 className="text-base sm:text-lg font-extrabold text-[var(--text-primary)] truncate">
-                      {selectedEnrollment.name}
+                      {selectedEnrollment?.name || 'Selected Student'}
                     </h2>
                     <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-[var(--text-secondary)] tabular-nums mt-1.5">
                       <span className="bg-[var(--bg-sunken)] px-2.5 py-0.5 rounded-full border border-[var(--border)] font-mono text-[var(--text-primary)]">
-                        {selectedEnrollment.admission_number || 'ADM'}
+                        {selectedEnrollment?.admission_number || 'ADM'}
                       </span>
                       <span className="bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 px-2.5 py-0.5 rounded-full border border-emerald-500/20 font-bold">
-                        {selectedEnrollment.circular_class}
+                        {selectedEnrollment?.circular_class || ''}
                       </span>
                       {liveSummary.totalSubjects > 0 && (
                         <>
@@ -1136,7 +1133,7 @@ export function SharedMarksEntry({
                             <SecularMarkTableRow
                               key={mark.subject_id}
                               mark={mark}
-                              studentName={selectedEnrollment.name}
+                              studentName={selectedEnrollment?.name || ''}
                               idx={idx}
                               examType={examType}
                               renderScoreCell={renderScoreCell}
@@ -1190,7 +1187,7 @@ export function SharedMarksEntry({
                               <TheologyMarkTableRow
                                 key={mark.subject_id}
                                 mark={mark}
-                                studentName={selectedEnrollment.name}
+                                studentName={selectedEnrollment?.name || ''}
                                 idx={idx}
                                 examType={examType}
                                 renderScoreCell={renderScoreCell}
@@ -1229,10 +1226,10 @@ export function SharedMarksEntry({
                   {Object.keys(fieldErrors).length > 0
                     ? `${Object.keys(fieldErrors).length} field error(s) — fix highlighted scores (0–100)`
                     : hasUnsavedChanges
-                    ? `${editedCount > 0 ? `${editedCount} unsaved score changes at risk` : 'Unsaved changes at risk'} for ${selectedEnrollment.name}`
+                    ? `${editedCount > 0 ? `${editedCount} unsaved score changes at risk` : 'Unsaved changes at risk'} for ${selectedEnrollment?.name || 'student'}`
                     : success
                     ? 'All marks saved to database'
-                    : `Ready — ${selectedEnrollment.name}`}
+                    : `Ready — ${selectedEnrollment?.name || 'student'}`}
                 </span>
               </div>
 

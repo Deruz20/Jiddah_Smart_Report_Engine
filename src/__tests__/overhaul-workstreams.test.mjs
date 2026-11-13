@@ -42,6 +42,14 @@ import {
   DEFAULT_OVERLAYS_BY_TEMPLATE,
 } from '../lib/report-overlays.ts';
 
+import {
+  isNurseryClass,
+  computeNurseryBadge,
+  getNurseryGrade,
+  getGradeDisplay,
+  getSubjectGradeNumber,
+} from '../lib/grading.ts';
+
 describe('Workstream 1: School Badge / Logo Normalization', () => {
   it('replaces broken /logo.png and empty inputs with canonical /logo-512h.png', () => {
     assert.equal(CANONICAL_SCHOOL_LOGO, '/logo-512h.png');
@@ -316,6 +324,120 @@ describe('Forensic Remediation: JSON Logo Parsing, Key Resolution, Activity Acto
       assert.ok(overlay.stamp.xPercent >= 80, `${key} stamp xPercent should sit in right stamp box`);
       assert.ok(overlay.stamp.yPercent >= 80, `${key} stamp yPercent should sit in footer zone`);
     }
+  });
+});
+
+describe('Workstream 6: Nursery Grading & Marks Entry Workspace Architecture', () => {
+  it('canonical isNurseryClass accurately classifies Nursery/Pre-Primary cohorts vs Primary classes', () => {
+    // True nursery classes
+    assert.equal(isNurseryClass('Baby Class'), true);
+    assert.equal(isNurseryClass('baby'), true);
+    assert.equal(isNurseryClass('Middle'), true);
+    assert.equal(isNurseryClass('middle class'), true);
+    assert.equal(isNurseryClass('Top Class'), true);
+    assert.equal(isNurseryClass('Top'), true);
+    assert.equal(isNurseryClass('Nursery'), true);
+    assert.equal(isNurseryClass('Pre-Primary'), true);
+    assert.equal(isNurseryClass('Pre Primary'), true);
+    assert.equal(isNurseryClass('KG 1'), true);
+    assert.equal(isNurseryClass('ECE Section'), true);
+
+    // False primary / secular classes
+    assert.equal(isNurseryClass('P.1'), false);
+    assert.equal(isNurseryClass('P.2'), false);
+    assert.equal(isNurseryClass('P.3'), false);
+    assert.equal(isNurseryClass('P.4'), false);
+    assert.equal(isNurseryClass('P.5'), false);
+    assert.equal(isNurseryClass('P.6'), false);
+    assert.equal(isNurseryClass('P.7'), false);
+    assert.equal(isNurseryClass('Primary 3'), false);
+    assert.equal(isNurseryClass(null), false);
+    assert.equal(isNurseryClass(undefined), false);
+    assert.equal(isNurseryClass(''), false);
+  });
+
+  it('enforces Official Jiddah Nursery Letter Scale (A, B, C, D, E) without UNEB D1-F9 pollution', () => {
+    // A: 90 - 100
+    assert.deepEqual(getNurseryGrade(100), { grade: 'A', remark: 'Excellent' });
+    assert.deepEqual(getNurseryGrade(95), { grade: 'A', remark: 'Excellent' });
+    assert.deepEqual(getNurseryGrade(90), { grade: 'A', remark: 'Excellent' });
+
+    // B: 80 - 89
+    assert.deepEqual(getNurseryGrade(89), { grade: 'B', remark: 'Very Good' });
+    assert.deepEqual(getNurseryGrade(85), { grade: 'B', remark: 'Very Good' });
+    assert.deepEqual(getNurseryGrade(80), { grade: 'B', remark: 'Very Good' });
+
+    // C: 70 - 79
+    assert.deepEqual(getNurseryGrade(79), { grade: 'C', remark: 'Good' });
+    assert.deepEqual(getNurseryGrade(75), { grade: 'C', remark: 'Good' });
+    assert.deepEqual(getNurseryGrade(70), { grade: 'C', remark: 'Good' });
+
+    // D: 50 - 69
+    assert.deepEqual(getNurseryGrade(69), { grade: 'D', remark: 'Fair' });
+    assert.deepEqual(getNurseryGrade(60), { grade: 'D', remark: 'Fair' });
+    assert.deepEqual(getNurseryGrade(50), { grade: 'D', remark: 'Fair' });
+
+    // E: 0 - 49
+    assert.deepEqual(getNurseryGrade(49), { grade: 'E', remark: 'Poor' });
+    assert.deepEqual(getNurseryGrade(25), { grade: 'E', remark: 'Poor' });
+    assert.deepEqual(getNurseryGrade(0), { grade: 'E', remark: 'Poor' });
+  });
+
+  it('computes Nursery badge tokens with exact brand colors and handles invalid/empty marks safely', () => {
+    const badgeA = computeNurseryBadge(95);
+    assert.ok(badgeA);
+    assert.equal(badgeA.grade, 'A');
+    assert.equal(badgeA.remark, 'Excellent');
+    assert.ok(badgeA.bg.includes('#0D5C3A') || badgeA.bg.includes('10B981'));
+
+    const badgeB = computeNurseryBadge(85);
+    assert.ok(badgeB);
+    assert.equal(badgeB.grade, 'B');
+    assert.equal(badgeB.remark, 'Very Good');
+
+    const badgeC = computeNurseryBadge(72);
+    assert.ok(badgeC);
+    assert.equal(badgeC.grade, 'C');
+
+    const badgeD = computeNurseryBadge(58);
+    assert.ok(badgeD);
+    assert.equal(badgeD.grade, 'D');
+
+    const badgeE = computeNurseryBadge(35);
+    assert.ok(badgeE);
+    assert.equal(badgeE.grade, 'E');
+
+    // Invalid / out of bounds handling
+    assert.equal(computeNurseryBadge(null), null);
+    assert.equal(computeNurseryBadge(undefined), null);
+    assert.equal(computeNurseryBadge(-5), null);
+    assert.equal(computeNurseryBadge(105), null);
+  });
+
+  it('verifies cohort NANYANJA ASHWAAQ (Middle) receives letter grades A and B, never D1 or D2', () => {
+    const student = {
+      name: 'NANYANJA ASHWAAQ',
+      circular_class: 'Middle',
+      admission_number: 'ADM-2024-089',
+    };
+
+    const isNursery = isNurseryClass(student.circular_class);
+    assert.equal(isNursery, true);
+
+    // Score 95 should evaluate to 'A'
+    const gradeFor95 = isNursery
+      ? getNurseryGrade(95).grade
+      : getGradeDisplay(getSubjectGradeNumber(95));
+    assert.equal(gradeFor95, 'A');
+    assert.notEqual(gradeFor95, 'D1');
+
+    // Score 85 should evaluate to 'B'
+    const gradeFor85 = isNursery
+      ? getNurseryGrade(85).grade
+      : getGradeDisplay(getSubjectGradeNumber(85));
+    assert.equal(gradeFor85, 'B');
+    assert.notEqual(gradeFor85, 'D1');
+    assert.notEqual(gradeFor85, 'D2');
   });
 });
 

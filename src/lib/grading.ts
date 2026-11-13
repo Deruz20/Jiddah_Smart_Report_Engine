@@ -227,13 +227,81 @@ export function getPromotionStatus(division: Division, manualOverride?: 'Try Nex
   return 'Repeat'
 }
 
-// Nursery grading
+/**
+ * Canonical helper to detect Nursery / Pre-Primary classes and levels.
+ * Detects baby, middle, top, nursery, pre-primary, kg, or ece (case-insensitive).
+ */
+export function isNurseryClass(classNameOrLevel?: string | null): boolean {
+  if (!classNameOrLevel) return false
+  const str = String(classNameOrLevel).trim().toLowerCase()
+  return (
+    str.includes('baby') ||
+    str.includes('middle') ||
+    str.includes('top') ||
+    str.includes('nursery') ||
+    str.includes('pre-primary') ||
+    str.includes('pre primary') ||
+    str.includes('kg') ||
+    str.includes('ece')
+  )
+}
+
+// Nursery grading (Official Jiddah Nursery Letter Scale)
 export function getNurseryGrade(mark: number): { grade: NurseryGrade; remark: string } {
   if (mark >= 90) return { grade: 'A', remark: 'Excellent' }
   if (mark >= 80) return { grade: 'B', remark: 'Very Good' }
   if (mark >= 70) return { grade: 'C', remark: 'Good' }
   if (mark >= 50) return { grade: 'D', remark: 'Fair' }
   return { grade: 'E', remark: 'Poor' }
+}
+
+export function computeNurseryBadge(score: number | null | undefined): {
+  grade: NurseryGrade
+  bg: string
+  text: string
+  remark: string
+} | null {
+  if (score === null || score === undefined || Number.isNaN(Number(score))) return null
+  const n = Number(score)
+  if (n < 0 || n > 100) return null
+  if (n >= 90) {
+    return {
+      grade: 'A',
+      remark: 'Excellent',
+      bg: 'bg-[#0D5C3A]/12 dark:bg-[#10B981]/20',
+      text: 'text-[#0D5C3A] dark:text-[#34D399]',
+    }
+  }
+  if (n >= 80) {
+    return {
+      grade: 'B',
+      remark: 'Very Good',
+      bg: 'bg-[#0284C7]/12 dark:bg-[#38BDF8]/20',
+      text: 'text-[#0369A1] dark:text-[#7DD3FC]',
+    }
+  }
+  if (n >= 70) {
+    return {
+      grade: 'C',
+      remark: 'Good',
+      bg: 'bg-[#D97706]/14 dark:bg-[#F59E0B]/20',
+      text: 'text-[#B45309] dark:text-[#FCD34D]',
+    }
+  }
+  if (n >= 50) {
+    return {
+      grade: 'D',
+      remark: 'Fair',
+      bg: 'bg-[#EA580C]/14 dark:bg-[#FB923C]/20',
+      text: 'text-[#C2410C] dark:text-[#FDBA74]',
+    }
+  }
+  return {
+    grade: 'E',
+    remark: 'Poor',
+    bg: 'bg-[#E11D48]/12 dark:bg-[#FB7185]/20',
+    text: 'text-[#BE123C] dark:text-[#FDA4AF]',
+  }
 }
 
 // Subject remarks for secular (primary)

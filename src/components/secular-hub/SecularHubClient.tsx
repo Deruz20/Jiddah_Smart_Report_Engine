@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { generateSecularAssessmentCSV, generateSecularAnalysisCSV, generateSecularTopStudentsCSV } from '@/utils/csvExport'
 import { computeStandardRankings } from '@/lib/ranking'
-import { isGradableSubject, getSubjectGradeNumber, calculateAggregate, getDivision, getGradeDisplay, isCoreSubject, getNurseryGrade } from '@/lib/grading'
+import { isGradableSubject, getSubjectGradeNumber, calculateAggregate, getDivision, getGradeDisplay, isCoreSubject, getNurseryGrade, isNurseryClass } from '@/lib/grading'
 import { TopToolbar } from '../figma-ui/TopToolbar'
 import { OfficialPrintLetterhead, OfficialPrintSignaturesFooter } from '@/components/print/OfficialPrintLetterhead'
 
@@ -167,7 +167,7 @@ export default function SecularHubClient({
         const score = mark?.[scoreKey] != null ? mark[scoreKey] : null
         subjectScores[sub.id] = score
         if (score != null) {
-          if (assessmentLevel === 'nursery') {
+          if (isNurseryClass(assessmentLevel)) {
             const nGrade = getNurseryGrade(score)
             subjectGrades[sub.id] = nGrade.grade
             subjectAggregates[sub.id] = nGrade.grade === 'A' ? 1 : nGrade.grade === 'B' ? 2 : nGrade.grade === 'C' ? 3 : nGrade.grade === 'D' ? 5 : 9
@@ -190,7 +190,7 @@ export default function SecularHubClient({
         }
       })
 
-      const agg = assessmentLevel === 'nursery' ? null : calculateAggregate(scoresForAgg, assessmentLevel)
+      const agg = isNurseryClass(assessmentLevel) ? null : calculateAggregate(scoresForAgg, assessmentLevel)
       const div = agg !== null ? getDivision(agg) : 'X'
 
       return {
@@ -235,7 +235,8 @@ export default function SecularHubClient({
       let lowestAvg = 100
 
       const divCounts: Record<string, number> = { I: 0, II: 0, III: 0, IV: 0, U: 0, X: 0 }
-      const gradeCounts: Record<string, number> = activeLevel === 'nursery'
+      const isNurseryLevel = isNurseryClass(activeLevel) || isNurseryClass(cls.section) || isNurseryClass(cls.class_name)
+      const gradeCounts: Record<string, number> = isNurseryLevel
         ? { A: 0, B: 0, C: 0, D: 0, E: 0 }
         : { D1: 0, D2: 0, C3: 0, C4: 0, C5: 0, C6: 0, P7: 0, P8: 0, F9: 0 }
 
@@ -262,7 +263,7 @@ export default function SecularHubClient({
 
           subjectScoresForAgg.forEach(s => {
             totalScore += s.score
-            if (activeLevel === 'nursery') {
+            if (isNurseryLevel) {
               const nGrade = getNurseryGrade(s.score).grade
               if (gradeCounts[nGrade] !== undefined) {
                 gradeCounts[nGrade]++

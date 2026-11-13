@@ -241,4 +241,37 @@ Exit code: 0
      - Pure unit tests: 14/14 passed (100%).
      - `npm run build`: 68/68 static and dynamic routes compiled cleanly.
 
+---
+
+## Milestone 10: Nursery Grading Engine Parity & 4-Zone Zero-Scroll Marks Entry Workspace
+
+- **Files Modified:**
+  - `src/lib/grading.ts`
+  - `src/components/secular-hub/SecularHubClient.tsx`
+  - `src/components/shared-marks-entry.tsx`
+  - `src/__tests__/overhaul-workstreams.test.mjs`
+  - `public/sw.js` (re-bundled by Serwist)
+- **Scope & Workstreams Completed:**
+  1. **Workstream 1: Fix Nursery Grading (`A, B, C, D, E` Instead of `D1–F9`):**
+     - Canonical helper `isNurseryClass(classNameOrLevel?: string | null): boolean` in `src/lib/grading.ts` detecting `baby`, `middle`, `top`, `nursery`, `pre-primary`, `kg`, `ece` (case-insensitive).
+     - Official Jiddah Nursery Letter Scale implemented via `computeNurseryBadge`:
+       - `A` (90–100): Emerald (`bg-[#0D5C3A]/12 text-[#0D5C3A] dark:bg-[#10B981]/20 dark:text-[#34D399]`)
+       - `B` (80–89): Teal/Blue (`bg-[#0284C7]/12 text-[#0369A1] dark:bg-[#38BDF8]/20 dark:text-[#7DD3FC]`)
+       - `C` (70–79): Amber (`bg-[#D97706]/14 text-[#B45309] dark:bg-[#F59E0B]/20 dark:text-[#FCD34D]`)
+       - `D` (50–69): Orange (`bg-[#EA580C]/14 text-[#C2410C] dark:bg-[#FB923C]/20 dark:text-[#FDBA74]`)
+       - `E` (0–49): Rose (`bg-[#E11D48]/12 text-[#BE123C] dark:bg-[#FB7185]/20 dark:text-[#FDA4AF]`)
+     - Updated `SecularHubClient.tsx` to evaluate `isNurseryClass(assessmentLevel)` and `isNurseryClass(activeLevel) || isNurseryClass(cls.section) || isNurseryClass(cls.class_name)` across aggregate calculations, grade count dictionaries, and tabular display.
+     - In `shared-marks-entry.tsx`: `isCurrentNursery` determines letter grading for student cohort (e.g. `NANYANJA ASHWAAQ (Middle)` with score 95 displays `A` and 85 displays `B`, never `D1`).
+  2. **Workstream 2: Four-Zone Desktop Workspace & Zero-Scroll Layout (`shared-marks-entry.tsx`):**
+     - **Zone 1 (Single-Line Top Control Bar):** Single-line non-wrapping header (`flex items-center justify-between gap-2 flex-nowrap overflow-x-auto px-3 py-1.5 sm:py-2`). Left side: `[ Class Cohort Pill ]` + `[ Quick Search Pill ]`. Right side: **Read-Only Active Term Confirmation Pill** (`Term 3, 2026`) placed immediately left of the Exam switcher + `[ BOT | MOT | EOT | ALL ]` track + `[ Both | Secular | Theology ]` track + `[ Subject Filter Pill ]` + `( ⋮ More Actions Circle )`. Student dropdown and Save button removed from Zone 1 to guarantee it fits 100% horizontally on desktop without wrapping.
+     - **Zone 2 (Unified Active Student Strip):** Integrated direct student picker dropdown (`NANYANJA ASHWAAQ (Middle) ▾`) + `<` and `>` stepper buttons (`w-7 h-7`) + position indicator (`12 of 38`) + admission ID + class badge + Live score summary (`EOT: 6/6 scored • Avg 89.5% • Grade B`). Right side renders Arabic name and theology class level.
+     - **Zone 3 (Side-by-Side Assessment Grids):** Natural alphanumeric subject sorting (`localeCompare(..., { numeric: true })`); completely hides `CORE` column when `isNurseryClass` is true; ultra-compact rows (`h-9 py-1 px-3`) with `h-7.5 w-16` score inputs; card footers (`Total: X / Y • Mean: Z% • Grade: W` & `المجموع: ... • المعدل: ... • التقدير: ...`).
+     - **Zone 4 (Dedicated Prominent Bottom Pill Save Bar):** Dedicated bottom bar (`sticky bottom-2 z-30 rounded-2xl bg-white/95 dark:bg-[#1E1F20]/95 backdrop-blur-md border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 p-2.5 sm:px-5 sm:py-2.5 shadow-lg`) with live status indicator + `"Save & Next Student →"` button on the left, and a large tactile Pill Save button (`h-11 min-w-[220px] px-8 btn-jiddah-cta text-sm font-bold rounded-full`) on the right. Global `Ctrl+S` / `Cmd+S` keyboard listener wired.
+  3. **Workstream 3: Full Verification Gate:**
+     - `npm run typecheck` (`tsc --noEmit`): 0 errors across entire codebase.
+     - Unit tests (`src/__tests__/overhaul-workstreams.test.mjs`): 18/18 passed (100%).
+     - Pipeline parity and grading tests (`src/__tests__/grading-and-calculations.test.mjs`, `pipeline-parity-and-edge-cases.test.mjs`, `eot-report-auth-and-badges.test.mjs`): 162/162 passed (100%).
+     - `npm run build`: 68/68 static and dynamic routes compiled cleanly.
+
+
 

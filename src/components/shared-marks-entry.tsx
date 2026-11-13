@@ -54,7 +54,7 @@ const SecularMarkTableRow = React.memo(function SecularMarkTableRow({
   ) => React.ReactNode
 }) {
   return (
-    <tr className="hover:bg-[var(--bg-hover)] transition-colors h-9">
+    <tr className="hover:bg-[var(--bg-hover)] transition-colors h-[34px]">
       <td
         data-testid={`frozen-cell-${idx}`}
         className="sticky left-0 z-10 bg-[var(--bg-card)] px-3 py-1 border-r border-[#0D5C3A]/[0.06] dark:border-[#F59E0B]/[0.07] min-w-[150px] max-w-[220px]"
@@ -122,7 +122,7 @@ const TheologyMarkTableRow = React.memo(function TheologyMarkTableRow({
   ) => React.ReactNode
 }) {
   return (
-    <tr className="hover:bg-[var(--bg-hover)] transition-colors h-9">
+    <tr className="hover:bg-[var(--bg-hover)] transition-colors h-[34px]">
       <td className="sticky left-0 z-10 bg-[var(--bg-card)] px-3 py-1 border-r border-[#0D5C3A]/[0.06] dark:border-[#F59E0B]/[0.07] min-w-[150px] max-w-[220px]">
         <div className="font-semibold text-[var(--text-primary)] truncate text-xs" dir="rtl">
           {mark.subject_name_arabic}
@@ -268,6 +268,7 @@ export function SharedMarksEntry({
   const [rawInputs, setRawInputs] = useState<Record<string, string>>({})
   const [isExamSetLocked, setIsExamSetLocked] = useState<boolean>(false)
   const searchBoxRef = useRef<HTMLDivElement>(null)
+  const mobileSearchBoxRef = useRef<HTMLDivElement>(null)
 
   const handleExportMarksheet = useCallback(() => {
     const student = enrollments.find((e) => e.id === selectedEnrollmentId)
@@ -321,7 +322,10 @@ export function SharedMarksEntry({
 
   useEffect(() => {
     function handleOutside(e: MouseEvent) {
-      if (searchBoxRef.current && !searchBoxRef.current.contains(e.target as Node)) {
+      const target = e.target as Node
+      const inDesktop = searchBoxRef.current && searchBoxRef.current.contains(target)
+      const inMobile = mobileSearchBoxRef.current && mobileSearchBoxRef.current.contains(target)
+      if (!inDesktop && !inMobile) {
         setSearchDropdownOpen(false)
       }
     }
@@ -402,6 +406,14 @@ export function SharedMarksEntry({
     }
   }
 
+  const isCurrentNursery = useMemo(() => {
+    return (
+      isNurseryClass(selectedEnrollment?.circular_class) ||
+      isNurseryClass(selectedEnrollment?.theology_class_level) ||
+      (selectedClassFilter !== 'all' && isNurseryClass(selectedClassFilter))
+    )
+  }, [selectedEnrollment?.circular_class, selectedEnrollment?.theology_class_level, selectedClassFilter])
+
   const getSubjectOrder = (name: string) => {
     const n = (name || '').toUpperCase()
     if (n.includes('ENG')) return 1
@@ -417,22 +429,19 @@ export function SharedMarksEntry({
 
   const sortedCircularMarks = useMemo(() => {
     const sorted = [...circularMarks].sort((a, b) => {
-      const orderA = getSubjectOrder(a.subject_name)
-      const orderB = getSubjectOrder(b.subject_name)
+      const nameA = a.subject_name || ''
+      const nameB = b.subject_name || ''
+      if (isCurrentNursery || /^LA\d+/i.test(nameA) || /^LA\d+/i.test(nameB)) {
+        return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' })
+      }
+      const orderA = getSubjectOrder(nameA)
+      const orderB = getSubjectOrder(nameB)
       if (orderA !== orderB) return orderA - orderB
-      return (a.subject_name || '').localeCompare(b.subject_name || '', undefined, { numeric: true })
+      return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' })
     })
     if (selectedSubjectFilter === 'all') return sorted
     return sorted.filter((m) => m.subject_id === selectedSubjectFilter || m.subject_name === selectedSubjectFilter)
-  }, [circularMarks, selectedSubjectFilter])
-
-  const isCurrentNursery = useMemo(() => {
-    return (
-      isNurseryClass(selectedEnrollment?.circular_class) ||
-      isNurseryClass(selectedEnrollment?.theology_class_level) ||
-      (selectedClassFilter !== 'all' && isNurseryClass(selectedClassFilter))
-    )
-  }, [selectedEnrollment?.circular_class, selectedEnrollment?.theology_class_level, selectedClassFilter])
+  }, [circularMarks, selectedSubjectFilter, isCurrentNursery])
 
   const activeTerm = useMemo(() => {
     return terms.find((t) => t.id === selectedTermId) || terms[0] || null
@@ -734,8 +743,55 @@ export function SharedMarksEntry({
     )
   }
 
+  const moreActionsItems = useMemo(
+    () => [
+      ...terms.map((t) => ({
+        label: `Switch Term: ${t.label} (${t.academic_year})${t.id === selectedTermId ? ' ✓' : ''}`,
+        icon: Calendar,
+        onClick: () => {
+          onSelectTerm(t.id)
+          toast.info(`Switched to ${t.label} (${t.academic_year})`)
+        },
+      })),
+      {
+        label: 'Import CSV',
+        icon: Upload,
+        onClick: () => {
+          window.location.href = '/admin/upload'
+        },
+      },
+      {
+        label: 'Export Marksheet',
+        icon: FileSpreadsheet,
+        onClick: handleExportMarksheet,
+      },
+      {
+        label: 'Clear Unsaved',
+        icon: RotateCcw,
+        onClick: () => {
+          setRawInputs({})
+          setFieldErrors({})
+          setHasUnsavedChanges(false)
+          toast.info('Cleared unsaved changes')
+        },
+      },
+      {
+        label: isExamSetLocked ? 'Unlock Exam Set' : 'Lock Exam Set',
+        icon: isExamSetLocked ? Unlock : Lock,
+        onClick: () => {
+          setIsExamSetLocked((prev) => {
+            const next = !prev
+            toast.success(next ? 'Exam set locked from edits' : 'Exam set unlocked')
+            return next
+          })
+        },
+      },
+    ],
+    [terms, selectedTermId, isExamSetLocked, onSelectTerm, handleExportMarksheet]
+  )
+
   return (
-    <div className="w-full max-w-full min-w-0 space-y-2 pb-16 md:pb-2">
+    <div className="w-full max-w-full min-w-0 space-y-2 pb-4 md:pb-2">
       <style>{`
         input[type="number"].score-input::-webkit-inner-spin-button,
         input[type="number"].score-input::-webkit-outer-spin-button {
@@ -749,14 +805,15 @@ export function SharedMarksEntry({
 
       <form id="shared-marks-form" onSubmit={handleFormSubmit} className="space-y-2 w-full min-w-0">
         {/* =========================================================================
-            ZONE 1: Single-Line Top Control Bar (No Wrap Desktop)
-            Left: [ Class Cohort Pill ] + [ Quick Search Pill ]
-            Right: [ Read-Only Active Term Confirmation Pill ] + [ BOT | MOT | EOT | ALL ] + [ Both | Secular | Theology ] + [ Subject Filter Pill ] + ( ⋮ More Actions Circle )
+            ZONE 1: Single-Line Top Control Bar
+            Desktop: Single auto-fitting row with overflow-hidden
+            Mobile (< md): Auto-fitted 2-row layout with zero horizontal scrollbar
             ========================================================================= */}
-        <div className="sticky top-2 z-30 bg-white/95 dark:bg-[#1E1F20]/95 backdrop-blur-sm border border-[#0D5C3A]/10 dark:border-[#F59E0B]/12 rounded-2xl px-3 py-1.5 sm:py-2 shadow-2xs w-full min-w-0">
-          <div className="flex items-center justify-between gap-2 w-full flex-nowrap overflow-x-auto">
+        <div className="sticky top-2 z-30 bg-white/95 dark:bg-[#1E1F20]/95 backdrop-blur-sm border border-[#0D5C3A]/10 dark:border-[#F59E0B]/12 rounded-2xl px-2.5 sm:px-3 py-1.5 sm:py-2 shadow-2xs w-full min-w-0 overflow-hidden">
+          {/* Desktop Single-Row (>= md) */}
+          <div className="hidden md:flex items-center justify-between gap-1.5 lg:gap-2 w-full flex-nowrap">
             {/* Left Group */}
-            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <div className="flex items-center gap-1.5 lg:gap-2 shrink min-w-0">
               {/* Class Selector Pill */}
               <select
                 id="marks-class-select"
@@ -773,7 +830,7 @@ export function SharedMarksEntry({
                     onSelectEnrollment(matching[0].id)
                   }
                 }}
-                className="h-8 sm:h-8.5 rounded-full bg-[#F0F4F9] dark:bg-[#131314] hover:bg-[#E4EAE6] dark:hover:bg-[#282A2C] text-[#1F1F1F] dark:text-[#E3E3E3] border-0 ring-0 focus:ring-2 focus:ring-[#0D5C3A]/25 dark:focus:ring-[#F59E0B]/30 px-3 text-xs font-semibold transition-colors max-w-[140px] sm:max-w-[160px] truncate cursor-pointer shrink-0"
+                className="h-8 rounded-full bg-[#F0F4F9] dark:bg-[#131314] hover:bg-[#E4EAE6] dark:hover:bg-[#282A2C] text-[#1F1F1F] dark:text-[#E3E3E3] border-0 ring-0 focus:ring-2 focus:ring-[#0D5C3A]/25 dark:focus:ring-[#F59E0B]/30 px-2.5 sm:px-3 text-xs font-semibold transition-colors max-w-[135px] truncate cursor-pointer shrink-0"
               >
                 <option value="all">All Classes ({enrollments.length})</option>
                 {classOptions.map((cls) => (
@@ -784,7 +841,7 @@ export function SharedMarksEntry({
               </select>
 
               {/* Quick Search Pill */}
-              <div ref={searchBoxRef} className="relative min-w-[130px] sm:min-w-[160px] max-w-[190px] shrink-0">
+              <div ref={searchBoxRef} className="relative flex-1 min-w-[110px] max-w-[200px] shrink">
                 <div className="relative flex items-center">
                   <Search className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500 absolute left-2.5 pointer-events-none" />
                   <input
@@ -799,7 +856,7 @@ export function SharedMarksEntry({
                       setSearchDropdownOpen(true)
                     }}
                     placeholder="Quick search..."
-                    className="w-full h-8 sm:h-8.5 pl-7.5 pr-7 text-xs font-medium rounded-full bg-[#F0F4F9] dark:bg-[#131314] hover:bg-[#E4EAE6] dark:hover:bg-[#282A2C] text-[#1F1F1F] dark:text-[#E3E3E3] placeholder:text-stone-400 dark:placeholder:text-stone-500 border-0 ring-0 focus:ring-2 focus:ring-[#0D5C3A]/25 dark:focus:ring-[#F59E0B]/30 outline-none transition-colors"
+                    className="w-full h-8 pl-7.5 pr-6 text-xs font-medium rounded-full bg-[#F0F4F9] dark:bg-[#131314] hover:bg-[#E4EAE6] dark:hover:bg-[#282A2C] text-[#1F1F1F] dark:text-[#E3E3E3] placeholder:text-stone-400 dark:placeholder:text-stone-500 border-0 ring-0 focus:ring-2 focus:ring-[#0D5C3A]/25 dark:focus:ring-[#F59E0B]/30 outline-none transition-colors"
                   />
                   {studentSearchQuery && (
                     <button
@@ -859,13 +916,13 @@ export function SharedMarksEntry({
             </div>
 
             {/* Right Group */}
-            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto">
+            <div className="flex items-center gap-1.5 lg:gap-2 shrink-0 ml-auto">
               {/* Read-Only Active Term Confirmation Pill */}
               <div
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#0D5C3A]/8 text-[#0D5C3A] dark:bg-[#10B981]/15 dark:text-[#34D399] font-semibold text-xs border border-[#0D5C3A]/15 dark:border-[#10B981]/25 select-none shrink-0"
+                className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full bg-[#0D5C3A]/8 text-[#0D5C3A] dark:bg-[#10B981]/15 dark:text-[#34D399] font-semibold text-xs border border-[#0D5C3A]/15 dark:border-[#10B981]/25 select-none shrink-0"
                 title="Active Term (use ⋮ menu to change)"
               >
-                <Calendar className="w-3.5 h-3.5 shrink-0 opacity-80" />
+                <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
                 <span className="whitespace-nowrap">
                   {activeTerm ? `${activeTerm.label}, ${activeTerm.academic_year}` : 'Term 3, 2026'}
                 </span>
@@ -873,7 +930,7 @@ export function SharedMarksEntry({
 
               {/* Exam Phase Track (BOT | MOT | EOT | ALL) */}
               <div
-                className="inline-flex items-center bg-[#F0F4F9] dark:bg-[#131314] p-0.5 sm:p-1 rounded-full border-0 gap-0.5 shrink-0"
+                className="inline-flex items-center bg-[#F0F4F9] dark:bg-[#131314] p-0.5 rounded-full border-0 gap-0.5 shrink-0"
                 aria-label="Exam Type"
               >
                 {(['bot', 'mot', 'eot', 'all'] as ExamType[]).map((type) => (
@@ -884,7 +941,7 @@ export function SharedMarksEntry({
                       setExamType(type)
                       setSuccess(false)
                     }}
-                    className={`whitespace-nowrap shrink-0 h-7 px-2.5 sm:px-3 text-xs font-semibold uppercase tracking-wider rounded-full transition-all cursor-pointer ${
+                    className={`whitespace-nowrap shrink-0 h-7 px-2 sm:px-2.5 text-xs font-semibold uppercase tracking-wider rounded-full transition-all cursor-pointer ${
                       examType === type
                         ? 'bg-[#0D5C3A] text-white dark:bg-[#10B981]/25 dark:text-[#34D399] shadow-xs'
                         : 'text-[#444746] dark:text-[#C4C7C5] hover:text-[#1F1F1F] dark:hover:text-white'
@@ -898,7 +955,7 @@ export function SharedMarksEntry({
               {/* Curriculum View Track (Both | Secular | Theology) */}
               {allowedDepartment === 'both' && (
                 <div
-                  className="hidden md:inline-flex items-center bg-[#F0F4F9] dark:bg-[#131314] p-0.5 sm:p-1 rounded-full border-0 gap-0.5 shrink-0"
+                  className="inline-flex items-center bg-[#F0F4F9] dark:bg-[#131314] p-0.5 rounded-full border-0 gap-0.5 shrink-0"
                   aria-label="Department View"
                 >
                   {(['both', 'secular', 'theology'] as const).map((view) => (
@@ -906,7 +963,7 @@ export function SharedMarksEntry({
                       key={view}
                       type="button"
                       onClick={() => setActiveView(view)}
-                      className={`whitespace-nowrap shrink-0 h-7 px-2.5 sm:px-3 text-xs font-semibold capitalize rounded-full transition-all cursor-pointer ${
+                      className={`whitespace-nowrap shrink-0 h-7 px-2 sm:px-2.5 text-xs font-semibold capitalize rounded-full transition-all cursor-pointer ${
                         activeView === view
                           ? 'bg-[#0D5C3A] text-white dark:bg-[#10B981]/25 dark:text-[#34D399] shadow-xs'
                           : 'text-[#444746] dark:text-[#C4C7C5] hover:text-[#1F1F1F] dark:hover:text-white'
@@ -925,7 +982,7 @@ export function SharedMarksEntry({
                   aria-label="Subject Filter"
                   value={selectedSubjectFilter}
                   onChange={(e) => setSelectedSubjectFilter(e.target.value)}
-                  className="hidden lg:inline-block h-8 sm:h-8.5 rounded-full bg-[#F0F4F9] dark:bg-[#131314] hover:bg-[#E4EAE6] dark:hover:bg-[#282A2C] text-[#1F1F1F] dark:text-[#E3E3E3] border-0 ring-0 focus:ring-2 focus:ring-[#0D5C3A]/25 dark:focus:ring-[#F59E0B]/30 px-3 text-xs font-medium transition-colors max-w-[130px] sm:max-w-[150px] truncate cursor-pointer shrink-0"
+                  className="hidden xl:inline-block h-8 rounded-full bg-[#F0F4F9] dark:bg-[#131314] hover:bg-[#E4EAE6] dark:hover:bg-[#282A2C] text-[#1F1F1F] dark:text-[#E3E3E3] border-0 ring-0 focus:ring-2 focus:ring-[#0D5C3A]/25 dark:focus:ring-[#F59E0B]/30 px-2.5 text-xs font-medium transition-colors max-w-[130px] truncate cursor-pointer shrink-0"
                 >
                   <option value="all">All Subjects ({circularMarks.length})</option>
                   {circularMarks.map((m) => (
@@ -937,52 +994,179 @@ export function SharedMarksEntry({
               )}
 
               {/* More Actions Circle */}
-              <MoreActionsMenu
-                items={[
-                  ...terms.map((t) => ({
-                    label: `Switch Term: ${t.label} (${t.academic_year})${t.id === selectedTermId ? ' ✓' : ''}`,
-                    icon: Calendar,
-                    onClick: () => {
-                      onSelectTerm(t.id)
-                      toast.info(`Switched to ${t.label} (${t.academic_year})`)
-                    },
-                  })),
-                  {
-                    label: 'Import CSV',
-                    icon: Upload,
-                    onClick: () => {
-                      window.location.href = '/admin/upload'
-                    },
-                  },
-                  {
-                    label: 'Export Marksheet',
-                    icon: FileSpreadsheet,
-                    onClick: handleExportMarksheet,
-                  },
-                  {
-                    label: 'Clear Unsaved',
-                    icon: RotateCcw,
-                    onClick: () => {
-                      setRawInputs({})
-                      setFieldErrors({})
-                      setHasUnsavedChanges(false)
-                      toast.info('Cleared unsaved changes')
-                    },
-                  },
-                  {
-                    label: isExamSetLocked ? 'Unlock Exam Set' : 'Lock Exam Set',
-                    icon: isExamSetLocked ? Unlock : Lock,
-                    onClick: () => {
-                      setIsExamSetLocked((prev) => {
-                        const next = !prev
-                        toast.success(next ? 'Exam set locked from edits' : 'Exam set unlocked')
-                        return next
+              <MoreActionsMenu items={moreActionsItems} align="end" />
+            </div>
+          </div>
+
+          {/* Mobile Auto-Fitted 2-Row Layout (< md) */}
+          <div className="flex md:hidden flex-col gap-1.5 w-full">
+            {/* Row 1: Class + Quick Search + Subject Filter + More Actions */}
+            <div className="flex items-center gap-1.5 w-full">
+              {/* Class Pill */}
+              <select
+                aria-label="Class Filter Mobile"
+                value={selectedClassFilter}
+                onChange={(e) => {
+                  const nextClass = e.target.value
+                  setSelectedClassFilter(nextClass)
+                  const matching =
+                    nextClass === 'all'
+                      ? enrollments
+                      : enrollments.filter((en) => en.circular_class === nextClass)
+                  if (matching.length > 0) {
+                    onSelectEnrollment(matching[0].id)
+                  }
+                }}
+                className="h-8 rounded-full bg-[#F0F4F9] dark:bg-[#131314] text-[#1F1F1F] dark:text-[#E3E3E3] border-0 px-2 text-xs font-semibold w-[115px] shrink-0 truncate cursor-pointer"
+              >
+                <option value="all">All ({enrollments.length})</option>
+                {classOptions.map((cls) => (
+                  <option key={cls} value={cls}>
+                    {cls}
+                  </option>
+                ))}
+              </select>
+
+              {/* Quick Search */}
+              <div ref={mobileSearchBoxRef} className="relative flex-1 min-w-0">
+                <div className="relative flex items-center">
+                  <Search className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500 absolute left-2 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={studentSearchQuery}
+                    onFocus={() => setSearchDropdownOpen(true)}
+                    onChange={(e) => {
+                      const q = e.target.value
+                      setStudentSearchQuery(q)
+                      setSearchDropdownOpen(true)
+                    }}
+                    placeholder="Search..."
+                    className="w-full h-8 pl-6.5 pr-6 text-xs font-medium rounded-full bg-[#F0F4F9] dark:bg-[#131314] text-[#1F1F1F] dark:text-[#E3E3E3] placeholder:text-stone-400 border-0 outline-none"
+                  />
+                  {studentSearchQuery && (
+                    <button
+                      type="button"
+                      aria-label="Clear mobile student search"
+                      onClick={() => {
+                        setStudentSearchQuery('')
+                        setSearchDropdownOpen(false)
+                      }}
+                      className="absolute right-1.5 p-0.5 text-stone-400 rounded-full cursor-pointer"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+
+                {searchDropdownOpen && (
+                  <div className="absolute left-0 right-0 top-full mt-1.5 max-h-64 overflow-y-auto bg-white dark:bg-[#1E1F20] border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 rounded-2xl shadow-xl z-50 divide-y divide-[#0D5C3A]/[0.06] dark:divide-[#F59E0B]/[0.07]">
+                    {filteredEnrollments.length === 0 ? (
+                      <div className="px-3 py-2 text-xs text-stone-400 text-center">
+                        No matches
+                      </div>
+                    ) : (
+                      filteredEnrollments.slice(0, 30).map((s) => {
+                        const isSel = s.id === selectedEnrollmentId
+                        return (
+                          <button
+                            key={s.id}
+                            type="button"
+                            onClick={() => {
+                              onSelectEnrollment(s.id)
+                              setSuccess(false)
+                              setSearchDropdownOpen(false)
+                            }}
+                            className={`w-full text-left px-3 py-2 flex items-center justify-between gap-2 text-xs cursor-pointer ${
+                              isSel
+                                ? 'bg-[#0D5C3A]/10 text-[#09472C] dark:bg-[#10B981]/15 dark:text-[#34D399] font-bold'
+                                : 'text-[#1F1F1F] dark:text-[#E3E3E3]'
+                            }`}
+                          >
+                            <div className="min-w-0">
+                              <div className="truncate font-semibold">{s.name}</div>
+                              <div className="text-[10px] text-stone-500 truncate">{s.circular_class}</div>
+                            </div>
+                          </button>
+                        )
                       })
-                    },
-                  },
-                ]}
-                align="end"
-              />
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Subject Pill (mobile) */}
+              {circularMarks.length > 0 && (
+                <select
+                  aria-label="Subject Filter Mobile"
+                  value={selectedSubjectFilter}
+                  onChange={(e) => setSelectedSubjectFilter(e.target.value)}
+                  className="h-8 rounded-full bg-[#F0F4F9] dark:bg-[#131314] text-[#1F1F1F] dark:text-[#E3E3E3] border-0 px-2 text-xs font-medium w-[100px] shrink-0 truncate cursor-pointer"
+                >
+                  <option value="all">Subjects ({circularMarks.length})</option>
+                  {circularMarks.map((m) => (
+                    <option key={m.subject_id} value={m.subject_id}>
+                      {m.subject_name}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              {/* More Actions Circle (mobile) */}
+              <MoreActionsMenu items={moreActionsItems} align="end" />
+            </div>
+
+            {/* Row 2: Term + Exam Phase + Department View */}
+            <div className="flex items-center gap-1.5 w-full justify-between">
+              {/* Term */}
+              <div
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#0D5C3A]/8 text-[#0D5C3A] dark:bg-[#10B981]/15 dark:text-[#34D399] font-semibold text-xs border border-[#0D5C3A]/15 dark:border-[#10B981]/25 select-none shrink-0"
+              >
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                <span className="whitespace-nowrap">
+                  {activeTerm ? activeTerm.label : 'Term 3'}
+                </span>
+              </div>
+
+              {/* Phase Track */}
+              <div className="inline-flex items-center bg-[#F0F4F9] dark:bg-[#131314] p-0.5 rounded-full border-0 gap-0.5 shrink-0">
+                {(['bot', 'mot', 'eot', 'all'] as ExamType[]).map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => {
+                      setExamType(type)
+                      setSuccess(false)
+                    }}
+                    className={`h-7 px-2 text-xs font-semibold uppercase tracking-wider rounded-full transition-all cursor-pointer ${
+                      examType === type
+                        ? 'bg-[#0D5C3A] text-white dark:bg-[#10B981]/25 dark:text-[#34D399] shadow-xs'
+                        : 'text-[#444746] dark:text-[#C4C7C5]'
+                    }`}
+                  >
+                    {type.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+
+              {/* Department View Track */}
+              {allowedDepartment === 'both' && (
+                <div className="inline-flex items-center bg-[#F0F4F9] dark:bg-[#131314] p-0.5 rounded-full border-0 gap-0.5 shrink-0">
+                  {(['both', 'secular', 'theology'] as const).map((view) => (
+                    <button
+                      key={view}
+                      type="button"
+                      onClick={() => setActiveView(view)}
+                      className={`h-7 px-2 text-xs font-semibold capitalize rounded-full transition-all cursor-pointer ${
+                        activeView === view
+                          ? 'bg-[#0D5C3A] text-white dark:bg-[#10B981]/25 dark:text-[#34D399] shadow-xs'
+                          : 'text-[#444746] dark:text-[#C4C7C5]'
+                      }`}
+                    >
+                      {view === 'both' ? 'Both' : view === 'secular' ? 'Sec' : 'Theo'}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1025,10 +1209,11 @@ export function SharedMarksEntry({
             <div className="space-y-2 w-full min-w-0">
               {/* =========================================================================
                   ZONE 2: Unified Active Student Strip
-                  Left: Avatar + Student Picker + Stepper (< >) + Position (12 of 38) + ADM + Class + Live Score Summary
+                  Left: Avatar + Student Picker + Stepper (< >) + Position (12 of 38) + ADM + Live Score Summary
                   Right: Arabic Name & Class
                   ========================================================================= */}
-              <div className="bg-[var(--bg-card)] border border-[#0D5C3A]/10 dark:border-[#F59E0B]/12 rounded-2xl px-3 sm:px-4 py-1.5 sm:py-2 flex flex-wrap items-center justify-between gap-2 shadow-2xs min-h-[42px]">
+              {/* Desktop Zone 2 (>= sm) */}
+              <div className="hidden sm:flex items-center justify-between gap-2 shadow-2xs min-h-[40px] px-3 sm:px-4 py-1.5 sm:py-2 bg-[var(--bg-card)] border border-[#0D5C3A]/10 dark:border-[#F59E0B]/12 rounded-2xl w-full min-w-0">
                 <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
                   <div className="flex items-center justify-center w-7 h-7 rounded-full bg-gradient-to-br from-emerald-500/20 to-amber-500/20 text-emerald-800 dark:text-emerald-200 font-extrabold text-xs border-0 shrink-0">
                     {selectedEnrollment?.name?.charAt(0).toUpperCase() || 'S'}
@@ -1043,7 +1228,7 @@ export function SharedMarksEntry({
                       onSelectEnrollment(e.target.value)
                       setSuccess(false)
                     }}
-                    className="h-8 rounded-full bg-[#F0F4F9] dark:bg-[#1E1F20] hover:bg-[#E4EAE6] dark:hover:bg-[#282A2C] text-[#1F1F1F] dark:text-[#E3E3E3] border-0 ring-0 focus:ring-2 focus:ring-[#0D5C3A]/25 dark:focus:ring-[#F59E0B]/30 px-3 text-xs font-bold transition-colors max-w-[200px] sm:max-w-[260px] truncate cursor-pointer shrink-0"
+                    className="h-8 rounded-full bg-[#F0F4F9] dark:bg-[#1E1F20] hover:bg-[#E4EAE6] dark:hover:bg-[#282A2C] text-[#1F1F1F] dark:text-[#E3E3E3] border-0 ring-0 focus:ring-2 focus:ring-[#0D5C3A]/25 dark:focus:ring-[#F59E0B]/30 px-3 text-xs font-bold transition-colors max-w-[200px] md:max-w-[260px] lg:max-w-[320px] truncate cursor-pointer shrink-0"
                   >
                     <option value="">Select student...</option>
                     {filteredEnrollments.map((s) => (
@@ -1079,22 +1264,15 @@ export function SharedMarksEntry({
 
                   {/* Student position counter */}
                   {currentStudentIndex !== -1 && (
-                    <span className="text-[11px] text-[var(--text-muted)] font-mono shrink-0 hidden sm:inline">
+                    <span className="text-[11px] text-[var(--text-muted)] font-mono shrink-0 hidden md:inline">
                       ({currentStudentIndex + 1} of {filteredEnrollments.length})
                     </span>
                   )}
 
-                  {/* Admission ID pill */}
+                  {/* Admission ID pill (hidden below 2xl) */}
                   {selectedEnrollment?.admission_number && (
-                    <span className="bg-[#F0F4F9] dark:bg-[#1E1F20] text-[#444746] dark:text-[#C4C7C5] border-0 rounded-full px-2.5 py-0.5 text-[11px] font-mono shrink-0 hidden md:inline">
+                    <span className="bg-[#F0F4F9] dark:bg-[#1E1F20] text-[#444746] dark:text-[#C4C7C5] border-0 rounded-full px-2.5 py-0.5 text-[11px] font-mono shrink-0 hidden 2xl:inline">
                       {selectedEnrollment.admission_number}
-                    </span>
-                  )}
-
-                  {/* Class badge */}
-                  {selectedEnrollment?.circular_class && (
-                    <span className="bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 border-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold shrink-0">
-                      {selectedEnrollment.circular_class}
                     </span>
                   )}
 
@@ -1128,6 +1306,79 @@ export function SharedMarksEntry({
                     </span>
                   </div>
                 )}
+              </div>
+
+              {/* Mobile Zone 2 (< sm) */}
+              <div className="flex sm:hidden flex-col gap-1.5 shadow-2xs px-3 py-1.5 bg-[var(--bg-card)] border border-[#0D5C3A]/10 dark:border-[#F59E0B]/12 rounded-2xl w-full min-w-0">
+                {/* Row 1: Avatar + Student Picker + Stepper + Position */}
+                <div className="flex items-center gap-1.5 w-full">
+                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-gradient-to-br from-emerald-500/20 to-amber-500/20 text-emerald-800 dark:text-emerald-200 font-extrabold text-[10px] border-0 shrink-0">
+                    {selectedEnrollment?.name?.charAt(0).toUpperCase() || 'S'}
+                  </div>
+
+                  <select
+                    aria-label="Student Mobile"
+                    value={selectedEnrollmentId}
+                    onChange={(e) => {
+                      onSelectEnrollment(e.target.value)
+                      setSuccess(false)
+                    }}
+                    className="h-8 rounded-full bg-[#F0F4F9] dark:bg-[#1E1F20] text-[#1F1F1F] dark:text-[#E3E3E3] border-0 px-2.5 text-xs font-bold flex-1 min-w-0 truncate cursor-pointer"
+                  >
+                    <option value="">Select student...</option>
+                    {filteredEnrollments.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name} ({s.circular_class})
+                      </option>
+                    ))}
+                  </select>
+
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleStepStudent(-1)}
+                      disabled={filteredEnrollments.length <= 1}
+                      title="Previous student"
+                      aria-label="Previous student"
+                      className="w-7 h-7 rounded-full bg-[#F0F4F9] dark:bg-[#1E1F20] border-0 flex items-center justify-center text-[#444746] dark:text-[#C4C7C5] active:scale-[0.97] disabled:opacity-40 cursor-pointer shrink-0"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleStepStudent(1)}
+                      disabled={filteredEnrollments.length <= 1}
+                      title="Next student"
+                      aria-label="Next student"
+                      className="w-7 h-7 rounded-full bg-[#F0F4F9] dark:bg-[#1E1F20] border-0 flex items-center justify-center text-[#444746] dark:text-[#C4C7C5] active:scale-[0.97] disabled:opacity-40 cursor-pointer shrink-0"
+                    >
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  {currentStudentIndex !== -1 && (
+                    <span className="text-[10px] text-[var(--text-muted)] font-mono shrink-0">
+                      ({currentStudentIndex + 1}/{filteredEnrollments.length})
+                    </span>
+                  )}
+                </div>
+
+                {/* Row 2: Live Stats on left, Arabic on right */}
+                <div className="flex items-center justify-between gap-2 text-[11px] pt-0.5 border-t border-[#0D5C3A]/[0.06] dark:border-[#F59E0B]/[0.07]">
+                  {liveSummary.totalSubjects > 0 ? (
+                    <span className="text-[#444746] dark:text-[#C4C7C5] font-medium tabular-nums truncate">
+                      {liveSummary.columnLabel}: {liveSummary.scoredCount}/{liveSummary.totalSubjects} scored &bull; Avg {liveSummary.avg}%
+                    </span>
+                  ) : (
+                    <span className="text-[var(--text-muted)]">No subjects</span>
+                  )}
+
+                  {selectedEnrollment.theology_class_arabic && (
+                    <span className="text-xs font-bold text-[var(--text-primary)] shrink-0 ml-auto" dir="rtl">
+                      {selectedEnrollment.arabic_name || selectedEnrollment.name}
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* =========================================================================
@@ -1282,9 +1533,9 @@ export function SharedMarksEntry({
                   ZONE 4: Dedicated Prominent Bottom Pill Save Bar
                   Sticky at bottom, status on left + Save & Next Student, big tactile pill save button on right
                   ========================================================================= */}
-              <div className="sticky bottom-2 z-30 bg-white/95 dark:bg-[#1E1F20]/95 backdrop-blur-md border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 rounded-2xl p-2.5 sm:px-5 sm:py-2.5 shadow-lg flex flex-wrap items-center justify-between gap-3 w-full">
+              <div className="sticky bottom-2 z-20 bg-white/95 dark:bg-[#1E1F20]/95 backdrop-blur-md border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 rounded-2xl p-2 sm:px-4 sm:py-2 shadow-lg flex flex-wrap items-center justify-between gap-2 sm:gap-3 w-full">
                 {/* Left status / next student */}
-                <div className="flex items-center gap-3 min-w-0">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                   {hasUnsavedChanges ? (
                     <div className="flex items-center gap-2 text-xs font-semibold text-amber-900 dark:text-amber-200">
                       <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
@@ -1324,7 +1575,7 @@ export function SharedMarksEntry({
                     type="submit"
                     data-testid="save-marks-submit"
                     disabled={isSaving || isPending || !selectedEnrollment || isExamSetLocked}
-                    className="h-11 min-w-[220px] px-8 btn-jiddah-cta text-sm font-bold rounded-full inline-flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all active:scale-[0.98] cursor-pointer disabled:opacity-40"
+                    className="h-10 sm:h-11 min-w-[180px] sm:min-w-[220px] px-5 sm:px-8 btn-jiddah-cta text-sm font-bold rounded-full inline-flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all active:scale-[0.98] cursor-pointer disabled:opacity-40"
                   >
                     {isSaving || isPending ? (
                       <RefreshCw className="w-4 h-4 animate-spin" />

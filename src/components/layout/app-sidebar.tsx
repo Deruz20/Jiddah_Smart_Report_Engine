@@ -310,7 +310,7 @@ function NavItem({
 /* ─── App Sidebar ────────────────────────────────────────────────────────── */
 
 export function AppSidebar() {
-  const { state, toggleSidebar, isMobile } = useSidebar();
+  const { state, toggleSidebar, isMobile, setOpenMobile } = useSidebar();
   const pathname = usePathname();
   const collapsed = state === "collapsed" && !isMobile;
 
@@ -436,6 +436,7 @@ export function AppSidebar() {
           <Link
             href="/admin"
             aria-label={`${schoolName} — dashboard`}
+            onClick={() => isMobile && setOpenMobile(false)}
             className="flex items-center gap-2.5 outline-none focus-visible:ring-2 focus-visible:ring-[#0D5C3A] rounded-lg"
           >
             <Image
@@ -561,6 +562,7 @@ export function AppSidebar() {
             <Link
               href="/admin/account"
               aria-current={isAccountActive ? "page" : undefined}
+              onClick={() => isMobile && setOpenMobile(false)}
               className={cn(
                 "flex-1 min-w-0 h-10 px-2 rounded-full flex items-center gap-2.5 outline-none hover:bg-black/[0.06] dark:hover:bg-white/[0.06] transition-colors",
                 isAccountActive && "bg-black/[0.04] dark:bg-white/[0.06]"
@@ -586,6 +588,7 @@ export function AppSidebar() {
                   href="/admin/settings"
                   aria-label="School Settings"
                   aria-current={isSettingsActive ? "page" : undefined}
+                  onClick={() => isMobile && setOpenMobile(false)}
                   className={cn(
                     "size-9 shrink-0 rounded-full flex items-center justify-center transition-colors outline-none",
                     "focus-visible:ring-2 focus-visible:ring-[#0D5C3A] dark:focus-visible:ring-[#34D399]",

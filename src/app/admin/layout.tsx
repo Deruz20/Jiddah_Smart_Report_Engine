@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { SidebarInset, SidebarProvider } from "@/components/figma-ui/ui/sidebar";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppTopbar } from "@/components/layout/app-topbar";
-import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 import { ProductTour } from "@/components/ProductTour";
 import { createClient } from "@/utils/supabase/client";
 import { cn } from "@/components/figma-ui/ui/utils";
@@ -106,13 +105,12 @@ export default function AdminLayout({
         <AppTopbar />
         <main
           className={cn(
-            "flex-1 flex flex-col min-h-0 min-w-0 w-full overflow-x-hidden pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0 relative",
+            "flex-1 flex flex-col min-h-0 min-w-0 w-full overflow-x-hidden pb-4 sm:pb-5 md:pb-0 relative",
             isReportsPage ? "overflow-y-hidden" : "overflow-y-auto"
           )}
         >
           {children}
         </main>
-        <MobileBottomNav role={role} subject={subject} />
         <ProductTour isOpen={showTour} onClose={handleCloseTour} role={role} />
       </SidebarInset>
     </SidebarProvider>

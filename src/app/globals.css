@@ -468,3 +468,11 @@ body {
 .press-scale:active {
   transform: scale(0.97);
 }
+
+/* True Instantaneous Gemini Tooltips — Zero Animation, Zero Transition */
+[data-radix-popper-content-wrapper]:has([role="tooltip"]),
+[data-radix-popper-content-wrapper] [role="tooltip"],
+[data-slot="tooltip-content"] {
+  transition: none !important;
+  animation: none !important;
+}

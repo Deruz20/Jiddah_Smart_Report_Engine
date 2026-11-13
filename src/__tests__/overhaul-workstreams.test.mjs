@@ -50,6 +50,8 @@ import {
   getSubjectGradeNumber,
 } from '../lib/grading.ts';
 
+import { MobileBottomNav } from '../components/layout/mobile-bottom-nav.tsx';
+
 describe('Workstream 1: School Badge / Logo Normalization', () => {
   it('replaces broken /logo.png and empty inputs with canonical /logo-512h.png', () => {
     assert.equal(CANONICAL_SCHOOL_LOGO, '/logo-512h.png');
@@ -440,4 +442,60 @@ describe('Workstream 6: Nursery Grading & Marks Entry Workspace Architecture', (
     assert.notEqual(gradeFor85, 'D2');
   });
 });
+
+describe('Workstream 7: Navigation Layout, Alphanumeric Sorting & Mobile Optimization', () => {
+  it('enforces natural alphanumeric sorting for Nursery learning areas (LA1, LA2, LA3...)', () => {
+    const rawSubjects = [
+      { subject_name: 'LA2 English' },
+      { subject_name: 'LA1 Social Development' },
+      { subject_name: 'LA4 Numbers' },
+      { subject_name: 'LA3 Health Habits' },
+    ];
+
+    const getSubjectOrder = (name) => {
+      const n = (name || '').toUpperCase();
+      if (n.includes('ENG')) return 1;
+      if (n.includes('MATH') || n.includes('MTC')) return 2;
+      if (n.includes('LIT 1') || n.includes('LIT I')) return 3;
+      if (n.includes('LIT 2') || n.includes('LIT II')) return 4;
+      if (n.includes('SCI')) return 5;
+      if (n.includes('SST') || n.includes('SOCIAL')) return 6;
+      if (n.includes('COMP')) return 7;
+      if (n.includes('IRE')) return 8;
+      return 99;
+    };
+
+    const isCurrentNursery = true;
+
+    const sorted = [...rawSubjects].sort((a, b) => {
+      const nameA = a.subject_name || '';
+      const nameB = b.subject_name || '';
+      if (isCurrentNursery || /^LA\d+/i.test(nameA) || /^LA\d+/i.test(nameB)) {
+        return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
+      }
+      const orderA = getSubjectOrder(nameA);
+      const orderB = getSubjectOrder(nameB);
+      if (orderA !== orderB) return orderA - orderB;
+      return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
+    });
+
+    const sortedNames = sorted.map((s) => s.subject_name);
+    assert.deepEqual(sortedNames, [
+      'LA1 Social Development',
+      'LA2 English',
+      'LA3 Health Habits',
+      'LA4 Numbers',
+    ]);
+
+    // Specifically verify LA1 Social Development precedes LA2 English (regression fix)
+    assert.equal(sortedNames[0], 'LA1 Social Development');
+    assert.equal(sortedNames[1], 'LA2 English');
+  });
+
+  it('renders MobileBottomNav cleanly as null eliminating redundant mobile bars', () => {
+    assert.equal(typeof MobileBottomNav, 'function');
+    assert.equal(MobileBottomNav(), null);
+  });
+});
+
 

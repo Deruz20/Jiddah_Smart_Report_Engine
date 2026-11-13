@@ -779,7 +779,7 @@ export default function SettingsClient({
         </aside>
 
         {/* Centered Modular Card Column */}
-        <main className="max-w-[760px] w-full mx-auto space-y-5 pb-28 md:pb-16">
+        <main className="max-w-[760px] w-full mx-auto space-y-5 pb-5 md:pb-8">
           {normalizedQuery && visibleCategories.length === 0 && (
             <div className="bg-white rounded-2xl border border-[#E3E8E3] shadow-[0_1px_3px_rgba(15,41,30,0.04)] p-8 text-center">
               <p className="text-sm font-semibold text-[#111827]">

@@ -6,13 +6,15 @@ import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import { cn } from "./utils";
 
 function TooltipProvider({
-  delayDuration = 150,
+  delayDuration = 60,
+  skipDelayDuration = 0,
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Provider>) {
   return (
     <TooltipPrimitive.Provider
       data-slot="tooltip-provider"
       delayDuration={delayDuration}
+      skipDelayDuration={skipDelayDuration}
       disableHoverableContent={true}
       {...props}
     />
@@ -47,7 +49,7 @@ function TooltipContent({
         data-slot="tooltip-content"
         sideOffset={sideOffset}
         className={cn(
-          "bg-neutral-900 text-white dark:bg-[#1E1F20] dark:text-[#E3E3E3] z-50 w-fit rounded-full px-3 py-1.5 text-xs font-medium tracking-tight shadow-md border border-white/10 dark:border-white/10 pointer-events-none select-none transition-opacity duration-100 ease-out data-[state=closed]:opacity-0 data-[state=delayed-open]:opacity-100 data-[state=instant-open]:opacity-100",
+          "bg-neutral-900 text-white dark:bg-[#1E1F20] dark:text-[#E3E3E3] z-50 w-fit rounded-full px-3 py-1.5 text-xs font-medium tracking-tight shadow-md border border-white/10 dark:border-white/10 pointer-events-none select-none",
           className,
         )}
         {...props}

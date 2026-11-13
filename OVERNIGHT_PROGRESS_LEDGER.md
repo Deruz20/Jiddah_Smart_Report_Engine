@@ -275,3 +275,53 @@ Exit code: 0
 
 
 
+
+---
+
+## Milestone 11: Mobile Redundancy Elimination, Instantaneous Tooltips & Alphanumeric Fit
+
+- **Files Modified:**
+  - `src/components/layout/mobile-bottom-nav.tsx`
+  - `src/app/admin/layout.tsx`
+  - `src/components/layout/SettingsClient.tsx`
+  - `src/components/layout/circular-client.tsx`
+  - `src/components/layout/theology-client.tsx`
+  - `src/components/figma-ui/ui/sidebar.tsx`
+  - `src/components/layout/app-sidebar.tsx`
+  - `src/app/globals.css`
+  - `src/components/figma-ui/ui/tooltip.tsx`
+  - `src/components/shared-marks-entry.tsx`
+  - `src/__tests__/overhaul-workstreams.test.mjs`
+- **Scope & Workstreams Completed:**
+  1. **Workstream 1: Redundant Mobile Navigation Elimination & Screen Height Reclaimed:**
+     - Eliminated redundant `<MobileBottomNav />` globally by refactoring `mobile-bottom-nav.tsx` to return `null` and removing it from `src/app/admin/layout.tsx`.
+     - Reclaimed ~80px of mobile screen real estate and eliminated bottom collisions with page action bars.
+     - Reduced page container bottom padding from bloated `pb-28`/`pb-32` down to `pb-4 sm:pb-5 md:pb-0` across `admin/layout.tsx`, `SettingsClient.tsx`, `circular-client.tsx`, and `theology-client.tsx`.
+     - Ensured mobile hamburger menu (`☰`) in `app-topbar.tsx` seamlessly opens the Gemini sidebar drawer (`w-[270px] rounded-r-3xl bg-[#F0F4F9] dark:bg-[#1E1F20]`) with auto-close `setOpenMobile(false)` on brand, user account, settings gear, and navigation link clicks.
+  2. **Workstream 2: Instantaneous Gemini Tooltips (Zero Animation / Zero Motion):**
+     - Enforced strict CSS overrides in `src/app/globals.css`:
+       ```css
+       [data-radix-popper-content-wrapper]:has([role="tooltip"]),
+       [data-radix-popper-content-wrapper] [role="tooltip"],
+       [data-slot="tooltip-content"] {
+         transition: none !important;
+         animation: none !important;
+       }
+       ```
+     - Configured `TooltipProvider` in `src/components/figma-ui/ui/tooltip.tsx` with `delayDuration={60}` and `skipDelayDuration={0}`, stripping all `transition-opacity`, `slide-in`, and `zoom-in` classes to guarantee true instant appearance without flight or lag.
+  3. **Workstream 3: Zone 1 Desktop Single-Row Fit & Mobile 2-Row Layout:**
+     - Replaced `overflow-x-auto` with `overflow-hidden` on desktop Zone 1 container, using flex-responsive sizing (`Class Select: max-w-[135px]`, `Quick Search: flex-1 min-w-[110px] max-w-[200px]`, `Read-only Term: ● Term 3, 2026` with pulsing green dot, `Phase Track: [ BOT | MOT | EOT | ALL ]`, `Department Track: [ Both | Secular | Theology ]`, `Subject Filter: max-w-[130px] hidden xl:inline-block`, `More Actions: ( ⋮ Circle )`).
+     - Mobile (`< md`): Clean auto-fitted 2-row layout with zero horizontal scrollbar:
+       - Row 1: `[ Class Pill (w-[115px]) ]` + `[ 🔍 Quick Search (flex-1) ]` + `[ Subject Pill (w-[100px]) ]` + `( ⋮ Circle )`.
+       - Row 2: `[ ● Term 3 ]` + `[ BOT | MOT | EOT | ALL ]` + `[ Both | Sec | Theo ]`.
+  4. **Workstream 4: Zone 2 Clipping Resolution, Natural Alphanumeric Sorting & Zone 3/4 Polish:**
+     - Natural alphanumeric sorting in `sortedCircularMarks`:
+       `if (isCurrentNursery || /^LA\d+/i.test(nameA) || /^LA\d+/i.test(nameB))` returns `nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' })`, ensuring `LA1 Social Development` reliably precedes `LA2 English`.
+     - Zone 2 Desktop (`>= sm`): Removed redundant duplicate green class badge; hid admission number on screens narrower than `2xl`; integrated live score stats and Arabic student identity cleanly without line wrapping.
+     - Zone 2 Mobile (`< sm`): 2-row container with Row 1 (`Avatar + Student Dropdown + (<) (>) + (1/214)`) and Row 2 (`Live Score stats on left, Arabic name on right`).
+     - Zone 3: Adjusted table row heights to `h-[34px]` (`hover:bg-[var(--bg-hover)] transition-colors h-[34px]`) on `SecularMarkTableRow` and `TheologyMarkTableRow`.
+     - Zone 4: Compacted sticky bottom Save bar (`sticky bottom-2 z-20 py-2 px-3 sm:px-4 rounded-2xl`) with high-tactile pill save button (`h-10 sm:h-11 min-w-[180px] sm:min-w-[220px] px-5 sm:px-8`).
+  5. **Workstream 5: Verification Gate:**
+     - `npm run typecheck` (`tsc --noEmit`): 0 errors across entire codebase.
+     - Unit tests (`src/__tests__/overhaul-workstreams.test.mjs`): 20/20 passed (100%), including new test suite validating natural alphanumeric sorting and `MobileBottomNav` null rendering.
+     - `grading-and-calculations`, `settings-renovation`, `customization-and-contrast` tests: 61/61 passed (100%).

@@ -367,7 +367,7 @@ export default function TheologyClient({
   }, []);
 
   return (
-    <div className="pb-28 md:pb-12 w-full">
+    <div className="pb-5 md:pb-8 w-full">
       {/* Compact single horizontal pill bar */}
       <div className="w-full px-4 sm:px-6 lg:px-8 pt-4 pb-3 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2.5 flex-1 min-w-[240px] max-w-md">

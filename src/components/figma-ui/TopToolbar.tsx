@@ -48,11 +48,7 @@ export function TopToolbar({
               </div>
             ) : reportCount > 0 ? (
               <motion.div
-                className="flex items-center gap-2 rounded-xl truncate min-h-[36px] px-3 py-1"
-                style={{
-                  background: isGenerating ? '#fff7ed' : '#ecfdf5',
-                  border: `1px solid ${isGenerating ? '#fed7aa' : '#a7f3d0'}`,
-                }}
+                className="flex items-center gap-2 rounded-full truncate min-h-[36px] px-3.5 py-1 bg-gradient-to-r from-emerald-50 to-amber-50 dark:from-emerald-950/30 dark:to-amber-950/30 border border-emerald-200/80 dark:border-emerald-800/60"
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, scale: 0.9 }}
@@ -71,6 +67,11 @@ export function TopToolbar({
                 <span className="text-xs sm:text-sm font-bold text-stone-800 dark:text-stone-100 truncate tabular-nums">
                   {isGenerating ? 'Generating…' : `${reportCount} loaded`}
                 </span>
+                {!isGenerating && reportCount > 0 && (
+                  <span className="hidden lg:inline text-[11px] font-medium text-emerald-800 dark:text-emerald-300 bg-white/80 dark:bg-black/40 px-2.5 py-0.5 rounded-full border border-emerald-300/40 tabular-nums">
+                    Ready in 2s · saves ~{Math.max(0.5, Math.round((reportCount * 7) / 6) / 10)} hrs grading
+                  </span>
+                )}
               </motion.div>
             ) : (
               <div className="text-xs font-bold text-stone-700 dark:text-stone-200 truncate">
@@ -172,17 +173,20 @@ export function TopToolbar({
             </DropdownMenu.Root>
           ) : null}
 
-          {/* 1-Click Print Pill */}
+          {/* 1-Click Print Pill (Count-Aware + Tactile Gradient + Micro-scale) */}
           {onPrint && (
-            <button
+            <motion.button
               type="button"
               onClick={onPrint}
               disabled={reportCount === 0 && !title}
-              className="h-9 px-4 rounded-full bg-[#0D5C3A] hover:bg-[#0A4A2F] dark:bg-[#34D399] dark:hover:bg-[#10B981] text-white dark:text-[#131314] text-xs font-semibold inline-flex items-center gap-2 shadow-xs transition-colors disabled:opacity-40 cursor-pointer"
+              whileTap={{ scale: 0.97 }}
+              className="h-9 px-4 rounded-full bg-gradient-to-r from-[#0D5C3A] via-[#0F6B43] to-[#147A4D] hover:from-[#0A4B2F] hover:via-[#0D5C3A] hover:to-[#B45309] text-white text-xs font-semibold inline-flex items-center gap-2 shadow-[0_4px_14px_-3px_rgba(13,92,58,0.4)] transition-all disabled:opacity-40 cursor-pointer"
             >
-              <Printer className="size-4" />
-              <span>Print</span>
-            </button>
+              <Printer className="size-4 shrink-0" />
+              <span className="truncate tabular-nums">
+                {reportCount > 0 ? `Print ${reportCount} Ready Reports` : 'Print Reports'}
+              </span>
+            </motion.button>
           )}
 
           {/* Secondary Tools in More Actions Menu */}

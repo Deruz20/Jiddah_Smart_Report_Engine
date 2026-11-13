@@ -4,6 +4,7 @@ import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { motion } from "motion/react";
 import {
   LayoutDashboard,
   Users,
@@ -210,21 +211,24 @@ function NavItem({
               aria-current={active ? "page" : undefined}
               onClick={() => isMobile && setOpenMobile(false)}
               className={cn(
-                "size-10 rounded-full flex items-center justify-center transition-colors outline-none",
+                "relative size-10 rounded-full flex items-center justify-center transition-colors outline-none",
                 "focus-visible:ring-2 focus-visible:ring-[#0D5C3A] dark:focus-visible:ring-[#34D399]",
                 active
-                  ? "bg-[#D3E3FD] text-[#041E49] dark:bg-[#282A2C] dark:text-[#E3E3E3] font-semibold shadow-xs"
+                  ? "text-[#09472C] dark:text-[#FDE68A] font-semibold"
                   : "text-[#444746] dark:text-[#C4C7C5] hover:bg-black/[0.06] dark:hover:bg-white/[0.06] hover:text-[#1F1F1F] dark:hover:text-[#E3E3E3]"
               )}
             >
-              <Icon className="size-[18px] shrink-0" strokeWidth={1.75} aria-hidden />
+              {active && (
+                <motion.div
+                  layoutId="sidebar-active-pill-collapsed"
+                  className="absolute inset-0 rounded-full bg-gradient-to-r from-[#0D5C3A]/14 via-[#D97706]/10 to-[#EA580C]/12 ring-1 ring-[#0D5C3A]/20 shadow-[0_2px_10px_-2px_rgba(13,92,58,0.12)] dark:from-[#10B981]/20 dark:via-[#F59E0B]/15 dark:to-[#EA580C]/15 dark:ring-[#F59E0B]/25 dark:shadow-[0_2px_12px_-2px_rgba(245,158,11,0.15)]"
+                  transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                />
+              )}
+              <Icon className="relative z-10 size-[18px] shrink-0" strokeWidth={1.75} aria-hidden />
             </Link>
           </TooltipTrigger>
-          <TooltipContent
-            side="right"
-            sideOffset={12}
-            className="bg-[#1F1F1F] text-white dark:bg-[#E3E3E3] dark:text-[#131314] text-xs font-medium px-3 py-1.5 rounded-full shadow-md border-none"
-          >
+          <TooltipContent side="right" sideOffset={12}>
             {item.label}
           </TooltipContent>
         </Tooltip>
@@ -240,15 +244,22 @@ function NavItem({
         aria-current={active ? "page" : undefined}
         onClick={() => isMobile && setOpenMobile(false)}
         className={cn(
-          "h-9 px-3 rounded-full flex items-center gap-3 text-[13.5px] font-medium transition-colors outline-none",
+          "relative h-9 px-3 rounded-full flex items-center gap-3 text-[13.5px] font-medium transition-colors outline-none group",
           "focus-visible:ring-2 focus-visible:ring-[#0D5C3A] dark:focus-visible:ring-[#34D399]",
           active
-            ? "bg-[#D3E3FD] text-[#041E49] dark:bg-[#282A2C] dark:text-[#E3E3E3] font-semibold shadow-xs"
+            ? "text-[#09472C] dark:text-[#FDE68A] font-semibold"
             : "text-[#444746] dark:text-[#C4C7C5] hover:bg-black/[0.06] dark:hover:bg-white/[0.06] hover:text-[#1F1F1F] dark:hover:text-[#E3E3E3]"
         )}
       >
-        <Icon className="size-[18px] shrink-0" strokeWidth={1.75} aria-hidden />
-        <span className="flex-1 truncate">{item.label}</span>
+        {active && (
+          <motion.div
+            layoutId="sidebar-active-pill"
+            className="absolute inset-0 rounded-full bg-gradient-to-r from-[#0D5C3A]/14 via-[#D97706]/10 to-[#EA580C]/12 ring-1 ring-[#0D5C3A]/20 shadow-[0_2px_10px_-2px_rgba(13,92,58,0.12)] dark:from-[#10B981]/20 dark:via-[#F59E0B]/15 dark:to-[#EA580C]/15 dark:ring-[#F59E0B]/25 dark:shadow-[0_2px_12px_-2px_rgba(245,158,11,0.15)]"
+            transition={{ type: "spring", stiffness: 350, damping: 30 }}
+          />
+        )}
+        <Icon className="relative z-10 size-[18px] shrink-0" strokeWidth={1.75} aria-hidden />
+        <span className="relative z-10 flex-1 truncate">{item.label}</span>
         {hasSub && (
           <button
             type="button"
@@ -259,7 +270,7 @@ function NavItem({
               e.stopPropagation();
               setOpen((v) => !v);
             }}
-            className="size-6 rounded-full flex items-center justify-center hover:bg-black/[0.08] dark:hover:bg-white/[0.08]"
+            className="relative z-10 size-6 rounded-full flex items-center justify-center hover:bg-black/[0.08] dark:hover:bg-white/[0.08]"
           >
             <ChevronRight
               className={cn("size-3.5 transition-transform duration-150", open && "rotate-90")}
@@ -280,13 +291,13 @@ function NavItem({
                 aria-current={childActive ? "page" : undefined}
                 onClick={() => isMobile && setOpenMobile(false)}
                 className={cn(
-                  "h-8 px-3 rounded-full flex items-center text-[12.5px] font-medium transition-colors outline-none",
+                  "relative h-8 px-3 rounded-full flex items-center text-[12.5px] font-medium transition-colors outline-none",
                   childActive
-                    ? "bg-[#D3E3FD] text-[#041E49] dark:bg-[#282A2C] dark:text-[#E3E3E3] font-semibold"
+                    ? "bg-gradient-to-r from-[#0D5C3A]/14 via-[#D97706]/10 to-[#EA580C]/12 text-[#09472C] font-semibold ring-1 ring-[#0D5C3A]/20 shadow-xs dark:from-[#10B981]/20 dark:via-[#F59E0B]/15 dark:to-[#EA580C]/15 dark:text-[#FDE68A] dark:ring-[#F59E0B]/25"
                     : "text-[#444746] dark:text-[#C4C7C5] hover:bg-black/[0.06] dark:hover:bg-white/[0.06] hover:text-[#1F1F1F] dark:hover:text-[#E3E3E3]"
                 )}
               >
-                {child.label}
+                <span className="truncate">{child.label}</span>
               </Link>
             );
           })}
@@ -406,19 +417,15 @@ export function AppSidebar() {
                     alt="Jiddah Emblem"
                     width={24}
                     height={24}
-                    className="size-6 object-contain group-hover/logo:opacity-0 group-hover/logo:scale-75 transition-all duration-200"
+                    className="size-6 object-contain transition-all duration-[180ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/logo:opacity-0 group-hover/logo:scale-75 group-hover/logo:blur-[2px]"
                   />
                   <PanelLeftOpen
-                    className="size-5 absolute inset-0 m-auto opacity-0 scale-75 group-hover/logo:opacity-100 group-hover/logo:scale-100 transition-all duration-200 text-[#444746] dark:text-[#C4C7C5]"
+                    className="size-5 absolute inset-0 m-auto opacity-0 scale-75 blur-[2px] transition-all duration-[180ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/logo:opacity-100 group-hover/logo:scale-100 group-hover/logo:blur-none text-[#444746] dark:text-[#C4C7C5]"
                     strokeWidth={1.75}
                   />
                 </button>
               </TooltipTrigger>
-              <TooltipContent
-                side="right"
-                sideOffset={12}
-                className="bg-[#1F1F1F] text-white dark:bg-[#E3E3E3] dark:text-[#131314] text-xs font-medium px-3 py-1.5 rounded-full shadow-md border-none"
-              >
+              <TooltipContent side="right" sideOffset={12}>
                 Open sidebar
               </TooltipContent>
             </Tooltip>
@@ -454,11 +461,7 @@ export function AppSidebar() {
                   <Search className="size-[18px]" strokeWidth={1.75} />
                 </button>
               </TooltipTrigger>
-              <TooltipContent
-                side="bottom"
-                sideOffset={6}
-                className="bg-[#1F1F1F] text-white dark:bg-[#E3E3E3] dark:text-[#131314] text-xs font-medium px-3 py-1.5 rounded-full shadow-md border-none"
-              >
+              <TooltipContent side="bottom" sideOffset={6}>
                 Search (⌘K)
               </TooltipContent>
             </Tooltip>
@@ -475,11 +478,7 @@ export function AppSidebar() {
                     <PanelLeftClose className="size-4" strokeWidth={1.75} />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent
-                  side="right"
-                  sideOffset={8}
-                  className="bg-[#1F1F1F] text-white dark:bg-[#E3E3E3] dark:text-[#131314] text-xs font-medium px-3 py-1.5 rounded-full shadow-md border-none"
-                >
+                <TooltipContent side="right" sideOffset={8}>
                   Close sidebar
                 </TooltipContent>
               </Tooltip>
@@ -505,92 +504,104 @@ export function AppSidebar() {
       </SidebarContent>
 
       {/* ─── Pinned Bottom Footer ────────────────────────────────────────── */}
-      <SidebarFooter className="shrink-0 gap-1 border-t border-black/[0.05] dark:border-white/[0.06] bg-[#F0F4F9] dark:bg-[#1E1F20] p-2">
-        {/* School Settings Gear */}
+      <SidebarFooter className="shrink-0 border-t border-black/[0.05] dark:border-white/[0.06] bg-[#F0F4F9] dark:bg-[#1E1F20] p-2 mt-auto">
         {collapsed ? (
-          <Tooltip delayDuration={150}>
-            <TooltipTrigger asChild>
-              <Link
-                href="/admin/settings"
-                aria-label="School Settings"
-                aria-current={isSettingsActive ? "page" : undefined}
-                className={cn(
-                  "size-10 rounded-full flex items-center justify-center mx-auto transition-colors outline-none",
-                  isSettingsActive
-                    ? "bg-[#D3E3FD] text-[#041E49] dark:bg-[#282A2C] dark:text-[#E3E3E3] font-semibold shadow-xs"
-                    : "text-[#444746] dark:text-[#C4C7C5] hover:bg-black/[0.08] dark:hover:bg-white/[0.08]"
-                )}
-              >
-                <Settings className="size-[18px]" strokeWidth={1.75} />
-              </Link>
-            </TooltipTrigger>
-            <TooltipContent
-              side="right"
-              sideOffset={12}
-              className="bg-[#1F1F1F] text-white dark:bg-[#E3E3E3] dark:text-[#131314] text-xs font-medium px-3 py-1.5 rounded-full shadow-md border-none"
-            >
-              School Settings
-            </TooltipContent>
-          </Tooltip>
-        ) : (
-          <Link
-            href="/admin/settings"
-            aria-current={isSettingsActive ? "page" : undefined}
-            className={cn(
-              "h-9 px-3 rounded-full flex items-center gap-3 text-[13.5px] font-medium transition-colors outline-none",
-              isSettingsActive
-                ? "bg-[#D3E3FD] text-[#041E49] dark:bg-[#282A2C] dark:text-[#E3E3E3] font-semibold shadow-xs"
-                : "text-[#444746] dark:text-[#C4C7C5] hover:bg-black/[0.06] dark:hover:bg-white/[0.06] hover:text-[#1F1F1F] dark:hover:text-[#E3E3E3]"
-            )}
-          >
-            <Settings className="size-[18px] shrink-0" strokeWidth={1.75} />
-            <span className="flex-1 truncate">School Settings</span>
-          </Link>
-        )}
+          <div className="flex flex-col items-center gap-1.5 py-1">
+            {/* School Settings Gear */}
+            <Tooltip delayDuration={150}>
+              <TooltipTrigger asChild>
+                <Link
+                  href="/admin/settings"
+                  aria-label="School Settings"
+                  aria-current={isSettingsActive ? "page" : undefined}
+                  className={cn(
+                    "relative size-10 rounded-full flex items-center justify-center transition-colors outline-none",
+                    "focus-visible:ring-2 focus-visible:ring-[#0D5C3A] dark:focus-visible:ring-[#34D399]",
+                    isSettingsActive
+                      ? "text-[#09472C] dark:text-[#FDE68A] font-semibold"
+                      : "text-[#444746] dark:text-[#C4C7C5] hover:bg-black/[0.08] dark:hover:bg-white/[0.08]"
+                  )}
+                >
+                  {isSettingsActive && (
+                    <motion.div
+                      layoutId="sidebar-active-pill-collapsed"
+                      className="absolute inset-0 rounded-full bg-gradient-to-r from-[#0D5C3A]/14 via-[#D97706]/10 to-[#EA580C]/12 ring-1 ring-[#0D5C3A]/20 dark:from-[#10B981]/20 dark:via-[#F59E0B]/15 dark:to-[#EA580C]/15 dark:ring-[#F59E0B]/25"
+                      transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                    />
+                  )}
+                  <Settings className="relative z-10 size-[18px]" strokeWidth={1.75} />
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={12}>
+                School Settings
+              </TooltipContent>
+            </Tooltip>
 
-        {/* User Account Circle */}
-        {collapsed ? (
-          <Tooltip delayDuration={150}>
-            <TooltipTrigger asChild>
-              <Link
-                href="/admin/account"
-                aria-label={`${userName} — account`}
-                className="size-10 rounded-full flex items-center justify-center mx-auto transition-colors outline-none hover:bg-black/[0.08] dark:hover:bg-white/[0.08]"
-              >
-                <span className="size-8 rounded-full flex items-center justify-center bg-[#0D5C3A] text-[11px] font-bold text-white shadow-xs">
-                  {initials}
-                </span>
-              </Link>
-            </TooltipTrigger>
-            <TooltipContent
-              side="right"
-              sideOffset={12}
-              className="bg-[#1F1F1F] text-white dark:bg-[#E3E3E3] dark:text-[#131314] text-xs font-medium px-3 py-1.5 rounded-full shadow-md border-none"
-            >
-              {userName} · {rawRoleDisplay}
-            </TooltipContent>
-          </Tooltip>
+            {/* User Account Circle */}
+            <Tooltip delayDuration={150}>
+              <TooltipTrigger asChild>
+                <Link
+                  href="/admin/account"
+                  aria-label={`${userName} — account`}
+                  className="size-10 rounded-full flex items-center justify-center transition-colors outline-none hover:bg-black/[0.08] dark:hover:bg-white/[0.08]"
+                >
+                  <span className="size-8 rounded-full flex items-center justify-center bg-gradient-to-br from-[#0D5C3A] to-[#0A4A2F] text-[11px] font-bold text-white shadow-xs">
+                    {initials}
+                  </span>
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={12}>
+                {userName} · {rawRoleDisplay}
+              </TooltipContent>
+            </Tooltip>
+          </div>
         ) : (
-          <Link
-            href="/admin/account"
-            aria-current={isAccountActive ? "page" : undefined}
-            className={cn(
-              "h-10 px-2 rounded-full flex items-center gap-3 outline-none hover:bg-black/[0.06] dark:hover:bg-white/[0.06] transition-colors",
-              isAccountActive && "bg-black/[0.04] dark:bg-white/[0.06]"
-            )}
-          >
-            <span className="size-8 shrink-0 rounded-full flex items-center justify-center bg-[#0D5C3A] text-[11px] font-bold text-white shadow-xs">
-              {initials}
-            </span>
-            <span className="min-w-0 leading-tight">
-              <span className="block truncate text-[13px] font-semibold text-[#1F1F1F] dark:text-[#E3E3E3]">
-                {userName}
+          <div className="flex items-center justify-between px-2 py-1 gap-2">
+            {/* User Account Info on Left */}
+            <Link
+              href="/admin/account"
+              aria-current={isAccountActive ? "page" : undefined}
+              className={cn(
+                "flex-1 min-w-0 h-10 px-2 rounded-full flex items-center gap-2.5 outline-none hover:bg-black/[0.06] dark:hover:bg-white/[0.06] transition-colors",
+                isAccountActive && "bg-black/[0.04] dark:bg-white/[0.06]"
+              )}
+            >
+              <span className="size-8 shrink-0 rounded-full flex items-center justify-center bg-gradient-to-br from-[#0D5C3A] to-[#0A4A2F] text-[11px] font-bold text-white shadow-xs">
+                {initials}
               </span>
-              <span className="block truncate text-[11px] font-medium text-[#747775] dark:text-[#8E918F]">
-                {rawRoleDisplay}
+              <span className="min-w-0 leading-tight">
+                <span className="block truncate text-[13px] font-semibold text-[#1F1F1F] dark:text-[#E3E3E3]">
+                  {userName}
+                </span>
+                <span className="block truncate text-[11px] font-medium text-[#747775] dark:text-[#8E918F]">
+                  {rawRoleDisplay}
+                </span>
               </span>
-            </span>
-          </Link>
+            </Link>
+
+            {/* School Settings Gear on Far-Right of the Exact Same Horizontal Row */}
+            <Tooltip delayDuration={150}>
+              <TooltipTrigger asChild>
+                <Link
+                  href="/admin/settings"
+                  aria-label="School Settings"
+                  aria-current={isSettingsActive ? "page" : undefined}
+                  className={cn(
+                    "size-9 shrink-0 rounded-full flex items-center justify-center transition-colors outline-none",
+                    "focus-visible:ring-2 focus-visible:ring-[#0D5C3A] dark:focus-visible:ring-[#34D399]",
+                    isSettingsActive
+                      ? "bg-gradient-to-r from-[#0D5C3A]/14 via-[#D97706]/10 to-[#EA580C]/12 text-[#09472C] dark:from-[#10B981]/20 dark:via-[#F59E0B]/15 dark:to-[#EA580C]/15 dark:text-[#FDE68A] font-semibold ring-1 ring-[#0D5C3A]/20 dark:ring-[#F59E0B]/25 shadow-xs"
+                      : "text-[#444746] dark:text-[#C4C7C5] hover:bg-black/[0.08] dark:hover:bg-white/[0.08]"
+                  )}
+                >
+                  <Settings className="size-[18px]" strokeWidth={1.75} />
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="top" sideOffset={6}>
+                School Settings
+              </TooltipContent>
+            </Tooltip>
+          </div>
         )}
       </SidebarFooter>
     </Sidebar>

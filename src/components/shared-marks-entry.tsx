@@ -428,6 +428,16 @@ export function SharedMarksEntry({
     }
   }, [circularMarks, examType])
 
+  const editedCount = Object.keys(rawInputs).length
+
+  const goalGradientProgress = useMemo(() => {
+    if (!liveSummary.totalSubjects) return { percent: 15, left: 0 }
+    const scoredFraction = liveSummary.scoredCount / liveSummary.totalSubjects
+    const percent = Math.min(100, Math.round(15 + scoredFraction * 85))
+    const left = Math.max(0, liveSummary.totalSubjects - liveSummary.scoredCount)
+    return { percent, left }
+  }, [liveSummary.scoredCount, liveSummary.totalSubjects])
+
   const validateAndApplyScore = useCallback((
     curriculum: 'secular' | 'theology',
     subjectId: string,
@@ -525,6 +535,7 @@ export function SharedMarksEntry({
   ) => {
     const fieldKey = `${curriculum}:${subjectId}:${type}`
     const rawOverride = rawInputs[fieldKey]
+    const isDirty = fieldKey in rawInputs
     const val =
       rawOverride !== undefined
         ? rawOverride
@@ -595,9 +606,11 @@ export function SharedMarksEntry({
               }
             }}
             disabled={isExamSetLocked}
-            className={`score-input w-16 h-8 px-1 text-center text-sm font-mono font-bold tabular-nums rounded-lg border transition-all outline-none focus:ring-1 ${
+            className={`score-input w-16 h-8 px-1 text-center text-sm font-mono font-bold tabular-nums rounded-xl border transition-all outline-none focus:ring-2 ${
               fieldError
                 ? 'border-rose-500 bg-rose-500/10 text-rose-700 dark:text-rose-300 focus:ring-rose-500/25'
+                : isDirty
+                ? 'border-[#D97706] ring-2 ring-[#D97706]/40 dark:ring-[#F59E0B]/50 bg-amber-500/10 text-[var(--text-primary)]'
                 : isHigh
                 ? 'border-[#0D5C3A] dark:border-[#34D399] bg-emerald-500/10 text-[#0D5C3A] dark:text-[#34D399] focus:border-[#0D5C3A]'
                 : isLow
@@ -907,15 +920,17 @@ export function SharedMarksEntry({
             {/* Quick Save Action in Header */}
             <div className="flex items-center gap-2.5 ml-auto shrink-0">
               {hasUnsavedChanges && (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-amber-500/15 to-orange-500/15 text-amber-900 dark:text-amber-200 border border-amber-500/30">
                   <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                  Unsaved edits
+                  <span className="tabular-nums">
+                    {editedCount > 0 ? `${editedCount} unsaved scores at risk` : 'Unsaved edits at risk'}
+                  </span>
                 </span>
               )}
               <button
                 type="submit"
                 disabled={isSaving || isPending || !selectedEnrollment || isExamSetLocked}
-                className="h-9 px-5 bg-[#0D5C3A] hover:bg-[#0A4A2F] dark:bg-[#34D399] dark:hover:bg-[#10B981] text-white dark:text-[#131314] text-xs font-semibold rounded-full shadow-xs inline-flex items-center justify-center gap-2 disabled:opacity-40 transition cursor-pointer"
+                className="h-9 px-5 btn-jiddah-cta text-xs font-semibold rounded-full inline-flex items-center justify-center gap-2 disabled:opacity-40 transition active:scale-[0.97] cursor-pointer"
               >
                 {isSaving || isPending ? (
                   <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -924,8 +939,12 @@ export function SharedMarksEntry({
                 ) : (
                   <Save className="w-3.5 h-3.5" />
                 )}
-                <span>
-                  {isSaving || isPending ? 'Saving...' : 'Save Marks'}
+                <span className="tabular-nums">
+                  {isSaving || isPending
+                    ? 'Saving...'
+                    : editedCount > 0
+                    ? `Save ${editedCount} Updated Scores`
+                    : 'Save Marks'}
                 </span>
               </button>
 
@@ -1006,26 +1025,36 @@ export function SharedMarksEntry({
           ) : selectedEnrollment ? (
             <div className="space-y-4 w-full min-w-0">
               {/* Step 2: Active Student Context Banner */}
-              <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 sm:px-6 flex flex-wrap items-center justify-between gap-4 shadow-xs">
+              <div className="bg-[var(--bg-card)] border border-[#D97706]/18 dark:border-[#F59E0B]/16 rounded-3xl p-4 sm:px-6 flex flex-wrap items-center justify-between gap-4 shadow-xs">
                 <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="flex items-center justify-center w-11 h-11 rounded-2xl bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-extrabold text-base border border-emerald-500/30 shrink-0">
+                  <div className="flex items-center justify-center w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-amber-500/20 text-emerald-800 dark:text-emerald-200 font-extrabold text-base border border-emerald-500/30 shrink-0">
                     {selectedEnrollment.name.charAt(0).toUpperCase()}
                   </div>
                   <div className="min-w-0">
                     <h2 className="text-base sm:text-lg font-extrabold text-[var(--text-primary)] truncate">
                       {selectedEnrollment.name}
                     </h2>
-                    <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-[var(--text-secondary)] tabular-nums mt-1">
-                      <span className="bg-[var(--bg-sunken)] px-2.5 py-0.5 rounded-md border border-[var(--border)] font-mono text-[var(--text-primary)]">
+                    <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-[var(--text-secondary)] tabular-nums mt-1.5">
+                      <span className="bg-[var(--bg-sunken)] px-2.5 py-0.5 rounded-full border border-[var(--border)] font-mono text-[var(--text-primary)]">
                         {selectedEnrollment.admission_number || 'ADM'}
                       </span>
-                      <span className="bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 px-2.5 py-0.5 rounded-md border border-emerald-500/20 font-bold">
+                      <span className="bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 px-2.5 py-0.5 rounded-full border border-emerald-500/20 font-bold">
                         {selectedEnrollment.circular_class}
                       </span>
                       {liveSummary.totalSubjects > 0 && (
-                        <span className="bg-blue-500/10 text-blue-800 dark:text-blue-300 px-2.5 py-0.5 rounded-md border border-blue-500/20">
-                          {liveSummary.columnLabel}: {liveSummary.scoredCount}/{liveSummary.totalSubjects} scored &bull; Total {liveSummary.total} &bull; Avg {liveSummary.avg}%
-                        </span>
+                        <>
+                          <span className="bg-emerald-500/10 text-emerald-900 dark:text-emerald-200 px-2.5 py-0.5 rounded-full border border-emerald-500/20 font-semibold tabular-nums">
+                            {liveSummary.columnLabel}: {liveSummary.scoredCount}/{liveSummary.totalSubjects} scored &bull; Total {liveSummary.total} &bull; Avg {liveSummary.avg}%
+                          </span>
+                          <span className="bg-amber-500/10 text-amber-900 dark:text-amber-200 px-2.5 py-0.5 rounded-full border border-amber-500/25 font-semibold text-[11px] tabular-nums">
+                            {goalGradientProgress.percent}% complete ({goalGradientProgress.left === 0 ? 'All scores entered!' : `${goalGradientProgress.left} scores left`})
+                          </span>
+                          {goalGradientProgress.left > 0 && goalGradientProgress.left <= 3 && (
+                            <span className="pill-jiddah-gold px-2.5 py-0.5 rounded-full text-[11px] font-bold shadow-xs tabular-nums animate-pulse">
+                              Only {goalGradientProgress.left} left to complete!
+                            </span>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
@@ -1059,8 +1088,8 @@ export function SharedMarksEntry({
               >
                 {/* Secular Marks Card */}
                 {(activeView === 'both' || activeView === 'secular') && (
-                  <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-xs overflow-hidden w-full min-w-0">
-                    <div className="px-4 py-3 bg-[var(--bg-sunken)] border-b border-[var(--border)] flex items-center justify-between gap-2">
+                  <div className="card-jiddah rounded-3xl shadow-sm border border-[#D97706]/18 dark:border-[#F59E0B]/16 overflow-hidden w-full min-w-0">
+                    <div className="px-4 py-3 bg-[var(--bg-sunken)] border-b border-[#0D5C3A]/[0.07] dark:border-[#F59E0B]/[0.07] flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
                         <BookOpen className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                         <span className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">
@@ -1083,10 +1112,10 @@ export function SharedMarksEntry({
                         }`}
                       >
                         <thead>
-                          <tr className="bg-[var(--bg-sunken)] border-b border-[var(--border)] text-[11px] font-bold text-[var(--text-secondary)] uppercase tracking-wider">
+                          <tr className="bg-[var(--bg-sunken)] border-b border-[#0D5C3A]/[0.07] dark:border-[#F59E0B]/[0.07] text-[11px] font-bold text-[var(--text-secondary)] uppercase tracking-wider">
                             <th
                               data-testid="frozen-first-column-header"
-                              className="sticky left-0 z-20 bg-[var(--bg-sunken)] px-4 py-2.5 border-r border-[var(--border)] min-w-[180px] max-w-[260px]"
+                              className="sticky left-0 z-20 bg-[var(--bg-sunken)] px-4 py-2.5 border-r border-[#0D5C3A]/[0.07] dark:border-[#F59E0B]/[0.07] min-w-[180px] max-w-[260px]"
                             >
                               Subject
                             </th>
@@ -1102,7 +1131,7 @@ export function SharedMarksEntry({
                             )}
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-[var(--border)] text-xs">
+                        <tbody className="divide-y divide-[#0D5C3A]/[0.07] dark:divide-[#F59E0B]/[0.07] text-xs">
                           {sortedCircularMarks.map((mark, idx) => (
                             <SecularMarkTableRow
                               key={mark.subject_id}
@@ -1124,8 +1153,8 @@ export function SharedMarksEntry({
                   theologyMarks.length > 0 &&
                   examType !== 'bot' &&
                   selectedEnrollment?.theology_status !== 'not_applicable' && (
-                    <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-xs overflow-hidden w-full min-w-0">
-                      <div className="px-4 py-3 bg-[var(--bg-sunken)] border-b border-[var(--border)] flex items-center justify-between gap-2">
+                    <div className="card-jiddah rounded-3xl shadow-sm border border-[#D97706]/18 dark:border-[#F59E0B]/16 overflow-hidden w-full min-w-0">
+                      <div className="px-4 py-3 bg-[var(--bg-sunken)] border-b border-[#0D5C3A]/[0.07] dark:border-[#F59E0B]/[0.07] flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
                           <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
                           <span className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">
@@ -1144,8 +1173,8 @@ export function SharedMarksEntry({
                           }`}
                         >
                           <thead>
-                            <tr className="bg-[var(--bg-sunken)] border-b border-[var(--border)] text-[11px] font-bold text-[var(--text-secondary)] uppercase tracking-wider">
-                              <th className="sticky left-0 z-20 bg-[var(--bg-sunken)] px-4 py-2.5 border-r border-[var(--border)] min-w-[180px] max-w-[260px]">
+                            <tr className="bg-[var(--bg-sunken)] border-b border-[#0D5C3A]/[0.07] dark:border-[#F59E0B]/[0.07] text-[11px] font-bold text-[var(--text-secondary)] uppercase tracking-wider">
+                              <th className="sticky left-0 z-20 bg-[var(--bg-sunken)] px-4 py-2.5 border-r border-[#0D5C3A]/[0.07] dark:border-[#F59E0B]/[0.07] min-w-[180px] max-w-[260px]">
                                 Subject (المادة)
                               </th>
                               {['mot', 'all'].includes(examType) && (
@@ -1156,7 +1185,7 @@ export function SharedMarksEntry({
                               )}
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-[var(--border)] text-xs">
+                          <tbody className="divide-y divide-[#0D5C3A]/[0.07] dark:divide-[#F59E0B]/[0.07] text-xs">
                             {theologyMarks.map((mark, idx) => (
                               <TheologyMarkTableRow
                                 key={mark.subject_id}
@@ -1183,7 +1212,7 @@ export function SharedMarksEntry({
             data-testid="sticky-save-bar"
             className="sticky bottom-[5.25rem] md:bottom-4 z-20 pt-2 pb-2"
           >
-            <div className="bg-white/95 dark:bg-[#111916]/95 backdrop-blur-sm border border-[#E6ECE8] dark:border-[#1C2622] rounded-2xl p-3 sm:px-5 shadow-sm flex flex-wrap items-center justify-between gap-3">
+            <div className="bg-white/95 dark:bg-[#111916]/95 backdrop-blur-md border border-[#D97706]/18 dark:border-[#F59E0B]/16 rounded-3xl p-3 sm:px-5 shadow-lg flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2.5 min-w-0">
                 <span
                   className={`w-2.5 h-2.5 rounded-full shrink-0 ${
@@ -1196,11 +1225,11 @@ export function SharedMarksEntry({
                       : 'bg-emerald-500'
                   }`}
                 />
-                <span className="text-xs font-bold text-[var(--text-primary)] truncate">
+                <span className="text-xs font-bold text-[var(--text-primary)] truncate tabular-nums">
                   {Object.keys(fieldErrors).length > 0
                     ? `${Object.keys(fieldErrors).length} field error(s) — fix highlighted scores (0–100)`
                     : hasUnsavedChanges
-                    ? `Unsaved changes for ${selectedEnrollment.name}`
+                    ? `${editedCount > 0 ? `${editedCount} unsaved score changes at risk` : 'Unsaved changes at risk'} for ${selectedEnrollment.name}`
                     : success
                     ? 'All marks saved to database'
                     : `Ready — ${selectedEnrollment.name}`}
@@ -1217,7 +1246,7 @@ export function SharedMarksEntry({
                       setRawInputs({})
                       toast.info('Unsaved score edits cleared')
                     }}
-                    className="min-h-[40px] px-3.5 py-2 rounded-xl border border-[var(--border)] bg-[var(--bg-sunken)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] text-xs font-bold inline-flex items-center gap-1.5 transition cursor-pointer"
+                    className="min-h-[40px] px-3.5 py-2 rounded-full border border-[var(--border)] bg-[var(--bg-sunken)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] text-xs font-bold inline-flex items-center gap-1.5 transition active:scale-[0.97] cursor-pointer"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
                     <span>Reset</span>
@@ -1228,7 +1257,7 @@ export function SharedMarksEntry({
                   type="submit"
                   data-testid="save-marks-submit"
                   disabled={isSaving || isPending}
-                  className="min-h-[40px] px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs inline-flex items-center justify-center gap-2 disabled:opacity-40 transition cursor-pointer"
+                  className="min-h-[40px] px-6 py-2 btn-jiddah-cta text-xs font-bold rounded-full inline-flex items-center justify-center gap-2 disabled:opacity-40 transition active:scale-[0.97] cursor-pointer"
                 >
                   {isSaving || isPending ? (
                     <RefreshCw className="w-4 h-4 animate-spin" />
@@ -1237,9 +1266,11 @@ export function SharedMarksEntry({
                   ) : (
                     <Save className="w-4 h-4" />
                   )}
-                  <span>
+                  <span className="tabular-nums">
                     {isSaving || isPending
                       ? 'Saving...'
+                      : editedCount > 0
+                      ? `Save ${editedCount} Updated Scores`
                       : `Save ${examType === 'all' ? 'All Marks' : `${examType.toUpperCase()} Marks`}`}
                   </span>
                 </button>

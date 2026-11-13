@@ -10,8 +10,10 @@
   --bg-card:          #FFFFFF;
   --bg-sunken:        #F8FAFD;
   --bg-hover:         rgba(31, 31, 31, 0.06);
-  --border:           #E1E3E1;
-  --border-strong:    #C4C7C5;
+  --border:           rgba(13, 92, 58, 0.14);
+  --border-strong:    rgba(217, 119, 6, 0.18);
+  --border-gold:      rgba(217, 119, 6, 0.18);
+  --divider-tint:     rgba(13, 92, 58, 0.07);
   --accent-primary:   #0D5C3A;
   --accent-secondary: #0A4A2F;
   --accent-dark:      #052E16;
@@ -20,9 +22,12 @@
   --text-primary:     #1F1F1F;
   --text-secondary:   #444746;
   --text-muted:       #747775;
-  --text-active:      #041E49;
+  --text-active:      #09472C;
   --shadow-card:      0 1px 2px rgba(0, 0, 0, 0.06), 0 1px 1px rgba(0, 0, 0, 0.04);
   --gradient-card:    linear-gradient(135deg, #F8FAFD 0%, #FFFFFF 100%);
+  --btn-cta-bg:       linear-gradient(90deg, #0D5C3A 0%, #0F6B43 50%, #147A4D 100%);
+  --btn-cta-shadow:   0 4px 14px -3px rgba(13, 92, 58, 0.4);
+  --pill-accent-gold: linear-gradient(90deg, #D97706 0%, #EA580C 100%);
 
   /* UI tokens */
   --ui-canvas: var(--bg-canvas);
@@ -32,7 +37,7 @@
   --ui-muted: var(--text-secondary);
   --ui-shell-background: #F0F4F9;
   --ui-shell-raised: #FFFFFF;
-  --ui-shell-border: #E1E3E1;
+  --ui-shell-border: var(--border);
   --ui-shell-text: #1F1F1F;
   --ui-shell-muted: #747775;
   --ui-primary: var(--accent-primary);
@@ -42,16 +47,16 @@
 
   /* Sidebar (light variant) */
   --sb-bg:            #F0F4F9;
-  --sb-border:        #E1E3E1;
+  --sb-border:        rgba(13, 92, 58, 0.14);
   --sb-text:          #444746;
   --sb-text-strong:   #1F1F1F;
   --sb-muted:         #747775;
   --sb-hover:         rgba(31, 31, 31, 0.06);
-  --sb-active-bg:     #D3E3FD;
-  --sb-active-text:   #041E49;
+  --sb-active-bg:     linear-gradient(90deg, rgba(13, 92, 58, 0.14) 0%, rgba(217, 119, 6, 0.10) 50%, rgba(234, 88, 12, 0.12) 100%);
+  --sb-active-text:   #09472C;
   --sb-active-bar:    #0D5C3A;
   --sb-logo-tile:     #FFFFFF;
-  --sb-logo-ring:     #E1E3E1;
+  --sb-logo-ring:     rgba(13, 92, 58, 0.14);
 }
 
 [data-theme="dark"], .dark {
@@ -61,8 +66,10 @@
   --bg-sunken:        #131314;
   --bg-hover:         #282A2C;
   --bg-hover-strong:  #333537;
-  --border:           rgba(255, 255, 255, 0.08);
-  --border-strong:    #3C4043;
+  --border:           rgba(16, 185, 129, 0.14);
+  --border-strong:    rgba(245, 158, 11, 0.16);
+  --border-gold:      rgba(245, 158, 11, 0.16);
+  --divider-tint:     rgba(245, 158, 11, 0.07);
   --accent-primary:   #34D399;
   --accent-secondary: #10B981;
   --accent-dark:      #052E16;
@@ -70,10 +77,13 @@
   --text-primary:     #E3E3E3;
   --text-secondary:   #C4C7C5;
   --text-muted:       #8E918F;
-  --text-active:      #E3E3E3;
+  --text-active:      #FDE68A;
   --badge-bg:         rgba(52, 211, 153, 0.16);
   --badge-text:       #6EE7B7;
   --shadow-card:      0 1px 3px rgba(0, 0, 0, 0.4);
+  --btn-cta-bg:       linear-gradient(90deg, #0D5C3A 0%, #0F6B43 50%, #147A4D 100%);
+  --btn-cta-shadow:   0 4px 14px -3px rgba(13, 92, 58, 0.4);
+  --pill-accent-gold: linear-gradient(90deg, #D97706 0%, #EA580C 100%);
 
   /* UI tokens */
   --ui-canvas: var(--bg-canvas);
@@ -83,7 +93,7 @@
   --ui-muted: var(--text-secondary);
   --ui-shell-background: #1E1F20;
   --ui-shell-raised: #282A2C;
-  --ui-shell-border: rgba(255, 255, 255, 0.08);
+  --ui-shell-border: var(--border);
   --ui-shell-text: #E3E3E3;
   --ui-shell-muted: #8E918F;
   --ui-primary: var(--accent-primary);
@@ -93,16 +103,16 @@
 
   /* Sidebar (dark variant) */
   --sb-bg:            #1E1F20;
-  --sb-border:        rgba(255, 255, 255, 0.08);
+  --sb-border:        rgba(16, 185, 129, 0.14);
   --sb-text:          #C4C7C5;
   --sb-text-strong:   #E3E3E3;
   --sb-muted:         #8E918F;
   --sb-hover:         #282A2C;
-  --sb-active-bg:     #282A2C;
-  --sb-active-text:   #E3E3E3;
+  --sb-active-bg:     linear-gradient(90deg, rgba(16, 185, 129, 0.20) 0%, rgba(245, 158, 11, 0.15) 50%, rgba(234, 88, 12, 0.15) 100%);
+  --sb-active-text:   #FDE68A;
   --sb-active-bar:    #34D399;
   --sb-logo-tile:     #282A2C;
-  --sb-logo-ring:     rgba(255, 255, 255, 0.12);
+  --sb-logo-ring:     rgba(16, 185, 129, 0.14);
 }
 
 [data-sidebar-theme="dark"] {

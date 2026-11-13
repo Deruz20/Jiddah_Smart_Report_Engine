@@ -221,9 +221,9 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
       const sampleNames = pendingClasses.slice(0, 2).map((c) => c.className).join(", ");
       const more = pendingClasses.length > 2 ? ` +${pendingClasses.length - 2} more` : "";
       return {
-        title: `${totalMissingMarks} Pending Scores in ${sampleNames}${more}`,
-        desc: "Complete pending mark sheets across your assigned subjects to unlock report verification.",
-        ctaText: "Enter Class Marks",
+        title: `${totalMissingMarks} pupils in ${sampleNames}${more} are missing scores — report cards will print with blank grades`,
+        desc: "Complete pending mark sheets now to ensure report dossiers print with verified grades and term positioning.",
+        ctaText: `Enter ${totalMissingMarks} Missing Scores →`,
         ctaHref: "/admin/marks",
         badge: isTeacher ? "Teacher Priority" : "Assessment Milestone",
       };
@@ -385,7 +385,7 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
       {/* ─── ZONE 1: 4 CENTER TOP KPI CARDS ─────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
         {/* KPI 1: Marks Completion Rate Ring */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#12151D] border border-slate-200/90 dark:border-[#212634] flex items-center justify-between shadow-xs">
+        <div className="p-4 rounded-3xl card-jiddah border border-[#D97706]/18 dark:border-[#F59E0B]/16 flex items-center justify-between shadow-xs">
           <div className="space-y-1">
             <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
               Marks Pipeline
@@ -396,7 +396,7 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
               </span>
               <span className="text-[11px] text-slate-600 dark:text-slate-400 font-medium">recorded</span>
             </div>
-            <p className="text-[11px] text-slate-600 dark:text-slate-400 font-medium">
+            <p className="text-[11px] text-slate-600 dark:text-slate-400 font-medium tabular-nums">
               {totalEnteredAll} / {totalRequiredAll} entries logged
             </p>
           </div>
@@ -422,14 +422,14 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
                 fill="none"
               />
             </svg>
-            <span className="absolute text-[10px] font-black text-slate-800 dark:text-slate-200">
+            <span className="absolute text-[10px] font-black text-slate-800 dark:text-slate-200 tabular-nums">
               {overallCyclePercent}%
             </span>
           </div>
         </div>
 
         {/* KPI 2: Active Students */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#12151D] border border-slate-200/90 dark:border-[#212634] flex items-center justify-between shadow-xs">
+        <div className="p-4 rounded-3xl card-jiddah border border-[#D97706]/18 dark:border-[#F59E0B]/16 flex items-center justify-between shadow-xs">
           <div className="space-y-1">
             <span className="text-[11px] font-bold text-sky-700 dark:text-sky-400 uppercase tracking-wider flex items-center gap-1.5">
               <Users className="size-3.5" strokeWidth={2} />
@@ -438,7 +438,7 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
             <div className="text-2xl font-black text-slate-900 dark:text-white tabular-nums">
               {totalStudents}
             </div>
-            <div className="flex items-center gap-2 text-[11px] text-slate-600 dark:text-slate-400 font-medium">
+            <div className="flex items-center gap-2 text-[11px] text-slate-600 dark:text-slate-400 font-medium tabular-nums">
               <span>{classStatuses.length} cohorts active</span>
               <span className="size-1 rounded-full bg-slate-400" />
               <span className="text-sky-700 dark:text-sky-400 font-semibold">
@@ -456,7 +456,7 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
         </div>
 
         {/* KPI 3: Report Dossiers Ready */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#12151D] border border-slate-200/90 dark:border-[#212634] flex items-center justify-between shadow-xs">
+        <div className="p-4 rounded-3xl card-jiddah border border-[#D97706]/18 dark:border-[#F59E0B]/16 flex items-center justify-between shadow-xs">
           <div className="space-y-1">
             <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
               <FileText className="size-3.5" strokeWidth={2} />
@@ -465,7 +465,7 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
             <div className="text-2xl font-black text-slate-900 dark:text-white tabular-nums">
               {reportsGenerated}
             </div>
-            <p className="text-[11px] text-slate-600 dark:text-slate-400 font-medium">
+            <p className="text-[11px] text-slate-600 dark:text-slate-400 font-medium tabular-nums">
               {totalMissingMarks === 0 ? "Ready for batch print" : `${totalMissingMarks} scores remaining`}
             </p>
           </div>
@@ -475,7 +475,7 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
         </div>
 
         {/* KPI 4: Active Teaching Staff */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#12151D] border border-slate-200/90 dark:border-[#212634] flex items-center justify-between shadow-xs">
+        <div className="p-4 rounded-3xl card-jiddah border border-[#D97706]/18 dark:border-[#F59E0B]/16 flex items-center justify-between shadow-xs">
           <div className="space-y-1">
             <span className="text-[11px] font-bold text-purple-700 dark:text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
               <CalendarCheck className="size-3.5" strokeWidth={2} />
@@ -484,7 +484,7 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
             <div className="text-2xl font-black text-slate-900 dark:text-white tabular-nums">
               {activeTeachers}
             </div>
-            <p className="text-[11px] text-slate-600 dark:text-slate-400 font-medium">
+            <p className="text-[11px] text-slate-600 dark:text-slate-400 font-medium tabular-nums">
               Active assigned instructors
             </p>
           </div>
@@ -633,7 +633,7 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
             </div>
             <Link
               href={nextAction.ctaHref}
-              className="h-9 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white dark:bg-gradient-to-r dark:from-emerald-500 dark:to-lime-500 dark:text-slate-950 font-black text-xs flex items-center justify-center gap-1.5 shrink-0 hover:brightness-105 active:scale-95 transition-all shadow-xs"
+              className="h-9 px-4 rounded-full btn-jiddah-cta text-white font-bold text-xs flex items-center justify-center gap-1.5 shrink-0 active:scale-95 transition-all shadow-md"
             >
               <span>{nextAction.ctaText}</span>
               <ArrowRight className="size-3.5" strokeWidth={2.5} />
@@ -641,9 +641,9 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
           </div>
 
           {/* ─── ZONE 3: CLASS REPORTING STATUS TABLE ─────────────── */}
-          <div className="rounded-2xl bg-white dark:bg-[#12151D] border border-slate-200/90 dark:border-[#212634] overflow-hidden shadow-xs">
+          <div className="rounded-3xl card-jiddah border border-[#D97706]/18 dark:border-[#F59E0B]/16 overflow-hidden shadow-xs">
             {/* Table Header & Filter Bar */}
-            <div className="p-3.5 sm:p-4 border-b border-slate-200 dark:border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div className="p-3.5 sm:p-4 border-b border-[#0D5C3A]/[0.07] dark:border-[#F59E0B]/[0.07] flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
               <div>
                 <h3 className="text-sm font-bold text-slate-900 dark:text-white">Class Reporting Breakdown</h3>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
@@ -695,7 +695,7 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
             <div className="overflow-x-auto max-h-[290px] overflow-y-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead className="sticky top-0 z-10">
-                  <tr className="border-b border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-[#161A23] text-slate-600 dark:text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+                  <tr className="border-b border-[#0D5C3A]/[0.07] dark:border-[#F59E0B]/[0.07] bg-slate-50 dark:bg-[#161A23] text-slate-600 dark:text-slate-400 font-bold uppercase tracking-wider text-[10px]">
                     <th className="py-2.5 px-3.5">Class / Cohort</th>
                     <th className="py-2.5 px-3.5">Learners</th>
                     <th className="py-2.5 px-3.5">Marks Progress</th>
@@ -703,7 +703,7 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
                     <th className="py-2.5 px-3.5 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                <tbody className="divide-y divide-[#0D5C3A]/[0.07] dark:divide-[#F59E0B]/[0.07]">
                   {filteredClasses.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="py-6 text-center text-slate-500 dark:text-slate-400">
@@ -711,38 +711,47 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
                       </td>
                     </tr>
                   ) : (
-                    filteredClasses.map((cls, idx) => (
-                      <tr key={idx} className="hover:bg-slate-50/80 dark:hover:bg-white/[0.02] transition-colors group">
-                        <td className="py-2.5 px-3.5 font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                          <span className="size-2 rounded-full bg-emerald-500" />
-                          <span>{cls.className}</span>
-                        </td>
-                        <td className="py-2.5 px-3.5 text-slate-600 dark:text-slate-300 font-medium">
-                          {cls.totalStudents} pupils
-                        </td>
-                        <td className="py-2.5 px-3.5 min-w-[140px]">
-                          <div className="space-y-1">
-                            <div className="flex items-center justify-between text-[11px] font-mono">
-                              <span className="text-slate-800 dark:text-slate-300 font-bold">{cls.percent}%</span>
-                              <span className="text-slate-500">
-                                {cls.marksEntered}/{cls.totalRequired}
-                              </span>
+                    filteredClasses.map((cls, idx) => {
+                      const displayPercent = Math.min(100, Math.round(15 + (cls.percent / 100) * 85));
+                      return (
+                        <tr key={idx} className="hover:bg-slate-50/80 dark:hover:bg-white/[0.02] transition-colors group">
+                          <td className="py-2.5 px-3.5 font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                            <span className="size-2 rounded-full bg-emerald-500" />
+                            <span>{cls.className}</span>
+                          </td>
+                          <td className="py-2.5 px-3.5 text-slate-600 dark:text-slate-300 font-medium tabular-nums">
+                            {cls.totalStudents} pupils
+                          </td>
+                          <td className="py-2.5 px-3.5 min-w-[140px]">
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between text-[11px] font-mono tabular-nums">
+                                <span className="text-slate-800 dark:text-slate-300 font-bold">
+                                  {cls.percent === 100 ? "100%" : `${displayPercent}%`}
+                                </span>
+                                <span className="text-slate-500">
+                                  {cls.marksEntered}/{cls.totalRequired}
+                                </span>
+                              </div>
+                              <div className="w-full h-1.5 rounded-full bg-slate-200 dark:bg-stone-800 overflow-hidden">
+                                <div
+                                  className={cn(
+                                    "h-full rounded-full transition-all duration-500",
+                                    cls.percent === 100
+                                      ? "bg-emerald-500"
+                                      : cls.percent > 50
+                                      ? "bg-lime-500"
+                                      : "bg-amber-500"
+                                  )}
+                                  style={{ width: `${cls.percent === 100 ? 100 : displayPercent}%` }}
+                                />
+                              </div>
+                              {cls.missingMarks > 0 && cls.missingMarks <= 6 && (
+                                <span className="pill-jiddah-gold px-2 py-0.5 rounded-full text-[10px] font-bold text-white inline-block tabular-nums animate-pulse">
+                                  Only {cls.missingMarks} left to complete!
+                                </span>
+                              )}
                             </div>
-                            <div className="w-full h-1.5 rounded-full bg-slate-200 dark:bg-stone-800 overflow-hidden">
-                              <div
-                                className={cn(
-                                  "h-full rounded-full transition-all duration-500",
-                                  cls.percent === 100
-                                    ? "bg-emerald-500"
-                                    : cls.percent > 50
-                                    ? "bg-lime-500"
-                                    : "bg-amber-500"
-                                )}
-                                style={{ width: `${cls.percent}%` }}
-                              />
-                            </div>
-                          </div>
-                        </td>
+                          </td>
                         <td className="py-2.5 px-3.5">
                           {cls.anomalies > 0 ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-300 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20">
@@ -802,8 +811,9 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
                           </DropdownMenu>
                         </td>
                       </tr>
-                    ))
-                  )}
+                    );
+                  })
+                )}
                 </tbody>
               </table>
             </div>

@@ -358,3 +358,43 @@ Exit code: 0
      - `tsc --noEmit`: 0 errors.
      - Automated unit tests: 107/107 passed (100%), including 20/20 in `overhaul-workstreams.test.mjs`.
      - Next.js webpack build: 68/68 routes generated cleanly with zero errors.
+
+## Milestone 13: Mobile Drawer Gemini Architecture & Mobile Marks Entry Renovation
+
+- **Files Modified:**
+  - `src/components/figma-ui/ui/sheet.tsx`
+  - `src/components/figma-ui/ui/sidebar.tsx`
+  - `src/components/layout/app-sidebar.tsx`
+  - `src/components/shared-marks-entry.tsx`
+  - `src/__tests__/overhaul-workstreams.test.mjs`
+  - `public/sw.js`
+- **Scope & Workstreams Completed:**
+  1. **Workstream 1: Gemini Mobile Menu Drawer Header & Surface:**
+     - Added `hideCloseButton` to `SheetContent` in `sheet.tsx` and `sidebar.tsx` to completely prevent Radix from rendering duplicate or overlapping close `✕` buttons.
+     - Built Google Gemini matching open mobile drawer header (`app-sidebar.tsx`):
+       - Left: School Emblem `/logo-512h.png` (`24px × 24px`) + `"Jiddah"` in `text-[18px] font-medium tracking-tight text-[#1F1F1F] dark:text-[#E3E3E3]`.
+       - Right: Two clean `38px × 38px` circular icon buttons: Search (`🔍`) that opens the Command Palette and closes the drawer, and Close (`✕`) that immediately dismisses the drawer.
+     - Mobile drawer surface: Crisp `#FFFFFF` in Light Mode and `#1E1F20` in Dark Mode (`w-[280px] max-w-[82vw] border-r-0`).
+     - Nav items: `h-10 px-4 rounded-full text-[14px] font-medium flex items-center gap-3.5` with clean `space-y-1 px-2.5` breathing room.
+     - Bottom pinned footer row: User Avatar (`HH`) + `"Hatima Hassan"` / `"Administrator"` on the left, and Settings gear icon (`⚙️`, 20px) on the far right.
+  2. **Workstream 2: Mobile Marks Entry Renovation (Zero Dark Green Cramming):**
+     - Tore down the cramped dark-green mobile card where search was squeezed and `Avg` collided with Arabic names.
+     - Built single fitted mobile top filter strip:
+       - Class Selector Pill: `h-[34px] px-3 rounded-full bg-white dark:bg-[#1E1F20] text-[#1F1F1F] dark:text-[#E3E3E3] border border-black/[0.08] dark:border-white/[0.08] text-xs font-semibold shrink-0`.
+       - Phase Track (`BOT | MOT | EOT | ALL`): `flex-1 grid grid-cols-4 bg-white dark:bg-[#1E1F20] p-0.5 rounded-full border border-black/[0.06] dark:border-white/[0.06] h-[34px]` with `h-7` active pills.
+       - Department Pill (`Both | Sec | Theo`): `bg-white dark:bg-[#1E1F20] p-0.5 rounded-full border border-black/[0.06] dark:border-white/[0.06] h-[34px] flex items-center text-[11px] font-semibold shrink-0`.
+     - Mobile active student switcher card:
+       - Clean elevated card surface (`bg-white dark:bg-[#1E1F20] rounded-2xl p-2.5 border border-black/[0.07] dark:border-white/[0.08] shadow-2xs`).
+       - Top row: Avatar + full-width student dropdown (stripping redundant `(Baby)` suffixes when class is chosen) + steppers (`<` `>`) + expandable search toggle (`🔍`) + More Actions (`⋮`).
+       - Expandable search row: Clean full-width search input with real-time dropdown matches.
+       - Bottom micro-telemetry line: Left `1 of 9 • EOT: 6/6 (90.8%)` tabular nums; Right `كاتيريغا هربيرو` in plain crisp Arabic text without heavy pill borders that caused wrapping.
+  3. **Workstream 3: Mobile Touch Keypad & Desktop Contrast Polish:**
+     - Added `inputMode="numeric"` and `pattern="[0-9]*"` to all score input cells for native 10-key numeric keypad summoning on iOS/Android.
+     - Hidden desktop hints (`"Arrow keys / Enter for next row"`) and `"(Ctrl+S)"` on mobile viewports.
+     - Sleek single-row mobile bottom save dock (`sticky bottom-2 z-20 rounded-full bg-white/95 dark:bg-[#1E1F20]/95 backdrop-blur-md px-3 py-1.5 border border-black/[0.08] dark:border-white/[0.10] shadow-[0_8px_24px_rgba(0,0,0,0.12)] flex items-center justify-between gap-2`).
+     - Desktop Zone 2 contrast refined with `bg-black/25 hover:bg-black/35 text-white border border-white/25` for the student picker, ensuring `>7:1` WCAG contrast and zero badge overlapping on sidebar toggle.
+  4. **Workstream 4: Verification Gate:**
+     - TypeScript check (`tsc --noEmit`): 0 errors across entire codebase.
+     - Automated tests: 25/25 in `overhaul-workstreams.test.mjs` and 132/132 across all test suites green.
+     - Next.js webpack production build: 68/68 routes generated cleanly in 53s.
+

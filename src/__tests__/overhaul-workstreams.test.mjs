@@ -1,5 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 
 import {
   CANONICAL_SCHOOL_LOGO,
@@ -497,5 +499,65 @@ describe('Workstream 7: Navigation Layout, Alphanumeric Sorting & Mobile Optimiz
     assert.equal(MobileBottomNav(), null);
   });
 });
+
+describe('Workstream 8: Mobile Drawer Header & Mobile Marks Entry Architecture', () => {
+  const rootDir = process.cwd();
+
+  it('renders both Search (🔍) and Close (✕) buttons in the mobile sidebar drawer header', () => {
+    const sidebarPath = path.join(rootDir, 'src/components/layout/app-sidebar.tsx');
+    const sidebarSrc = fs.readFileSync(sidebarPath, 'utf8');
+
+    // Asserts mobile header row exists with both search and close button actions
+    assert.match(sidebarSrc, /data-testid="mobile-sidebar-search-btn"/);
+    assert.match(sidebarSrc, /data-testid="mobile-sidebar-close-btn"/);
+    assert.match(sidebarSrc, /jiddah:open-command-palette/);
+    assert.match(sidebarSrc, /setOpenMobile\(false\)/);
+  });
+
+  it('prevents overlapping Radix close button in SheetContent', () => {
+    const sheetPath = path.join(rootDir, 'src/components/figma-ui/ui/sheet.tsx');
+    const sheetSrc = fs.readFileSync(sheetPath, 'utf8');
+    assert.match(sheetSrc, /hideCloseButton/);
+
+    const sidebarUiPath = path.join(rootDir, 'src/components/figma-ui/ui/sidebar.tsx');
+    const sidebarUiSrc = fs.readFileSync(sidebarUiPath, 'utf8');
+    assert.match(sidebarUiSrc, /hideCloseButton/);
+  });
+
+  it('enforces numeric keypad (inputMode="numeric" and pattern="[0-9]*") on score inputs', () => {
+    const marksEntryPath = path.join(rootDir, 'src/components/shared-marks-entry.tsx');
+    const marksEntrySrc = fs.readFileSync(marksEntryPath, 'utf8');
+
+    assert.match(marksEntrySrc, /inputMode="numeric"/);
+    assert.match(marksEntrySrc, /pattern="\[0-9\]\*"/);
+  });
+
+  it('hides desktop keyboard hints and Ctrl+S shortcuts on mobile viewports', () => {
+    const marksEntryPath = path.join(rootDir, 'src/components/shared-marks-entry.tsx');
+    const marksEntrySrc = fs.readFileSync(marksEntryPath, 'utf8');
+
+    // "Arrow keys / Enter for next row" is hidden on mobile screens
+    assert.match(marksEntrySrc, /hidden md:inline-flex items-center gap-1[^>]*>\s*<Sparkles[^>]*\/>\s*Arrow keys \/ Enter for next row/s);
+
+    // "(Ctrl+S)" is hidden on mobile screens
+    assert.match(marksEntrySrc, /<span className="hidden md:inline"> \(Ctrl\+S\)<\/span>/);
+  });
+
+  it('verifies mobile marks entry replaces cramped dark green box with clean elevated card', () => {
+    const marksEntryPath = path.join(rootDir, 'src/components/shared-marks-entry.tsx');
+    const marksEntrySrc = fs.readFileSync(marksEntryPath, 'utf8');
+
+    // Mobile Top Filter Strip exists
+    assert.match(marksEntrySrc, /aria-label="Class Filter Mobile"/);
+    assert.match(marksEntrySrc, /aria-label="Exam Phase Mobile"/);
+
+    // Expandable student search toggle exists
+    assert.match(marksEntrySrc, /aria-label="Toggle student search"/);
+
+    // Single-line floating bottom save dock exists
+    assert.match(marksEntrySrc, /sticky bottom-2 z-20 rounded-full bg-white\/95 dark:bg-\[#1E1F20\]\/95/);
+  });
+});
+
 
 

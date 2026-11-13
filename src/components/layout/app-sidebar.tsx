@@ -22,6 +22,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Search,
+  X,
 } from "lucide-react";
 import {
   Sidebar,
@@ -244,7 +245,10 @@ function NavItem({
         aria-current={active ? "page" : undefined}
         onClick={() => isMobile && setOpenMobile(false)}
         className={cn(
-          "relative h-9 px-3 rounded-full flex items-center gap-3 text-[13.5px] font-medium transition-colors outline-none group",
+          "relative rounded-full flex items-center font-medium transition-colors outline-none group",
+          isMobile
+            ? "h-10 px-4 text-[14px] gap-3.5"
+            : "h-9 px-3 text-[13.5px] gap-3",
           "focus-visible:ring-2 focus-visible:ring-[#0D5C3A] dark:focus-visible:ring-[#34D399]",
           active
             ? "text-[#09472C] dark:text-[#FDE68A] font-semibold"
@@ -431,6 +435,49 @@ export function AppSidebar() {
             </Tooltip>
           </div>
         </SidebarHeader>
+      ) : isMobile ? (
+        <SidebarHeader className="flex flex-row items-center justify-between px-4 pt-3.5 pb-2.5 shrink-0 bg-white dark:bg-[#1E1F20] border-b-0">
+          <Link
+            href="/admin"
+            aria-label={`${schoolName} — dashboard`}
+            onClick={() => setOpenMobile(false)}
+            className="flex items-center gap-2.5 outline-none rounded-lg"
+          >
+            <Image
+              src="/logo-512h.png"
+              alt="Jiddah Emblem"
+              width={24}
+              height={24}
+              className="size-6 object-contain"
+            />
+            <span className="text-[18px] font-medium tracking-tight text-[#1F1F1F] dark:text-[#E3E3E3]">
+              {schoolName || "Jiddah"}
+            </span>
+          </Link>
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              type="button"
+              aria-label="Quick Search"
+              data-testid="mobile-sidebar-search-btn"
+              onClick={() => {
+                setOpenMobile(false);
+                window.dispatchEvent(new CustomEvent("jiddah:open-command-palette"));
+              }}
+              className="w-9.5 h-9.5 rounded-full flex items-center justify-center text-[#444746] dark:text-[#C4C7C5] hover:bg-black/[0.06] dark:hover:bg-white/[0.08] active:scale-95 transition-all outline-none"
+            >
+              <Search className="size-5" strokeWidth={1.75} />
+            </button>
+            <button
+              type="button"
+              aria-label="Close menu"
+              data-testid="mobile-sidebar-close-btn"
+              onClick={() => setOpenMobile(false)}
+              className="w-9.5 h-9.5 rounded-full flex items-center justify-center text-[#444746] dark:text-[#C4C7C5] hover:bg-black/[0.06] dark:hover:bg-white/[0.08] active:scale-95 transition-all outline-none"
+            >
+              <X className="size-5" strokeWidth={1.75} />
+            </button>
+          </div>
+        </SidebarHeader>
       ) : (
         <SidebarHeader className="h-14 shrink-0 flex flex-row items-center justify-between px-3.5 border-b border-black/[0.05] dark:border-white/[0.06] bg-[#F0F4F9] dark:bg-[#1E1F20]">
           <Link
@@ -489,9 +536,9 @@ export function AppSidebar() {
       )}
 
       {/* ─── Navigation (Zero Uppercase Section Clutter) ────────────────── */}
-      <SidebarContent className="gap-0 overflow-x-hidden bg-[#F0F4F9] dark:bg-[#1E1F20] px-2.5 py-2">
+      <SidebarContent className={cn("gap-0 overflow-x-hidden px-2.5 py-2", isMobile ? "bg-white dark:bg-[#1E1F20]" : "bg-[#F0F4F9] dark:bg-[#1E1F20]")}>
         <nav aria-label="Primary" className="flex flex-col">
-          <SidebarMenu className="gap-0.5">
+          <SidebarMenu className={cn("gap-0.5", isMobile && "space-y-1")}>
             {visible.map((item) => (
               <NavItem
                 key={item.id}
@@ -505,7 +552,7 @@ export function AppSidebar() {
       </SidebarContent>
 
       {/* ─── Pinned Bottom Footer ────────────────────────────────────────── */}
-      <SidebarFooter className="shrink-0 border-t border-black/[0.05] dark:border-white/[0.06] bg-[#F0F4F9] dark:bg-[#1E1F20] p-2 mt-auto">
+      <SidebarFooter className={cn("shrink-0 border-t border-black/[0.05] dark:border-white/[0.06] p-2 mt-auto", isMobile ? "bg-white dark:bg-[#1E1F20]" : "bg-[#F0F4F9] dark:bg-[#1E1F20]")}>
         {collapsed ? (
           <div className="flex flex-col items-center gap-1.5 py-1">
             {/* School Settings Gear */}
@@ -597,7 +644,7 @@ export function AppSidebar() {
                       : "text-[#444746] dark:text-[#C4C7C5] hover:bg-black/[0.08] dark:hover:bg-white/[0.08]"
                   )}
                 >
-                  <Settings className="size-[18px]" strokeWidth={1.75} />
+                  <Settings className="size-5" strokeWidth={1.75} />
                 </Link>
               </TooltipTrigger>
               <TooltipContent side="top" sideOffset={6}>

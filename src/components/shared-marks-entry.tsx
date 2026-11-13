@@ -263,6 +263,7 @@ export function SharedMarksEntry({
   const [selectedSubjectFilter, setSelectedSubjectFilter] = useState<string>('all')
   const [studentSearchQuery, setStudentSearchQuery] = useState<string>('')
   const [searchDropdownOpen, setSearchDropdownOpen] = useState<boolean>(false)
+  const [mobileSearchExpanded, setMobileSearchExpanded] = useState<boolean>(false)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [rawInputs, setRawInputs] = useState<Record<string, string>>({})
@@ -661,6 +662,7 @@ export function SharedMarksEntry({
           <input
             type="number"
             inputMode="numeric"
+            pattern="[0-9]*"
             min={0}
             max={100}
             aria-label={`${subjectLabel} ${type.toUpperCase()} score`}
@@ -1003,192 +1005,37 @@ export function SharedMarksEntry({
             Card B: 2-Track Phase & Department Switcher (Equal-Width Grid)
             ========================================================================= */}
         <div className="flex md:hidden flex-col gap-2 w-full min-w-0">
-          {/* Mobile Card A: Active Student & Class Hero Card */}
-          <div className="bg-gradient-to-r from-[#093D26] via-[#0D5C3A] to-[#136B43] dark:from-[#0F291E] dark:via-[#143829] dark:to-[#1E2923] text-white rounded-2xl p-3 shadow-[0_6px_20px_-4px_rgba(13,92,58,0.28)] border border-[#D97706]/30 flex flex-col gap-2 w-full min-w-0">
-            {/* Row 1: Class Pill + Search Student Input + More Actions */}
-            <div className="flex items-center gap-2 w-full">
-              {/* Class Pill */}
-              <select
-                aria-label="Class Filter Mobile"
-                value={selectedClassFilter}
-                onChange={(e) => {
-                  const nextClass = e.target.value
-                  setSelectedClassFilter(nextClass)
-                  const matching =
-                    nextClass === 'all'
-                      ? enrollments
-                      : enrollments.filter((en) => en.circular_class === nextClass)
-                  if (matching.length > 0) {
-                    onSelectEnrollment(matching[0].id)
-                  }
-                }}
-                className="h-8 rounded-full bg-white/15 hover:bg-white/20 text-white border border-white/20 px-2.5 text-xs font-semibold w-[110px] shrink-0 truncate cursor-pointer outline-none"
-              >
-                <option value="all" className="text-[#1F1F1F] bg-white">All ({enrollments.length})</option>
-                {classOptions.map((cls) => (
-                  <option key={cls} value={cls} className="text-[#1F1F1F] bg-white">
-                    {cls}
-                  </option>
-                ))}
-              </select>
+          {/* Mobile Top Filter Strip (Compact, Light, Zero Search Cramming) */}
+          <div className="flex items-center gap-1.5 w-full">
+            {/* Class Selector Pill */}
+            <select
+              aria-label="Class Filter Mobile"
+              value={selectedClassFilter}
+              onChange={(e) => {
+                const nextClass = e.target.value
+                setSelectedClassFilter(nextClass)
+                const matching =
+                  nextClass === 'all'
+                    ? enrollments
+                    : enrollments.filter((en) => en.circular_class === nextClass)
+                if (matching.length > 0) {
+                  onSelectEnrollment(matching[0].id)
+                }
+              }}
+              className="h-[34px] px-3 rounded-full bg-white dark:bg-[#1E1F20] text-[#1F1F1F] dark:text-[#E3E3E3] border border-black/[0.08] dark:border-white/[0.08] text-xs font-semibold shrink-0 cursor-pointer outline-none shadow-2xs"
+            >
+              <option value="all" className="text-[#1F1F1F] bg-white dark:bg-[#1E1F20] dark:text-[#E3E3E3]">
+                All ({enrollments.length})
+              </option>
+              {classOptions.map((cls) => (
+                <option key={cls} value={cls} className="text-[#1F1F1F] bg-white dark:bg-[#1E1F20] dark:text-[#E3E3E3]">
+                  {cls}
+                </option>
+              ))}
+            </select>
 
-              {/* Quick Search Student Input */}
-              <div ref={mobileSearchBoxRef} className="relative flex-1 min-w-0">
-                <div className="relative flex items-center">
-                  <Search className="w-3.5 h-3.5 text-white/70 absolute left-2.5 pointer-events-none" />
-                  <input
-                    type="text"
-                    value={studentSearchQuery}
-                    onFocus={() => setSearchDropdownOpen(true)}
-                    onChange={(e) => {
-                      const q = e.target.value
-                      setStudentSearchQuery(q)
-                      setSearchDropdownOpen(true)
-                    }}
-                    placeholder="Search student..."
-                    className="w-full h-8 pl-7.5 pr-6 text-xs font-medium rounded-full bg-white/15 hover:bg-white/20 text-white placeholder:text-white/60 border border-white/20 outline-none"
-                  />
-                  {studentSearchQuery && (
-                    <button
-                      type="button"
-                      aria-label="Clear mobile student search"
-                      onClick={() => {
-                        setStudentSearchQuery('')
-                        setSearchDropdownOpen(false)
-                      }}
-                      className="absolute right-1.5 p-0.5 text-white/80 hover:text-white rounded-full cursor-pointer"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  )}
-                </div>
-
-                {searchDropdownOpen && (
-                  <div className="absolute left-0 right-0 top-full mt-1.5 max-h-64 overflow-y-auto bg-white dark:bg-[#1E1F20] text-[#1F1F1F] dark:text-[#E3E3E3] border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 rounded-2xl shadow-xl z-50 divide-y divide-[#0D5C3A]/[0.06] dark:divide-[#F59E0B]/[0.07]">
-                    {filteredEnrollments.length === 0 ? (
-                      <div className="px-3 py-2 text-xs text-stone-400 text-center">
-                        No matches
-                      </div>
-                    ) : (
-                      filteredEnrollments.slice(0, 30).map((s) => {
-                        const isSel = s.id === selectedEnrollmentId
-                        return (
-                          <button
-                            key={s.id}
-                            type="button"
-                            onClick={() => {
-                              onSelectEnrollment(s.id)
-                              setSuccess(false)
-                              setSearchDropdownOpen(false)
-                            }}
-                            className={`w-full text-left px-3 py-2 flex items-center justify-between gap-2 text-xs cursor-pointer ${
-                              isSel
-                                ? 'bg-[#0D5C3A]/10 text-[#09472C] dark:bg-[#10B981]/15 dark:text-[#34D399] font-bold'
-                                : 'text-[#1F1F1F] dark:text-[#E3E3E3]'
-                            }`}
-                          >
-                            <div className="min-w-0">
-                              <div className="truncate font-semibold">{s.name}</div>
-                              <div className="text-[10px] text-stone-500 dark:text-stone-400 truncate">{s.circular_class}</div>
-                            </div>
-                          </button>
-                        )
-                      })
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* More Actions Circle */}
-              <MoreActionsMenu
-                items={moreActionsItems}
-                triggerClassName="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center shrink-0 cursor-pointer border border-white/20 transition-colors"
-                align="end"
-              />
-            </div>
-
-            {/* Row 2: Avatar + Full-Width Student Select + Stepper Buttons (< >) */}
-            <div className="flex items-center gap-1.5 w-full pt-0.5">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#F59E0B] to-[#EA580C] text-white font-bold flex items-center justify-center shrink-0 text-xs shadow-xs">
-                {selectedEnrollment?.name?.charAt(0).toUpperCase() || 'S'}
-              </div>
-
-              <select
-                aria-label="Student Mobile Select"
-                value={selectedEnrollmentId}
-                onChange={(e) => {
-                  onSelectEnrollment(e.target.value)
-                  setSuccess(false)
-                }}
-                className="h-8 rounded-full bg-white/15 hover:bg-white/22 text-white border border-white/20 px-3 text-xs font-semibold flex-1 min-w-0 truncate cursor-pointer outline-none"
-              >
-                <option value="" className="text-[#1F1F1F] bg-white">Select student...</option>
-                {filteredEnrollments.map((s) => (
-                  <option key={s.id} value={s.id} className="text-[#1F1F1F] bg-white">
-                    {s.name} ({s.circular_class})
-                  </option>
-                ))}
-              </select>
-
-              <div className="flex items-center gap-1 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => handleStepStudent(-1)}
-                  disabled={filteredEnrollments.length <= 1}
-                  title="Previous student"
-                  aria-label="Previous student"
-                  className="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 text-white border border-white/20 flex items-center justify-center active:scale-95 disabled:opacity-40 cursor-pointer shrink-0 transition"
-                >
-                  <ChevronLeft className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleStepStudent(1)}
-                  disabled={filteredEnrollments.length <= 1}
-                  title="Next student"
-                  aria-label="Next student"
-                  className="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 text-white border border-white/20 flex items-center justify-center active:scale-95 disabled:opacity-40 cursor-pointer shrink-0 transition"
-                >
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-
-            {/* Row 3: Position & Stats on Left | Arabic Name on Right */}
-            <div className="flex items-center justify-between text-xs pt-0.5 text-white/90 border-t border-white/15">
-              <div className="flex items-center gap-1.5 truncate text-[11px] font-medium">
-                {currentStudentIndex !== -1 && (
-                  <span className="font-mono text-white/80 shrink-0">
-                    {currentStudentIndex + 1} of {filteredEnrollments.length}
-                  </span>
-                )}
-                {liveSummary.totalSubjects > 0 && (
-                  <>
-                    <span>&bull;</span>
-                    <span className="tabular-nums">
-                      {liveSummary.columnLabel}: {liveSummary.scoredCount}/{liveSummary.totalSubjects} &bull; Avg {liveSummary.avg}%
-                    </span>
-                  </>
-                )}
-              </div>
-
-              {selectedEnrollment?.theology_class_arabic && (
-                <div className="flex items-center gap-1.5 shrink-0 ml-auto" dir="rtl">
-                  <span className="text-xs font-bold text-white">
-                    {selectedEnrollment.arabic_name || selectedEnrollment.name}
-                  </span>
-                  <span className="bg-[#F59E0B]/25 text-[#FEF3C7] border border-[#F59E0B]/40 rounded-full px-2 py-0.5 text-[10px] font-semibold">
-                    {selectedEnrollment.theology_class_arabic}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Mobile Card B: 2-Track Phase & Department Switcher */}
-          <div className="grid grid-cols-2 gap-1.5 w-full bg-white/95 dark:bg-[#1E1F20]/95 backdrop-blur-sm border border-[#0D5C3A]/10 dark:border-[#F59E0B]/12 rounded-2xl p-1.5 shadow-2xs">
-            {/* Left Track: BOT | MOT | EOT | ALL */}
-            <div className="grid grid-cols-4 w-full bg-[#F0F4F9] dark:bg-[#131314] p-0.5 rounded-full border-0 gap-0.5" aria-label="Exam Phase Mobile">
+            {/* Phase Track (BOT | MOT | EOT | ALL) */}
+            <div className="flex-1 grid grid-cols-4 bg-white dark:bg-[#1E1F20] p-0.5 rounded-full border border-black/[0.06] dark:border-white/[0.06] h-[34px] items-center" aria-label="Exam Phase Mobile">
               {(['bot', 'mot', 'eot', 'all'] as ExamType[]).map((type) => (
                 <button
                   key={type}
@@ -1208,15 +1055,15 @@ export function SharedMarksEntry({
               ))}
             </div>
 
-            {/* Right Track: Both | Sec | Theo */}
+            {/* Department Pill (Both | Sec | Theo) */}
             {allowedDepartment === 'both' ? (
-              <div className="grid grid-cols-3 w-full bg-[#F0F4F9] dark:bg-[#131314] p-0.5 rounded-full border-0 gap-0.5" aria-label="Department View Mobile">
+              <div className="bg-white dark:bg-[#1E1F20] p-0.5 rounded-full border border-black/[0.06] dark:border-white/[0.06] h-[34px] flex items-center text-[11px] font-semibold shrink-0" aria-label="Department View Mobile">
                 {(['both', 'secular', 'theology'] as const).map((view) => (
                   <button
                     key={view}
                     type="button"
                     onClick={() => setActiveView(view)}
-                    className={`h-7 w-full flex items-center justify-center text-[11px] font-semibold capitalize rounded-full transition-all cursor-pointer ${
+                    className={`h-7 px-2 flex items-center justify-center text-[11px] font-semibold capitalize rounded-full transition-all cursor-pointer ${
                       activeView === view
                         ? 'bg-[#0D5C3A] text-white dark:bg-[#10B981]/25 dark:text-[#34D399] shadow-xs'
                         : 'text-[#444746] dark:text-[#C4C7C5]'
@@ -1227,11 +1074,184 @@ export function SharedMarksEntry({
                 ))}
               </div>
             ) : (
-              <div className="flex items-center justify-center px-2 py-1 rounded-full bg-[#0D5C3A]/8 text-[#0D5C3A] dark:bg-[#10B981]/15 dark:text-[#34D399] font-semibold text-xs border border-[#0D5C3A]/15 dark:border-[#10B981]/25 select-none truncate">
+              <div className="flex items-center justify-center px-2.5 h-[34px] rounded-full bg-white dark:bg-[#1E1F20] text-[#0D5C3A] dark:text-[#34D399] font-semibold text-xs border border-black/[0.06] dark:border-white/[0.06] shrink-0 select-none">
                 <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0 mr-1.5" />
                 <span className="truncate">{activeTerm ? activeTerm.label : 'Term 3'}</span>
               </div>
             )}
+          </div>
+
+          {/* Mobile Active Student Switcher Card (Clean elevated surface, high contrast, zero overlap) */}
+          <div className="bg-white dark:bg-[#1E1F20] rounded-2xl p-2.5 border border-black/[0.07] dark:border-white/[0.08] shadow-2xs w-full flex flex-col gap-0 min-w-0">
+            {/* Top Line: Thumb Navigation */}
+            <div className="flex items-center gap-1.5 w-full">
+              {/* Avatar */}
+              <div className="w-8 h-8 rounded-full bg-[#0D5C3A]/12 text-[#0D5C3A] dark:bg-[#10B981]/20 dark:text-[#34D399] font-bold text-xs flex items-center justify-center shrink-0">
+                {selectedEnrollment?.name?.charAt(0).toUpperCase() || 'S'}
+              </div>
+
+              {/* Student Select Pill */}
+              <select
+                aria-label="Student Mobile Select"
+                value={selectedEnrollmentId}
+                onChange={(e) => {
+                  onSelectEnrollment(e.target.value)
+                  setSuccess(false)
+                }}
+                className="h-[34px] w-full rounded-full bg-[#F0F4F9] dark:bg-[#282A2C] text-[#1F1F1F] dark:text-[#E3E3E3] px-3 text-xs font-semibold flex-1 min-w-0 truncate border-0 outline-none cursor-pointer"
+              >
+                <option value="" className="text-[#1F1F1F] bg-white dark:bg-[#1E1F20] dark:text-[#E3E3E3]">Select student...</option>
+                {filteredEnrollments.map((s) => (
+                  <option key={s.id} value={s.id} className="text-[#1F1F1F] bg-white dark:bg-[#1E1F20] dark:text-[#E3E3E3]">
+                    {selectedClassFilter !== 'all' ? s.name : `${s.name} (${s.circular_class})`}
+                  </option>
+                ))}
+              </select>
+
+              {/* Thumb Stepper Buttons (< >) */}
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => handleStepStudent(-1)}
+                  disabled={filteredEnrollments.length <= 1}
+                  title="Previous student"
+                  aria-label="Previous student"
+                  className="w-[34px] h-[34px] rounded-full bg-[#F0F4F9] dark:bg-[#282A2C] text-[#1F1F1F] dark:text-[#E3E3E3] hover:bg-[#E4EAE6] dark:hover:bg-[#323538] active:scale-95 disabled:opacity-40 flex items-center justify-center shrink-0 cursor-pointer transition"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleStepStudent(1)}
+                  disabled={filteredEnrollments.length <= 1}
+                  title="Next student"
+                  aria-label="Next student"
+                  className="w-[34px] h-[34px] rounded-full bg-[#F0F4F9] dark:bg-[#282A2C] text-[#1F1F1F] dark:text-[#E3E3E3] hover:bg-[#E4EAE6] dark:hover:bg-[#323538] active:scale-95 disabled:opacity-40 flex items-center justify-center shrink-0 cursor-pointer transition"
+                >
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {/* Expandable Search Toggle */}
+              <button
+                type="button"
+                aria-label="Toggle student search"
+                onClick={() => {
+                  setMobileSearchExpanded((prev) => !prev)
+                  if (!mobileSearchExpanded) {
+                    setSearchDropdownOpen(true)
+                  }
+                }}
+                className={`w-[34px] h-[34px] rounded-full flex items-center justify-center shrink-0 cursor-pointer transition ${
+                  mobileSearchExpanded
+                    ? 'bg-[#0D5C3A] text-white dark:bg-[#10B981] dark:text-black shadow-xs'
+                    : 'bg-[#F0F4F9] dark:bg-[#282A2C] text-[#444746] dark:text-[#C4C7C5] hover:bg-[#E4EAE6] dark:hover:bg-[#323538]'
+                }`}
+              >
+                <Search className="w-3.5 h-3.5" />
+              </button>
+
+              {/* More Actions Circle */}
+              <MoreActionsMenu
+                items={moreActionsItems}
+                triggerClassName="w-[34px] h-[34px] rounded-full bg-[#F0F4F9] dark:bg-[#282A2C] text-[#444746] dark:text-[#C4C7C5] hover:bg-[#E4EAE6] dark:hover:bg-[#323538] flex items-center justify-center shrink-0 cursor-pointer transition"
+                align="end"
+              />
+            </div>
+
+            {/* Expandable Search Row (Shown only when toggled) */}
+            {mobileSearchExpanded && (
+              <div ref={mobileSearchBoxRef} className="relative w-full pt-2">
+                <div className="relative flex items-center">
+                  <Search className="w-3.5 h-3.5 text-[#747775] dark:text-[#8E918F] absolute left-3 pointer-events-none" />
+                  <input
+                    type="text"
+                    autoFocus
+                    value={studentSearchQuery}
+                    onFocus={() => setSearchDropdownOpen(true)}
+                    onChange={(e) => {
+                      const q = e.target.value
+                      setStudentSearchQuery(q)
+                      setSearchDropdownOpen(true)
+                    }}
+                    placeholder="Type student name to jump..."
+                    className="w-full h-[34px] pl-8 pr-7 text-xs font-medium rounded-full bg-[#F0F4F9] dark:bg-[#131314] text-[#1F1F1F] dark:text-[#E3E3E3] placeholder:text-[#747775] border border-black/[0.08] dark:border-white/[0.08] outline-none focus:ring-2 focus:ring-[#0D5C3A]/25"
+                  />
+                  {studentSearchQuery ? (
+                    <button
+                      type="button"
+                      aria-label="Clear mobile student search"
+                      onClick={() => {
+                        setStudentSearchQuery('')
+                        setSearchDropdownOpen(false)
+                      }}
+                      className="absolute right-2 p-0.5 text-[#747775] hover:text-[#1F1F1F] rounded-full cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      aria-label="Close search"
+                      onClick={() => setMobileSearchExpanded(false)}
+                      className="absolute right-2 p-0.5 text-[#747775] hover:text-[#1F1F1F] rounded-full cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {searchDropdownOpen && (
+                  <div className="absolute left-0 right-0 top-full mt-1.5 max-h-60 overflow-y-auto bg-white dark:bg-[#1E1F20] text-[#1F1F1F] dark:text-[#E3E3E3] border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 rounded-2xl shadow-xl z-50 divide-y divide-[#0D5C3A]/[0.06] dark:divide-[#F59E0B]/[0.07]">
+                    {filteredEnrollments.length === 0 ? (
+                      <div className="px-3 py-2 text-xs text-stone-400 text-center">
+                        No matches
+                      </div>
+                    ) : (
+                      filteredEnrollments.slice(0, 30).map((s) => {
+                        const isSel = s.id === selectedEnrollmentId
+                        return (
+                          <button
+                            key={s.id}
+                            type="button"
+                            onClick={() => {
+                              onSelectEnrollment(s.id)
+                              setSuccess(false)
+                              setSearchDropdownOpen(false)
+                              setMobileSearchExpanded(false)
+                            }}
+                            className={`w-full text-left px-3 py-2 flex items-center justify-between gap-2 text-xs cursor-pointer ${
+                              isSel
+                                ? 'bg-[#0D5C3A]/10 text-[#09472C] dark:bg-[#10B981]/15 dark:text-[#34D399] font-bold'
+                                : 'text-[#1F1F1F] dark:text-[#E3E3E3]'
+                            }`}
+                          >
+                            <div className="min-w-0">
+                              <div className="truncate font-semibold">{s.name}</div>
+                              <div className="text-[10px] text-stone-500 dark:text-stone-400 truncate">{s.circular_class}</div>
+                            </div>
+                          </button>
+                        )
+                      })
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Bottom Micro-Telemetry Line (Zero overlap, crisp typography) */}
+            <div className="flex items-center justify-between gap-2 pt-2 mt-2 border-t border-black/[0.05] dark:border-white/[0.06] text-[11px]">
+              <span className="shrink-0 text-[#444746] dark:text-[#C4C7C5] font-medium tabular-nums">
+                {currentStudentIndex !== -1 ? `${currentStudentIndex + 1} of ${filteredEnrollments.length}` : ''}
+                {liveSummary.totalSubjects > 0 ? ` • ${liveSummary.columnLabel}: ${liveSummary.scoredCount}/${liveSummary.totalSubjects} (${liveSummary.avg}%)` : ''}
+              </span>
+
+              {selectedEnrollment?.theology_class_arabic && (
+                <span className="truncate text-[#0D5C3A] dark:text-[#34D399] font-semibold text-xs ml-auto" dir="rtl">
+                  {selectedEnrollment.arabic_name || selectedEnrollment.name}
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -1279,7 +1299,7 @@ export function SharedMarksEntry({
                   (Note: On mobile < md, Mobile Card A at top renders student selector & identity)
                   ========================================================================= */}
               <div className="hidden md:flex items-center justify-between gap-2.5 shadow-[0_6px_20px_-4px_rgba(13,92,58,0.28)] min-h-[46px] px-4 py-2 bg-gradient-to-r from-[#093D26] via-[#0D5C3A] to-[#136B43] dark:from-[#0F291E] dark:via-[#143829] dark:to-[#1E2923] text-white border border-[#D97706]/30 rounded-2xl w-full min-w-0">
-                <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1">
                   <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white/20 text-white font-extrabold text-xs border border-white/25 shrink-0 shadow-xs">
                     {selectedEnrollment?.name?.charAt(0).toUpperCase() || 'S'}
                   </div>
@@ -1293,7 +1313,7 @@ export function SharedMarksEntry({
                       onSelectEnrollment(e.target.value)
                       setSuccess(false)
                     }}
-                    className="h-8 rounded-full bg-white/15 hover:bg-white/25 text-white border border-white/20 ring-0 focus:ring-2 focus:ring-[#F59E0B]/50 px-3 text-xs font-bold transition-colors max-w-[200px] md:max-w-[260px] lg:max-w-[320px] truncate cursor-pointer shrink-0"
+                    className="h-8 rounded-full bg-black/25 hover:bg-black/35 text-white border border-white/25 ring-0 focus:ring-2 focus:ring-[#F59E0B]/50 px-3 text-xs font-bold transition-colors max-w-[200px] md:max-w-[260px] lg:max-w-[320px] truncate cursor-pointer shrink-0"
                   >
                     <option value="" className="text-[#1F1F1F] bg-white">Select student...</option>
                     {filteredEnrollments.map((s) => (
@@ -1329,7 +1349,7 @@ export function SharedMarksEntry({
 
                   {/* Student position counter */}
                   {currentStudentIndex !== -1 && (
-                    <span className="text-[11px] text-white/80 font-mono shrink-0 hidden md:inline">
+                    <span className="text-[11px] text-white/90 font-mono font-medium shrink-0 hidden md:inline">
                       ({currentStudentIndex + 1} of {filteredEnrollments.length})
                     </span>
                   )}
@@ -1343,7 +1363,7 @@ export function SharedMarksEntry({
 
                   {/* Live Score Summary Pill */}
                   {liveSummary.totalSubjects > 0 && (
-                    <span className="bg-white/15 text-white border border-white/20 rounded-full px-2.5 py-0.5 text-[11px] font-medium tabular-nums shrink-0 hidden lg:inline-flex items-center gap-1.5">
+                    <span className="bg-white/15 text-white border border-white/20 rounded-full px-2.5 py-0.5 text-[11px] font-medium tabular-nums shrink-0 hidden xl:inline-flex items-center gap-1.5">
                       <span>{liveSummary.columnLabel}: {liveSummary.scoredCount}/{liveSummary.totalSubjects} scored</span>
                       <span>&bull;</span>
                       <span>Avg {liveSummary.avg}%</span>
@@ -1359,12 +1379,12 @@ export function SharedMarksEntry({
 
                 {/* Right side: Arabic Info */}
                 {selectedEnrollment.theology_class_arabic && (
-                  <div className="text-right shrink-0 ml-auto flex items-center gap-2">
-                    <span className="text-xs font-bold text-white" dir="rtl">
+                  <div className="text-right shrink-0 ml-auto flex items-center gap-2 max-w-[40%] min-w-0">
+                    <span className="text-xs font-bold text-white truncate" dir="rtl">
                       {selectedEnrollment.arabic_name || selectedEnrollment.name}
                     </span>
                     <span
-                      className="inline-block text-xs font-semibold text-[#FEF3C7] bg-[#F59E0B]/25 border border-[#F59E0B]/40 px-2.5 py-0.5 rounded-full"
+                      className="inline-block text-xs font-semibold text-[#FEF3C7] bg-[#F59E0B]/25 border border-[#F59E0B]/40 px-2.5 py-0.5 rounded-full shrink-0"
                       dir="rtl"
                     >
                       {selectedEnrollment.theology_class_arabic}
@@ -1399,7 +1419,7 @@ export function SharedMarksEntry({
                           Secular Marks {isCurrentNursery ? '(Nursery Letter Scale)' : ''}
                         </span>
                       </div>
-                      <span className="text-[11px] text-[var(--text-muted)] font-medium flex items-center gap-1">
+                      <span className="text-[11px] text-[var(--text-muted)] font-medium hidden md:inline-flex items-center gap-1">
                         <Sparkles className="w-3 h-3 text-emerald-600" />
                         Arrow keys / Enter for next row
                       </span>
@@ -1527,27 +1547,27 @@ export function SharedMarksEntry({
                   ZONE 4: Dedicated Prominent Bottom Pill Save Bar
                   Sticky at bottom, status on left + Save & Next Student, big tactile pill save button on right
                   ========================================================================= */}
-              <div className="sticky bottom-2 z-20 bg-white/95 dark:bg-[#1E1F20]/95 backdrop-blur-md border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 rounded-2xl p-2 sm:px-4 sm:py-2 shadow-lg flex flex-wrap items-center justify-between gap-2 sm:gap-3 w-full">
+              <div className="sticky bottom-2 z-20 rounded-full bg-white/95 dark:bg-[#1E1F20]/95 backdrop-blur-md px-3 py-1.5 border border-black/[0.08] dark:border-white/[0.10] shadow-[0_8px_24px_rgba(0,0,0,0.12)] flex items-center justify-between gap-2 w-full">
                 {/* Left status / next student */}
-                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                <div className="flex items-center gap-1.5 min-w-0 flex-1">
                   {hasUnsavedChanges ? (
-                    <div className="flex items-center gap-2 text-xs font-semibold text-amber-900 dark:text-amber-200">
-                      <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
+                    <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-900 dark:text-amber-200 min-w-0 truncate">
+                      <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0" />
                       <span className="truncate">
-                        {editedCount > 0 ? `${editedCount} unsaved score edits` : 'Unsaved edits'} for{' '}
-                        <strong className="font-bold">{selectedEnrollment.name}</strong>
+                        {editedCount > 0 ? `${editedCount} unsaved score edits` : 'Unsaved edits'}
+                        <span className="hidden sm:inline"> for <strong className="font-bold">{selectedEnrollment.name}</strong></span>
                       </span>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-2 text-xs font-semibold text-emerald-800 dark:text-[#34D399]">
+                    <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-800 dark:text-[#34D399] min-w-0 truncate">
                       <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-[#34D399] shrink-0" />
                       <span className="truncate">
-                        All marks saved for <strong className="font-bold">{selectedEnrollment.name}</strong> ({selectedEnrollment.circular_class})
+                        Saved • <strong className="font-bold">{selectedEnrollment.name}</strong>
                       </span>
                     </div>
                   )}
 
-                  {/* Save & Next Student button */}
+                  {/* Save & Next Student button (desktop only) */}
                   <button
                     type="button"
                     disabled={isSaving || isPending || filteredEnrollments.length <= 1}
@@ -1556,36 +1576,44 @@ export function SharedMarksEntry({
                       handleStepStudent(1)
                       toast.success('Saved! Advanced to next student')
                     }}
-                    className="hidden md:inline-flex items-center gap-1.5 h-8 px-3.5 rounded-full bg-[#F0F4F9] dark:bg-[#282A2C] hover:bg-[#E4EAE6] dark:hover:bg-[#323538] text-xs font-semibold text-[#1F1F1F] dark:text-[#E3E3E3] transition active:scale-[0.98] cursor-pointer disabled:opacity-40 shrink-0"
+                    className="hidden md:inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-[#F0F4F9] dark:bg-[#282A2C] hover:bg-[#E4EAE6] dark:hover:bg-[#323538] text-xs font-semibold text-[#1F1F1F] dark:text-[#E3E3E3] transition active:scale-[0.98] cursor-pointer disabled:opacity-40 shrink-0 ml-2"
                   >
-                    <span>Save &amp; Next Student</span>
+                    <span>Save &amp; Next</span>
                     <ChevronRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
 
                 {/* Right: Tactile Big Pill Save Button */}
-                <div className="flex items-center gap-2 shrink-0 ml-auto">
+                <div className="flex items-center gap-1.5 shrink-0 ml-auto">
                   <button
                     type="submit"
                     data-testid="save-marks-submit"
                     disabled={isSaving || isPending || !selectedEnrollment || isExamSetLocked}
-                    className="h-10 sm:h-11 min-w-[180px] sm:min-w-[220px] px-5 sm:px-8 btn-jiddah-cta text-sm font-bold rounded-full inline-flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all active:scale-[0.98] cursor-pointer disabled:opacity-40"
+                    className="h-9 md:h-10 px-4 md:px-7 rounded-full btn-jiddah-cta text-xs md:text-sm font-semibold flex items-center justify-center gap-1.5 shadow-md hover:shadow-lg transition-all active:scale-[0.98] cursor-pointer disabled:opacity-40"
                   >
                     {isSaving || isPending ? (
-                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                     ) : success ? (
-                      <Check className="w-4 h-4" />
+                      <Check className="w-3.5 h-3.5" />
                     ) : (
-                      <Save className="w-4 h-4" />
+                      <Save className="w-3.5 h-3.5" />
                     )}
                     <span className="tabular-nums">
-                      {isSaving || isPending
-                        ? 'Saving...'
-                        : success
-                        ? 'Saved ✓'
-                        : editedCount > 0
-                        ? `Save ${editedCount} Changes (Ctrl+S)`
-                        : 'Save Marks (Ctrl+S)'}
+                      {isSaving || isPending ? (
+                        'Saving...'
+                      ) : success ? (
+                        'Saved ✓'
+                      ) : editedCount > 0 ? (
+                        <>
+                          Save {editedCount} Edits
+                          <span className="hidden md:inline"> (Ctrl+S)</span>
+                        </>
+                      ) : (
+                        <>
+                          Save Marks
+                          <span className="hidden md:inline"> (Ctrl+S)</span>
+                        </>
+                      )}
                     </span>
                   </button>
                 </div>

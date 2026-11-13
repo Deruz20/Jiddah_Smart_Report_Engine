@@ -257,75 +257,39 @@ export function SharedMarksEntry({
     [enrollments, selectedEnrollmentId]
   )
 
-  const marksMoreActions = useMemo(
-    () => [
-      {
-        label: 'Import CSV',
-        icon: Upload,
-        onClick: () => {
-          window.location.href = '/admin/upload'
-        },
-      },
-      {
-        label: 'Export Marksheet',
-        icon: FileSpreadsheet,
-        onClick: () => {
-          const rows = [
-            ['Student', 'Class', 'Curriculum', 'Subject', 'BOT', 'MOT', 'EOT'],
-            ...circularMarks.map((m) => [
-              selectedEnrollment?.name || '',
-              selectedEnrollment?.circular_class || '',
-              'Secular',
-              m.subject_name || '',
-              m.bot_score ?? '',
-              m.mot_score ?? '',
-              m.eot_score ?? '',
-            ]),
-            ...theologyMarks.map((m) => [
-              selectedEnrollment?.name || '',
-              selectedEnrollment?.circular_class || '',
-              'Theology',
-              m.subject_name_arabic || '',
-              '',
-              m.mot_score ?? '',
-              m.eot_score ?? '',
-            ]),
-          ]
-          const csvContent = 'data:text/csv;charset=utf-8,' + rows.map((e) => e.join(',')).join('\n')
-          const encodedUri = encodeURI(csvContent)
-          const link = document.createElement('a')
-          link.setAttribute('href', encodedUri)
-          link.setAttribute('download', `marksheet_${selectedEnrollment?.name || 'student'}.csv`)
-          document.body.appendChild(link)
-          link.click()
-          document.body.removeChild(link)
-          toast.success('Marksheet exported successfully')
-        },
-      },
-      {
-        label: 'Clear Unsaved',
-        icon: RotateCcw,
-        onClick: () => {
-          setRawInputs({})
-          setFieldErrors({})
-          setHasUnsavedChanges(false)
-          toast.info('Cleared unsaved changes')
-        },
-      },
-      {
-        label: isExamSetLocked ? 'Unlock Exam Set' : 'Lock Exam Set',
-        icon: isExamSetLocked ? Unlock : Lock,
-        onClick: () => {
-          setIsExamSetLocked((prev) => {
-            const next = !prev
-            toast.success(next ? 'Exam set locked from edits' : 'Exam set unlocked')
-            return next
-          })
-        },
-      },
-    ],
-    [circularMarks, theologyMarks, selectedEnrollment, isExamSetLocked]
-  )
+  const handleExportMarksheet = useCallback(() => {
+    const student = enrollments.find((e) => e.id === selectedEnrollmentId)
+    const rows = [
+      ['Student', 'Class', 'Curriculum', 'Subject', 'BOT', 'MOT', 'EOT'],
+      ...circularMarks.map((m) => [
+        student?.name || '',
+        student?.circular_class || '',
+        'Secular',
+        m.subject_name || '',
+        m.bot_score ?? '',
+        m.mot_score ?? '',
+        m.eot_score ?? '',
+      ]),
+      ...theologyMarks.map((m) => [
+        student?.name || '',
+        student?.circular_class || '',
+        'Theology',
+        m.subject_name_arabic || '',
+        '',
+        m.mot_score ?? '',
+        m.eot_score ?? '',
+      ]),
+    ]
+    const csvContent = 'data:text/csv;charset=utf-8,' + rows.map((e) => e.join(',')).join('\n')
+    const encodedUri = encodeURI(csvContent)
+    const link = document.createElement('a')
+    link.setAttribute('href', encodedUri)
+    link.setAttribute('download', `marksheet_${student?.name || 'student'}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    toast.success('Marksheet exported successfully')
+  }, [enrollments, selectedEnrollmentId, circularMarks, theologyMarks])
 
   useEffect(() => {
     setActiveView(allowedDepartment)
@@ -965,7 +929,44 @@ export function SharedMarksEntry({
                 </span>
               </button>
 
-              <MoreActionsMenu items={marksMoreActions} align="end" />
+              <MoreActionsMenu
+                items={[
+                  {
+                    label: 'Import CSV',
+                    icon: Upload,
+                    onClick: () => {
+                      window.location.href = '/admin/upload'
+                    },
+                  },
+                  {
+                    label: 'Export Marksheet',
+                    icon: FileSpreadsheet,
+                    onClick: handleExportMarksheet,
+                  },
+                  {
+                    label: 'Clear Unsaved',
+                    icon: RotateCcw,
+                    onClick: () => {
+                      setRawInputs({})
+                      setFieldErrors({})
+                      setHasUnsavedChanges(false)
+                      toast.info('Cleared unsaved changes')
+                    },
+                  },
+                  {
+                    label: isExamSetLocked ? 'Unlock Exam Set' : 'Lock Exam Set',
+                    icon: isExamSetLocked ? Unlock : Lock,
+                    onClick: () => {
+                      setIsExamSetLocked((prev) => {
+                        const next = !prev
+                        toast.success(next ? 'Exam set locked from edits' : 'Exam set unlocked')
+                        return next
+                      })
+                    },
+                  },
+                ]}
+                align="end"
+              />
             </div>
           </div>
         </div>

@@ -165,10 +165,14 @@ All 68 app routes built cleanly with zero compilation or packaging errors.
 
 ---
 
-## 7. Hotfix: Temporal Dead Zone (TDZ) Initialization Fix
-- **Issue:** `ReferenceError: Cannot access 'selectedEnrollment' before initialization` at `SharedMarksEntry (src/components/shared-marks-entry.tsx:322:36)`.
-- **Root Cause:** `marksMoreActions` `useMemo` hook referenced `selectedEnrollment` in its dependency array at line 322 before `selectedEnrollment` was initialized at line 406.
-- **Resolution:** Hoisted `const selectedEnrollment = useMemo(...)` up to line 255 right before `marksMoreActions`, eliminating the TDZ reference error.
-- **Verification:** Verified with `npm run typecheck`, full unit test suite (175/175 passing), and clean `npm run build` (68/68 routes compiled).
+## 7. Hotfix: Temporal Dead Zone (TDZ) Initialization Fix & Memo Elimination
+- **Issue:** `ReferenceError: Cannot access 'selectedEnrollment' before initialization` at `SharedMarksEntry (src/components/shared-marks-entry.tsx)`.
+- **Root Cause:** In Next.js Turbopack dev mode with React Fast Refresh, wrapping `marksMoreActions` in a top-level `useMemo` hook that closed over and depended on `selectedEnrollment` caused Turbopack's proxy instrumentation to evaluate closure references before local hook bindings were finalized.
+- **Resolution:**
+  1. Fully eliminated the redundant top-level `useMemo` for `marksMoreActions`.
+  2. Extracted CSV export into an isolated `handleExportMarksheet` callback that reads from `enrollments` and `selectedEnrollmentId` directly.
+  3. Rendered the `items` array directly inline on `<MoreActionsMenu />`, conforming to the standard architecture across the rest of the application (`StudentsListClient`, `classes-client`, `circular-client`, `theology-client`).
+  4. Preserved `const selectedEnrollment = useMemo(...)` at line 255 for direct rendering.
+- **Verification:** Verified with `npm run typecheck` (0 errors), test suite (175/175 passed), and Next.js production build (`npm run build`, all 68 routes cleanly generated).
 
 

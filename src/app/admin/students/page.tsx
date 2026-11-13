@@ -103,33 +103,7 @@ export default async function StudentsManagementPage() {
   ];
 
   return (
-    <div className="w-full max-w-full text-stone-900 font-sans pb-6 relative overflow-x-hidden">
-      {/* Compact Header Bar */}
-      <div className="bg-white border-b border-stone-200/80">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-xl bg-[#059669] flex items-center justify-center shrink-0 text-white shadow-xs">
-              <GraduationCap size={17} />
-            </div>
-            <div className="min-w-0">
-              <h1 className="text-base sm:text-xl font-bold text-stone-900 tracking-tight truncate">
-                Students Directory
-              </h1>
-              <p className="text-xs text-stone-500 truncate">
-                Manage enrollments, class rosters, and register new students.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 border border-emerald-200 rounded-full text-emerald-800 text-xs font-semibold tabular-nums">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
-              AY {currentAcademicYear}
-            </span>
-          </div>
-        </div>
-      </div>
-
+    <div className="w-full max-w-full text-stone-900 dark:text-[#E3E3E3] font-sans pb-6 relative overflow-x-hidden">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-3 sm:pt-4 space-y-4">
         {/* Compact 4-pill KPI strip */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
@@ -138,24 +112,24 @@ export default async function StudentsManagementPage() {
             return (
               <div
                 key={stat.label}
-                className="bg-white border border-stone-200/80 rounded-xl px-3 py-2.5 flex items-center gap-2.5 shadow-2xs"
+                className="bg-white dark:bg-[#1E1F20] border border-[#0D5C3A]/10 dark:border-[#F59E0B]/12 rounded-xl px-3 py-2.5 flex items-center gap-2.5 shadow-2xs"
               >
                 <div
                   className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
                     stat.color === 'emerald'
-                      ? 'bg-emerald-50 text-[#059669]'
+                      ? 'bg-emerald-50 dark:bg-emerald-950/40 text-[#059669] dark:text-[#34D399]'
                       : stat.color === 'orange'
-                      ? 'bg-amber-50 text-amber-600'
-                      : 'bg-stone-100 text-stone-600'
+                      ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400'
+                      : 'bg-stone-100 dark:bg-[#282A2C] text-stone-600 dark:text-stone-300'
                   }`}
                 >
                   <Icon size={14} />
                 </div>
                 <div className="min-w-0">
-                  <div className="text-sm sm:text-base font-extrabold text-stone-900 leading-none tabular-nums">
+                  <div className="text-sm sm:text-base font-extrabold text-stone-900 dark:text-white leading-none tabular-nums">
                     {stat.value}
                   </div>
-                  <div className="text-[11px] text-stone-500 mt-0.5 truncate">{stat.label}</div>
+                  <div className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5 truncate">{stat.label}</div>
                 </div>
               </div>
             );
@@ -163,29 +137,29 @@ export default async function StudentsManagementPage() {
         </div>
 
         {/* Collapsible Student Registration Drawer — keeps Enrolled Students immediately visible above the fold */}
-        <details className="group bg-white border border-stone-200/90 rounded-2xl shadow-2xs overflow-hidden">
-          <summary className="list-none cursor-pointer px-4 py-3 flex items-center justify-between gap-3 bg-[#FAF7F2] hover:bg-stone-100/70 transition-colors select-none">
+        <details className="group bg-white dark:bg-[#1E1F20] border border-[#0D5C3A]/10 dark:border-[#F59E0B]/12 rounded-2xl shadow-2xs overflow-hidden">
+          <summary className="list-none cursor-pointer px-4 py-3 flex items-center justify-between gap-3 bg-[#FAF7F2] dark:bg-[#282A2C]/60 hover:bg-stone-100/70 dark:hover:bg-[#282A2C] transition-colors select-none">
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-7 h-7 rounded-lg bg-[#059669] text-white flex items-center justify-center shrink-0">
                 <UserPlus size={14} />
               </div>
               <div className="min-w-0">
-                <span className="text-xs sm:text-sm font-bold text-stone-900">
+                <span className="text-xs sm:text-sm font-bold text-stone-900 dark:text-white">
                   Register New Student
                 </span>
-                <span className="hidden sm:inline text-xs text-stone-500 ml-2">
+                <span className="hidden sm:inline text-xs text-stone-500 dark:text-stone-400 ml-2">
                   Click to open the admission &amp; dual-curriculum placement wizard
                 </span>
               </div>
             </div>
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-stone-200 text-xs font-bold text-[#059669] shrink-0">
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white dark:bg-[#1E1F20] border border-stone-200 dark:border-stone-700 text-xs font-bold text-[#059669] dark:text-[#34D399] shrink-0">
               <span className="group-open:hidden">+ New Admission</span>
               <span className="hidden group-open:inline">Hide Form</span>
               <ChevronDown size={14} className="transition-transform duration-200 group-open:rotate-180" />
             </span>
           </summary>
 
-          <div className="p-3 sm:p-5 border-t border-stone-200 bg-[#F8FAFC]">
+          <div className="p-3 sm:p-5 border-t border-[#0D5C3A]/10 dark:border-[#F59E0B]/12 bg-[#F8FAFC] dark:bg-[#131314]">
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
               <div className="lg:col-span-3">
                 <StudentRegistrationContainer />

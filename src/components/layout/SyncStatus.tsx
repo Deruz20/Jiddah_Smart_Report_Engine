@@ -46,7 +46,7 @@ export function SyncStatus({
 
   return (
     <div
-      className="flex items-center gap-1.5 text-xs bg-[var(--bg-card,#ffffff)]/90 border border-[var(--border,#e2e8f0)] rounded-full px-2 sm:px-2.5 py-1 shadow-xs shrink-0"
+      className="bg-[#F0F4F9] dark:bg-[#1E1F20] hover:bg-[#E4EAE6] dark:hover:bg-[#282A2C] text-[#444746] dark:text-[#C4C7C5] border-0 rounded-full h-8 px-3 text-xs font-medium flex items-center gap-1.5 shrink-0 transition-colors cursor-pointer select-none"
       title={
         !isOnline
           ? `Offline Mode (${pendingCount} queued locally)`

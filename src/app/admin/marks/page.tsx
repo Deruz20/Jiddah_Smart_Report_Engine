@@ -128,25 +128,7 @@ export default async function MarksEntryPage() {
 
   return (
     <div className="w-full min-h-screen bg-[var(--bg-canvas)]">
-      <div className="bg-[var(--bg-card)] border-b border-[var(--border)]">
-        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-lg sm:text-xl font-extrabold text-[var(--text-primary)] tracking-tight">
-              Marks Entry
-            </h1>
-            <p className="text-xs text-[var(--text-secondary)] mt-0.5">
-              Select an academic term, student cohort, and record marks per subject.
-            </p>
-          </div>
-          {allowedDepartment !== 'both' && (
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 border border-emerald-500/25">
-              {allowedDepartment === 'secular' ? 'Secular Department' : 'Theology Department'}
-            </span>
-          )}
-        </div>
-      </div>
-
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-5 w-full min-w-0">
+      <div className="max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4 w-full min-w-0">
         {error ? (
           <div className="p-4 bg-rose-500/10 border border-rose-500/25 rounded-2xl">
             <p className="text-rose-700 dark:text-rose-300 font-bold text-sm">System Error: {error}</p>

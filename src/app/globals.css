@@ -141,8 +141,15 @@ body {
 }
 
 @layer base {
+  *, ::after, ::before, ::backdrop, ::file-selector-button {
+    border-color: rgba(13, 92, 58, 0.10);
+  }
+  .dark *, .dark ::after, .dark ::before, .dark ::backdrop, .dark ::file-selector-button {
+    border-color: rgba(245, 158, 11, 0.12);
+  }
+
   * {
-    @apply border-border outline-ring/50;
+    @apply outline-ring/50;
   }
 
   body {

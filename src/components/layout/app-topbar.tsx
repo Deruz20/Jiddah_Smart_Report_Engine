@@ -18,9 +18,12 @@ import {
   LifeBuoy,
   Sun,
   Moon,
+  ArrowLeft,
 } from "lucide-react";
 import { useSidebar } from "../figma-ui/ui/sidebar";
 import { cn } from "../figma-ui/ui/utils";
+import { Tooltip, TooltipTrigger, TooltipContent } from "../figma-ui/ui/tooltip";
+import { MoreActionsMenu } from "@/components/ui/more-actions-menu";
 import { createClient } from "@/utils/supabase/client";
 import { PowerSyncStatus } from "./PowerSyncStatus";
 import { CommandPalette } from "./command-palette";
@@ -121,7 +124,7 @@ function TermBadge() {
     <span
       title="Active academic term"
       data-testid="topbar-active-term-badge"
-      className="hidden h-8 shrink-0 items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-sunken)] px-3 text-xs font-semibold text-[var(--text-primary)] xl:inline-flex"
+      className="hidden h-8 shrink-0 items-center gap-1.5 rounded-full bg-[#0D5C3A]/[0.08] dark:bg-[#10B981]/[0.14] text-[#09472C] dark:text-[#34D399] border-0 px-3 text-xs font-medium xl:inline-flex"
     >
       <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden />
       {termName}
@@ -155,18 +158,22 @@ function ThemeModeSwitcher() {
 
   return (
     <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-label={`Appearance: ${current.label}`}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        title={`Appearance: ${current.label}`}
-        data-testid="theme-mode-switcher"
-        className={ICON_BUTTON}
-      >
-        <CurrentIcon className="size-4" strokeWidth={1.75} />
-      </button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            aria-label={`Appearance: ${current.label}`}
+            aria-haspopup="menu"
+            aria-expanded={open}
+            data-testid="theme-mode-switcher"
+            className={ICON_BUTTON}
+          >
+            <CurrentIcon className="size-4" strokeWidth={1.75} />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>Appearance</TooltipContent>
+      </Tooltip>
       <AnimatePresence>
         {open && (
           <motion.div {...POPOVER_MOTION} role="menu" className={cn(POPOVER_SURFACE, "w-60 p-1.5")}>
@@ -306,24 +313,29 @@ function NotificationBell() {
 
   return (
     <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        aria-haspopup="dialog"
-        aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`}
-        className={ICON_BUTTON}
-      >
-        <Bell className="size-4" strokeWidth={1.75} />
-        {unreadCount > 0 && (
-          <span
-            data-testid="topbar-unread-badge"
-            className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full border-2 border-[var(--bg-card)] bg-emerald-600 px-1 text-[10px] font-bold tabular-nums leading-none text-white"
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            aria-expanded={open}
+            aria-haspopup="dialog"
+            aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`}
+            className={ICON_BUTTON}
           >
-            {unreadCount > 99 ? "99+" : unreadCount}
-          </span>
-        )}
-      </button>
+            <Bell className="size-4" strokeWidth={1.75} />
+            {unreadCount > 0 && (
+              <span
+                data-testid="topbar-unread-badge"
+                className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full border-2 border-[var(--bg-card)] bg-emerald-600 px-1 text-[10px] font-bold tabular-nums leading-none text-white"
+              >
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
+            )}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>Notifications</TooltipContent>
+      </Tooltip>
 
       <AnimatePresence>
         {open && (
@@ -400,41 +412,20 @@ function NotificationBell() {
   );
 }
 
-/* ─── Account menu ──────────────────────────────────────────────────────── */
+/* ─── Topbar ────────────────────────────────────────────────────────────── */
 
-function UserMenu({ onOpenDiagnostics }: { onOpenDiagnostics: () => void }) {
-  const [open, setOpen] = React.useState(false);
-  const ref = React.useRef<HTMLDivElement>(null);
+interface AppTopbarProps {
+  breadcrumbs?: string[];
+  currentPage?: string;
+}
+
+export function AppTopbar({ breadcrumbs, currentPage }: AppTopbarProps) {
+  const { toggleSidebar } = useSidebar();
+  const pathname = usePathname();
   const router = useRouter();
-  const close = React.useCallback(() => setOpen(false), []);
-  useOutsideClose(ref, close);
-  const [role, setRole] = React.useState<string>("Class Teacher");
-  const [roleLabel, setRoleLabel] = React.useState<string>("Class Teacher");
-  const [userName, setUserName] = React.useState<string>("Staff");
-  const [email, setEmail] = React.useState<string>("");
-
-  React.useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getSession().then(({ data }: any) => {
-      const user = data.session?.user;
-      if (!user) return;
-      const rawRole = user.app_metadata?.role || user.user_metadata?.role || "Class Teacher";
-      const subject = user.user_metadata?.subject || "";
-      setRole(normalizeAccountRole(rawRole, subject));
-      setRoleLabel(rawRole);
-      setUserName(user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split("@")[0] || "Staff");
-      setEmail(user.email || "");
-    });
-  }, []);
-
-  const canManage = role !== "Class Teacher";
-  const initials =
-    userName
-      .split(/[\s._-]+/)
-      .map((n) => n[0])
-      .join("")
-      .slice(0, 2)
-      .toUpperCase() || "U";
+  const [paletteOpen, setPaletteOpen] = React.useState(false);
+  const [diagnosticsOpen, setDiagnosticsOpen] = React.useState(false);
+  const [hidden, setHidden] = React.useState(false);
 
   const handleLogout = async () => {
     const supabase = createClient();
@@ -448,99 +439,6 @@ function UserMenu({ onOpenDiagnostics }: { onOpenDiagnostics: () => void }) {
     await supabase.auth.signOut();
     router.replace("/login");
   };
-
-  const go = (href: string) => {
-    setOpen(false);
-    router.push(href);
-  };
-
-  const itemClass =
-    "flex h-9 w-full cursor-pointer items-center gap-3 rounded-lg px-2.5 text-[13px] font-medium text-[var(--text-secondary)] outline-none transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] focus-visible:bg-[var(--bg-hover)]";
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-label="Account menu"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        className={cn(
-          "flex h-9 cursor-pointer items-center gap-2 rounded-lg pl-1 pr-2 outline-none transition-colors hover:bg-[var(--bg-hover)] focus-visible:ring-2 focus-visible:ring-emerald-500",
-          open && "bg-[var(--bg-hover)]"
-        )}
-      >
-        <span className="grid size-7 place-items-center rounded-full bg-emerald-600 text-[11px] font-bold text-white">{initials}</span>
-        <span className="hidden text-left leading-tight lg:block">
-          <span className="block max-w-[140px] truncate text-[13px] font-semibold text-[var(--text-primary)]">{userName}</span>
-          <span className="block max-w-[140px] truncate text-[11px] text-[var(--text-muted)]">{roleLabel}</span>
-        </span>
-        <ChevronDown className={cn("hidden size-3.5 text-[var(--text-muted)] transition-transform lg:block", open && "rotate-180")} strokeWidth={1.75} />
-      </button>
-
-      <AnimatePresence>
-        {open && (
-          <motion.div {...POPOVER_MOTION} role="menu" className={cn(POPOVER_SURFACE, "w-64 p-1.5")}>
-            <div className="border-b border-[var(--border)] px-2.5 pb-2.5 pt-1.5">
-              <p className="truncate text-sm font-bold">{userName}</p>
-              {email && <p className="truncate text-xs text-[var(--text-muted)]">{email}</p>}
-            </div>
-            <div className="py-1.5">
-              <button type="button" role="menuitem" onClick={() => go("/admin/account")} className={itemClass}>
-                <User className="size-4" strokeWidth={1.75} /> My account
-              </button>
-              {canManage && (
-                <>
-                  <button type="button" role="menuitem" onClick={() => go("/admin/settings")} className={itemClass}>
-                    <Settings className="size-4" strokeWidth={1.75} /> School settings
-                  </button>
-                  <button type="button" role="menuitem" onClick={() => go("/admin/activity")} className={itemClass}>
-                    <History className="size-4" strokeWidth={1.75} /> Activity log
-                  </button>
-                </>
-              )}
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setOpen(false);
-                  onOpenDiagnostics();
-                }}
-                className={itemClass}
-              >
-                <LifeBuoy className="size-4" strokeWidth={1.75} /> Run diagnostics
-              </button>
-            </div>
-            <div className="border-t border-[var(--border)] pt-1.5">
-              <button
-                type="button"
-                role="menuitem"
-                onClick={handleLogout}
-                className="flex h-9 w-full cursor-pointer items-center gap-3 rounded-lg px-2.5 text-[13px] font-semibold text-rose-600 outline-none transition-colors hover:bg-rose-500/10 dark:text-rose-400"
-              >
-                <LogOut className="size-4" strokeWidth={1.75} /> Sign out
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-/* ─── Topbar ────────────────────────────────────────────────────────────── */
-
-interface AppTopbarProps {
-  breadcrumbs?: string[];
-  currentPage?: string;
-}
-
-export function AppTopbar({ breadcrumbs, currentPage }: AppTopbarProps) {
-  const { toggleSidebar } = useSidebar();
-  const pathname = usePathname();
-  const [paletteOpen, setPaletteOpen] = React.useState(false);
-  const [diagnosticsOpen, setDiagnosticsOpen] = React.useState(false);
-  const [hidden, setHidden] = React.useState(false);
 
   const resolvedPage =
     currentPage ||
@@ -593,7 +491,7 @@ export function AppTopbar({ breadcrumbs, currentPage }: AppTopbarProps) {
       </AnimatePresence>
 
       {!hidden && (
-        <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b border-[var(--border)] bg-[var(--bg-card)] px-3 text-[var(--text-primary)] print:hidden md:px-5">
+        <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2.5 sm:gap-3 bg-[var(--bg-card)] px-3 text-[var(--text-primary)] print:hidden md:px-5">
           <button
             type="button"
             onClick={toggleSidebar}
@@ -603,6 +501,22 @@ export function AppTopbar({ breadcrumbs, currentPage }: AppTopbarProps) {
           >
             <Menu className="size-5" strokeWidth={1.75} />
           </button>
+
+          {pathname !== "/admin" && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => router.back()}
+                  aria-label="Go back"
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-[#444746] dark:text-[#C4C7C5] hover:bg-black/[0.06] dark:hover:bg-white/[0.08] transition-colors border-0 cursor-pointer shrink-0"
+                >
+                  <ArrowLeft className="size-[18px]" strokeWidth={1.75} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Go back</TooltipContent>
+            </Tooltip>
+          )}
 
           <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1.5 text-sm">
             {crumbs.map((crumb, i) => {
@@ -624,34 +538,67 @@ export function AppTopbar({ breadcrumbs, currentPage }: AppTopbarProps) {
             })}
           </nav>
 
-          <div className="ml-auto flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => setPaletteOpen(true)}
-              aria-label="Search pages and actions"
-              className="hidden h-9 w-64 cursor-pointer items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--bg-sunken)] px-3 text-left text-[13px] text-[var(--text-muted)] outline-none transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text-secondary)] focus-visible:ring-2 focus-visible:ring-[#0D5C3A] dark:focus-visible:ring-[#34D399] lg:flex"
-            >
-              <Search className="size-4 shrink-0" strokeWidth={1.75} />
-              <span className="flex-1 truncate">Search pages and actions</span>
-              <kbd className="rounded border border-[var(--border)] bg-[var(--bg-card)] px-1.5 py-0.5 font-mono text-[10px] font-semibold text-[var(--text-secondary)]">
-                Ctrl K
-              </kbd>
-            </button>
-            <button
-              type="button"
-              onClick={() => setPaletteOpen(true)}
-              aria-label="Search pages and actions"
-              className={cn(ICON_BUTTON, "lg:hidden")}
-            >
-              <Search className="size-4" strokeWidth={1.75} />
-            </button>
-
+          <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
             <TermBadge />
             <PowerSyncStatus />
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => setPaletteOpen(true)}
+                  aria-label="Search pages and actions"
+                  data-testid="topbar-search-trigger"
+                  className="w-9 h-9 rounded-full flex items-center justify-center text-[#444746] dark:text-[#C4C7C5] hover:bg-black/[0.06] dark:hover:bg-white/[0.08] transition-colors border-0 cursor-pointer shrink-0"
+                >
+                  <Search className="size-[18px]" strokeWidth={1.75} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Search (Ctrl+K)</TooltipContent>
+            </Tooltip>
+
             <ThemeModeSwitcher />
             <NotificationBell />
-            <span aria-hidden className="mx-1 hidden h-5 w-px bg-[var(--border)] sm:block" />
-            <UserMenu onOpenDiagnostics={() => setDiagnosticsOpen(true)} />
+
+            <MoreActionsMenu
+              ariaLabel="Quick actions"
+              triggerClassName="w-9 h-9 rounded-full flex items-center justify-center text-[#444746] dark:text-[#C4C7C5] hover:bg-black/[0.06] dark:hover:bg-white/[0.08] transition-colors border-0 cursor-pointer shrink-0"
+              items={[
+                {
+                  label: "School Settings",
+                  icon: Settings,
+                  onClick: () => router.push("/admin/settings"),
+                },
+                {
+                  label: "My Account",
+                  icon: User,
+                  onClick: () => router.push("/admin/account"),
+                },
+                {
+                  label: "System Diagnostics",
+                  icon: LifeBuoy,
+                  onClick: () => setDiagnosticsOpen(true),
+                },
+                {
+                  label: "Activity Audit Trail",
+                  icon: History,
+                  onClick: () => router.push("/admin/activity"),
+                },
+                {
+                  label: "Keyboard Shortcuts",
+                  icon: Search,
+                  shortcut: "Ctrl K",
+                  onClick: () => setPaletteOpen(true),
+                },
+                {
+                  label: "Sign out",
+                  icon: LogOut,
+                  destructive: true,
+                  onClick: handleLogout,
+                },
+              ]}
+              align="end"
+            />
           </div>
         </header>
       )}

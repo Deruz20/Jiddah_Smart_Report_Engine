@@ -6,7 +6,7 @@ import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import { cn } from "./utils";
 
 function TooltipProvider({
-  delayDuration = 0,
+  delayDuration = 150,
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Provider>) {
   return (
@@ -47,7 +47,7 @@ function TooltipContent({
         data-slot="tooltip-content"
         sideOffset={sideOffset}
         className={cn(
-          "bg-neutral-900/95 text-white dark:bg-neutral-100/95 dark:text-neutral-900 z-50 w-fit origin-(--radix-tooltip-content-transform-origin) rounded-full px-3 py-1.5 text-xs font-medium tracking-tight shadow-lg border border-white/10 dark:border-black/10 backdrop-blur-md duration-160 ease-[cubic-bezier(0.22,1,0.36,1)] data-[state=closed]:duration-120 data-[state=closed]:ease-in animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-1.5 data-[side=left]:slide-in-from-right-1.5 data-[side=right]:slide-in-from-left-1.5 data-[side=top]:slide-in-from-bottom-1.5",
+          "bg-neutral-900 text-white dark:bg-[#1E1F20] dark:text-[#E3E3E3] z-50 w-fit rounded-full px-3 py-1.5 text-xs font-medium tracking-tight shadow-md border border-white/10 dark:border-white/10 pointer-events-none select-none transition-opacity duration-100 ease-out data-[state=closed]:opacity-0 data-[state=delayed-open]:opacity-100 data-[state=instant-open]:opacity-100",
           className,
         )}
         {...props}
@@ -59,3 +59,4 @@ function TooltipContent({
 }
 
 export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider };
+

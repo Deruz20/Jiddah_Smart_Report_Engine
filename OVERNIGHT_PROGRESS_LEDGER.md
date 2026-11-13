@@ -184,3 +184,28 @@ Exit code: 0
      - `npm run typecheck` (`tsc --noEmit`): 0 errors.
      - Pure unit tests (`node --import ./src/lib/test-guard.mjs --test src/__tests__/overhaul-workstreams.test.mjs`): 14/14 passed.
      - `npm run build`: 68/68 static & dynamic routes compiled cleanly.
+
+---
+
+## Milestone 8: Silent Tooltip Physics, Faint Tinted Borders, Topbar Declutter & Double-Bar Elimination
+
+- **Scope & Workstreams Completed:**
+  1. **Workstream 1: Kill the "Flying Tooltip" Bug — Silent Instant Appearance (`src/components/ui/tooltip.tsx`, `src/components/figma-ui/ui/tooltip.tsx`, `src/components/figma-ui/TopToolbar.tsx`):**
+     - Root cause: Applying transform-based animations (`zoom-in-*`, `slide-in-from-*`) to Radix `<TooltipPrimitive.Content>` conflicted with Radix Popper's inline `translate3d(x, y)` coordinate matrix during enter animations, causing tooltips to visually fly from `(0, 0)` at viewport top-left to trigger location.
+     - Solution: Replaced all transform transitions with pure opacity fade (`transition-opacity duration-100 ease-out data-[state=closed]:opacity-0 data-[state=delayed-open]:opacity-100 data-[state=instant-open]:opacity-100`). Set default `delayDuration={150}` and `sideOffset={6}`. Created centralized `@/components/ui/tooltip` re-export.
+  2. **Workstream 2: Permanently Ban Harsh Black Borders (`src/app/globals.css`, `SyncStatus.tsx`):**
+     - Injected `@layer base` CSS override in `src/app/globals.css` ensuring all unqualified borders and `divide-*` default to faint tint (`rgba(13, 92, 58, 0.10)` in light mode, `rgba(245, 158, 11, 0.12)` in dark mode) instead of `currentColor`/black.
+     - Upgraded `TermBadge` and `SyncStatus` to borderless soft-fill pills (`bg-[#0D5C3A]/[0.08]` / `bg-[#F0F4F9]` light, `bg-[#1E1F20]` dark).
+     - Confirmed all remaining `border-black` instances across the codebase are exclusively in print-specific media queries (`print:border-black`) or physical paper print roots (`#secular-hub-print-root`, `#class-roster-print-root`).
+  3. **Workstream 3: Declutter Topbar & Eliminate Double Toolbars (`app-topbar.tsx`, `src/app/admin/marks/page.tsx`, `src/app/admin/students/page.tsx`, `classes-client.tsx`, `TopToolbar.tsx`):**
+     - Topbar declutter: Removed `border-b` from `<header>`, removed redundant user menu profile pill (profile is already pinned in the left sidebar), replaced wide search box with a clean `36px × 36px` circular search button with silent tooltip `"Search (Ctrl+K)"`, added contextual circular Back button (`ArrowLeft`, 18px) when on nested routes, arranged utility icons cleanly with silent tooltips and a `MoreActionsMenu` Quick Actions circle (`⋮`).
+     - Collapsed redundant page banners across modules:
+       - `/admin/marks`: Removed big redundant header banner; `SharedMarksEntry` is visible immediately.
+       - `/admin/students`: Removed redundant header banner; 4-pill KPI strip and student directory are immediately visible above the fold with dark mode support.
+       - `/admin/classes`: Removed `HeroSection` banner and detached search bar; replaced with single compact horizontal pill bar (`h-9`/`h-10`) containing search, class count pill, and Add Class button.
+       - `TopToolbar`: Reduced height to `h-11 min-h-[44px]`, upgraded buttons to soft rounded-full pills.
+  4. **Workstream 4: Full Verification Gate:**
+     - `npm run typecheck` (`tsc --noEmit`): 0 errors.
+     - Pure unit tests (`node --import ./src/lib/test-guard.mjs --test src/__tests__/overhaul-workstreams.test.mjs`): 14/14 passed (100%).
+     - `npm run build`: 68/68 static and dynamic routes compiled cleanly.
+

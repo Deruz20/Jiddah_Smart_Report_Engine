@@ -37,8 +37,8 @@ export function TopToolbar({
   title,
 }: TopToolbarProps) {
   return (
-    <Tooltip.Provider delayDuration={300}>
-      <div className="flex items-center justify-between shrink-0 w-full bg-white dark:bg-[#111916] border-b border-stone-200/90 dark:border-[#1C2622] px-3 sm:px-5 min-h-[52px] z-20 print:hidden">
+    <Tooltip.Provider delayDuration={150}>
+      <div className="flex items-center justify-between shrink-0 w-full bg-white dark:bg-[#111916] border-b border-[#0D5C3A]/10 dark:border-[#F59E0B]/12 px-3 sm:px-5 min-h-[44px] h-11 z-20 print:hidden">
         <div className="flex items-center gap-2.5 overflow-hidden min-w-0">
           {/* Contextual Title or Loaded Reports Badge (No duplicate hamburger icon!) */}
           <AnimatePresence>
@@ -89,7 +89,7 @@ export function TopToolbar({
                   <motion.button
                     onClick={onLayoutToggle}
                     aria-label={layout === 'grid' ? 'Single scroll view' : 'Grid view'}
-                    className="flex items-center justify-center rounded-xl min-w-[36px] min-h-[36px] bg-[#F8FAFC] dark:bg-[#141F1C] border border-stone-200 dark:border-[#24332E] text-stone-700 dark:text-stone-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-[#059669] dark:hover:text-emerald-300 cursor-pointer"
+                    className="flex items-center justify-center rounded-full min-w-[34px] min-h-[34px] bg-[#F0F4F9] dark:bg-[#1E1F20] text-stone-700 dark:text-stone-200 hover:bg-[#E4EAE6] dark:hover:bg-[#282A2C] hover:text-[#0D5C3A] dark:hover:text-emerald-300 cursor-pointer border-0"
                     whileTap={{ scale: 0.92 }}
                   >
                     {layout === 'grid' ? <List size={16} /> : <LayoutGrid size={16} />}
@@ -248,10 +248,10 @@ export function TopToolbar({
               <Tooltip.Trigger asChild>
                 <motion.button
                   onClick={onSearchToggle}
-                  className={`flex items-center gap-1.5 rounded-xl font-semibold h-9 px-3 text-xs border cursor-pointer transition-colors ${
+                  className={`flex items-center gap-1.5 rounded-full font-semibold h-8 px-3 text-xs border-0 cursor-pointer transition-colors ${
                     searchOpen
-                      ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-700 text-emerald-800 dark:text-emerald-300'
-                      : 'bg-[#F8FAFC] dark:bg-[#141F1C] border-stone-200 dark:border-[#24332E] text-stone-800 dark:text-stone-100 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-[#059669] dark:hover:text-emerald-300'
+                      ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 ring-1 ring-emerald-500/30'
+                      : 'bg-[#F0F4F9] dark:bg-[#1E1F20] text-stone-800 dark:text-stone-100 hover:bg-[#E4EAE6] dark:hover:bg-[#282A2C] hover:text-[#0D5C3A] dark:hover:text-emerald-300'
                   }`}
                   whileTap={{ scale: 0.96 }}
                 >
@@ -292,7 +292,7 @@ function IconBtn({
           disabled={disabled}
           title={tooltip}
           aria-label={tooltip}
-          className="flex items-center justify-center rounded-xl flex-shrink-0 min-w-[36px] min-h-[36px] bg-[#F8FAFC] dark:bg-[#141F1C] border border-stone-200 dark:border-[#24332E] text-stone-700 dark:text-stone-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-[#059669] dark:hover:text-emerald-300 disabled:opacity-45 disabled:cursor-not-allowed cursor-pointer"
+          className="flex items-center justify-center rounded-full flex-shrink-0 min-w-[34px] min-h-[34px] bg-[#F0F4F9] dark:bg-[#1E1F20] text-stone-700 dark:text-stone-200 hover:bg-[#E4EAE6] dark:hover:bg-[#282A2C] hover:text-[#0D5C3A] dark:hover:text-emerald-300 disabled:opacity-45 disabled:cursor-not-allowed cursor-pointer border-0"
           whileTap={disabled ? {} : { scale: 0.92 }}
         >
           {icon}
@@ -308,10 +308,9 @@ function TooltipContent({ children }: { children: React.ReactNode }) {
     <Tooltip.Portal>
       <Tooltip.Content
         sideOffset={6}
-        className="bg-stone-900 text-white rounded-lg px-2.5 py-1.5 text-[11px] font-medium shadow-lg z-[300]"
+        className="bg-neutral-900 text-white dark:bg-[#1E1F20] dark:text-[#E3E3E3] rounded-full px-3 py-1.5 text-xs font-medium shadow-md border border-white/10 dark:border-white/10 z-[300] pointer-events-none select-none transition-opacity duration-100 ease-out data-[state=closed]:opacity-0 data-[state=delayed-open]:opacity-100"
       >
         {children}
-        <Tooltip.Arrow style={{ fill: '#1c1917' }} />
       </Tooltip.Content>
     </Tooltip.Portal>
   );

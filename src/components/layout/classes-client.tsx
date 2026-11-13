@@ -6,7 +6,6 @@ import { motion, AnimatePresence } from "motion/react";
 import { Plus, Edit, Trash2, BookMarked, Search, Eye, FileText, ArrowRightLeft } from "lucide-react";
 import { MoreActionsMenu } from "@/components/ui/more-actions-menu";
 import { toast } from "sonner";
-import { HeroSection } from "@/components/HeroSection";
 import { Button } from "@/components/figma-ui/ui/button";
 import { Input } from "@/components/figma-ui/ui/input";
 import { Label } from "@/components/figma-ui/ui/label";
@@ -146,37 +145,37 @@ export default function ClassesClient({
 
   return (
     <div className="pb-12 w-full">
-      <HeroSection
-        title="Classes Management"
-        subtitle={`${classes.length} classes configured`}
-        actions={
-          canManageClasses ? (
-            <Button
-              className="bg-[#065F46] hover:bg-[#047857] text-white shadow-md shadow-[#065F46]/20 transition-all rounded-xl"
-              onClick={() => {
-                setFormData({ class_name: "", section: "nursery" });
-                setIsCreateOpen(true);
-              }}
-            >
-              <Plus className="w-4 h-4 mr-2" /> Add Class
-            </Button>
-          ) : undefined
-        }
-      />
-
-      <div className="w-full px-4 sm:px-6 lg:px-8 mt-8">
-        <div className="flex items-center justify-between mb-6">
-          <div className="relative w-full max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+      {/* Compact single horizontal pill bar */}
+      <div className="w-full px-4 sm:px-6 lg:px-8 pt-4 pb-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5 flex-1 min-w-[240px] max-w-md">
+          <div className="relative w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
             <Input 
               placeholder="Search classes..." 
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 rounded-xl border-gray-200 focus-visible:ring-[#065F46]" 
+              className="pl-9 h-9 rounded-full bg-[#F0F4F9] dark:bg-[#1E1F20] border-0 text-xs text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus-visible:ring-1 focus-visible:ring-[#0D5C3A]" 
             />
           </div>
+          <span className="shrink-0 px-2.5 py-1 rounded-full bg-[#F0F4F9] dark:bg-[#1E1F20] text-xs font-semibold text-stone-600 dark:text-stone-400 tabular-nums">
+            {classes.length} classes
+          </span>
         </div>
 
+        {canManageClasses && (
+          <Button
+            className="rounded-full h-9 px-4 bg-[#0D5C3A] hover:bg-[#09472C] text-white text-xs font-semibold shadow-xs transition-all flex items-center gap-1.5"
+            onClick={() => {
+              setFormData({ class_name: "", section: "nursery" });
+              setIsCreateOpen(true);
+            }}
+          >
+            <Plus className="w-3.5 h-3.5" /> Add Class
+          </Button>
+        )}
+      </div>
+
+      <div className="w-full px-4 sm:px-6 lg:px-8 mt-2">
         {filteredClasses.length === 0 ? (
           <div className="text-center py-12">
             <BookMarked className="mx-auto h-12 w-12 text-gray-400 mb-4" />

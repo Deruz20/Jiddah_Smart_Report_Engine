@@ -5,7 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Search, Plus, Edit, Trash2, ChevronDown, UserX } from "lucide-react";
+import { Search, Plus, Edit, Trash2, ChevronDown, UserX, MoreVertical, UserCheck } from "lucide-react";
+import { MoreActionsMenu } from "@/components/ui/more-actions-menu";
 import { HeroSection } from "@/components/HeroSection";
 import { AnimatedButton } from "@/components/AnimatedButton";
 import { ConfirmDestructiveDialog } from "@/components/ConfirmDestructiveDialog";
@@ -448,6 +449,22 @@ export default function TeachersClient({
                       >
                         <Trash2 className="h-3.5 w-3.5" /> Deactivate
                       </AnimatedButton>
+                      <MoreActionsMenu
+                        items={[
+                          {
+                            label: "Edit Profile",
+                            icon: Edit,
+                            onClick: () => openEditModal(teacher),
+                          },
+                          {
+                            label: "Deactivate Teacher",
+                            icon: Trash2,
+                            destructive: true,
+                            onClick: () => handleDeactivate(teacher),
+                          },
+                        ]}
+                        align="end"
+                      />
                     </div>
                   </div>
                 </div>

@@ -293,10 +293,14 @@
 
 #secular-hub-print-root[data-report-orientation='portrait'],
 #theology-hub-print-root[data-report-orientation='portrait'],
+#class-roster-print-root,
 #class-roster-print-root[data-report-orientation='portrait'] {
   page: hub-portrait-page;
 }
 
+.print-landscape,
+#secular-hub-print-root,
+#theology-hub-print-root,
 #secular-hub-print-root[data-report-orientation='landscape'],
 #theology-hub-print-root[data-report-orientation='landscape'],
 #class-roster-print-root[data-report-orientation='landscape'] {

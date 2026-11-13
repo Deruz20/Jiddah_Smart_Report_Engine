@@ -43,14 +43,26 @@ export async function GET(request: NextRequest) {
 
     const admin = createAdminClient(cookieStore)
     const storage = admin.storage.from(BUCKET)
-    const [activeResult, disabledResult] = await Promise.all([
-      storage.list('', { limit: 1000 }),
-      storage.list('disabled', { limit: 1000 }),
-    ])
-    if (activeResult.error || disabledResult.error) {
-      const message = activeResult.error?.message ?? disabledResult.error?.message ?? 'Unable to list report images.'
-      console.error('signatures GET list error:', message)
-      return withCors(request, NextResponse.json({ error: message }, { status: 500 }))
+    let activeFiles: any[] = []
+    let disabledFiles: any[] = []
+
+    try {
+      const [activeResult, disabledResult] = await Promise.all([
+        storage.list('', { limit: 1000 }),
+        storage.list('disabled', { limit: 1000 }),
+      ])
+      if (!activeResult.error && activeResult.data) {
+        activeFiles = activeResult.data
+      } else if (activeResult.error) {
+        console.warn('signatures active list warning (bucket may be uninitialized):', activeResult.error.message)
+      }
+      if (!disabledResult.error && disabledResult.data) {
+        disabledFiles = disabledResult.data
+      } else if (disabledResult.error) {
+        console.warn('signatures disabled list warning (bucket may be uninitialized):', disabledResult.error.message)
+      }
+    } catch (e: any) {
+      console.warn('signatures storage list exception (bucket may be uninitialized):', e?.message)
     }
 
     const SIGNATURE_SLOTS = await getDynamicSignatureSlots(admin)
@@ -58,8 +70,8 @@ export async function GET(request: NextRequest) {
     const activeBySlot = new Map<string, string>()
     const disabledBySlot = new Map<string, string>()
     for (const slot of SIGNATURE_SLOTS) {
-      const activePath = getLatestSignatureObjectNameForSlot(activeResult.data ?? [], slot.slot_key)
-      const disabledPath = getLatestSignatureObjectNameForSlot(disabledResult.data ?? [], slot.slot_key)
+      const activePath = getLatestSignatureObjectNameForSlot(activeFiles, slot.slot_key)
+      const disabledPath = getLatestSignatureObjectNameForSlot(disabledFiles, slot.slot_key)
       if (activePath) activeBySlot.set(slot.slot_key, activePath)
       if (disabledPath) disabledBySlot.set(slot.slot_key, disabledPath)
     }

@@ -319,7 +319,7 @@ export async function PATCH(
       return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
     }
 
-    const { data: activeEnrollments, error: enrollmentError } = await createAdminClient()
+    const { data: activeEnrollments, error: enrollmentError } = await createAdminClient(cookieStore)
       .from('enrollments')
       .select('circular_class_id, theology_class_id')
       .eq('student_id', studentId)

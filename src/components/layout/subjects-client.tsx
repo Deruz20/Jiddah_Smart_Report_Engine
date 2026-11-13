@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { Plus, Edit, Trash2, BookOpen, Search } from "lucide-react";
+import { MoreActionsMenu } from "@/components/ui/more-actions-menu";
 import { toast } from "sonner";
 import { HeroSection } from "@/components/HeroSection";
 import { Button } from "@/components/figma-ui/ui/button";
@@ -282,12 +283,28 @@ export default function SubjectsClient({
 
                   {canManageSubjects && (
                     <div className="flex items-center justify-end gap-2 mt-6 pt-4 border-t border-gray-100">
-                      <Button variant="ghost" size="icon" onClick={() => openEdit(sub)} className="h-8 w-8 text-gray-500 hover:text-[#065F46] hover:bg-[#065F46]/10 rounded-lg">
+                      <Button variant="ghost" size="icon" onClick={() => openEdit(sub)} className="h-8 w-8 text-gray-500 hover:text-[#065F46] hover:bg-[#065F46]/10 rounded-lg" aria-label="Edit Subject">
                         <Edit className="w-4 h-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => openDelete(sub)} className="h-8 w-8 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg">
+                      <Button variant="ghost" size="icon" onClick={() => openDelete(sub)} className="h-8 w-8 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg" aria-label="Delete Subject">
                         <Trash2 className="w-4 h-4" />
                       </Button>
+                      <MoreActionsMenu
+                        items={[
+                          {
+                            label: "Edit Subject",
+                            icon: Edit,
+                            onClick: () => openEdit(sub),
+                          },
+                          {
+                            label: "Delete Subject",
+                            icon: Trash2,
+                            destructive: true,
+                            onClick: () => openDelete(sub),
+                          },
+                        ]}
+                        align="end"
+                      />
                     </div>
                   )}
                 </motion.div>

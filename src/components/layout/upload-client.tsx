@@ -224,12 +224,12 @@ export default function UploadClient({ initialFiles }: { initialFiles: UploadedF
           { label: 'Signatures', value: signatureSlots.filter(s => s.uploaded).length, color: '#F59E0B', bg: 'rgba(245,158,11,0.12)' },
           { label: 'Documents', value: files.filter((f) => f.category === 'Documents').length, color: '#A855F7', bg: 'rgba(168,85,247,0.12)' },
         ].map(({ label, value, color, bg }) => (
-          <div key={label} className="h-20 rounded-xl px-4 bg-[var(--bg-card)] border border-[var(--border)] flex items-center gap-3.5">
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: bg }}>
+          <div key={label} className="card-jiddah h-20 rounded-2xl px-4 flex items-center gap-3.5 transition-all">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: bg }}>
               <HardDrive className="w-4 h-4" style={{ color }} />
             </div>
             <div className="min-w-0">
-              <p className="text-lg font-extrabold tracking-tight text-[var(--text-primary)] leading-none">{value}</p>
+              <p className="text-lg font-extrabold tracking-tight text-[var(--text-primary)] leading-none tabular-nums">{value}</p>
               <p className="text-[11px] text-[var(--text-secondary)] mt-1 font-medium truncate">{label}</p>
             </div>
           </div>
@@ -247,7 +247,7 @@ export default function UploadClient({ initialFiles }: { initialFiles: UploadedF
                 onClick={() => setCategory(cat)}
                 className={`px-3.5 py-1.5 rounded-xl transition-all whitespace-nowrap text-xs font-bold cursor-pointer ${
                   category === cat 
-                    ? 'bg-emerald-600 text-white shadow-xs' 
+                    ? 'pill-jiddah-gold shadow-xs' 
                     : 'bg-[var(--bg-card)] text-[var(--text-secondary)] border border-[var(--border)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
                 }`}
               >

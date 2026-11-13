@@ -13,12 +13,14 @@ import {
   Search,
   Check,
   Calendar,
+  Printer,
 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { SignaturePad } from "@/components/teacher/SignaturePad";
 import { toast } from "sonner";
 import { submitMutationWithOfflineFallback } from "@/lib/offline-sync";
 import { invalidateClientCache } from "@/lib/client-cache";
+import { OfficialPrintLetterhead, OfficialPrintSignaturesFooter } from "@/components/print/OfficialPrintLetterhead";
 
 export interface StudentAttendance {
   id: string;
@@ -51,6 +53,7 @@ export function RollCallClient({
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [showSigPad, setShowSigPad] = useState(false);
+  const activeClass = initialClasses.find((c) => c.id === selectedClassId);
 
   // Load students for the selected class and date
   useEffect(() => {
@@ -184,7 +187,15 @@ export function RollCallClient({
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 print:hidden">
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="h-9 px-3.5 rounded-xl border border-white/10 bg-[var(--bg-card,#111714)] hover:border-emerald-500/40 text-xs font-bold text-stone-200 transition cursor-pointer flex items-center gap-1.5"
+          >
+            <Printer className="size-3.5" />
+            <span>Print Sheet</span>
+          </button>
           <button
             type="button"
             onClick={() => setShowSigPad((p) => !p)}
@@ -410,6 +421,54 @@ export function RollCallClient({
               )}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      {/* Official Print-Only Roll Call Attendance Sheet */}
+      <div
+        id="class-roster-print-root"
+        data-report-orientation="portrait"
+        className="hidden print:block p-2 text-black"
+      >
+        <div className="hub-sheet-page">
+          <OfficialPrintLetterhead
+            documentTitle="DAILY CLASS ATTENDANCE SHEET"
+            metadata={[
+              { label: "Class", value: activeClass?.class_name || "Assigned Class" },
+              { label: "Date", value: selectedDate },
+              { label: "Enrolled", value: `${students.length} Pupils` },
+              { label: "Staff In-Charge", value: userRole },
+            ]}
+          />
+          <table className="w-full border-collapse border border-black text-[11px] mt-3">
+            <thead>
+              <tr className="bg-stone-100">
+                <th className="border border-black px-2 py-1.5 text-center w-10">#</th>
+                <th className="border border-black px-2.5 py-1.5 text-left w-28">Adm No.</th>
+                <th className="border border-black px-3 py-1.5 text-left">Student Name</th>
+                <th className="border border-black px-2 py-1.5 text-center w-20">Gender</th>
+                <th className="border border-black px-2 py-1.5 text-center w-24">Status</th>
+                <th className="border border-black px-3 py-1.5 text-center w-36">Teacher Signature / Remarks</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredStudents.map((st, idx) => (
+                <tr key={st.id}>
+                  <td className="border border-black px-2 py-1.5 text-center">{idx + 1}</td>
+                  <td className="border border-black px-2.5 py-1.5 font-mono text-[10px]">
+                    {st.admission_number || "—"}
+                  </td>
+                  <td className="border border-black px-3 py-1.5 font-semibold">{st.name}</td>
+                  <td className="border border-black px-2 py-1.5 text-center">{st.gender || "—"}</td>
+                  <td className="border border-black px-2 py-1.5 text-center font-bold uppercase text-[10px]">
+                    {st.status}
+                  </td>
+                  <td className="border border-black px-3 py-1.5" />
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <OfficialPrintSignaturesFooter />
         </div>
       </div>
     </div>

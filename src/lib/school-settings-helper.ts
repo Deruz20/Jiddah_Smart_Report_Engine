@@ -6,25 +6,51 @@ const BROKEN_LOGO_PATHS = new Set([
   'logo.png',
   '/school_badge.png',
   'school_badge.png',
+  '/school_badge.jpg',
+  'school_badge.jpg',
+  '/school_badge.jpeg',
+  'school_badge.jpeg',
+  '/school-badge.png',
+  'school-badge.png',
   '/school_budge.jpeg',
   'school_budge.jpeg',
   '/school_budge.jpg',
   'school_budge.jpg',
+  '/school_budge.png',
+  'school_budge.png',
   '/images/logo.png',
   '/badge.png',
+  'badge.png',
+  '/badge.jpg',
+  '/badge.jpeg',
 ]);
 
 function extractLogoValueFromPossiblyJson(raw: string): string {
   let candidate = raw.trim();
   if (!candidate) return '';
 
-  // Decode URL-encoded JSON strings such as %7B%22logo%22:...%7D
-  if (candidate.startsWith('%7B') || candidate.startsWith('%7b') || candidate.startsWith('/%7B') || candidate.startsWith('/%7b')) {
-    const stripped = candidate.startsWith('/') ? candidate.slice(1) : candidate;
-    try {
-      candidate = decodeURIComponent(stripped).trim();
-    } catch {
-      // Keep original candidate if malformed URI component
+  // Decode URL-encoded JSON strings (repeat if nested-encoded up to 3 times)
+  for (let i = 0; i < 3; i++) {
+    if (
+      candidate.includes('%7B') ||
+      candidate.includes('%7b') ||
+      candidate.includes('%22') ||
+      candidate.includes('%2F') ||
+      candidate.includes('%2f')
+    ) {
+      const stripped = candidate.startsWith('/') ? candidate.slice(1) : candidate;
+      try {
+        const decoded = decodeURIComponent(stripped).trim();
+        if (decoded && decoded !== candidate) {
+          candidate = decoded;
+        } else {
+          break;
+        }
+      } catch {
+        break;
+      }
+    } else {
+      break;
     }
   }
 
@@ -37,11 +63,16 @@ function extractLogoValueFromPossiblyJson(raw: string): string {
     try {
       const parsed = JSON.parse(candidate) as Record<string, unknown>;
       const nested = parsed?.logo ?? parsed?.logo_url ?? parsed?.url ?? '';
-      return typeof nested === 'string' ? nested.trim() : '';
+      const resolvedNested = typeof nested === 'string' ? nested.trim() : '';
+      if (resolvedNested) {
+        return extractLogoValueFromPossiblyJson(resolvedNested);
+      }
     } catch {
       // Fallback regex if JSON string was truncated
       const match = candidate.match(/"(?:logo|logo_url|url)"\s*:\s*"([^"]*)"/i);
-      return match?.[1]?.trim() || '';
+      if (match?.[1]?.trim()) {
+        return extractLogoValueFromPossiblyJson(match[1].trim());
+      }
     }
   }
 

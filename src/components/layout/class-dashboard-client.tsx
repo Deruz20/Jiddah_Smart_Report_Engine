@@ -19,6 +19,7 @@ import { Badge } from "@/components/figma-ui/Badge";
 import { EditStudentModal } from "@/components/EditStudentModal";
 import { ConfirmDestructiveDialog } from "@/components/ConfirmDestructiveDialog";
 import { OfficialPrintLetterhead, OfficialPrintSignaturesFooter } from "@/components/print/OfficialPrintLetterhead";
+import { MoreActionsMenu } from "@/components/ui/more-actions-menu";
 
 function avatarColors(name: string) {
   const palettes = [
@@ -155,6 +156,18 @@ export default function ClassDashboardClient({
     return labels[section] || section;
   };
 
+  const enrollmentStudentMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const e of enrollments) {
+      const sId = e.student_id || e.student?.id;
+      if (sId) {
+        map.set(e.id, sId);
+        map.set(sId, sId);
+      }
+    }
+    return map;
+  }, [enrollments]);
+
   const renderTabs = () => {
     const tabs = [
       { id: "students", label: "Students", icon: <Users className="w-4 h-4" /> },
@@ -165,21 +178,24 @@ export default function ClassDashboardClient({
     ] as const;
 
     return (
-      <div className="flex space-x-1 bg-white/50 p-1 rounded-xl backdrop-blur-md border border-gray-200/50 mb-6 overflow-x-auto w-full md:w-auto">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id as any)}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-300 ${
-              activeTab === tab.id 
-                ? "bg-white shadow-sm text-[#065F46] font-medium" 
-                : "text-gray-500 hover:text-gray-900 hover:bg-white/40"
-            }`}
-          >
-            {tab.icon}
-            <span className="whitespace-nowrap">{tab.label}</span>
-          </button>
-        ))}
+      <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-white/80 dark:bg-[#1E1F20]/80 border border-[#D97706]/15 dark:border-[#F59E0B]/15 shadow-xs mb-6 overflow-x-auto w-full md:w-auto">
+        {tabs.map((tab) => {
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`relative flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
+                isActive
+                  ? "bg-gradient-to-r from-[#0D5C3A]/14 via-[#D97706]/10 to-[#EA580C]/12 text-[#09472C] dark:from-[#0D5C3A]/30 dark:via-[#F59E0B]/20 dark:to-[#EA580C]/20 dark:text-[#FDE68A] ring-1 ring-[#0D5C3A]/20 dark:ring-[#F59E0B]/30 shadow-xs font-bold"
+                  : "text-stone-600 dark:text-[#A8B3CF] hover:text-stone-900 dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.05]"
+              }`}
+            >
+              {tab.icon}
+              <span className="whitespace-nowrap">{tab.label}</span>
+            </button>
+          );
+        })}
       </div>
     );
   };
@@ -350,16 +366,37 @@ export default function ClassDashboardClient({
                       )}
                     </div>
                   </td>
-                  <td className="p-4 text-right whitespace-nowrap flex items-center justify-end gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => setEditingStudent(enrollment.student)} className="text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors p-1.5 rounded-lg" title="Edit">
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                    <button onClick={() => handleArchive(enrollment.student)} className="text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-colors p-1.5 rounded-lg" title="Archive">
-                      <Archive className="w-4 h-4" />
-                    </button>
-                    <button onClick={() => handleHardDelete(enrollment.student)} className="text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors p-1.5 rounded-lg" title="Delete">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                  <td className="p-4 text-right whitespace-nowrap">
+                    <div className="flex items-center justify-end">
+                      <MoreActionsMenu
+                        items={[
+                          {
+                            label: "Edit Student",
+                            icon: Edit2,
+                            onClick: () => setEditingStudent(enrollment.student),
+                          },
+                          {
+                            label: "Print Report Card",
+                            icon: Printer,
+                            onClick: () => {
+                              window.location.href = `/admin/reports?student=${enrollment.student?.id}`;
+                            },
+                          },
+                          {
+                            label: "Archive Student",
+                            icon: Archive,
+                            onClick: () => handleArchive(enrollment.student),
+                          },
+                          {
+                            label: "Delete Student",
+                            icon: Trash2,
+                            destructive: true,
+                            onClick: () => handleHardDelete(enrollment.student),
+                          },
+                        ]}
+                        align="end"
+                      />
+                    </div>
                   </td>
                 </tr>
               )})
@@ -626,6 +663,34 @@ export default function ClassDashboardClient({
             >
               <Printer className="w-4 h-4 mr-2" /> Print Roster
             </Button>
+            <MoreActionsMenu
+              items={[
+                {
+                  label: "Edit Class",
+                  icon: Edit,
+                  onClick: () => setActiveTab('settings'),
+                },
+                {
+                  label: "Print Class Roster",
+                  icon: Printer,
+                  onClick: () => window.print(),
+                },
+                {
+                  label: "Export Student CSV",
+                  icon: Download,
+                  onClick: handleExport,
+                },
+                {
+                  label: "Assign Class Teacher",
+                  icon: GraduationCap,
+                  onClick: () => {
+                    setActiveTab('settings');
+                    setIsEditModalOpen(true);
+                  },
+                },
+              ]}
+              align="end"
+            />
           </div>
         </div>
 
@@ -737,7 +802,10 @@ export default function ClassDashboardClient({
                       const subMarks = marks.filter((m: any) => m.subject_id === sub.id && (m.eot_score !== null || m.mot_score !== null));
                       const gradedStudentIds = new Set(
                         subMarks
-                          .map((m: any) => m.enrollment_id || m.student_id || m.id)
+                          .map((m: any) => {
+                            const rawId = m.student_id || m.enrollments?.student_id || m.enrollment_id;
+                            return rawId ? (enrollmentStudentMap.get(rawId) || rawId) : null;
+                          })
                           .filter(Boolean)
                       );
                       const gradedStudentsCount = Math.min(gradedStudentIds.size, totalStudents);

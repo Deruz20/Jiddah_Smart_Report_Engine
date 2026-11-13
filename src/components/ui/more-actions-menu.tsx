@@ -57,7 +57,7 @@ export function MoreActionsMenu({
         aria-label={ariaLabel}
         data-testid="more-actions-trigger"
         className={cn(
-          "w-8 h-8 rounded-full flex items-center justify-center text-[#444746] dark:text-[#C4C7C5] hover:bg-black/[0.08] dark:hover:bg-white/[0.08] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[#0D5C3A] dark:focus-visible:ring-[#34D399]",
+          "w-8 h-8 rounded-full flex items-center justify-center text-[#444746] dark:text-[#C4C7C5] hover:bg-[#0D5C3A]/10 dark:hover:bg-[#F59E0B]/15 active:scale-[0.97] transition-all outline-none focus-visible:ring-2 focus-visible:ring-[#0D5C3A] dark:focus-visible:ring-[#F59E0B]",
           triggerClassName
         )}
       >
@@ -77,7 +77,7 @@ export function MoreActionsMenu({
           sideOffset={6}
           data-slot="gemini-more-actions-menu"
           className={cn(
-            "z-50 min-w-[200px] rounded-2xl bg-white dark:bg-[#1E1F20] border border-[#E1E3E1] dark:border-[#282A2C] p-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.12)] dark:shadow-[0_12px_32px_rgba(0,0,0,0.55)] outline-none animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
+            "z-50 min-w-[200px] rounded-2xl bg-white dark:bg-[#1E1F20] border border-[#D97706]/20 dark:border-[#F59E0B]/20 p-1.5 shadow-[0_8px_28px_rgba(0,0,0,0.12)] dark:shadow-[0_12px_36px_rgba(0,0,0,0.65)] outline-none animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
             contentClassName
           )}
         >
@@ -104,8 +104,8 @@ export function MoreActionsMenu({
                     className={cn(
                       "flex items-center gap-3 px-3 py-2 rounded-xl text-[13.5px] cursor-pointer outline-none transition-colors select-none",
                       item.destructive
-                        ? "text-[#D93025] dark:text-[#F28B82] hover:bg-[#FCE8E6] dark:hover:bg-[#3C1E1E] focus:bg-[#FCE8E6] dark:focus:bg-[#3C1E1E]"
-                        : "text-[#1F1F1F] dark:text-[#E3E3E3] hover:bg-[#F0F4F9] dark:hover:bg-[#333537] focus:bg-[#F0F4F9] dark:focus:bg-[#333537]",
+                        ? "text-[#D93025] dark:text-[#F87171] hover:bg-[#FCE8E6] dark:hover:bg-red-950/40 focus:bg-[#FCE8E6] dark:focus:bg-red-950/40"
+                        : "text-[#1F1F1F] dark:text-[#E3E3E3] hover:bg-[#0D5C3A]/8 dark:hover:bg-[#F59E0B]/12 focus:bg-[#0D5C3A]/8 dark:focus:bg-[#F59E0B]/12",
                       item.disabled && "opacity-40 cursor-not-allowed pointer-events-none"
                     )}
                   >

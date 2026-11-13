@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Plus, Edit, Trash2, Search, BookOpen } from "lucide-react";
 import { MoreActionsMenu } from "@/components/ui/more-actions-menu";
-import { HeroSection } from "@/components/HeroSection";
 import { Button } from "@/components/figma-ui/ui/button";
 import {
   Dialog,
@@ -369,32 +368,32 @@ export default function TheologyClient({
 
   return (
     <div className="pb-28 md:pb-12 w-full">
-      <HeroSection
-        title="Theology Hub"
-        subtitle={`Manage MOT and EOT marks for ${activeTerm?.label || activeTerm?.term || "the active term"}`}
-        actions={
-          <Button
-            onClick={openCreate}
-            className="h-9 bg-[#0D5C3A] hover:bg-[#0A472C] text-white shadow-sm transition-all rounded-xl flex items-center text-xs font-bold px-3.5"
-          >
-            <Plus className="w-4 h-4 mr-1.5" /> Add Marks
-          </Button>
-        }
-      />
-
-      <div className="w-full px-4 sm:px-6 lg:px-8 mt-5 sm:mt-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="relative w-full max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6B7280] dark:text-[#9CA3AF]" />
+      {/* Compact single horizontal pill bar */}
+      <div className="w-full px-4 sm:px-6 lg:px-8 pt-4 pb-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5 flex-1 min-w-[240px] max-w-md">
+          <div className="relative w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400 dark:text-stone-500" />
             <input
               placeholder="Search students or subjects..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full h-9 rounded-xl border border-[#D5DDD8] dark:border-[#24332E] bg-white dark:bg-[#0D1412] pl-9 pr-3 text-xs text-[#111827] dark:text-[#F3F7F5] placeholder:text-[#6B7280] dark:placeholder:text-[#9CA3AF] outline-none focus:border-[#0D5C3A] dark:focus:border-[#10B981] transition-colors"
+              className="w-full h-9 rounded-full bg-[#F0F4F9] dark:bg-[#1E1F20] hover:bg-[#E4EAE6] dark:hover:bg-[#282A2C] text-[#1F1F1F] dark:text-[#E3E3E3] border-0 ring-0 focus:ring-2 focus:ring-[#0D5C3A]/25 dark:focus:ring-[#F59E0B]/30 pl-9 pr-3 text-xs font-medium placeholder:text-stone-400 dark:placeholder:text-stone-500 outline-none transition-colors"
             />
           </div>
+          <span className="shrink-0 px-2.5 py-1 rounded-full bg-[#F0F4F9] dark:bg-[#1E1F20] text-xs font-semibold text-stone-600 dark:text-stone-400 tabular-nums">
+            {filteredMarks.length} records
+          </span>
         </div>
 
+        <Button
+          onClick={openCreate}
+          className="rounded-full h-9 px-4 bg-[#0D5C3A] hover:bg-[#09472C] text-white text-xs font-semibold shadow-xs transition-all flex items-center gap-1.5"
+        >
+          <Plus className="w-3.5 h-3.5 mr-1" /> Add Marks
+        </Button>
+      </div>
+
+      <div className="w-full px-4 sm:px-6 lg:px-8 mt-2">
         {filteredMarks.length === 0 ? (
           <div className="text-center py-12">
             <h3 className="text-lg font-medium text-[#111827] dark:text-[#F3F7F5]">No marks found</h3>

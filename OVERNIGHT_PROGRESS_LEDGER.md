@@ -209,3 +209,36 @@ Exit code: 0
      - Pure unit tests (`node --import ./src/lib/test-guard.mjs --test src/__tests__/overhaul-workstreams.test.mjs`): 14/14 passed (100%).
      - `npm run build`: 68/68 static and dynamic routes compiled cleanly.
 
+---
+
+## Milestone 9: Marks Entry Ultra-Clean Pill Workspace & Above-The-Fold Density Architecture
+
+- **Files Modified:**
+  - `src/components/shared-marks-entry.tsx`
+  - `src/components/layout/circular-client.tsx`
+  - `src/components/layout/theology-client.tsx`
+- **Scope & Workstreams Completed:**
+  1. **Workstream 1: Purge All Harsh Black Borders & Pitch-Black Pills:**
+     - Removed hardcoded black horizontal divider lines and thick borders.
+     - Upgraded `BOT | MOT | EOT | ALL` and `Both | Secular | Theology` segmented switchers to borderless soft-pill tracks (`bg-[#F0F4F9]` / `dark:bg-[#1E1F20]`) with Forest Green active pills (`bg-[#0D5C3A] text-white` / `dark:bg-[#10B981]/25 dark:text-[#34D399]`). Banished pitch-black `bg-slate-900` fill.
+     - Converted class filter, subject filter, and student selects to Topbar borderless soft-pills (`h-9 rounded-full bg-[#F0F4F9] dark:bg-[#1E1F20] border-0`).
+     - Upgraded `<` and `>` stepper controls to `w-8 h-8 rounded-full bg-[#F0F4F9] dark:bg-[#1E1F20] border-0`.
+  2. **Workstream 2: Eliminate Redundancies & Repetitions:**
+     - Removed redundant Academic Term selector column from main filter bar (integrated term switching safely into the `⋮` More Actions menu).
+     - Deleted stacked uppercase micro-labels (`ACADEMIC TERM`, `CLASS COHORT`, `STUDENT QUICK SEARCH`, `ACTIVE STUDENT`, `SUBJECT:`) saving 30+ pixels of vertical space.
+     - Deleted the duplicate bottom sticky save card (`Ready — [Student Name]` + second `Save MOT Marks` button). Kept a single primary Save button in the top action bar, and a compact floating pill on mobile viewports only when `hasUnsavedChanges === true`.
+     - Stopped repeating the student's name under every single subject row in `SecularMarkTableRow` and `TheologyMarkTableRow`.
+  3. **Workstream 3: Single-Screen High-Density Workspace Layout:**
+     - Merged the entire filter bar into ONE compact horizontal toolbar (`rounded-2xl p-2 sm:p-2.5`):
+       - Left Group: Class pill • Quick search pill • Active student pill + (<) (>) circles
+       - Right Group: Exam type track • Curriculum view track • Subject filter pill • Unsaved badge • Primary Save button • More Actions circle
+     - Compacted Active Student Identity Strip into a sleek single-line `min-h-[44px]` bar with soft borderless badges (`w-8 h-8` avatar, admission pill, class badge, MOT completion stats, Arabic name/theology badge).
+     - Compacted table rows to `h-11` with subtle warm hairlines (`divide-y divide-[#0D5C3A]/[0.06] dark:divide-[#F59E0B]/[0.07]`), score inputs as clean rounded-xl faint-ring pills (`h-8 w-16`).
+     - Replaced `HeroSection` banners in `circular-client.tsx` and `theology-client.tsx` with single compact horizontal pill bars.
+     - Fits 100% comfortably inside standard desktop viewports with zero vertical scrolling.
+  4. **Workstream 4: Full Verification Gate:**
+     - `npm run typecheck` (`tsc --noEmit`): 0 errors.
+     - Pure unit tests: 14/14 passed (100%).
+     - `npm run build`: 68/68 static and dynamic routes compiled cleanly.
+
+

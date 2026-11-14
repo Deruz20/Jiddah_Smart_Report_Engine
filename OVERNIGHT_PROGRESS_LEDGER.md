@@ -559,6 +559,41 @@ Exit code: 0
      - Automated test suite: 40/40 tests across 13 suites pass (100% pass rate).
      - Next.js webpack production build: 68/68 routes generated cleanly with zero build errors.
 
+---
+
+## Milestone 18: Final 5-Point Micro-Polish Pass for Marks Entry
+
+- **Files Modified / Created:**
+  - `src/components/shared-marks-entry.tsx`
+  - `src/components/ui/custom-pill-select.tsx`
+  - `next.config.ts`
+  - `src/__tests__/overhaul-workstreams.test.mjs`
+  - `OVERNIGHT_PROGRESS_LEDGER.md`
+- **Scope & Workstreams Completed:**
+  1. **Workstream 1: Fix `"Quick se..."` Truncation in Desktop Zone 1 (`shared-marks-entry.tsx`):**
+     - Sized search pill wrapper to `w-44 lg:w-52 xl:w-64 max-w-[260px] shrink` with `w-full overflow-hidden`.
+     - Updated placeholder text to `"Search student..."` so the full label is visible without collision with the active term badge.
+     - Anchored dropdown to `w-full min-w-[240px]` matching the input container.
+  2. **Workstream 2: Align Secular & Theology Card Bottom Baselines in Desktop `"Both"` Mode (`shared-marks-entry.tsx`):**
+     - Configured Zone 3 grid with `items-stretch` so both columns maintain identical height.
+     - Enforced `h-full flex flex-col justify-between` on both Secular and Theology card containers.
+     - Sized inner table scroll areas with `flex-1 flex flex-col justify-between` and pinned both Summary Footers (`Secular Summary` / `ملخص المواد الشرعية`) to `mt-auto shrink-0`.
+     - Added an Arabic/English pedagogical insight strip above the Theology footer when Secular has more rows than Theology in `"Both"` mode (displaying Top Subject e.g. `التربية الإسلامية (٩٣٪)` and Readiness status e.g. `مكتمل ١٠٠٪`), perfectly aligning bottom card baselines.
+  3. **Workstream 3: Eliminate Mixed Western/Arabic Numerals in Theology Summary (`shared-marks-entry.tsx`):**
+     - Exported universal `toArabicDigits(val: number | string | null | undefined): string` converter.
+     - Converted total score, max total, and mean percentage through `toArabicDigits()`.
+     - Standardized summary text to render cleanly as `المجموع: ٣٥٦ / ٤٠٠ • المعدل: ٨٩.٥٪ • التقدير: ممتاز` with zero Western digit mixing.
+  4. **Workstream 4: Maximize Mobile Student Name Width (`shared-marks-entry.tsx`, `custom-pill-select.tsx`):**
+     - Removed duplicate `⋮` MoreActionsMenu from the mobile student switcher row (the mobile topbar already provides access).
+     - Tightened `<` (Previous), `>` (Next), and `🔍` (Search) circular thumb buttons from `w-[34px] h-[34px]` to `w-8 h-8 shrink-0`.
+     - Reduced internal horizontal padding in `StudentCombobox` on mobile from `px-3 gap-2` to `px-2.5 sm:px-3` and `gap-1.5 sm:gap-2`, giving student names like `NANYANJA ASHWAAQ` maximum horizontal width.
+  5. **Workstream 5: Disable Floating Next.js `N` Dev Indicator (`next.config.ts`):**
+     - Set `devIndicators: false` in `nextConfig` so the Next.js floating dev badge in the bottom-right corner never obstructs the floating `Save Marks` pill button.
+  6. **Workstream 6: Verification Gate:**
+     - TypeScript check (`npm run typecheck`): 0 errors across entire repository.
+     - Automated test suite (`src/__tests__/overhaul-workstreams.test.mjs`): 45/45 tests across 14 suites pass (100% pass rate).
+     - Next.js webpack production build (`npm run build`): 68/68 routes compiled cleanly with zero build errors.
+
 
 
 

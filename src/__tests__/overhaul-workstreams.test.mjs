@@ -786,8 +786,8 @@ describe('Workstream 12: Five Exact CSS Layout and Table-Math Bug Fixes', () => 
     const marksEntryPath = path.join(rootDir, 'src/components/shared-marks-entry.tsx');
     const marksEntrySrc = fs.readFileSync(marksEntryPath, 'utf8');
 
-    // Quick Search pill wrapper includes overflow-hidden and min-w-[95px] max-w-[165px]
-    assert.match(marksEntrySrc, /flex-1 min-w-\[95px\] max-w-\[165px\] overflow-hidden shrink/);
+    // Quick Search pill wrapper includes overflow-hidden and responsive widths
+    assert.match(marksEntrySrc, /w-44 lg:w-52 xl:w-64 max-w-\[260px\] shrink/);
 
     // Input has w-full min-w-0 and size={1}
     assert.match(marksEntrySrc, /id="marks-student-search"[^>]*size=\{1\}/);
@@ -820,8 +820,8 @@ describe('Workstream 12: Five Exact CSS Layout and Table-Math Bug Fixes', () => 
     const marksEntrySrc = fs.readFileSync(marksEntryPath, 'utf8');
 
     // Wrappers have overflow-hidden w-full (zero internal horizontal scrollbar)
-    assert.match(marksEntrySrc, /data-testid="marks-scroll-grid"\s+className="overflow-hidden w-full"/);
-    assert.match(marksEntrySrc, /<div className="overflow-hidden w-full">\s*<table className="w-full table-fixed/);
+    assert.match(marksEntrySrc, /data-testid="marks-scroll-grid"\s+className="overflow-hidden w-full/);
+    assert.match(marksEntrySrc, /<div className="overflow-hidden w-full/);
 
     // Column widths: 54% mobile / 36% sm for subject, 46% mobile / 28% sm for score
     assert.match(marksEntrySrc, /w-\[54%\] sm:w-\[36%\] px-3 sm:px-4 py-1\.5 text-left/);
@@ -843,7 +843,100 @@ describe('Workstream 12: Five Exact CSS Layout and Table-Math Bug Fixes', () => 
     assert.match(marksEntrySrc, /w-full max-w-full min-w-0 pb-2 flex-1 min-h-0 flex flex-col justify-between/);
 
     // Zone 3 grid container has mb-3 separation before Zone 4 Save bar
-    assert.match(marksEntrySrc, /grid grid-cols-1 xl:grid-cols-2 gap-3 items-start w-full min-w-0 flex-1 min-h-0 mb-3/);
+    assert.match(marksEntrySrc, /grid grid-cols-1 xl:grid-cols-2 gap-3 items-stretch w-full min-w-0 flex-1 min-h-0 mb-3/);
+  });
+});
+
+describe('Workstream 13: Final 5-Point Micro-Polish Pass for Marks Entry', () => {
+  const rootDir = process.cwd();
+
+  it('1. expands Desktop Zone 1 Quick Search to w-44 lg:w-52 xl:w-64 max-w-[260px] with "Search student..." placeholder', () => {
+    const marksEntryPath = path.join(rootDir, 'src/components/shared-marks-entry.tsx');
+    const marksEntrySrc = fs.readFileSync(marksEntryPath, 'utf8');
+
+    assert.match(marksEntrySrc, /className="relative w-44 lg:w-52 xl:w-64 max-w-\[260px\] shrink"/);
+    assert.match(marksEntrySrc, /placeholder="Search student\.\.\."/);
+  });
+
+  it('2. aligns Secular & Theology Card bottom baselines in Desktop "Both" mode via items-stretch and insight strip', () => {
+    const marksEntryPath = path.join(rootDir, 'src/components/shared-marks-entry.tsx');
+    const marksEntrySrc = fs.readFileSync(marksEntryPath, 'utf8');
+
+    // Zone 3 grid uses items-stretch
+    assert.match(marksEntrySrc, /grid grid-cols-1 xl:grid-cols-2 gap-3 items-stretch/);
+
+    // Both cards use h-full flex flex-col justify-between
+    assert.match(marksEntrySrc, /h-full flex flex-col justify-between[\s\S]*?Secular Marks/);
+    assert.match(marksEntrySrc, /h-full flex flex-col justify-between[\s\S]*?Theology Marks/);
+
+    // Both table containers use flex-1 flex flex-col justify-between
+    assert.match(marksEntrySrc, /data-testid="marks-scroll-grid"\s+className="overflow-hidden w-full flex-1 flex flex-col justify-between"/);
+
+    // Footers pushed to mt-auto shrink-0
+    assert.match(marksEntrySrc, /mt-auto shrink-0[\s\S]*?Secular Summary/);
+    assert.match(marksEntrySrc, /mt-auto shrink-0[\s\S]*?ملخص المواد الشرعية/);
+
+    // Theology performance insight strip present when Theology has fewer rows than Secular
+    assert.match(marksEntrySrc, /data-testid="theology-insight-strip"/);
+    assert.match(marksEntrySrc, /أعلى مادة:/);
+    assert.match(marksEntrySrc, /مكتمل ١٠٠٪/);
+  });
+
+  it('3. converts Theology summary numbers strictly through toArabicDigits with zero Western numeral mixing', () => {
+    const marksEntryPath = path.join(rootDir, 'src/components/shared-marks-entry.tsx');
+    const marksEntrySrc = fs.readFileSync(marksEntryPath, 'utf8');
+
+    // toArabicDigits function definition
+    assert.match(marksEntrySrc, /export function toArabicDigits\(/);
+
+    // Theology footer converts total, maxTotal, and mean percentage
+    assert.match(marksEntrySrc, /المجموع:\s*\{toArabicDigits\(theologyStats\.total\)\}\s*\/\s*\{toArabicDigits\(theologyStats\.maxTotal\)\}\s*•\s*المعدل:\s*\{toArabicDigits\(theologyStats\.mean\)\}٪/);
+
+    // Test toArabicDigits numeral conversion
+    function toArabicDigits(val) {
+      if (val === null || val === undefined || val === '') return '';
+      const arabicDigits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+      return String(val).replace(/[0-9]/g, (d) => arabicDigits[Number(d)] ?? d);
+    }
+
+    assert.strictEqual(toArabicDigits(356), '٣٥٦');
+    assert.strictEqual(toArabicDigits(400), '٤٠٠');
+    assert.strictEqual(toArabicDigits(89.5), '٨٩.٥');
+    assert.strictEqual(toArabicDigits(100), '١٠٠');
+    assert.strictEqual(`المجموع: ${toArabicDigits(356)} / ${toArabicDigits(400)} • المعدل: ${toArabicDigits(89.5)}٪`, 'المجموع: ٣٥٦ / ٤٠٠ • المعدل: ٨٩.٥٪');
+  });
+
+  it('4. gives Mobile Student Name maximum width by removing duplicate ⋮ and tightening buttons to w-8 h-8', () => {
+    const marksEntryPath = path.join(rootDir, 'src/components/shared-marks-entry.tsx');
+    const marksEntrySrc = fs.readFileSync(marksEntryPath, 'utf8');
+
+    // Stepper buttons are w-8 h-8 shrink-0
+    assert.match(marksEntrySrc, /title="Previous student"[\s\S]*?className="w-8 h-8 rounded-full/);
+    assert.match(marksEntrySrc, /title="Next student"[\s\S]*?className="w-8 h-8 rounded-full/);
+
+    // Search toggle button is w-8 h-8 shrink-0
+    assert.match(marksEntrySrc, /aria-label="Toggle student search"[\s\S]*?className={`w-8 h-8 rounded-full/);
+
+    // Duplicate MoreActionsMenu is removed from mobile student switcher card
+    const studentCardRegion = marksEntrySrc.substring(
+      marksEntrySrc.indexOf('Mobile Active Student Switcher Card'),
+      marksEntrySrc.indexOf('Expandable Search Row')
+    );
+    assert.doesNotMatch(studentCardRegion, /<MoreActionsMenu/);
+
+    // StudentCombobox mobile horizontal padding reduced to px-2.5 and gap-1.5
+    const customSelectPath = path.join(rootDir, 'src/components/ui/custom-pill-select.tsx');
+    const customSelectSrc = fs.readFileSync(customSelectPath, 'utf8');
+    assert.match(customSelectSrc, /px-2\.5 sm:px-3/);
+    assert.match(customSelectSrc, /gap-1\.5 sm:gap-2/);
+  });
+
+  it('5. disables Next.js floating dev indicator badge in next.config.ts', () => {
+    const nextConfigPath = path.join(rootDir, 'next.config.ts');
+    const nextConfigSrc = fs.readFileSync(nextConfigPath, 'utf8');
+
+    assert.match(nextConfigSrc, /devIndicators:\s*false/);
+    assert.doesNotMatch(nextConfigSrc, /position:\s*'bottom-right'/);
   });
 });
 

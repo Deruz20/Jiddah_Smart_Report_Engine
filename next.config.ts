@@ -24,9 +24,7 @@ if (fs.existsSync(rootEnvPath)) {
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
-  devIndicators: {
-    position: 'bottom-right',
-  },
+  devIndicators: false,
   allowedDevOrigins: ['127.0.0.1', 'localhost', '127.0.0.1:3000', 'localhost:3000'],
   turbopack: {
     root: projectRoot,

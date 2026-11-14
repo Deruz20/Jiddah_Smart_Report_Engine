@@ -38,10 +38,12 @@ import {
 } from '@/lib/grading'
 import { CustomPillSelect, StudentCombobox } from '@/components/ui/custom-pill-select'
 
-function toArabicNumerals(val: number | string): string {
+export function toArabicDigits(val: number | string | null | undefined): string {
+  if (val === null || val === undefined || val === '') return ''
   const arabicDigits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩']
   return String(val).replace(/[0-9]/g, (d) => arabicDigits[Number(d)] ?? d)
 }
+export const toArabicNumerals = toArabicDigits
 
 const SecularMarkTableRow = React.memo(function SecularMarkTableRow({
   mark,
@@ -749,6 +751,19 @@ export function SharedMarksEntry({
     }
   }, [theologyMarks, examType])
 
+  const topTheologySubject = useMemo(() => {
+    const scoreKey = examType === 'mot' ? 'mot_score' : 'eot_score'
+    const scored = theologyMarks
+      .map((m) => ({
+        name: m.subject_name_arabic,
+        score: m[scoreKey],
+      }))
+      .filter((m): m is { name: string; score: number } => typeof m.score === 'number' && !Number.isNaN(m.score))
+    if (scored.length === 0) return null
+    scored.sort((a, b) => b.score - a.score)
+    return scored[0]
+  }, [theologyMarks, examType])
+
   useEffect(() => {
     function handleGlobalKeyDown(e: KeyboardEvent) {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
@@ -1072,8 +1087,8 @@ export function SharedMarksEntry({
               />
 
               {/* Quick Search Pill */}
-              <div ref={searchBoxRef} className="relative flex-1 min-w-[95px] max-w-[165px] shrink">
-                <div className="relative flex items-center gap-1.5 h-8 px-3 rounded-full bg-[#F0F4F9] dark:bg-[#131A17] flex-1 min-w-[95px] max-w-[165px] overflow-hidden shrink">
+              <div ref={searchBoxRef} className="relative w-44 lg:w-52 xl:w-64 max-w-[260px] shrink">
+                <div className="relative flex items-center gap-1.5 h-8 px-3 rounded-full bg-[#F0F4F9] dark:bg-[#131A17] w-full overflow-hidden shrink">
                   <Search className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500 shrink-0 pointer-events-none" />
                   <input
                     id="marks-student-search"
@@ -1087,7 +1102,7 @@ export function SharedMarksEntry({
                       setStudentSearchQuery(q)
                       setSearchDropdownOpen(true)
                     }}
-                    placeholder="Quick search..."
+                    placeholder="Search student..."
                     className="w-full min-w-0 bg-transparent text-xs outline-none border-0 truncate placeholder:text-stone-400 dark:placeholder:text-stone-500 text-[#1F1F1F] dark:text-[#E3E3E3]"
                   />
                   {studentSearchQuery && (
@@ -1106,7 +1121,7 @@ export function SharedMarksEntry({
                 </div>
 
                 {searchDropdownOpen && (
-                  <div className="absolute left-0 top-full mt-1.5 min-w-[220px] max-h-64 overflow-y-auto bg-white dark:bg-[#1E1F20] border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 rounded-2xl shadow-xl z-50 divide-y divide-[#0D5C3A]/[0.06] dark:divide-[#F59E0B]/[0.07]">
+                  <div className="absolute left-0 top-full mt-1.5 w-full min-w-[240px] max-h-64 overflow-y-auto bg-white dark:bg-[#1E1F20] border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 rounded-2xl shadow-xl z-50 divide-y divide-[#0D5C3A]/[0.06] dark:divide-[#F59E0B]/[0.07]">
                     {filteredEnrollments.length === 0 ? (
                       <div className="px-3 py-2.5 text-xs text-stone-400 text-center">
                         No students match &ldquo;{studentSearchQuery}&rdquo;
@@ -1361,7 +1376,7 @@ export function SharedMarksEntry({
                   disabled={filteredEnrollments.length <= 1}
                   title="Previous student"
                   aria-label="Previous student"
-                  className="w-[34px] h-[34px] rounded-full bg-[#F0F4F9] dark:bg-[#282A2C] text-[#1F1F1F] dark:text-[#E3E3E3] hover:bg-[#E4EAE6] dark:hover:bg-[#323538] active:scale-95 disabled:opacity-40 flex items-center justify-center shrink-0 cursor-pointer transition"
+                  className="w-8 h-8 rounded-full bg-[#F0F4F9] dark:bg-[#282A2C] text-[#1F1F1F] dark:text-[#E3E3E3] hover:bg-[#E4EAE6] dark:hover:bg-[#323538] active:scale-95 disabled:opacity-40 flex items-center justify-center shrink-0 cursor-pointer transition"
                 >
                   <ChevronLeft className="w-3.5 h-3.5" />
                 </button>
@@ -1371,7 +1386,7 @@ export function SharedMarksEntry({
                   disabled={filteredEnrollments.length <= 1}
                   title="Next student"
                   aria-label="Next student"
-                  className="w-[34px] h-[34px] rounded-full bg-[#F0F4F9] dark:bg-[#282A2C] text-[#1F1F1F] dark:text-[#E3E3E3] hover:bg-[#E4EAE6] dark:hover:bg-[#323538] active:scale-95 disabled:opacity-40 flex items-center justify-center shrink-0 cursor-pointer transition"
+                  className="w-8 h-8 rounded-full bg-[#F0F4F9] dark:bg-[#282A2C] text-[#1F1F1F] dark:text-[#E3E3E3] hover:bg-[#E4EAE6] dark:hover:bg-[#323538] active:scale-95 disabled:opacity-40 flex items-center justify-center shrink-0 cursor-pointer transition"
                 >
                   <ChevronRight className="w-3.5 h-3.5" />
                 </button>
@@ -1387,7 +1402,7 @@ export function SharedMarksEntry({
                     setSearchDropdownOpen(true)
                   }
                 }}
-                className={`w-[34px] h-[34px] rounded-full flex items-center justify-center shrink-0 cursor-pointer transition ${
+                className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 cursor-pointer transition ${
                   mobileSearchExpanded
                     ? 'bg-[#0D5C3A] text-white dark:bg-[#10B981] dark:text-black shadow-xs'
                     : 'bg-[#F0F4F9] dark:bg-[#282A2C] text-[#444746] dark:text-[#C4C7C5] hover:bg-[#E4EAE6] dark:hover:bg-[#323538]'
@@ -1395,13 +1410,6 @@ export function SharedMarksEntry({
               >
                 <Search className="w-3.5 h-3.5" />
               </button>
-
-              {/* More Actions Circle */}
-              <MoreActionsMenu
-                items={moreActionsItems}
-                triggerClassName="w-[34px] h-[34px] rounded-full bg-[#F0F4F9] dark:bg-[#282A2C] text-[#444746] dark:text-[#C4C7C5] hover:bg-[#E4EAE6] dark:hover:bg-[#323538] flex items-center justify-center shrink-0 cursor-pointer transition"
-                align="end"
-              />
             </div>
 
             {/* Expandable Search Row (Shown only when toggled) */}
@@ -1655,14 +1663,14 @@ export function SharedMarksEntry({
                   <div
                     className={
                       isBothView
-                        ? 'grid grid-cols-1 xl:grid-cols-2 gap-3 items-start w-full min-w-0 flex-1 min-h-0 mb-3'
-                        : 'grid grid-cols-1 lg:grid-cols-12 gap-3 items-start w-full min-w-0 flex-1 min-h-0 mb-3'
+                        ? 'grid grid-cols-1 xl:grid-cols-2 gap-3 items-stretch w-full min-w-0 flex-1 min-h-0 mb-3'
+                        : 'grid grid-cols-1 lg:grid-cols-12 gap-3 items-stretch w-full min-w-0 flex-1 min-h-0 mb-3'
                     }
                   >
                     {/* Secular Marks Card */}
                     {(activeView === 'both' || activeView === 'secular') && (
-                      <div className={`card-jiddah rounded-2xl shadow-2xs border border-[#0D5C3A]/10 dark:border-[#F59E0B]/12 overflow-hidden w-full min-w-0 ${isBothView ? '' : 'lg:col-span-8'}`}>
-                        <div className="px-3.5 py-2 bg-gradient-to-r from-[#0D5C3A]/[0.10] via-[#0D5C3A]/[0.04] to-transparent dark:from-[#10B981]/[0.16] border-b border-[#0D5C3A]/15 dark:border-[#10B981]/25 flex items-center justify-between gap-2">
+                      <div className={`card-jiddah rounded-2xl shadow-2xs border border-[#0D5C3A]/10 dark:border-[#F59E0B]/12 overflow-hidden w-full min-w-0 h-full flex flex-col justify-between ${isBothView ? '' : 'lg:col-span-8'}`}>
+                        <div className="px-3.5 py-2 bg-gradient-to-r from-[#0D5C3A]/[0.10] via-[#0D5C3A]/[0.04] to-transparent dark:from-[#10B981]/[0.16] border-b border-[#0D5C3A]/15 dark:border-[#10B981]/25 flex items-center justify-between gap-2 shrink-0">
                           <div className="flex items-center gap-2">
                             <div className="w-6 h-6 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0">
                               <BookOpen className="w-3.5 h-3.5" />
@@ -1679,7 +1687,7 @@ export function SharedMarksEntry({
 
                         <div
                           data-testid="marks-scroll-grid"
-                          className="overflow-hidden w-full"
+                          className="overflow-hidden w-full flex-1 flex flex-col justify-between"
                         >
                           <table className="w-full table-fixed border-collapse text-left tabular-nums">
                             <thead>
@@ -1723,7 +1731,7 @@ export function SharedMarksEntry({
                         </div>
 
                         {/* Secular Card Footer Summary */}
-                        <div className="px-3.5 py-1.5 bg-gradient-to-r from-[#0D5C3A]/[0.06] to-[#D97706]/[0.06] dark:from-[#10B981]/[0.10] dark:to-[#F59E0B]/[0.10] border-t border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 flex items-center justify-between text-xs font-semibold text-[var(--text-primary)]">
+                        <div className="px-3.5 py-1.5 bg-gradient-to-r from-[#0D5C3A]/[0.06] to-[#D97706]/[0.06] dark:from-[#10B981]/[0.10] dark:to-[#F59E0B]/[0.10] border-t border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 flex items-center justify-between text-xs font-semibold text-[var(--text-primary)] mt-auto shrink-0">
                           <span className="font-bold text-[#0D5C3A] dark:text-[#34D399]">Secular Summary</span>
                           <span className="tabular-nums font-mono font-bold">
                             Total: {secularStats.total} / {secularStats.maxTotal} &bull; Mean: {secularStats.mean}% &bull; Grade: {secularStats.grade}
@@ -1737,8 +1745,8 @@ export function SharedMarksEntry({
                       theologyMarks.length > 0 &&
                       examType !== 'bot' &&
                       selectedEnrollment?.theology_status !== 'not_applicable' && (
-                        <div className={`card-jiddah rounded-2xl shadow-2xs border border-[#0D5C3A]/10 dark:border-[#F59E0B]/12 overflow-hidden w-full min-w-0 ${isBothView ? '' : 'lg:col-span-8'}`}>
-                          <div className="px-3.5 py-2 bg-gradient-to-l from-[#D97706]/[0.14] via-[#EA580C]/[0.06] to-transparent dark:from-[#F59E0B]/[0.18] border-b border-[#D97706]/20 dark:border-[#F59E0B]/25 flex items-center justify-between gap-2">
+                        <div className={`card-jiddah rounded-2xl shadow-2xs border border-[#0D5C3A]/10 dark:border-[#F59E0B]/12 overflow-hidden w-full min-w-0 h-full flex flex-col justify-between ${isBothView ? '' : 'lg:col-span-8'}`}>
+                          <div className="px-3.5 py-2 bg-gradient-to-l from-[#D97706]/[0.14] via-[#EA580C]/[0.06] to-transparent dark:from-[#F59E0B]/[0.18] border-b border-[#D97706]/20 dark:border-[#F59E0B]/25 flex items-center justify-between gap-2 shrink-0">
                             <div className="flex items-center gap-2">
                               <div className="w-2.5 h-2.5 rounded-full bg-gradient-to-r from-[#D97706] to-[#EA580C] shadow-xs shrink-0" />
                               <span className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">
@@ -1750,7 +1758,7 @@ export function SharedMarksEntry({
                             </span>
                           </div>
 
-                          <div className="overflow-hidden w-full">
+                          <div className="overflow-hidden w-full flex-1 flex flex-col justify-between">
                             <table className="w-full table-fixed border-collapse text-left tabular-nums">
                               <thead>
                                 <tr className="bg-[var(--bg-sunken)] border-b border-[#0D5C3A]/[0.06] dark:border-[#F59E0B]/[0.07] text-[11px] font-bold text-[var(--text-secondary)] uppercase tracking-wider h-8">
@@ -1780,13 +1788,41 @@ export function SharedMarksEntry({
                                 ))}
                               </tbody>
                             </table>
+
+                            {/* Insight Strip when Theology has fewer rows than Secular in Both mode */}
+                            {isBothView && sortedCircularMarks.length > theologyMarks.length && (
+                              <div
+                                data-testid="theology-insight-strip"
+                                className="mt-auto px-3.5 py-1.5 mx-2.5 mb-2 rounded-xl bg-amber-500/[0.06] dark:bg-amber-500/[0.12] border border-amber-500/15 dark:border-amber-500/25 flex items-center justify-between text-[11px] font-medium text-amber-950 dark:text-amber-200"
+                                dir="rtl"
+                              >
+                                <div className="flex items-center gap-1.5 min-w-0 truncate">
+                                  <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                                  <span className="truncate">
+                                    أعلى مادة:{' '}
+                                    <strong className="font-bold">
+                                      {topTheologySubject
+                                        ? `${topTheologySubject.name} (${toArabicDigits(topTheologySubject.score)}٪)`
+                                        : '—'}
+                                    </strong>
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1.5 shrink-0 font-semibold text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 dark:bg-amber-500/25 text-amber-800 dark:text-amber-300">
+                                  <span>
+                                    {theologyStats.scoredCount === theologyStats.totalCount && theologyStats.totalCount > 0
+                                      ? 'مكتمل ١٠٠٪'
+                                      : `جاهزية الإدخال: ${toArabicDigits(Math.round((theologyStats.scoredCount / (theologyStats.totalCount || 1)) * 100))}٪`}
+                                  </span>
+                                </div>
+                              </div>
+                            )}
                           </div>
 
                           {/* Theology Card Footer Summary */}
-                          <div className="px-3.5 py-1.5 bg-gradient-to-l from-[#D97706]/[0.08] to-[#0D5C3A]/[0.05] dark:from-[#F59E0B]/[0.12] dark:to-[#10B981]/[0.08] border-t border-[#D97706]/20 dark:border-[#F59E0B]/25 flex items-center justify-between text-xs font-semibold text-[var(--text-primary)]" dir="rtl">
+                          <div className="px-3.5 py-1.5 bg-gradient-to-l from-[#D97706]/[0.08] to-[#0D5C3A]/[0.05] dark:from-[#F59E0B]/[0.12] dark:to-[#10B981]/[0.08] border-t border-[#D97706]/20 dark:border-[#F59E0B]/25 flex items-center justify-between text-xs font-semibold text-[var(--text-primary)] mt-auto shrink-0" dir="rtl">
                             <span className="font-bold text-[#D97706] dark:text-[#F59E0B]">ملخص المواد الشرعية</span>
                             <span className="tabular-nums font-mono font-bold">
-                              المجموع: {toArabicNumerals(theologyStats.total)} / {toArabicNumerals(theologyStats.maxTotal)} &bull; المعدل: {toArabicNumerals(theologyStats.mean)}٪ &bull; التقدير: {theologyStats.remark}
+                              المجموع: {toArabicDigits(theologyStats.total)} / {toArabicDigits(theologyStats.maxTotal)} • المعدل: {toArabicDigits(theologyStats.mean)}٪ • التقدير: {theologyStats.remark}
                             </span>
                           </div>
                         </div>

@@ -9,6 +9,7 @@
     "allowImportingTsExtensions": true,
     "esModuleInterop": true,
     "module": "esnext",
+    "allowImportingTsExtensions": true,
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,

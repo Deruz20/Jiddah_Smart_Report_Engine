@@ -2,7 +2,7 @@ import { createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
-import { verifyDataAccess } from '@/lib/auth-server'
+import { verifyDataAccess, resolveUserScope, canAccessSubjectInScope } from '@/lib/auth-server'
 import { classIdsForType } from '@/lib/teacher-access'
 import { fetchAllSupabaseRows } from '@/lib/supabase-pagination'
 import { getMarkScore } from '@/lib/mark-scores'
@@ -69,7 +69,19 @@ export async function GET(request: NextRequest) {
 
     if (subjectsRes.error) throw subjectsRes.error
 
-    const subjects = subjectsRes.data ?? []
+    let subjects = subjectsRes.data ?? []
+    const userScope = resolveUserScope(authRes)
+    if (userScope.isSubjectTeacher && !userScope.isClassTeacher && userScope.assignedSubjects.length > 0) {
+      const filteredSubjects = subjects.filter(
+        (s: any) =>
+          canAccessSubjectInScope(userScope, null, s.id, 'theology') ||
+          canAccessSubjectInScope(userScope, null, s.subject_name_arabic, 'theology') ||
+          canAccessSubjectInScope(userScope, null, s.subject_name_english, 'theology')
+      )
+      if (filteredSubjects.length > 0) {
+        subjects = filteredSubjects
+      }
+    }
     const enrollmentIds = enrollments.map((e) => e.id)
 
     let marks: any[] = []

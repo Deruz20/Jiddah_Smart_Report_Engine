@@ -1,5 +1,6 @@
 import { getTheologyComment } from '@/lib/grading'
 import { ReportContainer } from '@/components/reports/shared/ReportContainer'
+import { OfficialReportStamp } from '@/components/reports/StampGenerator'
 
 const theologyCSS = `
 @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
@@ -54,7 +55,7 @@ const theologyCSS = `
     content: '';
     position: absolute;
     inset: 0;
-    background: url('/school_budge.jpeg') center center no-repeat;
+    background: url('/logo-512h.png') center center no-repeat;
     background-size: 240px;
     opacity: 0.08;
     pointer-events: none;
@@ -81,10 +82,35 @@ const theologyCSS = `
 .tc-header {
     text-align: center;
     background: linear-gradient(to right, #064e3b, #047857);
-    padding: 12px 18px;
+    padding: 10px 18px;
     border-radius: 12px;
     border-bottom: 3.5px solid #fbbf24;
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.tc-header-center {
+    flex: 1;
+    text-align: center;
+}
+
+.tc-badge {
+    width: 64px;
+    height: 64px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+}
+
+.tc-badge img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
 }
 
 .tc-basmala {
@@ -147,14 +173,15 @@ const theologyCSS = `
 .tc-field {
     flex: 1;
     min-width: 0;
-    border-bottom: 2px dashed #94a3b8;
-    height: 26px;
+    border-bottom: 2px dashed #064e3b;
+    height: 28px;
     display: flex;
     align-items: center;
+    justify-content: center;
     padding: 0 8px 1px;
-    color: #0f172a;
-    font-weight: 800;
-    font-size: 16px;
+    color: #064e3b;
+    font-weight: 900;
+    font-size: 17px;
 }
 
 .tc-term {
@@ -287,21 +314,15 @@ const theologyCSS = `
 }
 
 .tc-stamp {
-    width: 145px;
-    height: 95px;
-    border-radius: 16px;
-    border: 2px dashed #94a3b8;
-    background: white;
+    width: 132px;
+    height: 84px;
+    border: none;
+    background: transparent;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    text-align: center;
-    font-size: 12px;
-    font-weight: 800;
-    color: #94a3b8;
     flex-shrink: 0;
-    line-height: 1.4;
 }
 .tc-stamp.has-image {
     border: 0;
@@ -344,6 +365,9 @@ export function TheologyCard({ reportData }: { reportData: any }) {
     ? (reportData?.theology?.eot_total ?? 0)
     : (reportData?.theology?.mot_total ?? 0)
 
+  const printPrefs = reportData?.settings?.print_preferences
+  const includeStamp = Boolean(printPrefs?.includeStamp)
+
   return (
     <div className="theology-card-page">
       <div className="theology-card-outer">
@@ -352,10 +376,28 @@ export function TheologyCard({ reportData }: { reportData: any }) {
 
             {/* HEADER */}
             <div className="tc-header">
-              <div className="tc-basmala">بسم الله الرحمن الرحيم</div>
-              <div className="tc-school">مدرسة جدة الإسلامية للروضة والابتدائية _ انساغو واكيسو</div>
-              <div className="tc-title">
-                {isEOT ? 'كشف الدرجات لنهاية الفترة' : 'كشف الدرجات لمنتصف الفترة'}
+              <div className="tc-badge">
+                <img
+                  src={reportData?.settings?.logo_url || "/logo-512h.png"}
+                  alt="School Badge"
+                  onError={(e) => {
+                    if (!e.currentTarget.src.endsWith('/logo-512h.png') && !e.currentTarget.src.endsWith('/school_logo.svg')) {
+                      e.currentTarget.src = '/logo-512h.png';
+                    } else if (e.currentTarget.src.endsWith('/logo-512h.png')) {
+                      e.currentTarget.src = '/school_logo.svg';
+                    }
+                  }}
+                />
+              </div>
+              <div className="tc-header-center">
+                <div className="tc-basmala">بسم الله الرحمن الرحيم</div>
+                <div className="tc-school">{reportData?.settings?.arabic_name || "مدرسة جدة الإسلامية للروضة والابتدائية _ انساغو واكيسو"}</div>
+                <div className="tc-title">
+                  {isEOT ? 'كشف الدرجات لنهاية الفترة' : 'كشف الدرجات لمنتصف الفترة'}
+                </div>
+              </div>
+              <div className="tc-badge" style={{ visibility: 'hidden' }}>
+                <img src="/school_logo.svg" alt="" />
               </div>
             </div>
 
@@ -363,7 +405,7 @@ export function TheologyCard({ reportData }: { reportData: any }) {
             <div className="tc-info">
               <div className="tc-row">
                 <span className="tc-label">اسم الطالب/ة :</span>
-                <div className="tc-field">{reportData?.student?.arabic_name || '___'}</div>
+                <div className="tc-field" style={{ fontWeight: 800, fontSize: '15px' }}>{reportData?.student?.arabic_name || reportData?.student?.name || '___'}</div>
               </div>
               <div className="tc-row tc-row-sub">
                 <span className="tc-label">الفترة:</span>
@@ -416,15 +458,14 @@ export function TheologyCard({ reportData }: { reportData: any }) {
                   {getTheologyComment(totalScore, reportData?.student?.gender, reportData?.settings?.theology_remarks)}
                 </div>
               </div>
-              <div className={`tc-stamp${reportData?.signatures?.['school-stamp'] ? ' has-image' : ''}`}>
-                {reportData?.signatures?.['school-stamp'] ? (
-                  <img src={reportData.signatures['school-stamp']} alt="" />
-                ) : (
-                  <>
-                    <span>الختم الرسمي</span>
-                    <span>للمدرسة</span>
-                  </>
-                )}
+              <div className="tc-stamp" style={{ padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {includeStamp ? (
+                  reportData?.signatures?.['school-stamp'] ? (
+                    <img src={reportData.signatures['school-stamp']} alt="Official school stamp" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                  ) : (
+                    <OfficialReportStamp reportData={reportData} maxWidth={128} maxHeight={80} />
+                  )
+                ) : null}
               </div>
             </div>
 
@@ -452,7 +493,7 @@ export function Theology2UpPrintSheet({
       role="report"
       data-report-type="TheologyMOTReport"
       data-report-orientation="portrait"
-      className="report-container theology-2up-sheet"
+      className="report-container theology-2up-sheet a4-two-up-page"
       style={{
         width: '794px',
         height: '1123px',
@@ -472,7 +513,8 @@ export function Theology2UpPrintSheet({
 
       {/* TOP CARD SLOT — exactly 558px */}
       <div
-        className="theology-2up-card-slot"
+        data-slot="half-card"
+        className="theology-card-slot half-card-slot theology-2up-card-slot"
         style={{
           width: '794px',
           height: '558px',
@@ -487,7 +529,8 @@ export function Theology2UpPrintSheet({
 
       {/* CUT LINE — 7px */}
       <div
-        className="theology-2up-cutline"
+        data-slot="cut-divider"
+        className="cut-divider-slot cut-divider theology-2up-cutline"
         style={{
           height: '7px',
           flexShrink: 0,
@@ -517,7 +560,8 @@ export function Theology2UpPrintSheet({
 
       {/* BOTTOM CARD SLOT — exactly 558px */}
       <div
-        className="theology-2up-card-slot"
+        data-slot="half-card"
+        className="theology-card-slot half-card-slot theology-2up-card-slot"
         style={{
           width: '794px',
           height: '558px',

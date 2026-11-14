@@ -2,62 +2,6 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 const SUPPORTED_SIGNATURE_FILENAME = /^[a-z0-9-]+\.(?:png|jpe?g|webp)$/i;
 
-export function getClassTeacherSignatureKey(className: string | undefined | null, isTheology: boolean = false): string | null {
-  if (!className) return null;
-  const c = className.toLowerCase().trim();
-  
-  let baseClass = '';
-
-  if (c.includes('baby')) {
-    baseClass = 'baby';
-  } else if (c.includes('middle')) {
-    baseClass = 'middle';
-  } else if (c.includes('top')) {
-    baseClass = 'top';
-  } else if (c.includes('p.1') || c.includes('p1') || c.includes('primary 1') || c.includes('primary one')) {
-    baseClass = 'p1';
-  } else if (c.includes('p.2') || c.includes('p2') || c.includes('primary 2') || c.includes('primary two')) {
-    baseClass = 'p2';
-  } else if (c.includes('p.3') || c.includes('p3') || c.includes('primary 3') || c.includes('primary three')) {
-    baseClass = 'p3';
-  } else if (c.includes('p.4') || c.includes('p4') || c.includes('primary 4') || c.includes('primary four')) {
-    baseClass = 'p4';
-  } else if (c.includes('p.5') || c.includes('p5') || c.includes('primary 5') || c.includes('primary five')) {
-    baseClass = 'p5';
-  } else if (c.includes('p.6') || c.includes('p6') || c.includes('primary 6') || c.includes('primary six')) {
-    baseClass = 'p6';
-  } else if (c.includes('p.7') || c.includes('p7') || c.includes('primary 7') || c.includes('primary seven')) {
-    baseClass = 'p7';
-  } else {
-    return null;
-  }
-
-  return isTheology ? `theology-teacher-${baseClass}` : `class-teacher-${baseClass}`;
-}
-
-export function getReportSignatureKeys(): string[] {
-  const classNames = [
-    'Baby Class',
-    'Middle Class',
-    'Top Class',
-    'Primary 1',
-    'Primary 2',
-    'Primary 3',
-    'Primary 4',
-    'Primary 5',
-    'Primary 6',
-    'Primary 7',
-  ];
-
-  const classTeacherKeys = classNames.flatMap((className) => [
-    getClassTeacherSignatureKey(className),
-    getClassTeacherSignatureKey(className, true),
-  ]);
-
-  return ['head-teacher', 'principal', 'school-stamp', ...classTeacherKeys]
-    .filter((key): key is string => Boolean(key));
-}
-
 export interface SignatureStorageObject {
   name: string;
   updated_at?: string | null;
@@ -66,6 +10,15 @@ export interface SignatureStorageObject {
     contentLength?: number;
   } | null;
 }
+
+export type SignatureStorageBucket = {
+  list(path?: string, options?: { limit?: number }): Promise<{
+    data: SignatureStorageObject[] | any[] | null;
+    error: { message: string } | null;
+  }>;
+  move(from: string, to: string): Promise<{ data?: any; error: { message: string } | null }>;
+  remove(paths: string[]): Promise<{ data?: any; error: { message: string } | null }>;
+} | ReturnType<SupabaseClient['storage']['from']>;
 
 export function getSignatureObjectNamesForSlot(
   objects: SignatureStorageObject[],
@@ -100,8 +53,6 @@ export function getLatestSignatureObjectNameForSlot(
 
   return latest?.name ?? null;
 }
-
-type SignatureStorageBucket = ReturnType<SupabaseClient['storage']['from']>;
 
 export async function setSignatureObjectActiveState(
   storage: SignatureStorageBucket,
@@ -169,6 +120,94 @@ export async function setSignatureObjectActiveState(
   return { active: false };
 }
 
+export async function deleteSignatureSlotObject(
+  storage: SignatureStorageBucket,
+  slotKey: string
+): Promise<{ success: boolean; error?: string; status?: number }> {
+  const [activeResult, disabledResult] = await Promise.all([
+    storage.list('', { limit: 1000 }),
+    storage.list('disabled', { limit: 1000 }),
+  ])
+  if (activeResult.error || disabledResult.error) {
+    return {
+      success: false,
+      error: activeResult.error?.message ?? disabledResult.error?.message ?? 'Unable to list report images.',
+      status: 500,
+    }
+  }
+
+  const activePaths = getSignatureObjectNamesForSlot(activeResult.data ?? [], slotKey)
+  const disabledPaths = getSignatureObjectNamesForSlot(disabledResult.data ?? [], slotKey).map((p) => `disabled/${p}`)
+  const allPaths = [...activePaths, ...disabledPaths]
+
+  if (allPaths.length === 0) {
+    return { success: false, error: 'No stored image found to delete.', status: 404 }
+  }
+
+  const { error: removeError } = await storage.remove(allPaths)
+  if (removeError) {
+    return { success: false, error: `Unable to delete stored image: ${removeError.message}`, status: 500 }
+  }
+
+  return { success: true }
+}
+
+export function getClassTeacherSignatureKey(className: string | undefined | null, isTheology: boolean = false): string | null {
+  if (!className) return null;
+  const c = className.toLowerCase().trim();
+  
+  let baseClass = '';
+
+  if (c.includes('baby')) {
+    baseClass = 'baby';
+  } else if (c.includes('middle')) {
+    baseClass = 'middle';
+  } else if (c.includes('top')) {
+    baseClass = 'top';
+  } else if (c.includes('p.1') || c.includes('p1') || c.includes('primary 1') || c.includes('primary one')) {
+    baseClass = 'p1';
+  } else if (c.includes('p.2') || c.includes('p2') || c.includes('primary 2') || c.includes('primary two')) {
+    baseClass = 'p2';
+  } else if (c.includes('p.3') || c.includes('p3') || c.includes('primary 3') || c.includes('primary three')) {
+    baseClass = 'p3';
+  } else if (c.includes('p.4') || c.includes('p4') || c.includes('primary 4') || c.includes('primary four')) {
+    baseClass = 'p4';
+  } else if (c.includes('p.5') || c.includes('p5') || c.includes('primary 5') || c.includes('primary five')) {
+    baseClass = 'p5';
+  } else if (c.includes('p.6') || c.includes('p6') || c.includes('primary 6') || c.includes('primary six')) {
+    baseClass = 'p6';
+  } else if (c.includes('p.7') || c.includes('p7') || c.includes('primary 7') || c.includes('primary seven')) {
+    baseClass = 'p7';
+  } else {
+    return null;
+  }
+
+  return isTheology ? `theology-teacher-${baseClass}` : `class-teacher-${baseClass}`;
+}
+
+export function getReportSignatureKeys(): string[] {
+  const classNames = [
+    'Baby Class',
+    'Middle Class',
+    'Top Class',
+    'Primary 1',
+    'Primary 2',
+    'Primary 3',
+    'Primary 4',
+    'Primary 5',
+    'Primary 6',
+    'Primary 7',
+  ];
+
+  const classTeacherKeys = classNames.flatMap((className) => [
+    getClassTeacherSignatureKey(className),
+    getClassTeacherSignatureKey(className, true),
+  ]);
+
+  return ['head-teacher', 'principal', 'school-stamp', ...classTeacherKeys]
+    .filter((key): key is string => Boolean(key));
+}
+
 export function mapLatestSignatureObjects(
   objects: SignatureStorageObject[],
   keys: string[] = getReportSignatureKeys()
@@ -229,22 +268,36 @@ export async function getDynamicSignatureSlots(supabase: SupabaseClient) {
       slot_key: 'school-stamp',
       label: 'Official School Stamp',
       role: 'School',
-      description: 'PNG stamp image used on official student reports.',
+      description: 'Official circular or rectangular school stamp rendered on terminal report cards.',
       required: true,
     },
     {
       slot_key: 'head-teacher',
-      label: 'Head Teacher Signature',
+      label: 'Headteacher Signature',
       role: 'Head Teacher',
-      description: 'Used on all student report cards. Must be a clear scan or photo.',
+      description: 'Authorized signature of the Headteacher rendered across all secular and theology reports.',
+      required: true,
+    },
+    {
+      slot_key: 'dos-signature',
+      label: 'Director of Studies (DOS) Signature',
+      role: 'DOS',
+      description: 'Authorized signature for the Director of Studies (Secular Curriculum).',
+      required: true,
+    },
+    {
+      slot_key: 'theology-head',
+      label: 'Theology Head Signature',
+      role: 'DOS Theology',
+      description: 'Authorized signature for the Head of Theology / Islamic Studies.',
       required: true,
     },
     {
       slot_key: 'principal',
       label: 'Principal Signature',
       role: 'Principal',
-      description: 'Authority signature for official reports and certificates.',
-      required: true,
+      description: 'Authority signature for official transcripts and school certificates.',
+      required: false,
     }
   ];
 

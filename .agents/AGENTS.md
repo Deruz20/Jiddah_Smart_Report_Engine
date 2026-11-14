@@ -15,10 +15,10 @@ These apply to every session in this repo, regardless of which gstack skill
 
 - **Real output, not self-reports.** "Fixed" and "verified" mean pasted
   diffs, actual command output, actual query results, or actual
-  screenshots — never a narrative description of what was probably done.
+  screenshots â€” never a narrative description of what was probably done.
 - **Stop before schema changes.** Any database migration, ALTER TABLE, or
   edit to credentials/env vars gets flagged and held for explicit approval
-  before running — never bundled silently into a broader task.
+  before running â€” never bundled silently into a broader task.
 - **Investigate before writing code.** Confirm the actual current schema,
   actual current file contents, and any existing helper/pattern already in
   the codebase before proposing a change.
@@ -27,7 +27,7 @@ These apply to every session in this repo, regardless of which gstack skill
 - **Access-control claims must be enforced server-side.** Any statement
   that a role (admin/DOS/teacher) is "scoped to" or "restricted to"
   specific data must be backed by an actual RLS policy or server-side
-  query filter — name it explicitly. Hiding a button or nav item is not
+  query filter â€” name it explicitly. Hiding a button or nav item is not
   scoping.
 - **The six report-card components are locked.** PrimaryEOTReport,
   PrimaryMOTReport, NurseryEOTReport, NurseryMOTReport, TheologyMOTReport,
@@ -43,7 +43,7 @@ These apply to every session in this repo, regardless of which gstack skill
   removing the restriction; if removing the restriction genuinely seems
   correct, flag it for approval instead of just doing it.
 - Merges to main touching authentication, authorization, or
-  settings/configuration access get flagged for review before pushing �
+  settings/configuration access get flagged for review before pushing —
   a clean build is not sufficient evidence of correctness for these.
 
 
@@ -66,7 +66,7 @@ The following API routes and pages are strictly gated and MUST call erifyDataAc
 - /admin/settings/remarks/page.tsx
 
 
-### Known gaps — lower priority, not yet gated
+### Known gaps â€” lower priority, not yet gated
 The following routes read or write data but do not currently use the erifyDataAccess pipeline (they either rely on localized checks or just session presence):
 - /api/classes
 - /api/subjects
@@ -77,3 +77,18 @@ The following routes read or write data but do not currently use the erifyDataA
 - /api/documents/*
 - /api/signatures/*
 - /api/notifications/*
+
+## Overnight Sub-Agent Orchestration & Adversarial Verification Protocol
+- **Orchestration Mode (`@subagent-driven-development` & `@dispatching-parallel-agents`)**: Divide every complex objective into isolated sub-tasks routed across four specialized roles:
+  1. **Investigator & Spec Sub-Agent (`/investigate` & `/plan-eng-review`)**: Traces real database/API contracts, imports, and state flows before any file is edited.
+  2. **Implementer Sub-Agent (`@patching-bugs` & `@vercel-react-best-practices`)**: Writes clean, modular, production-grade TypeScript/React/CSS with zero placeholder data, zero hardcoded bypasses, and zero AI slop.
+  3. **Adversarial Reviewer Sub-Agent (`/review`, `@requesting-code-review`, `@ui-ux-pro-max`, `@anti-slop`, `@sharp-edges`)**: Audits every diff for logic flaws, unhandled null states, security vulnerabilities, print-layout overflow, and mediocre UI styling. Rejects and sends back any sub-par work.
+  4. **Gatekeeper QA Sub-Agent (`/qa` & `@verification-before-completion`)**: Runs `npx tsc --noEmit` and `npm run build` after each milestone. No task is marked complete until the build passes with zero errors.
+- **Unattended Overnight Execution ("Rulings, Not Stalls")**: Do NOT pause to ask the human user for permission or clarification between tasks. Make the soundest architectural ruling based on the codebase, log the decision in `OVERNIGHT_PROGRESS_LEDGER.md`, commit passing milestones to the active Git branch, and continue automatically to the next task.
+
+## Non-Interactive Database & Deployment CLI Rules
+- Always use `npm run db:push`, `npm run db:pull`, and `npm run db:types` instead of interactive `supabase` prompts.
+- Always run `npm run typecheck`, `npm test`, and `npm run build` to verify changes before running `npm run deploy:preview`.
+- Never run `npm run deploy:prod` unless explicitly instructed by the user.
+- Never commit `.env`, `.env.local`, `.env*.local`, or `.vercel` to version control.
+

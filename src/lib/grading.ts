@@ -1,4 +1,8 @@
-import { DEFAULT_GRADING_BANDS, type GradingBand } from './school-settings-helper.ts'
+import {
+  DEFAULT_GRADING_BANDS,
+  type GradingBand,
+  type DivisionBoundaryItem,
+} from './school-settings-helper'
 
 export type GradeCode = 'D1' | 'D2' | 'C3' | 'C4' | 'C5' | 'C6' | 'P7' | 'P8' | 'F9'
 export type Division = 'I' | 'II' | 'III' | 'IV' | 'U'
@@ -6,7 +10,20 @@ export type NurseryGrade = 'A' | 'B' | 'C' | 'D' | 'E'
 export type PromotionStatus = 'Promote' | 'Probation' | 'Repeat' | 'Try Next Class'
 
 // UNEB subject grade (1-9) from mark (Secular)
-export function getSubjectGradeNumber(mark: number): number {
+export function getSubjectGradeNumber(mark: number, customBands?: GradingBand[]): number {
+  if (customBands && customBands.length > 0) {
+    const sorted = [...customBands]
+      .filter((b) => Number.isFinite(b.min) && Number.isFinite(b.max))
+      .sort((a, b) => b.min - a.min)
+    for (let i = 0; i < sorted.length; i++) {
+      const b = sorted[i]
+      if (mark >= b.min) {
+        const num = parseInt(String(b.grade).replace(/\D/g, ''), 10)
+        return !isNaN(num) ? num : i + 1
+      }
+    }
+  }
+
   if (mark >= 85) return 1
   if (mark >= 75) return 2
   if (mark >= 70) return 3
@@ -51,9 +68,10 @@ export function getTheologyGradeNumber(
   customBands?: { min: number; max: number; grade: string }[]
 ): number {
   if (customBands && customBands.length > 0) {
-    for (let i = 0; i < customBands.length; i++) {
-      const b = customBands[i];
-      if (mark >= b.min && mark <= b.max) {
+    const sorted = [...customBands].sort((a, b) => b.min - a.min);
+    for (let i = 0; i < sorted.length; i++) {
+      const b = sorted[i];
+      if (mark >= b.min) {
         const num = parseInt(String(b.grade).replace(/\D/g, ''), 10);
         return !isNaN(num) ? num : i + 1;
       }
@@ -76,9 +94,11 @@ export function getTheologyGradeDisplay(
   customBands?: { min: number; max: number; grade: string }[]
 ): GradeCode {
   if (customBands && customBands.length > 0) {
-    for (const b of customBands) {
-      if (mark >= b.min && mark <= b.max) {
-        return (b.grade as GradeCode) || 'F9'
+    const sorted = [...customBands].sort((a, b) => b.min - a.min);
+    for (let i = 0; i < sorted.length; i++) {
+      const b = sorted[i];
+      if (mark >= b.min) {
+        return (b.grade as GradeCode) || 'F9';
       }
     }
   }
@@ -154,7 +174,8 @@ export function getSubjectGradeNumberForAggregate(
 // Returns null if any core subject missing
 export function calculateAggregate(
   marks: { subject_name: string; score: number }[],
-  section: string
+  section: string,
+  customBands?: GradingBand[]
 ): number | null {
   const coreGroups = CORE_SUBJECTS_BY_SECTION[section]
   if (!coreGroups) return null
@@ -163,7 +184,7 @@ export function calculateAggregate(
       variants.some(v => v.toLowerCase() === m.subject_name.trim().toLowerCase()) &&
       typeof m.score === 'number'
     )
-    return found ? getSubjectGradeNumber(found.score) : null
+    return found ? getSubjectGradeNumber(found.score, customBands) : null
   })
   if (grades.some(g => g === null)) return null
   return grades.reduce((sum, g) => sum! + g!, 0) as number
@@ -176,7 +197,21 @@ export function calculateTheologyAggregate(scores: number[], customBands?: any[]
 }
 
 // Division from aggregate (Roman numerals)
-export function getDivision(aggregate: number): Division {
+export function getDivision(
+  aggregate: number,
+  customBoundaries?: Pick<DivisionBoundaryItem, 'division' | 'min' | 'max'>[]
+): Division {
+  if (Array.isArray(customBoundaries) && customBoundaries.length > 0) {
+    const sorted = [...customBoundaries]
+      .filter((b) => Number.isFinite(b.min) && Number.isFinite(b.max))
+      .sort((a, b) => a.max - b.max)
+    for (const b of sorted) {
+      if (aggregate <= b.max) {
+        return b.division
+      }
+    }
+    return 'U'
+  }
   if (aggregate <= 12) return 'I'
   if (aggregate <= 23) return 'II'
   if (aggregate <= 29) return 'III'
@@ -192,7 +227,26 @@ export function getPromotionStatus(division: Division, manualOverride?: 'Try Nex
   return 'Repeat'
 }
 
-// Nursery grading
+/**
+ * Canonical helper to detect Nursery / Pre-Primary classes and levels.
+ * Detects baby, middle, top, nursery, pre-primary, kg, or ece (case-insensitive).
+ */
+export function isNurseryClass(classNameOrLevel?: string | null): boolean {
+  if (!classNameOrLevel) return false
+  const str = String(classNameOrLevel).trim().toLowerCase()
+  return (
+    str.includes('baby') ||
+    str.includes('middle') ||
+    str.includes('top') ||
+    str.includes('nursery') ||
+    str.includes('pre-primary') ||
+    str.includes('pre primary') ||
+    str.includes('kg') ||
+    str.includes('ece')
+  )
+}
+
+// Nursery grading (Official Jiddah Nursery Letter Scale)
 export function getNurseryGrade(mark: number): { grade: NurseryGrade; remark: string } {
   if (mark >= 90) return { grade: 'A', remark: 'Excellent' }
   if (mark >= 80) return { grade: 'B', remark: 'Very Good' }
@@ -201,8 +255,67 @@ export function getNurseryGrade(mark: number): { grade: NurseryGrade; remark: st
   return { grade: 'E', remark: 'Poor' }
 }
 
+export function computeNurseryBadge(score: number | null | undefined): {
+  grade: NurseryGrade
+  bg: string
+  text: string
+  remark: string
+} | null {
+  if (score === null || score === undefined || Number.isNaN(Number(score))) return null
+  const n = Number(score)
+  if (n < 0 || n > 100) return null
+  if (n >= 90) {
+    return {
+      grade: 'A',
+      remark: 'Excellent',
+      bg: 'bg-[#0D5C3A]/12 dark:bg-[#10B981]/20',
+      text: 'text-[#0D5C3A] dark:text-[#34D399]',
+    }
+  }
+  if (n >= 80) {
+    return {
+      grade: 'B',
+      remark: 'Very Good',
+      bg: 'bg-[#0284C7]/12 dark:bg-[#38BDF8]/20',
+      text: 'text-[#0369A1] dark:text-[#7DD3FC]',
+    }
+  }
+  if (n >= 70) {
+    return {
+      grade: 'C',
+      remark: 'Good',
+      bg: 'bg-[#D97706]/14 dark:bg-[#F59E0B]/20',
+      text: 'text-[#B45309] dark:text-[#FCD34D]',
+    }
+  }
+  if (n >= 50) {
+    return {
+      grade: 'D',
+      remark: 'Fair',
+      bg: 'bg-[#EA580C]/14 dark:bg-[#FB923C]/20',
+      text: 'text-[#C2410C] dark:text-[#FDBA74]',
+    }
+  }
+  return {
+    grade: 'E',
+    remark: 'Poor',
+    bg: 'bg-[#E11D48]/12 dark:bg-[#FB7185]/20',
+    text: 'text-[#BE123C] dark:text-[#FDA4AF]',
+  }
+}
+
 // Subject remarks for secular (primary)
-export function getSubjectRemark(gradeNum: number): string {
+export function getSubjectRemark(gradeNum: number, customBands?: GradingBand[]): string {
+  if (customBands && customBands.length > 0) {
+    const match = customBands.find((b) => {
+      const num = parseInt(String(b.grade).replace(/\D/g, ''), 10)
+      return num === gradeNum
+    })
+    if (match && match.remark && match.remark.trim()) {
+      return match.remark.trim()
+    }
+  }
+
   switch (gradeNum) {
     case 1: return 'Excellent'
     case 2: return 'Very Good'
@@ -218,7 +331,17 @@ export function getSubjectRemark(gradeNum: number): string {
 }
 
 // Subject remarks for theology (IPLE)
-export function getTheologySubjectRemark(gradeNum: number): string {
+export function getTheologySubjectRemark(gradeNum: number, customTheologyBands?: any[]): string {
+  if (customTheologyBands && customTheologyBands.length > 0) {
+    const match = customTheologyBands.find((b) => {
+      const num = parseInt(String(b.grade).replace(/\D/g, ''), 10)
+      return num === gradeNum
+    })
+    if (match && match.remark && match.remark.trim()) {
+      return match.remark.trim()
+    }
+  }
+
   switch (gradeNum) {
     case 1: return 'ممتاز' // Excellent
     case 2: return 'جيد جداً' // Very Good
@@ -283,8 +406,16 @@ export function getGradingRemarkForScores(
 export function getClassTeacherComment(
   division: string | null,
   scores?: (number | null | undefined)[],
-  gradingBands?: ReportCommentBands
+  gradingBands?: ReportCommentBands,
+  divisionBoundaries?: DivisionBoundaryItem[]
 ): string {
+  if (division && Array.isArray(divisionBoundaries) && divisionBoundaries.length > 0) {
+    const matched = divisionBoundaries.find((b) => b.division === division)
+    if (matched?.classTeacherComment?.trim()) {
+      return matched.classTeacherComment.trim()
+    }
+  }
+
   const performance = getReportCommentBand(scores, gradingBands)
   if (performance) {
     const remark = getBandRemark(performance.band)
@@ -309,8 +440,16 @@ export function getClassTeacherComment(
 export function getHeadTeacherComment(
   division: string | null,
   scores?: (number | null | undefined)[],
-  gradingBands?: ReportCommentBands
+  gradingBands?: ReportCommentBands,
+  divisionBoundaries?: DivisionBoundaryItem[]
 ): string {
+  if (division && Array.isArray(divisionBoundaries) && divisionBoundaries.length > 0) {
+    const matched = divisionBoundaries.find((b) => b.division === division)
+    if (matched?.headTeacherComment?.trim()) {
+      return matched.headTeacherComment.trim()
+    }
+  }
+
   const performance = getReportCommentBand(scores, gradingBands)
   if (performance) {
     const remark = getBandRemark(performance.band)
@@ -340,6 +479,7 @@ export function getClassTeacherReportComment({
   division,
   scores,
   gradingBands,
+  divisionBoundaries,
 }: {
   scoreType: 'bot' | 'mot' | 'eot'
   termNumber: number
@@ -348,6 +488,7 @@ export function getClassTeacherReportComment({
   division: string | null
   scores?: (number | null | undefined)[]
   gradingBands?: ReportCommentBands
+  divisionBoundaries?: DivisionBoundaryItem[]
 }): string {
   if (scoreType === 'eot' && termNumber === 3 && promotionStatus) {
     if (promotionStatus === 'Promote') return 'Promoted to the next class.'
@@ -359,7 +500,7 @@ export function getClassTeacherReportComment({
   if (scoreType === 'mot') {
     return getGradingRemarkForScores(scores, gradingBands)
   }
-  return getClassTeacherComment(division, scores, gradingBands)
+  return getClassTeacherComment(division, scores, gradingBands, divisionBoundaries)
 }
 
 export function getConductRemark(division: string | null): string {

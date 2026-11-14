@@ -58,7 +58,7 @@ export default function OnboardingPage() {
       
       <div className="w-full max-w-md bg-white/75 backdrop-blur-xl border border-slate-100 shadow-xl shadow-slate-200/50 rounded-3xl p-8 relative z-10">
         <div className="flex justify-center mb-6">
-          <Image src="/school_budge.jpeg" alt="Logo" width={64} height={64} className="rounded-xl border border-slate-200 shadow-sm" />
+          <Image src="/logo-512h.png" alt="Logo" width={64} height={64} className="rounded-xl border border-slate-200 shadow-sm" />
         </div>
         
         <h1 className="text-2xl font-bold text-center text-emerald-800 mb-2 font-serif">Welcome to Jiddah</h1>

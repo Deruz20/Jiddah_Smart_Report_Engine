@@ -1,15 +1,33 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from 'react'
-import { Upload, Check, AlertCircle, RefreshCw, Trash2, Eye, HardDrive, Sliders, ArrowRight } from 'lucide-react'
-import Link from 'next/link'
+import React, { useEffect, useState } from 'react'
+import * as Switch from '@radix-ui/react-switch'
 import { toast } from 'sonner'
-import { HeroSection } from '@/components/HeroSection'
+import {
+  Upload,
+  Check,
+  AlertCircle,
+  RefreshCw,
+  Trash2,
+  Sliders,
+  ArrowRight,
+  Stamp,
+  FileSignature,
+} from 'lucide-react'
+import Link from 'next/link'
+import { ConfirmDestructiveDialog } from '@/components/ConfirmDestructiveDialog'
+import { SignatureInkReviewCard } from '@/components/SignatureInkReviewCard'
+import { CleanSignatureImg } from '@/components/reports/shared/CleanSignatureImg'
+import {
+  StampGeneratorPanel,
+  DEFAULT_STAMP_CONFIG,
+  type StampConfig,
+} from '@/components/reports/StampGenerator'
 
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp']
 const MAX_FILE_SIZE = 5 * 1024 * 1024
 
-interface SignatureSlot {
+export interface SignatureSlot {
   slot_key: string
   label: string
   description: string
@@ -17,19 +35,53 @@ interface SignatureSlot {
   uploaded: boolean
   active: boolean
   public_url: string | null
-  size?: number
 }
 
-export default function SignaturesClient({ initialSlots }: { initialSlots: SignatureSlot[] }) {
-  const [slots, setSlots] = useState(initialSlots)
-  const [loading, setLoading] = useState(false)
+interface SignaturesClientProps {
+  initialSlots?: SignatureSlot[]
+  embedded?: boolean
+  searchQuery?: string
+}
+
+export default function SignaturesClient({
+  initialSlots = [],
+  embedded = false,
+  searchQuery = '',
+}: SignaturesClientProps) {
+  const [slots, setSlots] = useState<SignatureSlot[]>(initialSlots)
+  const [loading, setLoading] = useState(initialSlots.length === 0)
   const [error, setError] = useState<string | null>(null)
-  
+
   const [dragOver, setDragOver] = useState<string | null>(null)
   const [uploadingSlot, setUploadingSlot] = useState<string | null>(null)
-  const [removingSlot, setRemovingSlot] = useState<string | null>(null)
   const [togglingSlot, setTogglingSlot] = useState<string | null>(null)
+  const [deletingSlot, setDeletingSlot] = useState<string | null>(null)
   const [previews, setPreviews] = useState<Record<string, string>>({})
+  const [slotToDelete, setSlotToDelete] = useState<SignatureSlot | null>(null)
+  const [pendingSignatureReview, setPendingSignatureReview] = useState<{
+    slotKey: string
+    label: string
+    file: File
+  } | null>(null)
+  const [stampConfig, setStampConfig] = useState<StampConfig>(DEFAULT_STAMP_CONFIG)
+  const [showStampStudio, setShowStampStudio] = useState(true)
+
+  useEffect(() => {
+    let active = true
+    fetch('/api/settings/school')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((payload) => {
+        if (!active) return
+        const saved = payload?.data?.print_preferences?.stamp_config
+        if (saved && typeof saved === 'object') {
+          setStampConfig((prev) => ({ ...prev, ...saved }))
+        }
+      })
+      .catch(() => {})
+    return () => {
+      active = false
+    }
+  }, [])
 
   const refetch = async () => {
     setLoading(true)
@@ -37,16 +89,23 @@ export default function SignaturesClient({ initialSlots }: { initialSlots: Signa
       const response = await fetch('/api/signatures', { cache: 'no-store' })
       const data = await response.json()
       if (response.ok) {
-        setSlots(data.data)
+        setSlots(data.data || [])
+        setError(null)
       } else {
-        setError(data.error)
+        setError(data.error || 'Failed to load signature slots.')
       }
     } catch (err: any) {
-      setError(err.message)
+      setError(err.message || 'Network error while loading signatures.')
     } finally {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    if (initialSlots.length === 0) {
+      void refetch()
+    }
+  }, [initialSlots.length])
 
   useEffect(() => {
     return () => {
@@ -73,12 +132,12 @@ export default function SignaturesClient({ initialSlots }: { initialSlots: Signa
 
   const handleFileChange = async (slotKey: string, file: File) => {
     if (!ACCEPTED_TYPES.includes(file.type)) {
-      alert('Please upload a PNG, JPG, or WEBP image.')
+      toast.error('Please upload a PNG, JPG, or WEBP image.')
       return
     }
 
     if (file.size > MAX_FILE_SIZE) {
-      alert('Signature must be smaller than 5MB.')
+      toast.error('Signature must be smaller than 5MB.')
       return
     }
 
@@ -88,9 +147,10 @@ export default function SignaturesClient({ initialSlots }: { initialSlots: Signa
 
     try {
       await uploadSignature(slotKey, file)
+      toast.success('Official asset uploaded and activated.')
       await refetch()
     } catch (err: any) {
-      alert(err.message || 'Upload failed.')
+      toast.error(err.message || 'Upload failed.')
     } finally {
       setUploadingSlot(null)
       setPreviews((current) => {
@@ -105,53 +165,31 @@ export default function SignaturesClient({ initialSlots }: { initialSlots: Signa
     }
   }
 
-  const handleFileSelection = (slotKey: string, slotUploaded: boolean, file: File) => {
-    if (slotUploaded && !window.confirm('Replace the existing signature?')) {
+  const handleFileSelection = (slotKey: string, _slotUploaded: boolean, file: File) => {
+    if (!ACCEPTED_TYPES.includes(file.type)) {
+      toast.error('Please upload a PNG, JPG, or WEBP image.')
       return
     }
-    handleFileChange(slotKey, file)
-  }
-
-  const removeSignature = async (slot: SignatureSlot) => {
-    if (!window.confirm(`Remove ${slot.label} from future reports? You can upload it again at any time.`)) {
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error('Signature must be smaller than 5MB.')
       return
     }
-
-    setRemovingSlot(slot.slot_key)
-    setError(null)
-    try {
-      const response = await fetch('/api/signatures', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slot_key: slot.slot_key }),
+    // Signature slots go through Before/After automatic paper background extraction
+    if (slotKey !== 'school-stamp') {
+      const targetSlot = slots.find((s) => s.slot_key === slotKey)
+      setPendingSignatureReview({
+        slotKey,
+        label: targetSlot?.label || slotKey,
+        file,
       })
-      const payload = await response.json()
-      if (
-        !response.ok ||
-        payload?.data?.slot_key !== slot.slot_key ||
-        !Number.isInteger(payload?.data?.removed)
-      ) {
-        throw new Error(payload?.error || 'Unable to remove signature or stamp.')
-      }
-
-      setSlots((current) => current.map((item) => item.slot_key === slot.slot_key
-        ? { ...item, uploaded: false, active: false, public_url: null, size: 0 }
-        : item))
-      toast.success(`${slot.label} removed from future reports.`)
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unable to remove signature or stamp.'
-      setError(message)
-      toast.error(message)
-    } finally {
-      setRemovingSlot(null)
+      return
     }
+    void handleFileChange(slotKey, file)
   }
 
   const toggleActivation = async (slot: SignatureSlot) => {
     const active = !slot.active
-    if (!window.confirm(`${active ? 'Reactivate' : 'Deactivate'} ${slot.label} for future reports?`)) {
-      return
-    }
+    const action = active ? 'reactivate' : 'deactivate'
 
     setTogglingSlot(slot.slot_key)
     setError(null)
@@ -163,13 +201,18 @@ export default function SignaturesClient({ initialSlots }: { initialSlots: Signa
       })
       const payload = await response.json()
       if (!response.ok || payload?.data?.slot_key !== slot.slot_key || payload?.data?.active !== active) {
-        throw new Error(payload?.error || 'Unable to update this report image.')
+        throw new Error(payload?.error || `Unable to ${action} this report image.`)
       }
 
+      setSlots((current) =>
+        current.map((item) =>
+          item.slot_key === slot.slot_key ? { ...item, active } : item
+        )
+      )
+      toast.success(`${slot.label} ${active ? 'activated' : 'deactivated'} for reports.`)
       await refetch()
-      toast.success(`${slot.label} ${active ? 'reactivated' : 'deactivated'} for future reports.`)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unable to update this report image.'
+      const message = err instanceof Error ? err.message : `Unable to ${action} this report image.`
       setError(message)
       toast.error(message)
     } finally {
@@ -177,210 +220,380 @@ export default function SignaturesClient({ initialSlots }: { initialSlots: Signa
     }
   }
 
-  const uploadedCount = slots.filter((slot) => slot.uploaded).length
-  const requiredCount = slots.filter((slot) => slot.required).length
-  const uploadedRequired = slots.filter((slot) => slot.required && slot.active).length
-  const hasAnyUpload = slots.some((slot) => slot.uploaded)
+  const deleteSlotAsset = (slot: SignatureSlot) => {
+    setSlotToDelete(slot)
+  }
+
+  const confirmDeleteSlotAsset = async () => {
+    if (!slotToDelete) return
+    const slot = slotToDelete
+    setDeletingSlot(slot.slot_key)
+    setError(null)
+    try {
+      const response = await fetch(`/api/signatures?slot_key=${encodeURIComponent(slot.slot_key)}`, {
+        method: 'DELETE',
+      })
+      const payload = await response.json()
+      if (!response.ok) {
+        throw new Error(payload?.error || 'Unable to delete report image.')
+      }
+
+      setSlots((current) =>
+        current.map((item) =>
+          item.slot_key === slot.slot_key
+            ? { ...item, uploaded: false, active: false, public_url: null }
+            : item
+        )
+      )
+      toast.success(`${slot.label} removed permanently.`)
+      setSlotToDelete(null)
+      await refetch()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unable to delete report image.'
+      setError(message)
+      toast.error(message)
+    } finally {
+      setDeletingSlot(null)
+    }
+  }
+
+  const filteredSlots = searchQuery.trim()
+    ? slots.filter(
+        (s) =>
+          s.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          s.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          s.slot_key.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : slots
+
+  const activeSignaturesCount = slots.filter((s) => s.slot_key !== 'school-stamp' && s.active).length
+  const totalSignatureSlots = slots.filter((s) => s.slot_key !== 'school-stamp').length
+  const stampSlot = slots.find((s) => s.slot_key === 'school-stamp')
 
   return (
-    <div className="space-y-6 w-full pb-12">
-      <HeroSection
-        title="Signatures & Stamps"
-        subtitle="Manage signature and stamp assets for official documents."
-      />
-
-      <div className="px-4 sm:px-6 lg:px-8 mt-8">
-        {error ? (
-          <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 mb-6">
-            {error}
-          </div>
-        ) : null}
-
-        {!loading && !hasAnyUpload && (
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 text-sm text-slate-700 mb-6">
-            <p className="font-semibold text-slate-900">No signatures uploaded yet.</p>
-            <p className="mt-2">
-              Upload your official signature and stamp images so reports can include authenticated branding. Use the upload card for each slot to preview the file before it is saved.
+    <div className={embedded ? 'space-y-5' : 'max-w-[760px] w-full mx-auto space-y-5 py-6 px-4'}>
+      {!embedded && (
+        <div className="mb-2 flex items-center justify-between gap-4">
+          <div>
+            <h1 className="text-xl font-bold text-[#111827]">Stamps & Signatures</h1>
+            <p className="text-xs text-[#6B7280] mt-1">
+              Upload, preview, and activate official stamps and signatures for printed report cards.
             </p>
           </div>
-        )}
+          <Link
+            href="/admin/reports/studio"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-[#0D5C3A] hover:bg-[#0A472C] px-3.5 py-2 text-xs font-semibold text-white transition"
+          >
+            <Sliders className="w-3.5 h-3.5" />
+            <span>Report Studio</span>
+          </Link>
+        </div>
+      )}
 
-        <div className="grid gap-6 xl:grid-cols-[1.5fr_0.9fr]">
-          <section className="rounded-2xl bg-white p-6 shadow-sm border border-slate-200">
-            <div className="grid gap-5 md:grid-cols-3 mb-6">
-              {[
-                { label: 'Total Uploaded', value: `${uploadedCount}/${slots.length}`, color: '#10B981', bg: 'rgba(16,185,129,0.08)' },
-                { label: 'Required Active', value: `${uploadedRequired}/${requiredCount}`, color: uploadedRequired < requiredCount ? '#EF4444' : '#10B981', bg: uploadedRequired < requiredCount ? 'rgba(239,68,68,0.08)' : 'rgba(16,185,129,0.08)' },
-                { label: 'Storage Used', value: 'Calculated on Supabase', color: '#6366F1', bg: 'rgba(99,102,241,0.08)' },
-              ].map(({ label, value, color, bg }) => (
-                <div key={label} className="rounded-2xl p-4 flex items-center gap-4 border border-slate-100">
-                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: bg }}>
-                    <HardDrive className="w-5 h-5" style={{ color }} />
-                  </div>
-                  <div>
-                    <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400 font-semibold">{label}</p>
-                    <p className="mt-2 text-xl font-semibold" style={{ color }}>{value}</p>
-                  </div>
-                </div>
-              ))}
+      {error ? (
+        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-medium text-rose-700">
+          {error}
+        </div>
+      ) : null}
+
+      {/* Card 1: Summary & Studio Placement Link */}
+      <div className="bg-white rounded-2xl border border-[#E3E8E3] shadow-[0_1px_3px_rgba(15,41,30,0.04)] p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div>
+            <h2 className="text-[15px] font-semibold text-[#111827]">Stamps & Signatures Overview</h2>
+            <p className="text-xs text-[#6B7280] mt-0.5">
+              Official PNG, WEBP, and JPG assets injected into report card templates when enabled.
+            </p>
+          </div>
+          <Link
+            href="/admin/reports/studio"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-[#D5DFD5] bg-[#F8FAF8] hover:bg-[#EEF3EE] px-3 py-1.5 text-xs font-semibold text-[#0D5C3A] transition"
+          >
+            <Sliders className="w-3.5 h-3.5" />
+            <span>Adjust Coordinates in Studio</span>
+            <ArrowRight className="w-3 h-3" />
+          </Link>
+        </div>
+
+        {/* 2-Column At-a-Glance Summary Counters */}
+        <div className="grid grid-cols-2 gap-3 p-3.5 rounded-xl bg-[#F8FAF8] border border-[#E3E8E3]">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-[#E2EEE2] text-[#0D5C3A] flex items-center justify-center shrink-0">
+              <FileSignature className="w-4 h-4" />
             </div>
-
-            <div className="space-y-5">
-              {slots.map((slot) => {
-                const previewUrl = previews[slot.slot_key] ?? slot.public_url
-                const isUploading = uploadingSlot === slot.slot_key
-                const isRemoving = removingSlot === slot.slot_key
-                const isToggling = togglingSlot === slot.slot_key
-
-                return (
-                  <div key={slot.slot_key} className="rounded-3xl border border-slate-200 overflow-hidden">
-                    <div className="flex flex-col gap-4 p-5 md:flex-row md:items-start md:justify-between bg-slate-50 border-b border-slate-100">
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2 mb-2">
-                          <h3 className="text-sm font-semibold text-slate-900">{slot.label}</h3>
-                          {slot.required && (
-                            <span className="rounded-full bg-rose-100 px-2 py-1 text-[11px] font-semibold text-rose-700">Required</span>
-                          )}
-                        </div>
-                        <p className="text-sm text-slate-500">{slot.description}</p>
-                      </div>
-                      <span className={`inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold ${slot.active ? 'bg-emerald-100 text-emerald-700' : slot.uploaded ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-700'}`}>
-                        {slot.active ? <Check className="h-3.5 w-3.5" /> : <AlertCircle className="h-3.5 w-3.5" />}
-                        {slot.active ? 'Active in reports' : slot.uploaded ? 'Deactivated' : 'Not uploaded'}
-                      </span>
-                    </div>
-
-                    <div className="p-5 bg-white">
-                      <div className="rounded-3xl overflow-hidden border border-dashed border-slate-200 bg-slate-50 min-h-[160px] mb-4">
-                        {previewUrl ? (
-                          <img src={previewUrl} alt={`${slot.label} preview`} className="w-full h-full object-contain p-4 max-h-[200px]" />
-                        ) : (
-                          <div
-                            className="h-full w-full flex flex-col items-center justify-center gap-2 text-center p-6 min-h-[160px]"
-                            onDragOver={(e) => { e.preventDefault(); setDragOver(slot.slot_key) }}
-                            onDragLeave={() => setDragOver(null)}
-                            onDrop={(e) => {
-                              e.preventDefault()
-                              setDragOver(null)
-                              const file = e.dataTransfer.files?.[0]
-                              if (file) handleFileSelection(slot.slot_key, slot.uploaded, file)
-                            }}
-                          >
-                            <div className="rounded-full bg-slate-200/50 p-3 mb-2 text-slate-400">
-                              <Upload className="h-6 w-6" />
-                            </div>
-                            <p className="text-sm font-medium text-slate-600">
-                              <span className="text-[#065F46]">Click to upload</span> or drag and drop
-                            </p>
-                            <p className="text-xs text-slate-400">PNG, JPG, or WEBP (max. 5MB)</p>
-                          </div>
-                        )}
-                        <input
-                          type="file"
-                          accept={ACCEPTED_TYPES.join(',')}
-                          className="hidden"
-                          id={`file-${slot.slot_key}`}
-                          onChange={(e) => {
-                            const file = e.target.files?.[0]
-                            if (file) handleFileSelection(slot.slot_key, slot.uploaded, file)
-                          }}
-                        />
-                      </div>
-
-                      <div className="flex items-center justify-end gap-3">
-                        {slot.uploaded && (
-                          <button
-                            type="button"
-                            onClick={() => void toggleActivation(slot)}
-                            disabled={isUploading || isRemoving || isToggling}
-                            className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${slot.active ? 'border-amber-200 text-amber-800 hover:bg-amber-50' : 'border-emerald-200 text-emerald-700 hover:bg-emerald-50'}`}
-                          >
-                            {isToggling ? <RefreshCw className="h-4 w-4 animate-spin" /> : slot.active ? <AlertCircle className="h-4 w-4" /> : <Check className="h-4 w-4" />}
-                            {slot.active ? 'Deactivate from Reports' : 'Reactivate for Reports'}
-                          </button>
-                        )}
-                        {slot.uploaded && (
-                          <button
-                            type="button"
-                            onClick={() => void removeSignature(slot)}
-                            disabled={isUploading || isRemoving || isToggling}
-                            className="inline-flex items-center gap-2 rounded-xl border border-rose-200 px-4 py-2 text-sm font-semibold text-rose-700 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            {isRemoving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                            Remove from Storage
-                          </button>
-                        )}
-                        <label
-                          htmlFor={`file-${slot.slot_key}`}
-                          className={`inline-flex cursor-pointer items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${
-                            isUploading || isRemoving || isToggling ? 'opacity-50 pointer-events-none' : ''
-                          } ${
-                            slot.uploaded
-                              ? 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                              : 'bg-[#065F46] text-white hover:bg-[#047857]'
-                          }`}
-                        >
-                          {isUploading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                          {slot.uploaded ? 'Replace Image' : 'Upload Image'}
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </section>
-
-          <section className="space-y-6">
-            <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-6 shadow-sm space-y-3">
-              <div className="flex items-center gap-2">
-                <Sliders className="w-5 h-5 text-emerald-700" />
-                <h3 className="text-sm font-bold text-emerald-950 uppercase tracking-wide">Report Studio Placements</h3>
+            <div>
+              <div className="text-[11px] font-medium text-[#6B7280] uppercase tracking-wider">
+                Configured Signatures
               </div>
-              <p className="text-xs text-emerald-900 leading-relaxed">
-                Nudge, rotate, and position uploaded stamps and signatures directly on real synthetic report templates with snap guides and coordinate persistence.
-              </p>
-              <Link
-                href="/admin/reports/studio"
-                className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-semibold shadow-sm transition"
-              >
-                <span>Open Report Studio</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
+              <div className="text-sm font-bold text-[#111827]">
+                {activeSignaturesCount} / {totalSignatureSlots} Active
+              </div>
             </div>
-
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h3 className="mb-4 text-sm font-bold text-slate-900 uppercase tracking-wide">Signature Guidelines</h3>
-              <ul className="space-y-3 text-sm text-slate-600">
-                <li className="flex items-start gap-2">
-                  <span className="mt-0.5 flex-none rounded-full bg-emerald-100 p-1 text-emerald-600">
-                    <Check className="h-3 w-3" />
-                  </span>
-                  <span>Use high-resolution scans on plain white or transparent backgrounds.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="mt-0.5 flex-none rounded-full bg-emerald-100 p-1 text-emerald-600">
-                    <Check className="h-3 w-3" />
-                  </span>
-                  <span>Crop closely around the signature or stamp to remove excess whitespace.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="mt-0.5 flex-none rounded-full bg-emerald-100 p-1 text-emerald-600">
-                    <Check className="h-3 w-3" />
-                  </span>
-                  <span>Ensure stamps are legible and straight before uploading.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="mt-0.5 flex-none rounded-full bg-rose-100 p-1 text-rose-600">
-                    <AlertCircle className="h-3 w-3" />
-                  </span>
-                  <span>Avoid uploading photos with shadows or uneven lighting.</span>
-                </li>
-              </ul>
+          </div>
+          <div className="flex items-center gap-3 border-l border-[#E3E8E3] pl-3">
+            <div className="w-9 h-9 rounded-lg bg-[#FEF3C7] text-[#B45309] flex items-center justify-center shrink-0">
+              <Stamp className="w-4 h-4" />
             </div>
-          </section>
+            <div>
+              <div className="text-[11px] font-medium text-[#6B7280] uppercase tracking-wider">
+                Official Stamp
+              </div>
+              <div className="text-sm font-bold text-[#111827]">
+                {stampSlot?.active
+                  ? 'Active on Reports'
+                  : stampSlot?.uploaded
+                    ? 'Uploaded (Inactive)'
+                    : 'Not Uploaded'}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
+
+      {/* Card 2: Interactive Code-Replicated Official Stamp Studio */}
+      <div className="bg-white dark:bg-[#111916] rounded-2xl border border-[#E6ECE8] dark:border-[#1C2622] shadow-[0_1px_3px_rgba(15,41,30,0.04)] overflow-hidden">
+        <div className="px-6 py-4 border-b border-[#E6ECE8] dark:border-[#1C2622] flex items-center justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-semibold text-[#111827] dark:text-[#F3F7F5]">
+              Code-Replicated Official Stamp Designer
+            </h3>
+            <p className="text-xs text-[#6B7280] dark:text-[#9CA3AF] mt-0.5">
+              Crisp vector school stamp rendered directly on every printed report card — adjust date, offset, ink color, rotation, and wet-ink texture.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowStampStudio((v) => !v)}
+            className="h-8 px-3 rounded-lg border border-[#D5DDD8] dark:border-[#24332E] bg-[#F8FAF9] dark:bg-[#0D1412] text-xs font-semibold text-[#111827] dark:text-[#F3F7F5] cursor-pointer"
+          >
+            {showStampStudio ? 'Collapse' : 'Customize Stamp'}
+          </button>
+        </div>
+        {showStampStudio && (
+          <StampGeneratorPanel config={stampConfig} onChange={setStampConfig} tone="light" />
+        )}
+      </div>
+
+      {pendingSignatureReview && (
+        <SignatureInkReviewCard
+          file={pendingSignatureReview.file}
+          targetLabel={pendingSignatureReview.label}
+          onCancel={() => setPendingSignatureReview(null)}
+          onConfirmUpload={async (fileToUpload) => {
+            const slotKey = pendingSignatureReview.slotKey
+            setPendingSignatureReview(null)
+            await handleFileChange(slotKey, fileToUpload)
+          }}
+        />
+      )}
+
+      {/* 2-Column Grid of Asset Cards */}
+      {loading && slots.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-[#E3E8E3] p-8 text-center text-xs text-[#6B7280]">
+          Loading signature and stamp slots...
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {filteredSlots.map((slot) => {
+            const previewUrl = previews[slot.slot_key] ?? slot.public_url
+            const isUploading = uploadingSlot === slot.slot_key
+            const isToggling = togglingSlot === slot.slot_key
+            const isDeleting = deletingSlot === slot.slot_key
+            const isDragTarget = dragOver === slot.slot_key
+
+            return (
+              <div
+                key={slot.slot_key}
+                className="bg-white rounded-2xl border border-[#E3E8E3] shadow-[0_1px_3px_rgba(15,41,30,0.04)] p-5 flex flex-col justify-between"
+              >
+                <div>
+                  {/* Card Top Header + Switch */}
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <h3 className="text-sm font-semibold text-[#111827] truncate">{slot.label}</h3>
+                        {slot.required && (
+                          <span className="inline-flex items-center rounded-full bg-[#FEF3C7] px-2 py-0.5 text-[10px] font-bold text-[#92400E]">
+                            Core
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-[#6B7280] mt-0.5 line-clamp-2">{slot.description}</p>
+                    </div>
+
+                    {slot.uploaded && (
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {isToggling && <RefreshCw className="w-3.5 h-3.5 text-[#0D5C3A] animate-spin" />}
+                        <Switch.Root
+                          checked={slot.active}
+                          disabled={isUploading || isToggling || isDeleting}
+                          onCheckedChange={() => void toggleActivation(slot)}
+                          aria-label={`Toggle ${slot.label}`}
+                          className="w-9 h-5 bg-gray-200 rounded-full relative data-[state=checked]:bg-[#0D5C3A] transition-colors outline-none cursor-pointer disabled:opacity-50"
+                        >
+                          <Switch.Thumb className="block w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-100 translate-x-0.5 will-change-transform data-[state=checked]:translate-x-[18px]" />
+                        </Switch.Root>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Status Pill */}
+                  <div className="mb-3">
+                    <span
+                      aria-live="polite"
+                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                        slot.active
+                          ? 'bg-[#E2EEE2] text-[#0D5C3A]'
+                          : slot.uploaded
+                            ? 'bg-amber-100 text-amber-800'
+                            : 'bg-gray-100 text-gray-600'
+                      }`}
+                    >
+                      {slot.active ? (
+                        <Check className="h-3 w-3" />
+                      ) : (
+                        <AlertCircle className="h-3 w-3" />
+                      )}
+                      {slot.active
+                        ? 'Active in reports'
+                        : slot.uploaded
+                          ? 'Paused on reports'
+                          : 'No file uploaded'}
+                    </span>
+                  </div>
+
+                  {/* Live Preview / Dropzone on Subtle Checkerboard Pad */}
+                  <div
+                    className={`rounded-xl overflow-hidden border transition-colors min-h-[132px] mb-3.5 flex items-center justify-center relative ${
+                      isDragTarget
+                        ? 'border-[#0D5C3A] bg-[#EEF3EE]'
+                        : 'border-dashed border-[#D5DFD5] bg-[radial-gradient(#E5E7EB_1px,transparent_1px)] [background-size:12px_12px] bg-white'
+                    }`}
+                    onDragOver={(e) => {
+                      e.preventDefault()
+                      setDragOver(slot.slot_key)
+                    }}
+                    onDragLeave={() => setDragOver(null)}
+                    onDrop={(e) => {
+                      e.preventDefault()
+                      setDragOver(null)
+                      const file = e.dataTransfer.files?.[0]
+                      if (file) handleFileSelection(slot.slot_key, slot.uploaded, file)
+                    }}
+                  >
+                    {previewUrl ? (
+                      slot.slot_key !== 'school-stamp' ? (
+                        <CleanSignatureImg
+                          src={previewUrl}
+                          alt={`${slot.label} preview`}
+                          className={`w-full h-[128px] object-contain p-3 transition-opacity ${
+                            slot.active ? 'opacity-100' : 'opacity-55 grayscale'
+                          }`}
+                        />
+                      ) : (
+                        <img
+                          src={previewUrl}
+                          alt={`${slot.label} preview`}
+                          className={`w-full h-[128px] object-contain p-3 transition-opacity ${
+                            slot.active ? 'opacity-100' : 'opacity-55 grayscale'
+                          }`}
+                        />
+                      )
+                    ) : (
+                      <label
+                        htmlFor={`file-${slot.slot_key}`}
+                        className="h-full w-full flex flex-col items-center justify-center gap-1.5 text-center p-4 cursor-pointer"
+                      >
+                        <div className="rounded-full bg-[#F1F5F1] p-2.5 text-[#0D5C3A]">
+                          <Upload className="h-4 w-4" />
+                        </div>
+                        <p className="text-xs font-medium text-[#374151]">
+                          <span className="text-[#0D5C3A] font-semibold">Click to upload</span> or drag & drop
+                        </p>
+                        <p className="text-[11px] text-[#6B7280]">PNG, WEBP, JPG (max 5MB)</p>
+                      </label>
+                    )}
+                    <input
+                      type="file"
+                      accept={ACCEPTED_TYPES.join(',')}
+                      className="hidden"
+                      id={`file-${slot.slot_key}`}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) handleFileSelection(slot.slot_key, slot.uploaded, file)
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Action Footer */}
+                <div className="flex items-center justify-between gap-2 pt-2 border-t border-[#F1F5F1] flex-wrap">
+                  <div className="flex items-center gap-1.5">
+                    {slot.uploaded && (
+                      <button
+                        type="button"
+                        onClick={() => void toggleActivation(slot)}
+                        disabled={isUploading || isToggling || isDeleting}
+                        className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold transition-colors disabled:opacity-50 ${
+                          slot.active
+                            ? 'border-amber-200 text-amber-800 hover:bg-amber-50'
+                            : 'border-[#C6DEC6] text-[#0D5C3A] hover:bg-[#EEF3EE]'
+                        }`}
+                      >
+                        {slot.active ? 'Deactivate from Reports' : 'Reactivate for Reports'}
+                      </button>
+                    )}
+                    {slot.uploaded && (
+                      <button
+                        type="button"
+                        onClick={() => deleteSlotAsset(slot)}
+                        disabled={isUploading || isToggling || isDeleting}
+                        className="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-2.5 py-1.5 text-[11px] font-semibold text-rose-700 hover:bg-rose-50 transition-colors disabled:opacity-50"
+                        title="Permanently remove uploaded image"
+                      >
+                        {isDeleting ? (
+                          <RefreshCw className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-3 w-3" />
+                        )}
+                        <span>Remove</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <label
+                    htmlFor={`file-${slot.slot_key}`}
+                    className={`inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                      isUploading || isToggling || isDeleting ? 'opacity-50 pointer-events-none' : ''
+                    } ${
+                      slot.uploaded
+                        ? 'border border-[#D5DFD5] bg-white text-[#374151] hover:bg-[#F8FAF8]'
+                        : 'bg-[#0D5C3A] text-white hover:bg-[#0A472C]'
+                    }`}
+                  >
+                    {isUploading ? (
+                      <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Upload className="h-3.5 w-3.5" />
+                    )}
+                    <span>{slot.uploaded ? 'Replace' : 'Upload PNG'}</span>
+                  </label>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      <ConfirmDestructiveDialog
+        open={Boolean(slotToDelete)}
+        title={`Remove ${slotToDelete?.label || 'Signature'}?`}
+        description={`Are you sure you want to permanently remove the uploaded image for ${slotToDelete?.label || 'this slot'}? Reports will no longer display this asset until a new file is uploaded.`}
+        confirmLabel="Remove Asset"
+        loading={Boolean(deletingSlot)}
+        onConfirm={confirmDeleteSlotAsset}
+        onCancel={() => setSlotToDelete(null)}
+      />
     </div>
   )
 }

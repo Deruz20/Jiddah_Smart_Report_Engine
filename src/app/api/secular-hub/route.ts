@@ -2,7 +2,7 @@ import { createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
-import { verifyDataAccess } from '@/lib/auth-server'
+import { verifyDataAccess, resolveUserScope, canAccessSubjectInScope } from '@/lib/auth-server'
 import { classIdsForType } from '@/lib/teacher-access'
 import { fetchAllSupabaseRows } from '@/lib/supabase-pagination'
 import { getMarkScore } from '@/lib/mark-scores'
@@ -82,6 +82,18 @@ export async function GET(request: NextRequest) {
         .eq('curriculum', 'secular')
       if (!legacySubjects.error && legacySubjects.data) {
         subjects = legacySubjects.data
+      }
+    }
+
+    const userScope = resolveUserScope(authRes)
+    if (userScope.isSubjectTeacher && !userScope.isClassTeacher && userScope.assignedSubjects.length > 0) {
+      const filteredSubjects = subjects.filter(
+        (s: any) =>
+          canAccessSubjectInScope(userScope, null, s.id, 'secular') ||
+          canAccessSubjectInScope(userScope, null, s.subject_name, 'secular')
+      )
+      if (filteredSubjects.length > 0) {
+        subjects = filteredSubjects
       }
     }
 

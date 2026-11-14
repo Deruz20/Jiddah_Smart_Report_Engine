@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-const baseUrl = process.env.TEST_BASE_URL || 'http://127.0.0.1:3005';
+const baseUrl = process.env.TEST_BASE_URL || 'http://localhost:3000';
 const baseOrigin = new URL(baseUrl);
 if (baseOrigin.protocol !== 'http:' || !['127.0.0.1', 'localhost'].includes(baseOrigin.hostname)) {
   throw new Error('Refusing to run R0 tests against a non-local application server.');

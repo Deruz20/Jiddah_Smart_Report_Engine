@@ -34,7 +34,7 @@ export function ReportViewport({ children, reportType }: ReportViewportProps) {
           style={{ opacity: 0.05 }}
         >
           <img 
-            src="/school_budge.jpeg" 
+            src="/logo-512h.png" 
             alt="Watermark" 
             className="w-[80%] max-h-[80%] object-contain grayscale"
           />

@@ -1,17 +1,146 @@
-:root {
+/* ──────────────────────────────────────────────────────────────────────────
+   Google Gemini / Material-3 Workspace Design Tokens
+   Dark:  Canvas #131314, Surface #1E1F20, Pill #282A2C, Input #131314/3C4043, Text #E3E3E3/#C4C7C5/#8E918F
+   Light: Canvas #FFFFFF, Sidebar #F0F4F9, Card #FFFFFF/E1E3E1, Pill #D3E3FD/#E2EEE2, Text #1F1F1F/#444746/#747775
+   ────────────────────────────────────────────────────────────────────────── */
+
+:root, [data-theme="light"] {
   color-scheme: light;
-  --ui-canvas: #f4f3ed;
-  --ui-surface: #fffdf8;
-  --ui-border: #d6d5cc;
-  --ui-text: #1f2937;
-  --ui-muted: #475569;
-  --ui-shell-background: #12312a;
-  --ui-shell-raised: #1b3d35;
-  --ui-shell-border: #35564e;
-  --ui-shell-text: #f8fafc;
-  --ui-shell-muted: #d1d5db;
-  --ui-primary: #065f46;
-  --ui-primary-hover: #047857;
-  --ui-accent: #10b981;
-  --ui-accent-soft: #d1fae5;
+  --bg-canvas:        #F1F5F2;
+  --bg-canvas-ambient: radial-gradient(at 15% 0%, rgba(13, 92, 58, 0.08) 0px, transparent 55%), radial-gradient(at 85% 0%, rgba(217, 119, 6, 0.08) 0px, transparent 55%);
+  --bg-card:          #FFFFFF;
+  --bg-sunken:        #E8EFEA;
+  --bg-hover:         rgba(31, 31, 31, 0.06);
+  --border:           rgba(13, 92, 58, 0.14);
+  --border-strong:    rgba(217, 119, 6, 0.18);
+  --border-gold:      rgba(217, 119, 6, 0.18);
+  --divider-tint:     rgba(13, 92, 58, 0.07);
+  --accent-primary:   #0D5C3A;
+  --accent-secondary: #0A4A2F;
+  --accent-dark:      #052E16;
+  --badge-bg:         #E2EEE2;
+  --badge-text:       #0D5C3A;
+  --text-primary:     #1F1F1F;
+  --text-secondary:   #444746;
+  --text-muted:       #747775;
+  --text-active:      #09472C;
+  --shadow-card:      0 1px 2px rgba(0, 0, 0, 0.06), 0 1px 1px rgba(0, 0, 0, 0.04);
+  --gradient-card:    linear-gradient(135deg, #F8FAFD 0%, #FFFFFF 100%);
+  --btn-cta-bg:       linear-gradient(90deg, #0D5C3A 0%, #0F6B43 50%, #147A4D 100%);
+  --btn-cta-shadow:   0 4px 14px -3px rgba(13, 92, 58, 0.4);
+  --pill-accent-gold: linear-gradient(90deg, #D97706 0%, #EA580C 100%);
+
+  /* UI tokens */
+  --ui-canvas: var(--bg-canvas);
+  --ui-surface: var(--bg-card);
+  --ui-border: var(--border);
+  --ui-text: var(--text-primary);
+  --ui-muted: var(--text-secondary);
+  --ui-shell-background: #F0F4F9;
+  --ui-shell-raised: #FFFFFF;
+  --ui-shell-border: var(--border);
+  --ui-shell-text: #1F1F1F;
+  --ui-shell-muted: #747775;
+  --ui-primary: var(--accent-primary);
+  --ui-primary-hover: var(--accent-secondary);
+  --ui-accent: #0D5C3A;
+  --ui-accent-soft: var(--badge-bg);
+
+  /* Sidebar (light variant) */
+  --sb-bg:            #F0F4F9;
+  --sb-border:        rgba(13, 92, 58, 0.14);
+  --sb-text:          #444746;
+  --sb-text-strong:   #1F1F1F;
+  --sb-muted:         #747775;
+  --sb-hover:         rgba(31, 31, 31, 0.06);
+  --sb-active-bg:     linear-gradient(90deg, rgba(13, 92, 58, 0.14) 0%, rgba(217, 119, 6, 0.10) 50%, rgba(234, 88, 12, 0.12) 100%);
+  --sb-active-text:   #09472C;
+  --sb-active-bar:    #0D5C3A;
+  --sb-logo-tile:     #FFFFFF;
+  --sb-logo-ring:     rgba(13, 92, 58, 0.14);
+}
+
+[data-theme="dark"], .dark {
+  color-scheme: dark;
+  --bg-canvas:        #0B110E;
+  --bg-canvas-ambient: radial-gradient(at 15% 0%, rgba(16, 185, 129, 0.07) 0px, transparent 55%), radial-gradient(at 85% 0%, rgba(245, 158, 11, 0.06) 0px, transparent 55%);
+  --bg-card:          #131C18;
+  --bg-sunken:        #0B110E;
+  --bg-hover:         #1B2621;
+  --bg-hover-strong:  #24332D;
+  --border:           rgba(16, 185, 129, 0.14);
+  --border-strong:    rgba(245, 158, 11, 0.16);
+  --border-gold:      rgba(245, 158, 11, 0.16);
+  --divider-tint:     rgba(245, 158, 11, 0.07);
+  --accent-primary:   #34D399;
+  --accent-secondary: #10B981;
+  --accent-dark:      #052E16;
+  --gradient-card:    linear-gradient(135deg, #1E1F20 0%, #131314 100%);
+  --text-primary:     #E3E3E3;
+  --text-secondary:   #C4C7C5;
+  --text-muted:       #8E918F;
+  --text-active:      #FDE68A;
+  --badge-bg:         rgba(52, 211, 153, 0.16);
+  --badge-text:       #6EE7B7;
+  --shadow-card:      0 1px 3px rgba(0, 0, 0, 0.4);
+  --btn-cta-bg:       linear-gradient(90deg, #0D5C3A 0%, #0F6B43 50%, #147A4D 100%);
+  --btn-cta-shadow:   0 4px 14px -3px rgba(13, 92, 58, 0.4);
+  --pill-accent-gold: linear-gradient(90deg, #D97706 0%, #EA580C 100%);
+
+  /* UI tokens */
+  --ui-canvas: var(--bg-canvas);
+  --ui-surface: var(--bg-card);
+  --ui-border: var(--border);
+  --ui-text: var(--text-primary);
+  --ui-muted: var(--text-secondary);
+  --ui-shell-background: #1E1F20;
+  --ui-shell-raised: #282A2C;
+  --ui-shell-border: var(--border);
+  --ui-shell-text: #E3E3E3;
+  --ui-shell-muted: #8E918F;
+  --ui-primary: var(--accent-primary);
+  --ui-primary-hover: var(--accent-secondary);
+  --ui-accent: var(--accent-secondary);
+  --ui-accent-soft: rgba(52, 211, 153, 0.16);
+
+  /* Sidebar (dark variant) */
+  --sb-bg:            #1E1F20;
+  --sb-border:        rgba(16, 185, 129, 0.14);
+  --sb-text:          #C4C7C5;
+  --sb-text-strong:   #E3E3E3;
+  --sb-muted:         #8E918F;
+  --sb-hover:         #282A2C;
+  --sb-active-bg:     linear-gradient(90deg, rgba(16, 185, 129, 0.20) 0%, rgba(245, 158, 11, 0.15) 50%, rgba(234, 88, 12, 0.15) 100%);
+  --sb-active-text:   #FDE68A;
+  --sb-active-bar:    #34D399;
+  --sb-logo-tile:     #282A2C;
+  --sb-logo-ring:     rgba(16, 185, 129, 0.14);
+}
+
+[data-sidebar-theme="dark"] {
+  --sb-bg:            #1E1F20;
+  --sb-border:        rgba(255, 255, 255, 0.08);
+  --sb-text:          #C4C7C5;
+  --sb-text-strong:   #E3E3E3;
+  --sb-muted:         #8E918F;
+  --sb-hover:         #282A2C;
+  --sb-active-bg:     #282A2C;
+  --sb-active-text:   #E3E3E3;
+  --sb-active-bar:    #34D399;
+  --sb-logo-tile:     #282A2C;
+  --sb-logo-ring:     rgba(255, 255, 255, 0.12);
+}
+
+[data-sidebar-theme="light"] {
+  --sb-bg:            #F0F4F9;
+  --sb-border:        #E1E3E1;
+  --sb-text:          #444746;
+  --sb-text-strong:   #1F1F1F;
+  --sb-muted:         #747775;
+  --sb-hover:         rgba(31, 31, 31, 0.06);
+  --sb-active-bg:     #D3E3FD;
+  --sb-active-text:   #041E49;
+  --sb-active-bar:    #0D5C3A;
+  --sb-logo-tile:     #FFFFFF;
+  --sb-logo-ring:     #E1E3E1;
 }

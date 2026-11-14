@@ -1,8 +1,9 @@
-import { createClient } from '@/utils/supabase/server'
+import { createAdminClient, createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { getAuthenticatedUser } from '@/lib/api-server'
+import { buildActivityActorMap, resolveActivityActor } from '@/lib/activity-actors'
 
 function parseMetadata(value: unknown): Record<string, unknown> {
   if (!value) return {}
@@ -55,16 +56,28 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Forbidden: Insufficient privileges to view global activity logs.' }, { status: 403 }))
     }
 
-    const { data, error } = await supabase
-      .from('activity_logs')
-      .select('id, user_id, action, metadata, created_at')
-      .order('created_at', { ascending: false })
-      .limit(5)
+    const adminSupabase = createAdminClient(cookieStore)
+    const [{ data, error }, teachersRes, profilesRes] = await Promise.all([
+      supabase
+        .from('activity_logs')
+        .select('id, user_id, action, metadata, created_at')
+        .neq('action', 'school_customization_config')
+        .order('created_at', { ascending: false })
+        .limit(20),
+      adminSupabase
+        .from('teachers')
+        .select('id, auth_user_id, name, email, role, subject'),
+      adminSupabase
+        .from('profiles')
+        .select('id, full_name, role'),
+    ])
 
     if (error) {
       console.error('activity GET error:', error.message)
       return withCors(request, NextResponse.json({ error: error.message }, { status: 500 }))
     }
+
+    const actorMap = buildActivityActorMap(teachersRes.data ?? [], profilesRes.data ?? [])
 
     const activities = (data ?? []).map((item: any) => {
       const metadata = parseMetadata(item.metadata)
@@ -72,10 +85,13 @@ export async function GET(request: NextRequest) {
       const entityType = getEntityType(action, metadata)
       const entityLabel =
         String(metadata.entity_label ?? metadata.teacher ?? metadata.class ?? metadata.report ?? action)
+      const actor = resolveActivityActor(item.user_id, metadata, actorMap)
 
       return {
         id: String(item.id),
-        user_name: String(metadata.user_name ?? item.user_id ?? 'System'),
+        user_name: actor.name,
+        user_role: actor.role,
+        actor_display: actor.displayLabel,
         action,
         entity_label: entityLabel,
         entity_type: entityType,

@@ -22,8 +22,8 @@ import {
   getGradingRemarkForScores,
 } from '@/lib/grading'
 import { resolveSectionType } from '@/lib/section-type'
+import { canAccessClass, isAdministratorRole } from '@/lib/teacher-access'
 import { hasRequiredClassForReport } from '@/lib/report-class-context'
-import { canAccessClass } from '@/lib/teacher-access'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { evaluateCriteria, GradingCriterion } from '@/lib/grading-engine'
 import { fetchMergedSchoolSettings } from '@/lib/school-settings-helper'
@@ -126,17 +126,18 @@ export async function POST(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'No enrollments found or error fetching enrollments' }, { status: 404 }))
     }
 
-    const unauthorizedEnrollment = requestedEnrollments.find((enrollment) => {
-      const circularAllowed = curriculum === 'theology' ||
-        canAccessClass(authRes, 'circular', enrollment.circular_class_id)
-      const theologyAllowed = curriculum === 'secular' ||
-        canAccessClass(
-          authRes,
-          'theology',
-          enrollment.theology_class_id,
-          enrollment.circular_class_id
-        )
-      return !circularAllowed || !theologyAllowed
+    const isAdmin = isAdministratorRole(authRes.role) || authRes.role === 'Administrator' || (!authRes.filterByClasses && !authRes.filterByDepartment);
+    const unauthorizedEnrollment = isAdmin ? undefined : requestedEnrollments.find((enrollment) => {
+      if (curriculum === 'theology') {
+        return !enrollment.theology_class_id || !canAccessClass(authRes, 'theology', enrollment.theology_class_id, enrollment.circular_class_id);
+      }
+      if (curriculum === 'secular') {
+        return !enrollment.circular_class_id || !canAccessClass(authRes, 'circular', enrollment.circular_class_id);
+      }
+      // combined curriculum
+      const circularOk = Boolean(enrollment.circular_class_id && canAccessClass(authRes, 'circular', enrollment.circular_class_id));
+      const theologyOk = Boolean(enrollment.theology_class_id && canAccessClass(authRes, 'theology', enrollment.theology_class_id, enrollment.circular_class_id));
+      return !circularOk && !theologyOk;
     })
     if (unauthorizedEnrollment) {
       return withCors(request, NextResponse.json(
@@ -158,6 +159,18 @@ export async function POST(request: NextRequest) {
 
     if (stamp_date) {
       term.end_date = stamp_date;
+    }
+
+    // Reconcile equivalent terms by academic_year and term_number
+    let termIds = [term.id]
+    const { data: equivalentTerms } = await supabase
+      .from('terms')
+      .select('id')
+      .eq('academic_year', term.academic_year)
+      .eq('term_number', term.term_number)
+
+    if (equivalentTerms && equivalentTerms.length > 0) {
+      termIds = [...new Set([term.id, ...equivalentTerms.map((t: any) => t.id)])]
     }
 
     const isTerm3 = term.term_number === 3
@@ -204,7 +217,7 @@ export async function POST(request: NextRequest) {
 
       // Fetch circular marks for EVERYONE in the class in chunks
       if (allClassmateIds.length > 0) {
-        allCircularMarks = await fetchInChunks('circular_marks', '*', 'enrollment_id', allClassmateIds, (q) => q.eq('term_id', term_id))
+        allCircularMarks = await fetchInChunks('circular_marks', '*', 'enrollment_id', allClassmateIds, (q) => q.in('term_id', termIds))
       }
 
       // Compute rankings per class
@@ -228,45 +241,42 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 4. Handle Theology
+    // 4. Handle Theology — ALWAYS fetch theology subjects & marks so dual-curriculum reports are populated
     const theologyLevels = [...new Set(requestedEnrollments.map(e => {
       return Array.isArray(e.theology_classes) ? e.theology_classes[0]?.level : (e.theology_classes as any)?.level
     }).filter(Boolean))]
 
     const theologySubjectsCache: Record<string, any[]> = {}
-    if (curriculum !== 'secular') {
-      for (const lvl of theologyLevels) {
-        if (!lvl) continue;
-        const { data: subs } = await supabase.from('theology_subjects').select('id, subject_name_arabic').eq('level', lvl)
-        theologySubjectsCache[lvl] = subs?.map(s => ({ id: s.id, subject_name_arabic: s.subject_name_arabic })) || []
-      }
+    for (const lvl of theologyLevels) {
+      if (!lvl) continue;
+      const { data: subs } = await supabase.from('theology_subjects').select('id, subject_name_arabic').eq('level', lvl)
+      theologySubjectsCache[lvl] = subs?.map(s => ({ id: s.id, subject_name_arabic: s.subject_name_arabic })) || []
     }
 
-    // Fetch theology marks ONLY for requested enrollments in chunks
+    // Fetch theology marks for requested enrollments in chunks
     let requestedTheologyMarks: any[] = []
     let theologyRankings: Record<string, { id: string, total: number }[]> = {}
     const theologyClassSizes: Record<string, number> = {}
 
-    if (curriculum !== 'secular') {
-      if (requestedEnrollments.length > 0) {
-        requestedTheologyMarks = await fetchInChunks('theology_marks', '*', 'enrollment_id', enrollment_ids, (q) => q.eq('term_id', term_id))
-      }
+    if (requestedEnrollments.length > 0) {
+      requestedTheologyMarks = await fetchInChunks('theology_marks', '*', 'enrollment_id', enrollment_ids, (q) => q.in('term_id', termIds))
+    }
 
-      // If we are in theology mode or dual mode, we need theology class rankings.
-      const theologyClassIds = [...new Set(requestedEnrollments.map(e => e.theology_class_id).filter(Boolean))]
-      if (theologyClassIds.length > 0) {
-        const { data: theoClassmates } = await supabase
-          .from('enrollments')
-          .select('id, theology_class_id')
-          .in('theology_class_id', theologyClassIds)
-          .eq('is_active', true)
+    // If we are in theology mode or dual mode, we need theology class rankings.
+    const theologyClassIds = [...new Set(requestedEnrollments.map(e => e.theology_class_id).filter(Boolean))]
+    if (theologyClassIds.length > 0) {
+      const { data: theoClassmates } = await supabase
+        .from('enrollments')
+        .select('id, theology_class_id')
+        .in('theology_class_id', theologyClassIds)
+        .eq('is_active', true)
 
-        if (theoClassmates) {
-          const allTheoClassmateIds = theoClassmates.map(c => c.id)
-          let allTheoMarks: any[] = []
-          if (allTheoClassmateIds.length > 0) {
-            allTheoMarks = await fetchInChunks('theology_marks', '*', 'enrollment_id', allTheoClassmateIds, (q) => q.eq('term_id', term_id))
-          }
+      if (theoClassmates) {
+        const allTheoClassmateIds = theoClassmates.map(c => c.id)
+        let allTheoMarks: any[] = []
+        if (allTheoClassmateIds.length > 0) {
+          allTheoMarks = await fetchInChunks('theology_marks', '*', 'enrollment_id', allTheoClassmateIds, (q) => q.in('term_id', termIds))
+        }
 
           for (const tId of theologyClassIds) {
             const classMembers = theoClassmates.filter(c => c.theology_class_id === tId)
@@ -286,7 +296,6 @@ export async function POST(request: NextRequest) {
           }
         }
       }
-    }
 
     // 5. Generate Reports Data array
     const subjectOrder = {
@@ -295,7 +304,18 @@ export async function POST(request: NextRequest) {
     }
     const theologyOrder = ['القرآن الكريم', 'اللغة العربية', 'الفقه', 'التربية الإسلامية']
 
-    const signatures = await getReportSignatures(createAdminClient())
+    const { data: signatureObjects } = await supabase.storage.from('signatures').list('', { limit: 100 })
+    const signatures: Record<string, string | null> = {
+      'head-teacher': null,
+      'principal': null,
+      'school-stamp': null,
+    }
+    for (const object of signatureObjects ?? []) {
+      const match = object.name.match(/^([a-z0-9-]+)\.(?:png|jpe?g|webp)$/i)
+      if (match) {
+        signatures[match[1]] = supabase.storage.from('signatures').getPublicUrl(object.name).data.publicUrl
+      }
+    }
 
     const { data: initialsData } = await supabase.from('teacher_initials').select('*')
     const teacherInitialsMap: Record<string, string> = {}
@@ -332,14 +352,14 @@ export async function POST(request: NextRequest) {
         const numericScore = typeof score === 'number' ? score : null
 
         const defaultGrade = numericScore !== null
-          ? sectionType === 'nursery' ? getNurseryGrade(numericScore).grade : getGradeDisplay(getSubjectGradeNumber(numericScore))
+          ? sectionType === 'nursery' ? getNurseryGrade(numericScore).grade : getGradeDisplay(getSubjectGradeNumber(numericScore, schoolSettings?.grading_scale))
           : '—'
         const defaultRemark = numericScore !== null
           ? sectionType === 'nursery'
             ? getNurseryGrade(numericScore).remark
             : score_type === 'mot'
               ? getGradingRemarkForScore(numericScore, schoolSettings?.grading_scale)
-              : getSubjectRemark(getSubjectGradeNumber(numericScore))
+              : getSubjectRemark(getSubjectGradeNumber(numericScore, schoolSettings?.grading_scale), schoolSettings?.grading_scale)
           : ''
 
         const overrideGrade = evaluateCriteria(numericScore, 'subject_score', 'secular', enrollment.circular_class_id, gradingCriteria, 'grade_label')
@@ -354,8 +374,8 @@ export async function POST(request: NextRequest) {
         const motNumeric = getMarkScore(existing, 'mot')
         const eotNumeric = getMarkScore(existing, 'eot')
 
-        const defaultMotGrade = motNumeric !== null ? (sectionType === 'nursery' ? getNurseryGrade(motNumeric).grade : getGradeDisplay(getSubjectGradeNumber(motNumeric))) : null
-        const defaultMotRemark = motNumeric !== null ? (sectionType === 'nursery' ? getNurseryGrade(motNumeric).remark : getSubjectRemark(getSubjectGradeNumber(motNumeric))) : null
+        const defaultMotGrade = motNumeric !== null ? (sectionType === 'nursery' ? getNurseryGrade(motNumeric).grade : getGradeDisplay(getSubjectGradeNumber(motNumeric, schoolSettings?.grading_scale))) : null
+        const defaultMotRemark = motNumeric !== null ? (sectionType === 'nursery' ? getNurseryGrade(motNumeric).remark : getSubjectRemark(getSubjectGradeNumber(motNumeric, schoolSettings?.grading_scale), schoolSettings?.grading_scale)) : null
         const overrideMotGrade = evaluateCriteria(motNumeric, 'subject_score', 'secular', enrollment.circular_class_id, gradingCriteria, 'grade_label')
         const overrideMotRemark = evaluateCriteria(motNumeric, 'subject_score', 'secular', enrollment.circular_class_id, gradingCriteria, 'comment')
 
@@ -364,8 +384,8 @@ export async function POST(request: NextRequest) {
           remark: overrideMotRemark || defaultMotRemark
         }
 
-        const defaultEotGrade = eotNumeric !== null ? (sectionType === 'nursery' ? getNurseryGrade(eotNumeric).grade : getGradeDisplay(getSubjectGradeNumber(eotNumeric))) : null
-        const defaultEotRemark = eotNumeric !== null ? (sectionType === 'nursery' ? getNurseryGrade(eotNumeric).remark : getSubjectRemark(getSubjectGradeNumber(eotNumeric))) : null
+        const defaultEotGrade = eotNumeric !== null ? (sectionType === 'nursery' ? getNurseryGrade(eotNumeric).grade : getGradeDisplay(getSubjectGradeNumber(eotNumeric, schoolSettings?.grading_scale))) : null
+        const defaultEotRemark = eotNumeric !== null ? (sectionType === 'nursery' ? getNurseryGrade(eotNumeric).remark : getSubjectRemark(getSubjectGradeNumber(eotNumeric, schoolSettings?.grading_scale), schoolSettings?.grading_scale)) : null
         const overrideEotGrade = evaluateCriteria(eotNumeric, 'subject_score', 'secular', enrollment.circular_class_id, gradingCriteria, 'grade_label')
         const overrideEotRemark = evaluateCriteria(eotNumeric, 'subject_score', 'secular', enrollment.circular_class_id, gradingCriteria, 'comment')
 
@@ -383,7 +403,7 @@ export async function POST(request: NextRequest) {
           bot_score: botNumeric,
           mot_score: motNumeric,
           eot_score: eotNumeric,
-          bot_grade_display: botNumeric != null ? (sectionType === 'nursery' ? getNurseryGrade(botNumeric).grade : getGradeDisplay(getSubjectGradeNumber(botNumeric))) : null,
+          bot_grade_display: botNumeric != null ? (sectionType === 'nursery' ? getNurseryGrade(botNumeric).grade : getGradeDisplay(getSubjectGradeNumber(botNumeric, schoolSettings?.grading_scale))) : null,
           mot_grade_display: motGradeInfo.grade,
           eot_grade_display: eotGradeInfo.grade,
           score: numericScore,
@@ -408,13 +428,16 @@ export async function POST(request: NextRequest) {
       const motAggregateMarks = sortedCircularSubjects.filter(r => typeof r.mot_score === 'number').map(r => ({ subject_name: r.subject_name, score: r.mot_score as number }))
       const botAggregateMarks = sortedCircularSubjects.filter(r => typeof r.bot_score === 'number').map(r => ({ subject_name: r.subject_name, score: r.bot_score as number }))
 
-      const aggregate = sectionType === 'nursery' ? null : calculateAggregate(aggregateMarks, sectionType)
-      const mot_aggregate = sectionType === 'nursery' ? null : calculateAggregate(motAggregateMarks, sectionType)
-      const bot_aggregate = sectionType === 'nursery' ? null : calculateAggregate(botAggregateMarks, sectionType)
+      const aggregate = sectionType === 'nursery' ? null : calculateAggregate(aggregateMarks, sectionType, schoolSettings?.grading_scale)
+      const mot_aggregate = sectionType === 'nursery' ? null : calculateAggregate(motAggregateMarks, sectionType, schoolSettings?.grading_scale)
+      const bot_aggregate = sectionType === 'nursery' ? null : calculateAggregate(botAggregateMarks, sectionType, schoolSettings?.grading_scale)
       const reportAggregate = score_type === 'mot' ? mot_aggregate : (score_type === 'bot' ? bot_aggregate : aggregate)
       
-      const division = reportAggregate !== null ? getDivision(reportAggregate) : null
+      const division = reportAggregate !== null ? getDivision(reportAggregate, schoolSettings?.division_boundaries) : null
       const promotion_status = isTerm3 && division ? getPromotionStatus(division) : null
+      const showClassPosition =
+        schoolSettings?.print_preferences?.showClassPosition !== false &&
+        schoolSettings?.ranking_preferences?.show_rank !== false
 
       const bot_total = sortedCircularSubjects
         .filter((r) => isGradableSubject(r.subject_name, className))
@@ -430,7 +453,7 @@ export async function POST(request: NextRequest) {
       let position: number | null = null
       let total_students: number | null = null
       
-      if (curriculum !== 'theology') {
+      if (curriculum !== 'theology' && showClassPosition) {
         if (enrollment.circular_class_id && classRankings[enrollment.circular_class_id]) {
           const rankings = classRankings[enrollment.circular_class_id]
           total_students = circularClassSizes[enrollment.circular_class_id]
@@ -444,7 +467,7 @@ export async function POST(request: NextRequest) {
       // Theology
       let theologySectionData = null
       const theologyLevel = Array.isArray(enrollment.theology_classes) ? enrollment.theology_classes[0]?.level : (enrollment.theology_classes as any)?.level
-      if (curriculum !== 'secular' && enrollment.theology_class_id && theologyLevel) {
+      if (enrollment.theology_class_id && theologyLevel) {
         const tSubjects = theologySubjectsCache[theologyLevel] || []
         const eTheoMarks = requestedTheologyMarks.filter(m => m.enrollment_id === enrollment.id)
         
@@ -466,7 +489,11 @@ export async function POST(request: NextRequest) {
           const overrideEotGrade = evaluateCriteria(eotScore, 'subject_score', 'theology', enrollment.theology_class_id, gradingCriteria, 'grade_label')
           const eot_grade_display = overrideEotGrade || defaultEotGrade
 
-          const defaultRemark = eotScore !== null ? getTheologySubjectRemark(getTheologyGradeNumber(eotScore, (schoolSettings as any)?.theology_grading_scale)) : motScore !== null ? getTheologySubjectRemark(getTheologyGradeNumber(motScore, (schoolSettings as any)?.theology_grading_scale)) : null
+          const defaultRemark = eotScore !== null
+            ? getTheologySubjectRemark(getTheologyGradeNumber(eotScore, (schoolSettings as any)?.theology_grading_scale), (schoolSettings as any)?.theology_grading_scale)
+            : motScore !== null
+            ? getTheologySubjectRemark(getTheologyGradeNumber(motScore, (schoolSettings as any)?.theology_grading_scale), (schoolSettings as any)?.theology_grading_scale)
+            : null
           const overrideRemark = evaluateCriteria(numericScore, 'subject_score', 'theology', enrollment.theology_class_id, gradingCriteria, 'comment')
 
           return {
@@ -499,7 +526,7 @@ export async function POST(request: NextRequest) {
           mot_total: sortedTheoSubjects.reduce((sum, r) => sum + (typeof r.mot_score === 'number' ? r.mot_score : 0), 0),
           eot_total: sortedTheoSubjects.reduce((sum, r) => sum + (typeof r.eot_score === 'number' ? r.eot_score : 0), 0),
           aggregate: theologyAggregate,
-          division: theologyAggregate !== null ? getDivision(theologyAggregate) : null,
+          division: theologyAggregate !== null ? getDivision(theologyAggregate, schoolSettings?.division_boundaries) : null,
         }
       }
 
@@ -508,7 +535,7 @@ export async function POST(request: NextRequest) {
 
       let theologyPosition = null;
       let totalTheologyStudents = null;
-      if (curriculum !== 'secular' && enrollment.theology_class_id && theologyRankings[enrollment.theology_class_id] && theologySectionData) {
+      if (curriculum !== 'secular' && showClassPosition && enrollment.theology_class_id && theologyRankings[enrollment.theology_class_id] && theologySectionData) {
          const rankings = theologyRankings[enrollment.theology_class_id]
          totalTheologyStudents = theologyClassSizes[enrollment.theology_class_id]
          if (rankings.length > 0) {
@@ -559,6 +586,7 @@ export async function POST(request: NextRequest) {
           },
           signatures,
           settings: schoolSettings,
+          stamp_date: stamp_date || term.end_date || null,
           debug: {
             enrollmentId: enrollment.id,
             circularMarksCount: 0,
@@ -578,8 +606,8 @@ export async function POST(request: NextRequest) {
           religion: studentData?.is_muslim === false ? 'Non-Muslim' : 'Muslim',
           class_name: className ?? '—',
           gender: studentData?.gender ?? null,
-          theology_class_arabic: curriculum === 'secular' ? null : theologyClassArabic ?? null,
-          theology_class_english: curriculum === 'secular' ? null : theologyClassEnglish ?? null,
+          theology_class_arabic: theologyClassArabic ?? null,
+          theology_class_english: theologyClassEnglish ?? null,
           section,
           academic_year: enrollment.academic_year,
         },
@@ -614,14 +642,15 @@ export async function POST(request: NextRequest) {
             division,
             scores: sortedCircularSubjects.filter(row => row.is_core).map(row => row.score),
             gradingBands: schoolSettings?.grading_scale,
+            divisionBoundaries: schoolSettings?.division_boundaries,
           }),
           head_teacher_comment: score_type === 'mot'
             ? evaluateCriteria(reportAggregate ?? null, 'aggregate', 'secular', enrollment.circular_class_id, gradingCriteria, 'comment') || getGradingRemarkForScores(sortedCircularSubjects.filter(row => row.is_core).map(row => row.score), schoolSettings?.grading_scale)
-            : evaluateCriteria(reportAggregate ?? null, 'aggregate', 'secular', enrollment.circular_class_id, gradingCriteria, 'comment') || (division ? getHeadTeacherComment(division, sortedCircularSubjects.filter(row => row.is_core).map(row => row.score), schoolSettings?.grading_scale) : ''),
+            : evaluateCriteria(reportAggregate ?? null, 'aggregate', 'secular', enrollment.circular_class_id, gradingCriteria, 'comment') || (division ? getHeadTeacherComment(division, sortedCircularSubjects.filter(row => row.is_core).map(row => row.score), schoolSettings?.grading_scale, schoolSettings?.division_boundaries) : ''),
           position,
           total_students,
         },
-        theology: curriculum === 'secular' ? null : theologySectionData,
+        theology: theologySectionData,
         meta: {
           is_term_3: isTerm3,
           promotion_status,
@@ -630,6 +659,7 @@ export async function POST(request: NextRequest) {
         },
         signatures,
         settings: schoolSettings,
+        stamp_date: stamp_date || term.end_date || null,
         debug: {
           enrollmentId: enrollment.id,
           circularMarksCount: eCircularMarks.length,

@@ -1,25 +1,28 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "motion/react";
+import { usePathname } from "next/navigation";
+import { motion } from "motion/react";
 import {
   LayoutDashboard,
   Users,
   ClipboardEdit,
-  Settings,
-  LogOut,
-  UserCheck,
-  BookMarked,
-  Library,
+  FileText,
   ScrollText,
   BookOpen,
-  FileText,
-  Shield,
-  Upload,
-  Bell,
-  User,
+  UserCheck,
+  UploadCloud,
+  CalendarCheck,
+  Layers,
+  GraduationCap,
+  Settings,
+  ChevronRight,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Search,
+  X,
 } from "lucide-react";
 import {
   Sidebar,
@@ -29,35 +32,26 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   useSidebar,
-  SidebarGroup,
-  SidebarGroupContent,
 } from "../figma-ui/ui/sidebar";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-} from "../figma-ui/ui/dropdown-menu";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "../figma-ui/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../figma-ui/ui/tooltip";
 import { cn } from "../figma-ui/ui/utils";
 import { createClient } from "@/utils/supabase/client";
 import {
   normalizeAccountRole,
-  resolveRoleDepartment,
   type CanonicalAccountRole,
 } from "@/lib/teacher-access";
+import { resolveUserScope } from "@/lib/access-scope";
 import {
   fetchSchoolSettingsCached,
   getStoredThemeMode,
-  invalidateClientCache,
   resolveEffectiveTheme,
 } from "@/lib/client-cache";
+
+export interface NavChildConfig {
+  label: string;
+  href: string;
+  id: string;
+}
 
 export interface NavItemConfig {
   icon: React.ElementType;
@@ -67,6 +61,7 @@ export interface NavItemConfig {
   href: string;
   roles: CanonicalAccountRole[];
   department?: "secular" | "theology";
+  children?: NavChildConfig[];
 }
 
 export const ROLE_GATED_NAV_ITEMS: NavItemConfig[] = [
@@ -94,19 +89,55 @@ export const ROLE_GATED_NAV_ITEMS: NavItemConfig[] = [
     roles: ["Administrator", "Head Teacher", "DOS Secular", "DOS Theology", "Class Teacher"],
   },
   {
+    icon: Layers,
+    label: "Classes",
+    teacherLabel: "Classes",
+    id: "classes",
+    href: "/admin/classes",
+    roles: ["Administrator", "Head Teacher", "DOS Secular", "DOS Theology", "Class Teacher"],
+  },
+  {
+    icon: GraduationCap,
+    label: "Subjects",
+    teacherLabel: "Subjects",
+    id: "subjects",
+    href: "/admin/subjects",
+    roles: ["Administrator", "Head Teacher", "DOS Secular", "DOS Theology", "Class Teacher"],
+  },
+  {
+    icon: CalendarCheck,
+    label: "Daily Roll Call",
+    id: "roll-call",
+    href: "/teacher/roll-call",
+    roles: ["Administrator", "Head Teacher", "Class Teacher"],
+  },
+  {
     icon: FileText,
     label: "Report Center",
     teacherLabel: "Report Center",
     id: "reports",
     href: "/admin/reports",
     roles: ["Administrator", "Head Teacher", "DOS Secular", "DOS Theology", "Class Teacher"],
+    children: [
+      { label: "Report Center", href: "/admin/reports", id: "reports-overview" },
+      { label: "Report Studio 2.0", href: "/admin/reports/studio", id: "reports-studio" },
+    ],
   },
   {
-    icon: Bell,
-    label: "Notifications",
-    id: "notifications",
-    href: "/admin/notifications",
-    roles: ["Administrator", "Head Teacher", "DOS Secular", "DOS Theology", "Class Teacher"],
+    icon: ScrollText,
+    label: "Secular Hub",
+    id: "secular-hub",
+    href: "/admin/secular-hub",
+    roles: ["Administrator", "Head Teacher", "DOS Secular", "Class Teacher"],
+    department: "secular",
+  },
+  {
+    icon: BookOpen,
+    label: "Theology Hub",
+    id: "theology-hub",
+    href: "/admin/theology-hub",
+    roles: ["Administrator", "Head Teacher", "DOS Theology", "Class Teacher"],
+    department: "theology",
   },
   {
     icon: UserCheck,
@@ -116,520 +147,512 @@ export const ROLE_GATED_NAV_ITEMS: NavItemConfig[] = [
     roles: ["Administrator", "Head Teacher", "DOS Secular", "DOS Theology"],
   },
   {
-    icon: BookMarked,
-    label: "Classes",
-    id: "classes",
-    href: "/admin/classes",
-    roles: ["Administrator", "Head Teacher", "DOS Secular", "DOS Theology"],
-  },
-  {
-    icon: Library,
-    label: "Subjects",
-    id: "subjects",
-    href: "/admin/subjects",
-    roles: ["Administrator", "Head Teacher", "DOS Secular", "DOS Theology"],
-  },
-  {
-    icon: ScrollText,
-    label: "Secular Hub",
-    id: "secular-hub",
-    href: "/admin/secular-hub",
-    roles: ["Administrator", "Head Teacher", "DOS Secular"],
-    department: "secular",
-  },
-  {
-    icon: ScrollText,
-    label: "Theology Hub",
-    id: "theology-hub",
-    href: "/admin/theology-hub",
-    roles: ["Administrator", "Head Teacher", "DOS Theology"],
-    department: "theology",
-  },
-  {
-    icon: Shield,
-    label: "Activity Log",
-    id: "activity",
-    href: "/admin/activity",
-    roles: ["Administrator", "Head Teacher", "DOS Secular", "DOS Theology"],
-  },
-  {
-    icon: UserCheck,
-    label: "Invites",
-    id: "invites",
-    href: "/admin/invites",
-    roles: ["Administrator", "Head Teacher", "DOS Secular", "DOS Theology"],
-  },
-  {
-    icon: Upload,
-    label: "Uploads",
+    icon: UploadCloud,
+    label: "Upload Center",
     id: "uploads",
     href: "/admin/upload",
-    roles: ["Administrator", "Head Teacher"],
-  },
-  {
-    icon: Settings,
-    label: "Settings",
-    id: "settings",
-    href: "/admin/settings",
     roles: ["Administrator", "Head Teacher", "DOS Secular", "DOS Theology"],
   },
 ];
 
 export function getVisibleNavItemsForRole(role: string, subject?: string | null): NavItemConfig[] {
-  const canonical = normalizeAccountRole(role, subject);
-  const dept = resolveRoleDepartment(role, subject);
+  const scope = resolveUserScope({ role, subject, status: "active" });
+
   return ROLE_GATED_NAV_ITEMS.filter((item) => {
-    if (!item.roles.includes(canonical)) return false;
-    if (item.department && dept !== "both" && item.department !== dept) return false;
+    if (!item.roles.includes(scope.canonicalRole)) return false;
+    if (item.department === "secular" && !scope.canAccessSecularHub) return false;
+    if (item.department === "theology" && !scope.canAccessTheologyHub) return false;
+
+    if (scope.isTeacher && !scope.isClassTeacher) {
+      // Pure Subject Teacher scope: Dashboard, Marks Entry, Subjects, and department Hub
+      return ["dashboard", "marks", "subjects", "secular-hub", "theology-hub"].includes(item.id);
+    }
+
     return true;
   });
 }
 
+function isRouteActive(pathname: string, href: string) {
+  if (href === "/admin") return pathname === "/admin";
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+/* ─── Nav Item ───────────────────────────────────────────────────────────── */
+
 function NavItem({
-  icon: Icon,
-  label,
-  href,
-  id,
+  item,
   active,
   collapsed,
-  accentColor,
-  sidebarDark,
 }: {
-  icon: React.ElementType;
-  label: string;
-  href: string;
-  id: string;
-  active?: boolean;
+  item: NavItemConfig;
+  active: boolean;
   collapsed: boolean;
-  accentColor: string;
-  sidebarDark: boolean;
 }) {
   const { isMobile, setOpenMobile } = useSidebar();
   const pathname = usePathname();
-  const isActive = active || (id === "dashboard" && pathname === "/admin");
+  const Icon = item.icon;
+  const subItems = (item.children ?? []).filter((c) => c.href !== item.href);
+  const hasSub = subItems.length > 0;
+  const subActive = subItems.some((c) => isRouteActive(pathname, c.href));
+  const [open, setOpen] = React.useState(active || subActive);
 
-  const activeTextColor = sidebarDark ? "#34D399" : accentColor;
-  const activeBgColor = sidebarDark ? "rgba(16, 185, 129, 0.14)" : `${accentColor}14`;
-  const activeBorderColor = sidebarDark ? "rgba(16, 185, 129, 0.32)" : `${accentColor}38`;
-  const activeBarColor = sidebarDark ? "#10B981" : accentColor;
+  React.useEffect(() => {
+    if (active || subActive) setOpen(true);
+  }, [active, subActive]);
+
+  if (collapsed) {
+    return (
+      <SidebarMenuItem className="flex justify-center my-0.5">
+        <Tooltip delayDuration={150}>
+          <TooltipTrigger asChild>
+            <Link
+              href={item.href}
+              data-testid={`nav-item-${item.id}`}
+              aria-label={item.label}
+              aria-current={active ? "page" : undefined}
+              onClick={() => isMobile && setOpenMobile(false)}
+              className={cn(
+                "relative size-10 rounded-full flex items-center justify-center transition-colors outline-none",
+                "focus-visible:ring-2 focus-visible:ring-[#0D5C3A] dark:focus-visible:ring-[#34D399]",
+                active
+                  ? "text-[#09472C] dark:text-[#FDE68A] font-semibold"
+                  : "text-[#444746] dark:text-[#C4C7C5] hover:bg-black/[0.06] dark:hover:bg-white/[0.06] hover:text-[#1F1F1F] dark:hover:text-[#E3E3E3]"
+              )}
+            >
+              {active && (
+                <motion.div
+                  layoutId="sidebar-active-pill-collapsed"
+                  className="absolute inset-0 rounded-full bg-gradient-to-r from-[#0D5C3A]/14 via-[#D97706]/10 to-[#EA580C]/12 ring-1 ring-[#0D5C3A]/20 shadow-[0_2px_10px_-2px_rgba(13,92,58,0.12)] dark:from-[#10B981]/20 dark:via-[#F59E0B]/15 dark:to-[#EA580C]/15 dark:ring-[#F59E0B]/25 dark:shadow-[0_2px_12px_-2px_rgba(245,158,11,0.15)]"
+                  transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                />
+              )}
+              <Icon className="relative z-10 size-[18px] shrink-0" strokeWidth={1.75} aria-hidden />
+            </Link>
+          </TooltipTrigger>
+          <TooltipContent side="right" sideOffset={12}>
+            {item.label}
+          </TooltipContent>
+        </Tooltip>
+      </SidebarMenuItem>
+    );
+  }
 
   return (
-    <SidebarMenuItem>
-      <Tooltip delayDuration={300}>
-        <TooltipTrigger asChild>
-          <Link
-            href={href}
-            data-testid={`nav-item-${id}`}
-            onClick={() => isMobile && setOpenMobile(false)}
-            className={cn(
-              "group/nav-item relative flex items-center min-h-[44px] h-11 w-full rounded-xl outline-none border-none transition-colors duration-150",
-              collapsed ? "justify-center" : "px-3",
-              !isActive &&
-                (sidebarDark
-                  ? "text-[#94A3B8] hover:text-white hover:bg-[#1E293B]/75"
-                  : "text-[#57534E] hover:text-[#1C1917] hover:bg-[#F3EFE6]")
-            )}
-          >
-            {isActive && (
-              <motion.div
-                layoutId="active-nav-background"
-                className="absolute inset-0 rounded-xl z-0"
-                style={{
-                  backgroundColor: activeBgColor,
-                  border: `1px solid ${activeBorderColor}`,
-                }}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{
-                  type: "spring",
-                  stiffness: 350,
-                  damping: 30,
-                  mass: 0.8,
-                }}
-              />
-            )}
-
-            {isActive && !collapsed && (
-              <motion.div
-                layoutId="active-nav-indicator"
-                className="absolute left-0 top-1/2 -translate-y-1/2 h-1/2 w-[3.5px] rounded-r-full z-10"
-                style={{ backgroundColor: activeBarColor }}
-                transition={{ type: "spring", stiffness: 350, damping: 30 }}
-              />
-            )}
-
-            <div className="relative z-10 flex items-center justify-center size-8 shrink-0 rounded-lg">
-              <Icon
-                className={cn(
-                  "size-[1.15rem] transition-all duration-200",
-                  !isActive &&
-                    (sidebarDark
-                      ? "text-[#94A3B8] group-hover/nav-item:text-white"
-                      : "text-[#78716C] group-hover/nav-item:text-[#1C1917]")
-                )}
-                style={isActive ? { color: activeTextColor } : undefined}
-                strokeWidth={isActive ? 2.2 : 1.8}
-              />
-            </div>
-
-            <AnimatePresence mode="popLayout">
-              {!collapsed && (
-                <motion.span
-                  initial={{ opacity: 0, width: 0, x: -10 }}
-                  animate={{ opacity: 1, width: "auto", x: 0 }}
-                  exit={{ opacity: 0, width: 0, x: -10 }}
-                  transition={{
-                    opacity: { duration: 0.15 },
-                    width: { type: "spring", stiffness: 400, damping: 40 },
-                    x: { duration: 0.15 },
-                  }}
-                  className={cn(
-                    "relative z-10 text-sm ml-3 overflow-hidden whitespace-nowrap",
-                    isActive
-                      ? "font-bold"
-                      : sidebarDark
-                      ? "text-[#94A3B8] group-hover/nav-item:text-white font-medium"
-                      : "text-[#57534E] font-medium"
-                  )}
-                  style={isActive ? { color: activeTextColor } : undefined}
-                >
-                  {label}
-                </motion.span>
-              )}
-            </AnimatePresence>
-          </Link>
-        </TooltipTrigger>
-
-        {collapsed && (
-          <TooltipContent
-            side="right"
-            sideOffset={18}
-            className="bg-stone-900 border-stone-800 text-stone-100 text-xs shadow-xl font-medium z-[100] px-3 py-1.5 rounded-lg"
-          >
-            {label}
-          </TooltipContent>
+    <SidebarMenuItem className="flex flex-col my-0.5">
+      <Link
+        href={item.href}
+        data-testid={`nav-item-${item.id}`}
+        aria-current={active ? "page" : undefined}
+        onClick={() => isMobile && setOpenMobile(false)}
+        className={cn(
+          "relative rounded-full flex items-center font-medium transition-colors outline-none group",
+          isMobile
+            ? "h-10 px-4 text-[14px] gap-3.5"
+            : "h-9 px-3 text-[13.5px] gap-3",
+          "focus-visible:ring-2 focus-visible:ring-[#0D5C3A] dark:focus-visible:ring-[#34D399]",
+          active
+            ? "text-[#09472C] dark:text-[#FDE68A] font-semibold"
+            : "text-[#444746] dark:text-[#C4C7C5] hover:bg-black/[0.06] dark:hover:bg-white/[0.06] hover:text-[#1F1F1F] dark:hover:text-[#E3E3E3]"
         )}
-      </Tooltip>
+      >
+        {active && (
+          <motion.div
+            layoutId="sidebar-active-pill"
+            className="absolute inset-0 rounded-full bg-gradient-to-r from-[#0D5C3A]/14 via-[#D97706]/10 to-[#EA580C]/12 ring-1 ring-[#0D5C3A]/20 shadow-[0_2px_10px_-2px_rgba(13,92,58,0.12)] dark:from-[#10B981]/20 dark:via-[#F59E0B]/15 dark:to-[#EA580C]/15 dark:ring-[#F59E0B]/25 dark:shadow-[0_2px_12px_-2px_rgba(245,158,11,0.15)]"
+            transition={{ type: "spring", stiffness: 350, damping: 30 }}
+          />
+        )}
+        <Icon className="relative z-10 size-[18px] shrink-0" strokeWidth={1.75} aria-hidden />
+        <span className="relative z-10 flex-1 truncate">{item.label}</span>
+        {hasSub && (
+          <button
+            type="button"
+            aria-label={open ? `Collapse ${item.label}` : `Expand ${item.label}`}
+            aria-expanded={open}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setOpen((v) => !v);
+            }}
+            className="relative z-10 size-6 rounded-full flex items-center justify-center hover:bg-black/[0.08] dark:hover:bg-white/[0.08]"
+          >
+            <ChevronRight
+              className={cn("size-3.5 transition-transform duration-150", open && "rotate-90")}
+              strokeWidth={1.75}
+            />
+          </button>
+        )}
+      </Link>
+
+      {hasSub && open && (
+        <div className="ml-4 mt-1 flex flex-col gap-0.5 pl-3 border-l border-black/[0.06] dark:border-white/[0.08]">
+          {subItems.map((child) => {
+            const childActive = isRouteActive(pathname, child.href);
+            return (
+              <Link
+                key={child.id}
+                href={child.href}
+                aria-current={childActive ? "page" : undefined}
+                onClick={() => isMobile && setOpenMobile(false)}
+                className={cn(
+                  "relative h-8 px-3 rounded-full flex items-center text-[12.5px] font-medium transition-colors outline-none",
+                  childActive
+                    ? "bg-gradient-to-r from-[#0D5C3A]/14 via-[#D97706]/10 to-[#EA580C]/12 text-[#09472C] font-semibold ring-1 ring-[#0D5C3A]/20 shadow-xs dark:from-[#10B981]/20 dark:via-[#F59E0B]/15 dark:to-[#EA580C]/15 dark:text-[#FDE68A] dark:ring-[#F59E0B]/25"
+                    : "text-[#444746] dark:text-[#C4C7C5] hover:bg-black/[0.06] dark:hover:bg-white/[0.06] hover:text-[#1F1F1F] dark:hover:text-[#E3E3E3]"
+                )}
+              >
+                <span className="truncate">{child.label}</span>
+              </Link>
+            );
+          })}
+        </div>
+      )}
     </SidebarMenuItem>
   );
 }
 
+/* ─── App Sidebar ────────────────────────────────────────────────────────── */
+
 export function AppSidebar() {
-  const { state, toggleSidebar } = useSidebar();
+  const { state, toggleSidebar, isMobile, setOpenMobile } = useSidebar();
   const pathname = usePathname();
-  const router = useRouter();
-  const collapsed = state === "collapsed";
+  const collapsed = state === "collapsed" && !isMobile;
+
   const [canonicalRole, setCanonicalRole] = React.useState<CanonicalAccountRole>("Administrator");
-  const [rawRoleDisplay, setRawRoleDisplay] = React.useState<string>("Administrator");
-  const [rawSubject, setRawSubject] = React.useState<string>("");
-  const [userName, setUserName] = React.useState<string>("Staff");
-  const [accentColor, setAccentColor] = React.useState<string>("#059669");
-  const [schoolName, setSchoolName] = React.useState<string>("Jiddah Smart");
-  const [sidebarDark, setSidebarDark] = React.useState<boolean>(true);
+  const [rawRoleDisplay, setRawRoleDisplay] = React.useState("Administrator");
+  const [rawSubject, setRawSubject] = React.useState("");
+  const [userName, setUserName] = React.useState("Staff");
+  const [schoolName, setSchoolName] = React.useState("Jiddah");
 
   React.useEffect(() => {
-    const syncTheme = () => {
-      const mode = getStoredThemeMode();
-      const resolved = resolveEffectiveTheme(mode);
-      setSidebarDark(resolved.sidebarDark);
+    const sync = () => {
+      const resolved = resolveEffectiveTheme(getStoredThemeMode());
+      document.documentElement.dataset.sidebarTheme = resolved.sidebarDark ? "dark" : "light";
     };
-    syncTheme();
-    window.addEventListener("jiddah-theme-changed", syncTheme);
-    return () => window.removeEventListener("jiddah-theme-changed", syncTheme);
+    sync();
+    window.addEventListener("jiddah-theme-changed", sync);
+    return () => window.removeEventListener("jiddah-theme-changed", sync);
   }, []);
 
   React.useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getSession().then(({ data }: any) => {
+    supabase.auth.getSession().then(async ({ data }: any) => {
       const user = data.session?.user;
-      if (user) {
-        const rawRole = user.app_metadata?.role || user.user_metadata?.role || "Administrator";
-        const subject = user.user_metadata?.subject || "";
-        const normalized = normalizeAccountRole(rawRole, subject);
-        setCanonicalRole(normalized);
-        setRawRoleDisplay(rawRole || normalized);
-        setRawSubject(subject);
-        setUserName(user.user_metadata?.full_name || user.email?.split("@")[0] || "Staff");
+      if (!user) return;
+      let rawRole = user.app_metadata?.role || user.user_metadata?.role || "Administrator";
+      let subject = user.user_metadata?.subject || "";
+      let displayName =
+        user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split("@")[0] || "Staff";
+
+      if (user.email) {
+        try {
+          const { data: teacherRow } = await supabase
+            .from("teachers")
+            .select("name, role, subject")
+            .eq("email", user.email)
+            .maybeSingle();
+          if (teacherRow?.role) rawRole = teacherRow.role;
+          if (teacherRow?.subject) subject = teacherRow.subject;
+          if (teacherRow?.name) displayName = teacherRow.name;
+        } catch {
+          // fallback to session metadata
+        }
       }
+
+      setCanonicalRole(normalizeAccountRole(rawRole, subject));
+      setRawRoleDisplay(rawRole);
+      setRawSubject(subject);
+      setUserName(displayName);
     });
 
     let active = true;
     fetchSchoolSettingsCached()
       .then((data) => {
         if (!active || !data) return;
-        if (data.theme_color) {
-          setAccentColor(data.theme_color);
-        }
-        if (data.school_name || data.name) {
-          setSchoolName(data.school_name || data.name);
+        const raw = data.school_name || data.name;
+        if (raw && !String(raw).toLowerCase().includes("nursery and primary")) {
+          setSchoolName(String(raw));
         }
       })
       .catch(() => {});
-
     return () => {
       active = false;
     };
   }, []);
 
-  const handleLogout = async () => {
-    const supabase = createClient();
-    invalidateClientCache();
-    await supabase.auth.signOut();
-    router.replace("/login");
-  };
-
-  const visibleItems = getVisibleNavItemsForRole(rawRoleDisplay || canonicalRole, rawSubject);
   const isTeacherOnly = canonicalRole === "Class Teacher";
+  const visible = getVisibleNavItemsForRole(rawRoleDisplay || canonicalRole, rawSubject);
+  const initials =
+    userName
+      .split(/[\s._-]+/)
+      .map((n) => n[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "U";
 
-  const sidebarBg = sidebarDark ? "#0B1120" : "#FAF7F2";
-  const sidebarBorder = sidebarDark ? "#1E293B" : "#E7E2D7";
+  const isSettingsActive = isRouteActive(pathname, "/admin/settings");
+  const isAccountActive = isRouteActive(pathname, "/admin/account");
 
   return (
     <Sidebar
       collapsible="icon"
-      className="border-r-0 print:hidden z-40"
+      className="print:hidden z-40 border-r border-black/[0.05] dark:border-white/[0.06] bg-[#F0F4F9] dark:bg-[#1E1F20] transition-[width] duration-200 ease-in-out"
       style={
         {
-          "--sidebar-width": "16.5rem",
-          "--sidebar-background": sidebarBg,
-          "--sidebar-border": sidebarBorder,
+          "--sidebar-width": "260px",
+          "--sidebar-width-icon": "64px",
         } as React.CSSProperties
       }
     >
-      {/* Header */}
-      <SidebarHeader
-        className={cn(
-          "px-4 pt-4 pb-3 border-r shadow-none z-20 transition-colors",
-          sidebarDark
-            ? "bg-[#0B1120] border-[#1E293B]"
-            : "bg-[#FAF7F2] border-[#E7E2D7]"
-        )}
-      >
-        <div className={cn("flex items-center", collapsed ? "justify-center" : "justify-between")}>
-          <button
-            type="button"
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            className={cn(
-              "min-h-[44px] flex items-center gap-3 min-w-0 cursor-pointer group/logo bg-transparent border-0 text-left p-1 rounded-xl",
-              collapsed && "flex-col justify-center"
-            )}
-            onClick={toggleSidebar}
-            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          >
-            <div className="relative shrink-0">
-              <div
-                className={cn(
-                  "flex items-center justify-center size-9 rounded-xl overflow-hidden bg-white shadow-xs",
-                  sidebarDark ? "ring-1 ring-white/15" : "ring-1 ring-stone-200"
-                )}
-              >
-                <img
-                  src="/school_budge.jpeg"
-                  alt="School Badge"
-                  width="36"
-                  height="36"
-                  loading="lazy"
-                  decoding="async"
-                  className="object-contain w-full h-full p-0.5"
-                />
-              </div>
-            </div>
-            <AnimatePresence>
-              {!collapsed && (
-                <motion.div
-                  initial={{ opacity: 0, width: 0 }}
-                  animate={{ opacity: 1, width: "auto" }}
-                  exit={{ opacity: 0, width: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="overflow-hidden whitespace-nowrap"
+      {/* ─── Header / Morph Slot ────────────────────────────────────────── */}
+      {collapsed ? (
+        <SidebarHeader className="h-16 shrink-0 justify-center p-0 bg-[#F0F4F9] dark:bg-[#1E1F20]">
+          <div className="flex justify-center">
+            <Tooltip delayDuration={150}>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={toggleSidebar}
+                  aria-label="Open sidebar"
+                  className="size-10 rounded-full flex items-center justify-center relative group/logo cursor-pointer hover:bg-black/[0.08] dark:hover:bg-white/[0.08] transition-all outline-none focus-visible:ring-2 focus-visible:ring-[#0D5C3A] dark:focus-visible:ring-[#34D399]"
                 >
-                  <p
-                    className={cn(
-                      "font-bold tracking-tight truncate max-w-[165px]",
-                      sidebarDark ? "text-white" : "text-[#1C1917]"
-                    )}
-                    style={{ fontSize: "0.86rem", lineHeight: 1.2 }}
-                  >
-                    {schoolName}
-                  </p>
-                  <p
-                    className={cn(
-                      "font-medium truncate max-w-[165px]",
-                      sidebarDark ? "text-[#94A3B8]" : "text-[#78716C]"
-                    )}
-                    style={{ fontSize: "0.68rem", lineHeight: 1.25 }}
-                  >
-                    {rawRoleDisplay || canonicalRole}
-                  </p>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </button>
-        </div>
-      </SidebarHeader>
-
-      {/* Nav items */}
-      <SidebarContent
-        className={cn(
-          "px-3 pt-2 overflow-x-hidden border-r shadow-none z-10 relative transition-colors",
-          sidebarDark
-            ? "bg-[#0B1120] border-[#1E293B]"
-            : "bg-[#FAF7F2] border-[#E7E2D7]"
-        )}
-      >
-        <SidebarGroup className="p-0">
-          <SidebarGroupContent>
-            <SidebarMenu className="gap-1">
-              {visibleItems.map((item) => {
-                const active =
-                  item.href === "/admin"
-                    ? pathname === "/admin"
-                    : pathname === item.href || pathname.startsWith(`${item.href}/`);
-                const displayLabel = isTeacherOnly && item.teacherLabel ? item.teacherLabel : item.label;
-                return (
-                  <NavItem
-                    key={item.id}
-                    id={item.id}
-                    icon={item.icon}
-                    label={displayLabel}
-                    href={item.href}
-                    active={active}
-                    collapsed={collapsed}
-                    accentColor={accentColor}
-                    sidebarDark={sidebarDark}
+                  <Image
+                    src="/logo-512h.png"
+                    alt="Jiddah Emblem"
+                    width={24}
+                    height={24}
+                    className="size-6 object-contain transition-all duration-[180ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/logo:opacity-0 group-hover/logo:scale-75 group-hover/logo:blur-[2px]"
                   />
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
-
-      {/* Footer - User profile */}
-      <SidebarFooter
-        className={cn(
-          "p-3 pb-4 border-r border-t shadow-none z-20 transition-colors",
-          sidebarDark
-            ? "bg-[#0B1120] border-[#1E293B] border-t-[#1E293B]"
-            : "bg-[#FAF7F2] border-[#E7E2D7] border-t-[#E7E2D7]/70"
-        )}
-      >
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
+                  <PanelLeftOpen
+                    className="size-5 absolute inset-0 m-auto opacity-0 scale-75 blur-[2px] transition-all duration-[180ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/logo:opacity-100 group-hover/logo:scale-100 group-hover/logo:blur-none text-[#444746] dark:text-[#C4C7C5]"
+                    strokeWidth={1.75}
+                  />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={12}>
+                Open sidebar
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </SidebarHeader>
+      ) : isMobile ? (
+        <SidebarHeader className="flex flex-row items-center justify-between px-4 pt-3.5 pb-2.5 shrink-0 bg-white dark:bg-[#1E1F20] border-b-0">
+          <Link
+            href="/admin"
+            aria-label={`${schoolName} — dashboard`}
+            onClick={() => setOpenMobile(false)}
+            className="flex items-center gap-2.5 outline-none rounded-lg"
+          >
+            <Image
+              src="/logo-512h.png"
+              alt="Jiddah Emblem"
+              width={24}
+              height={24}
+              className="size-6 object-contain"
+            />
+            <span className="text-[18px] font-medium tracking-tight text-[#1F1F1F] dark:text-[#E3E3E3]">
+              {schoolName || "Jiddah"}
+            </span>
+          </Link>
+          <div className="flex items-center gap-1 shrink-0">
             <button
               type="button"
-              data-testid="sidebar-profile-trigger"
-              aria-label="User profile menu"
+              aria-label="Quick Search"
+              data-testid="mobile-sidebar-search-btn"
+              onClick={() => {
+                setOpenMobile(false);
+                window.dispatchEvent(new CustomEvent("jiddah:open-command-palette"));
+              }}
+              className="w-9.5 h-9.5 rounded-full flex items-center justify-center text-[#444746] dark:text-[#C4C7C5] hover:bg-black/[0.06] dark:hover:bg-white/[0.08] active:scale-95 transition-all outline-none"
+            >
+              <Search className="size-5" strokeWidth={1.75} />
+            </button>
+            <button
+              type="button"
+              aria-label="Close menu"
+              data-testid="mobile-sidebar-close-btn"
+              onClick={() => setOpenMobile(false)}
+              className="w-9.5 h-9.5 rounded-full flex items-center justify-center text-[#444746] dark:text-[#C4C7C5] hover:bg-black/[0.06] dark:hover:bg-white/[0.08] active:scale-95 transition-all outline-none"
+            >
+              <X className="size-5" strokeWidth={1.75} />
+            </button>
+          </div>
+        </SidebarHeader>
+      ) : (
+        <SidebarHeader className="h-14 shrink-0 flex flex-row items-center justify-between px-3.5 border-b border-black/[0.05] dark:border-white/[0.06] bg-[#F0F4F9] dark:bg-[#1E1F20]">
+          <Link
+            href="/admin"
+            aria-label={`${schoolName} — dashboard`}
+            onClick={() => isMobile && setOpenMobile(false)}
+            className="flex items-center gap-2.5 outline-none focus-visible:ring-2 focus-visible:ring-[#0D5C3A] rounded-lg"
+          >
+            <Image
+              src="/logo-512h.png"
+              alt="Jiddah Emblem"
+              width={24}
+              height={24}
+              className="size-6 object-contain"
+            />
+            <span className="text-[17px] font-semibold text-[#1F1F1F] dark:text-[#E3E3E3] tracking-tight truncate">
+              {schoolName}
+            </span>
+          </Link>
+          <div className="flex items-center gap-1">
+            <Tooltip delayDuration={150}>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => window.dispatchEvent(new CustomEvent("jiddah:open-command-palette"))}
+                  aria-label="Quick Search"
+                  className="size-8 rounded-full hover:bg-black/[0.08] dark:hover:bg-white/[0.08] flex items-center justify-center text-[#444746] dark:text-[#C4C7C5] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[#0D5C3A]"
+                >
+                  <Search className="size-[18px]" strokeWidth={1.75} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" sideOffset={6}>
+                Search (⌘K)
+              </TooltipContent>
+            </Tooltip>
+
+            {!isMobile && (
+              <Tooltip delayDuration={150}>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={toggleSidebar}
+                    aria-label="Close sidebar"
+                    className="size-9 rounded-full hover:bg-black/[0.08] dark:hover:bg-white/[0.08] flex items-center justify-center text-[#444746] dark:text-[#C4C7C5] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[#0D5C3A]"
+                  >
+                    <PanelLeftClose className="size-4" strokeWidth={1.75} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" sideOffset={8}>
+                  Close sidebar
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </div>
+        </SidebarHeader>
+      )}
+
+      {/* ─── Navigation (Zero Uppercase Section Clutter) ────────────────── */}
+      <SidebarContent className={cn("gap-0 overflow-x-hidden px-2.5 py-2", isMobile ? "bg-white dark:bg-[#1E1F20]" : "bg-[#F0F4F9] dark:bg-[#1E1F20]")}>
+        <nav aria-label="Primary" className="flex flex-col">
+          <SidebarMenu className={cn("gap-0.5", isMobile && "space-y-1")}>
+            {visible.map((item) => (
+              <NavItem
+                key={item.id}
+                item={{ ...item, label: isTeacherOnly && item.teacherLabel ? item.teacherLabel : item.label }}
+                active={isRouteActive(pathname, item.href)}
+                collapsed={collapsed}
+              />
+            ))}
+          </SidebarMenu>
+        </nav>
+      </SidebarContent>
+
+      {/* ─── Pinned Bottom Footer ────────────────────────────────────────── */}
+      <SidebarFooter className={cn("shrink-0 border-t border-black/[0.05] dark:border-white/[0.06] p-2 mt-auto", isMobile ? "bg-white dark:bg-[#1E1F20]" : "bg-[#F0F4F9] dark:bg-[#1E1F20]")}>
+        {collapsed ? (
+          <div className="flex flex-col items-center gap-1.5 py-1">
+            {/* School Settings Gear */}
+            <Tooltip delayDuration={150}>
+              <TooltipTrigger asChild>
+                <Link
+                  href="/admin/settings"
+                  aria-label="School Settings"
+                  aria-current={isSettingsActive ? "page" : undefined}
+                  className={cn(
+                    "relative size-10 rounded-full flex items-center justify-center transition-colors outline-none",
+                    "focus-visible:ring-2 focus-visible:ring-[#0D5C3A] dark:focus-visible:ring-[#34D399]",
+                    isSettingsActive
+                      ? "text-[#09472C] dark:text-[#FDE68A] font-semibold"
+                      : "text-[#444746] dark:text-[#C4C7C5] hover:bg-black/[0.08] dark:hover:bg-white/[0.08]"
+                  )}
+                >
+                  {isSettingsActive && (
+                    <motion.div
+                      layoutId="sidebar-active-pill-collapsed"
+                      className="absolute inset-0 rounded-full bg-gradient-to-r from-[#0D5C3A]/14 via-[#D97706]/10 to-[#EA580C]/12 ring-1 ring-[#0D5C3A]/20 dark:from-[#10B981]/20 dark:via-[#F59E0B]/15 dark:to-[#EA580C]/15 dark:ring-[#F59E0B]/25"
+                      transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                    />
+                  )}
+                  <Settings className="relative z-10 size-[18px]" strokeWidth={1.75} />
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={12}>
+                School Settings
+              </TooltipContent>
+            </Tooltip>
+
+            {/* User Account Circle */}
+            <Tooltip delayDuration={150}>
+              <TooltipTrigger asChild>
+                <Link
+                  href="/admin/account"
+                  aria-label={`${userName} — account`}
+                  className="size-10 rounded-full flex items-center justify-center transition-colors outline-none hover:bg-black/[0.08] dark:hover:bg-white/[0.08]"
+                >
+                  <span className="size-8 rounded-full flex items-center justify-center bg-gradient-to-br from-[#0D5C3A] to-[#0A4A2F] text-[11px] font-bold text-white shadow-xs">
+                    {initials}
+                  </span>
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={12}>
+                {userName} · {rawRoleDisplay}
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between px-2 py-1 gap-2">
+            {/* User Account Info on Left */}
+            <Link
+              href="/admin/account"
+              aria-current={isAccountActive ? "page" : undefined}
+              onClick={() => isMobile && setOpenMobile(false)}
               className={cn(
-                "w-full min-h-[44px] text-left flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-colors duration-200 bg-transparent border-0",
-                sidebarDark ? "hover:bg-[#1E293B]" : "hover:bg-[#F3EFE6]",
-                collapsed && "justify-center"
+                "flex-1 min-w-0 h-10 px-2 rounded-full flex items-center gap-2.5 outline-none hover:bg-black/[0.06] dark:hover:bg-white/[0.06] transition-colors",
+                isAccountActive && "bg-black/[0.04] dark:bg-white/[0.06]"
               )}
             >
-              <div className="relative shrink-0">
-                <div
-                  className="flex items-center justify-center size-9 rounded-xl text-white font-bold tracking-wider"
-                  style={{
-                    backgroundColor: sidebarDark ? "#059669" : accentColor,
-                    fontSize: "0.75rem",
-                  }}
-                >
-                  {userName
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")
-                    .slice(0, 2)
-                    .toUpperCase() || userName.slice(0, 2).toUpperCase()}
-                </div>
-                <div
+              <span className="size-8 shrink-0 rounded-full flex items-center justify-center bg-gradient-to-br from-[#0D5C3A] to-[#0A4A2F] text-[11px] font-bold text-white shadow-xs">
+                {initials}
+              </span>
+              <span className="min-w-0 leading-tight">
+                <span className="block truncate text-[13px] font-semibold text-[#1F1F1F] dark:text-[#E3E3E3]">
+                  {userName}
+                </span>
+                <span className="block truncate text-[11px] font-medium text-[#747775] dark:text-[#8E918F]">
+                  {rawRoleDisplay}
+                </span>
+              </span>
+            </Link>
+
+            {/* School Settings Gear on Far-Right of the Exact Same Horizontal Row */}
+            <Tooltip delayDuration={150}>
+              <TooltipTrigger asChild>
+                <Link
+                  href="/admin/settings"
+                  aria-label="School Settings"
+                  aria-current={isSettingsActive ? "page" : undefined}
+                  onClick={() => isMobile && setOpenMobile(false)}
                   className={cn(
-                    "absolute -bottom-0.5 -right-0.5 size-3 rounded-full bg-emerald-500 border-2",
-                    sidebarDark ? "border-[#0B1120]" : "border-[#FAF7F2]"
+                    "size-9 shrink-0 rounded-full flex items-center justify-center transition-colors outline-none",
+                    "focus-visible:ring-2 focus-visible:ring-[#0D5C3A] dark:focus-visible:ring-[#34D399]",
+                    isSettingsActive
+                      ? "bg-gradient-to-r from-[#0D5C3A]/14 via-[#D97706]/10 to-[#EA580C]/12 text-[#09472C] dark:from-[#10B981]/20 dark:via-[#F59E0B]/15 dark:to-[#EA580C]/15 dark:text-[#FDE68A] font-semibold ring-1 ring-[#0D5C3A]/20 dark:ring-[#F59E0B]/25 shadow-xs"
+                      : "text-[#444746] dark:text-[#C4C7C5] hover:bg-black/[0.08] dark:hover:bg-white/[0.08]"
                   )}
-                />
-              </div>
-              <AnimatePresence>
-                {!collapsed && (
-                  <motion.div
-                    initial={{ opacity: 0, width: 0 }}
-                    animate={{ opacity: 1, width: "auto" }}
-                    exit={{ opacity: 0, width: 0 }}
-                    transition={{ duration: 0.15 }}
-                    className="flex-1 min-w-0 text-left overflow-hidden whitespace-nowrap"
-                  >
-                    <p
-                      className={cn(
-                        "font-bold truncate",
-                        sidebarDark ? "text-white" : "text-[#1C1917]"
-                      )}
-                      style={{ fontSize: "0.82rem", lineHeight: 1.3 }}
-                    >
-                      {userName}
-                    </p>
-                    <p
-                      className="font-semibold truncate"
-                      style={{
-                        fontSize: "0.7rem",
-                        lineHeight: 1.3,
-                        color: sidebarDark ? "#34D399" : accentColor,
-                      }}
-                    >
-                      {rawRoleDisplay || canonicalRole}
-                    </p>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            side="top"
-            align="center"
-            sideOffset={12}
-            className="w-56 bg-[#FAF7F2] border-[#E7E2D7] text-[#1C1917] z-[100] shadow-xl"
-          >
-            <DropdownMenuLabel className="font-normal p-3">
-              <div className="flex flex-col space-y-1">
-                <p className="text-sm font-bold text-[#1C1917]">{userName}</p>
-                <p className="text-xs text-[#78716C]">{rawRoleDisplay || canonicalRole}</p>
-              </div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator className="bg-[#E7E2D7]" />
-            <DropdownMenuItem asChild>
-              <Link href="/admin/notifications" className="min-h-[40px] cursor-pointer focus:bg-stone-200/70 py-2">
-                <User className="mr-2 h-4 w-4 text-stone-500" />
-                <span>My Profile &amp; Alerts</span>
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={async () => {
-                const supabase = createClient();
-                await supabase.auth.updateUser({ data: { tour_completed: false } });
-                window.location.reload();
-              }}
-              className="min-h-[40px] cursor-pointer focus:bg-stone-200/70 py-2"
-            >
-              <BookOpen className="mr-2 h-4 w-4 text-stone-500" />
-              <span>Replay Product Tour</span>
-            </DropdownMenuItem>
-            {!isTeacherOnly && (
-              <DropdownMenuItem asChild>
-                <Link href="/admin/settings" className="min-h-[40px] cursor-pointer focus:bg-stone-200/70 py-2">
-                  <Settings className="mr-2 h-4 w-4 text-stone-500" />
-                  <span>Settings</span>
+                >
+                  <Settings className="size-5" strokeWidth={1.75} />
                 </Link>
-              </DropdownMenuItem>
-            )}
-            <DropdownMenuSeparator className="bg-[#E7E2D7]" />
-            <DropdownMenuItem
-              onClick={handleLogout}
-              className="min-h-[40px] text-rose-700 focus:text-rose-800 focus:bg-rose-50 cursor-pointer py-2"
-            >
-              <LogOut className="mr-2 h-4 w-4" />
-              <span>Log out</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              </TooltipTrigger>
+              <TooltipContent side="top" sideOffset={6}>
+                School Settings
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        )}
       </SidebarFooter>
     </Sidebar>
   );

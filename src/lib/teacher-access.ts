@@ -74,20 +74,29 @@ export function resolveRoleDepartment(
   if (
     rl === 'theology instructor' ||
     rl === 'class teacher theology' ||
+    rl === 'subject teacher theology' ||
     rl === 'teacher theology' ||
     rl === 'theology teacher' ||
-    s === 'theology'
+    (s.includes('theology') && !s.includes('secular'))
   ) {
     return hasCircularAssigned ? 'both' : 'theology';
   }
 
   if (
     rl === 'class teacher secular' ||
+    rl === 'subject teacher secular' ||
     rl === 'teacher secular' ||
     rl === 'secular teacher' ||
-    s === 'secular'
+    (s.includes('secular') && !s.includes('theology'))
   ) {
     return hasTheologyAssigned ? 'both' : 'secular';
+  }
+
+  if (hasCircularAssigned && !hasTheologyAssigned && rl !== 'class teacher') {
+    return 'secular';
+  }
+  if (hasTheologyAssigned && !hasCircularAssigned && rl !== 'class teacher') {
+    return 'theology';
   }
 
   return 'both';
@@ -96,6 +105,9 @@ export function resolveRoleDepartment(
 export interface ClassAssignment {
   classId: string;
   classType: ClassType;
+  subjectId?: string | null;
+  subjectName?: string | null;
+  isHomeroom?: boolean;
 }
 
 export interface TeacherProfile {
@@ -114,6 +126,8 @@ export interface AuthAccessResult {
   filterByDepartment?: Department;
   filterByClasses?: string[];
   classAssignments?: ClassAssignment[];
+  homeroomClassIds?: string[];
+  subject?: string | null;
   role?: string;
   canonicalRole?: CanonicalAccountRole;
   teacherId?: string;
@@ -161,6 +175,10 @@ const RECOGNIZED_TEACHER_ROLES = new Set([
   'class teacher',
   'class teacher secular',
   'class teacher theology',
+  'subject teacher',
+  'subject teacher secular',
+  'subject teacher theology',
+  'muraqib',
   'teacher secular',
   'teacher theology',
   'secular teacher',
@@ -233,10 +251,8 @@ export function authorizeTeacherProfile(
     department = 'theology';
   } else if (rl === 'dos secular' || (rl === 'dos' && subject === 'secular')) {
     department = 'secular';
-  } else if (rl === 'dos' && ['both', 'all'].includes(subject)) {
-    department = 'both';
   } else if (rl === 'dos') {
-    department = 'secular';
+    department = 'both';
   }
 
   if (department) {
@@ -292,6 +308,8 @@ export function authorizeTeacherProfile(
       filterByDepartment: teacherDepartment,
       filterByClasses: [...new Set(allowedAssignments.map((assignment) => assignment.classId))],
       classAssignments: allowedAssignments,
+      homeroomClassIds: allowedAssignments.filter((a) => a.isHomeroom).map((a) => a.classId),
+      subject: profile.subject ?? null,
       teacherId,
       specialPermissions,
     };

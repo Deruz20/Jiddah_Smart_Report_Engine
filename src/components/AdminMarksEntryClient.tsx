@@ -2,31 +2,45 @@
 'use client'
 
 import React, { useState, useEffect, useTransition, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { SharedMarksEntry, ExamType } from './shared-marks-entry'
 import { TermData, EnrollmentData, CircularMarkRow, TheologyMarkRow } from '@/types/models'
+import {
+  broadcastMarksUpdated,
+  offlineFetchJson,
+  submitMutationWithOfflineFallback,
+} from '@/lib/offline-sync'
+import { invalidateClientCache } from '@/lib/client-cache'
 
 interface AdminMarksEntryClientProps {
   terms: TermData[]
   initialEnrollments?: EnrollmentData[]
   allowedDepartment?: 'secular' | 'theology' | 'both'
+  isUnassigned?: boolean
+  assignedSubjects?: string[]
+  roleLabel?: string
 }
 
 export function AdminMarksEntryClient({
   terms,
   initialEnrollments,
   allowedDepartment = 'both',
+  isUnassigned = false,
+  assignedSubjects = [],
+  roleLabel = 'Teacher',
 }: AdminMarksEntryClientProps) {
+  const router = useRouter()
   const hasInitial = Array.isArray(initialEnrollments) && initialEnrollments.length > 0
   const [enrollments, setEnrollments] = useState<EnrollmentData[]>(initialEnrollments || [])
   const [selectedTermId, setSelectedTermId] = useState(() => {
-    const active = terms.find((t) => t.is_current) || terms[0]
+    const active = terms.find((t) => t.is_current || (t as any).is_active) || terms[0]
     return active?.id || ''
   })
   const [selectedEnrollmentId, setSelectedEnrollmentId] = useState(() => {
     return hasInitial ? initialEnrollments[0].id : ''
   })
-  const [examType, setExamType] = useState<ExamType>('bot')
+  const [examType, setExamType] = useState<ExamType>('mot')
   const [circularMarks, setCircularMarks] = useState<CircularMarkRow[]>([])
   const [theologyMarks, setTheologyMarks] = useState<TheologyMarkRow[]>([])
   const [isFetching, setIsFetching] = useState(!hasInitial)
@@ -42,7 +56,7 @@ export function AdminMarksEntryClient({
 
   useEffect(() => {
     if (!selectedTermId && terms.length > 0) {
-      const active = terms.find((t) => t.is_current) || terms[0]
+      const active = terms.find((t) => t.is_current || (t as any).is_active) || terms[0]
       if (active?.id) setSelectedTermId(active.id)
     }
   }, [terms, selectedTermId])
@@ -53,42 +67,50 @@ export function AdminMarksEntryClient({
       return
     }
 
+    let cancelled = false
+    const mapEnrollments = (data: any[]): EnrollmentData[] =>
+      (Array.isArray(data) ? data : []).map((e: any) => ({
+        id: e.enrollment_id || e.id,
+        student_id: e.id ?? null,
+        name: e.name || 'Unknown Student',
+        arabic_name: e.arabic_name || null,
+        admission_number: e.admission_number || '',
+        circular_class: e.circular_class || '',
+        section: e.section || null,
+        theology_class_arabic: e.theology_class_arabic || null,
+        theology_class_level: e.theology_class_english || null,
+        theology_status: e.theology_class_arabic ? 'active' : 'inactive',
+      }))
+
     const loadEnrollments = async () => {
       setIsFetching(true)
       setError(null)
       try {
-        const response = await fetch('/api/enrollments')
-        const contentType = response.headers.get('content-type') || ''
-        if (!contentType.includes('application/json')) {
-          throw new Error('Unable to load assigned enrollments')
-        }
-        const data = await response.json()
-        if (!response.ok) throw new Error(data.error || 'Unable to load assigned enrollments')
-
-        const mappedEnrollments: EnrollmentData[] = (Array.isArray(data) ? data : []).map((e: any) => ({
-          id: e.enrollment_id || e.id,
-          student_id: e.id ?? null,
-          name: e.name || 'Unknown Student',
-          arabic_name: e.arabic_name || null,
-          admission_number: e.admission_number || '',
-          circular_class: e.circular_class || '',
-          section: e.section || null,
-          theology_class_arabic: e.theology_class_arabic || null,
-          theology_class_level: e.theology_class_english || null,
-          theology_status: e.theology_class_arabic ? 'active' : 'inactive',
-        }))
+        const { data } = await offlineFetchJson<any[]>('/api/enrollments', {
+          cacheKey: 'marks_enrollments_v1',
+          onBackgroundRefresh: (fresh) => {
+            if (cancelled || !Array.isArray(fresh)) return
+            const mapped = mapEnrollments(fresh)
+            setEnrollments(mapped)
+          },
+        })
+        if (cancelled) return
+        const mappedEnrollments = mapEnrollments(data)
         setEnrollments(mappedEnrollments)
         if (mappedEnrollments.length > 0) {
           setSelectedEnrollmentId((prev) => prev || mappedEnrollments[0].id)
         }
       } catch (err: any) {
-        setError(err.message || 'Failed to load enrollments')
+        if (!cancelled) setError(err.message || 'Failed to load enrollments')
       } finally {
-        setIsFetching(false)
+        if (!cancelled) setIsFetching(false)
       }
     }
 
     loadEnrollments()
+    return () => {
+      cancelled = true
+    }
   }, [hasInitial])
 
   useEffect(() => {
@@ -116,16 +138,26 @@ export function AdminMarksEntryClient({
           enrollment_id: selectedEnrollmentId,
           term_id: selectedTermId,
         })
-        const response = await fetch(`/api/marks?${params}`)
-        const contentType = response.headers.get('content-type') || ''
-        if (!contentType.includes('application/json')) {
-          throw new Error('Unable to load marks for this student')
-        }
-        const data = await response.json()
-        if (!response.ok) throw new Error(data.error || 'Unable to load marks for this class')
+        const { data } = await offlineFetchJson<{
+          circular_marks?: CircularMarkRow[]
+          theology_marks?: TheologyMarkRow[]
+        }>(`/api/marks?${params}`, {
+          cacheKey: `marks_sheet_${cacheKey}`,
+          onBackgroundRefresh: (fresh: any) => {
+            if (cancelled || !fresh) return
+            const nextC = fresh.circular_marks ?? []
+            const nextT = fresh.theology_marks ?? []
+            setCircularMarks(nextC)
+            setTheologyMarks(nextT)
+            marksCacheRef.current.set(cacheKey, {
+              circular_marks: nextC,
+              theology_marks: nextT,
+            })
+          },
+        })
         if (cancelled) return
-        const nextCircular = data.circular_marks ?? []
-        const nextTheology = data.theology_marks ?? []
+        const nextCircular = data?.circular_marks ?? []
+        const nextTheology = data?.theology_marks ?? []
         setCircularMarks(nextCircular)
         setTheologyMarks(nextTheology)
         marksCacheRef.current.set(cacheKey, {
@@ -171,19 +203,23 @@ export function AdminMarksEntryClient({
         ...(examType === 'mot' || examType === 'all' ? { mot_score: mark.mot_score } : {}),
         ...(examType === 'eot' || examType === 'all' ? { eot_score: mark.eot_score } : {}),
       }))
-      const response = await fetch('/api/marks', {
+
+      const res = await submitMutationWithOfflineFallback({
+        url: '/api/marks',
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        label: `Save ${examType.toUpperCase()} marks`,
+        body: {
           enrollment_id: selectedEnrollmentId,
           term_id: selectedTermId,
           score_type: examType,
           circular_marks: circularPayload,
           theology_marks: theologyPayload,
-        }),
+        },
       })
-      const result = await response.json()
-      if (!response.ok) throw new Error(result.error || 'Unable to save marks')
+
+      if (res.error) {
+        throw new Error(res.error)
+      }
 
       const cacheKey = `${selectedEnrollmentId}:${selectedTermId}`
       marksCacheRef.current.set(cacheKey, {
@@ -191,8 +227,21 @@ export function AdminMarksEntryClient({
         theology_marks: theologyMarks,
       })
 
+      invalidateClientCache()
+      broadcastMarksUpdated({
+        enrollment_id: selectedEnrollmentId,
+        term_id: selectedTermId,
+        score_type: examType,
+        queued: res.queued,
+      })
+
       setSuccess(true)
-      toast.success('Marks saved successfully!')
+      if (res.queued) {
+        toast.info('Saved locally (Offline Mode). Will auto-sync when connection is restored.')
+      } else {
+        toast.success('Marks saved successfully!')
+        router.refresh()
+      }
       setTimeout(() => setSuccess(false), 3500)
     } catch (err: any) {
       const msg = err?.message || 'Failed to save marks'
@@ -226,6 +275,9 @@ export function AdminMarksEntryClient({
       setSuccess={setSuccess}
       onSave={handleSaveMarks}
       allowedDepartment={allowedDepartment}
+      isUnassigned={isUnassigned}
+      assignedSubjects={assignedSubjects}
+      roleLabel={roleLabel}
     />
   )
 }

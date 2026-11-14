@@ -5,12 +5,18 @@
   "scripts": {
     "dev": "node scripts/dev-preflight.mjs && next dev",
     "dev:local": "node scripts/dev-local.mjs",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "echo 'Skipping lint for Vercel deployment'",
     "typecheck": "tsc --noEmit",
-    "test": "node --import ./src/lib/test-guard.mjs --experimental-strip-types --test --test-concurrency=1 src/__tests__/*.test.mjs",
-    "verify:local": "node scripts/verify-local.mjs"
+    "test": "node --import ./src/lib/test-guard.mjs --test --test-concurrency=1 src/__tests__/*.test.mjs",
+    "verify:local": "node scripts/verify-local.mjs",
+    "supabase": "supabase",
+    "db:types": "supabase gen types typescript --linked > src/types/supabase.ts",
+    "db:push": "supabase db push",
+    "db:pull": "supabase db pull",
+    "deploy:preview": "vercel --yes",
+    "deploy:prod": "vercel --prod --yes"
   },
   "dependencies": {
     "@google/genai": "^2.17.1",
@@ -43,10 +49,11 @@
     "@radix-ui/react-toggle": "^1.1.14",
     "@radix-ui/react-toggle-group": "^1.1.15",
     "@radix-ui/react-tooltip": "^1.2.12",
-    "@serwist/next": "^9.4.1",
+    "@serwist/next": "^9.5.13",
     "@serwist/sw": "^9.5.12",
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.105.1",
+    "@tanstack/react-table": "^9.3.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
@@ -80,9 +87,10 @@
     "@types/string-similarity": "^4.0.2",
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "^9",
-    "eslint-config-next": "16.2.4",
+    "eslint-config-next": "^15.5.29",
     "playwright": "^1.64.1",
     "puppeteer": "^25.3.0",
+    "supabase": "^3.1.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

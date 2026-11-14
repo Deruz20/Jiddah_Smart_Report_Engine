@@ -202,7 +202,6 @@ describe('5. Promotion Logic', () => {
     assert.equal(getClassTeacherComment('II', [84, 80], customBands), 'Outstanding performance. Keep it up!');
     assert.equal(getHeadTeacherComment('II', [40, 30], customBands), 'Developing performance. Work closely with your teachers to make progress.');
   });
-
   it('MOT class and head teacher comments use exact configured grade-band remarks from the pupil marks', () => {
     for (const band of DEFAULT_GRADING_BANDS) {
       const score = (band.min + band.max) / 2;

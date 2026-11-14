@@ -67,6 +67,9 @@ test('Item E: Teacher Deactivation, Session Revocation, Guards & Audit Suite', a
       class_id: 'c1000000-0000-0000-0000-000000000001',
       class_type: 'circular'
     });
+    await supabaseAdmin.from('circular_classes')
+      .update({ class_teacher_id: DISPOSABLE_TEACHER_ID })
+      .eq('id', 'c1000000-0000-0000-0000-000000000001');
 
     // 5. Create historical mark by disposable teacher to verify preservation after deactivation
     const { error: markUpsertErr } = await supabaseAdmin.from('theology_marks').upsert({
@@ -252,7 +255,7 @@ test('Item E: Teacher Deactivation, Session Revocation, Guards & Audit Suite', a
       {
         name: 'sb-127-auth-token',
         value: ssrCookieValue,
-        domain: 'localhost',
+        domain: new URL(BASE_URL).hostname,
         path: '/'
       }
     ]);
@@ -433,9 +436,8 @@ test('Item E: Teacher Deactivation, Session Revocation, Guards & Audit Suite', a
       .select();
 
     console.log('  [SEC-10 QUANTIFICATION - CIRCULAR_MARKS] Updated rows:', data?.length ?? 0, 'Error:', error?.message);
-    // Verifies PostgREST write behavior under current circular_marks policy
-    assert.equal(error, null, 'PostgREST allows update due to lack of status check in circular_marks policy');
-    assert.equal(data?.length, 1, 'Exactly 1 row updated in circular_marks despite inactive status');
+    // Verifies PostgREST write behavior under secure circular_marks policy with status check
+    assert.ok((data?.length ?? 0) === 0 || error !== null, 'RLS must reject update on circular_marks from deactivated user');
   });
 
   // E-A.4: Historical marks remain intact
@@ -489,7 +491,8 @@ test('Item E: Teacher Deactivation, Session Revocation, Guards & Audit Suite', a
     await supabaseAdmin.auth.admin.deleteUser(DISPOSABLE_TEACHER_ID).catch(() => {});
     await supabaseAdmin.from('circular_marks').delete().eq('id', HISTORICAL_CIRCULAR_MARK_ID);
     await supabaseAdmin.from('circular_subjects').delete().eq('id', CIRCULAR_SUBJECT_ID);
-    // Reset mark author to teacher@test.local
+    // Reset mark author to teacher@test.local and restore class_teacher_id
+    await supabaseAdmin.from('circular_classes').update({ class_teacher_id: 'c599cb13-fb3d-4e5d-8e27-253cb7e5ac1a' }).eq('id', 'c1000000-0000-0000-0000-000000000001');
     await supabaseAdmin.from('theology_marks').update({ updated_by: 'c599cb13-fb3d-4e5d-8e27-253cb7e5ac1a', mot_score: 89, eot_score: 91 }).eq('id', HISTORICAL_MARK_ID);
     console.log('  [TEARDOWN] Disposable teacher fixtures completely cleaned up.');
   });

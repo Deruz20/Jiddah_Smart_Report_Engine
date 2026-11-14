@@ -1,20 +1,25 @@
 import { getClassTeacherComment, getHeadTeacherComment, getConductRemark, getTheologyComment } from '@/lib/grading'
 import { ReportContainer } from '@/components/reports/shared/ReportContainer'
+import { CleanSignatureImg } from '@/components/reports/shared/CleanSignatureImg'
+import { OfficialReportStamp } from '@/components/reports/StampGenerator'
 import { resolveReportBranding, resolveReportGradingBands } from '@/lib/school-settings-helper'
 
 import { getClassTeacherSignatureKey } from '@/utils/signatures'
-import { ReportSchoolLogo } from '@/components/reports/ReportSchoolLogo'
 
 export default function P7EOTReport({ reportData }: any) {
   const branding = resolveReportBranding(reportData)
   const gradingBands = resolveReportGradingBands(reportData)
+  const printPrefs = reportData?.settings?.print_preferences
+  const includeSignatures = printPrefs?.includeSignatures !== undefined ? Boolean(printPrefs.includeSignatures) : true
+  const includeStamp = Boolean(printPrefs?.includeStamp)
+
   const teacherComment =
     reportData?.circular?.class_teacher_comment ??
-    getClassTeacherComment(reportData?.circular?.division ?? null)
+    getClassTeacherComment(reportData?.circular?.division ?? null, undefined, gradingBands)
 
   const headComment =
     reportData?.circular?.head_teacher_comment ??
-    getHeadTeacherComment(reportData?.circular?.division ?? null)
+    getHeadTeacherComment(reportData?.circular?.division ?? null, undefined, gradingBands)
 
   const conductRemark =
     reportData?.circular?.conduct_remark ??
@@ -106,7 +111,7 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
   content: "";
   position: absolute;
   inset: 0;
-  background: url('/school_budge.jpeg') center center no-repeat;
+  background: url('/logo-512h.png') center center no-repeat;
   background-size: 450px;
   opacity: 0.03;
   pointer-events: none;
@@ -162,10 +167,10 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
   width: 75px;
   height: 75px;
   margin: 0 auto;
-  background: white;
-  border-radius: 12px;
-  padding: 4px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .p7-eot-report .logo img {
@@ -476,33 +481,15 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
 }
 
 .p7-eot-report .stamp-box {
-  width: 150px;
-  height: 100px;
-  border-radius: 16px;
-  border: 2px dashed #94a3b8;
-  background: white;
+  width: 148px;
+  height: 98px;
+  border: none;
+  background: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
-  text-align: center;
-  font-size: 12px;
-  font-weight: 800;
-  color: #94a3b8;
   flex-shrink: 0;
   align-self: flex-end;
-}
-.p7-eot-report .stamp-box.has-image {
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-}
-.p7-eot-report .stamp-box img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  mix-blend-mode: multiply;
-  filter: contrast(1.3) saturate(1.25);
-  transform: rotate(-1.5deg) scale(1.04);
 }
           `
         }}
@@ -521,7 +508,15 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
 
           <div className="header-center">
             <div className="logo">
-              <ReportSchoolLogo src={branding.logoUrl} alt="School Badge" />
+              <img
+                src={branding.logoUrl || '/school_logo.svg'}
+                alt="School Badge"
+                onError={(e) => {
+                  if (!e.currentTarget.src.endsWith('/school_logo.svg')) {
+                    e.currentTarget.src = '/school_logo.svg';
+                  }
+                }}
+              />
             </div>
           </div>
 
@@ -744,8 +739,8 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
                   <div className="c-field" style={{ width: '200px' }}>
                     <span>Signature:</span>
                     <div className="w-line" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end' }}>
-                      {reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.class_name) ?? ''] && (
-                        <img src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} alt="Signature" style={{ maxHeight: '38px', maxWidth: '100%', objectFit: 'contain', mixBlendMode: 'multiply', filter: 'contrast(1.18) saturate(1.08)', transform: 'rotate(-1deg)' }} />
+                      {includeSignatures && reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.class_name) ?? ''] && (
+                        <CleanSignatureImg src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} alt="Signature" style={{ maxHeight: '28px' }} />
                       )}
                     </div>
                   </div>
@@ -761,8 +756,8 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
                   <div className="c-field" style={{ width: '200px' }}>
                     <span>Signature:</span>
                     <div className="w-line" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end' }}>
-                      {reportData?.signatures?.['head-teacher'] && (
-                        <img src={reportData.signatures['head-teacher']} alt="Signature" style={{ maxHeight: '38px', maxWidth: '100%', objectFit: 'contain', mixBlendMode: 'multiply', filter: 'contrast(1.18) saturate(1.08)', transform: 'rotate(-1deg)' }} />
+                      {includeSignatures && reportData?.signatures?.['head-teacher'] && (
+                        <CleanSignatureImg src={reportData.signatures['head-teacher']} alt="Signature" style={{ maxHeight: '28px' }} />
                       )}
                     </div>
                   </div>
@@ -807,12 +802,14 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
               </div>
             </div>
 
-            <div className={`stamp-box${reportData?.signatures?.['school-stamp'] ? ' has-image' : ''}`}>
-              {reportData?.signatures?.['school-stamp'] ? (
-                <img src={reportData.signatures['school-stamp']} alt="Official school stamp" />
-              ) : (
-                'OFFICIAL STAMP'
-              )}
+            <div className="stamp-box" style={{ padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {includeStamp ? (
+                reportData?.signatures?.['school-stamp'] ? (
+                  <img src={reportData.signatures['school-stamp']} alt="Official school stamp" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                ) : (
+                  <OfficialReportStamp reportData={reportData} maxWidth={144} maxHeight={92} />
+                )
+              ) : null}
             </div>
           </footer>
         </div>

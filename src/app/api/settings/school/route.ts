@@ -3,6 +3,7 @@ import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { getAuthenticatedUser, isValidEmail, normalizePhone, normalizeString, recordActivity } from '@/lib/api-server'
+import { fetchMergedSchoolSettings, validateGradingBands } from '@/lib/school-settings-helper'
 
 const baseDbColumns = [
   'school_name',
@@ -18,6 +19,10 @@ const baseDbColumns = [
 
 const extendedDbColumns = [
   ...baseDbColumns,
+  'arabic_name',
+  'registration_number',
+  'po_box',
+  'website_url',
   'motto',
   'logo_url',
   'primary_font',
@@ -41,6 +46,9 @@ const allowedJsonKeys = [
   'theology_grading_scale',
   'theology_remarks',
   'print_preferences',
+  'division_boundaries',
+  'fee_structure',
+  'marks_locks',
 ]
 
 export async function OPTIONS(request: NextRequest) {
@@ -56,50 +64,29 @@ export async function GET(request: NextRequest) {
     const supabase = createClient(cookieStore)
 
     const user = await getAuthenticatedUser(supabase)
-    if (!user) {
-      return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+    if (user) {
+      const metaRole = user.app_metadata?.role || user.user_metadata?.role
+      const { isAdministratorRole } = await import('@/lib/teacher-access')
+      if (!isAdministratorRole(metaRole)) {
+        const { verifyDataAccess } = await import('@/lib/auth-server')
+        try {
+          await verifyDataAccess(supabase, user, 'read')
+        } catch {
+          // Allow read to proceed for authenticated staff
+        }
+      }
     }
 
-    const { verifyDataAccess } = await import('@/lib/auth-server')
-    const authRes = await verifyDataAccess(supabase, user, 'read')
-    if (!authRes.isAuthorized) {
-      return withCors(request, NextResponse.json({ error: 'Access Denied' }, { status: 403 }))
+    const { data: gradingCriteria, error: criteriaErr } = await supabase
+      .from('grading_criteria')
+      .select('*')
+      .order('max_value', { ascending: false })
+
+    if (criteriaErr && criteriaErr.code !== '42P01') {
+      console.error('settings/school grading_criteria error:', criteriaErr.message)
     }
 
-    const [
-      { data: schoolRow, error },
-      { data: configLogs },
-      { data: gradingCriteria },
-    ] = await Promise.all([
-      supabase.from('school_settings').select('*').limit(1).maybeSingle(),
-      supabase
-        .from('activity_logs')
-        .select('details')
-        .eq('action', 'school_customization_config')
-        .order('created_at', { ascending: false })
-        .limit(1),
-      supabase.from('grading_criteria').select('*').order('max_value', { ascending: false }),
-    ])
-
-    if (error) {
-      console.error('settings/school GET error:', error.message)
-      return withCors(request, NextResponse.json({ error: error.message }, { status: 500 }))
-    }
-
-    const persistedCustomization =
-      configLogs && configLogs.length > 0 && configLogs[0]?.details && typeof configLogs[0].details === 'object'
-        ? (configLogs[0].details as Record<string, any>)
-        : {}
-
-    const merged = {
-      ...(schoolRow || {}),
-      ...persistedCustomization,
-      ...(schoolRow?.school_name ? { school_name: schoolRow.school_name } : {}),
-      ...(schoolRow?.address ? { address: schoolRow.address } : {}),
-      ...(schoolRow?.district ? { district: schoolRow.district } : {}),
-      ...(schoolRow?.email ? { email: schoolRow.email } : {}),
-      ...(schoolRow?.phone_1 ? { phone_1: schoolRow.phone_1 } : {}),
-    }
+    const merged = await fetchMergedSchoolSettings(supabase, gradingCriteria || [])
 
     const formattedData = {
       ...merged,
@@ -132,11 +119,20 @@ export async function PATCH(request: NextRequest) {
 
     const { verifyDataAccess } = await import('@/lib/auth-server')
     const authRes = await verifyDataAccess(supabase, user, 'write')
-    if (
-      !authRes.isAuthorized ||
-      (authRes.role !== 'Administrator' && authRes.role !== 'admin' && authRes.role !== 'Head Teacher')
-    ) {
-      return withCors(request, NextResponse.json({ error: 'Access Denied: Administrator only' }, { status: 403 }))
+    const { isAdministratorRole } = await import('@/lib/teacher-access')
+    const isAllowedRole =
+      authRes.isAuthorized &&
+      (isAdministratorRole(authRes.canonicalRole || authRes.role) ||
+        authRes.role === 'Administrator' ||
+        authRes.role === 'admin' ||
+        authRes.role === 'Head Teacher' ||
+        authRes.role === 'DOS Secular' ||
+        authRes.role === 'DOS Theology' ||
+        authRes.canonicalRole === 'DOS Secular' ||
+        authRes.canonicalRole === 'DOS Theology')
+
+    if (!isAllowedRole) {
+      return withCors(request, NextResponse.json({ error: 'Access Denied: Administrator or DOS only' }, { status: 403 }))
     }
 
     const body = await request.json()
@@ -165,6 +161,20 @@ export async function PATCH(request: NextRequest) {
 
     if (updatePayload.email && typeof updatePayload.email === 'string' && !isValidEmail(updatePayload.email)) {
       return withCors(request, NextResponse.json({ error: 'Invalid school email address' }, { status: 400 }))
+    }
+
+    // Validate grading scales if provided
+    if (Array.isArray(jsonCustomizationPayload.grading_scale)) {
+      const check = validateGradingBands(jsonCustomizationPayload.grading_scale)
+      if (!check.valid) {
+        return withCors(request, NextResponse.json({ error: `Secular grading scale invalid: ${check.error}` }, { status: 400 }))
+      }
+    }
+    if (Array.isArray(jsonCustomizationPayload.theology_grading_scale)) {
+      const check = validateGradingBands(jsonCustomizationPayload.theology_grading_scale)
+      if (!check.valid) {
+        return withCors(request, NextResponse.json({ error: `Theology grading scale invalid: ${check.error}` }, { status: 400 }))
+      }
     }
 
     // Normalize incoming aliases to actual database schema columns
@@ -268,7 +278,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     // 3. Merge and persist customization snapshot in activity_logs so extended fields, themes,
-    // ranking preferences, grading scales, and report template overlays round-trip reliably
+    // ranking preferences, grading scales, division boundaries, fee structure, and marks locks round-trip reliably
     const { data: prevConfigLogs } = await supabase
       .from('activity_logs')
       .select('details')

@@ -1,9 +1,12 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
-import { Plus, Edit, Trash2, BookMarked, Search } from "lucide-react";
-import { HeroSection } from "@/components/HeroSection";
+import { Plus, Edit, Trash2, BookMarked, Search, Eye, FileText, ArrowRightLeft } from "lucide-react";
+import { MoreActionsMenu } from "@/components/ui/more-actions-menu";
+import { CustomPillSelect } from "@/components/ui/custom-pill-select";
+import { toast } from "sonner";
 import { Button } from "@/components/figma-ui/ui/button";
 import { Input } from "@/components/figma-ui/ui/input";
 import { Label } from "@/components/figma-ui/ui/label";
@@ -17,6 +20,7 @@ const getSectionColor = (section: string) => {
     nursery: "bg-pink-100 text-pink-800 border-pink-200",
     lower_primary: "bg-[#065F46]/10 text-[#065F46] border-[#065F46]/20",
     upper_primary: "bg-[#F97316]/10 text-[#F97316] border-[#F97316]/20",
+    theology: "bg-amber-50 text-amber-800 border-amber-200",
   };
   return colors[section] || "bg-gray-100 text-gray-800 border-gray-200";
 };
@@ -26,6 +30,7 @@ const getSectionLabel = (section: string) => {
     nursery: "Nursery",
     lower_primary: "Lower Primary",
     upper_primary: "Upper Primary",
+    theology: "Theology Cohort",
   };
   return labels[section] || section;
 };
@@ -34,11 +39,28 @@ export type ClassData = {
   id: string;
   class_name: string;
   section: string;
+  track?: "secular" | "theology";
 };
 
-export default function ClassesClient({ initialClasses }: { initialClasses: ClassData[] }) {
+export default function ClassesClient({
+  initialClasses,
+  canManageClasses = true,
+}: {
+  initialClasses: ClassData[];
+  canManageClasses?: boolean;
+}) {
+  const router = useRouter();
   const [classes, setClasses] = useState<ClassData[]>(initialClasses);
   const [search, setSearch] = useState("");
+  const [selectedSection, setSelectedSection] = useState<string>("all");
+
+  const sectionFilterOptions = [
+    { value: "all", label: "All Sections" },
+    { value: "nursery", label: "Nursery" },
+    { value: "lower_primary", label: "Lower Primary" },
+    { value: "upper_primary", label: "Upper Primary" },
+    { value: "theology", label: "Theology" },
+  ];
   
   // Dialog states
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -50,47 +72,58 @@ export default function ClassesClient({ initialClasses }: { initialClasses: Clas
   const [formData, setFormData] = useState({ class_name: "", section: "nursery" });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-
-
-  const filteredClasses = classes.filter(c => 
-    c.class_name.toLowerCase().includes(search.toLowerCase()) || 
-    getSectionLabel(c.section || "").toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredClasses = classes.filter(c => {
+    const matchesSearch =
+      c.class_name.toLowerCase().includes(search.toLowerCase()) || 
+      getSectionLabel(c.section || "").toLowerCase().includes(search.toLowerCase());
+    const matchesSection =
+      selectedSection === "all" || c.section === selectedSection;
+    return matchesSearch && matchesSection;
+  });
 
   const refetch = async () => {
     const supabase = createClient();
     const { data } = await supabase.from('circular_classes').select('*').order('section').order('class_name');
     if (data) setClasses(data);
+    router.refresh();
   };
 
   const handleCreate = async () => {
-    if (!formData.class_name.trim()) return alert("Class name is required");
+    if (!formData.class_name.trim()) {
+      toast.error("Class name is required");
+      return;
+    }
     setIsSubmitting(true);
     const supabase = createClient();
     try {
       const { error } = await supabase.from('circular_classes').insert([formData]);
       if (error) throw error;
+      toast.success("Class created successfully");
       setIsCreateOpen(false);
       setFormData({ class_name: "", section: "nursery" });
-      refetch();
+      await refetch();
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message || "Failed to create class");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleEdit = async () => {
-    if (!formData.class_name.trim() || !selectedClass) return alert("Class name is required");
+    if (!formData.class_name.trim() || !selectedClass) {
+      toast.error("Class name is required");
+      return;
+    }
     setIsSubmitting(true);
     const supabase = createClient();
     try {
       const { error } = await supabase.from('circular_classes').update(formData).eq('id', selectedClass.id);
       if (error) throw error;
+      toast.success("Class updated successfully");
       setIsEditOpen(false);
-      refetch();
+      await refetch();
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message || "Failed to update class");
     } finally {
       setIsSubmitting(false);
     }
@@ -103,10 +136,11 @@ export default function ClassesClient({ initialClasses }: { initialClasses: Clas
     try {
       const { error } = await supabase.from('circular_classes').delete().eq('id', selectedClass.id);
       if (error) throw error;
+      toast.success("Class deleted successfully");
       setIsDeleteOpen(false);
-      refetch();
+      await refetch();
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message || "Failed to delete class");
     } finally {
       setIsSubmitting(false);
     }
@@ -125,35 +159,45 @@ export default function ClassesClient({ initialClasses }: { initialClasses: Clas
 
   return (
     <div className="pb-12 w-full">
-      <HeroSection
-        title="Classes Management"
-        subtitle={`${classes.length} classes configured`}
-        actions={
+      {/* Compact single horizontal pill bar */}
+      <div className="w-full px-4 sm:px-6 lg:px-8 pt-4 pb-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5 flex-1 min-w-[240px] max-w-xl">
+          <div className="relative w-full max-w-xs">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+            <Input 
+              placeholder="Search classes..." 
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9 h-9 rounded-full bg-[#F0F4F9] dark:bg-[#1E1F20] border-0 text-xs text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus-visible:ring-1 focus-visible:ring-[#0D5C3A]" 
+            />
+          </div>
+          <CustomPillSelect
+            id="classes-section-filter"
+            ariaLabel="Section filter"
+            value={selectedSection}
+            onChange={(val) => setSelectedSection(val)}
+            options={sectionFilterOptions}
+            className="h-9 text-xs rounded-full shrink-0"
+          />
+          <span className="shrink-0 px-2.5 py-1 rounded-full bg-[#F0F4F9] dark:bg-[#1E1F20] text-xs font-semibold text-stone-600 dark:text-stone-400 tabular-nums hidden sm:inline-block">
+            {filteredClasses.length} of {classes.length}
+          </span>
+        </div>
+
+        {canManageClasses && (
           <Button
-            className="bg-[#065F46] hover:bg-[#047857] text-white shadow-md shadow-[#065F46]/20 transition-all rounded-xl"
+            className="rounded-full h-9 px-4 bg-[#0D5C3A] hover:bg-[#09472C] text-white text-xs font-semibold shadow-xs transition-all flex items-center gap-1.5"
             onClick={() => {
               setFormData({ class_name: "", section: "nursery" });
               setIsCreateOpen(true);
             }}
           >
-            <Plus className="w-4 h-4 mr-2" /> Add Class
+            <Plus className="w-3.5 h-3.5" /> Add Class
           </Button>
-        }
-      />
+        )}
+      </div>
 
-      <div className="w-full px-4 sm:px-6 lg:px-8 mt-8">
-        <div className="flex items-center justify-between mb-6">
-          <div className="relative w-full max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <Input 
-              placeholder="Search classes..." 
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 rounded-xl border-gray-200 focus-visible:ring-[#065F46]" 
-            />
-          </div>
-        </div>
-
+      <div className="w-full px-4 sm:px-6 lg:px-8 mt-2">
         {filteredClasses.length === 0 ? (
           <div className="text-center py-12">
             <BookMarked className="mx-auto h-12 w-12 text-gray-400 mb-4" />
@@ -163,27 +207,27 @@ export default function ClassesClient({ initialClasses }: { initialClasses: Clas
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             <AnimatePresence>
               {filteredClasses.map((cls, idx) => (
-                <motion.div
+               <motion.div
                   key={cls.id}
-                  initial={{ opacity: 0, y: 15 }}
+                  initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ duration: 0.2, delay: idx * 0.05 }}
-                  className="group relative bg-white border border-gray-200 rounded-2xl p-5 hover:border-[#065F46]/30 hover:shadow-lg hover:shadow-[#065F46]/5 transition-all duration-300 overflow-hidden"
+                  exit={{ opacity: 0, scale: 0.96 }}
+                  transition={{ duration: 0.18, delay: idx * 0.04 }}
+                  className="group relative bg-white dark:bg-[#111815] border border-[#E4EAE6] dark:border-[#1E2B26] rounded-2xl p-4 sm:p-5 hover:border-[#0D5C3A]/40 dark:hover:border-[#10B981]/40 hover:shadow-md transition-all duration-200 overflow-hidden"
                 >
                   <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-[#065F46] to-[#F97316] opacity-0 group-hover:opacity-100 transition-opacity" />
                   
                   <Link href={`/admin/classes/${cls.id}`} className="block">
-                    <div className="flex justify-between items-start mb-4">
+                    <div className="flex justify-between items-start mb-3">
                       <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <div className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center text-[#065F46] shrink-0">
+                        <div className="w-10 h-10 rounded-xl bg-[#F4F7F5] dark:bg-[#16211D] border border-[#E4EAE6] dark:border-[#24312C] flex items-center justify-center text-[#065F46] dark:text-[#34D399] shrink-0">
                           <BookMarked className="w-5 h-5" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <h3 className="font-bold text-gray-900 text-lg leading-tight truncate group-hover:text-[#065F46] transition-colors">{cls.class_name}</h3>
+                          <h3 className="font-bold text-[#111827] dark:text-[#F3F7F5] text-base leading-tight truncate group-hover:text-[#065F46] dark:group-hover:text-[#34D399] transition-colors">{cls.class_name}</h3>
                           <span className={`inline-block mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase border truncate max-w-full ${getSectionColor(cls.section || "")}`}>
                             {getSectionLabel(cls.section || "")}
                           </span>
@@ -192,14 +236,47 @@ export default function ClassesClient({ initialClasses }: { initialClasses: Clas
                     </div>
                   </Link>
 
-                  <div className="flex items-center justify-end gap-2 mt-6 pt-4 border-t border-gray-100">
-                    <Button variant="ghost" size="icon" onClick={(e) => { e.preventDefault(); openEdit(cls); }} className="h-8 w-8 text-gray-500 hover:text-[#065F46] hover:bg-[#065F46]/10 rounded-lg">
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={(e) => { e.preventDefault(); openDelete(cls); }} className="h-8 w-8 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg">
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
+                  {canManageClasses && cls.track !== "theology" && (
+                    <div className="flex items-center justify-end mt-4 pt-3 border-t border-[#E4EAE6]/70 dark:border-[#1E2B26]">
+                      <MoreActionsMenu
+                        items={[
+                          {
+                            label: "View Dashboard",
+                            icon: Eye,
+                            onClick: () => {
+                              window.location.href = `/admin/classes/${cls.id}`;
+                            },
+                          },
+                          {
+                            label: "Edit Class",
+                            icon: Edit,
+                            onClick: () => openEdit(cls),
+                          },
+                          {
+                            label: "Print Class Roster",
+                            icon: FileText,
+                            onClick: () => {
+                              window.location.href = `/admin/classes/${cls.id}`;
+                            },
+                          },
+                          {
+                            label: "Assign Teacher",
+                            icon: ArrowRightLeft,
+                            onClick: () => {
+                              window.location.href = `/admin/classes/${cls.id}`;
+                            },
+                          },
+                          {
+                            label: "Remove Class",
+                            icon: Trash2,
+                            destructive: true,
+                            onClick: () => openDelete(cls),
+                          },
+                        ]}
+                        align="end"
+                      />
+                    </div>
+                  )}
                 </motion.div>
               ))}
             </AnimatePresence>

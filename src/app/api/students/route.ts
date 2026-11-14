@@ -1,6 +1,5 @@
 import { reshapeEnrollmentRow } from '@/lib/enrollment-shape'
-import { createClient } from '@/utils/supabase/server'
-import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+import { createAdminClient, createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
@@ -110,11 +109,7 @@ export async function POST(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
     }
 
-    const supabaseAdmin = createSupabaseClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { persistSession: false, autoRefreshToken: false } }
-    );
+    const supabaseAdmin = createAdminClient(cookieStore);
 
     if (!canAssignEnrollmentClasses(
       authRes,

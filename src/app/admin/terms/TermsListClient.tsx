@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 import { Edit2, Save, X } from 'lucide-react'
 
 type TermData = {
@@ -46,9 +47,10 @@ export function TermsListClient({ initialTerms }: { initialTerms: TermData[] }) 
         is_current: t.id === termId
       })))
       
+      toast.success('Active academic term updated.')
       router.refresh()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Error setting active term')
+      toast.error(err instanceof Error ? err.message : 'Error setting active term')
     } finally {
       setIsUpdating(false)
     }
@@ -89,9 +91,10 @@ export function TermsListClient({ initialTerms }: { initialTerms: TermData[] }) 
       } : t))
       
       setEditingId(null)
+      toast.success('Term dates saved successfully.')
       router.refresh()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Error saving term dates')
+      toast.error(err instanceof Error ? err.message : 'Error saving term dates')
     } finally {
       setIsUpdating(false)
     }

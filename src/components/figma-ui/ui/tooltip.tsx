@@ -6,13 +6,15 @@ import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import { cn } from "./utils";
 
 function TooltipProvider({
-  delayDuration = 0,
+  delayDuration = 60,
+  skipDelayDuration = 0,
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Provider>) {
   return (
     <TooltipPrimitive.Provider
       data-slot="tooltip-provider"
       delayDuration={delayDuration}
+      skipDelayDuration={skipDelayDuration}
       disableHoverableContent={true}
       {...props}
     />
@@ -37,7 +39,7 @@ function TooltipTrigger({
 
 function TooltipContent({
   className,
-  sideOffset = 0,
+  sideOffset = 6,
   children,
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Content>) {
@@ -47,16 +49,16 @@ function TooltipContent({
         data-slot="tooltip-content"
         sideOffset={sideOffset}
         className={cn(
-          "bg-primary text-primary-foreground animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 w-fit origin-(--radix-tooltip-content-transform-origin) rounded-md px-3 py-1.5 text-xs text-balance",
+          "bg-neutral-900 text-white dark:bg-[#1E1F20] dark:text-[#E3E3E3] z-50 w-fit rounded-full px-3 py-1.5 text-xs font-medium tracking-tight shadow-md border border-white/10 dark:border-white/10 pointer-events-none select-none",
           className,
         )}
         {...props}
       >
         {children}
-        <TooltipPrimitive.Arrow className="bg-primary fill-primary z-50 size-2.5 translate-y-[calc(-50%_-_2px)] rotate-45 rounded-[2px]" />
       </TooltipPrimitive.Content>
     </TooltipPrimitive.Portal>
   );
 }
 
 export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider };
+

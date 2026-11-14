@@ -2,10 +2,12 @@
 
 import React, { useState, useEffect, useMemo, memo } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
-import { Loader2, ScrollText, BookOpen, Award, Download, Printer, FileSpreadsheet } from 'lucide-react'
+import { Loader2, ScrollText, BookOpen, Award, Download, Printer, FileSpreadsheet, ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { TheologyHubEmptyState } from './TheologyHubEmptyState'
 import { TopToolbar } from '../figma-ui/TopToolbar'
+import { OfficialPrintLetterhead, OfficialPrintSignaturesFooter } from '@/components/print/OfficialPrintLetterhead'
+import { CustomPillSelect } from '@/components/ui/custom-pill-select'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { generateAssessmentCSV, generateAnalysisCSV, generateTopStudentsCSV } from '@/utils/csvExport'
 import { computeStandardRankings } from '@/lib/ranking'
@@ -72,6 +74,35 @@ export default function TheologyHubClient({
     marks: any[]
     subjects: any[]
   } | null>(null)
+
+  const termOptions = useMemo(
+    () =>
+      terms.map((t) => ({
+        value: t.id,
+        label: `${t.label} (${t.academic_year})`,
+      })),
+    [terms]
+  )
+
+  const classOptions = useMemo(
+    () => [
+      { value: '', label: '-- اختر الصف / Select Class --' },
+      ...theologyClasses.map((t) => ({
+        value: t.id,
+        label: `${t.class_name_arabic} — ${t.class_name_english}`,
+      })),
+    ],
+    [theologyClasses]
+  )
+
+  const levelOptions = useMemo(
+    () => [
+      { value: 'raudha', label: 'الروضة (Nursery)' },
+      { value: 'ibtidaai_lower', label: 'الابتدائية السفلى (Lower Primary)' },
+      { value: 'ibtidaai_upper', label: 'الابتدائية العليا (Upper Primary)' },
+    ],
+    []
+  )
 
   useEffect(() => {
     if (!activeTermId) return
@@ -378,8 +409,8 @@ export default function TheologyHubClient({
           searchOpen={filtersOpen}
           onSearchToggle={() => setFiltersOpen(!filtersOpen)}
           title={
-            <div className="flex items-center gap-2 text-stone-900">
-              <div className="p-1.5 bg-[#059669]/10 rounded-lg text-[#059669]">
+            <div className="flex items-center gap-2 text-stone-900 dark:text-white">
+              <div className="p-1.5 bg-[#D97706]/15 dark:bg-[#F59E0B]/20 rounded-lg text-[#D97706] dark:text-[#F59E0B]">
                 <ScrollText size={16} />
               </div>
               <h1 className="text-sm sm:text-[15px] font-bold tracking-tight">Theology Hub</h1>
@@ -395,54 +426,49 @@ export default function TheologyHubClient({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden bg-white border-b border-stone-200 shadow-xs print:hidden shrink-0"
+            className="overflow-hidden bg-white dark:bg-[#1E1F20] border-b border-black/[0.08] dark:border-white/[0.08] shadow-xs print:hidden shrink-0"
           >
             <div className="px-3 sm:px-5 py-3 max-w-7xl mx-auto">
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 items-end">
                 {/* Term Selector */}
                 <div>
-                  <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1">Term / Year</label>
-                  <select
-                    className="w-full min-h-[42px] px-2.5 py-1.5 border border-stone-200 rounded-xl bg-[#F8FAFC] text-stone-900 text-xs font-semibold outline-none focus:border-[#059669]"
+                  <label className="block text-[10px] font-bold text-stone-500 dark:text-[#A8ABA9] uppercase tracking-wider mb-1">Term / Year</label>
+                  <CustomPillSelect
+                    id="theology-hub-term-select"
+                    ariaLabel="Term / Year"
                     value={activeTermId}
-                    onChange={(e) => setActiveTermId(e.target.value)}
-                  >
-                    {terms.map(t => (
-                      <option key={t.id} value={t.id}>{t.label} ({t.academic_year})</option>
-                    ))}
-                  </select>
+                    onChange={(val) => setActiveTermId(val)}
+                    options={termOptions}
+                    className="w-full h-10 rounded-xl"
+                  />
                 </div>
 
                 {/* Context Selector (Class / Level) */}
                 <div>
                   {activeTab === 'assessment' ? (
                     <>
-                      <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1 text-right" dir="rtl">الصف (Class)</label>
-                      <select
-                        className="w-full min-h-[42px] px-2.5 py-1.5 border border-stone-200 rounded-xl bg-[#F8FAFC] text-stone-900 text-xs font-semibold outline-none focus:border-[#059669] text-right font-arabic"
-                        dir="rtl"
+                      <label className="block text-[10px] font-bold text-stone-500 dark:text-[#A8ABA9] uppercase tracking-wider mb-1">الصف / Class</label>
+                      <CustomPillSelect
+                        id="theology-hub-class-select"
+                        ariaLabel="الصف / Class"
                         value={activeClassId}
-                        onChange={(e) => setActiveClassId(e.target.value)}
-                      >
-                        <option value="">-- اختر الصف --</option>
-                        {theologyClasses.map(t => (
-                          <option key={t.id} value={t.id}>{t.class_name_arabic} ({t.class_name_english})</option>
-                        ))}
-                      </select>
+                        onChange={(val) => setActiveClassId(val)}
+                        options={classOptions}
+                        placeholder="Select Class..."
+                        className="w-full h-10 rounded-xl"
+                      />
                     </>
                   ) : (
                     <>
-                      <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1 text-right" dir="rtl">المرحلة (Level)</label>
-                      <select
-                        className="w-full min-h-[42px] px-2.5 py-1.5 border border-stone-200 rounded-xl bg-[#F8FAFC] text-stone-900 text-xs font-semibold outline-none focus:border-[#059669] text-right font-arabic"
-                        dir="rtl"
+                      <label className="block text-[10px] font-bold text-stone-500 dark:text-[#A8ABA9] uppercase tracking-wider mb-1">المرحلة / Level</label>
+                      <CustomPillSelect
+                        id="theology-hub-level-select"
+                        ariaLabel="المرحلة / Level"
                         value={activeLevel}
-                        onChange={(e) => setActiveLevel(e.target.value)}
-                      >
-                        <option value="raudha">الروضة (Nursery)</option>
-                        <option value="ibtidaai_lower">الابتدائية السفلى (Lower Primary)</option>
-                        <option value="ibtidaai_upper">الابتدائية العليا (Upper Primary)</option>
-                      </select>
+                        onChange={(val) => setActiveLevel(val)}
+                        options={levelOptions}
+                        className="w-full h-10 rounded-xl"
+                      />
                     </>
                   )}
                 </div>
@@ -454,21 +480,21 @@ export default function TheologyHubClient({
                     <button
                       type="button"
                       onClick={() => setActiveTab('assessment')}
-                      className={`flex-1 min-h-[34px] px-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer ${activeTab === 'assessment' ? 'bg-[#059669] text-white shadow-xs' : 'text-stone-600 hover:text-stone-900'}`}
+                      className={`flex-1 min-h-[34px] px-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer ${activeTab === 'assessment' ? 'bg-[#059669] text-white shadow-xs' : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'}`}
                     >
                       <BookOpen size={12} /> Sheet
                     </button>
                     <button
                       type="button"
                       onClick={() => setActiveTab('analysis')}
-                      className={`flex-1 min-h-[34px] px-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer ${activeTab === 'analysis' ? 'bg-[#059669] text-white shadow-xs' : 'text-stone-600 hover:text-stone-900'}`}
+                      className={`flex-1 min-h-[34px] px-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer ${activeTab === 'analysis' ? 'bg-[#059669] text-white shadow-xs' : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'}`}
                     >
                       <ScrollText size={12} /> Analysis
                     </button>
                     <button
                       type="button"
                       onClick={() => setActiveTab('top_students')}
-                      className={`flex-1 min-h-[34px] px-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer ${activeTab === 'top_students' ? 'bg-[#059669] text-white shadow-xs' : 'text-stone-600 hover:text-stone-900'}`}
+                      className={`flex-1 min-h-[34px] px-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer ${activeTab === 'top_students' ? 'bg-[#059669] text-white shadow-xs' : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'}`}
                     >
                       <Award size={12} /> Top 10
                     </button>
@@ -482,14 +508,14 @@ export default function TheologyHubClient({
                     <button
                       type="button"
                       onClick={() => setExamPhase('mot')}
-                      className={`flex-1 min-h-[34px] px-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center cursor-pointer ${examPhase === 'mot' ? 'bg-[#0F172A] text-white shadow-xs' : 'text-stone-600 hover:text-stone-900'}`}
+                      className={`flex-1 min-h-[34px] px-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center cursor-pointer ${examPhase === 'mot' ? 'bg-amber-500 text-stone-950 font-bold shadow-xs' : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'}`}
                     >
                       MOT
                     </button>
                     <button
                       type="button"
                       onClick={() => setExamPhase('eot')}
-                      className={`flex-1 min-h-[34px] px-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center cursor-pointer ${examPhase === 'eot' ? 'bg-[#0F172A] text-white shadow-xs' : 'text-stone-600 hover:text-stone-900'}`}
+                      className={`flex-1 min-h-[34px] px-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center cursor-pointer ${examPhase === 'eot' ? 'bg-[#059669] text-white font-bold shadow-xs' : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'}`}
                     >
                       EOT
                     </button>
@@ -511,18 +537,33 @@ export default function TheologyHubClient({
         ) : !data || (!activeClassId && activeTab === 'assessment') || (!activeLevel && (activeTab === 'analysis' || activeTab === 'top_students')) ? (
           <TheologyHubEmptyState />
         ) : (
-          <div className="w-full max-w-7xl mx-auto print:max-w-[210mm] print:m-0">
+          <div
+            id="theology-hub-print-root"
+            className="w-full max-w-7xl mx-auto print:max-w-none print:m-0"
+            data-report-orientation="landscape"
+          >
             {/* Assessment Tab */}
             {activeTab === 'assessment' && activeClassId && (
-              <div className="font-arabic text-right print:py-0 print:px-2" dir="rtl">
-                <div className="text-center mb-6">
-                  <h1 className="text-xl font-extrabold text-[#059669] mb-1 print:text-black">مدرسة جدة الإسلامية للروضة والابتدائية _ انساغو واكيسو</h1>
-                  <h3 className="text-base font-bold mb-2 underline underline-offset-4 text-stone-700 print:text-black">
+              <div className="hub-sheet-page font-arabic text-right print:py-0 print:px-2" dir="rtl">
+                <OfficialPrintLetterhead
+                  rtl
+                  documentTitle={examPhase === 'bot' ? 'BOT THEOLOGY BROADSHEET' : examPhase === 'eot' ? 'EOT THEOLOGY BROADSHEET' : 'MOT THEOLOGY BROADSHEET'}
+                  arabicDocumentTitle={examPhase === 'bot' ? 'كشف الدرجات لبداية الفترة' : examPhase === 'eot' ? 'كشف الدرجات لنهاية الفترة' : 'كشف الدرجات لمنتصف الفترة'}
+                  metadata={[
+                    { label: 'الفترة', value: terms.find(t => t.id === activeTermId)?.label === 'Term 1' ? 'الأولى' : terms.find(t => t.id === activeTermId)?.label === 'Term 2' ? 'الثانية' : 'الثالثة' },
+                    { label: 'الصف', value: theologyClasses.find(c => c.id === activeClassId)?.class_name_arabic || theologyClasses.find(c => c.id === activeClassId)?.class_name_english },
+                    { label: 'الاختبار', value: examPhase === 'bot' ? 'بداية الفترة (BOT)' : examPhase === 'mot' ? 'منتصف الفترة (MOT)' : 'نهاية الفترة (EOT)' },
+                    { label: 'السنة', value: `${toArabicNumerals(terms.find(t => t.id === activeTermId)?.academic_year || '')}م` },
+                  ]}
+                />
+                <div className="text-center mb-6 print:hidden">
+                  <h1 className="text-xl font-extrabold text-[#059669] mb-1">مدرسة جدة الإسلامية للروضة والابتدائية _ انساغو واكيسو</h1>
+                  <h3 className="text-base font-bold mb-2 underline underline-offset-4 text-stone-700">
                     {examPhase === 'bot' ? 'كشف الدرجات لبداية الفترة' : examPhase === 'eot' ? 'كشف الدرجات لنهاية الفترة' : 'كشف الدرجات لمنتصف الفترة'}
                   </h3>
                 </div>
 
-                <div className="flex flex-wrap justify-between items-center gap-3 mb-6 font-semibold text-stone-700 print:text-black bg-white print:bg-transparent px-4 py-3 rounded-xl border border-stone-200 print:border-none shadow-xs print:shadow-none text-xs">
+                <div className="flex print:hidden flex-wrap justify-between items-center gap-3 mb-6 font-semibold text-stone-700 bg-white px-4 py-3 rounded-xl border border-stone-200 shadow-xs text-xs">
                   <div>
                     <span>الفترة: </span>
                     <span className="text-[#059669] print:text-black font-bold px-2">
@@ -600,12 +641,24 @@ export default function TheologyHubClient({
                     </table>
                   </div>
                 </div>
+                <OfficialPrintSignaturesFooter rtl />
               </div>
             )}
 
             {/* Analysis Tab */}
             {activeTab === 'analysis' && activeLevel && (
-              <div className="font-arabic text-right print:py-0 print:px-2" dir="rtl">
+              <div className="hub-sheet-page font-arabic text-right print:py-0 print:px-2" dir="rtl">
+                <OfficialPrintLetterhead
+                  rtl
+                  documentTitle="THEOLOGY PERFORMANCE ANALYSIS"
+                  arabicDocumentTitle="تحليل نتائج الاختبارات"
+                  metadata={[
+                    { label: 'المرحلة', value: activeLevel },
+                    { label: 'الفترة', value: terms.find(t => t.id === activeTermId)?.label },
+                    { label: 'الاختبار', value: examPhase.toUpperCase() },
+                    { label: 'السنة', value: toArabicNumerals(terms.find(t => t.id === activeTermId)?.academic_year || '') },
+                  ]}
+                />
                 <div className="bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden">
                   <div className="overflow-x-auto">
                     <table className="w-full text-right border-collapse">
@@ -638,12 +691,27 @@ export default function TheologyHubClient({
                     </table>
                   </div>
                 </div>
+                <OfficialPrintSignaturesFooter rtl />
               </div>
             )}
 
             {/* Top Students Tab */}
             {activeTab === 'top_students' && activeLevel && (
-              <div className="font-arabic text-right print:py-0 print:px-2 grid grid-cols-1 lg:grid-cols-2 gap-6" dir="rtl">
+              <div className="hub-sheet-page font-arabic text-right print:py-0 print:px-2 grid grid-cols-1 lg:grid-cols-2 gap-6" dir="rtl">
+                <div className="col-span-full hidden print:block">
+                  <OfficialPrintLetterhead
+                    rtl
+                    visibleOnScreen
+                    documentTitle="TOP PERFORMING STUDENTS (THEOLOGY)"
+                    arabicDocumentTitle="قائمة الطلاب الأوائل"
+                    metadata={[
+                      { label: 'المرحلة', value: activeLevel },
+                      { label: 'الفترة', value: terms.find(t => t.id === activeTermId)?.label },
+                      { label: 'الاختبار', value: examPhase.toUpperCase() },
+                      { label: 'السنة', value: toArabicNumerals(terms.find(t => t.id === activeTermId)?.academic_year || '') },
+                    ]}
+                  />
+                </div>
                 {topStudentsData.map((cls) => (
                   <div
                     key={cls.classId}
@@ -674,6 +742,9 @@ export default function TheologyHubClient({
                     </div>
                   </div>
                 ))}
+                <div className="col-span-full">
+                  <OfficialPrintSignaturesFooter rtl />
+                </div>
               </div>
             )}
           </div>

@@ -1,8 +1,9 @@
-import { createClient } from '@/utils/supabase/server'
+import { createAdminClient, createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import NotificationsClient from '@/components/layout/notifications-client'
 import { getAuthenticatedUser } from '@/lib/api-server'
 import { fetchUserBroadcastReadContext, isBroadcastNotificationRead } from '@/lib/notifications'
+import { buildActivityActorMap, resolveActivityActor } from '@/lib/activity-actors'
 
 export const dynamic = "force-dynamic"
 
@@ -66,12 +67,23 @@ export default async function NotificationsPage() {
     }
   })
 
-  const { data: activityData } = await supabase
-    .from('activity_logs')
-    .select('id, user_id, action, metadata, created_at')
-    .neq('action', 'school_customization_config')
-    .order('created_at', { ascending: false })
-    .limit(100)
+  const adminSupabase = createAdminClient(cookieStore)
+  const [{ data: activityData }, { data: teachersData }, { data: profilesData }] = await Promise.all([
+    supabase
+      .from('activity_logs')
+      .select('id, user_id, action, metadata, created_at')
+      .neq('action', 'school_customization_config')
+      .order('created_at', { ascending: false })
+      .limit(100),
+    adminSupabase
+      .from('teachers')
+      .select('id, auth_user_id, name, email, role, subject'),
+    adminSupabase
+      .from('profiles')
+      .select('id, full_name, role'),
+  ])
+
+  const actorMap = buildActivityActorMap(teachersData ?? [], profilesData ?? [])
 
   const activities = (activityData ?? []).map((item: any) => {
     const metadata = parseMetadata(item.metadata)
@@ -79,10 +91,13 @@ export default async function NotificationsPage() {
     const entityType = getEntityType(action, metadata)
     const entityLabel =
       String(metadata.entity_label ?? metadata.teacher ?? metadata.class ?? metadata.report ?? action)
+    const actor = resolveActivityActor(item.user_id, metadata, actorMap)
 
     return {
       id: String(item.id),
-      user_name: String(metadata.user_name ?? item.user_id ?? 'System'),
+      user_name: actor.name,
+      user_role: actor.role,
+      actor_display: actor.displayLabel,
       action,
       entity_label: entityLabel,
       entity_type: entityType,
@@ -91,7 +106,7 @@ export default async function NotificationsPage() {
   })
 
   return (
-    <div className="w-full min-h-full bg-[#FDFBF7]">
+    <div className="w-full min-h-full bg-[#FDFBF7] dark:bg-[#0B100E]">
       <NotificationsClient initialNotifications={notifications} initialActivities={activities} />
     </div>
   )

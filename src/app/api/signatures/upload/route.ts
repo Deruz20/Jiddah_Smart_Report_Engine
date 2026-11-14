@@ -7,6 +7,7 @@ import { verifyDataAccess } from '@/lib/auth-server'
 
 import {
   getDynamicSignatureSlots,
+  getSignatureObjectNamesForSlot,
   withSignatureVersion,
 } from '@/utils/signatures'
 import { sniffImageMimeType } from '@/lib/image-sniff'
@@ -34,7 +35,7 @@ export async function POST(request: NextRequest) {
 
     const access = await verifyDataAccess(supabase, user, 'write')
     if (!access.isAuthorized || access.canonicalRole !== 'Administrator') {
-      return withCors(request, NextResponse.json({ error: 'Only administrators may upload or replace official signatures.' }, { status: 403 }))
+      return withCors(request, NextResponse.json({ error: 'Only administrators may upload or replace official report images.' }, { status: 403 }))
     }
 
     const formData = await request.formData()
@@ -49,9 +50,9 @@ export async function POST(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Slot key is required' }, { status: 400 }))
     }
 
-    const supabaseAdmin = createAdminClient()
+    const supabaseAdmin = createAdminClient(cookieStore)
     const SIGNATURE_SLOTS = await getDynamicSignatureSlots(supabaseAdmin)
-    const isValidSlot = SIGNATURE_SLOTS.some(slot => slot.slot_key === slotKey)
+    const isValidSlot = SIGNATURE_SLOTS.some(slot => slot.slot_key === slotKey) || slotKey === 'school-logo'
     if (!isValidSlot) {
       return withCors(request, NextResponse.json({ error: 'Invalid signature slot' }, { status: 400 }))
     }
@@ -98,6 +99,13 @@ export async function POST(request: NextRequest) {
     }
 
     const storage = supabaseAdmin.storage.from(BUCKET)
+    const { data: disabledObjects } = await storage.list('disabled', { limit: 1000 })
+    const disabledPaths = getSignatureObjectNamesForSlot(disabledObjects ?? [], slotKey)
+      .map((name) => `disabled/${name}`)
+    if (disabledPaths.length > 0) {
+      await storage.remove(disabledPaths)
+    }
+
     const { data: objects, error: listError } = await storage.list('', { limit: 1000 })
     if (listError) {
       console.error('Uploaded signature could not be verified:', listError.message)
@@ -113,11 +121,7 @@ export async function POST(request: NextRequest) {
       .filter((object) => object.name.startsWith(`${slotKey}.`) && object.name !== filePath)
       .map((object) => object.name)
     if (stalePaths.length > 0) {
-      const { error: removeError } = await storage.remove(stalePaths)
-      if (removeError) {
-        console.error('Old signature versions could not be removed:', removeError.message)
-        return withCors(request, NextResponse.json({ error: 'New image uploaded, but older versions could not be removed.' }, { status: 500 }))
-      }
+      await storage.remove(stalePaths)
     }
 
     const publicUrl = storage.getPublicUrl(filePath).data?.publicUrl ?? null

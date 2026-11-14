@@ -7,8 +7,7 @@ import {
   AreaChart, Area, PieChart, Pie, Cell, Legend
 } from "recharts";
 import { HeroSection } from "@/components/HeroSection";
-// Using standard alert for now instead of sonner toast to avoid missing deps
-// import { toast } from "sonner";
+import { toast } from "sonner";
 
 export interface AnalyticsData {
   termPerformance: { term: string; average: number; highest: number; lowest: number }[];
@@ -48,7 +47,7 @@ export default function AnalyticsContent({ data }: { data: AnalyticsData }) {
             <button
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all"
               style={{ border: "1px solid #E5E7EB", color: "#374151", fontSize: "13px", fontWeight: 600, background: "white" }}
-              onClick={() => alert("Exporting analytics report...")}
+              onClick={() => toast.info("Preparing analytics export...")}
             >
               <Download className="w-4 h-4" /> Export Report
             </button>

@@ -1,10 +1,13 @@
 'use client';
 
-import React, { useState, useMemo, useDeferredValue } from 'react';
-import { Search, Filter, Download, ChevronDown, ChevronUp, ChevronsUpDown, UserX, Edit2, Archive, RotateCcw, Trash2 } from 'lucide-react';
+import React, { useState, useMemo, useDeferredValue, useEffect } from 'react';
+import { Search, Filter, Download, ChevronDown, ChevronUp, ChevronsUpDown, UserX, Edit2, Archive, RotateCcw, Trash2, User, FileText, ArrowRightLeft } from 'lucide-react';
+import { MoreActionsMenu } from '@/components/ui/more-actions-menu';
+import { CustomPillSelect } from '@/components/ui/custom-pill-select';
 import { Badge } from './figma-ui/Badge';
 import { EditStudentModal } from './EditStudentModal';
-import { useRouter } from 'next/navigation';
+import { ConfirmDestructiveDialog } from '@/components/ui/confirm-destructive-dialog';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 
 export type Student = {
@@ -59,13 +62,29 @@ interface StudentsTableProps {
 }
 
 export function StudentsListClient({ students, department }: StudentsTableProps) {
-  const [searchTerm, setSearchTerm] = useState('');
+  const searchParams = useSearchParams();
+  const initialSearch = searchParams?.get('search') || '';
+  const [searchTerm, setSearchTerm] = useState(initialSearch);
   const deferredSearchTerm = useDeferredValue(searchTerm);
+
+  useEffect(() => {
+    const q = searchParams?.get('search');
+    if (q !== null && q !== undefined) {
+      setSearchTerm(q);
+      setPage(1);
+    }
+  }, [searchParams]);
   const [activeTab, setActiveTab] = useState<FilterTab>('All');
   const [sortKey, setSortKey] = useState<SortKey>('created_at');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [page, setPage] = useState(1);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [selectedClassFilter, setSelectedClassFilter] = useState<string>('all');
+  const [destructiveDialog, setDestructiveDialog] = useState<{
+    open: boolean;
+    student: Student | null;
+    mode: 'archive' | 'delete';
+  }>({ open: false, student: null, mode: 'archive' });
   const router = useRouter();
 
   const tabs: FilterTab[] = useMemo(() => {
@@ -87,6 +106,18 @@ export function StudentsListClient({ students, department }: StudentsTableProps)
       }
     });
     return counts;
+  }, [students]);
+
+  const classFilterOptions = useMemo(() => {
+    const set = new Set<string>();
+    students.forEach((s) => {
+      if (s.circular_class) set.add(s.circular_class);
+    });
+    const sorted = Array.from(set).sort();
+    return [
+      { value: 'all', label: 'All Classes' },
+      ...sorted.map((c) => ({ value: c, label: c })),
+    ];
   }, [students]);
 
   const handleSort = (key: SortKey) => {
@@ -123,6 +154,10 @@ export function StudentsListClient({ students, department }: StudentsTableProps)
           s.circular_class.toLowerCase().includes(q)
       );
     }
+
+    if (selectedClassFilter !== 'all') {
+      list = list.filter((s) => s.circular_class === selectedClassFilter);
+    }
     list = [...list].sort((a, b) => {
       let va = a[sortKey] ?? '';
       let vb = b[sortKey] ?? '';
@@ -135,8 +170,7 @@ export function StudentsListClient({ students, department }: StudentsTableProps)
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  const handleArchive = async (student: Student) => {
-    if (!confirm(`Are you sure you want to archive ${student.name}?`)) return;
+  const executeArchive = async (student: Student) => {
     try {
       const res = await fetch(`/api/students/${student.id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to archive student');
@@ -147,8 +181,7 @@ export function StudentsListClient({ students, department }: StudentsTableProps)
     }
   };
 
-  const handleHardDelete = async (student: Student) => {
-    if (!confirm(`WARNING: Are you sure you want to PERMANENTLY delete ${student.name}? This will erase all their marks and enrollments. This cannot be undone.`)) return;
+  const executeHardDelete = async (student: Student) => {
     try {
       const res = await fetch(`/api/students/${student.id}?hard_delete=true`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to delete student permanently');
@@ -157,6 +190,14 @@ export function StudentsListClient({ students, department }: StudentsTableProps)
     } catch {
       toast.error('Failed to delete student');
     }
+  };
+
+  const handleArchive = (student: Student) => {
+    setDestructiveDialog({ open: true, student, mode: 'archive' });
+  };
+
+  const handleHardDelete = (student: Student) => {
+    setDestructiveDialog({ open: true, student, mode: 'delete' });
   };
 
   const handleRestore = async (student: Student) => {
@@ -242,14 +283,17 @@ export function StudentsListClient({ students, department }: StudentsTableProps)
           />
         </div>
         <div className="flex items-center gap-1.5 w-full sm:w-auto">
-          <button 
-            type="button"
-            onClick={() => toast.info('Use the tabs above to filter by department/status')}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-stone-200 rounded-xl text-xs font-semibold text-stone-600 hover:bg-stone-50 transition-all flex-1 sm:flex-none justify-center cursor-pointer"
-          >
-            <Filter size={13} className="text-stone-400" />
-            Filters
-          </button>
+          <CustomPillSelect
+            id="students-class-filter"
+            ariaLabel="Class filter"
+            value={selectedClassFilter}
+            onChange={(val) => {
+              setSelectedClassFilter(val);
+              setPage(1);
+            }}
+            options={classFilterOptions}
+            className="h-8.5 text-xs rounded-xl"
+          />
           <button 
             type="button"
             onClick={handleExport}
@@ -363,43 +407,44 @@ export function StudentsListClient({ students, department }: StudentsTableProps)
                   </div>
                 </td>
                 <td className="px-2 sm:px-3 py-2.5 whitespace-nowrap text-right">
-                  <div className="inline-flex items-center justify-end gap-1">
-                    <button 
-                      type="button"
-                      onClick={() => setEditingStudent(student)}
-                      className="text-stone-400 hover:text-blue-600 transition-colors p-1.5 rounded-lg hover:bg-blue-50 cursor-pointer"
-                      title="Edit Student"
-                    >
-                      <Edit2 size={14} />
-                    </button>
-                    {student.is_archived ? (
-                      <button 
-                        type="button"
-                        onClick={() => handleRestore(student)}
-                        className="text-stone-400 hover:text-emerald-600 transition-colors p-1.5 rounded-lg hover:bg-emerald-50 cursor-pointer"
-                        title="Restore Student"
-                      >
-                        <RotateCcw size={14} />
-                      </button>
-                    ) : (
-                      <button 
-                        type="button"
-                        onClick={() => handleArchive(student)}
-                        className="text-stone-400 hover:text-amber-600 transition-colors p-1.5 rounded-lg hover:bg-amber-50 cursor-pointer"
-                        title="Archive Student"
-                      >
-                        <Archive size={14} />
-                      </button>
-                    )}
-                    <button 
-                      type="button"
-                      onClick={() => handleHardDelete(student)}
-                      className="text-stone-400 hover:text-rose-600 transition-colors p-1.5 rounded-lg hover:bg-rose-50 cursor-pointer"
-                      title="Permanently Delete Student"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
+                  <MoreActionsMenu
+                    items={[
+                      {
+                        label: 'View Profile',
+                        icon: User,
+                        onClick: () => setEditingStudent(student),
+                      },
+                      {
+                        label: 'Edit Details',
+                        icon: Edit2,
+                        onClick: () => setEditingStudent(student),
+                      },
+                      {
+                        label: 'Print Report Card',
+                        icon: FileText,
+                        onClick: () => {
+                          window.location.href = `/admin/reports?student=${student.id}`;
+                        },
+                      },
+                      {
+                        label: 'Transfer Class',
+                        icon: ArrowRightLeft,
+                        onClick: () => setEditingStudent(student),
+                      },
+                      {
+                        label: student.is_archived ? 'Restore Student' : 'Archive Student',
+                        icon: student.is_archived ? RotateCcw : Archive,
+                        onClick: () => (student.is_archived ? handleRestore(student) : handleArchive(student)),
+                      },
+                      {
+                        label: 'Remove',
+                        icon: Trash2,
+                        destructive: true,
+                        onClick: () => handleHardDelete(student),
+                      },
+                    ]}
+                    align="end"
+                  />
                 </td>
               </tr>
             ))}
@@ -466,6 +511,31 @@ export function StudentsListClient({ students, department }: StudentsTableProps)
         onClose={() => setEditingStudent(null)}
         student={editingStudent}
         onSaved={() => router.refresh()}
+      />
+
+      <ConfirmDestructiveDialog
+        open={destructiveDialog.open}
+        onOpenChange={(open) => setDestructiveDialog((prev) => ({ ...prev, open }))}
+        title={
+          destructiveDialog.mode === 'delete'
+            ? `Permanently Delete ${destructiveDialog.student?.name || 'Pupil'}`
+            : `Archive ${destructiveDialog.student?.name || 'Pupil'}`
+        }
+        description={
+          destructiveDialog.mode === 'delete'
+            ? 'This action cannot be undone. All marks, enrollments, and academic history for this pupil will be permanently erased.'
+            : 'Archiving removes this learner from active class rosters and roll call while safely preserving historical records.'
+        }
+        confirmPhrase={destructiveDialog.mode === 'delete' ? 'DELETE' : 'ARCHIVE'}
+        confirmButtonText={destructiveDialog.mode === 'delete' ? 'Permanently Delete' : 'Archive Pupil'}
+        onConfirm={async () => {
+          if (!destructiveDialog.student) return;
+          if (destructiveDialog.mode === 'delete') {
+            await executeHardDelete(destructiveDialog.student);
+          } else {
+            await executeArchive(destructiveDialog.student);
+          }
+        }}
       />
     </div>
   );

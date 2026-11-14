@@ -2,17 +2,20 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { ConfirmDestructiveDialog } from '@/components/ConfirmDestructiveDialog'
 
 export default function DevToolsPage() {
   const [isLoading, setIsLoading] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
-  const handleSeed = async () => {
-    if (!confirm('Are you sure you want to seed the database? This will insert default Terms, Classes, and Subjects.')) {
-      return
-    }
+  const handleSeed = () => {
+    setConfirmOpen(true)
+  }
 
+  const executeSeed = async () => {
+    setConfirmOpen(false)
     setIsLoading(true)
     setSuccessMsg(null)
     setErrorMsg(null)
@@ -103,6 +106,17 @@ export default function DevToolsPage() {
           </div>
         </div>
       </div>
+
+      <ConfirmDestructiveDialog
+        open={confirmOpen}
+        title="Seed Default Database Records?"
+        description="Are you sure you want to seed the database? This will insert default Terms, Classes, and Subjects while safely skipping any existing records."
+        confirmLabel="Seed Database"
+        variant="primary"
+        loading={isLoading}
+        onConfirm={executeSeed}
+        onCancel={() => setConfirmOpen(false)}
+      />
     </div>
   )
 }

@@ -27,9 +27,9 @@ import {
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state";
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
-const SIDEBAR_WIDTH = "16rem";
+const SIDEBAR_WIDTH = "15rem";
 const SIDEBAR_WIDTH_MOBILE = "18rem";
-const SIDEBAR_WIDTH_ICON = "3rem";
+const SIDEBAR_WIDTH_ICON = "4rem";
 const SIDEBAR_KEYBOARD_SHORTCUT = "b";
 
 type SidebarContextProps = {
@@ -187,10 +187,11 @@ function Sidebar({
           data-sidebar="sidebar"
           data-slot="sidebar"
           data-mobile="true"
-          className="bg-sidebar text-sidebar-foreground w-(--sidebar-width) p-0 [&>button]:hidden"
+          hideCloseButton
+          className="bg-white dark:bg-[#1E1F20] text-sidebar-foreground w-[280px] max-w-[82vw] p-0 [&>button]:hidden rounded-r-3xl border-r-0 shadow-2xl flex flex-col justify-between"
           style={
             {
-              "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
+              "--sidebar-width": "280px",
             } as React.CSSProperties
           }
           side={side}
@@ -199,7 +200,7 @@ function Sidebar({
             <SheetTitle>Sidebar</SheetTitle>
             <SheetDescription>Displays the mobile sidebar.</SheetDescription>
           </SheetHeader>
-          <div className="flex h-full w-full flex-col pb-[env(safe-area-inset-bottom)]">{children}</div>
+          <div className="flex h-full w-full flex-col justify-between overflow-hidden pb-[env(safe-area-inset-bottom)]">{children}</div>
         </SheetContent>
       </Sheet>
     );

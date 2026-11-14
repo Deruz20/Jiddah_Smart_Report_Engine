@@ -1,16 +1,7 @@
-import { createClient as createAdminClient } from '@supabase/supabase-js'
-import { createClient } from '@/utils/supabase/server'
+import { createAdminClient, createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { corsPreflight, withCors } from '@/lib/api-cors'
-
-function createServiceClient() {
-  return createAdminClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false } }
-  )
-}
 
 export async function OPTIONS(request: NextRequest) {
   return corsPreflight(request) ?? new NextResponse(null, { status: 204 })
@@ -59,7 +50,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const supabaseAdmin = createServiceClient()
+    const supabaseAdmin = createAdminClient(cookieStore)
     const normalizedEmail = String(email).trim().toLowerCase()
     const { data: invite, error: inviteError } = await supabaseAdmin
       .from('teacher_invites')

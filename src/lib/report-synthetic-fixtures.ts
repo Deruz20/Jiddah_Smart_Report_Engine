@@ -60,10 +60,7 @@ export const SYNTHETIC_REPORT_FIXTURES: Record<string, any> = {
         { subject_name_arabic: 'اللغة العربية', mot_score: 88, eot_score: 90, grade: 'ممتاز', remark: 'طلاقة في القراءة والتعبير الكتابي' },
       ],
     },
-    signatures: {
-      'head-teacher': '/signatures/head-teacher.png',
-      'class-teacher-p5': '/signatures/class-teacher.png',
-    },
+    signatures: {},
   },
   'primary-mot': {
     id: 'syn-p4-mot-01',
@@ -97,10 +94,7 @@ export const SYNTHETIC_REPORT_FIXTURES: Record<string, any> = {
         { subject_name: 'I.R.E', bot_score: 90, bot_grade_display: 'D1', mot_score: 92, mot_grade_display: 'D1', remark: 'Outstanding' },
       ],
     },
-    signatures: {
-      'head-teacher': '/signatures/head-teacher.png',
-      'class-teacher-p4': '/signatures/class-teacher.png',
-    },
+    signatures: {},
   },
   'primary-bot': {
     id: 'syn-p3-bot-01',

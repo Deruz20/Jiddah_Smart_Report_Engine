@@ -1,10 +1,17 @@
 import { getTheologyComment } from '@/lib/grading'
 import { ReportContainer } from '@/components/reports/shared/ReportContainer'
+import { CleanSignatureImg } from '@/components/reports/shared/CleanSignatureImg'
+import { OfficialReportStamp } from '@/components/reports/StampGenerator'
+import { normalizeSchoolLogoUrl } from '@/lib/school-settings-helper'
 import { transliterateEnglishToArabic } from '@/lib/transliterate'
 
 import { getClassTeacherSignatureKey } from '@/utils/signatures'
 
 export default function NurseryTheologyEOTReport({ reportData }: any) {
+  const printPrefs = reportData?.settings?.print_preferences
+  const includeSignatures = printPrefs?.includeSignatures !== undefined ? Boolean(printPrefs.includeSignatures) : true
+  const includeStamp = Boolean(printPrefs?.includeStamp)
+
   const getTheologyRemark = (score: number | null): string => {
     if (score == null) return '--'
     if (score >= 90) return 'ممتاز'
@@ -133,7 +140,7 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
 .nursery-theology-eot-report .watermark-bg {
     position: absolute;
     inset: 0;
-    background: url('/school_budge.jpeg') center center no-repeat;
+    background: url('/logo-512h.png') center center no-repeat;
     background-size: contain;
     opacity: 0.04;
     pointer-events: none;
@@ -146,14 +153,34 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
 }
 
 .nursery-theology-eot-report .header {
-    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
     text-align: center;
-    margin-bottom: 10px;
-    background: linear-gradient(to right, var(--primary-green), var(--secondary-green));
-    padding: 12px;
-    border-radius: 12px;
+    background: linear-gradient(135deg, var(--primary-green), var(--secondary-green));
+    padding: 10px 18px;
+    border-radius: 16px;
+    border: 3px solid var(--nursery-gold);
     color: white;
-    border-bottom: 4px solid var(--nursery-gold);
+}
+.nursery-theology-eot-report .header-badge {
+    width: 60px;
+    height: 60px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+}
+.nursery-theology-eot-report .header-badge img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+.nursery-theology-eot-report .header-center {
+    flex: 1;
+    text-align: center;
 }
 
 .nursery-theology-eot-report .basmala {
@@ -338,32 +365,14 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
 }
 
 .nursery-theology-eot-report .footer-stamp {
-    width: 145px;
-    height: 100px;
-    border-radius: 16px;
-    border: 2px dashed #94a3b8;
-    background: white;
+    width: 140px;
+    height: 90px;
+    border: none;
+    background: transparent;
     display: flex;
     align-items: center;
     justify-content: center;
-    text-align: center;
-    font-size: 12px;
-    font-weight: 800;
-    color: #94a3b8;
     flex-shrink: 0;
-}
-.nursery-theology-eot-report .footer-stamp.has-image {
-    border: 0;
-    border-radius: 0;
-    background: transparent;
-}
-.nursery-theology-eot-report .footer-stamp img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    mix-blend-mode: multiply;
-    filter: contrast(1.3) saturate(1.25);
-    transform: rotate(-1.5deg) scale(1.04);
 }
         `
       }} />
@@ -371,9 +380,25 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
       <div className="nursery-theology-eot-report font-cairo" dir="rtl">
         <div className="watermark-bg"></div>
         <div className="header">
-          <div className="basmala">بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْم</div>
-          <div className="school-name">مدرسة جدة الإسلامية للروضة والإبتدائية</div>
-          <div className="report-badge">بطاقة تقرير للروضة</div>
+          <div className="header-badge">
+            <img
+              src={normalizeSchoolLogoUrl(reportData?.settings?.logo_url)}
+              alt="School Badge"
+              onError={(e) => {
+                if (!e.currentTarget.src.endsWith('/school_logo.svg')) {
+                  e.currentTarget.src = '/school_logo.svg';
+                }
+              }}
+            />
+          </div>
+          <div className="header-center">
+            <div className="basmala">بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْم</div>
+            <div className="school-name">{reportData?.settings?.arabic_name || "مدرسة جدة الإسلامية للروضة والإبتدائية"}</div>
+            <div className="report-badge">بطاقة تقرير للروضة</div>
+          </div>
+          <div className="header-badge" style={{ visibility: 'hidden' }}>
+            <img src="/school_logo.svg" alt="" />
+          </div>
         </div>
 
         <div className="info-grid">
@@ -448,24 +473,26 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
         <div className="signature-row">
           <div className="sign-field">
             <div>تقرير مرب الفصل</div>
-            <div className="sign-line" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', height: '48px' }}>
-              {reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.theology_class_english ?? reportData.student.class_name, true) ?? ''] && (
-                <img src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.theology_class_english ?? reportData.student.class_name, true)!]} alt="Signature" style={{ maxHeight: '42px', maxWidth: '100%', objectFit: 'contain', mixBlendMode: 'multiply', filter: 'contrast(1.18) saturate(1.08)', transform: 'rotate(-1deg)' }} />
+            <div className="sign-line" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', height: '40px' }}>
+              {includeSignatures && reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.class_name) ?? ''] && (
+                <CleanSignatureImg src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} alt="Signature" style={{ maxHeight: '30px' }} />
               )}
             </div>
           </div>
-          <div className={`footer-stamp${reportData?.signatures?.['school-stamp'] ? ' has-image' : ''}`}>
-            {reportData?.signatures?.['school-stamp'] ? (
-              <img src={reportData.signatures['school-stamp']} alt="" />
-            ) : (
-              'الختم الرسمي للمدرسة'
-            )}
+          <div className="footer-stamp" style={{ padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {includeStamp ? (
+              reportData?.signatures?.['school-stamp'] ? (
+                <img src={reportData.signatures['school-stamp']} alt="Official school stamp" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+              ) : (
+                <OfficialReportStamp reportData={reportData} maxWidth={136} maxHeight={84} />
+              )
+            ) : null}
           </div>
           <div className="sign-field">
             <div>تقرير مدير المدرسة</div>
-            <div className="sign-line" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', height: '48px' }}>
-              {reportData?.signatures?.['head-teacher'] && (
-                <img src={reportData.signatures['head-teacher']} alt="Signature" style={{ maxHeight: '42px', maxWidth: '100%', objectFit: 'contain', mixBlendMode: 'multiply', filter: 'contrast(1.18) saturate(1.08)', transform: 'rotate(-1deg)' }} />
+            <div className="sign-line" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', height: '40px' }}>
+              {includeSignatures && reportData?.signatures?.['head-teacher'] && (
+                <CleanSignatureImg src={reportData.signatures['head-teacher']} alt="Signature" style={{ maxHeight: '30px' }} />
               )}
             </div>
           </div>

@@ -1,0 +1,60 @@
+/* ──────────────────────────────────────────────────────────────────────────
+   Theme compatibility layer
+   Most feature pages were authored with fixed Tailwind palette classes
+   (text-stone-500, border-slate-200, bg-white…). Those classes look washed out
+   in light mode and are unreadable in dark mode. Rather than hand-edit hundreds
+   of call sites, remap the palette to the design tokens here.
+   This file is unlayered on purpose so it wins over Tailwind's utility layer.
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* ═════════ LIGHT: raise contrast ═════════ */
+:root:not(.dark) :is(.text-stone-400, .text-slate-400, .text-gray-400, .text-zinc-400) { color: #4B596B; }
+:root:not(.dark) :is(.text-stone-500, .text-slate-500, .text-gray-500, .text-zinc-500) { color: #3A4658; }
+:root:not(.dark) :is(.text-stone-600, .text-slate-600, .text-gray-600, .text-zinc-600) { color: #2A3545; }
+:root:not(.dark) :is(.text-stone-700, .text-slate-700, .text-gray-700) { color: #172033; }
+:root:not(.dark) :is(.text-stone-800, .text-slate-800, .text-gray-800, .text-stone-900, .text-slate-900, .text-gray-900, .text-stone-950, .text-slate-950) { color: #0B1220; }
+:root:not(.dark) :is(.placeholder-slate-400, .placeholder-stone-400)::placeholder { color: #5B6778; }
+
+:root:not(.dark) :is(.border-stone-100, .border-slate-100, .border-gray-100, .border-stone-50, .border-slate-50, .border-gray-50) { border-color: #D3DAE3; }
+:root:not(.dark) :is(.border-stone-200, .border-slate-200, .border-gray-200) { border-color: #C3CBD6; }
+:root:not(.dark) :is(.border-stone-300, .border-slate-300, .border-gray-300) { border-color: #98A3B3; }
+:root:not(.dark) :is(.divide-stone-100, .divide-slate-100, .divide-gray-100, .divide-slate-50, .divide-gray-50) > :not(:last-child) { border-color: #D3DAE3; }
+:root:not(.dark) :is(.divide-slate-200, .divide-stone-200) > :not(:last-child) { border-color: #C3CBD6; }
+
+:root:not(.dark) :is(.bg-stone-50, .bg-slate-50, .bg-gray-50) { background-color: #F1F4F8; }
+:root:not(.dark) :is(.bg-stone-100, .bg-slate-100, .bg-gray-100) { background-color: #E6EAF0; }
+:root:not(.dark) :is(.bg-stone-200, .bg-slate-200) { background-color: #D5DBE4; }
+
+/* Dark surfaces that live inside the light workspace keep light-on-dark text */
+:root:not(.dark) :is(.bg-stone-900, .bg-stone-800, .bg-slate-900, .bg-slate-800, .bg-slate-950, .bg-gray-900) :is(.text-stone-300, .text-slate-300, .text-gray-300, .text-stone-400, .text-slate-400, .text-gray-400) { color: #C2CBD6; }
+:root:not(.dark) :is(.bg-stone-900, .bg-stone-800, .bg-slate-900, .bg-slate-800, .bg-slate-950, .bg-gray-900) :is(.text-stone-500, .text-slate-500, .text-gray-500, .text-stone-600, .text-slate-600) { color: #A3AEBC; }
+:root:not(.dark) :is(.bg-stone-900, .bg-stone-800, .bg-slate-900, .bg-slate-800, .bg-slate-950, .bg-gray-900) :is(.text-stone-700, .text-slate-700, .text-stone-800, .text-slate-800, .text-stone-900, .text-slate-900) { color: #F4F7F5; }
+
+/* ═════════ DARK: map the light palette onto tokens ═════════ */
+.dark .bg-white { background-color: var(--bg-card); }
+.dark :is(.bg-stone-50, .bg-slate-50, .bg-gray-50) { background-color: var(--bg-sunken); }
+.dark :is(.bg-stone-100, .bg-slate-100, .bg-gray-100) { background-color: var(--bg-hover); }
+.dark :is(.bg-stone-200, .bg-slate-200) { background-color: #26322B; }
+.dark :is(.bg-stone-300, .bg-slate-300) { background-color: #33413A; }
+
+.dark :is(.text-stone-950, .text-slate-950, .text-stone-900, .text-slate-900, .text-gray-900, .text-stone-800, .text-slate-800, .text-gray-800) { color: var(--text-primary); }
+.dark :is(.text-stone-700, .text-slate-700, .text-gray-700) { color: #DDE4E0; }
+.dark :is(.text-stone-600, .text-slate-600, .text-gray-600) { color: var(--text-secondary); }
+.dark :is(.text-stone-500, .text-slate-500, .text-gray-500) { color: #AAB6AF; }
+.dark :is(.text-stone-400, .text-slate-400, .text-gray-400) { color: var(--text-muted); }
+.dark :is(.text-stone-300, .text-slate-300, .text-gray-300) { color: #7E8B84; }
+.dark :is(.placeholder-slate-400, .placeholder-stone-400)::placeholder { color: var(--text-muted); }
+
+.dark :is(.border-stone-50, .border-slate-50, .border-gray-50, .border-stone-100, .border-slate-100, .border-gray-100, .border-stone-200, .border-slate-200, .border-gray-200, .border-stone-300, .border-slate-300, .border-gray-300) { border-color: var(--border); }
+.dark :is(.border-stone-400, .border-slate-400) { border-color: var(--border-strong); }
+.dark :is(.divide-stone-100, .divide-slate-100, .divide-gray-100, .divide-slate-50, .divide-gray-50, .divide-slate-200, .divide-stone-200) > :not(:last-child) { border-color: var(--border); }
+.dark :is(.ring-slate-200, .ring-slate-300) { --tw-ring-color: var(--border); }
+
+/* Surfaces that were deliberately dark stay dark but get a visible edge */
+.dark :is(.bg-stone-900, .bg-stone-800, .bg-slate-900, .bg-slate-800, .bg-slate-950) { background-color: var(--bg-hover); }
+
+/* Native form controls follow the theme */
+.dark input, .dark select, .dark textarea { color-scheme: dark; }
+.dark :is(input, textarea, select):not([type="checkbox"]):not([type="radio"]):not([type="range"]) { color: var(--text-primary); }
+.dark ::placeholder { color: var(--text-muted); opacity: 1; }
+:root:not(.dark) ::placeholder { color: #5B6778; opacity: 1; }

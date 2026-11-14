@@ -72,7 +72,7 @@ export function ReportPreviewCell({
   return (
     <div
       ref={sentinelRef}
-      className={`report-preview-shell print:hidden ${className}`}
+      className={`report-preview-shell print:hidden bg-white text-stone-900 shadow-[0_12px_36px_rgba(0,0,0,0.12)] dark:shadow-[0_16px_48px_rgba(0,0,0,0.65)] ${className}`}
       data-active={isActive ? 'true' : 'false'}
       data-report-type={reportType}
       onClick={onClick}
@@ -81,14 +81,16 @@ export function ReportPreviewCell({
         height: scaledH,
         position: 'relative',
         overflow: 'hidden',
-        borderRadius: 4,
-        background: '#fffbf0',
+        borderRadius: 6,
+        background: '#FFFFFF',
+        colorScheme: 'light',
+        color: '#0F172A',
         boxShadow: isActive
-          ? '0 0 0 3px #f97316, 0 16px 56px rgba(0,0,0,0.22)'
-          : '0 8px 40px rgba(0,0,0,0.16)',
+          ? '0 0 0 3px #0D5C3A, 0 16px 48px rgba(0,0,0,0.35)'
+          : undefined,
         cursor: 'pointer',
         flexShrink: 0,
-        transition: 'box-shadow 0.15s',
+        transition: 'box-shadow 0.15s, transform 0.15s',
       }}
     >
       {/* Decorative watermark — screen only, zero layout impact */}
@@ -100,7 +102,7 @@ export function ReportPreviewCell({
         }}
       >
         <img
-          src="/school_budge.jpeg"
+          src="/logo-512h.png"
           alt=""
           loading="lazy"
           decoding="async"

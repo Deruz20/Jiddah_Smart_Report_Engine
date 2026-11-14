@@ -1,89 +1,115 @@
-'use client'
+"use client";
 
-import React, { ReactNode, createContext, useContext, useEffect, useState } from 'react'
-import { PowerSyncDatabase } from '@powersync/web'
-import { PowerSyncContext } from '@powersync/react'
-import { AppSchema } from '@/lib/powersync/AppSchema'
-import { SupabaseConnector } from '@/lib/powersync/SupabaseConnector'
+import React, { ReactNode, createContext, useContext, useEffect, useState } from "react";
+import { applyDeviceTierToDom, DeviceTier } from "@/lib/device-tier";
 import {
-  POWERSYNC_INIT_TIMEOUT_MS,
-  PowerSyncRuntimeState,
-  initializePowerSyncNonBlocking,
-} from '@/lib/powersync/runtime'
+  clearOfflineCaches,
+  flushOfflineOutbox,
+  getOfflineSyncStatus,
+  OFFLINE_SYNC_EVENT,
+  OfflineSyncStatusSnapshot,
+} from "@/lib/offline-sync";
 
-export { POWERSYNC_INIT_TIMEOUT_MS, initializePowerSyncNonBlocking }
-export type { PowerSyncRuntimeState }
+export interface OfflineRuntimeState extends OfflineSyncStatusSnapshot {
+  deviceTier: DeviceTier;
+  isConnected: boolean;
+  isFallbackToSupabase: boolean;
+  isInitialized: boolean;
+}
 
-export const powerSync = new PowerSyncDatabase({
-  schema: AppSchema,
-  database: {
-    dbFilename: 'jiddah_offline_v1.db',
-  },
-  flags: {
-    disableSSRWarning: true,
-    enableMultiTabs: false,
-  },
-} as any)
-
-export const connector = new SupabaseConnector()
-
-const PowerSyncRuntimeContext = createContext<PowerSyncRuntimeState>({
-  isConnected: false,
+const defaultState: OfflineRuntimeState = {
+  pendingCount: 0,
+  isOnline: true,
+  isSyncing: false,
+  lastError: null,
+  lastSyncedAt: null,
+  deviceTier: "high",
+  isConnected: true,
   isFallbackToSupabase: true,
   isInitialized: true,
-})
+};
+
+const OfflineRuntimeContext = createContext<OfflineRuntimeState>(defaultState);
 
 export function usePowerSyncRuntime() {
-  return useContext(PowerSyncRuntimeContext)
+  return useContext(OfflineRuntimeContext);
 }
 
+export const powerSync = {
+  async disconnectAndClear() {
+    await clearOfflineCaches();
+  },
+};
+
+/**
+ * Lightweight zero-WASM client runtime provider replacing PowerSync SQLite/WASM.
+ * Handles hardware capability tier detection (`data-device-tier="high" | "lite"`)
+ * and automatic IndexedDB outbox replay whenever network connectivity returns.
+ */
 export const PowerSyncProvider = ({ children }: { children: ReactNode }) => {
-  const [runtimeState, setRuntimeState] = useState<PowerSyncRuntimeState>({
-    isConnected: false,
-    isFallbackToSupabase: true,
-    isInitialized: true,
-  })
+  const [runtimeState, setRuntimeState] = useState<OfflineRuntimeState>(defaultState);
 
   useEffect(() => {
-    let active = true
-    const endpoint = process.env.NEXT_PUBLIC_POWERSYNC_URL?.trim()
+    let active = true;
+    const tier = applyDeviceTierToDom();
 
-    // If PowerSync endpoint is not configured, stay in direct Supabase mode immediately
-    // without starting any background WebRemote worker or credential polling loop.
-    if (!endpoint) {
-      return () => {
-        active = false
-      }
+    const refreshSnapshot = async () => {
+      const snap = await getOfflineSyncStatus();
+      if (!active) return;
+      setRuntimeState((prev) => ({
+        ...prev,
+        ...snap,
+        deviceTier: tier,
+        isConnected: snap.isOnline,
+      }));
+    };
+
+    refreshSnapshot();
+
+    if (typeof navigator === "undefined" || navigator.onLine) {
+      flushOfflineOutbox().catch(() => {});
     }
 
-    initializePowerSyncNonBlocking(powerSync, connector, POWERSYNC_INIT_TIMEOUT_MS)
-      .then((result) => {
-        if (!active) return
-        setRuntimeState({
-          isConnected: result.connected,
-          isFallbackToSupabase: result.fallbackToSupabase,
-          isInitialized: true,
-        })
-      })
-      .catch(() => {
-        if (!active) return
-        setRuntimeState({
-          isConnected: false,
-          isFallbackToSupabase: true,
-          isInitialized: true,
-        })
-      })
+    const handleOnline = () => {
+      flushOfflineOutbox()
+        .catch(() => {})
+        .finally(() => {
+          refreshSnapshot();
+        });
+    };
+
+    const handleOffline = () => {
+      refreshSnapshot();
+    };
+
+    const handleSyncChanged = (event: Event) => {
+      const custom = event as CustomEvent<OfflineSyncStatusSnapshot>;
+      if (custom.detail && active) {
+        setRuntimeState((prev) => ({
+          ...prev,
+          ...custom.detail,
+          isConnected: custom.detail.isOnline,
+        }));
+      } else {
+        refreshSnapshot();
+      }
+    };
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    window.addEventListener(OFFLINE_SYNC_EVENT, handleSyncChanged);
 
     return () => {
-      active = false
-    }
-  }, [])
+      active = false;
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+      window.removeEventListener(OFFLINE_SYNC_EVENT, handleSyncChanged);
+    };
+  }, []);
 
   return (
-    <PowerSyncRuntimeContext.Provider value={runtimeState}>
-      <PowerSyncContext.Provider value={powerSync}>
-        {children}
-      </PowerSyncContext.Provider>
-    </PowerSyncRuntimeContext.Provider>
-  )
-}
+    <OfflineRuntimeContext.Provider value={runtimeState}>
+      {children}
+    </OfflineRuntimeContext.Provider>
+  );
+};

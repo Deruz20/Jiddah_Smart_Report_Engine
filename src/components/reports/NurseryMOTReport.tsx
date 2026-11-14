@@ -1,13 +1,17 @@
 import { getNurseryGrade, getNurseryTeacherComment, getConductRemark } from '@/lib/grading'
 import { ReportContainer } from '@/components/reports/shared/ReportContainer'
+import { CleanSignatureImg } from '@/components/reports/shared/CleanSignatureImg'
+import { OfficialReportStamp } from '@/components/reports/StampGenerator'
 import { resolveReportBranding } from '@/lib/school-settings-helper'
 import { formatDateWithOrdinal } from '@/utils/dateHelpers';
 
 import { getClassTeacherSignatureKey } from "@/utils/signatures";
-import { ReportSchoolLogo } from '@/components/reports/ReportSchoolLogo'
 
 export default function NurseryMOTReport({ reportData }: any) {
   const branding = resolveReportBranding(reportData)
+  const printPrefs = reportData?.settings?.print_preferences
+  const includeSignatures = printPrefs?.includeSignatures !== undefined ? Boolean(printPrefs.includeSignatures) : true
+  const includeStamp = Boolean(printPrefs?.includeStamp)
   const subjects = (reportData?.circular?.subjects || []).filter((s: any) => {
     if (reportData?.student?.class_name?.toLowerCase().includes('top') && s.subject_name.toLowerCase().includes('writing')) {
       return false;
@@ -112,13 +116,13 @@ export default function NurseryMOTReport({ reportData }: any) {
     .nursery-mot-report .header-center { width: 36%; text-align: center; display: flex; flex-direction: column; align-items: center; }
     
     .nursery-mot-report .logo {
-        width: 54px;
-        height: 54px;
+        width: 60px;
+        height: 60px;
         margin: 0 auto 6px;
-        background: white;
-        border-radius: 12px;
-        padding: 4px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        background: transparent;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
     
     .nursery-mot-report .logo img {
@@ -265,33 +269,15 @@ export default function NurseryMOTReport({ reportData }: any) {
         border: 1px solid var(--border-light);
     }
     .nursery-mot-report .stamp-box {
-        width: 150px;
-        height: 100px;
-        border: 2px dashed #94a3b8;
-        border-radius: 16px;
+        width: 146px;
+        height: 98px;
+        border: none;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        text-align: center;
-        font-size: 11px;
-        color: #94a3b8;
-        font-weight: 700;
-        background: white;
-        flex-shrink: 0;
-    }
-    .nursery-mot-report .stamp-box.has-image {
-        border: 0;
-        border-radius: 0;
         background: transparent;
-    }
-    .nursery-mot-report .stamp-box img {
-        width: 100%;
-        height: 100%;
-        object-fit: contain;
-        mix-blend-mode: multiply;
-        filter: contrast(1.3) saturate(1.25);
-        transform: rotate(-1.5deg) scale(1.04);
+        flex-shrink: 0;
     }
         `
       }} />
@@ -305,7 +291,15 @@ export default function NurseryMOTReport({ reportData }: any) {
           </div>
           <div className="header-center">
             <div className="logo">
-              <ReportSchoolLogo src={branding.logoUrl} alt="Badge" />
+              <img
+                src={branding.logoUrl || '/school_logo.svg'}
+                alt="Badge"
+                onError={(e) => {
+                  if (!e.currentTarget.src.endsWith('/school_logo.svg')) {
+                    e.currentTarget.src = '/school_logo.svg';
+                  }
+                }}
+              />
             </div>
             <div className="report-badge">MID TERM REPORT</div>
           </div>
@@ -389,8 +383,8 @@ export default function NurseryMOTReport({ reportData }: any) {
                 <span className="label" style={{ minWidth: '100px' }}>Class Teacher</span>
                 <div className="line" style={{ position: 'relative' }}>
                   {getNurseryTeacherComment(grades)}
-                  {reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.class_name) ?? ''] && (
-                    <img src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} alt="Signature" style={{ position: 'absolute', bottom: 0, height: '48px', maxWidth: '100%', objectFit: 'contain', right: 0, mixBlendMode: 'multiply', filter: 'contrast(1.18) saturate(1.08)', transform: 'rotate(-1deg)' }} />
+                  {includeSignatures && reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.class_name) ?? ''] && (
+                    <CleanSignatureImg src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} alt="Signature" style={{ position: 'absolute', bottom: 0, height: '40px', right: 0 }} />
                   )}
                 </div>
               </div>
@@ -398,8 +392,8 @@ export default function NurseryMOTReport({ reportData }: any) {
                 <span className="label" style={{ minWidth: '100px' }}>Head Teacher</span>
                 <div className="line" style={{ position: 'relative' }}>
                   {getNurseryTeacherComment(grades)}
-                  {reportData?.signatures?.['head-teacher'] && (
-                    <img src={reportData.signatures['head-teacher']} alt="Signature" style={{ position: 'absolute', bottom: 0, height: '48px', maxWidth: '100%', objectFit: 'contain', right: 0, mixBlendMode: 'multiply', filter: 'contrast(1.18) saturate(1.08)', transform: 'rotate(-1deg)' }} />
+                  {includeSignatures && reportData?.signatures?.['head-teacher'] && (
+                    <CleanSignatureImg src={reportData.signatures['head-teacher']} alt="Signature" style={{ position: 'absolute', bottom: 0, height: '40px', right: 0 }} />
                   )}
                 </div>
               </div>
@@ -410,12 +404,14 @@ export default function NurseryMOTReport({ reportData }: any) {
               </div>
             </div>
 
-            <div className={`stamp-box${reportData?.signatures?.['school-stamp'] ? ' has-image' : ''}`}>
-              {reportData?.signatures?.['school-stamp'] ? (
-                <img src={reportData.signatures['school-stamp']} alt="Official school stamp" />
-              ) : (
-                'OFFICIAL STAMP'
-              )}
+            <div className="stamp-box" style={{ padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {includeStamp ? (
+                reportData?.signatures?.['school-stamp'] ? (
+                  <img src={reportData.signatures['school-stamp']} alt="Official school stamp" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                ) : (
+                  <OfficialReportStamp reportData={reportData} maxWidth={140} maxHeight={92} />
+                )
+              ) : null}
             </div>
           </div>
           

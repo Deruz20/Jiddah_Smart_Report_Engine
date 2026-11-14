@@ -1,5 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
-import { createClient as createServerClient } from '@/utils/supabase/server';
+import { createAdminClient, createClient as createServerClient } from '@/utils/supabase/server';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { verifyDataAccess } from '@/lib/auth-server'
@@ -34,11 +33,8 @@ export async function POST(req: Request) {
     const finalRole = requestedRole;
     const finalSubject = requestedSubject;
 
-    // Use Service Role to bypass RLS and insert invite
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    // Use Service Role (with safe fallback) to bypass RLS and insert invite
+    const supabaseAdmin = createAdminClient(cookieStore);
 
     // Check if email already has an active account or pending invite
     const { data: existingTeacher, error: teacherLookupError } = await supabaseAdmin

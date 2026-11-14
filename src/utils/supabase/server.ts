@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
-import { getSupabaseAnonKey } from "@/lib/supabase-env";
+import { cookies, headers } from "next/headers";
+import { getServerSupabaseKey, getServiceRoleKey, getSupabaseAnonKey } from "@/lib/supabase-env";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://dummy.supabase.co';
 const supabaseKey = getSupabaseAnonKey() || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummy';
@@ -23,7 +23,7 @@ function fetchWithTimeout(
 }
 
 export const createClient = (cookieStore: Awaited<ReturnType<typeof cookies>>) => {
-  return createServerClient(
+  const client = createServerClient(
     supabaseUrl!,
     supabaseKey!,
     {
@@ -46,16 +46,60 @@ export const createClient = (cookieStore: Awaited<ReturnType<typeof cookies>>) =
       },
     },
   );
+
+  const originalGetUser = client.auth.getUser.bind(client.auth);
+  client.auth.getUser = async (jwt?: string) => {
+    if (jwt) {
+      return originalGetUser(jwt);
+    }
+    try {
+      const headerList = await headers();
+      const authHeader = headerList.get('authorization') || headerList.get('Authorization');
+      if (authHeader && authHeader.toLowerCase().startsWith('bearer ')) {
+        const token = authHeader.slice(7).trim();
+        if (token) {
+          const res = await originalGetUser(token);
+          if (!res.error && res.data?.user) {
+            return res;
+          }
+        }
+      }
+    } catch {
+      // In non-request context, ignore
+    }
+    return originalGetUser();
+  };
+
+  return client;
 };
 
-export const createAdminClient = () => {
+export const createAdminClient = (cookieStore?: Awaited<ReturnType<typeof cookies>>) => {
+  const serviceKey = getServiceRoleKey();
+  if (serviceKey) {
+    const { createClient: createSupabaseClient } = require('@supabase/supabase-js');
+    return createSupabaseClient(
+      supabaseUrl,
+      serviceKey,
+      {
+        auth: { persistSession: false, autoRefreshToken: false },
+        global: { fetch: fetchWithTimeout },
+      }
+    );
+  }
+
+  // Fallback safely when service role key is unavailable in local/preview environments
+  if (cookieStore) {
+    return createClient(cookieStore);
+  }
+
+  const fallbackKey = getServerSupabaseKey() || supabaseKey;
   const { createClient: createSupabaseClient } = require('@supabase/supabase-js');
   return createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    supabaseUrl,
+    fallbackKey,
     {
-      auth: { persistSession: false },
-      global: { fetch: fetchWithTimeout }
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: { fetch: fetchWithTimeout },
     }
   );
 };

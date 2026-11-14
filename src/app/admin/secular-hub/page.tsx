@@ -1,8 +1,9 @@
 import { createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import SecularHubClient from '@/components/secular-hub/SecularHubClient'
-import { verifyDataAccess } from '@/lib/auth-server'
+import { verifyDataAccess, resolveUserScope } from '@/lib/auth-server'
 import { classIdsForType } from '@/lib/teacher-access'
+import { UnassignedTeacherState } from '@/components/UnassignedTeacherState'
 
 type TermData = {
   id: string
@@ -39,6 +40,19 @@ export default async function SecularHubPage() {
       return (
         <div className="p-6 bg-rose-50 border border-rose-200 rounded-xl max-w-2xl mx-auto mt-6 text-rose-800 font-semibold text-sm">
           Access Denied: {access.message}
+        </div>
+      )
+    }
+
+    const scope = resolveUserScope(access)
+    if (scope.isUnassigned || (!scope.isFullAccess && scope.allowedCircularClassIds.length === 0)) {
+      return (
+        <div className="w-full min-h-full bg-[#FAF7F2] py-10">
+          <UnassignedTeacherState
+            moduleName="Secular Hub"
+            roleLabel={scope.rawRole || scope.canonicalRole}
+            department="secular"
+          />
         </div>
       )
     }

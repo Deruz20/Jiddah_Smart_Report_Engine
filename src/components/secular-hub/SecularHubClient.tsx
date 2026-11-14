@@ -2,13 +2,15 @@
 
 import React, { useState, useEffect, useMemo, memo, useCallback } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
-import { Loader2, ScrollText, BookOpen, Award, LayoutDashboard, SearchX, Printer, FileSpreadsheet, Download, Layers } from 'lucide-react'
+import { Loader2, ScrollText, BookOpen, Award, LayoutDashboard, SearchX, Printer, FileSpreadsheet, Download, Layers, ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { generateSecularAssessmentCSV, generateSecularAnalysisCSV, generateSecularTopStudentsCSV } from '@/utils/csvExport'
 import { computeStandardRankings } from '@/lib/ranking'
-import { isGradableSubject, getSubjectGradeNumber, calculateAggregate, getDivision, getGradeDisplay, isCoreSubject, getNurseryGrade } from '@/lib/grading'
+import { isGradableSubject, getSubjectGradeNumber, calculateAggregate, getDivision, getGradeDisplay, isCoreSubject, getNurseryGrade, isNurseryClass } from '@/lib/grading'
 import { TopToolbar } from '../figma-ui/TopToolbar'
+import { OfficialPrintLetterhead, OfficialPrintSignaturesFooter } from '@/components/print/OfficialPrintLetterhead'
+import { CustomPillSelect } from '@/components/ui/custom-pill-select'
 
 const THEME = {
   gold: 'text-amber-800 bg-amber-50 border-amber-200',
@@ -100,6 +102,32 @@ export default function SecularHubClient({
     subjects: any[]
   } | null>(null)
 
+  const termOptions = useMemo(
+    () =>
+      terms.map((t) => ({
+        value: t.id,
+        label: `${t.label} (${t.academic_year})`,
+      })),
+    [terms]
+  )
+
+  const classOptions = useMemo(
+    () => [
+      { value: '', label: '-- Select a Class --' },
+      ...circularClasses.map((t) => ({ value: t.id, label: t.class_name })),
+    ],
+    [circularClasses]
+  )
+
+  const levelOptions = useMemo(
+    () => [
+      { value: 'nursery', label: 'Nursery Section' },
+      { value: 'lower_primary', label: 'Lower Primary' },
+      { value: 'upper_primary', label: 'Upper Primary' },
+    ],
+    []
+  )
+
   useEffect(() => {
     if (!activeTermId) return
 
@@ -166,7 +194,7 @@ export default function SecularHubClient({
         const score = mark?.[scoreKey] != null ? mark[scoreKey] : null
         subjectScores[sub.id] = score
         if (score != null) {
-          if (assessmentLevel === 'nursery') {
+          if (isNurseryClass(assessmentLevel)) {
             const nGrade = getNurseryGrade(score)
             subjectGrades[sub.id] = nGrade.grade
             subjectAggregates[sub.id] = nGrade.grade === 'A' ? 1 : nGrade.grade === 'B' ? 2 : nGrade.grade === 'C' ? 3 : nGrade.grade === 'D' ? 5 : 9
@@ -189,7 +217,7 @@ export default function SecularHubClient({
         }
       })
 
-      const agg = assessmentLevel === 'nursery' ? null : calculateAggregate(scoresForAgg, assessmentLevel)
+      const agg = isNurseryClass(assessmentLevel) ? null : calculateAggregate(scoresForAgg, assessmentLevel)
       const div = agg !== null ? getDivision(agg) : 'X'
 
       return {
@@ -234,7 +262,8 @@ export default function SecularHubClient({
       let lowestAvg = 100
 
       const divCounts: Record<string, number> = { I: 0, II: 0, III: 0, IV: 0, U: 0, X: 0 }
-      const gradeCounts: Record<string, number> = activeLevel === 'nursery'
+      const isNurseryLevel = isNurseryClass(activeLevel) || isNurseryClass(cls.section) || isNurseryClass(cls.class_name)
+      const gradeCounts: Record<string, number> = isNurseryLevel
         ? { A: 0, B: 0, C: 0, D: 0, E: 0 }
         : { D1: 0, D2: 0, C3: 0, C4: 0, C5: 0, C6: 0, P7: 0, P8: 0, F9: 0 }
 
@@ -261,7 +290,7 @@ export default function SecularHubClient({
 
           subjectScoresForAgg.forEach(s => {
             totalScore += s.score
-            if (activeLevel === 'nursery') {
+            if (isNurseryLevel) {
               const nGrade = getNurseryGrade(s.score).grade
               if (gradeCounts[nGrade] !== undefined) {
                 gradeCounts[nGrade]++
@@ -483,8 +512,8 @@ export default function SecularHubClient({
           searchOpen={filtersOpen}
           onSearchToggle={() => setFiltersOpen(!filtersOpen)}
           title={
-            <div className="flex items-center gap-2 text-stone-900">
-              <div className="p-1.5 bg-[#059669]/10 rounded-lg text-[#059669]">
+            <div className="flex items-center gap-2 text-stone-900 dark:text-white">
+              <div className="p-1.5 bg-[#0D5C3A]/10 dark:bg-[#10B981]/20 rounded-lg text-[#0D5C3A] dark:text-[#34D399]">
                 <LayoutDashboard size={16} />
               </div>
               <h1 className="text-sm sm:text-[15px] font-bold tracking-tight">Secular Hub</h1>
@@ -500,51 +529,48 @@ export default function SecularHubClient({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden bg-white border-b border-stone-200 shadow-xs print:hidden shrink-0"
+            className="overflow-hidden bg-white dark:bg-[#1E1F20] border-b border-black/[0.08] dark:border-white/[0.08] shadow-xs print:hidden shrink-0"
           >
             <div className="px-3 sm:px-5 py-3 max-w-7xl mx-auto">
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 items-end">
                 {/* Term Selector */}
                 <div>
-                  <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1">Academic Term</label>
-                  <select
-                    className="w-full min-h-[42px] px-2.5 py-1.5 border border-stone-200 rounded-xl bg-[#F8FAFC] text-stone-900 text-xs font-semibold outline-none focus:border-[#059669]"
+                  <label className="block text-[10px] font-bold text-stone-500 dark:text-[#A8ABA9] uppercase tracking-wider mb-1">Academic Term</label>
+                  <CustomPillSelect
+                    id="secular-hub-term-select"
+                    ariaLabel="Academic Term"
                     value={activeTermId}
-                    onChange={(e) => setActiveTermId(e.target.value)}
-                  >
-                    {terms.map(t => (
-                      <option key={t.id} value={t.id}>{t.label} ({t.academic_year})</option>
-                    ))}
-                  </select>
+                    onChange={(val) => setActiveTermId(val)}
+                    options={termOptions}
+                    className="w-full h-10 rounded-xl"
+                  />
                 </div>
 
                 {/* Contextual Selectors */}
                 {activeTab === 'assessment' ? (
                   <div>
-                    <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1">Class List</label>
-                    <select
-                      className="w-full min-h-[42px] px-2.5 py-1.5 border border-stone-200 rounded-xl bg-[#F8FAFC] text-stone-900 text-xs font-semibold outline-none focus:border-[#059669]"
+                    <label className="block text-[10px] font-bold text-stone-500 dark:text-[#A8ABA9] uppercase tracking-wider mb-1">Class Cohort</label>
+                    <CustomPillSelect
+                      id="secular-hub-class-select"
+                      ariaLabel="Class Cohort"
                       value={activeClassId}
-                      onChange={(e) => setActiveClassId(e.target.value)}
-                    >
-                      <option value="">-- Select a Class --</option>
-                      {circularClasses.map(t => (
-                        <option key={t.id} value={t.id}>{t.class_name}</option>
-                      ))}
-                    </select>
+                      onChange={(val) => setActiveClassId(val)}
+                      options={classOptions}
+                      placeholder="Select Class..."
+                      className="w-full h-10 rounded-xl"
+                    />
                   </div>
                 ) : (
                   <div>
-                    <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1">Academic Level</label>
-                    <select
-                      className="w-full min-h-[42px] px-2.5 py-1.5 border border-stone-200 rounded-xl bg-[#F8FAFC] text-stone-900 text-xs font-semibold outline-none focus:border-[#059669]"
+                    <label className="block text-[10px] font-bold text-stone-500 dark:text-[#A8ABA9] uppercase tracking-wider mb-1">Academic Level</label>
+                    <CustomPillSelect
+                      id="secular-hub-level-select"
+                      ariaLabel="Academic Level"
                       value={activeLevel}
-                      onChange={(e) => setActiveLevel(e.target.value)}
-                    >
-                      <option value="nursery">Nursery Section</option>
-                      <option value="lower_primary">Lower Primary</option>
-                      <option value="upper_primary">Upper Primary</option>
-                    </select>
+                      onChange={(val) => setActiveLevel(val)}
+                      options={levelOptions}
+                      className="w-full h-10 rounded-xl"
+                    />
                   </div>
                 )}
 
@@ -555,21 +581,21 @@ export default function SecularHubClient({
                     <button
                       type="button"
                       onClick={() => setActiveTab('assessment')}
-                      className={`flex-1 min-h-[34px] px-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer ${activeTab === 'assessment' ? 'bg-[#059669] text-white shadow-xs' : 'text-stone-600 hover:text-stone-900'}`}
+                      className={`flex-1 min-h-[34px] px-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer ${activeTab === 'assessment' ? 'bg-[#059669] text-white shadow-xs' : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'}`}
                     >
                       <BookOpen size={12} /> Sheet
                     </button>
                     <button
                       type="button"
                       onClick={() => setActiveTab('analysis')}
-                      className={`flex-1 min-h-[34px] px-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer ${activeTab === 'analysis' ? 'bg-[#059669] text-white shadow-xs' : 'text-stone-600 hover:text-stone-900'}`}
+                      className={`flex-1 min-h-[34px] px-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer ${activeTab === 'analysis' ? 'bg-[#059669] text-white shadow-xs' : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'}`}
                     >
                       <ScrollText size={12} /> Analysis
                     </button>
                     <button
                       type="button"
                       onClick={() => setActiveTab('top_students')}
-                      className={`flex-1 min-h-[34px] px-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer ${activeTab === 'top_students' ? 'bg-[#059669] text-white shadow-xs' : 'text-stone-600 hover:text-stone-900'}`}
+                      className={`flex-1 min-h-[34px] px-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer ${activeTab === 'top_students' ? 'bg-[#059669] text-white shadow-xs' : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'}`}
                     >
                       <Award size={12} /> Top 10
                     </button>
@@ -580,16 +606,20 @@ export default function SecularHubClient({
                 <div className="col-span-2 sm:col-span-1">
                   <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1">Exam Phase</label>
                   <div className="flex p-1 bg-[#F1F5F9] border border-stone-200/80 rounded-xl">
-                    {(['bot', 'mot', 'eot'] as const).map((phaseKey) => (
-                      <button
-                        key={phaseKey}
-                        type="button"
-                        onClick={() => setExamPhase(phaseKey)}
-                        className={`flex-1 min-h-[34px] px-2 text-xs font-bold uppercase rounded-lg transition-all flex items-center justify-center cursor-pointer ${examPhase === phaseKey ? 'bg-[#0F172A] text-white shadow-xs' : 'text-stone-600 hover:text-stone-900'}`}
-                      >
-                        {phaseKey}
-                      </button>
-                    ))}
+                    {(['bot', 'mot', 'eot'] as const).map((phaseKey) => {
+                      const isActive = examPhase === phaseKey
+                      const activeColor = phaseKey === 'bot' ? 'bg-blue-600 text-white shadow-xs' : phaseKey === 'mot' ? 'bg-amber-500 text-stone-950 font-bold shadow-xs' : 'bg-[#059669] text-white font-bold shadow-xs'
+                      return (
+                        <button
+                          key={phaseKey}
+                          type="button"
+                          onClick={() => setExamPhase(phaseKey)}
+                          className={`flex-1 min-h-[34px] px-2 text-xs font-bold uppercase rounded-lg transition-all flex items-center justify-center cursor-pointer ${isActive ? activeColor : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'}`}
+                        >
+                          {phaseKey}
+                        </button>
+                      )
+                    })}
                   </div>
                 </div>
               </div>
@@ -618,8 +648,8 @@ export default function SecularHubClient({
         ) : (
           <div
             id="secular-hub-print-root"
-            className="w-full max-w-7xl mx-auto print:max-w-[210mm] print:m-0 report-container"
-            data-report-orientation="portrait"
+            className="w-full max-w-7xl mx-auto print:max-w-none print:m-0"
+            data-report-orientation="landscape"
           >
             {activeTab === 'assessment' && (isBatchPrinting || activeClassId) && (
               <>
@@ -628,15 +658,31 @@ export default function SecularHubClient({
                   if (!currentAssessmentData || !currentAssessmentData.orderedSubjects) return null
 
                   return (
-                    <div key={cls.id} className={isBatchPrinting ? 'hidden print:block print:py-0 print:px-2 text-left' : 'print:py-0 print:px-2 text-left'} style={{ pageBreakAfter: isBatchPrinting && classIdx < arr.length - 1 ? 'always' : 'auto' }}>
-                      <div className="text-center mb-8 hidden print:block">
-                        <h1 className="text-2xl font-extrabold text-stone-900 print:text-black mb-1 uppercase tracking-wide">Jiddah Islamic Schools</h1>
-                        <h3 className="text-xl font-bold mb-4 underline underline-offset-4 text-stone-700 print:text-black uppercase">
-                          {examPhase === 'bot' ? 'Beginning of Term Assessment Report' : examPhase === 'eot' ? 'End of Term Assessment Report' : 'Mid-Term Assessment Report'}
-                        </h3>
-                      </div>
+                    <div
+                      key={cls.id}
+                      className={`hub-sheet-page ${isBatchPrinting ? 'hidden print:block print:py-0 print:px-2 text-left' : 'print:py-0 print:px-2 text-left'}`}
+                      style={{
+                        pageBreakAfter: isBatchPrinting && classIdx < arr.length - 1 ? 'always' : 'auto',
+                        breakAfter: isBatchPrinting && classIdx < arr.length - 1 ? 'page' : 'auto',
+                      }}
+                    >
+                      <OfficialPrintLetterhead
+                        documentTitle={
+                          examPhase === 'bot'
+                            ? 'BEGINNING OF TERM ASSESSMENT BROADSHEET'
+                            : examPhase === 'eot'
+                              ? 'END OF TERM ASSESSMENT BROADSHEET'
+                              : 'MID-TERM ASSESSMENT BROADSHEET'
+                        }
+                        metadata={[
+                          { label: 'Term', value: terms.find(t => t.id === activeTermId)?.label },
+                          { label: 'Class', value: cls.class_name },
+                          { label: 'Phase', value: examPhase.toUpperCase() },
+                          { label: 'Year', value: terms.find(t => t.id === activeTermId)?.academic_year },
+                        ]}
+                      />
 
-                      <div className="flex flex-wrap justify-between items-center gap-3 mb-6 font-semibold text-stone-700 print:text-black bg-white print:bg-transparent px-4 py-3 rounded-xl border border-stone-200 print:border-none shadow-xs print:shadow-none text-xs">
+                      <div className="flex print:hidden flex-wrap justify-between items-center gap-3 mb-6 font-semibold text-stone-700 bg-white px-4 py-3 rounded-xl border border-stone-200 shadow-xs text-xs">
                         <div>
                           <span className="uppercase text-[11px] tracking-wider text-stone-500 mr-2">Term:</span>
                           <span className="text-[#059669] print:text-black font-bold">{terms.find(t => t.id === activeTermId)?.label}</span>
@@ -737,6 +783,7 @@ export default function SecularHubClient({
                           </table>
                         </div>
                       </div>
+                      <OfficialPrintSignaturesFooter />
                     </div>
                   )
                 })}
@@ -745,8 +792,17 @@ export default function SecularHubClient({
 
             {/* Analysis Tab */}
             {activeTab === 'analysis' && activeLevel && (
-              <div className="print:py-0 print:px-2 text-left space-y-6">
-                <div className="flex flex-wrap justify-between items-center gap-3 font-semibold text-stone-700 bg-white px-4 py-3 rounded-xl border border-stone-200 shadow-xs text-xs">
+              <div className="hub-sheet-page print:py-0 print:px-2 text-left space-y-6">
+                <OfficialPrintLetterhead
+                  documentTitle="SECULAR COHORT PERFORMANCE ANALYSIS"
+                  metadata={[
+                    { label: 'Level', value: activeLevel.replace('_', ' ').toUpperCase() },
+                    { label: 'Term', value: terms.find(t => t.id === activeTermId)?.label },
+                    { label: 'Phase', value: examPhase.toUpperCase() },
+                    { label: 'Year', value: terms.find(t => t.id === activeTermId)?.academic_year },
+                  ]}
+                />
+                <div className="flex print:hidden flex-wrap justify-between items-center gap-3 font-semibold text-stone-700 bg-white px-4 py-3 rounded-xl border border-stone-200 shadow-xs text-xs">
                   <div>
                     <span className="uppercase text-[11px] tracking-wider text-stone-500 mr-2">Level:</span>
                     <span className="text-[#059669] font-bold uppercase">{activeLevel.replace('_', ' ')}</span>
@@ -828,12 +884,25 @@ export default function SecularHubClient({
                     </div>
                   )}
                 </div>
+                <OfficialPrintSignaturesFooter />
               </div>
             )}
 
             {/* Top Students Tab */}
             {activeTab === 'top_students' && activeLevel && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="hub-sheet-page grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="col-span-full hidden print:block">
+                  <OfficialPrintLetterhead
+                    visibleOnScreen
+                    documentTitle="TOP PERFORMING STUDENTS SUMMARY"
+                    metadata={[
+                      { label: 'Level', value: activeLevel.replace('_', ' ').toUpperCase() },
+                      { label: 'Term', value: terms.find(t => t.id === activeTermId)?.label },
+                      { label: 'Phase', value: examPhase.toUpperCase() },
+                      { label: 'Year', value: terms.find(t => t.id === activeTermId)?.academic_year },
+                    ]}
+                  />
+                </div>
                 {topStudentsData.map((cls) => (
                   <div
                     key={cls.classId}
@@ -864,6 +933,9 @@ export default function SecularHubClient({
                     </div>
                   </div>
                 ))}
+                <div className="col-span-full">
+                  <OfficialPrintSignaturesFooter />
+                </div>
               </div>
             )}
           </div>

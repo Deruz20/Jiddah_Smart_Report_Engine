@@ -29,7 +29,9 @@
   flex-shrink: 0;
   border-radius: 4px;
   box-shadow: 0 4px 40px rgba(0, 0, 0, 0.18);
-  background: #fffbf0;
+  background: #ffffff;
+  color-scheme: light !important;
+  color: #0F172A !important;
   cursor: pointer;
   transition: box-shadow 0.15s, outline-color 0.15s;
 }
@@ -60,7 +62,9 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  background-color: #ffffff;
+  background-color: #ffffff !important;
+  color-scheme: light !important;
+  color: #0F172A !important;
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
@@ -117,7 +121,10 @@
     visibility: visible !important;
   }
 
-  #secular-hub-print-root {
+  #secular-hub-print-root,
+  #theology-hub-print-root,
+  #class-roster-print-root,
+  .report-renderer-container {
     position: relative !important;
     display: block !important;
     width: 100% !important;
@@ -128,24 +135,48 @@
     padding: 0 !important;
     overflow: visible !important;
     background: #ffffff !important;
+    color: #000000 !important;
   }
 
   #secular-hub-print-root,
-  #secular-hub-print-root * {
+  #secular-hub-print-root *,
+  #theology-hub-print-root,
+  #theology-hub-print-root *,
+  #class-roster-print-root,
+  #class-roster-print-root *,
+  .report-renderer-container,
+  .report-renderer-container * {
     visibility: visible !important;
   }
 
-  body:has(#secular-hub-print-root) *:has(#secular-hub-print-root) {
+  body:has(#secular-hub-print-root) *:has(#secular-hub-print-root),
+  body:has(#theology-hub-print-root) *:has(#theology-hub-print-root),
+  body:has(#class-roster-print-root) *:has(#class-roster-print-root),
+  body:has(.report-renderer-container) *:has(.report-renderer-container) {
     height: auto !important;
     min-height: 0 !important;
     max-height: none !important;
     overflow: visible !important;
   }
 
-  #secular-hub-print-root .hidden {
+  #secular-hub-print-root .hidden,
+  #theology-hub-print-root .hidden,
+  #class-roster-print-root .hidden,
+  .report-renderer-container .hidden {
     display: block !important;
   }
 
+  #secular-hub-print-root .print\:grid,
+  #theology-hub-print-root .print\:grid,
+  #class-roster-print-root .print\:grid {
+    display: grid !important;
+  }
+
+  #secular-hub-print-root .print\:flex,
+  #theology-hub-print-root .print\:flex,
+  #class-roster-print-root .print\:flex {
+    display: flex !important;
+  }
   /* 3. Report containers inside the portal print true A4 */
   #print-portal .report-container {
     transform: none !important;
@@ -154,12 +185,15 @@
     padding: 0 !important;
     overflow: visible !important;
     page-break-after: always;
+    break-after: page;
     page-break-inside: avoid;
+    break-inside: avoid;
   }
 
   #print-portal .report-container[data-report-orientation='portrait']:not(.theology-2up-sheet):not([data-report-type='TheologyMOTReport']) {
     width: 210mm !important;
     height: 297mm !important;
+    max-height: 1122px !important;
   }
 
   #print-portal .report-container[data-report-orientation='landscape'] {
@@ -209,9 +243,24 @@
     flex: 1 1 auto !important;
   }
 
-  /* 4. Last report should not add extra blank page */
-  #print-portal .report-container:last-child {
-    page-break-after: avoid !important;
+  #print-portal .report-container[data-report-orientation='landscape'] {
+    max-height: 793px !important;
+    overflow: hidden !important;
+  }
+
+  #print-portal .report-container.theology-2up-sheet {
+    height: 1122px !important;
+    max-height: 1122px !important;
+    overflow: hidden !important;
+  }
+
+  /* 4. Last report or hub sheet must NEVER emit a trailing blank page */
+  #print-portal .report-container:last-child,
+  #secular-hub-print-root .hub-sheet-page:last-child,
+  #theology-hub-print-root .hub-sheet-page:last-child,
+  #class-roster-print-root .hub-sheet-page:last-child {
+    page-break-after: auto !important;
+    break-after: auto !important;
   }
 
   /* 5. Kill ALL transforms everywhere in print scope (safety net) */
@@ -295,17 +344,79 @@
 
 @page {
   size: A4 portrait;
-  margin: 0;
+  margin: 0mm;
 }
 
 @page portrait-page {
   size: A4 portrait;
-  margin: 0;
+  margin: 0mm;
 }
 
 @page landscape-page {
   size: A4 landscape;
-  margin: 0;
+  margin: 0mm;
+}
+
+@page hub-portrait-page {
+  size: A4 portrait;
+  margin: 8mm;
+}
+
+@page hub-landscape-page {
+  size: A4 landscape;
+  margin: 8mm;
+}
+
+/* ============================================================================
+   A4 PRINT SPECIFICATIONS (2-Up Half Sheets & Full-Page Containers)
+   ============================================================================ */
+
+.a4-two-up-page {
+  width: 210mm;
+  height: 297mm;
+  max-height: 297mm;
+  padding: 5mm 8mm;
+  box-sizing: border-box;
+  overflow: hidden;
+  page-break-after: always;
+  break-after: page;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background-color: #ffffff !important;
+  color: #0F172A !important;
+}
+
+.a4-two-up-page .half-card-slot,
+.a4-two-up-page [data-slot="half-card"] {
+  max-height: 138mm;
+  height: 138mm;
+  overflow: hidden;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.a4-two-up-page .cut-divider,
+.a4-two-up-page [data-slot="cut-divider"] {
+  height: 6mm;
+  max-height: 6mm;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.a4-full-page-container {
+  width: 210mm;
+  height: 297mm;
+  padding: 6mm 8mm;
+  box-sizing: border-box;
+  overflow: hidden;
+  page-break-after: always;
+  break-after: page;
+  background-color: #ffffff !important;
+  color: #0F172A !important;
 }
 
 /* Assign named @page to report containers by orientation attribute */
@@ -315,4 +426,20 @@
 
 #print-portal .report-container[data-report-orientation='landscape'] {
   page: landscape-page;
+}
+
+#secular-hub-print-root[data-report-orientation='portrait'],
+#theology-hub-print-root[data-report-orientation='portrait'],
+#class-roster-print-root,
+#class-roster-print-root[data-report-orientation='portrait'] {
+  page: hub-portrait-page;
+}
+
+.print-landscape,
+#secular-hub-print-root,
+#theology-hub-print-root,
+#secular-hub-print-root[data-report-orientation='landscape'],
+#theology-hub-print-root[data-report-orientation='landscape'],
+#class-roster-print-root[data-report-orientation='landscape'] {
+  page: hub-landscape-page;
 }

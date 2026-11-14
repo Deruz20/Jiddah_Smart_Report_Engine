@@ -8,6 +8,7 @@ const serviceKey = creds.serviceRoleKey;
 const supabase = createClient(SUPABASE_URL, serviceKey);
 
 const ROLES_TO_SEED = [
+  { id: 'f0a1b2c3-d4e5-4f6a-8b9c-0d1e2f3a4b5c', email: 'hassanhatima20@gmail.com', password: 'Jiddah', role: 'Administrator', name: 'Hassan Hatima' },
   { id: '972af107-555f-4289-9357-5c14119328e5', email: 'admin@test.local', password: 'Password123!', role: 'Administrator', name: 'Synthetic Admin' },
   { id: '47ccf9d7-f514-4e4b-a765-536e29deed84', email: 'head@test.local', password: 'Password123!', role: 'Head Teacher', name: 'Synthetic Head Teacher' },
   { id: '0811a4f1-efab-442e-8f17-dad3adbb82ee', email: 'dos@test.local', password: 'Password123!', role: 'DOS', name: 'Synthetic DOS' },
@@ -186,9 +187,12 @@ export async function seedRehearsalDatabase() {
     class_type: 'circular'
   });
 
-  // 8. Students
-  // Clean up any extraneous students and enrollments from prior failed tests
+  // 8. Students & Subjects Cleanup
+  // Clean up any extraneous students, enrollments, and test subjects from prior runs
   await supabase.from('theology_marks').delete().not('enrollment_id', 'in', '("e0000000-0000-0000-0000-000000000001","e0000000-0000-0000-0000-000000000002")');
+  await supabase.from('theology_subjects').delete().ilike('subject_name_arabic', 'Today%');
+  await supabase.from('theology_subjects').delete().ilike('subject_name', 'Today%');
+  await supabase.from('circular_subjects').delete().ilike('subject_name', 'Today%');
   await supabase.from('enrollments').delete().not('id', 'in', '("e0000000-0000-0000-0000-000000000001","e0000000-0000-0000-0000-000000000002")');
   await supabase.from('students').delete().not('id', 'in', '("a0000000-0000-0000-0000-000000000001","a0000000-0000-0000-0000-000000000002")');
 

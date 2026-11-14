@@ -23,7 +23,6 @@ export default async function UploadPage() {
   if (error) {
     console.error('Upload Center could not load document storage:', error.message)
   }
-
   const files = (objects ?? []).map((object) => {
     const { data } = supabase.storage.from(BUCKET).getPublicUrl(object.name)
     const size = Number(object.metadata?.size ?? 0)
@@ -44,8 +43,8 @@ export default async function UploadPage() {
   })
 
   return (
-    <div className="w-full h-full bg-slate-50 dark:bg-[#0f172a]">
-      <UploadClient initialFiles={files} initialError={error?.message ?? null} />
+    <div className="w-full min-h-screen bg-[var(--bg-canvas)]">
+      <UploadClient initialFiles={files} />
     </div>
   )
 }

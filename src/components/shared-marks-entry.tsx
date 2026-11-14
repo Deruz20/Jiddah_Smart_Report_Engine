@@ -85,7 +85,7 @@ const SecularMarkTableRow = React.memo(function SecularMarkTableRow({
     <tr className="hover:bg-[var(--bg-hover)] transition-colors h-10">
       <td
         data-testid={`frozen-cell-${idx}`}
-        className="sticky left-0 z-10 bg-[var(--bg-card)] px-2.5 sm:px-4 py-1 border-r border-[#0D5C3A]/[0.06] dark:border-[#F59E0B]/[0.07] min-w-[130px] sm:min-w-[150px] max-w-[220px] w-[55%] sm:w-auto"
+        className="sticky left-0 z-10 bg-[var(--bg-card)] w-[54%] sm:w-[36%] max-w-0 truncate px-3 sm:px-4 py-1 border-r border-[#0D5C3A]/[0.06] dark:border-[#F59E0B]/[0.07]"
       >
         <div className="flex items-center gap-1.5 truncate">
           <span className="font-semibold text-xs sm:text-[13px] text-[var(--text-primary)] truncate" title={mark.subject_name}>
@@ -112,7 +112,7 @@ const SecularMarkTableRow = React.memo(function SecularMarkTableRow({
           )}
         </td>
       )}
-      <td className="hidden sm:table-cell px-3 sm:px-4 py-1 min-w-[170px] max-w-[260px]">
+      <td className="hidden sm:table-cell sm:w-[36%] px-3 py-1">
         {hasScore ? (
           <div className="flex flex-col gap-0.5 w-full max-w-[220px]">
             <div className="flex items-center justify-between text-[11px] font-semibold">
@@ -140,17 +140,17 @@ const SecularMarkTableRow = React.memo(function SecularMarkTableRow({
         )}
       </td>
       {['bot', 'all'].includes(examType) && (
-        <td className="px-1.5 py-1 text-center w-[45%] sm:w-28">
+        <td className="w-[46%] sm:w-[28%] px-2.5 sm:px-4 py-1 text-right">
           {renderScoreCell('secular', mark.subject_id, mark.subject_name, 'bot', mark.bot_score, idx)}
         </td>
       )}
       {['mot', 'all'].includes(examType) && (
-        <td className="px-1.5 py-1 text-center w-[45%] sm:w-28">
+        <td className="w-[46%] sm:w-[28%] px-2.5 sm:px-4 py-1 text-right">
           {renderScoreCell('secular', mark.subject_id, mark.subject_name, 'mot', mark.mot_score, idx)}
         </td>
       )}
       {['eot', 'all'].includes(examType) && (
-        <td className="px-1.5 py-1 text-center w-[45%] sm:w-28">
+        <td className="w-[46%] sm:w-[28%] px-2.5 sm:px-4 py-1 text-right">
           {renderScoreCell('secular', mark.subject_id, mark.subject_name, 'eot', mark.eot_score, idx)}
         </td>
       )}
@@ -186,12 +186,12 @@ const TheologyMarkTableRow = React.memo(function TheologyMarkTableRow({
 
   return (
     <tr className="hover:bg-[var(--bg-hover)] transition-colors h-10">
-      <td className="sticky left-0 z-10 bg-[var(--bg-card)] px-2.5 sm:px-4 py-1 border-r border-[#0D5C3A]/[0.06] dark:border-[#F59E0B]/[0.07] min-w-[130px] sm:min-w-[150px] max-w-[220px] w-[55%] sm:w-auto">
+      <td className="sticky left-0 z-10 bg-[var(--bg-card)] w-[54%] sm:w-[36%] max-w-0 truncate px-3 sm:px-4 py-1 border-r border-[#0D5C3A]/[0.06] dark:border-[#F59E0B]/[0.07]">
         <div className="font-semibold text-[var(--text-primary)] truncate text-xs sm:text-[13px]" dir="rtl">
           {mark.subject_name_arabic}
         </div>
       </td>
-      <td className="hidden sm:table-cell px-3 sm:px-4 py-1 min-w-[170px] max-w-[260px]" dir="rtl">
+      <td className="hidden sm:table-cell sm:w-[36%] px-3 py-1" dir="rtl">
         {hasScore ? (
           <div className="flex flex-col gap-0.5 w-full max-w-[220px]">
             <div className="flex items-center justify-between text-[11px] font-semibold">
@@ -219,12 +219,12 @@ const TheologyMarkTableRow = React.memo(function TheologyMarkTableRow({
         )}
       </td>
       {['mot', 'all'].includes(examType) && (
-        <td className="px-1.5 py-1 text-center w-[45%] sm:w-28">
+        <td className="w-[46%] sm:w-[28%] px-2.5 sm:px-4 py-1 text-right">
           {renderScoreCell('theology', mark.subject_id, mark.subject_name_arabic, 'mot', mark.mot_score, idx)}
         </td>
       )}
       {['eot', 'all'].includes(examType) && (
-        <td className="px-1.5 py-1 text-center w-[45%] sm:w-28">
+        <td className="w-[46%] sm:w-[28%] px-2.5 sm:px-4 py-1 text-right">
           {renderScoreCell('theology', mark.subject_id, mark.subject_name_arabic, 'eot', mark.eot_score, idx)}
         </td>
       )}
@@ -891,8 +891,8 @@ export function SharedMarksEntry({
       : null
 
     return (
-      <div className="flex flex-col items-center justify-center min-w-[84px]">
-        <div className="inline-flex items-center gap-1.5">
+      <div className="flex flex-col items-end justify-center w-full">
+        <div className="flex items-center justify-end gap-1.5 w-full">
           <input
             type="number"
             inputMode="numeric"
@@ -946,7 +946,7 @@ export function SharedMarksEntry({
               }
             }}
             disabled={isExamSetLocked}
-            className={`score-input h-8 sm:h-8.5 w-14 sm:w-20 px-1.5 text-center text-xs sm:text-sm font-mono font-extrabold tabular-nums rounded-xl transition-all outline-none border focus:ring-2 ${
+            className={`score-input h-8 w-14 sm:w-20 px-1.5 text-center text-xs sm:text-sm font-mono font-extrabold tabular-nums rounded-xl transition-all outline-none border focus:ring-2 shrink-0 ${
               fieldError
                 ? 'border-rose-500 bg-rose-500/10 text-rose-700 dark:text-rose-300 focus:ring-rose-500/25'
                 : isDirty
@@ -960,7 +960,7 @@ export function SharedMarksEntry({
           />
           {badge && (
             <span
-              className={`inline-flex items-center justify-center min-w-[34px] sm:min-w-[40px] h-7 px-1.5 sm:px-2 rounded-lg text-[11px] sm:text-xs font-bold border-0 ${badge.bg} ${badge.text} shrink-0`}
+              className={`inline-flex items-center justify-center min-w-[32px] sm:min-w-[40px] h-7 px-1.5 rounded-lg text-[11px] sm:text-xs font-bold border-0 ${badge.bg} ${badge.text} shrink-0`}
               dir={curriculum === 'theology' ? 'rtl' : 'ltr'}
             >
               {badge.grade}
@@ -1027,7 +1027,7 @@ export function SharedMarksEntry({
   )
 
   return (
-    <div className="w-full max-w-full min-w-0 pb-16 md:pb-1 flex-1 min-h-0 flex flex-col justify-between">
+    <div className="w-full max-w-full min-w-0 pb-2 flex-1 min-h-0 flex flex-col justify-between">
       <style>{`
         input[type="number"].score-input::-webkit-inner-spin-button,
         input[type="number"].score-input::-webkit-outer-spin-button {
@@ -1072,12 +1072,13 @@ export function SharedMarksEntry({
               />
 
               {/* Quick Search Pill */}
-              <div ref={searchBoxRef} className="relative flex-1 min-w-[110px] max-w-[200px] shrink">
-                <div className="relative flex items-center">
-                  <Search className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500 absolute left-2.5 pointer-events-none" />
+              <div ref={searchBoxRef} className="relative flex-1 min-w-[95px] max-w-[165px] shrink">
+                <div className="relative flex items-center gap-1.5 h-8 px-3 rounded-full bg-[#F0F4F9] dark:bg-[#131A17] flex-1 min-w-[95px] max-w-[165px] overflow-hidden shrink">
+                  <Search className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500 shrink-0 pointer-events-none" />
                   <input
                     id="marks-student-search"
                     type="text"
+                    size={1}
                     data-testid="student-search-input"
                     value={studentSearchQuery}
                     onFocus={() => setSearchDropdownOpen(true)}
@@ -1087,7 +1088,7 @@ export function SharedMarksEntry({
                       setSearchDropdownOpen(true)
                     }}
                     placeholder="Quick search..."
-                    className="w-full h-8 pl-7.5 pr-6 text-xs font-medium rounded-full bg-[#F0F4F9] dark:bg-[#131314] hover:bg-[#E4EAE6] dark:hover:bg-[#282A2C] text-[#1F1F1F] dark:text-[#E3E3E3] placeholder:text-stone-400 dark:placeholder:text-stone-500 border-0 ring-0 focus:ring-2 focus:ring-[#0D5C3A]/25 dark:focus:ring-[#F59E0B]/30 outline-none transition-colors"
+                    className="w-full min-w-0 bg-transparent text-xs outline-none border-0 truncate placeholder:text-stone-400 dark:placeholder:text-stone-500 text-[#1F1F1F] dark:text-[#E3E3E3]"
                   />
                   {studentSearchQuery && (
                     <button
@@ -1097,7 +1098,7 @@ export function SharedMarksEntry({
                         setStudentSearchQuery('')
                         setSearchDropdownOpen(false)
                       }}
-                      className="absolute right-2 p-0.5 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 rounded-full cursor-pointer"
+                      className="p-0.5 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 rounded-full cursor-pointer shrink-0"
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -1105,7 +1106,7 @@ export function SharedMarksEntry({
                 </div>
 
                 {searchDropdownOpen && (
-                  <div className="absolute left-0 right-0 top-full mt-1.5 max-h-64 overflow-y-auto bg-white dark:bg-[#1E1F20] border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 rounded-2xl shadow-xl z-50 divide-y divide-[#0D5C3A]/[0.06] dark:divide-[#F59E0B]/[0.07]">
+                  <div className="absolute left-0 top-full mt-1.5 min-w-[220px] max-h-64 overflow-y-auto bg-white dark:bg-[#1E1F20] border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 rounded-2xl shadow-xl z-50 divide-y divide-[#0D5C3A]/[0.06] dark:divide-[#F59E0B]/[0.07]">
                     {filteredEnrollments.length === 0 ? (
                       <div className="px-3 py-2.5 text-xs text-stone-400 text-center">
                         No students match &ldquo;{studentSearchQuery}&rdquo;
@@ -1147,10 +1148,10 @@ export function SharedMarksEntry({
             </div>
 
             {/* Right Group */}
-            <div className="flex items-center gap-1.5 lg:gap-2 shrink-0 ml-auto">
+            <div className="flex items-center gap-1.5 shrink-0 ml-auto">
               {/* Read-Only Active Term Confirmation Pill */}
               <div
-                className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full bg-[#0D5C3A]/8 text-[#0D5C3A] dark:bg-[#10B981]/15 dark:text-[#34D399] font-semibold text-xs border border-[#0D5C3A]/15 dark:border-[#10B981]/25 select-none shrink-0"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#0D5C3A]/8 text-[#0D5C3A] dark:bg-[#10B981]/15 dark:text-[#34D399] font-semibold text-[11px] border border-[#0D5C3A]/15 dark:border-[#10B981]/25 select-none shrink-0"
                 title="Active Term (use ⋮ menu to change)"
               >
                 <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
@@ -1161,7 +1162,7 @@ export function SharedMarksEntry({
 
               {/* Exam Phase Track (BOT | MOT | EOT | ALL) */}
               <div
-                className="inline-flex items-center bg-[#F0F4F9] dark:bg-[#131314] h-9.5 p-1 rounded-full border-0 gap-1 shrink-0"
+                className="inline-flex items-center bg-[#F0F4F9] dark:bg-[#131314] h-8 p-0.5 rounded-full border-0 gap-0.5 shrink-0"
                 aria-label="Exam Type"
               >
                 {(['bot', 'mot', 'eot', 'all'] as ExamType[]).map((type) => (
@@ -1172,7 +1173,7 @@ export function SharedMarksEntry({
                       setExamType(type)
                       setSuccess(false)
                     }}
-                    className={`whitespace-nowrap shrink-0 h-7.5 px-3 sm:px-3.5 text-xs sm:text-[13px] font-semibold uppercase tracking-wider rounded-full transition-all cursor-pointer ${
+                    className={`whitespace-nowrap shrink-0 h-7 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider rounded-full transition-all cursor-pointer ${
                       examType === type
                         ? 'bg-[#0D5C3A] text-white dark:bg-[#10B981]/25 dark:text-[#34D399] shadow-xs'
                         : 'text-[#444746] dark:text-[#C4C7C5] hover:text-[#1F1F1F] dark:hover:text-white'
@@ -1186,7 +1187,7 @@ export function SharedMarksEntry({
               {/* Curriculum View Track (Both | Secular | Theology) */}
               {allowedDepartment === 'both' && (
                 <div
-                  className="inline-flex items-center bg-[#F0F4F9] dark:bg-[#131314] h-9.5 p-1 rounded-full border-0 gap-1 shrink-0"
+                  className="inline-flex items-center bg-[#F0F4F9] dark:bg-[#131314] h-8 p-0.5 rounded-full border-0 gap-0.5 shrink-0"
                   aria-label="Department View"
                 >
                   {(['both', 'secular', 'theology'] as const).map((view) => (
@@ -1194,13 +1195,13 @@ export function SharedMarksEntry({
                       key={view}
                       type="button"
                       onClick={() => setActiveView(view)}
-                      className={`whitespace-nowrap shrink-0 h-7.5 px-3 sm:px-3.5 text-xs sm:text-[13px] font-semibold capitalize rounded-full transition-all cursor-pointer ${
+                      className={`whitespace-nowrap shrink-0 h-7 px-2.5 py-1 text-[11px] font-semibold capitalize rounded-full transition-all cursor-pointer ${
                         activeView === view
                           ? 'bg-[#0D5C3A] text-white dark:bg-[#10B981]/25 dark:text-[#34D399] shadow-xs'
                           : 'text-[#444746] dark:text-[#C4C7C5] hover:text-[#1F1F1F] dark:hover:text-white'
                       }`}
                     >
-                      {view}
+                      {view === 'both' ? 'Both' : view === 'secular' ? 'Secular' : 'Theology'}
                     </button>
                   ))}
                 </div>
@@ -1217,7 +1218,7 @@ export function SharedMarksEntry({
                     { value: 'all', label: 'All Subjects', count: circularMarks.length },
                     ...circularMarks.map((m) => ({ value: m.subject_id, label: m.subject_name })),
                   ]}
-                  className="hidden xl:inline-block shrink-0 w-auto"
+                  className="hidden xl:inline-flex shrink-0 w-auto"
                   triggerClassName="h-8 px-3 text-xs shrink-0 whitespace-nowrap"
                 />
               )}
@@ -1654,8 +1655,8 @@ export function SharedMarksEntry({
                   <div
                     className={
                       isBothView
-                        ? 'grid grid-cols-1 xl:grid-cols-2 gap-3 items-start w-full min-w-0 flex-1 min-h-0'
-                        : 'grid grid-cols-1 lg:grid-cols-12 gap-3 items-start w-full min-w-0 flex-1 min-h-0'
+                        ? 'grid grid-cols-1 xl:grid-cols-2 gap-3 items-start w-full min-w-0 flex-1 min-h-0 mb-3'
+                        : 'grid grid-cols-1 lg:grid-cols-12 gap-3 items-start w-full min-w-0 flex-1 min-h-0 mb-3'
                     }
                   >
                     {/* Secular Marks Card */}
@@ -1678,35 +1679,31 @@ export function SharedMarksEntry({
 
                         <div
                           data-testid="marks-scroll-grid"
-                          className="w-full max-w-full overflow-x-auto overscroll-x-contain"
+                          className="overflow-hidden w-full"
                         >
-                          <table
-                            className={`w-full table-fixed border-collapse text-left tabular-nums ${
-                              examType === 'all' ? 'min-w-[540px]' : 'min-w-[420px]'
-                            }`}
-                          >
+                          <table className="w-full table-fixed border-collapse text-left tabular-nums">
                             <thead>
                               <tr className="bg-[var(--bg-sunken)] border-b border-[#0D5C3A]/[0.06] dark:border-[#F59E0B]/[0.07] text-[11px] font-bold text-[var(--text-secondary)] uppercase tracking-wider h-8">
                                 <th
                                   data-testid="frozen-first-column-header"
-                                  className="sticky left-0 z-20 bg-[var(--bg-sunken)] px-2.5 sm:px-4 py-1.5 border-r border-[#0D5C3A]/[0.06] dark:border-[#F59E0B]/[0.07] min-w-[130px] sm:min-w-[150px] max-w-[220px] w-[55%] sm:w-auto"
+                                  className="sticky left-0 z-20 bg-[var(--bg-sunken)] w-[54%] sm:w-[36%] px-3 sm:px-4 py-1.5 text-left border-r border-[#0D5C3A]/[0.06] dark:border-[#F59E0B]/[0.07]"
                                 >
                                   Subject
                                 </th>
                                 {!isCurrentNursery && (
                                   <th className="hidden sm:table-cell px-1.5 py-1.5 text-center w-10">Core</th>
                                 )}
-                                <th className="hidden sm:table-cell px-4 py-1.5 text-left min-w-[180px] max-w-[280px]">
+                                <th className="hidden sm:table-cell sm:w-[36%] px-3 py-1.5 text-left">
                                   Performance &amp; Remark
                                 </th>
                                 {['bot', 'all'].includes(examType) && (
-                                  <th className="px-1.5 py-1.5 text-center w-[45%] sm:w-28">BOT (100)</th>
+                                  <th className="w-[46%] sm:w-[28%] px-2.5 sm:px-4 py-1.5 text-right">BOT (100)</th>
                                 )}
                                 {['mot', 'all'].includes(examType) && (
-                                  <th className="px-1.5 py-1.5 text-center w-[45%] sm:w-28">MOT (100)</th>
+                                  <th className="w-[46%] sm:w-[28%] px-2.5 sm:px-4 py-1.5 text-right">MOT (100)</th>
                                 )}
                                 {['eot', 'all'].includes(examType) && (
-                                  <th className="px-1.5 py-1.5 text-center w-[45%] sm:w-28">EOT (100)</th>
+                                  <th className="w-[46%] sm:w-[28%] px-2.5 sm:px-4 py-1.5 text-right">EOT (100)</th>
                                 )}
                               </tr>
                             </thead>
@@ -1753,25 +1750,21 @@ export function SharedMarksEntry({
                             </span>
                           </div>
 
-                          <div className="w-full max-w-full overflow-x-auto overscroll-x-contain">
-                            <table
-                              className={`w-full table-fixed border-collapse text-left tabular-nums ${
-                                examType === 'all' ? 'min-w-[460px]' : 'min-w-[360px]'
-                              }`}
-                            >
+                          <div className="overflow-hidden w-full">
+                            <table className="w-full table-fixed border-collapse text-left tabular-nums">
                               <thead>
                                 <tr className="bg-[var(--bg-sunken)] border-b border-[#0D5C3A]/[0.06] dark:border-[#F59E0B]/[0.07] text-[11px] font-bold text-[var(--text-secondary)] uppercase tracking-wider h-8">
-                                  <th className="sticky left-0 z-20 bg-[var(--bg-sunken)] px-2.5 sm:px-4 py-1.5 border-r border-[#0D5C3A]/[0.06] dark:border-[#F59E0B]/[0.07] min-w-[130px] sm:min-w-[150px] max-w-[220px] w-[55%] sm:w-auto">
+                                  <th className="sticky left-0 z-20 bg-[var(--bg-sunken)] w-[54%] sm:w-[36%] px-3 sm:px-4 py-1.5 text-left border-r border-[#0D5C3A]/[0.06] dark:border-[#F59E0B]/[0.07]">
                                     Subject (المادة)
                                   </th>
-                                  <th className="hidden sm:table-cell px-4 py-1.5 text-right min-w-[180px] max-w-[280px]" dir="rtl">
+                                  <th className="hidden sm:table-cell sm:w-[36%] px-3 py-1.5 text-right" dir="rtl">
                                     المستوى والتقدير
                                   </th>
                                   {['mot', 'all'].includes(examType) && (
-                                    <th className="px-1.5 py-1.5 text-center w-[45%] sm:w-28">MOT (100)</th>
+                                    <th className="w-[46%] sm:w-[28%] px-2.5 sm:px-4 py-1.5 text-right">MOT (100)</th>
                                   )}
                                   {['eot', 'all'].includes(examType) && (
-                                    <th className="px-1.5 py-1.5 text-center w-[45%] sm:w-28">EOT (100)</th>
+                                    <th className="w-[46%] sm:w-[28%] px-2.5 sm:px-4 py-1.5 text-right">EOT (100)</th>
                                   )}
                                 </tr>
                               </thead>

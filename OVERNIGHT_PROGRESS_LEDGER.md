@@ -520,6 +520,46 @@ Exit code: 0
      - Automated test suite: 36/36 tests in 12 suites pass (100% pass rate).
      - Next.js webpack production build: 68/68 routes generated cleanly with zero build errors.
 
+---
+
+## Milestone 17: Five Exact CSS Layout and Table-Math Bug Fixes
+
+- **Files Modified / Created:**
+  - `src/components/shared-marks-entry.tsx`
+  - `src/components/ui/custom-pill-select.tsx`
+  - `src/__tests__/overhaul-workstreams.test.mjs`
+  - `OVERNIGHT_PROGRESS_LEDGER.md`
+  - `public/sw.js`
+- **Scope & Workstreams Completed:**
+  1. **Workstream 1: Quick Search & Term Badge Collision Remediation (`shared-marks-entry.tsx`):**
+     - Root Cause: `<input>` lacked `w-full min-w-0` and wrapper lacked `overflow-hidden`. Default browser intrinsic input width (`size="20"`) expanded and overlapped the Term 3 badge when sidebar was expanded.
+     - Solution: Configured search wrapper to `relative flex items-center gap-1.5 h-8 px-3 rounded-full bg-[#F0F4F9] dark:bg-[#131A17] flex-1 min-w-[95px] max-w-[165px] overflow-hidden shrink`.
+     - Set `<input>` to `w-full min-w-0 bg-transparent text-xs outline-none border-0 truncate` and `size={1}`.
+     - Optimized right-side controls group with `flex items-center gap-1.5 shrink-0 ml-auto`, compact `px-2.5 py-1 text-[11px] font-semibold` badges/buttons so total row width is `< 800px` (guaranteeing zero collision even with sidebar expanded).
+  2. **Workstream 2: Permanent Unwrapping of `All Subjects (6)` Chevron (`custom-pill-select.tsx`, `shared-marks-entry.tsx`):**
+     - Root Cause: Inner block div and lack of strict flex-wrap styling allowed `ChevronDown` to wrap to a second line.
+     - Solution: Enforced `style={{ display: 'inline-flex', flexWrap: 'nowrap', alignItems: 'center', whiteSpace: 'nowrap' }}` and classes `inline-flex flex-row flex-nowrap items-center justify-between gap-1.5 whitespace-nowrap shrink-0` on trigger button.
+     - Removed inner wrapping `div` around label, counter badge, and `<ChevronDown className="size-3.5 shrink-0" />`.
+     - Updated desktop Subject `CustomPillSelect` in `shared-marks-entry.tsx` to `hidden xl:inline-flex shrink-0 w-auto`.
+  3. **Workstream 3: Mobile Table Right-Edge Cutoff & Desktop Theology Horizontal Scrollbar Elimination (`shared-marks-entry.tsx`):**
+     - Root Cause: `min-w-[420px]`/`min-w-[360px]` classes and `overflow-x-auto` forced horizontal scrolling and pushed score columns off-screen on mobile viewports.
+     - Solution: Purged all `min-w-[...]` classes from tables, headers, and cells. Set table containers to `overflow-hidden w-full`.
+     - Enforced exact column percentage geometry in `<thead>`:
+       - Column 1 (`SUBJECT`): `w-[54%] sm:w-[36%] px-3 sm:px-4 py-1.5 text-left`
+       - Column 2 (`PERFORMANCE & REMARK`): `hidden sm:table-cell sm:w-[36%] px-3 py-1.5`
+       - Column 3 (`SCORE`): `w-[46%] sm:w-[28%] px-2.5 sm:px-4 py-1.5 text-right`
+     - Applied `w-[54%] sm:w-[36%] max-w-0 truncate px-3 sm:px-4 py-1` on Subject `<td>` (enforcing clean text truncation inside fixed table layout) and `w-[46%] sm:w-[28%] px-2.5 sm:px-4 py-1 text-right` with `flex items-center justify-end gap-1.5 w-full` on Score `<td>`.
+     - Sized `.score-input` to `w-14 sm:w-20 h-8 text-xs sm:text-sm shrink-0` and grade badge to `min-w-[32px] sm:min-w-[40px] h-7 px-1.5 text-[11px] sm:text-xs shrink-0`.
+  4. **Workstream 4: Mobile Sticky Save Bar Upward Displacement Fix (`shared-marks-entry.tsx`):**
+     - Root Cause: `pb-16` on parent container pushed the `position: sticky; bottom: 8px;` element 64px upward onto the `Secular Summary` row.
+     - Solution: Replaced `pb-16` on parent container with `pb-2`.
+     - Added `mb-3` to Zone 3 tables grid container, guaranteeing clean 12px separation between summary footers and the floating Save pill.
+  5. **Workstream 5: Verification Gate:**
+     - TypeScript check (`tsc --noEmit`): 0 errors across entire repository.
+     - Automated test suite: 40/40 tests across 13 suites pass (100% pass rate).
+     - Next.js webpack production build: 68/68 routes generated cleanly with zero build errors.
+
+
 
 
 

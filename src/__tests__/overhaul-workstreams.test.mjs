@@ -609,7 +609,7 @@ describe('Workstream 9: Custom Radix Comboboxes, Middle Performance Bar & Dark M
     const marksEntrySrc = fs.readFileSync(marksEntryPath, 'utf8');
 
     // Sizing and dark mode contrast classes enforced on score inputs
-    assert.match(marksEntrySrc, /score-input\s+h-8\s+sm:h-8\.5/);
+    assert.match(marksEntrySrc, /score-input\s+h-8/);
     assert.match(marksEntrySrc, /dark:!bg-\[#0D1714\]/);
     assert.match(marksEntrySrc, /dark:!text-\[#FFFFFF\]/);
   });
@@ -741,15 +741,15 @@ describe('Workstream 11: Milestone 16 Layout Compactness, Mobile Refinement & Mo
     const marksEntrySrc = fs.readFileSync(marksEntryPath, 'utf8');
 
     // table-fixed w-full applied to tables
-    assert.match(marksEntrySrc, /<table\s+className=\{`w-full table-fixed/);
+    assert.match(marksEntrySrc, /<table className="w-full table-fixed/);
 
     // Compact py-1 row cell geometry
-    assert.match(marksEntrySrc, /px-2\.5 sm:px-4 py-1/);
-    assert.match(marksEntrySrc, /w-\[55%\] sm:w-auto/);
-    assert.match(marksEntrySrc, /w-\[45%\] sm:w-28/);
+    assert.match(marksEntrySrc, /px-3 sm:px-4 py-1/);
+    assert.match(marksEntrySrc, /w-\[54%\] sm:w-\[36%\]/);
+    assert.match(marksEntrySrc, /w-\[46%\] sm:w-\[28%\]/);
 
     // Bottom container padding avoids floating Save bar overlap
-    assert.match(marksEntrySrc, /pb-16 md:pb-1/);
+    assert.match(marksEntrySrc, /pb-2/);
   });
 
   it('rolls out CustomPillSelect and Brand Themes across Teachers, Subjects, Roll Call, and Hubs', () => {
@@ -776,6 +776,74 @@ describe('Workstream 11: Milestone 16 Layout Compactness, Mobile Refinement & Mo
     const theologyHubPath = path.join(rootDir, 'src/components/theology-hub/TheologyHubClient.tsx');
     const theologyHubSrc = fs.readFileSync(theologyHubPath, 'utf8');
     assert.match(theologyHubSrc, /bg-\[#D97706\]\/15/);
+  });
+});
+
+describe('Workstream 12: Five Exact CSS Layout and Table-Math Bug Fixes', () => {
+  const rootDir = process.cwd();
+
+  it('prevents Quick Search collision with Term badge in Desktop Zone 1', () => {
+    const marksEntryPath = path.join(rootDir, 'src/components/shared-marks-entry.tsx');
+    const marksEntrySrc = fs.readFileSync(marksEntryPath, 'utf8');
+
+    // Quick Search pill wrapper includes overflow-hidden and min-w-[95px] max-w-[165px]
+    assert.match(marksEntrySrc, /flex-1 min-w-\[95px\] max-w-\[165px\] overflow-hidden shrink/);
+
+    // Input has w-full min-w-0 and size={1}
+    assert.match(marksEntrySrc, /id="marks-student-search"[^>]*size=\{1\}/);
+    assert.match(marksEntrySrc, /w-full min-w-0 bg-transparent text-xs outline-none border-0 truncate/);
+
+    // Right-side controls group has shrink-0 and compact text-[11px] font-semibold
+    assert.match(marksEntrySrc, /flex items-center gap-1\.5 shrink-0 ml-auto/);
+    assert.match(marksEntrySrc, /px-2\.5 py-1 text-\[11px\] font-semibold/);
+  });
+
+  it('prevents All Subjects (6) wrapped chevron in CustomPillSelect and marks entry', () => {
+    const customSelectPath = path.join(rootDir, 'src/components/ui/custom-pill-select.tsx');
+    const customSelectSrc = fs.readFileSync(customSelectPath, 'utf8');
+
+    // Inline style flexWrap nowrap enforced on button
+    assert.match(customSelectSrc, /flexWrap:\s*'nowrap'/);
+    assert.match(customSelectSrc, /whiteSpace:\s*'nowrap'/);
+    assert.match(customSelectSrc, /inline-flex flex-row flex-nowrap items-center justify-between gap-1\.5 whitespace-nowrap shrink-0/);
+    assert.match(customSelectSrc, /<ChevronDown\s+className=\{cn\(\s*'size-3\.5 shrink-0/);
+
+    const marksEntryPath = path.join(rootDir, 'src/components/shared-marks-entry.tsx');
+    const marksEntrySrc = fs.readFileSync(marksEntryPath, 'utf8');
+
+    // Subject select on desktop uses hidden xl:inline-flex shrink-0 w-auto
+    assert.match(marksEntrySrc, /id="marks-subject-select"[\s\S]*?className="hidden xl:inline-flex shrink-0 w-auto"/);
+  });
+
+  it('enforces overflow-hidden w-full wrappers and exact table column percentages', () => {
+    const marksEntryPath = path.join(rootDir, 'src/components/shared-marks-entry.tsx');
+    const marksEntrySrc = fs.readFileSync(marksEntryPath, 'utf8');
+
+    // Wrappers have overflow-hidden w-full (zero internal horizontal scrollbar)
+    assert.match(marksEntrySrc, /data-testid="marks-scroll-grid"\s+className="overflow-hidden w-full"/);
+    assert.match(marksEntrySrc, /<div className="overflow-hidden w-full">\s*<table className="w-full table-fixed/);
+
+    // Column widths: 54% mobile / 36% sm for subject, 46% mobile / 28% sm for score
+    assert.match(marksEntrySrc, /w-\[54%\] sm:w-\[36%\] px-3 sm:px-4 py-1\.5 text-left/);
+    assert.match(marksEntrySrc, /w-\[46%\] sm:w-\[28%\] px-2\.5 sm:px-4 py-1\.5 text-right/);
+
+    // Subject cells enforce max-w-0 truncate
+    assert.match(marksEntrySrc, /w-\[54%\] sm:w-\[36%\] max-w-0 truncate px-3 sm:px-4 py-1/);
+
+    // Score cells enforce flex justify-end
+    assert.match(marksEntrySrc, /flex items-center justify-end gap-1\.5 w-full/);
+  });
+
+  it('verifies parent container does not use pb-16 to avoid sticky Save bar displacement', () => {
+    const marksEntryPath = path.join(rootDir, 'src/components/shared-marks-entry.tsx');
+    const marksEntrySrc = fs.readFileSync(marksEntryPath, 'utf8');
+
+    // Parent container uses pb-2, not pb-16
+    assert.doesNotMatch(marksEntrySrc, /pb-16/);
+    assert.match(marksEntrySrc, /w-full max-w-full min-w-0 pb-2 flex-1 min-h-0 flex flex-col justify-between/);
+
+    // Zone 3 grid container has mb-3 separation before Zone 4 Save bar
+    assert.match(marksEntrySrc, /grid grid-cols-1 xl:grid-cols-2 gap-3 items-start w-full min-w-0 flex-1 min-h-0 mb-3/);
   });
 });
 

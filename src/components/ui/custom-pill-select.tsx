@@ -62,28 +62,27 @@ export function CustomPillSelect({
           data-testid={dataTestId}
           aria-label={resolvedAriaLabel}
           aria-expanded={open}
+          style={{ display: 'inline-flex', flexWrap: 'nowrap', alignItems: 'center', whiteSpace: 'nowrap' }}
           className={cn(
-            'h-9.5 px-3.5 sm:px-4 rounded-full inline-flex flex-row flex-nowrap items-center justify-between whitespace-nowrap shrink-0 gap-2 text-xs sm:text-[13px] font-semibold transition-all active:scale-[0.98] outline-none',
+            'h-9.5 px-3.5 sm:px-4 rounded-full inline-flex flex-row flex-nowrap items-center justify-between gap-1.5 whitespace-nowrap shrink-0 text-xs sm:text-[13px] font-semibold transition-all active:scale-[0.98] outline-none',
             'bg-white dark:bg-[#1E1F20] text-[#1F1F1F] dark:text-[#E3E3E3]',
             'border border-black/[0.08] dark:border-white/[0.08] hover:border-[#0D5C3A]/30 dark:hover:border-[#F59E0B]/30 shadow-2xs cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed',
             triggerClassName,
             className
           )}
         >
-          <div className="flex items-center gap-1.5 min-w-0 truncate flex-nowrap whitespace-nowrap">
-            {prefix}
-            <span className="truncate">
-              {selectedOption ? selectedOption.label : placeholder}
+          {prefix}
+          <span className="truncate">
+            {selectedOption ? selectedOption.label : placeholder}
+          </span>
+          {selectedOption?.count !== undefined && (
+            <span className="text-[11px] font-mono text-[#747775] dark:text-[#8E918F] whitespace-nowrap shrink-0">
+              ({selectedOption.count})
             </span>
-            {selectedOption?.count !== undefined && (
-              <span className="text-[11px] font-mono text-[#747775] dark:text-[#8E918F] whitespace-nowrap shrink-0">
-                ({selectedOption.count})
-              </span>
-            )}
-          </div>
+          )}
           <ChevronDown
             className={cn(
-              'w-3.5 h-3.5 text-[#747775] dark:text-[#8E918F] shrink-0 transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]',
+              'size-3.5 shrink-0 text-[#747775] dark:text-[#8E918F] transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]',
               open && 'rotate-180 text-[#0D5C3A] dark:text-[#F59E0B]'
             )}
           />
@@ -223,6 +222,7 @@ export function StudentCombobox({
           data-testid={dataTestId}
           aria-label={resolvedAriaLabel}
           aria-expanded={open}
+          style={{ display: 'inline-flex', flexWrap: 'nowrap', alignItems: 'center', whiteSpace: 'nowrap' }}
           className={cn(
             'inline-flex flex-row flex-nowrap items-center justify-between whitespace-nowrap shrink-0 gap-2 text-xs font-bold transition-all outline-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed',
             variant === 'hero'
@@ -247,7 +247,7 @@ export function StudentCombobox({
           </div>
           <ChevronDown
             className={cn(
-              'w-3.5 h-3.5 shrink-0 transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]',
+              'size-3.5 shrink-0 transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]',
               variant === 'hero' ? 'text-white/80' : 'text-[#747775] dark:text-[#8E918F]',
               open && 'rotate-180'
             )}

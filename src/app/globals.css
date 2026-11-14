@@ -484,3 +484,42 @@ body {
   transition: none !important;
   animation: none !important;
 }
+
+/* Silky Apple / Linear Popover & Dropdown Physics — Anchored Transform Origin */
+[data-radix-popper-content-wrapper] {
+  transition: none !important;
+}
+
+@keyframes jiddah-popover-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.95) translateY(-4px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes jiddah-popover-out {
+  0% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.96) translateY(-2px);
+  }
+}
+
+.jiddah-popover-content[data-state="open"] {
+  transform-origin: var(--radix-popover-content-transform-origin, var(--radix-dropdown-menu-content-transform-origin, top center));
+  animation: jiddah-popover-in 180ms cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  will-change: transform, opacity;
+}
+
+.jiddah-popover-content[data-state="closed"] {
+  transform-origin: var(--radix-popover-content-transform-origin, var(--radix-dropdown-menu-content-transform-origin, top center));
+  animation: jiddah-popover-out 135ms cubic-bezier(0.4, 0, 1, 1) forwards !important;
+  will-change: transform, opacity;
+}

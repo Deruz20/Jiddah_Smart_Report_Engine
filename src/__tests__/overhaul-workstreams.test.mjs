@@ -555,7 +555,7 @@ describe('Workstream 8: Mobile Drawer Header & Mobile Marks Entry Architecture',
     assert.match(marksEntrySrc, /aria-label="Toggle student search"/);
 
     // Single-line floating bottom save dock exists
-    assert.match(marksEntrySrc, /sticky bottom-2 z-20 rounded-full bg-white\/95 dark:bg-\[#1E1F20\]\/95/);
+    assert.match(marksEntrySrc, /sticky bottom-2 z-20 rounded-full\s+(?:md:static\s+)?bg-white\/95 dark:bg-\[#1E1F20\]\/95/);
   });
 });
 
@@ -622,13 +622,97 @@ describe('Workstream 9: Custom Radix Comboboxes, Middle Performance Bar & Dark M
     assert.match(marksEntrySrc, /Performance &amp; Remark/);
     assert.match(marksEntrySrc, /المستوى والتقدير/);
 
-    // Row heights expanded to h-13 sm:h-14
-    assert.match(marksEntrySrc, /hover:bg-\[var\(--bg-hover\)\] transition-colors h-13 sm:h-14/);
+    // Row heights adaptive for windowed/fullscreen
+    assert.match(marksEntrySrc, /hover:bg-\[var\(--bg-hover\)\] transition-colors h-11 xl:h-12/);
 
     // Single-curriculum telemetry side card rendered in lg:col-span-4
     assert.match(marksEntrySrc, /function StudentPerformanceSideCard/);
     assert.match(marksEntrySrc, /<StudentPerformanceSideCard/);
     assert.match(marksEntrySrc, /lg:col-span-4/);
+  });
+});
+
+describe('Workstream 10: Silky Popover Physics, Wrapped Chevron Fix, & System-Wide Custom Combobox Rollout', () => {
+  const rootDir = process.cwd();
+
+  it('defines hardware-accelerated popover keyframes and eliminates popper wrapper transitions in globals.css', () => {
+    const globalsCssPath = path.join(rootDir, 'src/app/globals.css');
+    const globalsCss = fs.readFileSync(globalsCssPath, 'utf8');
+
+    assert.match(globalsCss, /\[data-radix-popper-content-wrapper\]\s*\{[^}]*transition:\s*none\s*!important/);
+    assert.match(globalsCss, /@keyframes\s+jiddah-popover-in/);
+    assert.match(globalsCss, /@keyframes\s+jiddah-popover-out/);
+    assert.match(globalsCss, /\.jiddah-popover-content\[data-state="open"\]/);
+    assert.match(globalsCss, /\.jiddah-popover-content\[data-state="closed"\]/);
+  });
+
+  it('prevents wrapped chevron in CustomPillSelect and anchors popovers to jiddah-popover-content', () => {
+    const customSelectPath = path.join(rootDir, 'src/components/ui/custom-pill-select.tsx');
+    const customSelectSrc = fs.readFileSync(customSelectPath, 'utf8');
+
+    // Prevents wrapping of chevron button & label
+    assert.match(customSelectSrc, /flex-nowrap\s+whitespace-nowrap/);
+    assert.match(customSelectSrc, /whitespace-nowrap\s+shrink-0/);
+    assert.match(customSelectSrc, /ease-\[cubic-bezier\(0\.16,1,0\.3,1\)\]/);
+    assert.match(customSelectSrc, /jiddah-popover-content/);
+
+    // MoreActionsMenu and Radix popovers also use jiddah-popover-content
+    const moreActionsPath = path.join(rootDir, 'src/components/ui/more-actions-menu.tsx');
+    const moreActionsSrc = fs.readFileSync(moreActionsPath, 'utf8');
+    assert.match(moreActionsSrc, /jiddah-popover-content/);
+
+    const figmaPopoverPath = path.join(rootDir, 'src/components/figma-ui/ui/popover.tsx');
+    const figmaPopoverSrc = fs.readFileSync(figmaPopoverPath, 'utf8');
+    assert.match(figmaPopoverSrc, /jiddah-popover-content/);
+  });
+
+  it('auto-adjusts Marks Entry layout between windowed and fullscreen viewports', () => {
+    const marksEntryPath = path.join(rootDir, 'src/components/shared-marks-entry.tsx');
+    const marksEntrySrc = fs.readFileSync(marksEntryPath, 'utf8');
+
+    // Adaptive row height
+    assert.match(marksEntrySrc, /h-11 xl:h-12/);
+
+    // Zone 4 save bar is md:static on desktop and sticky on mobile
+    assert.match(marksEntrySrc, /sticky bottom-2 z-20 rounded-full md:static/);
+    assert.match(marksEntrySrc, /shrink-0 mt-auto/);
+
+    // Side card compacts and hides keyboard shortcuts on shorter viewports
+    assert.match(marksEntrySrc, /hidden\s+\[@media\(min-height:860px\)\]:block/);
+  });
+
+  it('rolls out CustomPillSelect across Secular Hub, Theology Hub, Reports, Students, and Classes', () => {
+    const secularHubPath = path.join(rootDir, 'src/components/secular-hub/SecularHubClient.tsx');
+    const secularHubSrc = fs.readFileSync(secularHubPath, 'utf8');
+    assert.match(secularHubSrc, /import\s*\{[^}]*CustomPillSelect[^}]*\}\s*from\s*['"]@\/components\/ui\/custom-pill-select['"]/);
+    assert.match(secularHubSrc, /<CustomPillSelect\s+id="secular-hub-term-select"/);
+    assert.match(secularHubSrc, /<CustomPillSelect\s+id="secular-hub-class-select"/);
+
+    const theologyHubPath = path.join(rootDir, 'src/components/theology-hub/TheologyHubClient.tsx');
+    const theologyHubSrc = fs.readFileSync(theologyHubPath, 'utf8');
+    assert.match(theologyHubSrc, /import\s*\{[^}]*CustomPillSelect[^}]*\}\s*from\s*['"]@\/components\/ui\/custom-pill-select['"]/);
+    assert.match(theologyHubSrc, /<CustomPillSelect\s+id="theology-hub-term-select"/);
+    assert.match(theologyHubSrc, /<CustomPillSelect\s+id="theology-hub-class-select"/);
+
+    const reportsClientPath = path.join(rootDir, 'src/components/layout/reports-client.tsx');
+    const reportsClientSrc = fs.readFileSync(reportsClientPath, 'utf8');
+    assert.match(reportsClientSrc, /import\s*\{[^}]*CustomPillSelect[^}]*\}\s*from\s*['"]@\/components\/ui\/custom-pill-select['"]/);
+    assert.match(reportsClientSrc, /<CustomPillSelect\s+id="reports-class-select"/);
+    assert.match(reportsClientSrc, /<CustomPillSelect\s+id="reports-term-select"/);
+
+    const reportGenPath = path.join(rootDir, 'src/components/ReportGeneratorClient.tsx');
+    const reportGenSrc = fs.readFileSync(reportGenPath, 'utf8');
+    assert.match(reportGenSrc, /flex flex-1 min-h-0 overflow-hidden relative/);
+
+    const studentsListPath = path.join(rootDir, 'src/components/StudentsListClient.tsx');
+    const studentsListSrc = fs.readFileSync(studentsListPath, 'utf8');
+    assert.match(studentsListSrc, /import\s*\{[^}]*CustomPillSelect[^}]*\}\s*from\s*['"]@\/components\/ui\/custom-pill-select['"]/);
+    assert.match(studentsListSrc, /<CustomPillSelect\s+id="students-class-filter"/);
+
+    const classesClientPath = path.join(rootDir, 'src/components/layout/classes-client.tsx');
+    const classesClientSrc = fs.readFileSync(classesClientPath, 'utf8');
+    assert.match(classesClientSrc, /import\s*\{[^}]*CustomPillSelect[^}]*\}\s*from\s*['"]@\/components\/ui\/custom-pill-select['"]/);
+    assert.match(classesClientSrc, /<CustomPillSelect\s+id="classes-section-filter"/);
   });
 });
 

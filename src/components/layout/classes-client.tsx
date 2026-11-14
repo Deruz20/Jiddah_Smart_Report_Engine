@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { Plus, Edit, Trash2, BookMarked, Search, Eye, FileText, ArrowRightLeft } from "lucide-react";
 import { MoreActionsMenu } from "@/components/ui/more-actions-menu";
+import { CustomPillSelect } from "@/components/ui/custom-pill-select";
 import { toast } from "sonner";
 import { Button } from "@/components/figma-ui/ui/button";
 import { Input } from "@/components/figma-ui/ui/input";
@@ -51,6 +52,15 @@ export default function ClassesClient({
   const router = useRouter();
   const [classes, setClasses] = useState<ClassData[]>(initialClasses);
   const [search, setSearch] = useState("");
+  const [selectedSection, setSelectedSection] = useState<string>("all");
+
+  const sectionFilterOptions = [
+    { value: "all", label: "All Sections" },
+    { value: "nursery", label: "Nursery" },
+    { value: "lower_primary", label: "Lower Primary" },
+    { value: "upper_primary", label: "Upper Primary" },
+    { value: "theology", label: "Theology" },
+  ];
   
   // Dialog states
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -62,10 +72,14 @@ export default function ClassesClient({
   const [formData, setFormData] = useState({ class_name: "", section: "nursery" });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const filteredClasses = classes.filter(c => 
-    c.class_name.toLowerCase().includes(search.toLowerCase()) || 
-    getSectionLabel(c.section || "").toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredClasses = classes.filter(c => {
+    const matchesSearch =
+      c.class_name.toLowerCase().includes(search.toLowerCase()) || 
+      getSectionLabel(c.section || "").toLowerCase().includes(search.toLowerCase());
+    const matchesSection =
+      selectedSection === "all" || c.section === selectedSection;
+    return matchesSearch && matchesSection;
+  });
 
   const refetch = async () => {
     const supabase = createClient();
@@ -147,8 +161,8 @@ export default function ClassesClient({
     <div className="pb-12 w-full">
       {/* Compact single horizontal pill bar */}
       <div className="w-full px-4 sm:px-6 lg:px-8 pt-4 pb-3 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5 flex-1 min-w-[240px] max-w-md">
-          <div className="relative w-full">
+        <div className="flex items-center gap-2.5 flex-1 min-w-[240px] max-w-xl">
+          <div className="relative w-full max-w-xs">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
             <Input 
               placeholder="Search classes..." 
@@ -157,8 +171,16 @@ export default function ClassesClient({
               className="pl-9 h-9 rounded-full bg-[#F0F4F9] dark:bg-[#1E1F20] border-0 text-xs text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus-visible:ring-1 focus-visible:ring-[#0D5C3A]" 
             />
           </div>
-          <span className="shrink-0 px-2.5 py-1 rounded-full bg-[#F0F4F9] dark:bg-[#1E1F20] text-xs font-semibold text-stone-600 dark:text-stone-400 tabular-nums">
-            {classes.length} classes
+          <CustomPillSelect
+            id="classes-section-filter"
+            ariaLabel="Section filter"
+            value={selectedSection}
+            onChange={(val) => setSelectedSection(val)}
+            options={sectionFilterOptions}
+            className="h-9 text-xs rounded-full shrink-0"
+          />
+          <span className="shrink-0 px-2.5 py-1 rounded-full bg-[#F0F4F9] dark:bg-[#1E1F20] text-xs font-semibold text-stone-600 dark:text-stone-400 tabular-nums hidden sm:inline-block">
+            {filteredClasses.length} of {classes.length}
           </span>
         </div>
 
@@ -188,7 +210,7 @@ export default function ClassesClient({
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             <AnimatePresence>
               {filteredClasses.map((cls, idx) => (
-                <motion.div
+               <motion.div
                   key={cls.id}
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}

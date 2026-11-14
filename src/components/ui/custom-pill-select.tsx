@@ -63,27 +63,27 @@ export function CustomPillSelect({
           aria-label={resolvedAriaLabel}
           aria-expanded={open}
           className={cn(
-            'h-9.5 px-3.5 sm:px-4 rounded-full flex items-center justify-between gap-2 text-xs sm:text-[13px] font-semibold transition-all active:scale-[0.98] outline-none',
+            'h-9.5 px-3.5 sm:px-4 rounded-full flex items-center justify-between gap-2 flex-nowrap whitespace-nowrap text-xs sm:text-[13px] font-semibold transition-all active:scale-[0.98] outline-none',
             'bg-white dark:bg-[#1E1F20] text-[#1F1F1F] dark:text-[#E3E3E3]',
             'border border-black/[0.08] dark:border-white/[0.08] hover:border-[#0D5C3A]/30 dark:hover:border-[#F59E0B]/30 shadow-2xs cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed',
             triggerClassName,
             className
           )}
         >
-          <div className="flex items-center gap-1.5 min-w-0 truncate">
+          <div className="flex items-center gap-1.5 min-w-0 truncate flex-nowrap whitespace-nowrap">
             {prefix}
             <span className="truncate">
               {selectedOption ? selectedOption.label : placeholder}
             </span>
             {selectedOption?.count !== undefined && (
-              <span className="text-[11px] font-mono text-[#747775] dark:text-[#8E918F] shrink-0">
+              <span className="text-[11px] font-mono text-[#747775] dark:text-[#8E918F] whitespace-nowrap shrink-0">
                 ({selectedOption.count})
               </span>
             )}
           </div>
           <ChevronDown
             className={cn(
-              'w-3.5 h-3.5 text-[#747775] dark:text-[#8E918F] shrink-0 transition-transform duration-200',
+              'w-3.5 h-3.5 text-[#747775] dark:text-[#8E918F] shrink-0 transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]',
               open && 'rotate-180 text-[#0D5C3A] dark:text-[#F59E0B]'
             )}
           />
@@ -95,11 +95,10 @@ export function CustomPillSelect({
           align={align}
           sideOffset={sideOffset}
           className={cn(
-            'rounded-2xl bg-white dark:bg-[#18211E] text-[#1F1F1F] dark:text-[#E3E3E3]',
+            'jiddah-popover-content rounded-2xl bg-white dark:bg-[#18211E] text-[#1F1F1F] dark:text-[#E3E3E3]',
             'border border-[#0D5C3A]/15 dark:border-[#F59E0B]/25',
             'shadow-[0_14px_38px_-6px_rgba(0,0,0,0.22)] dark:shadow-[0_16px_42px_-6px_rgba(0,0,0,0.75)]',
-            'p-1.5 z-50 min-w-[200px] max-h-[340px] flex flex-col overflow-hidden outline-none',
-            'animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95'
+            'p-1.5 z-50 min-w-[200px] max-h-[340px] flex flex-col overflow-hidden outline-none'
           )}
         >
           <div className="max-h-[270px] overflow-y-auto space-y-0.5 pr-0.5">
@@ -225,14 +224,14 @@ export function StudentCombobox({
           aria-label={resolvedAriaLabel}
           aria-expanded={open}
           className={cn(
-            'flex items-center justify-between gap-2 text-xs font-bold transition-all outline-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed',
+            'flex items-center justify-between gap-2 flex-nowrap whitespace-nowrap text-xs font-bold transition-all outline-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed',
             variant === 'hero'
               ? 'h-8.5 px-3 rounded-full bg-black/25 hover:bg-black/35 text-white border border-white/25 ring-0 max-w-[220px] md:max-w-[270px] lg:max-w-[340px]'
               : 'h-8.5 sm:h-9 px-3 rounded-full bg-[#F0F4F9] dark:bg-[#282A2C] hover:bg-[#E4EAE6] dark:hover:bg-[#323538] text-[#1F1F1F] dark:text-[#E3E3E3] border border-black/[0.06] dark:border-white/[0.08] w-full',
             triggerClassName
           )}
         >
-          <div className="flex items-center gap-2 min-w-0 truncate">
+          <div className="flex items-center gap-2 min-w-0 truncate flex-nowrap whitespace-nowrap">
             {variant !== 'hero' && (
               <div className="w-5.5 h-5.5 rounded-full bg-[#0D5C3A]/12 text-[#0D5C3A] dark:bg-[#10B981]/20 dark:text-[#34D399] font-bold text-[10px] flex items-center justify-center shrink-0">
                 {selectedStudent?.name?.charAt(0).toUpperCase() || 'S'}
@@ -248,7 +247,7 @@ export function StudentCombobox({
           </div>
           <ChevronDown
             className={cn(
-              'w-3.5 h-3.5 shrink-0 transition-transform duration-200',
+              'w-3.5 h-3.5 shrink-0 transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]',
               variant === 'hero' ? 'text-white/80' : 'text-[#747775] dark:text-[#8E918F]',
               open && 'rotate-180'
             )}
@@ -261,11 +260,10 @@ export function StudentCombobox({
           align={align}
           sideOffset={sideOffset}
           className={cn(
-            'rounded-2xl bg-white dark:bg-[#18211E] text-[#1F1F1F] dark:text-[#E3E3E3]',
+            'jiddah-popover-content rounded-2xl bg-white dark:bg-[#18211E] text-[#1F1F1F] dark:text-[#E3E3E3]',
             'border border-[#0D5C3A]/15 dark:border-[#F59E0B]/25',
             'shadow-[0_14px_38px_-6px_rgba(0,0,0,0.22)] dark:shadow-[0_16px_42px_-6px_rgba(0,0,0,0.75)]',
-            'p-1.5 z-50 w-[300px] sm:w-[360px] max-w-[92vw] flex flex-col overflow-hidden outline-none',
-            'animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95'
+            'p-1.5 z-50 w-[300px] sm:w-[360px] max-w-[92vw] flex flex-col overflow-hidden outline-none'
           )}
         >
           {/* Sticky Instant Search Input */}

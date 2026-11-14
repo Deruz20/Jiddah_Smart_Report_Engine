@@ -432,4 +432,51 @@ Exit code: 0
      - Automated test suite: 29/29 tests in `overhaul-workstreams.test.mjs` pass (100%).
      - Next.js webpack production build: 68/68 routes generated cleanly with zero build errors.
 
+---
+
+## Milestone 15: Silky Popover Physics, Wrapped Chevron Fix, Viewport Auto-Adjustment & System-Wide Custom Combobox Rollout
+
+- **Files Modified / Created:**
+  - `src/app/globals.css`
+  - `src/components/ui/custom-pill-select.tsx`
+  - `src/components/ui/more-actions-menu.tsx`
+  - `src/components/figma-ui/ui/popover.tsx`
+  - `src/components/figma-ui/ui/dropdown-menu.tsx`
+  - `src/components/ui/popover.tsx` (new alias)
+  - `src/components/ui/dropdown-menu.tsx` (new alias)
+  - `src/components/shared-marks-entry.tsx`
+  - `src/components/secular-hub/SecularHubClient.tsx`
+  - `src/components/theology-hub/TheologyHubClient.tsx`
+  - `src/components/layout/reports-client.tsx`
+  - `src/components/ReportGeneratorClient.tsx`
+  - `src/components/StudentsListClient.tsx`
+  - `src/components/layout/classes-client.tsx`
+  - `src/__tests__/overhaul-workstreams.test.mjs`
+  - `public/sw.js`
+- **Scope & Workstreams Completed:**
+  1. **Workstream 1: Silky Apple / Linear Popover Physics & Anchored Transform Origin (`globals.css`, `custom-pill-select.tsx`, `more-actions-menu.tsx`, `popover.tsx`, `dropdown-menu.tsx`):**
+     - Identified root cause of the "pulled out by force" feeling: generic CSS transitions on Radix Popper positioner wrappers fought inline dynamic `translate3d(x, y)` coordinate calculations.
+     - Enforced `[data-radix-popper-content-wrapper] { transition: none !important; }` in `src/app/globals.css`.
+     - Defined Apple / Linear popover keyframes (`@keyframes jiddah-popover-in` and `@keyframes jiddah-popover-out`) with silky `180ms cubic-bezier(0.16, 1, 0.3, 1)` entrance and `135ms` exit anchored directly to `--radix-popover-content-transform-origin`.
+     - Integrated `.jiddah-popover-content` across `CustomPillSelect`, `StudentCombobox`, `MoreActionsMenu`, `figma-ui/ui/popover.tsx`, and `figma-ui/ui/dropdown-menu.tsx`.
+     - Animated chevron smoothly with `shrink-0 transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]`.
+     - Fixed wrapped chevron in `All Subjects (6)` by enforcing `whitespace-nowrap flex-nowrap` on trigger button and label wrapper, and `shrink-0 whitespace-nowrap` on count badge.
+  2. **Workstream 2: Dynamic Viewport Auto-Adjustment in Marks Entry (`shared-marks-entry.tsx`, `layout.tsx`, `marks/page.tsx`):**
+     - Replaced hardcoded `min-h-[calc(100dvh-4.25rem)]` with pure flex inheritance: `<main>` has `flex-1 min-h-0 flex flex-col`, container has `flex-1 min-h-0 flex flex-col`, and `SharedMarksEntry` has `flex-1 min-h-0 flex flex-col justify-between`.
+     - Zone 1 & Zone 2: `shrink-0`.
+     - Zone 3: `flex-1 min-h-0` with adaptive row height (`h-11 xl:h-12`).
+     - Inside `StudentPerformanceSideCard`: tightened internal padding to `p-3 space-y-2.5 flex flex-col justify-between` and hid Keyboard Shortcuts on short viewports with `hidden [@media(min-height:860px)]:block`, allowing the side card to automatically fit short laptop screens with zero card collision.
+     - Zone 4: Prominent bottom Pill Save dock set to `sticky bottom-2 z-20 rounded-full md:static shrink-0 mt-auto` on desktop (sitting naturally in normal flex flow below Zone 3, never overlapping cards), while remaining sticky on mobile (`< md`).
+  3. **Workstream 3: System-Wide Rollout of Custom Radix Comboboxes & Emerald/Gold Styling:**
+     - **Secular Hub (`SecularHubClient.tsx`):** Replaced native `<select>` dropdowns for Academic Term, Class Cohort, and Academic Level with `CustomPillSelect`. Upgraded filter panel surface to `bg-white dark:bg-[#1E1F20] border-b border-black/[0.08] dark:border-white/[0.08]`.
+     - **Theology Hub (`TheologyHubClient.tsx`):** Replaced native `<select>` dropdowns for Academic Term, Class Cohort (`الصف / Class`), and Academic Level (`المرحلة / Level`) with `CustomPillSelect`.
+     - **Report Center (`reports-client.tsx` & `ReportGeneratorClient.tsx`):** In `reports-client.tsx`, replaced native `<select>` for Class and Academic Term with `CustomPillSelect`. In `ReportGeneratorClient.tsx`, set canvas flex parent to `flex flex-1 min-h-0 overflow-hidden relative` to lock split-pane viewing without window overflow.
+     - **Students Directory (`StudentsListClient.tsx`):** Added Class Cohort filter dropdown with `CustomPillSelect` next to the search input, replacing the non-functional filter toast button.
+     - **Classes Management (`classes-client.tsx`):** Added Section filter dropdown with `CustomPillSelect` (`All Sections`, `Nursery`, `Lower Primary`, `Upper Primary`, `Theology`) next to the search input with responsive counter pill.
+  4. **Workstream 4: Verification Gate:**
+     - TypeScript check (`tsc --noEmit`): 0 errors across entire repository.
+     - Automated test suite: 33/33 tests in `overhaul-workstreams.test.mjs` pass (100% pass rate).
+     - Next.js webpack production build: 68/68 routes generated cleanly with zero build errors.
+
+
 

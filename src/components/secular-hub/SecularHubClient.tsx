@@ -10,6 +10,7 @@ import { computeStandardRankings } from '@/lib/ranking'
 import { isGradableSubject, getSubjectGradeNumber, calculateAggregate, getDivision, getGradeDisplay, isCoreSubject, getNurseryGrade, isNurseryClass } from '@/lib/grading'
 import { TopToolbar } from '../figma-ui/TopToolbar'
 import { OfficialPrintLetterhead, OfficialPrintSignaturesFooter } from '@/components/print/OfficialPrintLetterhead'
+import { CustomPillSelect } from '@/components/ui/custom-pill-select'
 
 const THEME = {
   gold: 'text-amber-800 bg-amber-50 border-amber-200',
@@ -100,6 +101,32 @@ export default function SecularHubClient({
     marks: any[]
     subjects: any[]
   } | null>(null)
+
+  const termOptions = useMemo(
+    () =>
+      terms.map((t) => ({
+        value: t.id,
+        label: `${t.label} (${t.academic_year})`,
+      })),
+    [terms]
+  )
+
+  const classOptions = useMemo(
+    () => [
+      { value: '', label: '-- Select a Class --' },
+      ...circularClasses.map((t) => ({ value: t.id, label: t.class_name })),
+    ],
+    [circularClasses]
+  )
+
+  const levelOptions = useMemo(
+    () => [
+      { value: 'nursery', label: 'Nursery Section' },
+      { value: 'lower_primary', label: 'Lower Primary' },
+      { value: 'upper_primary', label: 'Upper Primary' },
+    ],
+    []
+  )
 
   useEffect(() => {
     if (!activeTermId) return
@@ -502,60 +529,48 @@ export default function SecularHubClient({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden bg-white border-b border-stone-200 shadow-xs print:hidden shrink-0"
+            className="overflow-hidden bg-white dark:bg-[#1E1F20] border-b border-black/[0.08] dark:border-white/[0.08] shadow-xs print:hidden shrink-0"
           >
             <div className="px-3 sm:px-5 py-3 max-w-7xl mx-auto">
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 items-end">
                 {/* Term Selector */}
                 <div>
-                  <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1">Academic Term</label>
-                  <div className="relative flex items-center">
-                    <select
-                      className="w-full min-h-[42px] appearance-none pl-3 pr-8 py-2 border border-stone-200 hover:border-emerald-500/60 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/15 rounded-xl bg-slate-50/70 hover:bg-white text-stone-900 text-xs font-semibold outline-none transition cursor-pointer shadow-xs"
-                      value={activeTermId}
-                      onChange={(e) => setActiveTermId(e.target.value)}
-                    >
-                      {terms.map(t => (
-                        <option key={t.id} value={t.id}>{t.label} ({t.academic_year})</option>
-                      ))}
-                    </select>
-                    <ChevronDown className="w-4 h-4 text-stone-400 absolute right-2.5 pointer-events-none" />
-                  </div>
+                  <label className="block text-[10px] font-bold text-stone-500 dark:text-[#A8ABA9] uppercase tracking-wider mb-1">Academic Term</label>
+                  <CustomPillSelect
+                    id="secular-hub-term-select"
+                    ariaLabel="Academic Term"
+                    value={activeTermId}
+                    onChange={(val) => setActiveTermId(val)}
+                    options={termOptions}
+                    className="w-full h-10 rounded-xl"
+                  />
                 </div>
 
                 {/* Contextual Selectors */}
                 {activeTab === 'assessment' ? (
                   <div>
-                    <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1">Class Cohort</label>
-                    <div className="relative flex items-center">
-                      <select
-                        className="w-full min-h-[42px] appearance-none pl-3 pr-8 py-2 border border-stone-200 hover:border-emerald-500/60 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/15 rounded-xl bg-slate-50/70 hover:bg-white text-stone-900 text-xs font-semibold outline-none transition cursor-pointer shadow-xs truncate"
-                        value={activeClassId}
-                        onChange={(e) => setActiveClassId(e.target.value)}
-                      >
-                        <option value="">-- Select a Class --</option>
-                        {circularClasses.map(t => (
-                          <option key={t.id} value={t.id}>{t.class_name}</option>
-                        ))}
-                      </select>
-                      <ChevronDown className="w-4 h-4 text-stone-400 absolute right-2.5 pointer-events-none" />
-                    </div>
+                    <label className="block text-[10px] font-bold text-stone-500 dark:text-[#A8ABA9] uppercase tracking-wider mb-1">Class Cohort</label>
+                    <CustomPillSelect
+                      id="secular-hub-class-select"
+                      ariaLabel="Class Cohort"
+                      value={activeClassId}
+                      onChange={(val) => setActiveClassId(val)}
+                      options={classOptions}
+                      placeholder="Select Class..."
+                      className="w-full h-10 rounded-xl"
+                    />
                   </div>
                 ) : (
                   <div>
-                    <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1">Academic Level</label>
-                    <div className="relative flex items-center">
-                      <select
-                        className="w-full min-h-[42px] appearance-none pl-3 pr-8 py-2 border border-stone-200 hover:border-emerald-500/60 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/15 rounded-xl bg-slate-50/70 hover:bg-white text-stone-900 text-xs font-semibold outline-none transition cursor-pointer shadow-xs truncate"
-                        value={activeLevel}
-                        onChange={(e) => setActiveLevel(e.target.value)}
-                      >
-                        <option value="nursery">Nursery Section</option>
-                        <option value="lower_primary">Lower Primary</option>
-                        <option value="upper_primary">Upper Primary</option>
-                      </select>
-                      <ChevronDown className="w-4 h-4 text-stone-400 absolute right-2.5 pointer-events-none" />
-                    </div>
+                    <label className="block text-[10px] font-bold text-stone-500 dark:text-[#A8ABA9] uppercase tracking-wider mb-1">Academic Level</label>
+                    <CustomPillSelect
+                      id="secular-hub-level-select"
+                      ariaLabel="Academic Level"
+                      value={activeLevel}
+                      onChange={(val) => setActiveLevel(val)}
+                      options={levelOptions}
+                      className="w-full h-10 rounded-xl"
+                    />
                   </div>
                 )}
 

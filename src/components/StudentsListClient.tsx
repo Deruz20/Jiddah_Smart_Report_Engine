@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useDeferredValue, useEffect } from 'react';
 import { Search, Filter, Download, ChevronDown, ChevronUp, ChevronsUpDown, UserX, Edit2, Archive, RotateCcw, Trash2, User, FileText, ArrowRightLeft } from 'lucide-react';
 import { MoreActionsMenu } from '@/components/ui/more-actions-menu';
+import { CustomPillSelect } from '@/components/ui/custom-pill-select';
 import { Badge } from './figma-ui/Badge';
 import { EditStudentModal } from './EditStudentModal';
 import { ConfirmDestructiveDialog } from '@/components/ui/confirm-destructive-dialog';
@@ -78,6 +79,7 @@ export function StudentsListClient({ students, department }: StudentsTableProps)
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [page, setPage] = useState(1);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [selectedClassFilter, setSelectedClassFilter] = useState<string>('all');
   const [destructiveDialog, setDestructiveDialog] = useState<{
     open: boolean;
     student: Student | null;
@@ -104,6 +106,18 @@ export function StudentsListClient({ students, department }: StudentsTableProps)
       }
     });
     return counts;
+  }, [students]);
+
+  const classFilterOptions = useMemo(() => {
+    const set = new Set<string>();
+    students.forEach((s) => {
+      if (s.circular_class) set.add(s.circular_class);
+    });
+    const sorted = Array.from(set).sort();
+    return [
+      { value: 'all', label: 'All Classes' },
+      ...sorted.map((c) => ({ value: c, label: c })),
+    ];
   }, [students]);
 
   const handleSort = (key: SortKey) => {
@@ -139,6 +153,10 @@ export function StudentsListClient({ students, department }: StudentsTableProps)
           s.admission_number.toLowerCase().includes(q) ||
           s.circular_class.toLowerCase().includes(q)
       );
+    }
+
+    if (selectedClassFilter !== 'all') {
+      list = list.filter((s) => s.circular_class === selectedClassFilter);
     }
     list = [...list].sort((a, b) => {
       let va = a[sortKey] ?? '';
@@ -265,14 +283,17 @@ export function StudentsListClient({ students, department }: StudentsTableProps)
           />
         </div>
         <div className="flex items-center gap-1.5 w-full sm:w-auto">
-          <button 
-            type="button"
-            onClick={() => toast.info('Use the tabs above to filter by department/status')}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-stone-200 rounded-xl text-xs font-semibold text-stone-600 hover:bg-stone-50 transition-all flex-1 sm:flex-none justify-center cursor-pointer"
-          >
-            <Filter size={13} className="text-stone-400" />
-            Filters
-          </button>
+          <CustomPillSelect
+            id="students-class-filter"
+            ariaLabel="Class filter"
+            value={selectedClassFilter}
+            onChange={(val) => {
+              setSelectedClassFilter(val);
+              setPage(1);
+            }}
+            options={classFilterOptions}
+            className="h-8.5 text-xs rounded-xl"
+          />
           <button 
             type="button"
             onClick={handleExport}

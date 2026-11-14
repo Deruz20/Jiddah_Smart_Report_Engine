@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { FileText, Download, Printer, RefreshCw, Check, ChevronDown, Eye, Zap, BarChart2, Search } from "lucide-react";
 import { HeroSection } from "@/components/HeroSection";
 import { PageState } from "@/components/PageState";
+import { CustomPillSelect } from "@/components/ui/custom-pill-select";
 
 interface ReportsClientProps {
   initialHistory: any[];
@@ -28,6 +29,19 @@ export default function ReportsClient({
   
   const [selectedClass, setSelectedClass] = useState("All Classes");
   const [selectedTermId, setSelectedTermId] = useState(currentTerm?.id ?? "");
+
+  const classOptions = useMemo(
+    () => [
+      { value: "All Classes", label: "All Classes" },
+      ...classes.map((c) => ({ value: c.name, label: c.name })),
+    ],
+    [classes]
+  );
+
+  const termOptions = useMemo(
+    () => terms.map((t) => ({ value: t.id, label: t.label })),
+    [terms]
+  );
   const [stampDate, setStampDate] = useState(currentTerm?.end_date ? new Date(currentTerm.end_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]);
   const [reportType, setReportType] = useState("individual");
   const [generating, setGenerating] = useState(false);
@@ -216,24 +230,25 @@ export default function ReportsClient({
               <div className="grid grid-cols-2 gap-4 mb-5">
                 <div>
                   <label className="block mb-1.5 text-sm font-semibold text-slate-700">Class</label>
-                  <div className="relative">
-                    <select value={selectedClass} onChange={e => setSelectedClass(e.target.value)}
-                      className="w-full pl-3 pr-8 py-2.5 rounded-xl border border-slate-200 bg-white text-sm text-slate-700 appearance-none outline-none focus:border-emerald-500">
-                      <option>All Classes</option>
-                      {classes.map(c => <option key={c.id}>{c.name}</option>)}
-                    </select>
-                    <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500 pointer-events-none" />
-                  </div>
+                  <CustomPillSelect
+                    id="reports-class-select"
+                    ariaLabel="Class"
+                    value={selectedClass}
+                    onChange={(val) => setSelectedClass(val)}
+                    options={classOptions}
+                    className="w-full h-10 rounded-xl"
+                  />
                 </div>
                 <div>
                   <label className="block mb-1.5 text-sm font-semibold text-slate-700">Academic Term</label>
-                  <div className="relative">
-                    <select value={selectedTermId} onChange={e => setSelectedTermId(e.target.value)}
-                      className="w-full pl-3 pr-8 py-2.5 rounded-xl border border-slate-200 bg-white text-sm text-slate-700 appearance-none outline-none focus:border-emerald-500">
-                      {terms.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
-                    </select>
-                    <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500 pointer-events-none" />
-                  </div>
+                  <CustomPillSelect
+                    id="reports-term-select"
+                    ariaLabel="Academic Term"
+                    value={selectedTermId}
+                    onChange={(val) => setSelectedTermId(val)}
+                    options={termOptions}
+                    className="w-full h-10 rounded-xl"
+                  />
                 </div>
               </div>
 

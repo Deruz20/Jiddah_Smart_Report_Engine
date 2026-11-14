@@ -606,7 +606,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
         )}
       </AnimatePresence>
 
-      <div className="flex flex-1 overflow-hidden relative">
+      <div className="flex flex-1 min-h-0 overflow-hidden relative">
         <DocumentCanvas
           reports={rawReports}
           activeReportId={activeReportId}

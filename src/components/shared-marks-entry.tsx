@@ -82,7 +82,7 @@ const SecularMarkTableRow = React.memo(function SecularMarkTableRow({
   }
 
   return (
-    <tr className="hover:bg-[var(--bg-hover)] transition-colors h-13 sm:h-14">
+    <tr className="hover:bg-[var(--bg-hover)] transition-colors h-11 xl:h-12">
       <td
         data-testid={`frozen-cell-${idx}`}
         className="sticky left-0 z-10 bg-[var(--bg-card)] px-3 sm:px-4 py-2 sm:py-2.5 border-r border-[#0D5C3A]/[0.06] dark:border-[#F59E0B]/[0.07] min-w-[150px] max-w-[220px]"
@@ -185,7 +185,7 @@ const TheologyMarkTableRow = React.memo(function TheologyMarkTableRow({
   const remark = hasScore ? getTheologySubjectRemark(getTheologyGradeNumber(activeScore)) : ''
 
   return (
-    <tr className="hover:bg-[var(--bg-hover)] transition-colors h-13 sm:h-14">
+    <tr className="hover:bg-[var(--bg-hover)] transition-colors h-11 xl:h-12">
       <td className="sticky left-0 z-10 bg-[var(--bg-card)] px-3 sm:px-4 py-2 sm:py-2.5 border-r border-[#0D5C3A]/[0.06] dark:border-[#F59E0B]/[0.07] min-w-[150px] max-w-[220px]">
         <div className="font-semibold text-[var(--text-primary)] truncate text-xs sm:text-[13px]" dir="rtl">
           {mark.subject_name_arabic}
@@ -363,7 +363,7 @@ function StudentPerformanceSideCard({
   const lowest = sortedByScore.length > 1 ? sortedByScore[sortedByScore.length - 1] : null
 
   return (
-    <div className="card-jiddah rounded-2xl p-4.5 border border-[#0D5C3A]/12 dark:border-[#F59E0B]/15 shadow-sm space-y-4">
+    <div className="card-jiddah rounded-2xl p-3 space-y-2.5 flex flex-col justify-between border border-[#0D5C3A]/12 dark:border-[#F59E0B]/15 shadow-sm">
       {/* Header */}
       <div className="flex items-center justify-between pb-3 border-b border-[#0D5C3A]/10 dark:border-[#F59E0B]/15">
         <div className="flex items-center gap-2">
@@ -455,7 +455,7 @@ function StudentPerformanceSideCard({
       )}
 
       {/* Fast Entry Shortcut Tips */}
-      <div className="p-3 rounded-xl bg-[var(--bg-sunken)] text-[11px] text-[var(--text-muted)] space-y-1 border border-black/[0.04] dark:border-white/[0.04]">
+      <div className="hidden [@media(min-height:860px)]:block p-2.5 rounded-xl bg-[var(--bg-sunken)] text-[11px] text-[var(--text-muted)] space-y-1 border border-black/[0.04] dark:border-white/[0.04]">
         <div className="font-semibold text-[var(--text-secondary)]">Keyboard Shortcuts</div>
         <div>• <kbd className="px-1 py-0.5 bg-white dark:bg-[#1E1F20] rounded border text-[10px] font-mono">Enter</kbd> / <kbd className="px-1 py-0.5 bg-white dark:bg-[#1E1F20] rounded border text-[10px] font-mono">↓</kbd> next score</div>
         <div>• <kbd className="px-1 py-0.5 bg-white dark:bg-[#1E1F20] rounded border text-[10px] font-mono">Ctrl+S</kbd> save changes</div>
@@ -1027,7 +1027,7 @@ export function SharedMarksEntry({
   )
 
   return (
-    <div className="w-full max-w-full min-w-0 space-y-2 pb-2 md:pb-1">
+    <div className="w-full max-w-full min-w-0 pb-2 md:pb-1 flex-1 min-h-0 flex flex-col justify-between">
       <style>{`
         input[type="number"].score-input::-webkit-inner-spin-button,
         input[type="number"].score-input::-webkit-outer-spin-button {
@@ -1039,12 +1039,12 @@ export function SharedMarksEntry({
         }
       `}</style>
 
-      <form id="shared-marks-form" onSubmit={handleFormSubmit} className="space-y-2 w-full min-w-0">
+      <form id="shared-marks-form" onSubmit={handleFormSubmit} className="flex-1 min-h-0 flex flex-col justify-between gap-2 w-full min-w-0">
         {/* =========================================================================
             ZONE 1 (Desktop >= md): Single-Line Top Control Bar
             Non-sticky, sits in normal document flow so it never overlaps Zone 2
             ========================================================================= */}
-        <div className="hidden md:block bg-white/95 dark:bg-[#1E1F20]/95 backdrop-blur-sm border border-[#0D5C3A]/10 dark:border-[#F59E0B]/12 rounded-2xl px-2.5 sm:px-3 py-1.5 sm:py-2 shadow-2xs w-full min-w-0 overflow-hidden">
+        <div className="hidden md:block shrink-0 bg-white/95 dark:bg-[#1E1F20]/95 backdrop-blur-sm border border-[#0D5C3A]/10 dark:border-[#F59E0B]/12 rounded-2xl px-2.5 sm:px-3 py-1.5 sm:py-2 shadow-2xs w-full min-w-0 overflow-hidden">
           <div className="flex items-center justify-between gap-1.5 lg:gap-2 w-full flex-nowrap">
             {/* Left Group */}
             <div className="flex items-center gap-1.5 lg:gap-2 shrink min-w-0">
@@ -1520,7 +1520,7 @@ export function SharedMarksEntry({
               <p className="text-[var(--text-primary)] text-xs font-bold">Loading student assessment sheet...</p>
             </div>
           ) : selectedEnrollment ? (
-            <div className="space-y-2 w-full min-w-0">
+            <div className="space-y-2 w-full min-w-0 flex-1 min-h-0 flex flex-col justify-between">
               {/* =========================================================================
                   ZONE 2: Hero Student Identity Banner (Desktop >= md)
                   Rich Forest Emerald & Warm Gold Accent Banner
@@ -1528,7 +1528,7 @@ export function SharedMarksEntry({
                   Right: Arabic Name & Class
                   (Note: On mobile < md, Mobile Card A at top renders student selector & identity)
                   ========================================================================= */}
-              <div className="hidden md:flex items-center justify-between gap-2.5 shadow-[0_6px_20px_-4px_rgba(13,92,58,0.28)] min-h-[46px] px-4 py-2 bg-gradient-to-r from-[#093D26] via-[#0D5C3A] to-[#136B43] dark:from-[#0F291E] dark:via-[#143829] dark:to-[#1E2923] text-white border border-[#D97706]/30 rounded-2xl w-full min-w-0">
+              <div className="hidden md:flex shrink-0 items-center justify-between gap-2.5 shadow-[0_6px_20px_-4px_rgba(13,92,58,0.28)] min-h-[46px] px-4 py-2 bg-gradient-to-r from-[#093D26] via-[#0D5C3A] to-[#136B43] dark:from-[#0F291E] dark:via-[#143829] dark:to-[#1E2923] text-white border border-[#D97706]/30 rounded-2xl w-full min-w-0">
                 <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1">
                   <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white/20 text-white font-extrabold text-xs border border-white/25 shrink-0 shadow-xs">
                     {selectedEnrollment?.name?.charAt(0).toUpperCase() || 'S'}
@@ -1640,8 +1640,8 @@ export function SharedMarksEntry({
                   <div
                     className={
                       isBothView
-                        ? 'grid grid-cols-1 xl:grid-cols-2 gap-3 items-start w-full min-w-0'
-                        : 'grid grid-cols-1 lg:grid-cols-12 gap-3 items-start w-full min-w-0'
+                        ? 'grid grid-cols-1 xl:grid-cols-2 gap-3 items-start w-full min-w-0 flex-1 min-h-0'
+                        : 'grid grid-cols-1 lg:grid-cols-12 gap-3 items-start w-full min-w-0 flex-1 min-h-0'
                     }
                   >
                     {/* Secular Marks Card */}
@@ -1810,7 +1810,7 @@ export function SharedMarksEntry({
                   ZONE 4: Dedicated Prominent Bottom Pill Save Bar
                   Sticky at bottom, status on left + Save & Next Student, big tactile pill save button on right
                   ========================================================================= */}
-              <div className="sticky bottom-2 z-20 rounded-full bg-white/95 dark:bg-[#1E1F20]/95 backdrop-blur-md px-3 py-1.5 border border-black/[0.08] dark:border-white/[0.10] shadow-[0_8px_24px_rgba(0,0,0,0.12)] flex items-center justify-between gap-2 w-full">
+              <div className="sticky bottom-2 z-20 rounded-full md:static bg-white/95 dark:bg-[#1E1F20]/95 backdrop-blur-md px-3 py-1.5 border border-black/[0.08] dark:border-white/[0.10] shadow-[0_8px_24px_rgba(0,0,0,0.12)] flex items-center justify-between gap-2 w-full shrink-0 mt-auto">
                 {/* Left status / next student */}
                 <div className="flex items-center gap-1.5 min-w-0 flex-1">
                   {hasUnsavedChanges ? (

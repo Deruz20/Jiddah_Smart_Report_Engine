@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { TheologyHubEmptyState } from './TheologyHubEmptyState'
 import { TopToolbar } from '../figma-ui/TopToolbar'
 import { OfficialPrintLetterhead, OfficialPrintSignaturesFooter } from '@/components/print/OfficialPrintLetterhead'
+import { CustomPillSelect } from '@/components/ui/custom-pill-select'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { generateAssessmentCSV, generateAnalysisCSV, generateTopStudentsCSV } from '@/utils/csvExport'
 import { computeStandardRankings } from '@/lib/ranking'
@@ -73,6 +74,35 @@ export default function TheologyHubClient({
     marks: any[]
     subjects: any[]
   } | null>(null)
+
+  const termOptions = useMemo(
+    () =>
+      terms.map((t) => ({
+        value: t.id,
+        label: `${t.label} (${t.academic_year})`,
+      })),
+    [terms]
+  )
+
+  const classOptions = useMemo(
+    () => [
+      { value: '', label: '-- اختر الصف / Select Class --' },
+      ...theologyClasses.map((t) => ({
+        value: t.id,
+        label: `${t.class_name_arabic} — ${t.class_name_english}`,
+      })),
+    ],
+    [theologyClasses]
+  )
+
+  const levelOptions = useMemo(
+    () => [
+      { value: 'raudha', label: 'الروضة (Nursery)' },
+      { value: 'ibtidaai_lower', label: 'الابتدائية السفلى (Lower Primary)' },
+      { value: 'ibtidaai_upper', label: 'الابتدائية العليا (Upper Primary)' },
+    ],
+    []
+  )
 
   useEffect(() => {
     if (!activeTermId) return
@@ -396,61 +426,49 @@ export default function TheologyHubClient({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden bg-white border-b border-stone-200 shadow-xs print:hidden shrink-0"
+            className="overflow-hidden bg-white dark:bg-[#1E1F20] border-b border-black/[0.08] dark:border-white/[0.08] shadow-xs print:hidden shrink-0"
           >
             <div className="px-3 sm:px-5 py-3 max-w-7xl mx-auto">
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 items-end">
                 {/* Term Selector */}
                 <div>
-                  <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1">Term / Year</label>
-                  <div className="relative flex items-center">
-                    <select
-                      className="w-full min-h-[42px] appearance-none pl-3 pr-8 py-2 border border-stone-200 hover:border-emerald-500/60 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/15 rounded-xl bg-slate-50/70 hover:bg-white text-stone-900 text-xs font-semibold outline-none transition cursor-pointer shadow-xs"
-                      value={activeTermId}
-                      onChange={(e) => setActiveTermId(e.target.value)}
-                    >
-                      {terms.map(t => (
-                        <option key={t.id} value={t.id}>{t.label} ({t.academic_year})</option>
-                      ))}
-                    </select>
-                    <ChevronDown className="w-4 h-4 text-stone-400 absolute right-2.5 pointer-events-none" />
-                  </div>
+                  <label className="block text-[10px] font-bold text-stone-500 dark:text-[#A8ABA9] uppercase tracking-wider mb-1">Term / Year</label>
+                  <CustomPillSelect
+                    id="theology-hub-term-select"
+                    ariaLabel="Term / Year"
+                    value={activeTermId}
+                    onChange={(val) => setActiveTermId(val)}
+                    options={termOptions}
+                    className="w-full h-10 rounded-xl"
+                  />
                 </div>
 
                 {/* Context Selector (Class / Level) */}
                 <div>
                   {activeTab === 'assessment' ? (
                     <>
-                      <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1">الصف / Class</label>
-                      <div className="relative flex items-center">
-                        <select
-                          className="w-full min-h-[42px] appearance-none pl-3 pr-8 py-2 border border-stone-200 hover:border-emerald-500/60 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/15 rounded-xl bg-slate-50/70 hover:bg-white text-stone-900 text-xs font-semibold outline-none transition cursor-pointer shadow-xs truncate"
-                          value={activeClassId}
-                          onChange={(e) => setActiveClassId(e.target.value)}
-                        >
-                          <option value="">-- اختر الصف / Select Class --</option>
-                          {theologyClasses.map(t => (
-                            <option key={t.id} value={t.id}>{t.class_name_arabic} — {t.class_name_english}</option>
-                          ))}
-                        </select>
-                        <ChevronDown className="w-4 h-4 text-stone-400 absolute right-2.5 pointer-events-none" />
-                      </div>
+                      <label className="block text-[10px] font-bold text-stone-500 dark:text-[#A8ABA9] uppercase tracking-wider mb-1">الصف / Class</label>
+                      <CustomPillSelect
+                        id="theology-hub-class-select"
+                        ariaLabel="الصف / Class"
+                        value={activeClassId}
+                        onChange={(val) => setActiveClassId(val)}
+                        options={classOptions}
+                        placeholder="Select Class..."
+                        className="w-full h-10 rounded-xl"
+                      />
                     </>
                   ) : (
                     <>
-                      <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1">المرحلة / Level</label>
-                      <div className="relative flex items-center">
-                        <select
-                          className="w-full min-h-[42px] appearance-none pl-3 pr-8 py-2 border border-stone-200 hover:border-emerald-500/60 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/15 rounded-xl bg-slate-50/70 hover:bg-white text-stone-900 text-xs font-semibold outline-none transition cursor-pointer shadow-xs truncate"
-                          value={activeLevel}
-                          onChange={(e) => setActiveLevel(e.target.value)}
-                        >
-                          <option value="raudha">الروضة (Nursery)</option>
-                          <option value="ibtidaai_lower">الابتدائية السفلى (Lower Primary)</option>
-                          <option value="ibtidaai_upper">الابتدائية العليا (Upper Primary)</option>
-                        </select>
-                        <ChevronDown className="w-4 h-4 text-stone-400 absolute right-2.5 pointer-events-none" />
-                      </div>
+                      <label className="block text-[10px] font-bold text-stone-500 dark:text-[#A8ABA9] uppercase tracking-wider mb-1">المرحلة / Level</label>
+                      <CustomPillSelect
+                        id="theology-hub-level-select"
+                        ariaLabel="المرحلة / Level"
+                        value={activeLevel}
+                        onChange={(val) => setActiveLevel(val)}
+                        options={levelOptions}
+                        className="w-full h-10 rounded-xl"
+                      />
                     </>
                   )}
                 </div>

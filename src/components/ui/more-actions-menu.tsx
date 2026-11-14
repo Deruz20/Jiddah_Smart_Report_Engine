@@ -77,7 +77,7 @@ export function MoreActionsMenu({
           sideOffset={6}
           data-slot="gemini-more-actions-menu"
           className={cn(
-            "z-50 min-w-[200px] rounded-2xl bg-white dark:bg-[#1E1F20] border border-[#D97706]/20 dark:border-[#F59E0B]/20 p-1.5 shadow-[0_8px_28px_rgba(0,0,0,0.12)] dark:shadow-[0_12px_36px_rgba(0,0,0,0.65)] outline-none animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
+            "jiddah-popover-content z-50 min-w-[200px] rounded-2xl bg-white dark:bg-[#1E1F20] border border-[#D97706]/20 dark:border-[#F59E0B]/20 p-1.5 shadow-[0_8px_28px_rgba(0,0,0,0.12)] dark:shadow-[0_12px_36px_rgba(0,0,0,0.65)] outline-none",
             contentClassName
           )}
         >

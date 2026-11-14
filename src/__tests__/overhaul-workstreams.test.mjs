@@ -559,5 +559,79 @@ describe('Workstream 8: Mobile Drawer Header & Mobile Marks Entry Architecture',
   });
 });
 
+describe('Workstream 9: Custom Radix Comboboxes, Middle Performance Bar & Dark Mode Score Inputs', () => {
+  const rootDir = process.cwd();
+
+  it('exports CustomPillSelect and StudentCombobox components built on Radix Popover', () => {
+    const customSelectPath = path.join(rootDir, 'src/components/ui/custom-pill-select.tsx');
+    const customSelectSrc = fs.readFileSync(customSelectPath, 'utf8');
+
+    assert.match(customSelectSrc, /@radix-ui\/react-popover/);
+    assert.match(customSelectSrc, /export function CustomPillSelect/);
+    assert.match(customSelectSrc, /export function StudentCombobox/);
+    assert.match(customSelectSrc, /PopoverPrimitive\.Root/);
+    assert.match(customSelectSrc, /PopoverPrimitive\.Trigger/);
+    assert.match(customSelectSrc, /PopoverPrimitive\.Content/);
+  });
+
+  it('replaces all native select tags in Marks Entry with CustomPillSelect and StudentCombobox', () => {
+    const marksEntryPath = path.join(rootDir, 'src/components/shared-marks-entry.tsx');
+    const marksEntrySrc = fs.readFileSync(marksEntryPath, 'utf8');
+
+    // Asserts custom components are imported
+    assert.match(marksEntrySrc, /import\s*\{[^}]*CustomPillSelect[^}]*StudentCombobox[^}]*\}\s*from\s*['"]@\/components\/ui\/custom-pill-select['"]/);
+
+    // Desktop Zone 1 uses CustomPillSelect for class and subject filters
+    assert.match(marksEntrySrc, /<CustomPillSelect\s+id="marks-class-select"/);
+    assert.match(marksEntrySrc, /<CustomPillSelect\s+id="marks-subject-select"/);
+
+    // Desktop Zone 2 uses StudentCombobox with hero variant
+    assert.match(marksEntrySrc, /<StudentCombobox\s+id="marks-student-select"\s+ariaLabel="Student"\s+variant="hero"/);
+
+    // Mobile strip uses CustomPillSelect and StudentCombobox
+    assert.match(marksEntrySrc, /<CustomPillSelect\s+id="marks-class-filter-mobile"/);
+    assert.match(marksEntrySrc, /<StudentCombobox\s+id="marks-student-select-mobile"/);
+
+    // No raw <select tags remain in marks entry
+    assert.doesNotMatch(marksEntrySrc, /<select[\s>]/);
+  });
+
+  it('enforces dark recessed inputs in Dark Mode to eliminate white-on-white score text', () => {
+    const globalsCssPath = path.join(rootDir, 'src/app/globals.css');
+    const globalsCss = fs.readFileSync(globalsCssPath, 'utf8');
+
+    // .dark .score-input rules exist in globals.css
+    assert.match(globalsCss, /\.dark\s+\.score-input\s*\{[^}]*background:\s*#0D1714\s*!important/);
+    assert.match(globalsCss, /\.dark\s+\.score-input\s*\{[^}]*color:\s*#FFFFFF\s*!important/);
+    assert.match(globalsCss, /\.dark\s+\.score-input:focus\s*\{[^}]*background:\s*#16241F\s*!important/);
+
+    const marksEntryPath = path.join(rootDir, 'src/components/shared-marks-entry.tsx');
+    const marksEntrySrc = fs.readFileSync(marksEntryPath, 'utf8');
+
+    // Sizing and dark mode contrast classes enforced on score inputs
+    assert.match(marksEntrySrc, /score-input h-10 w-22 sm:w-24/);
+    assert.match(marksEntrySrc, /dark:!bg-\[#0D1714\]/);
+    assert.match(marksEntrySrc, /dark:!text-\[#FFFFFF\]/);
+  });
+
+  it('renders Middle Performance Bar & Remark column in Secular and Theology tables', () => {
+    const marksEntryPath = path.join(rootDir, 'src/components/shared-marks-entry.tsx');
+    const marksEntrySrc = fs.readFileSync(marksEntryPath, 'utf8');
+
+    // Performance & Remark headers exist
+    assert.match(marksEntrySrc, /Performance &amp; Remark/);
+    assert.match(marksEntrySrc, /المستوى والتقدير/);
+
+    // Row heights expanded to h-13 sm:h-14
+    assert.match(marksEntrySrc, /hover:bg-\[var\(--bg-hover\)\] transition-colors h-13 sm:h-14/);
+
+    // Single-curriculum telemetry side card rendered in lg:col-span-4
+    assert.match(marksEntrySrc, /function StudentPerformanceSideCard/);
+    assert.match(marksEntrySrc, /<StudentPerformanceSideCard/);
+    assert.match(marksEntrySrc, /lg:col-span-4/);
+  });
+});
+
+
 
 

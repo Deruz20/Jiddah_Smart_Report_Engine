@@ -127,8 +127,8 @@ export default async function MarksEntryPage() {
   }
 
   return (
-    <div className="w-full min-w-0 bg-[var(--bg-canvas)]">
-      <div className="max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-8 py-2.5 sm:py-3.5 w-full min-w-0">
+    <div className="w-full min-w-0 bg-[var(--bg-canvas)] min-h-[calc(100dvh-4.25rem)] flex flex-col justify-between">
+      <div className="max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-8 py-2.5 sm:py-3.5 w-full min-w-0 flex-1 flex flex-col">
         {error ? (
           <div className="p-4 bg-rose-500/10 border border-rose-500/25 rounded-2xl">
             <p className="text-rose-700 dark:text-rose-300 font-bold text-sm">System Error: {error}</p>

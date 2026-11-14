@@ -398,3 +398,38 @@ Exit code: 0
      - Automated tests: 25/25 in `overhaul-workstreams.test.mjs` and 132/132 across all test suites green.
      - Next.js webpack production build: 68/68 routes generated cleanly in 53s.
 
+## Milestone 14: Custom Radix Comboboxes, Dark Mode Score Input Contrast, Middle Performance Bar & Telemetry Side Card
+
+- **Files Modified / Created:**
+  - `src/components/ui/custom-pill-select.tsx` (new component)
+  - `src/components/shared-marks-entry.tsx`
+  - `src/app/globals.css`
+  - `src/app/admin/marks/page.tsx`
+  - `src/__tests__/overhaul-workstreams.test.mjs`
+  - `public/sw.js`
+- **Scope & Workstreams Completed:**
+  1. **Workstream 1: Custom Radix Popover Comboboxes & Pill Selects (`custom-pill-select.tsx`):**
+     - Built `CustomPillSelect`: Pill trigger (`h-9.5 px-3.5 sm:px-4 rounded-full`), rotating `ChevronDown`, elevated popover surface (`bg-white dark:bg-[#18211E] rounded-2xl border border-[#0D5C3A]/15 dark:border-[#F59E0B]/25 shadow-xl`), clean option rows with count badges and checkmarks.
+     - Built `StudentCombobox`: Searchable popover with sticky real-time search input (`🔍 Search student by name or class...`), avatar circles, class badge pills, checkmarks, and `variant="hero"` support.
+     - Replaced all 5 crude native `<select>` tags across Desktop Zone 1 (Class & Subject), Desktop Zone 2 (Hero Student Picker), Mobile Filter Strip (Class), and Mobile Switcher Card (Student). Zero native OS dropdowns remain.
+  2. **Workstream 2: Glaring White Score Inputs & Invisible Score Numbers in Dark Mode:**
+     - Identified root cause: `.score-input` in `globals.css` had hardcoded `background: #f8fafc;` with no dark mode override, conflicting with Tailwind text utilities and creating white-on-white text in Dark Mode.
+     - Added explicit dark mode rules with `!important`: `.dark .score-input { background: #0D1714 !important; color: #FFFFFF !important; border-color: rgba(16, 185, 129, 0.45) !important; }` and `.dark .score-input:focus { background: #16241F !important; color: #FFFFFF !important; border-color: #F59E0B !important; }`.
+     - Enforced generous score input sizing (`h-10 w-22 sm:w-24 rounded-xl text-[15px] font-extrabold font-mono`) and grade badges (`min-w-[44px] h-8 px-2.5 rounded-lg text-xs font-bold`).
+  3. **Workstream 3: Middle Performance Bar & Remark Column:**
+     - Added Middle `Performance & Remark` column (`hidden sm:table-cell px-4 py-2 min-w-[180px] max-w-[280px]`) between subject name and score inputs.
+     - Displays dynamic gradient progress bar (emerald for ≥75%, amber/gold for ≥50%, rose for <50%) and teacher remark descriptors (`getSubjectRemark` for secular, `getNurseryGrade` for nursery, `getTheologySubjectRemark` for theology in RTL).
+     - Expanded table rows to `h-13 sm:h-14` (52–56px) with generous `py-2.5 px-4` cell padding.
+  4. **Workstream 4: Single-Curriculum Performance Telemetry Side Card:**
+     - When only one curriculum is displayed (`activeView === 'secular'` or `'theology'`), the workspace renders as a balanced 12-column grid: Table card in `lg:col-span-8` and `StudentPerformanceSideCard` in `hidden lg:block lg:col-span-4`.
+     - Completely eliminates the 1400px stretched dead void on widescreen monitors.
+     - Side Card features: Student avatar and profile summary, 2x2 metric cards (Average Score, Grade/Division, Scored Subjects, Completion Rate), Top & Needs-Attention subject highlights, and keyboard navigation tips.
+  5. **Workstream 5: Button Track Expansion & Commanding Save Bar:**
+     - Expanded switcher tracks in Desktop Zone 1 to `h-9.5 p-1 gap-1 rounded-full` and button padding to `h-7.5 px-3.5 sm:px-4 text-xs sm:text-[13px] font-semibold`.
+     - Enforced commanding tactile pill save button in Zone 4 (`h-10 md:h-11 px-5 md:px-8 rounded-full btn-jiddah-cta text-xs md:text-sm font-bold`).
+  6. **Workstream 6: Verification Gate:**
+     - TypeScript check (`tsc --noEmit`): 0 errors across entire repository.
+     - Automated test suite: 29/29 tests in `overhaul-workstreams.test.mjs` pass (100%).
+     - Next.js webpack production build: 68/68 routes generated cleanly with zero build errors.
+
+

@@ -5,6 +5,7 @@ import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { getAuthenticatedUser } from '@/lib/api-server'
 
 const BUCKET = 'documents'
+const DOCUMENT_CATEGORIES = new Set(['Branding', 'Documents', 'Other'])
 
 function getFileType(name: string) {
   const extension = name.split('.').pop()?.toLowerCase() ?? ''
@@ -49,6 +50,9 @@ export async function GET(request: NextRequest) {
         type: getFileType(object.name),
         updated_at: object.updated_at ?? null,
         public_url: data?.publicUrl ?? null,
+        category: DOCUMENT_CATEGORIES.has(String(object.metadata?.category))
+          ? String(object.metadata.category)
+          : 'Documents',
       }
     })
 

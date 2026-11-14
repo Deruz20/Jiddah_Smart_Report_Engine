@@ -1,4 +1,4 @@
-import { createClient } from '@/utils/supabase/server'
+import { createAdminClient, createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import {
@@ -16,14 +16,18 @@ import {
   getDivision,
   getPromotionStatus,
   getConductRemark,
-  getClassTeacherComment,
+  getClassTeacherReportComment,
   getHeadTeacherComment,
+  getGradingRemarkForScore,
+  getGradingRemarkForScores,
 } from '@/lib/grading'
 import { resolveSectionType } from '@/lib/section-type'
 import { canAccessClass, isAdministratorRole } from '@/lib/teacher-access'
+import { hasRequiredClassForReport } from '@/lib/report-class-context'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { evaluateCriteria, GradingCriterion } from '@/lib/grading-engine'
 import { fetchMergedSchoolSettings } from '@/lib/school-settings-helper'
+import { getReportSignatures } from '@/utils/signatures'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -56,7 +60,6 @@ export async function GET(request: NextRequest) {
   const enrollmentId = searchParams.get('enrollment_id')
   const termId = searchParams.get('term_id')
   const score_type = searchParams.get('score_type') || 'mot'
-  const scoreType = score_type
   const curriculum = searchParams.get('curriculum') || 'secular'
   const stamp_date = searchParams.get('stamp_date') || undefined
 
@@ -64,12 +67,16 @@ export async function GET(request: NextRequest) {
     return withCors(request, NextResponse.json({ error: 'enrollmentId and termId are required' }, { status: 400 }))
   }
 
-  if (!['bot', 'mot', 'eot'].includes(score_type)) {
+  const scoreType = score_type === 'bot' || score_type === 'mot' || score_type === 'eot'
+    ? score_type
+    : null
+  if (!scoreType) {
     return withCors(request, NextResponse.json({ error: 'score_type must be bot, mot, or eot' }, { status: 400 }))
   }
   if (!['secular', 'theology'].includes(curriculum)) {
     return withCors(request, NextResponse.json({ error: 'curriculum must be secular or theology' }, { status: 400 }))
   }
+  const reportCurriculum = curriculum === 'theology' ? 'theology' : 'secular'
 
   try {
     const cookieStore = await cookies()
@@ -109,8 +116,18 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Enrollment not found' }, { status: 404 }))
     }
 
+    const reportCircularClass = Array.isArray(enrollment.circular_classes)
+      ? enrollment.circular_classes[0]
+      : enrollment.circular_classes
+    const reportTheologyClass = Array.isArray(enrollment.theology_classes)
+      ? enrollment.theology_classes[0]
+      : enrollment.theology_classes
+
+    if (!hasRequiredClassForReport(reportCurriculum, Boolean(reportCircularClass), Boolean(reportTheologyClass))) {
+      return withCors(request, NextResponse.json({ error: 'Enrollment is missing a class for the requested curriculum' }, { status: 400 }))
+    }
+
     const metaRole = user.app_metadata?.role || user.user_metadata?.role;
-    const { isAdministratorRole } = await import('@/lib/teacher-access');
     const isAdmin = isAdministratorRole(metaRole) || isAdministratorRole(authRes.role) || authRes.role === 'Administrator' || (!authRes.filterByClasses && !authRes.filterByDepartment);
     let allowedReportClass = isAdmin;
     if (!allowedReportClass) {
@@ -129,24 +146,9 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Unauthorized: Report is outside your assigned classes or curriculum.' }, { status: 403 }))
     }
 
-    const section = Array.isArray(enrollment.circular_classes)
-      ? enrollment.circular_classes[0]?.section
-      : (enrollment.circular_classes as any)?.section
-    
-    const className = Array.isArray(enrollment.circular_classes)
-      ? enrollment.circular_classes[0]?.class_name
-      : (enrollment.circular_classes as any)?.class_name
-
-    const theologyClassName = Array.isArray(enrollment.theology_classes)
-      ? enrollment.theology_classes[0]?.class_name_english
-      : (enrollment.theology_classes as any)?.class_name_english
-    const earlyTheologyLevel = Array.isArray(enrollment.theology_classes)
-      ? enrollment.theology_classes[0]?.level
-      : (enrollment.theology_classes as any)?.level
-
-    const resolvedName = className || theologyClassName || 'Primary'
-    const resolvedSection = section || earlyTheologyLevel || 'upper_primary'
-    const sectionType = resolveSectionType(resolvedSection, resolvedName)
+    const section = reportCircularClass?.section ?? reportTheologyClass?.level
+    const className = reportCircularClass?.class_name ?? reportTheologyClass?.class_name_english
+    const sectionType = resolveSectionType(section, className)
 
     const { data: term, error: termError } = await supabase
       .from('terms')
@@ -226,9 +228,13 @@ export async function GET(request: NextRequest) {
       const defaultGrade = numericScore !== null
         ? sectionType === 'nursery' ? getNurseryGrade(numericScore).grade : getGradeDisplay(getSubjectGradeNumber(numericScore, schoolSettings?.grading_scale))
         : '—'
-      const defaultRemark = numericScore !== null
-        ? sectionType === 'nursery' ? getNurseryGrade(numericScore).remark : getSubjectRemark(getSubjectGradeNumber(numericScore, schoolSettings?.grading_scale), schoolSettings?.grading_scale)
-        : ''
+        const defaultRemark = numericScore !== null
+          ? sectionType === 'nursery'
+            ? getNurseryGrade(numericScore).remark
+            : scoreType === 'mot'
+              ? getGradingRemarkForScore(numericScore, schoolSettings?.grading_scale)
+              : getSubjectRemark(getSubjectGradeNumber(numericScore, schoolSettings?.grading_scale), schoolSettings?.grading_scale)
+          : ''
 
       const overrideGrade = evaluateCriteria(numericScore, 'subject_score', 'secular', enrollment.circular_class_id, gradingCriteria, 'grade_label')
       const overrideRemark = evaluateCriteria(numericScore, 'subject_score', 'secular', enrollment.circular_class_id, gradingCriteria, 'comment')
@@ -607,7 +613,7 @@ export async function GET(request: NextRequest) {
 
     
             religion: studentData?.is_muslim === false ? 'Non-Muslim' : 'Muslim',
-            class_name: '—',
+            class_name: theologyClassEnglish ?? '—',
             gender: studentData?.gender ?? null,
             theology_class_arabic: theologyClassArabic ?? null,
             theology_class_english: theologyClassEnglish ?? null,
@@ -686,11 +692,22 @@ export async function GET(request: NextRequest) {
         eot_total,
         aggregate,
         division,
-        conduct_remark: evaluateCriteria(reportAggregate ?? null, 'aggregate', 'secular', enrollment.circular_class_id, gradingCriteria, 'comment') || getConductRemark(division),
-        class_teacher_comment: scoreType === 'eot' && isTerm3 && promotion_status
-          ? (promotion_status === 'Promote' ? 'Promoted to the next class.' : promotion_status === 'Repeat' ? 'Advised to repeat the class.' : 'Try next class.')
-          : (evaluateCriteria(reportAggregate ?? null, 'aggregate', 'secular', enrollment.circular_class_id, gradingCriteria, 'comment') || (division ? getClassTeacherComment(division, sortedCircularSubjects.filter(row => row.is_core).map(row => row.score), schoolSettings?.grading_scale, schoolSettings?.division_boundaries) : '')),
-        head_teacher_comment: evaluateCriteria(reportAggregate ?? null, 'aggregate', 'secular', enrollment.circular_class_id, gradingCriteria, 'comment') || (division ? getHeadTeacherComment(division, sortedCircularSubjects.filter(row => row.is_core).map(row => row.score), schoolSettings?.grading_scale, schoolSettings?.division_boundaries) : ''),
+        conduct_remark: scoreType === 'mot'
+          ? ''
+          : evaluateCriteria(reportAggregate ?? null, 'aggregate', 'secular', enrollment.circular_class_id, gradingCriteria, 'comment') || getConductRemark(division),
+        class_teacher_comment: getClassTeacherReportComment({
+          scoreType,
+          termNumber: term.term_number,
+          promotionStatus: promotion_status,
+          gradingComment: evaluateCriteria(reportAggregate ?? null, 'aggregate', 'secular', enrollment.circular_class_id, gradingCriteria, 'comment'),
+          division,
+          scores: sortedCircularSubjects.filter(row => row.is_core).map(row => row.score),
+          gradingBands: schoolSettings?.grading_scale,
+          divisionBoundaries: schoolSettings?.division_boundaries,
+        }),
+        head_teacher_comment: scoreType === 'mot'
+          ? evaluateCriteria(reportAggregate ?? null, 'aggregate', 'secular', enrollment.circular_class_id, gradingCriteria, 'comment') || getGradingRemarkForScores(sortedCircularSubjects.filter(row => row.is_core).map(row => row.score), schoolSettings?.grading_scale)
+          : evaluateCriteria(reportAggregate ?? null, 'aggregate', 'secular', enrollment.circular_class_id, gradingCriteria, 'comment') || (division ? getHeadTeacherComment(division, sortedCircularSubjects.filter(row => row.is_core).map(row => row.score), schoolSettings?.grading_scale, schoolSettings?.division_boundaries) : ''),
         position,
         total_students,
       },

@@ -431,7 +431,11 @@ export default function PrimaryMOTReport({ reportData }: any) {
           <div className="mot-footer-stamp">
             <div className="mot-stamp" style={{ padding: '2px' }}>
               {includeStamp ? (
-                <OfficialReportStamp reportData={reportData} maxWidth={144} maxHeight={88} />
+                reportData?.signatures?.['school-stamp'] ? (
+                  <img src={reportData.signatures['school-stamp']} alt="Official school stamp" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                ) : (
+                  <OfficialReportStamp reportData={reportData} maxWidth={144} maxHeight={88} />
+                )
               ) : null}
             </div>
           </div>

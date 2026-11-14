@@ -19,8 +19,10 @@ export default async function UploadPage() {
   const cookieStore = await cookies()
   const supabase = createClient(cookieStore)
 
-  const { data: objects } = await supabase.storage.from(BUCKET).list('', { limit: 1000 })
-  
+  const { data: objects, error } = await supabase.storage.from(BUCKET).list('', { limit: 1000 })
+  if (error) {
+    console.error('Upload Center could not load document storage:', error.message)
+  }
   const files = (objects ?? []).map((object) => {
     const { data } = supabase.storage.from(BUCKET).getPublicUrl(object.name)
     const size = Number(object.metadata?.size ?? 0)
@@ -34,7 +36,9 @@ export default async function UploadPage() {
       public_url: data?.publicUrl ?? null,
       status: 'done' as const,
       progress: 100,
-      category: 'Documents'
+      category: ['Branding', 'Documents', 'Other'].includes(String(object.metadata?.category))
+        ? String(object.metadata?.category)
+        : 'Documents'
     }
   })
 

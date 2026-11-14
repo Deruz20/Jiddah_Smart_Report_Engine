@@ -283,11 +283,11 @@ function IndividualView({ report }: { report: ReportData }) {
             {circular.position && (
               <StatCard label="Position" value={ordinal(circular.position)} color={ORANGE} />
             )}
-            {circular.division && (
-              <StatCard label="Division" value={circular.division} color={divColor(circular.division)} />
-            )}
-            {circular.aggregate != null && (
-              <StatCard label="Aggregate" value={`${circular.aggregate}%`} color={EMERALD} />
+            <StatCard label="Division" value={circular.division ?? '—'} color={divColor(circular.division)} />
+            <StatCard label="BOT Aggregate" value={circular.bot_aggregate ?? '—'} color={EMERALD} />
+            <StatCard label="MOT Aggregate" value={circular.mot_aggregate ?? '—'} color={EMERALD} />
+            {score_type === 'eot' && (
+              <StatCard label="EOT Aggregate" value={circular.eot_aggregate ?? '—'} color={EMERALD} />
             )}
             {circular.total != null && (
               <StatCard label="Total Score" value={String(circular.total)} color="#0369a1" />

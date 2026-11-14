@@ -1,45 +1,57 @@
-import { SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 const SUPPORTED_SIGNATURE_FILENAME = /^[a-z0-9-]+\.(?:png|jpe?g|webp)$/i;
 
 export interface SignatureStorageObject {
-  name: string
-  updated_at?: string | null
+  name: string;
+  updated_at?: string | null;
+  metadata?: {
+    size?: number;
+    contentLength?: number;
+  } | null;
 }
 
-export interface SignatureStorageBucket {
-  list(path: string, options?: { limit?: number }): Promise<{
-    data: SignatureStorageObject[] | null
-    error: { message: string } | null
-  }>
-  move(from: string, to: string): Promise<{ error: { message: string } | null }>
-  remove(paths: string[]): Promise<{ error: { message: string } | null }>
-}
+export type SignatureStorageBucket = {
+  list(path?: string, options?: { limit?: number }): Promise<{
+    data: SignatureStorageObject[] | any[] | null;
+    error: { message: string } | null;
+  }>;
+  move(from: string, to: string): Promise<{ data?: any; error: { message: string } | null }>;
+  remove(paths: string[]): Promise<{ data?: any; error: { message: string } | null }>;
+} | ReturnType<SupabaseClient['storage']['from']>;
 
-export function getSignatureObjectNamesForSlot(objects: SignatureStorageObject[], slotKey: string): string[] {
+export function getSignatureObjectNamesForSlot(
+  objects: SignatureStorageObject[],
+  slotKey: string
+): string[] {
+  const prefix = `${slotKey}.`;
+
   return objects
     .map((object) => object.name)
-    .filter((name) => name.startsWith(`${slotKey}.`) && SUPPORTED_SIGNATURE_FILENAME.test(name));
+    .filter((name) => name.startsWith(prefix) && SUPPORTED_SIGNATURE_FILENAME.test(name));
 }
 
-export function getLatestSignatureObjectNameForSlot(objects: SignatureStorageObject[], slotKey: string): string | null {
+export function getLatestSignatureObjectNameForSlot(
+  objects: SignatureStorageObject[],
+  slotKey: string
+): string | null {
   const latest = objects
     .filter((object) => object.name.startsWith(`${slotKey}.`) && SUPPORTED_SIGNATURE_FILENAME.test(object.name))
     .reduce<SignatureStorageObject | null>((current, object) => {
-      if (!current) return object
+      if (!current) return object;
 
-      const updatedAt = Date.parse(object.updated_at ?? '')
-      const currentUpdatedAt = Date.parse(current.updated_at ?? '')
+      const updatedAt = Date.parse(object.updated_at ?? '');
+      const currentUpdatedAt = Date.parse(current.updated_at ?? '');
       if (
         (Number.isFinite(updatedAt) && !Number.isFinite(currentUpdatedAt)) ||
         updatedAt > currentUpdatedAt
       ) {
-        return object
+        return object;
       }
-      return current
-    }, null)
+      return current;
+    }, null);
 
-  return latest?.name ?? null
+  return latest?.name ?? null;
 }
 
 export async function setSignatureObjectActiveState(
@@ -50,62 +62,62 @@ export async function setSignatureObjectActiveState(
   const [activeResult, disabledResult] = await Promise.all([
     storage.list('', { limit: 1000 }),
     storage.list('disabled', { limit: 1000 }),
-  ])
+  ]);
   if (activeResult.error || disabledResult.error) {
     return {
       active,
       error: activeResult.error?.message ?? disabledResult.error?.message ?? 'Unable to list report images.',
       status: 500,
-    }
+    };
   }
 
-  const activePaths = getSignatureObjectNamesForSlot(activeResult.data ?? [], slotKey)
-  const disabledPaths = getSignatureObjectNamesForSlot(disabledResult.data ?? [], slotKey)
+  const activePaths = getSignatureObjectNamesForSlot(activeResult.data ?? [], slotKey);
+  const disabledPaths = getSignatureObjectNamesForSlot(disabledResult.data ?? [], slotKey);
 
   if (active) {
-    if (activePaths.length > 0) return { active: true }
-    const selectedPath = getLatestSignatureObjectNameForSlot(disabledResult.data ?? [], slotKey)
+    if (activePaths.length > 0) return { active: true };
+    const selectedPath = getLatestSignatureObjectNameForSlot(disabledResult.data ?? [], slotKey);
     if (!selectedPath) {
-      return { active, error: 'No stored image is available to reactivate.', status: 409 }
+      return { active, error: 'No stored image is available to reactivate.', status: 409 };
     }
 
-    const { error: moveError } = await storage.move(`disabled/${selectedPath}`, selectedPath)
+    const { error: moveError } = await storage.move(`disabled/${selectedPath}`, selectedPath);
     if (moveError) {
-      return { active, error: `Unable to reactivate stored image: ${moveError.message}`, status: 500 }
+      return { active, error: `Unable to reactivate stored image: ${moveError.message}`, status: 500 };
     }
 
     const stalePaths = disabledPaths
       .filter((path) => path !== selectedPath)
-      .map((path) => `disabled/${path}`)
+      .map((path) => `disabled/${path}`);
     if (stalePaths.length > 0) {
-      const { error: removeError } = await storage.remove(stalePaths)
+      const { error: removeError } = await storage.remove(stalePaths);
       if (removeError) {
-        return { active, error: `Image reactivated, but older copies could not be removed: ${removeError.message}`, status: 500 }
+        return { active, error: `Image reactivated, but older copies could not be removed: ${removeError.message}`, status: 500 };
       }
     }
-    return { active: true }
+    return { active: true };
   }
 
   if (activePaths.length === 0) {
     return disabledPaths.length > 0
       ? { active: false }
-      : { active, error: 'No stored image is available to deactivate.', status: 409 }
+      : { active, error: 'No stored image is available to deactivate.', status: 409 };
   }
 
   if (disabledPaths.length > 0) {
-    const { error: removeError } = await storage.remove(disabledPaths.map((path) => `disabled/${path}`))
+    const { error: removeError } = await storage.remove(disabledPaths.map((path) => `disabled/${path}`));
     if (removeError) {
-      return { active, error: `Unable to prepare the deactivated image folder: ${removeError.message}`, status: 500 }
+      return { active, error: `Unable to prepare the deactivated image folder: ${removeError.message}`, status: 500 };
     }
   }
 
   for (const path of activePaths) {
-    const { error: moveError } = await storage.move(path, `disabled/${path}`)
+    const { error: moveError } = await storage.move(path, `disabled/${path}`);
     if (moveError) {
-      return { active, error: `Unable to deactivate stored image: ${moveError.message}`, status: 500 }
+      return { active, error: `Unable to deactivate stored image: ${moveError.message}`, status: 500 };
     }
   }
-  return { active: false }
+  return { active: false };
 }
 
 export async function deleteSignatureSlotObject(
@@ -173,6 +185,83 @@ export function getClassTeacherSignatureKey(className: string | undefined | null
   return isTheology ? `theology-teacher-${baseClass}` : `class-teacher-${baseClass}`;
 }
 
+export function getReportSignatureKeys(): string[] {
+  const classNames = [
+    'Baby Class',
+    'Middle Class',
+    'Top Class',
+    'Primary 1',
+    'Primary 2',
+    'Primary 3',
+    'Primary 4',
+    'Primary 5',
+    'Primary 6',
+    'Primary 7',
+  ];
+
+  const classTeacherKeys = classNames.flatMap((className) => [
+    getClassTeacherSignatureKey(className),
+    getClassTeacherSignatureKey(className, true),
+  ]);
+
+  return ['head-teacher', 'principal', 'school-stamp', ...classTeacherKeys]
+    .filter((key): key is string => Boolean(key));
+}
+
+export function mapLatestSignatureObjects(
+  objects: SignatureStorageObject[],
+  keys: string[] = getReportSignatureKeys()
+): Map<string, SignatureStorageObject> {
+  const latestByKey = new Map<string, SignatureStorageObject>();
+
+  for (const object of objects) {
+    if (!SUPPORTED_SIGNATURE_FILENAME.test(object.name)) continue;
+    const key = keys.find((candidate) => object.name.startsWith(`${candidate}.`));
+    if (!key) continue;
+
+    const current = latestByKey.get(key);
+    if (!current) {
+      latestByKey.set(key, object);
+      continue;
+    }
+
+    const updatedAt = Date.parse(object.updated_at ?? '');
+    const currentUpdatedAt = Date.parse(current.updated_at ?? '');
+    if (
+      (Number.isFinite(updatedAt) && !Number.isFinite(currentUpdatedAt)) ||
+      updatedAt > currentUpdatedAt
+    ) {
+      latestByKey.set(key, object);
+    }
+  }
+
+  return latestByKey;
+}
+
+export function withSignatureVersion(url: string, updatedAt: string | null | undefined): string {
+  if (!updatedAt) return url;
+  const separator = url.includes('?') ? '&' : '?';
+  return `${url}${separator}v=${encodeURIComponent(updatedAt)}`;
+}
+
+export async function getReportSignatures(supabase: SupabaseClient) {
+  const keys = getReportSignatureKeys();
+  const { data: objects, error } = await supabase.storage
+    .from('signatures')
+    .list('', { limit: 1000 });
+  if (error) {
+    throw new Error(`Unable to load report stamp: ${error.message}`);
+  }
+
+  const stamp = mapLatestSignatureObjects(objects ?? [], ['school-stamp']).get('school-stamp');
+  const stampUrl = stamp
+    ? supabase.storage.from('signatures').getPublicUrl(stamp.name).data?.publicUrl ?? null
+    : null;
+  const signatures = Object.fromEntries(keys.map((key) => [key, null])) as Record<string, string | null>;
+  signatures['school-stamp'] = stampUrl ? withSignatureVersion(stampUrl, stamp.updated_at) : null;
+  return signatures;
+}
+
 export async function getDynamicSignatureSlots(supabase: SupabaseClient) {
   const slots = [
     {
@@ -212,80 +301,50 @@ export async function getDynamicSignatureSlots(supabase: SupabaseClient) {
     }
   ];
 
-  // Fetch unique active classes to dynamically create class teacher slots
-  const classNames = new Set<string>();
-  try {
-    const { data: students } = await supabase.from('students').select('class_name, status').eq('status', 'active');
-    for (const s of students || []) {
-      if (s?.class_name) classNames.add(s.class_name);
-    }
-  } catch {}
+  const { data: enrollments, error } = await supabase
+    .from('enrollments')
+    .select(`
+      circular_classes ( class_name ),
+      theology_classes ( class_name_english ),
+      students!inner ( is_archived )
+    `)
+    .eq('is_active', true)
+    .eq('students.is_archived', false);
 
-  try {
-    const { data: cClasses } = await supabase.from('circular_classes').select('class_name');
-    for (const c of cClasses || []) {
-      if (c?.class_name) classNames.add(c.class_name);
-    }
-  } catch {}
-  const addedBaseClasses = new Set<string>();
+  if (error) {
+    throw new Error(`Unable to load active enrollments for signature slots: ${error.message}`);
+  }
 
-  // Add secular teacher slots
-  for (const name of classNames) {
-    const key = getClassTeacherSignatureKey(name);
-    if (key && !addedBaseClasses.has(key)) {
-      addedBaseClasses.add(key);
-      
-      let prettyName = name;
-      if (key.includes('baby')) prettyName = 'Baby Class';
-      else if (key.includes('middle')) prettyName = 'Middle Class';
-      else if (key.includes('top')) prettyName = 'Top Class';
-      else if (key.includes('p1')) prettyName = 'Primary 1';
-      else if (key.includes('p2')) prettyName = 'Primary 2';
-      else if (key.includes('p3')) prettyName = 'Primary 3';
-      else if (key.includes('p4')) prettyName = 'Primary 4';
-      else if (key.includes('p5')) prettyName = 'Primary 5';
-      else if (key.includes('p6')) prettyName = 'Primary 6';
-      else if (key.includes('p7')) prettyName = 'Primary 7';
+  const circularClassNames = new Set<string>();
+  const theologyClassNames = new Set<string>();
+  for (const enrollment of enrollments ?? []) {
+    const circularClass = Array.isArray(enrollment.circular_classes)
+      ? enrollment.circular_classes[0]
+      : enrollment.circular_classes;
+    const theologyClass = Array.isArray(enrollment.theology_classes)
+      ? enrollment.theology_classes[0]
+      : enrollment.theology_classes;
+    if (circularClass?.class_name) circularClassNames.add(circularClass.class_name);
+    if (theologyClass?.class_name_english) theologyClassNames.add(theologyClass.class_name_english);
+  }
 
+  const addTeacherSlots = (classNames: Set<string>, isTheology: boolean) => {
+    for (const name of classNames) {
+      const key = getClassTeacherSignatureKey(name, isTheology);
+      if (!key || slots.some((slot) => slot.slot_key === key)) continue;
+      const prettyName = name.trim();
       slots.push({
         slot_key: key,
-        label: `Class Teacher — ${prettyName}`,
-        role: 'Class Teacher',
-        description: `Signature for ${prettyName} reports.`,
+        label: `${isTheology ? 'Theology Teacher' : 'Class Teacher'} — ${prettyName}`,
+        role: isTheology ? 'Theology Teacher' : 'Class Teacher',
+        description: `Signature for ${prettyName}${isTheology ? ' Theology' : ''} reports.`,
         required: true,
       });
     }
-  }
+  };
 
-  // Theology uses same class names but theology teachers. We will add those too.
-  // Assuming Theology classes match the secular structure.
-  addedBaseClasses.clear();
-  for (const name of classNames) {
-    const key = getClassTeacherSignatureKey(name, true);
-    if (key && !addedBaseClasses.has(key)) {
-      addedBaseClasses.add(key);
-      
-      let prettyName = name;
-      if (key.includes('baby')) prettyName = 'Baby Class';
-      else if (key.includes('middle')) prettyName = 'Middle Class';
-      else if (key.includes('top')) prettyName = 'Top Class';
-      else if (key.includes('p1')) prettyName = 'Primary 1';
-      else if (key.includes('p2')) prettyName = 'Primary 2';
-      else if (key.includes('p3')) prettyName = 'Primary 3';
-      else if (key.includes('p4')) prettyName = 'Primary 4';
-      else if (key.includes('p5')) prettyName = 'Primary 5';
-      else if (key.includes('p6')) prettyName = 'Primary 6';
-      else if (key.includes('p7')) prettyName = 'Primary 7';
-
-      slots.push({
-        slot_key: key,
-        label: `Theology Teacher — ${prettyName}`,
-        role: 'Theology Teacher',
-        description: `Signature for ${prettyName} Theology reports.`,
-        required: true,
-      });
-    }
-  }
+  addTeacherSlots(circularClassNames, false);
+  addTeacherSlots(theologyClassNames, true);
 
   return slots;
 }

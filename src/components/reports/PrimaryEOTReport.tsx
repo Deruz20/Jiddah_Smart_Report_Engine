@@ -760,7 +760,11 @@ export default function PrimaryEOTReport({ reportData }: any) {
 
                     <div className="stamp-wrapper" style={{ flexShrink: 0, padding: '2px', minWidth: '132px', minHeight: '72px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent' }}>
                       {includeStamp ? (
-                        <OfficialReportStamp reportData={reportData} maxWidth={145} maxHeight={80} />
+                        reportData?.signatures?.['school-stamp'] ? (
+                          <img src={reportData.signatures['school-stamp']} alt="Official school stamp" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                        ) : (
+                          <OfficialReportStamp reportData={reportData} maxWidth={145} maxHeight={80} />
+                        )
                       ) : null}
                     </div>
                   </div>

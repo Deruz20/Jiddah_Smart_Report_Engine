@@ -5,6 +5,7 @@ import { verifyDataAccess } from '@/lib/auth-server'
 import {
   getDynamicSignatureSlots,
   getLatestSignatureObjectNameForSlot,
+  withSignatureVersion,
 } from '@/utils/signatures'
 
 export const dynamic = "force-dynamic";
@@ -54,11 +55,12 @@ export default async function SignaturesPage() {
     const activePath = activeBySlot.get(slot.slot_key)
     const disabledPath = disabledBySlot.get(slot.slot_key)
     const filePath = activePath ?? (disabledPath ? `disabled/${disabledPath}` : null)
-    const public_url = filePath ? buildPublicUrl(admin, filePath) : null
+    const rawUrl = filePath ? buildPublicUrl(admin, filePath) : null
+    const public_url = rawUrl ? withSignatureVersion(rawUrl, String(Date.now())) : null
     return {
       ...slot,
       public_url,
-      uploaded: Boolean(public_url),
+      uploaded: Boolean(filePath),
       active: Boolean(activePath),
     }
   })

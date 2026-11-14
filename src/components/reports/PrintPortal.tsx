@@ -18,13 +18,14 @@ import React from 'react'
 
 interface PrintPortalProps {
   children: React.ReactNode
+  pageOrientation?: 'portrait' | 'landscape'
 }
 
-export function PrintPortal({ children }: PrintPortalProps) {
+export function PrintPortal({ children, pageOrientation = 'portrait' }: PrintPortalProps) {
   return (
     <div id="print-portal" aria-hidden="true" inert={true}>
+      <style>{`@page { size: A4 ${pageOrientation}; margin: 0; }`}</style>
       {children}
     </div>
   )
 }
-

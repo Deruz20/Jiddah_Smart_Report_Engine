@@ -481,7 +481,11 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
           </div>
           <div className="footer-stamp" style={{ padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {includeStamp ? (
-              <OfficialReportStamp reportData={reportData} maxWidth={136} maxHeight={84} />
+              reportData?.signatures?.['school-stamp'] ? (
+                <img src={reportData.signatures['school-stamp']} alt="Official school stamp" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+              ) : (
+                <OfficialReportStamp reportData={reportData} maxWidth={136} maxHeight={84} />
+              )
             ) : null}
           </div>
           <div className="sign-field">

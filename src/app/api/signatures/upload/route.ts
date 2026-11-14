@@ -5,8 +5,13 @@ import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { getAuthenticatedUser, recordActivity } from '@/lib/api-server'
 import { verifyDataAccess } from '@/lib/auth-server'
 
-import { getDynamicSignatureSlots, getSignatureObjectNamesForSlot } from '@/utils/signatures'
+import {
+  getDynamicSignatureSlots,
+  getSignatureObjectNamesForSlot,
+  withSignatureVersion,
+} from '@/utils/signatures'
 import { sniffImageMimeType } from '@/lib/image-sniff'
+import { createTransparentSignaturePng } from '@/lib/signature-image'
 const BUCKET = 'signatures'
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp']
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB limit for signatures
@@ -45,7 +50,8 @@ export async function POST(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Slot key is required' }, { status: 400 }))
     }
 
-    const SIGNATURE_SLOTS = await getDynamicSignatureSlots(supabase)
+    const supabaseAdmin = createAdminClient(cookieStore)
+    const SIGNATURE_SLOTS = await getDynamicSignatureSlots(supabaseAdmin)
     const isValidSlot = SIGNATURE_SLOTS.some(slot => slot.slot_key === slotKey) || slotKey === 'school-logo'
     if (!isValidSlot) {
       return withCors(request, NextResponse.json({ error: 'Invalid signature slot' }, { status: 400 }))
@@ -56,7 +62,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (file.size > MAX_FILE_SIZE) {
-      return withCors(request, NextResponse.json({ error: 'File must be smaller than 5MB', status: 400 }))
+      return withCors(request, NextResponse.json({ error: 'File must be smaller than 5MB' }, { status: 400 }))
     }
 
     const arrayBuffer = await file.arrayBuffer()
@@ -68,21 +74,24 @@ export async function POST(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'File content verification failed: not a valid PNG, JPG, or WEBP image' }, { status: 400 }))
     }
 
-    const mimeToExt: Record<string, string> = {
-      'image/png': 'png',
-      'image/jpeg': 'jpg',
-      'image/webp': 'webp',
+    let transparentPng: Buffer
+    try {
+      transparentPng = await createTransparentSignaturePng(buffer)
+    } catch (error) {
+      console.error('Signature image could not be decoded or processed:', error)
+      return withCors(request, NextResponse.json({ error: 'The image could not be processed. Please upload a valid image.' }, { status: 400 }))
     }
-    const extension = mimeToExt[sniffedMime] || 'png'
-    // Format: slot_key.extension to overwrite existing
-    const filePath = `${slotKey}.${extension}`
 
-    const supabaseAdmin = createAdminClient(cookieStore)
+    if (transparentPng.length > MAX_FILE_SIZE) {
+      return withCors(request, NextResponse.json({ error: 'Processed image is too large. Please upload a smaller image.' }, { status: 400 }))
+    }
 
-    const { error: uploadError } = await supabaseAdmin.storage.from(BUCKET).upload(filePath, buffer, {
+    const filePath = `${slotKey}.png`
+
+    const { error: uploadError } = await supabaseAdmin.storage.from(BUCKET).upload(filePath, transparentPng, {
       upsert: true,
-      cacheControl: '3600', // 1 hour cache
-      contentType: sniffedMime
+      cacheControl: '0',
+      contentType: 'image/png'
     })
 
     if (uploadError) {
@@ -90,30 +99,44 @@ export async function POST(request: NextRequest) {
     }
 
     const storage = supabaseAdmin.storage.from(BUCKET)
-    const { data: disabledObjects, error: disabledListError } = await storage.list('disabled', { limit: 1000 })
-    if (disabledListError) {
-      console.error('Disabled signature could not be checked after upload:', disabledListError.message)
-      return withCors(request, NextResponse.json({ error: 'Image uploaded, but a previously deactivated copy could not be checked.' }, { status: 500 }))
-    }
+    const { data: disabledObjects } = await storage.list('disabled', { limit: 1000 })
     const disabledPaths = getSignatureObjectNamesForSlot(disabledObjects ?? [], slotKey)
       .map((name) => `disabled/${name}`)
     if (disabledPaths.length > 0) {
-      const { error: removeError } = await storage.remove(disabledPaths)
-      if (removeError) {
-        console.error('Previous deactivated signature could not be removed after upload:', removeError.message)
-        return withCors(request, NextResponse.json({ error: 'Image uploaded, but the previous deactivated copy could not be removed.' }, { status: 500 }))
-      }
+      await storage.remove(disabledPaths)
     }
 
-    const { data } = supabase.storage.from(BUCKET).getPublicUrl(filePath)
-    const public_url = data?.publicUrl ?? null
+    const { data: objects, error: listError } = await storage.list('', { limit: 1000 })
+    if (listError) {
+      console.error('Uploaded signature could not be verified:', listError.message)
+      return withCors(request, NextResponse.json({ error: 'Upload completed but the stored signature could not be verified.' }, { status: 500 }))
+    }
+
+    const selectedFile = (objects ?? []).find((object) => object.name === filePath)
+    if (!selectedFile) {
+      return withCors(request, NextResponse.json({ error: 'Uploaded signature could not be verified as the current slot image.' }, { status: 500 }))
+    }
+
+    const stalePaths = (objects ?? [])
+      .filter((object) => object.name.startsWith(`${slotKey}.`) && object.name !== filePath)
+      .map((object) => object.name)
+    if (stalePaths.length > 0) {
+      await storage.remove(stalePaths)
+    }
+
+    const publicUrl = storage.getPublicUrl(filePath).data?.publicUrl ?? null
+    const public_url = publicUrl
+      ? withSignatureVersion(publicUrl, selectedFile.updated_at)
+      : null
 
     if (!public_url) {
       return withCors(request, NextResponse.json({ error: 'Failed to generate signature URL' }, { status: 500 }))
     }
 
     await recordActivity(supabase, user.id, 'upload_signature', { slot_key: slotKey, file_path: filePath })
-    return withCors(request, NextResponse.json({ data: { slot_key: slotKey, public_url } }))
+    return withCors(request, NextResponse.json({
+      data: { slot_key: slotKey, public_url, size: transparentPng.length },
+    }))
   } catch (err: any) {
     console.error('signatures/upload POST exception:', err)
     return withCors(request, NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 }))

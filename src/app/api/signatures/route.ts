@@ -4,16 +4,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { getAuthenticatedUser, recordActivity } from '@/lib/api-server'
 import { verifyDataAccess } from '@/lib/auth-server'
-
 import {
   deleteSignatureSlotObject,
   getDynamicSignatureSlots,
   getLatestSignatureObjectNameForSlot,
+  getSignatureObjectNamesForSlot,
   setSignatureObjectActiveState,
+  withSignatureVersion,
 } from '@/utils/signatures'
 
 const BUCKET = 'signatures'
-
 function buildPublicUrl(supabase: ReturnType<typeof createClient>, filePath: string) {
   const { data } = supabase.storage.from(BUCKET).getPublicUrl(filePath)
   return data?.publicUrl ?? null

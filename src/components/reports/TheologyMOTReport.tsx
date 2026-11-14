@@ -324,6 +324,19 @@ const theologyCSS = `
     justify-content: center;
     flex-shrink: 0;
 }
+.tc-stamp.has-image {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+}
+.tc-stamp img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    mix-blend-mode: multiply;
+    filter: contrast(1.3) saturate(1.25);
+    transform: rotate(-1.5deg) scale(1.04);
+}
 `
 
 export function TheologyCard({ reportData }: { reportData: any }) {
@@ -447,7 +460,11 @@ export function TheologyCard({ reportData }: { reportData: any }) {
               </div>
               <div className="tc-stamp" style={{ padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {includeStamp ? (
-                  <OfficialReportStamp reportData={reportData} maxWidth={128} maxHeight={80} />
+                  reportData?.signatures?.['school-stamp'] ? (
+                    <img src={reportData.signatures['school-stamp']} alt="Official school stamp" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                  ) : (
+                    <OfficialReportStamp reportData={reportData} maxWidth={128} maxHeight={80} />
+                  )
                 ) : null}
               </div>
             </div>
@@ -461,8 +478,8 @@ export function TheologyCard({ reportData }: { reportData: any }) {
 
 /**
  * 2-Up A4 Print Sheet for Theology Cards.
- * Stacks two A5-landscape cards vertically on a single A4 portrait sheet (794×1123px).
- * Each slot is (1123 - 7) / 2 = 558px tall.
+ * Stacks two A5-landscape cards on an A4 portrait sheet with a 1mm cut line.
+ * Print CSS gives each card a fixed 148mm slot so the lower card cannot spill off-page.
  */
 export function Theology2UpPrintSheet({
   topReport,
@@ -497,7 +514,7 @@ export function Theology2UpPrintSheet({
       {/* TOP CARD SLOT — exactly 558px */}
       <div
         data-slot="half-card"
-        className="theology-card-slot half-card-slot"
+        className="theology-card-slot half-card-slot theology-2up-card-slot"
         style={{
           width: '794px',
           height: '558px',
@@ -513,7 +530,7 @@ export function Theology2UpPrintSheet({
       {/* CUT LINE — 7px */}
       <div
         data-slot="cut-divider"
-        className="cut-divider-slot cut-divider"
+        className="cut-divider-slot cut-divider theology-2up-cutline"
         style={{
           height: '7px',
           flexShrink: 0,
@@ -544,7 +561,7 @@ export function Theology2UpPrintSheet({
       {/* BOTTOM CARD SLOT — exactly 558px */}
       <div
         data-slot="half-card"
-        className="theology-card-slot half-card-slot"
+        className="theology-card-slot half-card-slot theology-2up-card-slot"
         style={{
           width: '794px',
           height: '558px',

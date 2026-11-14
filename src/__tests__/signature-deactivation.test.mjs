@@ -39,11 +39,13 @@ function createMemoryStorage(initialObjects) {
 }
 
 test('signature manager includes the official stamp slot', async () => {
+  const query = {
+    eq: () => query,
+    then: (resolve) => Promise.resolve({ data: [], error: null }).then(resolve),
+  }
   const slots = await getDynamicSignatureSlots({
     from: () => ({
-      select: () => ({
-        eq: async () => ({ data: [], error: null }),
-      }),
+      select: () => query,
     }),
   })
 

@@ -381,6 +381,28 @@ function getBandRemark(band: Pick<GradingBand, 'grade' | 'min' | 'max' | 'remark
   return band.remark.trim() || band.grade
 }
 
+export function getGradingRemarkForScore(
+  score: number | null | undefined,
+  gradingBands?: ReportCommentBands
+): string {
+  if (typeof score !== 'number' || !Number.isFinite(score)) return ''
+  const bands = (gradingBands?.length ? gradingBands : DEFAULT_GRADING_BANDS)
+    .filter(band => Number.isFinite(band.min) && Number.isFinite(band.max))
+    .sort((a, b) => b.min - a.min)
+  const band = bands.find(candidate => score >= candidate.min && score <= candidate.max)
+  return band?.remark.trim() ?? ''
+}
+
+export function getGradingRemarkForScores(
+  scores: (number | null | undefined)[] | undefined,
+  gradingBands?: ReportCommentBands
+): string {
+  const validScores = scores?.filter((score): score is number => typeof score === 'number' && Number.isFinite(score))
+  if (!validScores?.length) return ''
+  const average = validScores.reduce((sum, score) => sum + score, 0) / validScores.length
+  return getGradingRemarkForScore(average, gradingBands)
+}
+
 export function getClassTeacherComment(
   division: string | null,
   scores?: (number | null | undefined)[],
@@ -447,6 +469,38 @@ export function getHeadTeacherComment(
     case 'U': return 'Strive harder. Seek support from your teachers.'
     default: return 'Continue working diligently toward improvement.'
   }
+}
+
+export function getClassTeacherReportComment({
+  scoreType,
+  termNumber,
+  promotionStatus,
+  gradingComment,
+  division,
+  scores,
+  gradingBands,
+  divisionBoundaries,
+}: {
+  scoreType: 'bot' | 'mot' | 'eot'
+  termNumber: number
+  promotionStatus: string | null
+  gradingComment: string | null
+  division: string | null
+  scores?: (number | null | undefined)[]
+  gradingBands?: ReportCommentBands
+  divisionBoundaries?: DivisionBoundaryItem[]
+}): string {
+  if (scoreType === 'eot' && termNumber === 3 && promotionStatus) {
+    if (promotionStatus === 'Promote') return 'Promoted to the next class.'
+    if (promotionStatus === 'Repeat') return 'Advised to repeat the class.'
+    return 'Try next class.'
+  }
+
+  if (gradingComment) return gradingComment
+  if (scoreType === 'mot') {
+    return getGradingRemarkForScores(scores, gradingBands)
+  }
+  return getClassTeacherComment(division, scores, gradingBands, divisionBoundaries)
 }
 
 export function getConductRemark(division: string | null): string {

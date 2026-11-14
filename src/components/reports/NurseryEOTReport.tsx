@@ -453,7 +453,11 @@ export default function NurseryEOTReport({ reportData }: any) {
 
             <div className="stamp-box" style={{ padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {includeStamp ? (
-                <OfficialReportStamp reportData={reportData} maxWidth={140} maxHeight={92} />
+                reportData?.signatures?.['school-stamp'] ? (
+                  <img src={reportData.signatures['school-stamp']} alt="Official school stamp" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                ) : (
+                  <OfficialReportStamp reportData={reportData} maxWidth={140} maxHeight={92} />
+                )
               ) : null}
             </div>
           </div>

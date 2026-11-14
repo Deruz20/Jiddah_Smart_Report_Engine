@@ -478,5 +478,48 @@ Exit code: 0
      - Automated test suite: 33/33 tests in `overhaul-workstreams.test.mjs` pass (100% pass rate).
      - Next.js webpack production build: 68/68 routes generated cleanly with zero build errors.
 
+---
+
+## Milestone 16: Zero-Scroll Exact Math Compactness, Mobile Refinement & Complete Module Rollout
+
+- **Files Modified / Created:**
+  - `src/components/ui/custom-pill-select.tsx`
+  - `src/components/shared-marks-entry.tsx`
+  - `src/components/layout/teachers-client.tsx`
+  - `src/components/teacher/RollCallClient.tsx`
+  - `src/components/layout/subjects-client.tsx`
+  - `src/components/secular-hub/SecularHubClient.tsx`
+  - `src/components/theology-hub/TheologyHubClient.tsx`
+  - `src/__tests__/overhaul-workstreams.test.mjs`
+  - `OVERNIGHT_PROGRESS_LEDGER.md`
+- **Scope & Workstreams Completed:**
+  1. **Workstream 1: Exact CSS Math for Zero-Scroll Desktop Viewports (`shared-marks-entry.tsx`):**
+     - Diagnosed root cause of vertical overflow in desktop "Both" mode: setting `h-11` on `<tr>` was overridden by `py-2.5` (`20px`) on `<td>` and `h-10` (`40px`) on `.score-input`, yielding total row heights of `62px+`.
+     - Reduced row padding to `py-1` (`px-2.5 sm:px-4`) and locked `<tr>` height to `h-10` (`40px`).
+     - Reduced `.score-input` height to `h-8 sm:h-8.5` (`32-34px`, `w-14 sm:w-20 px-1.5`), font size to `text-xs sm:text-sm font-mono font-extrabold tabular-nums`, and grade badge to `min-w-[34px] sm:min-w-[40px] h-7 px-1.5 sm:px-2 text-[11px] sm:text-xs`.
+     - Compacted table card header to `px-3.5 py-2`, `<thead>` to `py-1.5 h-8`, and table footer summary to `px-3.5 py-1.5 text-xs`.
+     - Result: 6-row Secular table card height drops from 460px+ to <= 330px, fitting Secular and Theology tables alongside Zone 4 Save dock 100% visible above the fold on windowed desktop screens.
+  2. **Workstream 2: Chevron Wrapping & Zone 1 Flow (`custom-pill-select.tsx`, `shared-marks-entry.tsx`):**
+     - Removed `max-w-[170px]` constraint from Subject filter in Zone 1, replacing with `shrink-0 w-auto` and `triggerClassName="h-8 px-3 text-xs shrink-0 whitespace-nowrap"`.
+     - Enforced `inline-flex flex-row flex-nowrap items-center justify-between whitespace-nowrap shrink-0` on trigger button in `custom-pill-select.tsx` for both `CustomPillSelect` and `StudentCombobox`.
+  3. **Workstream 3: Mobile Layout Overhaul — 2-Row Filter Strip & Student Card Fixes (`shared-marks-entry.tsx`):**
+     - Split mobile top filter strip into 2 distinct rows:
+       - Row 1: `grid grid-cols-2 gap-1.5 w-full`: Left Class `CustomPillSelect` (`w-full`) | Right Subject `CustomPillSelect` (`w-full`).
+       - Row 2: `flex items-center gap-1.5 w-full`: Left 4-phase segmented track (`flex-[4] grid grid-cols-4 ...`) [ BOT | MOT | EOT | ALL ] | Right 3-view department segmented track (`flex-[3] grid grid-cols-3 ...`) [ Both | Sec | Theo ].
+     - Eliminated crushed text and button collision on small screens (< 390px).
+     - Fixed student switcher name crushing: removed redundant outer avatar `div` (`w-8 h-8 rounded-full`), granting `StudentCombobox` full flex width (`flex-1 min-w-0`) to display student full names cleanly.
+     - Added `table-fixed w-full` to both Secular and Theology `<table>` elements and set mobile subject column to `w-[55%] truncate` and score column to `w-[45%] text-right`.
+     - Added `pb-16 md:pb-1` to top container so floating mobile Save pill never overlaps bottom summary row.
+  4. **Workstream 4: System-Wide Rollout Across Remaining Modules:**
+     - **Teachers & Staff (`teachers-client.tsx`):** Replaced native `<select>` for Role filter with `CustomPillSelect` (`id="teachers-role-filter"`).
+     - **Daily Roll Call (`RollCallClient.tsx`):** Replaced native `<select>` for Class Cohort filter with `CustomPillSelect` (`id="rollcall-class-select"`).
+     - **Subjects Directory (`subjects-client.tsx`):** Replaced `HeroSection` and detached search with single compact pill toolbar pattern matching `classes-client.tsx`, added Curriculum filter `CustomPillSelect` (`id="subjects-curriculum-filter"`), and applied `card-jiddah` cards with dark mode contrast.
+     - **Hubs Brand Styling (`SecularHubClient.tsx`, `TheologyHubClient.tsx`):** Added Emerald header wash to Secular Hub and Warm Gold/Marigold header wash to Theology Hub with high contrast in dark mode.
+  5. **Workstream 5: Verification Gate:**
+     - TypeScript check (`tsc --noEmit`): 0 errors across entire repository.
+     - Automated test suite: 36/36 tests in 12 suites pass (100% pass rate).
+     - Next.js webpack production build: 68/68 routes generated cleanly with zero build errors.
+
+
 
 

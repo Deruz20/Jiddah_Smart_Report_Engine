@@ -409,8 +409,8 @@ export default function TheologyHubClient({
           searchOpen={filtersOpen}
           onSearchToggle={() => setFiltersOpen(!filtersOpen)}
           title={
-            <div className="flex items-center gap-2 text-stone-900">
-              <div className="p-1.5 bg-[#059669]/10 rounded-lg text-[#059669]">
+            <div className="flex items-center gap-2 text-stone-900 dark:text-white">
+              <div className="p-1.5 bg-[#D97706]/15 dark:bg-[#F59E0B]/20 rounded-lg text-[#D97706] dark:text-[#F59E0B]">
                 <ScrollText size={16} />
               </div>
               <h1 className="text-sm sm:text-[15px] font-bold tracking-tight">Theology Hub</h1>

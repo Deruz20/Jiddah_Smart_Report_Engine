@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { submitMutationWithOfflineFallback } from "@/lib/offline-sync";
 import { invalidateClientCache } from "@/lib/client-cache";
 import { OfficialPrintLetterhead, OfficialPrintSignaturesFooter } from "@/components/print/OfficialPrintLetterhead";
+import { CustomPillSelect } from "@/components/ui/custom-pill-select";
 
 export interface StudentAttendance {
   id: string;
@@ -53,6 +54,14 @@ export function RollCallClient({
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [showSigPad, setShowSigPad] = useState(false);
+  const classOptions = React.useMemo(
+    () =>
+      initialClasses.map((c) => ({
+        value: c.id,
+        label: `${c.class_name}${c.section ? ` (${c.section})` : ""}`,
+      })),
+    [initialClasses]
+  );
   const activeClass = initialClasses.find((c) => c.id === selectedClassId);
 
   // Load students for the selected class and date
@@ -238,17 +247,14 @@ export function RollCallClient({
           <label className="text-[11px] font-bold text-stone-400 uppercase tracking-wider block mb-1">
             Class Cohort
           </label>
-          <select
+          <CustomPillSelect
+            id="rollcall-class-select"
+            ariaLabel="Class Cohort"
             value={selectedClassId}
-            onChange={(e) => setSelectedClassId(e.target.value)}
-            className="w-full h-9 px-3 rounded-xl bg-white/5 border border-white/10 text-white font-semibold text-xs outline-none focus:border-emerald-400"
-          >
-            {initialClasses.map((c) => (
-              <option key={c.id} value={c.id} className="bg-stone-900 text-white">
-                {c.class_name} {c.section ? `(${c.section})` : ""}
-              </option>
-            ))}
-          </select>
+            onChange={(val) => setSelectedClassId(val)}
+            options={classOptions}
+            className="w-full h-9 rounded-xl bg-white/5 border border-white/10 text-white"
+          />
         </div>
 
         <div>

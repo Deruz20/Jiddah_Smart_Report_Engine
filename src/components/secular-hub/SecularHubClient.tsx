@@ -512,8 +512,8 @@ export default function SecularHubClient({
           searchOpen={filtersOpen}
           onSearchToggle={() => setFiltersOpen(!filtersOpen)}
           title={
-            <div className="flex items-center gap-2 text-stone-900">
-              <div className="p-1.5 bg-[#059669]/10 rounded-lg text-[#059669]">
+            <div className="flex items-center gap-2 text-stone-900 dark:text-white">
+              <div className="p-1.5 bg-[#0D5C3A]/10 dark:bg-[#10B981]/20 rounded-lg text-[#0D5C3A] dark:text-[#34D399]">
                 <LayoutDashboard size={16} />
               </div>
               <h1 className="text-sm sm:text-[15px] font-bold tracking-tight">Secular Hub</h1>

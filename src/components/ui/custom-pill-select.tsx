@@ -63,7 +63,7 @@ export function CustomPillSelect({
           aria-label={resolvedAriaLabel}
           aria-expanded={open}
           className={cn(
-            'h-9.5 px-3.5 sm:px-4 rounded-full flex items-center justify-between gap-2 flex-nowrap whitespace-nowrap text-xs sm:text-[13px] font-semibold transition-all active:scale-[0.98] outline-none',
+            'h-9.5 px-3.5 sm:px-4 rounded-full inline-flex flex-row flex-nowrap items-center justify-between whitespace-nowrap shrink-0 gap-2 text-xs sm:text-[13px] font-semibold transition-all active:scale-[0.98] outline-none',
             'bg-white dark:bg-[#1E1F20] text-[#1F1F1F] dark:text-[#E3E3E3]',
             'border border-black/[0.08] dark:border-white/[0.08] hover:border-[#0D5C3A]/30 dark:hover:border-[#F59E0B]/30 shadow-2xs cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed',
             triggerClassName,
@@ -224,7 +224,7 @@ export function StudentCombobox({
           aria-label={resolvedAriaLabel}
           aria-expanded={open}
           className={cn(
-            'flex items-center justify-between gap-2 flex-nowrap whitespace-nowrap text-xs font-bold transition-all outline-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed',
+            'inline-flex flex-row flex-nowrap items-center justify-between whitespace-nowrap shrink-0 gap-2 text-xs font-bold transition-all outline-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed',
             variant === 'hero'
               ? 'h-8.5 px-3 rounded-full bg-black/25 hover:bg-black/35 text-white border border-white/25 ring-0 max-w-[220px] md:max-w-[270px] lg:max-w-[340px]'
               : 'h-8.5 sm:h-9 px-3 rounded-full bg-[#F0F4F9] dark:bg-[#282A2C] hover:bg-[#E4EAE6] dark:hover:bg-[#323538] text-[#1F1F1F] dark:text-[#E3E3E3] border border-black/[0.06] dark:border-white/[0.08] w-full',

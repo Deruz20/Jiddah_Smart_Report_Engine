@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { Plus, Edit, Trash2, BookOpen, Search } from "lucide-react";
 import { MoreActionsMenu } from "@/components/ui/more-actions-menu";
+import { CustomPillSelect } from "@/components/ui/custom-pill-select";
 import { toast } from "sonner";
 import { HeroSection } from "@/components/HeroSection";
 import { Button } from "@/components/figma-ui/ui/button";
@@ -63,6 +64,13 @@ export default function SubjectsClient({
   const router = useRouter();
   const [subjects, setSubjects] = useState<SubjectData[]>(initialSubjects);
   const [search, setSearch] = useState("");
+  const [selectedCurriculum, setSelectedCurriculum] = useState<string>("all");
+
+  const curriculumFilterOptions = [
+    { value: "all", label: "All Curriculums" },
+    { value: "secular", label: "Secular" },
+    { value: "theology", label: "Theology" },
+  ];
   
   // Dialog states
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -80,10 +88,14 @@ export default function SubjectsClient({
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const filteredSubjects = subjects.filter(s => 
-    s.subject_name.toLowerCase().includes(search.toLowerCase()) || 
-    getSectionLabel(s.section || "").toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredSubjects = subjects.filter(s => {
+    const matchesSearch =
+      s.subject_name.toLowerCase().includes(search.toLowerCase()) || 
+      getSectionLabel(s.section || "").toLowerCase().includes(search.toLowerCase());
+    const matchesCurriculum =
+      selectedCurriculum === "all" || (s.curriculum || "secular") === selectedCurriculum;
+    return matchesSearch && matchesCurriculum;
+  });
 
   const refetch = async () => {
     const supabase = createClient();
@@ -206,42 +218,50 @@ export default function SubjectsClient({
 
   return (
     <div className="pb-12 w-full">
-      <HeroSection
-        title="Subjects Management"
-        subtitle={`${subjects.length} subjects configured`}
-        actions={
-          canManageSubjects ? (
-            <Button
-              className="bg-[#065F46] hover:bg-[#047857] text-white shadow-md shadow-[#065F46]/20 transition-all rounded-xl"
-              onClick={() => {
-                setFormData({ subject_name: "", curriculum: defaultCurriculum, section: "nursery", theologyLevel: "raudha" });
-                setIsCreateOpen(true);
-              }}
-            >
-              <Plus className="w-4 h-4 mr-2" /> Add Subject
-            </Button>
-          ) : undefined
-        }
-      />
-
-      <div className="w-full px-4 sm:px-6 lg:px-8 mt-8">
-        <div className="flex items-center justify-between mb-6">
-          <div className="relative w-full max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+      {/* Compact single horizontal pill bar */}
+      <div className="w-full px-4 sm:px-6 lg:px-8 pt-4 pb-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5 flex-1 min-w-[240px] max-w-xl">
+          <div className="relative w-full max-w-xs">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
             <Input 
               placeholder="Search subjects..." 
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 rounded-xl border-gray-200 focus-visible:ring-[#065F46]" 
+              className="pl-9 h-9 rounded-full bg-[#F0F4F9] dark:bg-[#1E1F20] border-0 text-xs text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus-visible:ring-1 focus-visible:ring-[#0D5C3A]" 
             />
           </div>
+          <CustomPillSelect
+            id="subjects-curriculum-filter"
+            ariaLabel="Curriculum filter"
+            value={selectedCurriculum}
+            onChange={(val) => setSelectedCurriculum(val)}
+            options={curriculumFilterOptions}
+            className="h-9 text-xs rounded-full shrink-0"
+          />
+          <span className="shrink-0 px-2.5 py-1 rounded-full bg-[#F0F4F9] dark:bg-[#1E1F20] text-xs font-semibold text-stone-600 dark:text-stone-400 tabular-nums hidden sm:inline-block">
+            {filteredSubjects.length} of {subjects.length}
+          </span>
         </div>
 
+        {canManageSubjects && (
+          <Button
+            className="rounded-full h-9 px-4 bg-[#0D5C3A] hover:bg-[#09472C] text-white text-xs font-semibold shadow-xs transition-all flex items-center gap-1.5"
+            onClick={() => {
+              setFormData({ subject_name: "", curriculum: defaultCurriculum, section: "nursery", theologyLevel: "raudha" });
+              setIsCreateOpen(true);
+            }}
+          >
+            <Plus className="w-3.5 h-3.5" /> Add Subject
+          </Button>
+        )}
+      </div>
+
+      <div className="w-full px-4 sm:px-6 lg:px-8 mt-2">
         {filteredSubjects.length === 0 ? (
           <div className="text-center py-12">
             <BookOpen className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900">No subjects found</h3>
-            <p className="mt-1 text-sm text-gray-500">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white">No subjects found</h3>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               {search ? "Try adjusting your search query." : "Add your first subject to get started."}
             </p>
           </div>
@@ -255,17 +275,17 @@ export default function SubjectsClient({
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95 }}
                   transition={{ duration: 0.2, delay: idx * 0.05 }}
-                  className="group relative bg-white border border-gray-200 rounded-2xl p-5 hover:border-[#065F46]/30 hover:shadow-lg hover:shadow-[#065F46]/5 transition-all duration-300 overflow-hidden"
+                  className="group relative bg-white dark:bg-[#151D1A] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-5 hover:border-[#0D5C3A]/30 dark:hover:border-[#F59E0B]/30 hover:shadow-lg transition-all duration-300 overflow-hidden"
                 >
-                  <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-[#065F46] to-[#F97316] opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-[#0D5C3A] to-[#D97706] opacity-0 group-hover:opacity-100 transition-opacity" />
                   
                   <div className="flex flex-col gap-2 mb-4">
                     <div className="flex items-center gap-3 mb-2 min-w-0 flex-1">
-                      <div className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center text-[#F97316] shrink-0">
+                      <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 flex items-center justify-center shrink-0">
                         <BookOpen className="w-5 h-5" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <h3 className="font-bold text-gray-900 text-lg leading-tight truncate">{sub.subject_name}</h3>
+                        <h3 className="font-bold text-gray-900 dark:text-white text-lg leading-tight truncate">{sub.subject_name}</h3>
                       </div>
                     </div>
                     

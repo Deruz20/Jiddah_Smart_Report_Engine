@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Search, Plus, Edit, Trash2, ChevronDown, UserX, MoreVertical, UserCheck } from "lucide-react";
 import { MoreActionsMenu } from "@/components/ui/more-actions-menu";
+import { CustomPillSelect } from "@/components/ui/custom-pill-select";
 import { HeroSection } from "@/components/HeroSection";
 import { AnimatedButton } from "@/components/AnimatedButton";
 import { ConfirmDestructiveDialog } from "@/components/ConfirmDestructiveDialog";
@@ -110,6 +111,11 @@ export default function TeachersClient({
   const [teachers, setTeachers] = useState<DashboardTeacher[]>(initialTeachers);
   const [searchQuery, setSearchQuery] = useState(() => searchParams?.get("search") || "");
   const [roleFilter, setRoleFilter] = useState("All Roles");
+  const roleFilterOptions = useMemo(() => [
+    { value: 'All Roles', label: 'All Roles' },
+    ...CANONICAL_ACCOUNT_ROLES.map((r) => ({ value: r, label: r })),
+    { value: 'Subject Teacher', label: 'Subject Teacher' },
+  ], []);
   
   const [showFormModal, setShowFormModal] = useState(false);
   const [selectedTeacher, setSelectedTeacher] = useState<DashboardTeacher | null>(null);
@@ -346,20 +352,15 @@ export default function TeachersClient({
               className="w-full min-h-[44px] rounded-xl border border-[#E7E2D7] bg-white px-10 py-2.5 text-sm text-stone-800 outline-none focus:border-[#0F4D25] transition-colors"
             />
           </div>
-          <div className="relative w-full max-w-xs">
-            <select
+          <div className="relative w-full max-w-xs shrink-0">
+            <CustomPillSelect
+              id="teachers-role-filter"
+              ariaLabel="Filter by role"
               value={roleFilter}
-              onChange={(event) => setRoleFilter(event.target.value)}
-              aria-label="Filter by role"
-              className="w-full min-h-[44px] rounded-xl border border-[#E7E2D7] bg-white px-4 py-2.5 text-sm text-stone-800 outline-none appearance-none focus:border-[#0F4D25] transition-colors"
-            >
-              <option value="All Roles">All Roles</option>
-              {CANONICAL_ACCOUNT_ROLES.map((r) => (
-                <option key={r} value={r}>{r}</option>
-              ))}
-              <option value="Subject Teacher">Subject Teacher</option>
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+              onChange={(val) => setRoleFilter(val)}
+              options={roleFilterOptions}
+              className="w-full min-h-[44px] rounded-xl"
+            />
           </div>
         </div>
 

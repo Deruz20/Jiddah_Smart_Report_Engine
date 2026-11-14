@@ -609,7 +609,7 @@ describe('Workstream 9: Custom Radix Comboboxes, Middle Performance Bar & Dark M
     const marksEntrySrc = fs.readFileSync(marksEntryPath, 'utf8');
 
     // Sizing and dark mode contrast classes enforced on score inputs
-    assert.match(marksEntrySrc, /score-input h-10 w-22 sm:w-24/);
+    assert.match(marksEntrySrc, /score-input\s+h-8\s+sm:h-8\.5/);
     assert.match(marksEntrySrc, /dark:!bg-\[#0D1714\]/);
     assert.match(marksEntrySrc, /dark:!text-\[#FFFFFF\]/);
   });
@@ -622,8 +622,8 @@ describe('Workstream 9: Custom Radix Comboboxes, Middle Performance Bar & Dark M
     assert.match(marksEntrySrc, /Performance &amp; Remark/);
     assert.match(marksEntrySrc, /المستوى والتقدير/);
 
-    // Row heights adaptive for windowed/fullscreen
-    assert.match(marksEntrySrc, /hover:bg-\[var\(--bg-hover\)\] transition-colors h-11 xl:h-12/);
+    // Row heights compact h-10 for windowed/fullscreen
+    assert.match(marksEntrySrc, /hover:bg-\[var\(--bg-hover\)\] transition-colors h-10/);
 
     // Single-curriculum telemetry side card rendered in lg:col-span-4
     assert.match(marksEntrySrc, /function StudentPerformanceSideCard/);
@@ -670,8 +670,8 @@ describe('Workstream 10: Silky Popover Physics, Wrapped Chevron Fix, & System-Wi
     const marksEntryPath = path.join(rootDir, 'src/components/shared-marks-entry.tsx');
     const marksEntrySrc = fs.readFileSync(marksEntryPath, 'utf8');
 
-    // Adaptive row height
-    assert.match(marksEntrySrc, /h-11 xl:h-12/);
+    // Compact row height h-10
+    assert.match(marksEntrySrc, /hover:bg-\[var\(--bg-hover\)\] transition-colors h-10/);
 
     // Zone 4 save bar is md:static on desktop and sticky on mobile
     assert.match(marksEntrySrc, /sticky bottom-2 z-20 rounded-full md:static/);
@@ -715,6 +715,70 @@ describe('Workstream 10: Silky Popover Physics, Wrapped Chevron Fix, & System-Wi
     assert.match(classesClientSrc, /<CustomPillSelect\s+id="classes-section-filter"/);
   });
 });
+
+describe('Workstream 11: Milestone 16 Layout Compactness, Mobile Refinement & Module Rollout', () => {
+  const rootDir = process.cwd();
+
+  it('enforces 2-row mobile filter strip and eliminates avatar collision in Marks Entry', () => {
+    const marksEntryPath = path.join(rootDir, 'src/components/shared-marks-entry.tsx');
+    const marksEntrySrc = fs.readFileSync(marksEntryPath, 'utf8');
+
+    // Row 1: Class + Subject grid
+    assert.match(marksEntrySrc, /grid grid-cols-2 gap-1\.5 w-full/);
+    assert.match(marksEntrySrc, /id="marks-subject-filter-mobile"/);
+
+    // Row 2: Phase track + Department track
+    assert.match(marksEntrySrc, /flex-\[4\] grid grid-cols-4/);
+    assert.match(marksEntrySrc, /flex-\[3\] grid grid-cols-3/);
+
+    // Mobile student switcher: no redundant outer avatar circle before StudentCombobox
+    assert.doesNotMatch(marksEntrySrc, /<div className="w-8 h-8 rounded-full bg-emerald-600[^"]*"><StudentCombobox/);
+    assert.match(marksEntrySrc, /<StudentCombobox\s+id="marks-student-select-mobile"/);
+  });
+
+  it('enforces table-fixed layout and compact row geometry in Secular & Theology tables', () => {
+    const marksEntryPath = path.join(rootDir, 'src/components/shared-marks-entry.tsx');
+    const marksEntrySrc = fs.readFileSync(marksEntryPath, 'utf8');
+
+    // table-fixed w-full applied to tables
+    assert.match(marksEntrySrc, /<table\s+className=\{`w-full table-fixed/);
+
+    // Compact py-1 row cell geometry
+    assert.match(marksEntrySrc, /px-2\.5 sm:px-4 py-1/);
+    assert.match(marksEntrySrc, /w-\[55%\] sm:w-auto/);
+    assert.match(marksEntrySrc, /w-\[45%\] sm:w-28/);
+
+    // Bottom container padding avoids floating Save bar overlap
+    assert.match(marksEntrySrc, /pb-16 md:pb-1/);
+  });
+
+  it('rolls out CustomPillSelect and Brand Themes across Teachers, Subjects, Roll Call, and Hubs', () => {
+    const teachersPath = path.join(rootDir, 'src/components/layout/teachers-client.tsx');
+    const teachersSrc = fs.readFileSync(teachersPath, 'utf8');
+    assert.match(teachersSrc, /import\s*\{[^}]*CustomPillSelect[^}]*\}\s*from\s*['"]@\/components\/ui\/custom-pill-select['"]/);
+    assert.match(teachersSrc, /<CustomPillSelect\s+id="teachers-role-filter"/);
+
+    const subjectsPath = path.join(rootDir, 'src/components/layout/subjects-client.tsx');
+    const subjectsSrc = fs.readFileSync(subjectsPath, 'utf8');
+    assert.match(subjectsSrc, /import\s*\{[^}]*CustomPillSelect[^}]*\}\s*from\s*['"]@\/components\/ui\/custom-pill-select['"]/);
+    assert.match(subjectsSrc, /<CustomPillSelect\s+id="subjects-curriculum-filter"/);
+
+    const rollCallPath = path.join(rootDir, 'src/components/teacher/RollCallClient.tsx');
+    const rollCallSrc = fs.readFileSync(rollCallPath, 'utf8');
+    assert.match(rollCallPath && rollCallSrc, /import\s*\{[^}]*CustomPillSelect[^}]*\}\s*from\s*['"]@\/components\/ui\/custom-pill-select['"]/);
+    assert.match(rollCallSrc, /<CustomPillSelect\s+id="rollcall-class-select"/);
+
+    // Hubs header washes
+    const secularHubPath = path.join(rootDir, 'src/components/secular-hub/SecularHubClient.tsx');
+    const secularHubSrc = fs.readFileSync(secularHubPath, 'utf8');
+    assert.match(secularHubSrc, /bg-\[#0D5C3A\]\/10/);
+
+    const theologyHubPath = path.join(rootDir, 'src/components/theology-hub/TheologyHubClient.tsx');
+    const theologyHubSrc = fs.readFileSync(theologyHubPath, 'utf8');
+    assert.match(theologyHubSrc, /bg-\[#D97706\]\/15/);
+  });
+});
+
 
 
 

@@ -50,12 +50,14 @@ const SecularMarkTableRow = React.memo(function SecularMarkTableRow({
   idx,
   examType,
   isNursery,
+  isBothView,
   renderScoreCell,
 }: {
   mark: CircularMarkRow
   idx: number
   examType: ExamType
   isNursery: boolean
+  isBothView?: boolean
   renderScoreCell: (
     curriculum: 'secular' | 'theology',
     subjectId: string,
@@ -83,11 +85,17 @@ const SecularMarkTableRow = React.memo(function SecularMarkTableRow({
     }
   }
 
+  const isAllPhases = examType === 'all'
+
   return (
-    <tr className="hover:bg-[var(--bg-hover)] transition-colors h-10">
+    <tr className="hover:bg-[var(--bg-hover)] transition-colors h-[38px]">
       <td
         data-testid={`frozen-cell-${idx}`}
-        className="sticky left-0 z-10 bg-[var(--bg-card)] w-[54%] sm:w-[36%] max-w-0 truncate px-3 sm:px-4 py-1 border-r border-[#0D5C3A]/[0.06] dark:border-[#F59E0B]/[0.07]"
+        className={`sticky left-0 z-10 bg-[var(--bg-card)] max-w-0 truncate py-1 border-r border-[#0D5C3A]/[0.06] dark:border-[#F59E0B]/[0.07] ${
+          isAllPhases
+            ? 'w-[28%] sm:w-[31%] px-2 sm:px-3 text-left'
+            : 'w-[52%] sm:w-[36%] px-3 sm:px-4 text-left'
+        }`}
       >
         <div className="flex items-center gap-1.5 truncate">
           <span className="font-semibold text-xs sm:text-[13px] text-[var(--text-primary)] truncate" title={mark.subject_name}>
@@ -103,7 +111,7 @@ const SecularMarkTableRow = React.memo(function SecularMarkTableRow({
           )}
         </div>
       </td>
-      {!isNursery && (
+      {!isNursery && !isAllPhases && (
         <td className="hidden sm:table-cell px-1.5 py-1 text-center w-10">
           {mark.is_core ? (
             <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-[9px] font-bold">
@@ -114,45 +122,65 @@ const SecularMarkTableRow = React.memo(function SecularMarkTableRow({
           )}
         </td>
       )}
-      <td className="hidden sm:table-cell sm:w-[36%] px-3 py-1">
-        {hasScore ? (
-          <div className="flex flex-col gap-0.5 w-full max-w-[220px]">
-            <div className="flex items-center justify-between text-[11px] font-semibold">
-              <span className="text-[var(--text-secondary)] truncate">{remark}</span>
-              <span className="font-mono text-[var(--text-primary)] font-bold">{activeScore}%</span>
+      {!isAllPhases && (
+        <td className="hidden sm:table-cell sm:w-[36%] px-3 py-1">
+          {hasScore ? (
+            <div className="flex flex-col gap-0.5 w-full max-w-[220px]">
+              <div className="flex items-center justify-between text-[11px] font-semibold">
+                <span className="text-[var(--text-secondary)] truncate">{remark}</span>
+                <span className="font-mono text-[var(--text-primary)] font-bold">{activeScore}%</span>
+              </div>
+              <div className="w-full h-1.5 rounded-full bg-black/[0.06] dark:bg-white/[0.08] overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-300 ${
+                    activeScore >= 75
+                      ? 'bg-gradient-to-r from-[#0D5C3A] to-[#10B981]'
+                      : activeScore >= 50
+                      ? 'bg-gradient-to-r from-[#D97706] to-[#F59E0B]'
+                      : 'bg-gradient-to-r from-[#E11D48] to-[#F43F5E]'
+                  }`}
+                  style={{ width: `${Math.min(100, Math.max(0, activeScore))}%` }}
+                />
+              </div>
             </div>
-            <div className="w-full h-1.5 rounded-full bg-black/[0.06] dark:bg-white/[0.08] overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all duration-300 ${
-                  activeScore >= 75
-                    ? 'bg-gradient-to-r from-[#0D5C3A] to-[#10B981]'
-                    : activeScore >= 50
-                    ? 'bg-gradient-to-r from-[#D97706] to-[#F59E0B]'
-                    : 'bg-gradient-to-r from-[#E11D48] to-[#F43F5E]'
-                }`}
-                style={{ width: `${Math.min(100, Math.max(0, activeScore))}%` }}
-              />
+          ) : (
+            <div className="flex items-center gap-1.5 text-[11px] text-[var(--text-muted)] italic">
+              <span className="w-1.5 h-1.5 rounded-full bg-stone-300 dark:bg-stone-600" />
+              <span>Pending assessment</span>
             </div>
-          </div>
-        ) : (
-          <div className="flex items-center gap-1.5 text-[11px] text-[var(--text-muted)] italic">
-            <span className="w-1.5 h-1.5 rounded-full bg-stone-300 dark:bg-stone-600" />
-            <span>Pending assessment</span>
-          </div>
-        )}
-      </td>
+          )}
+        </td>
+      )}
       {['bot', 'all'].includes(examType) && (
-        <td className="w-[46%] sm:w-[28%] px-2.5 sm:px-4 py-1 text-right">
+        <td
+          className={
+            isAllPhases
+              ? 'w-[24%] sm:w-[23%] px-1 sm:px-2 py-1 text-center'
+              : 'w-[48%] sm:w-[28%] px-2.5 sm:px-4 py-1 text-right'
+          }
+        >
           {renderScoreCell('secular', mark.subject_id, mark.subject_name, 'bot', mark.bot_score, idx)}
         </td>
       )}
       {['mot', 'all'].includes(examType) && (
-        <td className="w-[46%] sm:w-[28%] px-2.5 sm:px-4 py-1 text-right">
+        <td
+          className={
+            isAllPhases
+              ? 'w-[24%] sm:w-[23%] px-1 sm:px-2 py-1 text-center'
+              : 'w-[48%] sm:w-[28%] px-2.5 sm:px-4 py-1 text-right'
+          }
+        >
           {renderScoreCell('secular', mark.subject_id, mark.subject_name, 'mot', mark.mot_score, idx)}
         </td>
       )}
       {['eot', 'all'].includes(examType) && (
-        <td className="w-[46%] sm:w-[28%] px-2.5 sm:px-4 py-1 text-right">
+        <td
+          className={
+            isAllPhases
+              ? 'w-[24%] sm:w-[23%] px-1 sm:px-2 py-1 text-center'
+              : 'w-[48%] sm:w-[28%] px-2.5 sm:px-4 py-1 text-right'
+          }
+        >
           {renderScoreCell('secular', mark.subject_id, mark.subject_name, 'eot', mark.eot_score, idx)}
         </td>
       )}
@@ -164,11 +192,13 @@ const TheologyMarkTableRow = React.memo(function TheologyMarkTableRow({
   mark,
   idx,
   examType,
+  isBothView,
   renderScoreCell,
 }: {
   mark: TheologyMarkRow
   idx: number
   examType: ExamType
+  isBothView?: boolean
   renderScoreCell: (
     curriculum: 'secular' | 'theology',
     subjectId: string,
@@ -185,48 +215,76 @@ const TheologyMarkTableRow = React.memo(function TheologyMarkTableRow({
 
   const hasScore = typeof activeScore === 'number' && !Number.isNaN(activeScore)
   const remark = hasScore ? getTheologySubjectRemark(getTheologyGradeNumber(activeScore)) : ''
+  const isAllPhases = examType === 'all'
 
   return (
-    <tr className="hover:bg-[var(--bg-hover)] transition-colors h-10">
-      <td className="sticky left-0 z-10 bg-[var(--bg-card)] w-[54%] sm:w-[36%] max-w-0 truncate px-3 sm:px-4 py-1 border-r border-[#0D5C3A]/[0.06] dark:border-[#F59E0B]/[0.07]">
-        <div className="font-semibold text-[var(--text-primary)] truncate text-xs sm:text-[13px]" dir="rtl">
+    <tr className={`hover:bg-[var(--bg-hover)] transition-colors ${isBothView ? 'h-[50px] sm:h-[52px]' : 'h-10'}`}>
+      <td
+        className={`sticky left-0 z-10 bg-[var(--bg-card)] max-w-0 truncate border-r border-[#0D5C3A]/[0.06] dark:border-[#F59E0B]/[0.07] ${
+          isBothView ? 'py-2.5' : 'py-1'
+        } ${
+          isAllPhases
+            ? 'w-[38%] sm:w-[40%] px-2.5 sm:px-3.5 text-left'
+            : 'w-[52%] sm:w-[36%] px-3 sm:px-4 text-left'
+        }`}
+      >
+        <div
+          className={`font-semibold text-[var(--text-primary)] truncate ${
+            isBothView ? 'text-xs sm:text-[15px]' : 'text-xs sm:text-[13px]'
+          }`}
+          dir="rtl"
+        >
           {mark.subject_name_arabic}
         </div>
       </td>
-      <td className="hidden sm:table-cell sm:w-[36%] px-3 py-1" dir="rtl">
-        {hasScore ? (
-          <div className="flex flex-col gap-0.5 w-full max-w-[220px]">
-            <div className="flex items-center justify-between text-[11px] font-semibold">
-              <span className="text-[var(--text-secondary)] font-bold truncate">{remark}</span>
-              <span className="font-mono text-[var(--text-primary)] font-bold">{toArabicNumerals(activeScore)}٪</span>
+      {!isAllPhases && (
+        <td className={`hidden sm:table-cell sm:w-[36%] px-3 ${isBothView ? 'py-2.5' : 'py-1'}`} dir="rtl">
+          {hasScore ? (
+            <div className="flex flex-col gap-0.5 w-full max-w-[220px]">
+              <div className="flex items-center justify-between text-[11px] font-semibold">
+                <span className="text-[var(--text-secondary)] font-bold truncate">{remark}</span>
+                <span className="font-mono text-[var(--text-primary)] font-bold">{toArabicNumerals(activeScore)}٪</span>
+              </div>
+              <div className="w-full h-1.5 rounded-full bg-black/[0.06] dark:bg-white/[0.08] overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-300 ${
+                    activeScore >= 75
+                      ? 'bg-gradient-to-r from-[#0D5C3A] to-[#10B981]'
+                      : activeScore >= 50
+                      ? 'bg-gradient-to-r from-[#D97706] to-[#F59E0B]'
+                      : 'bg-gradient-to-r from-[#E11D48] to-[#F43F5E]'
+                  }`}
+                  style={{ width: `${Math.min(100, Math.max(0, activeScore))}%` }}
+                />
+              </div>
             </div>
-            <div className="w-full h-1.5 rounded-full bg-black/[0.06] dark:bg-white/[0.08] overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all duration-300 ${
-                  activeScore >= 75
-                    ? 'bg-gradient-to-r from-[#0D5C3A] to-[#10B981]'
-                    : activeScore >= 50
-                    ? 'bg-gradient-to-r from-[#D97706] to-[#F59E0B]'
-                    : 'bg-gradient-to-r from-[#E11D48] to-[#F43F5E]'
-                }`}
-                style={{ width: `${Math.min(100, Math.max(0, activeScore))}%` }}
-              />
+          ) : (
+            <div className="flex items-center gap-1.5 text-[11px] text-[var(--text-muted)] italic">
+              <span className="w-1.5 h-1.5 rounded-full bg-stone-300 dark:bg-stone-600" />
+              <span>في انتظار التقييم</span>
             </div>
-          </div>
-        ) : (
-          <div className="flex items-center gap-1.5 text-[11px] text-[var(--text-muted)] italic">
-            <span className="w-1.5 h-1.5 rounded-full bg-stone-300 dark:bg-stone-600" />
-            <span>في انتظار التقييم</span>
-          </div>
-        )}
-      </td>
+          )}
+        </td>
+      )}
       {['mot', 'all'].includes(examType) && (
-        <td className="w-[46%] sm:w-[28%] px-2.5 sm:px-4 py-1 text-right">
+        <td
+          className={`${isBothView ? 'py-2' : 'py-1'} ${
+            isAllPhases
+              ? 'w-[31%] sm:w-[30%] px-1.5 sm:px-2.5 text-center'
+              : 'w-[48%] sm:w-[28%] px-2.5 sm:px-4 text-right'
+          }`}
+        >
           {renderScoreCell('theology', mark.subject_id, mark.subject_name_arabic, 'mot', mark.mot_score, idx)}
         </td>
       )}
       {['eot', 'all'].includes(examType) && (
-        <td className="w-[46%] sm:w-[28%] px-2.5 sm:px-4 py-1 text-right">
+        <td
+          className={`${isBothView ? 'py-2' : 'py-1'} ${
+            isAllPhases
+              ? 'w-[31%] sm:w-[30%] px-1.5 sm:px-2.5 text-center'
+              : 'w-[48%] sm:w-[28%] px-2.5 sm:px-4 text-right'
+          }`}
+        >
           {renderScoreCell('theology', mark.subject_id, mark.subject_name_arabic, 'eot', mark.eot_score, idx)}
         </td>
       )}
@@ -885,6 +943,7 @@ export function SharedMarksEntry({
     scoreValue: number | null,
     rowIndex: number
   ) => {
+    const isAllPhases = examType === 'all'
     const fieldKey = `${curriculum}:${subjectId}:${type}`
     const rawOverride = rawInputs[fieldKey]
     const isDirty = fieldKey in rawInputs
@@ -906,8 +965,8 @@ export function SharedMarksEntry({
       : null
 
     return (
-      <div className="flex flex-col items-end justify-center w-full">
-        <div className="flex items-center justify-end gap-1.5 w-full">
+      <div className={`flex flex-col ${isAllPhases ? 'items-center sm:items-end' : 'items-end'} justify-center w-full`}>
+        <div className={isAllPhases ? 'inline-flex items-center justify-center sm:justify-end gap-1 max-w-full' : 'flex items-center justify-end gap-1.5 w-full'}>
           <input
             type="number"
             inputMode="numeric"
@@ -916,7 +975,7 @@ export function SharedMarksEntry({
             max={100}
             aria-label={`${subjectLabel} ${type.toUpperCase()} score`}
             data-testid={`score-input-${curriculum}-${subjectId}-${type}`}
-            placeholder="0-100"
+            placeholder={isAllPhases ? '--' : '0-100'}
             value={val}
             onChange={(e) => validateAndApplyScore(curriculum, subjectId, subjectLabel, type, e.target.value)}
             data-col={type.toUpperCase()}
@@ -961,7 +1020,11 @@ export function SharedMarksEntry({
               }
             }}
             disabled={isExamSetLocked}
-            className={`score-input h-8 w-14 sm:w-20 px-1.5 text-center text-xs sm:text-sm font-mono font-extrabold tabular-nums rounded-xl transition-all outline-none border focus:ring-2 shrink-0 ${
+            className={`score-input ${
+              isAllPhases
+                ? 'w-11 sm:w-14 h-7.5 px-1 text-xs font-mono font-extrabold tabular-nums text-center rounded-lg sm:rounded-xl shrink-0'
+                : 'h-8 w-14 sm:w-20 px-1.5 text-center text-xs sm:text-sm font-mono font-extrabold tabular-nums rounded-xl shrink-0'
+            } transition-all outline-none border focus:ring-2 ${
               fieldError
                 ? 'border-rose-500 bg-rose-500/10 text-rose-700 dark:text-rose-300 focus:ring-rose-500/25'
                 : isDirty
@@ -975,7 +1038,11 @@ export function SharedMarksEntry({
           />
           {badge && (
             <span
-              className={`inline-flex items-center justify-center min-w-[32px] sm:min-w-[40px] h-7 px-1.5 rounded-lg text-[11px] sm:text-xs font-bold border-0 ${badge.bg} ${badge.text} shrink-0`}
+              className={`inline-flex items-center justify-center ${
+                isAllPhases
+                  ? 'min-w-[22px] sm:min-w-[32px] h-6 sm:h-7 px-1 text-[10px] sm:text-[11px] font-bold rounded-md sm:rounded-lg'
+                  : 'min-w-[32px] sm:min-w-[40px] h-7 px-1.5 rounded-lg text-[11px] sm:text-xs font-bold'
+              } border-0 ${badge.bg} ${badge.text} shrink-0`}
               dir={curriculum === 'theology' ? 'rtl' : 'ltr'}
             >
               {badge.grade}
@@ -1493,14 +1560,26 @@ export function SharedMarksEntry({
             )}
 
             {/* Bottom Micro-Telemetry Line (Zero overlap, crisp typography) */}
-            <div className="flex items-center justify-between gap-2 pt-2 mt-2 border-t border-black/[0.05] dark:border-white/[0.06] text-[11px]">
-              <span className="shrink-0 text-[#444746] dark:text-[#C4C7C5] font-medium tabular-nums">
-                {currentStudentIndex !== -1 ? `${currentStudentIndex + 1} of ${filteredEnrollments.length}` : ''}
-                {liveSummary.totalSubjects > 0 ? ` • ${liveSummary.columnLabel}: ${liveSummary.scoredCount}/${liveSummary.totalSubjects} (${liveSummary.avg}%)` : ''}
-              </span>
+            <div className="flex items-center justify-between gap-1.5 pt-2 mt-2 border-t border-black/[0.05] dark:border-white/[0.06] text-[11px] min-w-0">
+              <div className="flex items-center gap-1.5 min-w-0 truncate">
+                {/* Mobile Active Term Confirmation Pill */}
+                <div
+                  data-testid="mobile-active-term-pill"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#0D5C3A]/10 dark:bg-[#10B981]/15 text-[#0D5C3A] dark:text-[#34D399] text-[10.5px] font-semibold shrink-0 select-none"
+                  title="Active Term"
+                >
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                  <span className="whitespace-nowrap">{activeTerm ? `${activeTerm.label}, ${activeTerm.academic_year}` : 'Term 3, 2026'}</span>
+                </div>
+
+                <span className="truncate text-[#444746] dark:text-[#C4C7C5] font-medium tabular-nums">
+                  {currentStudentIndex !== -1 ? `${currentStudentIndex + 1} of ${filteredEnrollments.length}` : ''}
+                  {liveSummary.totalSubjects > 0 ? ` • ${liveSummary.columnLabel}: ${liveSummary.scoredCount}/${liveSummary.totalSubjects} (${liveSummary.avg}%)` : ''}
+                </span>
+              </div>
 
               {selectedEnrollment?.theology_class_arabic && (
-                <span className="truncate text-[#0D5C3A] dark:text-[#34D399] font-semibold text-xs ml-auto" dir="rtl">
+                <span className="truncate text-[#0D5C3A] dark:text-[#34D399] font-semibold text-xs ml-auto shrink-0 max-w-[40%]" dir="rtl">
                   {selectedEnrollment.arabic_name || selectedEnrollment.name}
                 </span>
               )}
@@ -1687,31 +1766,61 @@ export function SharedMarksEntry({
 
                         <div
                           data-testid="marks-scroll-grid"
-                          className="overflow-hidden w-full flex-1 flex flex-col justify-between"
+                          className="overflow-hidden w-full flex-1 flex flex-col"
                         >
                           <table className="w-full table-fixed border-collapse text-left tabular-nums">
                             <thead>
                               <tr className="bg-[var(--bg-sunken)] border-b border-[#0D5C3A]/[0.06] dark:border-[#F59E0B]/[0.07] text-[11px] font-bold text-[var(--text-secondary)] uppercase tracking-wider h-8">
                                 <th
                                   data-testid="frozen-first-column-header"
-                                  className="sticky left-0 z-20 bg-[var(--bg-sunken)] w-[54%] sm:w-[36%] px-3 sm:px-4 py-1.5 text-left border-r border-[#0D5C3A]/[0.06] dark:border-[#F59E0B]/[0.07]"
+                                  className={`sticky left-0 z-20 bg-[var(--bg-sunken)] border-r border-[#0D5C3A]/[0.06] dark:border-[#F59E0B]/[0.07] ${
+                                    examType === 'all'
+                                      ? 'w-[28%] sm:w-[31%] px-2 sm:px-3 py-1.5 text-left'
+                                      : 'w-[52%] sm:w-[36%] px-3 sm:px-4 py-1.5 text-left'
+                                  }`}
                                 >
                                   Subject
                                 </th>
-                                {!isCurrentNursery && (
+                                {!isCurrentNursery && examType !== 'all' && (
                                   <th className="hidden sm:table-cell px-1.5 py-1.5 text-center w-10">Core</th>
                                 )}
-                                <th className="hidden sm:table-cell sm:w-[36%] px-3 py-1.5 text-left">
-                                  Performance &amp; Remark
-                                </th>
+                                {examType !== 'all' && (
+                                  <th className="hidden sm:table-cell sm:w-[36%] px-3 py-1.5 text-left">
+                                    Performance &amp; Remark
+                                  </th>
+                                )}
                                 {['bot', 'all'].includes(examType) && (
-                                  <th className="w-[46%] sm:w-[28%] px-2.5 sm:px-4 py-1.5 text-right">BOT (100)</th>
+                                  <th
+                                    className={
+                                      examType === 'all'
+                                        ? 'w-[24%] sm:w-[23%] px-1 sm:px-2 py-1.5 text-center'
+                                        : 'w-[48%] sm:w-[28%] px-2.5 sm:px-4 py-1.5 text-right'
+                                    }
+                                  >
+                                    BOT<span className="hidden sm:inline"> (100)</span>
+                                  </th>
                                 )}
                                 {['mot', 'all'].includes(examType) && (
-                                  <th className="w-[46%] sm:w-[28%] px-2.5 sm:px-4 py-1.5 text-right">MOT (100)</th>
+                                  <th
+                                    className={
+                                      examType === 'all'
+                                        ? 'w-[24%] sm:w-[23%] px-1 sm:px-2 py-1.5 text-center'
+                                        : 'w-[48%] sm:w-[28%] px-2.5 sm:px-4 py-1.5 text-right'
+                                    }
+                                  >
+                                    MOT<span className="hidden sm:inline"> (100)</span>
+                                  </th>
                                 )}
                                 {['eot', 'all'].includes(examType) && (
-                                  <th className="w-[46%] sm:w-[28%] px-2.5 sm:px-4 py-1.5 text-right">EOT (100)</th>
+                                  <th
+                                    className={
+                                      examType === 'all'
+                                        ? 'w-[24%] sm:w-[23%] px-1 sm:px-2 py-1.5 text-center'
+                                        : 'w-[48%] sm:w-[28%] px-2.5 sm:px-4 py-1.5 text-right'
+                                    }
+                                  >
+                                    EOT<span className="hidden sm:inline"> (100)</span>
+                                  </th>
                                 )}
                               </tr>
                             </thead>
@@ -1723,6 +1832,7 @@ export function SharedMarksEntry({
                                   idx={idx}
                                   examType={examType}
                                   isNursery={isCurrentNursery}
+                                  isBothView={isBothView}
                                   renderScoreCell={renderScoreCell}
                                 />
                               ))}
@@ -1758,21 +1868,45 @@ export function SharedMarksEntry({
                             </span>
                           </div>
 
-                          <div className="overflow-hidden w-full flex-1 flex flex-col justify-between">
+                          <div className="overflow-hidden w-full flex-1 flex flex-col">
                             <table className="w-full table-fixed border-collapse text-left tabular-nums">
                               <thead>
                                 <tr className="bg-[var(--bg-sunken)] border-b border-[#0D5C3A]/[0.06] dark:border-[#F59E0B]/[0.07] text-[11px] font-bold text-[var(--text-secondary)] uppercase tracking-wider h-8">
-                                  <th className="sticky left-0 z-20 bg-[var(--bg-sunken)] w-[54%] sm:w-[36%] px-3 sm:px-4 py-1.5 text-left border-r border-[#0D5C3A]/[0.06] dark:border-[#F59E0B]/[0.07]">
+                                  <th
+                                    className={`sticky left-0 z-20 bg-[var(--bg-sunken)] border-r border-[#0D5C3A]/[0.06] dark:border-[#F59E0B]/[0.07] ${
+                                      examType === 'all'
+                                        ? 'w-[38%] sm:w-[40%] px-2.5 sm:px-3.5 py-1.5 text-left'
+                                        : 'w-[52%] sm:w-[36%] px-3 sm:px-4 py-1.5 text-left'
+                                    }`}
+                                  >
                                     Subject (المادة)
                                   </th>
-                                  <th className="hidden sm:table-cell sm:w-[36%] px-3 py-1.5 text-right" dir="rtl">
-                                    المستوى والتقدير
-                                  </th>
+                                  {examType !== 'all' && (
+                                    <th className="hidden sm:table-cell sm:w-[36%] px-3 py-1.5 text-right" dir="rtl">
+                                      المستوى والتقدير
+                                    </th>
+                                  )}
                                   {['mot', 'all'].includes(examType) && (
-                                    <th className="w-[46%] sm:w-[28%] px-2.5 sm:px-4 py-1.5 text-right">MOT (100)</th>
+                                    <th
+                                      className={
+                                        examType === 'all'
+                                          ? 'w-[31%] sm:w-[30%] px-1.5 sm:px-2.5 py-1.5 text-center'
+                                          : 'w-[48%] sm:w-[28%] px-2.5 sm:px-4 py-1.5 text-right'
+                                      }
+                                    >
+                                      MOT<span className="hidden sm:inline"> (100)</span>
+                                    </th>
                                   )}
                                   {['eot', 'all'].includes(examType) && (
-                                    <th className="w-[46%] sm:w-[28%] px-2.5 sm:px-4 py-1.5 text-right">EOT (100)</th>
+                                    <th
+                                      className={
+                                        examType === 'all'
+                                          ? 'w-[31%] sm:w-[30%] px-1.5 sm:px-2.5 py-1.5 text-center'
+                                          : 'w-[48%] sm:w-[28%] px-2.5 sm:px-4 py-1.5 text-right'
+                                      }
+                                    >
+                                      EOT<span className="hidden sm:inline"> (100)</span>
+                                    </th>
                                   )}
                                 </tr>
                               </thead>
@@ -1783,6 +1917,7 @@ export function SharedMarksEntry({
                                     mark={mark}
                                     idx={idx}
                                     examType={examType}
+                                    isBothView={isBothView}
                                     renderScoreCell={renderScoreCell}
                                   />
                                 ))}
@@ -1793,7 +1928,7 @@ export function SharedMarksEntry({
                             {isBothView && sortedCircularMarks.length > theologyMarks.length && (
                               <div
                                 data-testid="theology-insight-strip"
-                                className="mt-auto px-3.5 py-1.5 mx-2.5 mb-2 rounded-xl bg-amber-500/[0.06] dark:bg-amber-500/[0.12] border border-amber-500/15 dark:border-amber-500/25 flex items-center justify-between text-[11px] font-medium text-amber-950 dark:text-amber-200"
+                                className="mt-2.5 px-3.5 py-1.5 mx-2.5 mb-2 rounded-xl bg-amber-500/[0.06] dark:bg-amber-500/[0.12] border border-amber-500/15 dark:border-amber-500/25 flex items-center justify-between text-[11px] font-medium text-amber-950 dark:text-amber-200"
                                 dir="rtl"
                               >
                                 <div className="flex items-center gap-1.5 min-w-0 truncate">
@@ -1924,6 +2059,9 @@ export function SharedMarksEntry({
                   </button>
                 </div>
               </div>
+
+              {/* Mobile scroll clearance spacer so sticky bar never covers last table row */}
+              <div className="h-14 md:hidden shrink-0 pointer-events-none" aria-hidden="true" />
             </div>
           ) : null
         )}

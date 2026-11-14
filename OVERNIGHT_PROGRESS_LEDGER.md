@@ -594,6 +594,37 @@ Exit code: 0
      - Automated test suite (`src/__tests__/overhaul-workstreams.test.mjs`): 45/45 tests across 14 suites pass (100% pass rate).
      - Next.js webpack production build (`npm run build`): 68/68 routes compiled cleanly with zero build errors.
 
+---
+
+## Milestone 19: Multi-Phase "ALL" Column Math, Zero-Void Theology Rows & Mobile Active Term Confirmation
+
+- **Files Modified / Created:**
+  - `src/components/shared-marks-entry.tsx`
+  - `src/__tests__/overhaul-workstreams.test.mjs`
+  - `OVERNIGHT_PROGRESS_LEDGER.md`
+  - `public/sw.js`
+- **Scope & Workstreams Completed:**
+  1. **Workstream 1: Fix the `ALL` Exam Phases (`BOT + MOT + EOT`) Column Collision on Desktop & Mobile (`shared-marks-entry.tsx`):**
+     - Diagnosed root cause: `PERFORMANCE & REMARK` / `المستوى والتقدير` column remained visible when `activePhase === 'all'`, while each score column was hardcoded to `w-[46%] sm:w-[28%]`, exceeding 150% total width and colliding inputs/badges into adjacent cells.
+     - **Rule A (Conditional Middle Column):** Strictly hide middle `PERFORMANCE & REMARK` (`Secular`) and `المستوى والتقدير` (`Theology`) columns when `examType === 'all'` so all horizontal width is dedicated to the subject name and score columns.
+     - **Rule B (Dynamic Column Math):**
+       - Single Phase (`examType !== 'all'`): Subject `w-[52%] sm:w-[36%]`, Remark `hidden sm:table-cell sm:w-[36%]`, Score `w-[48%] sm:w-[28%]`.
+       - Secular in `ALL` Mode (1 Subject + 3 Scores): Subject `w-[28%] sm:w-[31%]`, `BOT`/`MOT`/`EOT` `w-[24%] sm:w-[23%] px-1 sm:px-2 text-center`. On mobile (`< sm`), shortened header labels from `BOT (100)` to `BOT` via `<span className="hidden sm:inline"> (100)</span>` to prevent wrapping.
+       - Theology in `ALL` Mode (1 Subject + 2 Scores): Subject `w-[38%] sm:w-[40%]`, `MOT`/`EOT` `w-[31%] sm:w-[30%] px-1.5 sm:px-2.5 text-center`.
+     - **Rule C (Non-Overlapping Input & Badge Sizing):** When `examType === 'all'`, applied compact cell sizing inside `renderScoreCell`: `.score-input` `w-11 sm:w-14 h-7.5 px-1 text-xs font-mono font-extrabold tabular-nums text-center shrink-0` and grade badge `min-w-[22px] sm:min-w-[32px] h-6 sm:h-7 px-1 text-[10px] sm:text-[11px] font-bold shrink-0`, with `--` placeholder badges.
+  2. **Workstream 2: Eliminate Meaningless Hollow Space Inside the Theology Card (`shared-marks-entry.tsx`):**
+     - Diagnosed root cause: Stretching the 4-row Theology card with `h-full flex flex-col justify-between` while keeping 4 rows at `h-10` left an empty void between row 4 and the summary bar.
+     - Proportionally scaled the 4 Theology rows to `h-[50px] sm:h-[52px]` with `py-2.5` and `text-xs sm:text-[15px]` Arabic subject titles when `isBothView`, balancing 6 Secular rows at `h-[38px] py-1` (`6 × 38px = 228px` vs `4 × 50px + 28px = 228px`).
+     - Removed `justify-between` from inner table containers (`data-testid="marks-scroll-grid"` and Theology table wrapper) and adjusted insight strip to `mt-2.5` so rows, insight strip, and summary footer sit flush against each other with zero hollow gap while maintaining identical bottom baselines.
+  3. **Workstream 3: Restore Missing Active Term Badge on Mobile & Mobile Scroll Clearance (`shared-marks-entry.tsx`):**
+     - Added read-only `● Term 3, 2026` emerald/gold confirmation pill (`data-testid="mobile-active-term-pill"`, `inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#0D5C3A]/10 dark:bg-[#10B981]/15 text-[#0D5C3A] dark:text-[#34D399] text-[10.5px] font-semibold shrink-0`) in Mobile Student Switcher Card telemetry row.
+     - Added mobile scroll clearance spacer (`h-14 md:hidden shrink-0 pointer-events-none`) after Zone 4 sticky Save bar so the last table row is never covered by the sticky bar when scrolled to the bottom.
+  4. **Workstream 4: Verification Gate:**
+     - TypeScript check (`npm run typecheck`): 0 errors across entire repository.
+     - Automated test suite (`src/__tests__/overhaul-workstreams.test.mjs`): 48/48 tests across 15 suites pass (100% pass rate).
+     - Next.js webpack production build (`npm run build`): 68/68 routes compiled cleanly with zero build errors.
+
+
 
 
 

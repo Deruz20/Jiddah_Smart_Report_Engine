@@ -609,7 +609,7 @@ describe('Workstream 9: Custom Radix Comboboxes, Middle Performance Bar & Dark M
     const marksEntrySrc = fs.readFileSync(marksEntryPath, 'utf8');
 
     // Sizing and dark mode contrast classes enforced on score inputs
-    assert.match(marksEntrySrc, /score-input\s+h-8/);
+    assert.match(marksEntrySrc, /score-input/);
     assert.match(marksEntrySrc, /dark:!bg-\[#0D1714\]/);
     assert.match(marksEntrySrc, /dark:!text-\[#FFFFFF\]/);
   });
@@ -622,8 +622,8 @@ describe('Workstream 9: Custom Radix Comboboxes, Middle Performance Bar & Dark M
     assert.match(marksEntrySrc, /Performance &amp; Remark/);
     assert.match(marksEntrySrc, /المستوى والتقدير/);
 
-    // Row heights compact h-10 for windowed/fullscreen
-    assert.match(marksEntrySrc, /hover:bg-\[var\(--bg-hover\)\] transition-colors h-10/);
+    // Row hover transition colors
+    assert.match(marksEntrySrc, /hover:bg-\[var\(--bg-hover\)\] transition-colors/);
 
     // Single-curriculum telemetry side card rendered in lg:col-span-4
     assert.match(marksEntrySrc, /function StudentPerformanceSideCard/);
@@ -670,8 +670,8 @@ describe('Workstream 10: Silky Popover Physics, Wrapped Chevron Fix, & System-Wi
     const marksEntryPath = path.join(rootDir, 'src/components/shared-marks-entry.tsx');
     const marksEntrySrc = fs.readFileSync(marksEntryPath, 'utf8');
 
-    // Compact row height h-10
-    assert.match(marksEntrySrc, /hover:bg-\[var\(--bg-hover\)\] transition-colors h-10/);
+    // Compact row height h-10 or h-[38px]
+    assert.match(marksEntrySrc, /hover:bg-\[var\(--bg-hover\)\] transition-colors (?:h-10|h-\[38px\]|\$\{isBothView)/);
 
     // Zone 4 save bar is md:static on desktop and sticky on mobile
     assert.match(marksEntrySrc, /sticky bottom-2 z-20 rounded-full md:static/);
@@ -745,8 +745,8 @@ describe('Workstream 11: Milestone 16 Layout Compactness, Mobile Refinement & Mo
 
     // Compact py-1 row cell geometry
     assert.match(marksEntrySrc, /px-3 sm:px-4 py-1/);
-    assert.match(marksEntrySrc, /w-\[54%\] sm:w-\[36%\]/);
-    assert.match(marksEntrySrc, /w-\[46%\] sm:w-\[28%\]/);
+    assert.match(marksEntrySrc, /w-\[(?:52|54)%\] sm:w-\[36%\]/);
+    assert.match(marksEntrySrc, /w-\[(?:46|48)%\] sm:w-\[28%\]/);
 
     // Bottom container padding avoids floating Save bar overlap
     assert.match(marksEntrySrc, /pb-2/);
@@ -823,12 +823,12 @@ describe('Workstream 12: Five Exact CSS Layout and Table-Math Bug Fixes', () => 
     assert.match(marksEntrySrc, /data-testid="marks-scroll-grid"\s+className="overflow-hidden w-full/);
     assert.match(marksEntrySrc, /<div className="overflow-hidden w-full/);
 
-    // Column widths: 54% mobile / 36% sm for subject, 46% mobile / 28% sm for score
-    assert.match(marksEntrySrc, /w-\[54%\] sm:w-\[36%\] px-3 sm:px-4 py-1\.5 text-left/);
-    assert.match(marksEntrySrc, /w-\[46%\] sm:w-\[28%\] px-2\.5 sm:px-4 py-1\.5 text-right/);
+    // Column widths: 52% mobile / 36% sm for subject, 48% mobile / 28% sm for score (single phase)
+    assert.match(marksEntrySrc, /w-\[52%\] sm:w-\[36%\] px-3 sm:px-4 py-1/);
+    assert.match(marksEntrySrc, /w-\[48%\] sm:w-\[28%\] px-2\.5 sm:px-4 py-1/);
 
     // Subject cells enforce max-w-0 truncate
-    assert.match(marksEntrySrc, /w-\[54%\] sm:w-\[36%\] max-w-0 truncate px-3 sm:px-4 py-1/);
+    assert.match(marksEntrySrc, /max-w-0 truncate py-1/);
 
     // Score cells enforce flex justify-end
     assert.match(marksEntrySrc, /flex items-center justify-end gap-1\.5 w-full/);
@@ -869,8 +869,8 @@ describe('Workstream 13: Final 5-Point Micro-Polish Pass for Marks Entry', () =>
     assert.match(marksEntrySrc, /h-full flex flex-col justify-between[\s\S]*?Secular Marks/);
     assert.match(marksEntrySrc, /h-full flex flex-col justify-between[\s\S]*?Theology Marks/);
 
-    // Both table containers use flex-1 flex flex-col justify-between
-    assert.match(marksEntrySrc, /data-testid="marks-scroll-grid"\s+className="overflow-hidden w-full flex-1 flex flex-col justify-between"/);
+    // Both table containers use flex-1 flex flex-col
+    assert.match(marksEntrySrc, /data-testid="marks-scroll-grid"\s+className="overflow-hidden w-full flex-1 flex flex-col"/);
 
     // Footers pushed to mt-auto shrink-0
     assert.match(marksEntrySrc, /mt-auto shrink-0[\s\S]*?Secular Summary/);
@@ -937,6 +937,67 @@ describe('Workstream 13: Final 5-Point Micro-Polish Pass for Marks Entry', () =>
 
     assert.match(nextConfigSrc, /devIndicators:\s*false/);
     assert.doesNotMatch(nextConfigSrc, /position:\s*'bottom-right'/);
+  });
+});
+
+describe('Workstream 14: Multi-Phase "ALL" Column Math, Zero-Void Theology Rows & Mobile Term Badge', () => {
+  const rootDir = process.cwd();
+
+  it('hides middle remark column in ALL mode and applies exact multi-phase percentages', () => {
+    const marksEntryPath = path.join(rootDir, 'src/components/shared-marks-entry.tsx');
+    const marksEntrySrc = fs.readFileSync(marksEntryPath, 'utf8');
+
+    // Rule A: Middle Performance & Remark and Core columns are hidden when examType === 'all'
+    assert.match(marksEntrySrc, /examType !== 'all'\s*&&\s*\(\s*<th className="hidden sm:table-cell sm:w-\[36%\] px-3 py-1\.5 text-left">\s*Performance &amp; Remark/);
+    assert.match(marksEntrySrc, /examType !== 'all'\s*&&\s*\(\s*<th className="hidden sm:table-cell sm:w-\[36%\] px-3 py-1\.5 text-right" dir="rtl">\s*المستوى والتقدير/);
+    assert.match(marksEntrySrc, /!isCurrentNursery && examType !== 'all' && \(\s*<th className="hidden sm:table-cell px-1\.5 py-1\.5 text-center w-10">Core<\/th>/);
+
+    // Rule B: Dynamic Column Percentages for ALL mode in Secular (28% mobile / 31% sm, score 24% mobile / 23% sm)
+    assert.match(marksEntrySrc, /examType === 'all'\s*\?\s*'w-\[28%\] sm:w-\[31%\] px-2 sm:px-3 py-1\.5 text-left'\s*:\s*'w-\[52%\] sm:w-\[36%\] px-3 sm:px-4 py-1\.5 text-left'/);
+    assert.match(marksEntrySrc, /examType === 'all'\s*\?\s*'w-\[24%\] sm:w-\[23%\] px-1 sm:px-2 py-1\.5 text-center'\s*:\s*'w-\[48%\] sm:w-\[28%\] px-2\.5 sm:px-4 py-1\.5 text-right'/);
+
+    // Rule B: Dynamic Column Percentages for ALL mode in Theology (38% mobile / 40% sm, score 31% mobile / 30% sm)
+    assert.match(marksEntrySrc, /examType === 'all'\s*\?\s*'w-\[38%\] sm:w-\[40%\] px-2\.5 sm:px-3\.5 py-1\.5 text-left'\s*:\s*'w-\[52%\] sm:w-\[36%\] px-3 sm:px-4 py-1\.5 text-left'/);
+    assert.match(marksEntrySrc, /examType === 'all'\s*\?\s*'w-\[31%\] sm:w-\[30%\] px-1\.5 sm:px-2\.5 py-1\.5 text-center'\s*:\s*'w-\[48%\] sm:w-\[28%\] px-2\.5 sm:px-4 py-1\.5 text-right'/);
+
+    // Mobile shortened header labels
+    assert.match(marksEntrySrc, /BOT<span className="hidden sm:inline"> \(100\)<\/span>/);
+    assert.match(marksEntrySrc, /MOT<span className="hidden sm:inline"> \(100\)<\/span>/);
+    assert.match(marksEntrySrc, /EOT<span className="hidden sm:inline"> \(100\)<\/span>/);
+
+    // Rule C: Compact input sizing in ALL mode
+    assert.match(marksEntrySrc, /isAllPhases\s*\?\s*'w-11 sm:w-14 h-7\.5 px-1 text-xs font-mono font-extrabold tabular-nums text-center/);
+    assert.match(marksEntrySrc, /isAllPhases\s*\?\s*'min-w-\[22px\] sm:min-w-\[32px\] h-6 sm:h-7 px-1 text-\[10px\] sm:text-\[11px\] font-bold/);
+  });
+
+  it('eliminates hollow card gap inside Theology card via proportional row scaling and flush insight strip', () => {
+    const marksEntryPath = path.join(rootDir, 'src/components/shared-marks-entry.tsx');
+    const marksEntrySrc = fs.readFileSync(marksEntryPath, 'utf8');
+
+    // Secular rows use h-[38px]
+    assert.match(marksEntrySrc, /<tr className="hover:bg-\[var\(--bg-hover\)\] transition-colors h-\[38px\]">/);
+
+    // Theology rows proportionally scale to h-[50px] sm:h-[52px] in Both mode
+    assert.match(marksEntrySrc, /isBothView \? 'h-\[50px\] sm:h-\[52px\]' : 'h-10'/);
+    assert.match(marksEntrySrc, /isBothView \? 'text-xs sm:text-\[15px\]' : 'text-xs sm:text-\[13px\]'/);
+
+    // Table container has no justify-between
+    assert.match(marksEntrySrc, /data-testid="marks-scroll-grid"\s+className="overflow-hidden w-full flex-1 flex flex-col"/);
+
+    // Performance insight strip sits flush with mt-2.5 instead of mt-auto
+    assert.match(marksEntrySrc, /className="mt-2\.5 px-3\.5 py-1\.5 mx-2\.5 mb-2 rounded-xl/);
+  });
+
+  it('renders read-only Active Term confirmation pill on mobile and provides scroll clearance spacer', () => {
+    const marksEntryPath = path.join(rootDir, 'src/components/shared-marks-entry.tsx');
+    const marksEntrySrc = fs.readFileSync(marksEntryPath, 'utf8');
+
+    // Mobile Active Term pill in student switcher card telemetry
+    assert.match(marksEntrySrc, /data-testid="mobile-active-term-pill"/);
+    assert.match(marksEntrySrc, /inline-flex items-center gap-1 px-2 py-0\.5 rounded-full bg-\[#0D5C3A\]\/10 dark:bg-\[#10B981\]\/15 text-\[#0D5C3A\] dark:text-\[#34D399\] text-\[10\.5px\] font-semibold shrink-0 select-none/);
+
+    // Mobile scroll clearance spacer after Zone 4 sticky save pill
+    assert.match(marksEntrySrc, /className="h-14 md:hidden shrink-0 pointer-events-none"/);
   });
 });
 

@@ -19,6 +19,20 @@ interface TopToolbarProps {
   onLayoutToggle?: () => void;
   isGenerating?: boolean;
   title?: React.ReactNode;
+  classCohortSelect?: React.ReactNode;
+  activeTermPill?: React.ReactNode;
+  phaseTrack?: React.ReactNode;
+  curriculumTrack?: React.ReactNode;
+  primaryPrintAction?: {
+    label: string;
+    onClick: () => void;
+    disabled?: boolean;
+  };
+  moreActionsItems?: {
+    label: string;
+    icon: any;
+    onClick: () => void;
+  }[];
 }
 
 export function TopToolbar({
@@ -35,7 +49,102 @@ export function TopToolbar({
   onLayoutToggle,
   isGenerating,
   title,
+  classCohortSelect,
+  activeTermPill,
+  phaseTrack,
+  curriculumTrack,
+  primaryPrintAction,
+  moreActionsItems,
 }: TopToolbarProps) {
+  if (classCohortSelect) {
+    return (
+      <Tooltip.Provider delayDuration={150}>
+        <div
+          data-testid="reports-zone-1-bar"
+          className="w-full bg-white dark:bg-[#151D1A] rounded-2xl px-3 py-2 border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 flex items-center justify-between gap-2 shadow-2xs z-20 print:hidden"
+        >
+          {/* Left Controls: Class Cohort CustomPillSelect + Active Term Pill */}
+          <div className="flex items-center gap-2 shrink-0 min-w-0">
+            {classCohortSelect}
+            {activeTermPill}
+          </div>
+
+          {/* Center Controls: Phase Track + Curriculum Track */}
+          <div className="hidden md:flex items-center gap-2 shrink-0">
+            {phaseTrack}
+            {curriculumTrack}
+          </div>
+
+          {/* Right Actions: Primary Print CTA + MoreActionsMenu */}
+          <div className="flex items-center gap-2 shrink-0 ml-auto">
+            {layout && onLayoutToggle && (
+              <Tooltip.Root>
+                <Tooltip.Trigger asChild>
+                  <motion.button
+                    onClick={onLayoutToggle}
+                    aria-label={layout === 'grid' ? 'Single scroll view' : 'Grid view'}
+                    className="hidden sm:inline-flex items-center justify-center rounded-full w-8.5 h-8.5 bg-[#F0F4F9] dark:bg-[#1E2623] text-stone-700 dark:text-stone-200 hover:bg-[#E4EAE6] dark:hover:bg-[#282A2C] hover:text-[#0D5C3A] dark:hover:text-emerald-300 cursor-pointer border-0"
+                    whileTap={{ scale: 0.92 }}
+                  >
+                    {layout === 'grid' ? <List size={15} /> : <LayoutGrid size={15} />}
+                  </motion.button>
+                </Tooltip.Trigger>
+                <TooltipContent>{layout === 'grid' ? 'Single scroll view' : 'Grid view'}</TooltipContent>
+              </Tooltip.Root>
+            )}
+
+            {primaryPrintAction && (
+              <motion.button
+                type="button"
+                onClick={primaryPrintAction.onClick}
+                disabled={primaryPrintAction.disabled}
+                whileTap={{ scale: 0.97 }}
+                className="h-9 px-4 rounded-full btn-jiddah-cta text-xs font-bold inline-flex items-center gap-2 cursor-pointer disabled:opacity-40 shrink-0"
+              >
+                <Printer className="size-3.5 shrink-0" />
+                <span className="truncate tabular-nums">{primaryPrintAction.label}</span>
+              </motion.button>
+            )}
+
+            <MoreActionsMenu
+              items={
+                moreActionsItems || [
+                  {
+                    label: 'Report Studio 2.0',
+                    icon: Sliders,
+                    onClick: () => {
+                      window.location.href = '/admin/reports/studio';
+                    },
+                  },
+                  {
+                    label: 'Download PDF / Export',
+                    icon: Download,
+                    onClick: onPrint || (() => {}),
+                  },
+                  {
+                    label: 'Stamp & Signature Settings',
+                    icon: Settings,
+                    onClick: () => {
+                      window.location.href = '/admin/signatures';
+                    },
+                  },
+                  {
+                    label: 'Refresh Reports',
+                    icon: History,
+                    onClick: () => {
+                      window.location.reload();
+                    },
+                  },
+                ]
+              }
+              align="end"
+            />
+          </div>
+        </div>
+      </Tooltip.Provider>
+    );
+  }
+
   return (
     <Tooltip.Provider delayDuration={150}>
       <div className="flex items-center justify-between shrink-0 w-full bg-white dark:bg-[#111916] border-b border-[#0D5C3A]/10 dark:border-[#F59E0B]/12 px-3 sm:px-5 min-h-[44px] h-11 z-20 print:hidden">
@@ -73,11 +182,7 @@ export function TopToolbar({
                   </span>
                 )}
               </motion.div>
-            ) : (
-              <div className="text-xs font-bold text-stone-700 dark:text-stone-200 truncate">
-                Report Center
-              </div>
-            )}
+            ) : null}
           </AnimatePresence>
         </div>
 

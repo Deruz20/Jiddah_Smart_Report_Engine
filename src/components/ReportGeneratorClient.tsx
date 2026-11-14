@@ -2,16 +2,16 @@
 
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { toast } from 'sonner'
-import { AnimatePresence } from 'motion/react'
+import { motion, AnimatePresence } from 'motion/react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { FileSpreadsheet, Printer } from 'lucide-react'
+import { FileSpreadsheet, Printer, Users, FileText, Sliders, Settings, History } from 'lucide-react'
 import { generateReportBroadsheetCSV } from '@/utils/csvExport'
 import { TopToolbar } from './figma-ui/TopToolbar'
-import { SearchFilterBar } from './figma-ui/SearchFilterBar'
 import { DocumentCanvas } from './figma-ui/DocumentCanvas'
-import { SidePanel } from './figma-ui/SidePanel'
+import { StudentRosterSidebar } from './figma-ui/StudentRosterSidebar'
 import { PrintDialog } from './figma-ui/PrintDialog'
-import type { FilterState, ReportData, ClassGroup } from './figma-ui/types'
+import { CustomPillSelect } from '@/components/ui/custom-pill-select'
+import type { FilterState, ReportData, ClassGroup, EnrollmentItem } from './figma-ui/types'
 
 // Jiddah Templates
 import PrimaryEOTReport from './reports/PrimaryEOTReport'
@@ -25,7 +25,12 @@ import NurseryTheologyEOTReport from './reports/NurseryTheologyEOTReport'
 import { ReportPreviewCell } from './reports/ReportPreviewCell'
 import { PrintPortal } from './reports/PrintPortal'
 import { STABILIZED_REPORT_ORIENTATIONS } from '@/lib/report-constants'
-import { getReportCompletionStatus, type StudentCompletionStatus } from '@/lib/report-selection'
+import {
+  getReportCompletionStatus,
+  applyRangeSelection,
+  toggleSelectAllPreservingOthers,
+  type StudentCompletionStatus,
+} from '@/lib/report-selection'
 
 type TermData = {
   id: string
@@ -55,9 +60,13 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
-  const [enrollments, setEnrollments] = useState<RawEnrollment[]>([])
-  const [searchOpen, setSearchOpen] = useState(false)
+  const currentTerm = useMemo(() => {
+    return terms.find((t) => t.is_current) || terms[0]
+  }, [terms])
+  const activeTermNumber = currentTerm ? String(currentTerm.term_number || '3') : '3'
+  const activeTermLabel = currentTerm?.label || `Term ${activeTermNumber}, 2026`
 
+  const [enrollments, setEnrollments] = useState<RawEnrollment[]>([])
   const [filterState, setFilterState] = useState<FilterState>(() => {
     return {
       mode: (searchParams.get('mode') as any) || 'class',
@@ -65,8 +74,8 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
       classIds: searchParams.get('classIds') ? searchParams.get('classIds')!.split(',') : [],
       section: (searchParams.get('section') as any) || 'all',
       gender: (searchParams.get('gender') as any) || 'All',
-      term: (searchParams.get('term') as any) || '',
-      phase: (searchParams.get('phase') as any) || '',
+      term: (searchParams.get('term') as any) || activeTermNumber,
+      phase: (searchParams.get('phase') as any) || 'EOT',
       curriculum: (searchParams.get('curriculum') as any) || 'secular',
       layout: (searchParams.get('layout') as any) || 'single',
     }
@@ -77,9 +86,13 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
   const [zoom, setZoom] = useState(0.75)
   const [printScope, setPrintScope] = useState<'current' | 'all' | string[]>('current')
   const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false)
-  const [sidePanelOpen, setSidePanelOpen] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
   const [completionCache, setCompletionCache] = useState<Record<string, StudentCompletionStatus>>({})
+
+  // Multi-selection state for student checklist
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([])
+  const [anchorIndex, setAnchorIndex] = useState<number | null>(null)
+  const [mobileTab, setMobileTab] = useState<'students' | 'preview'>('students')
 
   useEffect(() => {
     async function loadEnrollments() {
@@ -96,7 +109,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
   }, [])
 
   const { figmaClasses, figmaEnrollments } = useMemo(() => {
-    const eList: any[] = []
+    const eList: EnrollmentItem[] = []
     const classMap = new Map<string, ClassGroup>()
 
     for (const e of enrollments) {
@@ -144,7 +157,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
           id: clsName,
           name: clsName,
           section_type: sectionType,
-          enrollmentIds: []
+          enrollmentIds: [],
         })
       }
       classMap.get(clsName)!.enrollmentIds.push(id)
@@ -152,6 +165,45 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
 
     return { figmaClasses: Array.from(classMap.values()), figmaEnrollments: eList }
   }, [enrollments, filterState.curriculum])
+
+  // Active class enrollments
+  const activeClassEnrollments = useMemo(() => {
+    if (filterState.classIds.length === 0) return []
+    const cls = figmaClasses.find((c) => filterState.classIds.includes(c.id))
+    if (!cls) return []
+    return figmaEnrollments.filter((e) => cls.enrollmentIds.includes(e.enrollment_id))
+  }, [figmaClasses, figmaEnrollments, filterState.classIds])
+
+  // Sync selectedStudentIds with active class enrollments on class change / initial load
+  useEffect(() => {
+    if (activeClassEnrollments.length > 0) {
+      const activeIds = activeClassEnrollments.map((e) => e.enrollment_id)
+      setSelectedStudentIds((prev) => {
+        const overlap = prev.filter((id) => activeIds.includes(id))
+        return overlap.length > 0 ? prev : activeIds
+      })
+    }
+  }, [activeClassEnrollments])
+
+  // Smart defaults: Automatically select active class if none chosen
+  useEffect(() => {
+    if (figmaClasses.length === 0) return
+    if (filterState.classIds.length === 0) {
+      let chosenClassId = figmaClasses[0].id
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem('jiddah_reports_last_class')
+        if (stored && figmaClasses.some((c) => c.id === stored)) {
+          chosenClassId = stored
+        }
+      }
+      setFilterState((prev) => ({
+        ...prev,
+        classIds: [chosenClassId],
+        term: (prev.term || activeTermNumber) as any,
+        phase: prev.phase || 'EOT',
+      }))
+    }
+  }, [figmaClasses, filterState.classIds.length, activeTermNumber])
 
   const executeGeneration = useCallback(async (): Promise<ReportData[]> => {
     const { mode, studentIds, classIds, section, term, phase } = filterState
@@ -161,16 +213,15 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
       targets = studentIds
     } else {
       targets = figmaClasses
-        .filter(c => classIds.includes(c.id))
-        .flatMap(c => c.enrollmentIds)
+        .filter((c) => classIds.includes(c.id))
+        .flatMap((c) => c.enrollmentIds)
     }
 
     if (targets.length === 0) {
-      toast.warning('No students found for this selection.')
       return []
     }
 
-    const termObj = terms.find(t => String(t.term_number) === term)
+    const termObj = terms.find((t) => String(t.term_number) === term)
     if (!termObj) {
       toast.error('Term not found in database.')
       return []
@@ -182,13 +233,24 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
     )
 
     try {
-      const isPrimaryClass = figmaClasses.some(c => classIds.includes(c.id) && (c.section_type === 'lower_primary' || c.section_type === 'upper_primary'))
-      const isPrimaryStudent = figmaEnrollments.some(e => studentIds.includes(e.enrollment_id) && (e.section_type === 'lower_primary' || e.section_type === 'upper_primary'))
-      const isPrimary = section === 'lower_primary' || section === 'upper_primary' || (mode === 'class' ? isPrimaryClass : isPrimaryStudent)
+      const isPrimaryClass = figmaClasses.some(
+        (c) =>
+          classIds.includes(c.id) &&
+          (c.section_type === 'lower_primary' || c.section_type === 'upper_primary')
+      )
+      const isPrimaryStudent = figmaEnrollments.some(
+        (e) =>
+          studentIds.includes(e.enrollment_id) &&
+          (e.section_type === 'lower_primary' || e.section_type === 'upper_primary')
+      )
+      const isPrimary =
+        section === 'lower_primary' ||
+        section === 'upper_primary' ||
+        (mode === 'class' ? isPrimaryClass : isPrimaryStudent)
       const isEOT = phase.toLowerCase() === 'eot'
 
-      let effectiveCurriculum = filterState.curriculum
-      if (isPrimary && isEOT) {
+      let effectiveCurriculum: 'secular' | 'theology' | 'combined' = filterState.curriculum
+      if (isPrimary && isEOT && filterState.curriculum !== 'theology' && filterState.curriculum !== 'secular') {
         effectiveCurriculum = 'combined'
       }
 
@@ -200,8 +262,8 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
           term_id: termObj.id,
           score_type: phase.toLowerCase(),
           curriculum: effectiveCurriculum,
-          stamp_date: filterState.stampDate
-        })
+          stamp_date: filterState.stampDate,
+        }),
       })
       const data = await response.json()
 
@@ -217,38 +279,6 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
         return []
       }
 
-      if (typeof window !== 'undefined' && localStorage.getItem('auto_transliterate') === 'true') {
-        const namesToTransliterate = generatedReportsData
-          .filter(r => r.student && !r.student.arabic_name)
-          .map(r => r.student.name)
-
-        if (namesToTransliterate.length > 0) {
-          toast.loading('Transliterating names...', { id: 'transliterate-toast' })
-          try {
-            const transRes = await fetch('/api/transliterate', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ names: namesToTransliterate })
-            })
-            if (transRes.ok) {
-              const transData = await transRes.json()
-              if (transData.transliterated && transData.transliterated.length === namesToTransliterate.length) {
-                let i = 0
-                generatedReportsData.forEach(r => {
-                  if (r.student && !r.student.arabic_name) {
-                    r.student.arabic_name = transData.transliterated[i++]
-                  }
-                })
-              }
-            }
-          } catch (e) {
-            console.error('Transliteration failed', e)
-          } finally {
-            toast.dismiss('transliterate-toast')
-          }
-        }
-      }
-
       setRawReports(generatedReportsData)
       setActiveReportId(generatedReportsData[0].id)
       setCompletionCache((prev) => {
@@ -261,38 +291,9 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
       })
 
       toast.success(
-        `${generatedReportsData.length} report${generatedReportsData.length !== 1 ? 's' : ''} generated.`,
-        { duration: 3000 }
+        `${generatedReportsData.length} report${generatedReportsData.length !== 1 ? 's' : ''} ready to preview.`,
+        { duration: 2500 }
       )
-      setSearchOpen(false)
-
-      setTimeout(() => {
-        const missingTheology = generatedReportsData.filter(r =>
-          r.section_type !== 'nursery' && r.score_type === 'eot' && !r.theology && r.student?.theology_class_arabic
-        )
-        if (missingTheology.length > 0) {
-          toast.warning(`${missingTheology.length} students are missing theology EOT marks`, {
-            duration: 7000,
-            action: {
-              label: 'View',
-              onClick: () => setActiveReportId(missingTheology[0].id)
-            }
-          })
-        }
-
-        const incompleteMarks = generatedReportsData.filter(r =>
-          r.score_type === 'eot' && r.circular && r.circular.subjects.some((subj: any) => subj.eot_score === null)
-        )
-        if (incompleteMarks.length > 0) {
-          toast.warning(`Incomplete marks detected for ${incompleteMarks.length} students`, {
-            duration: 7000,
-            action: {
-              label: 'View',
-              onClick: () => setActiveReportId(incompleteMarks[0].id)
-            }
-          })
-        }
-      }, 1500)
       return generatedReportsData
     } catch (err: any) {
       toast.dismiss(loadingId)
@@ -304,111 +305,31 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
     }
   }, [filterState, figmaClasses, figmaEnrollments, terms])
 
-  const completionByEnrollment = useMemo(() => {
-    const map: Record<string, StudentCompletionStatus> = {}
-    const prefix = `${filterState.term}:${filterState.phase}:`
-    for (const [k, v] of Object.entries(completionCache)) {
-      if (k.startsWith(prefix)) {
-        map[k.slice(prefix.length)] = v
-      }
-    }
-    for (const r of rawReports) {
-      map[r.id] = getReportCompletionStatus(r)
-    }
-    return map
-  }, [completionCache, rawReports, filterState.term, filterState.phase])
-
-  const handleGenerate = useCallback(async () => {
-    const { mode, studentIds, classIds, term, phase } = filterState
-
-    if (!term || !phase) {
-      toast.error('Please select both a Term and Phase before generating.')
-      return
-    }
-    if (mode === 'individual' && (!studentIds || studentIds.length === 0)) {
-      toast.error('Please select at least one student.')
-      return
-    }
-    if (mode === 'class' && (!classIds || classIds.length === 0)) {
-      toast.error('Please select at least one class.')
-      return
-    }
-
-    await executeGeneration()
-  }, [filterState, executeGeneration])
-
-  const handlePrintSelected = useCallback(async () => {
-    const { mode, studentIds, classIds, term, phase } = filterState
-    if (!term || !phase) {
-      toast.error('Please select both a Term and Phase before printing.')
-      return
-    }
-
-    const targets =
-      mode === 'individual'
-        ? studentIds
-        : figmaClasses.filter(c => classIds.includes(c.id)).flatMap(c => c.enrollmentIds)
-
-    if (targets.length === 0) {
-      toast.error(mode === 'individual' ? 'Please select at least one student.' : 'Please select at least one class.')
-      return
-    }
-
-    const loadedIds = new Set(rawReports.map(r => r.id))
-    const allTargetsLoaded = targets.every(id => loadedIds.has(id))
-    const reportsForPrint = allTargetsLoaded ? rawReports : await executeGeneration()
-    if (!reportsForPrint || reportsForPrint.length === 0) return
-
-    setPrintScope(targets)
-    const originalTitle = document.title
-    const termSuffix = term ? `_Term_${term}` : ''
-    const baseName = targets.length === 1
-      ? `${(reportsForPrint.find(r => r.id === targets[0]) as any)?.student?.name || 'Student'}${termSuffix}_Report.pdf`
-      : `Selected_${targets.length}_Reports${termSuffix}.pdf`
-    document.title = baseName.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_')
-
-    setTimeout(() => {
-      window.print()
-    }, 320)
-
-    const restoreTitle = () => {
-      document.title = originalTitle
-      window.removeEventListener('afterprint', restoreTitle)
-    }
-    window.addEventListener('afterprint', restoreTitle)
-  }, [filterState, figmaClasses, rawReports, executeGeneration])
-
-  const handleDownload = useCallback(() => {
-    if (rawReports.length === 0) { toast.error('No reports loaded. Generate reports first.'); return }
-    generateReportBroadsheetCSV(rawReports, `broadsheet-${new Date().toISOString().split('T')[0]}.csv`)
-    toast.success('Broadsheet downloaded!')
-  }, [rawReports])
-
-  const handlePrint = useCallback(() => {
-    if (rawReports.length === 0) { toast.error('No reports loaded. Generate reports first.'); return }
-    setIsPrintDialogOpen(true)
-  }, [rawReports])
-
-  const handleShare = useCallback(async () => {
-    try {
-      await navigator.clipboard.writeText(window.location.href)
-      toast.success('Link copied to clipboard!')
-    } catch {
-      toast.error('Failed to copy link.')
-    }
-  }, [])
-
-  const hasAutoGenerated = useRef(false)
+  // Automatically execute generation when class, term, and phase are set
+  const autoGeneratedKey = useRef<string>('')
   useEffect(() => {
-    if (enrollments.length > 0 && !hasAutoGenerated.current && filterState.term && filterState.phase) {
-      const { mode, studentIds, classIds } = filterState
-      if ((mode === 'individual' && studentIds.length > 0) || (mode === 'class' && classIds.length > 0)) {
-        hasAutoGenerated.current = true
-        setTimeout(() => executeGeneration(), 100)
+    if (
+      filterState.classIds.length > 0 &&
+      filterState.term &&
+      filterState.phase &&
+      figmaClasses.length > 0
+    ) {
+      const key = `${filterState.classIds.join(',')}:${filterState.term}:${filterState.phase}:${filterState.curriculum}`
+      if (autoGeneratedKey.current !== key) {
+        autoGeneratedKey.current = key
+        executeGeneration()
       }
     }
-  }, [enrollments, filterState, executeGeneration])
+  }, [
+    filterState.classIds,
+    filterState.term,
+    filterState.phase,
+    filterState.curriculum,
+    figmaClasses.length,
+    executeGeneration,
+  ])
 
+  // URL query sync
   useEffect(() => {
     const params = new URLSearchParams()
     if (filterState.mode !== 'class') params.set('mode', filterState.mode)
@@ -427,103 +348,233 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
     }
   }, [filterState, pathname, router, searchParams])
 
-  const handleZoomIn = useCallback(() => setZoom(z => Math.min(2, +(z + 0.25).toFixed(2))), [])
-  const handleZoomOut = useCallback(() => setZoom(z => Math.max(0.5, +(z - 0.25).toFixed(2))), [])
+  const completionByEnrollment = useMemo(() => {
+    const map: Record<string, StudentCompletionStatus> = {}
+    const prefix = `${filterState.term}:${filterState.phase}:`
+    for (const [k, v] of Object.entries(completionCache)) {
+      if (k.startsWith(prefix)) {
+        map[k.slice(prefix.length)] = v
+      }
+    }
+    for (const r of rawReports) {
+      map[r.id] = getReportCompletionStatus(r)
+    }
+    return map
+  }, [completionCache, rawReports, filterState.term, filterState.phase])
+
+  // Range and Checkbox handlers for Left Sidebar
+  const handleToggleSelect = useCallback(
+    (id: string, shiftKey: boolean) => {
+      const orderedVisibleIds = activeClassEnrollments.map((e) => e.enrollment_id)
+      const res = applyRangeSelection(
+        orderedVisibleIds,
+        selectedStudentIds,
+        id,
+        anchorIndex,
+        shiftKey
+      )
+      setSelectedStudentIds(res.nextSelected)
+      setAnchorIndex(res.nextAnchorIndex)
+    },
+    [activeClassEnrollments, selectedStudentIds, anchorIndex]
+  )
+
+  const handleSelectAll = useCallback(() => {
+    const visibleIds = activeClassEnrollments.map((e) => e.enrollment_id)
+    const next = toggleSelectAllPreservingOthers(visibleIds, selectedStudentIds)
+    setSelectedStudentIds(next)
+  }, [activeClassEnrollments, selectedStudentIds])
+
+  const handleClearAll = useCallback(() => {
+    const visibleSet = new Set(activeClassEnrollments.map((e) => e.enrollment_id))
+    setSelectedStudentIds((prev) => prev.filter((id) => !visibleSet.has(id)))
+  }, [activeClassEnrollments])
+
+  // Count-Aware Print Button Label
+  const printButtonLabel = useMemo(() => {
+    const count = selectedStudentIds.length
+    if (count === 0) return 'Print Reports'
+    if (count === 1) return 'Print 1 Report'
+    if (count === activeClassEnrollments.length && activeClassEnrollments.length > 0) {
+      return `Print ${count} Reports`
+    }
+    return `Print ${count} Selected`
+  }, [selectedStudentIds.length, activeClassEnrollments.length])
+
+  // Primary Print Action
+  const handlePrintSelected = useCallback(async () => {
+    const targets =
+      selectedStudentIds.length > 0
+        ? selectedStudentIds
+        : activeReportId
+        ? [activeReportId]
+        : []
+
+    if (targets.length === 0) {
+      toast.error('Please select at least one student to print.')
+      return
+    }
+
+    const loadedIds = new Set(rawReports.map((r) => r.id))
+    const allTargetsLoaded = targets.every((id) => loadedIds.has(id))
+    const reportsForPrint = allTargetsLoaded ? rawReports : await executeGeneration()
+    if (!reportsForPrint || reportsForPrint.length === 0) return
+
+    setPrintScope(targets)
+    const originalTitle = document.title
+    const termSuffix = filterState.term ? `_Term_${filterState.term}` : ''
+    const baseName =
+      targets.length === 1
+        ? `${(reportsForPrint.find((r) => r.id === targets[0]) as any)?.student?.name || 'Student'}${termSuffix}_Report.pdf`
+        : `Selected_${targets.length}_Reports${termSuffix}.pdf`
+    document.title = baseName.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_')
+
+    setTimeout(() => {
+      window.print()
+    }, 320)
+
+    const restoreTitle = () => {
+      document.title = originalTitle
+      window.removeEventListener('afterprint', restoreTitle)
+    }
+    window.addEventListener('afterprint', restoreTitle)
+  }, [selectedStudentIds, activeReportId, rawReports, executeGeneration, filterState.term])
+
+  const handleDownload = useCallback(() => {
+    if (rawReports.length === 0) {
+      toast.error('No reports loaded. Generate reports first.')
+      return
+    }
+    generateReportBroadsheetCSV(
+      rawReports,
+      `broadsheet-${new Date().toISOString().split('T')[0]}.csv`
+    )
+    toast.success('Broadsheet downloaded!')
+  }, [rawReports])
+
+  const handlePrint = useCallback(() => {
+    if (rawReports.length === 0) {
+      toast.error('No reports loaded. Generate reports first.')
+      return
+    }
+    setIsPrintDialogOpen(true)
+  }, [rawReports])
+
+  const handleShare = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href)
+      toast.success('Link copied to clipboard!')
+    } catch {
+      toast.error('Failed to copy link.')
+    }
+  }, [])
+
+  const handleZoomIn = useCallback(() => setZoom((z) => Math.min(2, +(z + 0.25).toFixed(2))), [])
+  const handleZoomOut = useCallback(() => setZoom((z) => Math.max(0.4, +(z - 0.25).toFixed(2))), [])
   const handleFitScreen = useCallback(() => setZoom(1), [])
 
-  const resolveReport = useCallback((report: ReportData): { component: React.ReactNode; type: keyof typeof STABILIZED_REPORT_ORIENTATIONS } | null => {
-    let component: React.ReactNode = null
-    let type: keyof typeof STABILIZED_REPORT_ORIENTATIONS | null = null
+  const resolveReport = useCallback(
+    (report: ReportData): { component: React.ReactNode; type: keyof typeof STABILIZED_REPORT_ORIENTATIONS } | null => {
+      let component: React.ReactNode = null
+      let type: keyof typeof STABILIZED_REPORT_ORIENTATIONS | null = null
 
-    const isP7 = report.student.class_name?.toLowerCase() === 'p.7'
-    const isPrim = report.section_type === 'lower_primary' || report.section_type === 'upper_primary'
+      const isP7 = report.student.class_name?.toLowerCase() === 'p.7'
+      const isPrim = report.section_type === 'lower_primary' || report.section_type === 'upper_primary'
 
-    const hasCirc = !!report.circular && report.circular.subjects.length > 0
-    const hasTheo = !!report.theology
+      const hasCirc = !!report.circular && report.circular.subjects.length > 0
+      const hasTheo = !!report.theology
 
-    let format = 'circular'
-    if (isPrim && report.score_type === 'eot') {
-      if (hasCirc && hasTheo) format = 'combined'
-      else if (hasCirc) format = 'circular'
-      else if (hasTheo) format = 'theology'
-    } else {
-      if (hasCirc) format = 'circular'
-      else if (hasTheo) format = 'theology'
-    }
-
-    if (filterState.curriculum === 'theology') {
-      if (hasTheo) format = 'theology'
-    } else if (filterState.curriculum === 'secular') {
-      if (hasCirc) format = 'circular'
-    } else if (filterState.curriculum === 'combined') {
-      if (hasCirc && hasTheo && isPrim && report.score_type === 'eot') {
-        format = 'combined'
-      }
-    }
-
-    if (format === 'combined' || format === 'circular') {
+      let format = 'circular'
       if (isPrim && report.score_type === 'eot') {
-        component = isP7 ? <P7EOTReport reportData={report} /> : <PrimaryEOTReport reportData={report} />
-        type = isP7 ? 'P7EOTReport' : 'PrimaryEOTReport'
-      } else if (report.section_type === 'nursery') {
-        if (report.score_type === 'mot') {
-          component = <NurseryMOTReport reportData={report} />
-          type = 'NurseryMOTReport'
-        } else {
-          component = <NurseryEOTReport reportData={report} />
-          type = 'NurseryEOTReport'
+        if (hasCirc && hasTheo) format = 'combined'
+        else if (hasCirc) format = 'circular'
+        else if (hasTheo) format = 'theology'
+      } else {
+        if (hasCirc) format = 'circular'
+        else if (hasTheo) format = 'theology'
+      }
+
+      if (filterState.curriculum === 'theology') {
+        if (hasTheo) format = 'theology'
+      } else if (filterState.curriculum === 'secular') {
+        if (hasCirc) format = 'circular'
+      } else if (filterState.curriculum === 'combined' || filterState.curriculum === 'both') {
+        if (hasCirc && hasTheo && isPrim && report.score_type === 'eot') {
+          format = 'combined'
         }
-      } else if (report.score_type === 'bot') {
-        component = <PrimaryBOTReport reportData={report} />
-        type = 'PrimaryBOTReport'
-      } else {
-        component = <PrimaryMOTReport reportData={report} />
-        type = 'PrimaryMOTReport'
       }
-    } else if (format === 'theology') {
-      if (report.section_type === 'nursery' && report.score_type === 'eot') {
-        component = <NurseryTheologyEOTReport reportData={report} />
-        type = 'NurseryTheologyEOTReport'
-      } else {
-        component = <TheologyMOTReport reportData={report} />
-        type = 'TheologyMOTReport'
+
+      if (format === 'combined' || format === 'circular') {
+        if (isPrim && report.score_type === 'eot') {
+          component = isP7 ? <P7EOTReport reportData={report} /> : <PrimaryEOTReport reportData={report} />
+          type = isP7 ? 'P7EOTReport' : 'PrimaryEOTReport'
+        } else if (report.section_type === 'nursery') {
+          if (report.score_type === 'mot') {
+            component = <NurseryMOTReport reportData={report} />
+            type = 'NurseryMOTReport'
+          } else {
+            component = <NurseryEOTReport reportData={report} />
+            type = 'NurseryEOTReport'
+          }
+        } else if (report.score_type === 'bot') {
+          component = <PrimaryBOTReport reportData={report} />
+          type = 'PrimaryBOTReport'
+        } else {
+          component = <PrimaryMOTReport reportData={report} />
+          type = 'PrimaryMOTReport'
+        }
+      } else if (format === 'theology') {
+        if (report.section_type === 'nursery' && report.score_type === 'eot') {
+          component = <NurseryTheologyEOTReport reportData={report} />
+          type = 'NurseryTheologyEOTReport'
+        } else {
+          component = <TheologyMOTReport reportData={report} />
+          type = 'TheologyMOTReport'
+        }
       }
-    }
 
-    if (!component || !type) return null
+      if (!component || !type) return null
 
-    return { component, type }
-  }, [filterState.curriculum])
+      return { component, type }
+    },
+    [filterState.curriculum]
+  )
 
-  const renderJiddahReport = useCallback((report: ReportData, isActive: boolean) => {
-    const resolved = resolveReport(report)
-    if (!resolved) return <div className="p-8 text-rose-600">Error: Unmapped report format.</div>
+  const renderJiddahReport = useCallback(
+    (report: ReportData, isActive: boolean) => {
+      const resolved = resolveReport(report)
+      if (!resolved) return <div className="p-8 text-rose-600">Error: Unmapped report format.</div>
 
-    return (
-      <ReportPreviewCell
-        reportType={resolved.type}
-        zoom={zoom}
-        isActive={isActive}
-        onClick={() => setActiveReportId(report.id)}
-      >
-        {resolved.component}
-      </ReportPreviewCell>
-    )
-  }, [resolveReport, zoom])
+      return (
+        <ReportPreviewCell
+          reportType={resolved.type}
+          zoom={zoom}
+          isActive={isActive}
+          onClick={() => setActiveReportId(report.id)}
+        >
+          {resolved.component}
+        </ReportPreviewCell>
+      )
+    },
+    [resolveReport, zoom]
+  )
 
   const printableReports = useMemo(() => {
     if (printScope === 'current') {
-      const current = rawReports.find(r => r.id === activeReportId)
+      const current = rawReports.find((r) => r.id === activeReportId)
       return current ? [current] : []
     }
     if (Array.isArray(printScope)) {
-      return rawReports.filter(r => printScope.includes(r.id))
+      return rawReports.filter((r) => printScope.includes(r.id))
     }
     return rawReports
   }, [rawReports, printScope, activeReportId])
 
   return (
-    <div className="h-full bg-[#FDFBF7] dark:bg-[#0A100E] font-sans flex flex-col relative overflow-hidden text-stone-800 dark:text-stone-100">
+    <div
+      data-testid="report-center-workspace"
+      className="h-full bg-[#EEF3F0] dark:bg-[#0B110E] font-sans flex flex-col relative overflow-hidden text-stone-800 dark:text-stone-100 p-2 sm:p-3 gap-2 sm:gap-2.5"
+    >
       <PrintDialog
         open={isPrintDialogOpen}
         onOpenChange={setIsPrintDialogOpen}
@@ -534,12 +585,14 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
           let sanitizedFilename = 'Report.pdf'
 
           if (mode === 'current') {
-            const currentReport = rawReports.find(r => r.id === activeReportId)
+            const currentReport = rawReports.find((r) => r.id === activeReportId)
             const studentName = (currentReport as any)?.student?.name || 'Student'
             const term = filterState.term ? `_Term_${filterState.term}` : ''
             sanitizedFilename = `${studentName}${term}_Report.pdf`
           } else if (mode === 'all') {
-            const className = (filterState as any).classIds?.[0] ? figmaClasses.find(c => c.id === (filterState as any).classIds[0])?.name || 'Batch' : 'Batch'
+            const className = (filterState as any).classIds?.[0]
+              ? figmaClasses.find((c) => c.id === (filterState as any).classIds[0])?.name || 'Batch'
+              : 'Batch'
             const term = filterState.term ? `_Term_${filterState.term}` : ''
             sanitizedFilename = `${className}${term}_Batch_Reports.pdf`
           } else {
@@ -563,87 +616,299 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
         }}
       />
 
-      <div className="print:hidden">
+      {/* Zone 1 Unified Live Control Bar */}
+      <div className="print:hidden shrink-0">
         <TopToolbar
-          onSearchToggle={() => setSearchOpen(o => !o)}
-          searchOpen={searchOpen}
-          downloadOptions={[
-            {
-              label: 'Print / Save as PDF',
-              icon: <Printer size={15} />,
-              onClick: handlePrint
-            },
-            {
-              label: 'Download Broadsheet (CSV)',
-              icon: <FileSpreadsheet size={15} />,
-              onClick: handleDownload
-            }
-          ]}
+          classCohortSelect={
+            <CustomPillSelect
+              id="reports-class-cohort-select"
+              ariaLabel="Class Cohort"
+              value={filterState.classIds[0] || ''}
+              onChange={(val) => {
+                if (typeof window !== 'undefined') {
+                  localStorage.setItem('jiddah_reports_last_class', val)
+                }
+                setFilterState((prev) => ({ ...prev, classIds: [val] }))
+              }}
+              options={figmaClasses.map((c) => ({
+                value: c.id,
+                label: `${c.name} (${c.enrollmentIds.length})`,
+              }))}
+              className="shrink-0"
+              triggerClassName="h-8.5 px-3 rounded-full text-xs font-semibold shrink-0"
+            />
+          }
+          activeTermPill={
+            <span
+              data-testid="reports-active-term-pill"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#0D5C3A]/10 dark:bg-[#10B981]/15 text-[#0D5C3A] dark:text-[#34D399] text-[11px] font-semibold shrink-0"
+            >
+              ● {activeTermLabel}
+            </span>
+          }
+          phaseTrack={
+            <div
+              data-testid="reports-phase-track"
+              className="inline-flex items-center bg-[#F0F4F9] dark:bg-[#1E2623] p-0.5 rounded-full border border-black/[0.04] dark:border-white/[0.06] shrink-0"
+            >
+              {(['BOT', 'MOT', 'EOT'] as const).map((p) => {
+                const isActive = filterState.phase.toUpperCase() === p
+                return (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setFilterState((prev) => ({ ...prev, phase: p }))}
+                    className={`h-7 px-3 rounded-full text-xs font-semibold transition cursor-pointer ${
+                      isActive
+                        ? 'bg-[#0D5C3A] text-white shadow-2xs font-bold'
+                        : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                )
+              })}
+            </div>
+          }
+          curriculumTrack={
+            <div
+              data-testid="reports-curriculum-track"
+              className="inline-flex items-center bg-[#F0F4F9] dark:bg-[#1E2623] p-0.5 rounded-full border border-black/[0.04] dark:border-white/[0.06] shrink-0"
+            >
+              {[
+                { id: 'both', label: 'Both' },
+                { id: 'secular', label: 'Secular' },
+                { id: 'theology', label: 'Theology' },
+              ].map((c) => {
+                const isActive =
+                  c.id === 'both'
+                    ? filterState.curriculum === 'combined'
+                    : filterState.curriculum === c.id
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() =>
+                      setFilterState((prev) => ({
+                        ...prev,
+                        curriculum: c.id === 'both' ? 'combined' : (c.id as 'secular' | 'theology'),
+                      }))
+                    }
+                    className={`h-7 px-3 rounded-full text-xs font-semibold transition cursor-pointer ${
+                      isActive
+                        ? 'bg-[#0D5C3A] text-white shadow-2xs font-bold'
+                        : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white'
+                    }`}
+                  >
+                    {c.label}
+                  </button>
+                )
+              })}
+            </div>
+          }
+          primaryPrintAction={{
+            label: printButtonLabel,
+            onClick: handlePrintSelected,
+            disabled: selectedStudentIds.length === 0 || isGenerating,
+          }}
           onDownload={handleDownload}
           onPrint={handlePrint}
           onShare={handleShare}
           reportCount={rawReports.length}
           layout={filterState.layout || 'single'}
-          onLayoutToggle={() => setFilterState({ ...filterState, layout: filterState.layout === 'grid' ? 'single' : 'grid' })}
+          onLayoutToggle={() =>
+            setFilterState((prev) => ({
+              ...prev,
+              layout: prev.layout === 'grid' ? 'single' : 'grid',
+            }))
+          }
+          isGenerating={isGenerating}
         />
       </div>
 
-      <AnimatePresence>
-        {searchOpen && (
-          <div className="print:hidden relative z-40 flex-shrink-0 shadow-sm border-b border-stone-200 dark:border-[#1C2622] bg-[#FAF7F2] dark:bg-[#0D1412]">
-            <SearchFilterBar
-              open={searchOpen}
-              enrollments={figmaEnrollments}
-              classes={figmaClasses}
-              filterState={filterState}
-              onChange={(patch) => setFilterState({ ...filterState, ...patch })}
-              onGenerate={handleGenerate}
-              onPrintSelected={handlePrintSelected}
-              isGenerating={isGenerating}
-              completionByEnrollment={completionByEnrollment}
-            />
+      {/* Dedicated Mobile Controls (< lg) */}
+      <div className="lg:hidden flex flex-col gap-1.5 shrink-0 print:hidden">
+        {/* Row 1: Class + Term/Phase */}
+        <div className="grid grid-cols-2 gap-1.5 p-2 bg-white dark:bg-[#151D1A] rounded-2xl border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20">
+          <CustomPillSelect
+            id="reports-mobile-class-select"
+            ariaLabel="Class"
+            value={filterState.classIds[0] || ''}
+            onChange={(val) => {
+              if (typeof window !== 'undefined') {
+                localStorage.setItem('jiddah_reports_last_class', val)
+              }
+              setFilterState((prev) => ({ ...prev, classIds: [val] }))
+            }}
+            options={figmaClasses.map((c) => ({
+              value: c.id,
+              label: `${c.name} (${c.enrollmentIds.length})`,
+            }))}
+            className="w-full"
+            triggerClassName="w-full h-8 px-2.5 text-xs font-semibold"
+          />
+          <div className="flex items-center justify-between gap-1 px-2.5 py-1 rounded-full bg-[#F0F4F9] dark:bg-[#1E2623] border border-black/[0.04] dark:border-white/[0.06]">
+            <span className="text-[10px] font-bold text-[#0D5C3A] dark:text-[#34D399] truncate">
+              ● Term {activeTermNumber}
+            </span>
+            <div className="flex items-center gap-0.5">
+              {(['BOT', 'MOT', 'EOT'] as const).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setFilterState((prev) => ({ ...prev, phase: p }))}
+                  className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                    filterState.phase.toUpperCase() === p
+                      ? 'bg-[#0D5C3A] text-white'
+                      : 'text-stone-500 dark:text-stone-400'
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
           </div>
-        )}
-      </AnimatePresence>
+        </div>
 
-      <div className="flex flex-1 min-h-0 overflow-hidden relative">
-        <DocumentCanvas
-          reports={rawReports}
-          activeReportId={activeReportId}
-          onSelectReport={setActiveReportId}
-          renderReport={renderJiddahReport}
-          zoom={zoom}
-          layout={filterState.layout}
-          onZoomIn={handleZoomIn}
-          onZoomOut={handleZoomOut}
-          onFitScreen={handleFitScreen}
-          onSearchOpen={() => setSearchOpen(true)}
-          printScope={printScope}
-        />
-
-        <div
-          className={`print:hidden absolute right-0 top-0 bottom-0 z-40 md:relative flex flex-col h-full ${
-            sidePanelOpen ? "shadow-2xl md:shadow-none bg-white dark:bg-[#111916]" : ""
-          }`}
-          style={{ pointerEvents: sidePanelOpen ? 'auto' : 'none' }}
-        >
-          <div style={{ pointerEvents: 'auto', height: '100%' }}>
-            <SidePanel
-              open={sidePanelOpen}
-              onToggle={() => setSidePanelOpen(o => !o)}
-              activeReport={rawReports.find(r => r.id === activeReportId) || null}
-              reports={rawReports}
-            />
+        {/* Row 2: 2-Tab Switcher + Compact Print CTA */}
+        <div className="flex items-center justify-between gap-2 p-1.5 bg-white dark:bg-[#151D1A] rounded-2xl border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20">
+          <div className="flex-1 grid grid-cols-2 p-0.5 rounded-full bg-[#F0F4F9] dark:bg-[#1E2623]">
+            <button
+              type="button"
+              onClick={() => setMobileTab('students')}
+              className={`h-7 rounded-full text-xs font-semibold flex items-center justify-center gap-1.5 transition ${
+                mobileTab === 'students'
+                  ? 'bg-[#0D5C3A] text-white font-bold shadow-2xs'
+                  : 'text-stone-600 dark:text-stone-300'
+              }`}
+            >
+              <Users size={13} />
+              <span>Students ({activeClassEnrollments.length})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobileTab('preview')}
+              className={`h-7 rounded-full text-xs font-semibold flex items-center justify-center gap-1.5 transition ${
+                mobileTab === 'preview'
+                  ? 'bg-[#0D5C3A] text-white font-bold shadow-2xs'
+                  : 'text-stone-600 dark:text-stone-300'
+              }`}
+            >
+              <FileText size={13} />
+              <span>Preview</span>
+            </button>
           </div>
+
+          <motion.button
+            type="button"
+            onClick={handlePrintSelected}
+            disabled={selectedStudentIds.length === 0 || isGenerating}
+            whileTap={{ scale: 0.96 }}
+            className="h-7.5 px-3.5 rounded-full btn-jiddah-cta text-xs font-bold inline-flex items-center gap-1.5 shrink-0 disabled:opacity-40"
+          >
+            <Printer size={13} />
+            <span>Print ({selectedStudentIds.length})</span>
+          </motion.button>
         </div>
       </div>
 
+      {/* 2-Pane Split Workspace */}
+      <div className="flex flex-1 min-h-0 overflow-hidden relative gap-3">
+        {/* Desktop Left Sidebar Card */}
+        <div className="hidden lg:flex w-[300px] xl:w-[320px] shrink-0 h-full">
+          <StudentRosterSidebar
+            enrollments={activeClassEnrollments}
+            selectedIds={selectedStudentIds}
+            onToggleSelect={handleToggleSelect}
+            onSelectAll={handleSelectAll}
+            onClearAll={handleClearAll}
+            activeReportId={activeReportId}
+            onSelectStudent={(id) => {
+              setActiveReportId(id)
+              if (filterState.layout === 'grid') {
+                const el = document.querySelector(`[data-report-id="${id}"]`)
+                el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+              }
+            }}
+            completionByEnrollment={completionByEnrollment}
+            reports={rawReports}
+            className="w-full h-full"
+          />
+        </div>
+
+        {/* Mobile View: Render either Student Roster or Preview based on mobileTab */}
+        <div className="lg:hidden flex flex-1 min-h-0 w-full h-full">
+          {mobileTab === 'students' ? (
+            <StudentRosterSidebar
+              enrollments={activeClassEnrollments}
+              selectedIds={selectedStudentIds}
+              onToggleSelect={handleToggleSelect}
+              onSelectAll={handleSelectAll}
+              onClearAll={handleClearAll}
+              activeReportId={activeReportId}
+              onSelectStudent={(id) => {
+                setActiveReportId(id)
+                setMobileTab('preview')
+              }}
+              completionByEnrollment={completionByEnrollment}
+              reports={rawReports}
+              className="w-full h-full"
+            />
+          ) : (
+            <DocumentCanvas
+              reports={rawReports}
+              activeReportId={activeReportId}
+              onSelectReport={setActiveReportId}
+              renderReport={renderJiddahReport}
+              zoom={zoom}
+              layout={filterState.layout}
+              onZoomIn={handleZoomIn}
+              onZoomOut={handleZoomOut}
+              onFitScreen={handleFitScreen}
+              onLayoutToggle={() =>
+                setFilterState((prev) => ({
+                  ...prev,
+                  layout: prev.layout === 'grid' ? 'single' : 'grid',
+                }))
+              }
+              printScope={printScope}
+            />
+          )}
+        </div>
+
+        {/* Desktop Right Stage: Preview Canvas */}
+        <div className="hidden lg:flex flex-1 min-h-0 h-full rounded-2xl border border-[#0D5C3A]/12 dark:border-[#F59E0B]/15 overflow-hidden">
+          <DocumentCanvas
+            reports={rawReports}
+            activeReportId={activeReportId}
+            onSelectReport={setActiveReportId}
+            renderReport={renderJiddahReport}
+            zoom={zoom}
+            layout={filterState.layout}
+            onZoomIn={handleZoomIn}
+            onZoomOut={handleZoomOut}
+            onFitScreen={handleFitScreen}
+            onLayoutToggle={() =>
+              setFilterState((prev) => ({
+                ...prev,
+                layout: prev.layout === 'grid' ? 'single' : 'grid',
+              }))
+            }
+            printScope={printScope}
+          />
+        </div>
+      </div>
+
+      {/* Print Portal for Stable true A4 Printing */}
       {(() => {
-        const reportsToPrint = printableReports.length > 0
-          ? printableReports
-          : (rawReports.filter(r => r.id === activeReportId).length > 0
-              ? rawReports.filter(r => r.id === activeReportId)
-              : (rawReports.length > 0 ? [rawReports[0]] : []))
+        const reportsToPrint =
+          printableReports.length > 0
+            ? printableReports
+            : rawReports.filter((r) => r.id === activeReportId).length > 0
+            ? rawReports.filter((r) => r.id === activeReportId)
+            : rawReports.length > 0
+            ? [rawReports[0]]
+            : []
 
         if (reportsToPrint.length === 0) {
           return (

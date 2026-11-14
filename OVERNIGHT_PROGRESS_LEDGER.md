@@ -624,6 +624,57 @@ Exit code: 0
      - Automated test suite (`src/__tests__/overhaul-workstreams.test.mjs`): 48/48 tests across 15 suites pass (100% pass rate).
      - Next.js webpack production build (`npm run build`): 68/68 routes compiled cleanly with zero build errors.
 
+---
+
+## Milestone 20: Report Center Module Overhaul — Smart Defaults, Zone 1 Control Bar & 2-Pane Split-Workspace
+
+- **Files Modified / Created:**
+  - `src/components/ReportGeneratorClient.tsx`
+  - `src/components/figma-ui/TopToolbar.tsx`
+  - `src/components/figma-ui/DocumentCanvas.tsx`
+  - `src/components/figma-ui/StudentRosterSidebar.tsx` (new component)
+  - `src/components/figma-ui/EmptyState.tsx`
+  - `src/components/reports/ReportPreviewCell.tsx`
+  - `src/components/layout/reports-client.tsx`
+  - `src/__tests__/overhaul-workstreams.test.mjs`
+  - `OVERNIGHT_PROGRESS_LEDGER.md`
+  - `public/sw.js`
+- **Scope & Workstreams Completed:**
+  1. **Workstream 1: Smart Defaults — Eliminate the Blank Landing Screen (`ReportGeneratorClient.tsx`):**
+     - Automatically resolves active term from database (`terms.find(t => t.is_current) || terms[0]`), default phase `EOT`, and default curriculum `secular`.
+     - Automatically selects first available class (or last-used class from `localStorage`) on initial mount.
+     - Immediately fetches that class's student roster and generates live report cards without requiring teachers to manually open a filter drawer.
+     - Completely eliminates the empty landing screen (`"Report Cards Ready to Generate"`).
+  2. **Workstream 2: Dark Mode Stage Contrast & Zone 1 Unified Control Bar (`TopToolbar.tsx`, `ReportPreviewCell.tsx`):**
+     - Replaced blinding white canvas backdrop with eye-friendly `bg-[#EEF3F0] dark:bg-[#0B110E]` and ambient emerald/gold radial dot wash (`#0D5C3A`/`#F59E0B`).
+     - Set report preview sheets to crisp `#FFFFFF` paper with elevated shadow (`shadow-[0_12px_36px_rgba(0,0,0,0.12)] dark:shadow-[0_16px_48px_rgba(0,0,0,0.65)]`).
+     - Deleted duplicate, clipped `"Report Center"` text title from `TopToolbar.tsx`.
+     - Built **Zone 1 Unified Live Control Bar** (`bg-white dark:bg-[#151D1A] rounded-2xl px-3 py-2 border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 shadow-2xs`):
+       - Left: Class Cohort `CustomPillSelect` (`id="reports-class-cohort-select"`) + Read-only Active Term confirmation pill (`● Term 3, 2026`).
+       - Center: Borderless Exam Phase track (`[ BOT | MOT | EOT ]`) + Curriculum track (`[ Both | Secular | Theology ]`).
+       - Right: Count-Aware Primary Print CTA button (`.btn-jiddah-cta`, dynamically labeled `Print 15 Reports`, `Print 4 Selected`, or `Print 1 Report`) + `MoreActionsMenu` (`⋮`) housing Report Studio 2.0, PDF/Export, CSV Broadsheet, and Signature settings.
+  3. **Workstream 3: Frictionless Split-Pane Checklist (Desktop) & Segmented Switcher (Mobile):**
+     - Eliminated clumsy hidden filter drawer and floating `<` edge tab from `SidePanel.tsx`.
+     - **Desktop Split-Pane Layout:**
+       - Left Sidebar Card (`StudentRosterSidebar.tsx`, `w-[300px] xl:w-[320px] shrink-0`):
+         - Top header strip with real-time student search, completion status chips (`All`, `Ready`, `Incomplete`), and master `Select All` / `Clear` button.
+         - Scrollable student checklist with batch checkboxes, `Shift+Click` range selection, avatar circle, student name, and Division/Grade badges (`Div I`, `Grade A`, `Missing`). Clicking any student smoothly focuses their report card in the preview stage.
+         - Footer strip with selection summary (`"15 of 15 selected for batch print"`).
+       - Right Preview Stage (`DocumentCanvas.tsx`, `flex-1 min-w-0`):
+         - Top Mini Bar inside stage: Active student indicator (`1 of 15 • MUWANGUZI JEREMIAH`), `< Prev` / `Next >` navigation steppers, `Single View | Continuous Scroll` toggle, and ONE unified Zoom control (`- | 75% | + | Fit`).
+         - Deleted duplicate bottom-center and bottom-right floating zoom controls.
+         - Scrollable A4 viewport rendering locked templates with responsive scale transform.
+     - **Dedicated Mobile Layout (`< lg`):**
+       - Row 1: Class `CustomPillSelect` + Active Term & Phase pill.
+       - Row 2: 2-tab segmented pill switcher `[ 👥 Students (15) | 📄 Preview Report ]` next to compact `🖨️ Print (15)` pill button.
+       - Tapping any student row/preview switches automatically to `📄 Preview Report` scaled dynamically to fit 100% of mobile screen width with zero horizontal scrollbars.
+  4. **Workstream 4: Verification Gate:**
+     - Verified all 6 locked report card components (`PrimaryEOTReport`, `PrimaryMOTReport`, `NurseryEOTReport`, `NurseryMOTReport`, `TheologyMOTReport`, `NurseryTheologyEOTReport`) remain 100% untouched.
+     - TypeScript check (`npm run typecheck`): 0 errors across entire codebase.
+     - Automated test suite (`src/__tests__/overhaul-workstreams.test.mjs`): 51/51 tests across 16 suites pass (100% pass rate).
+     - Next.js webpack production build (`npm run build`): 68/68 routes compiled cleanly with zero build errors.
+
+
 
 
 

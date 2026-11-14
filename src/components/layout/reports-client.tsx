@@ -200,14 +200,14 @@ export default function ReportsClient({
 
       <div className="w-full px-4 sm:px-6 lg:px-8 mt-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          <div className="lg:col-span-2 rounded-2xl overflow-hidden bg-white shadow-sm border border-slate-200">
-            <div className="px-6 py-5 border-b border-slate-100">
-              <h2 className="text-base font-bold text-slate-800">Generate New Reports</h2>
-              <p className="text-xs text-slate-500">Select options and generate reports</p>
+          <div className="lg:col-span-2 rounded-2xl overflow-hidden bg-white dark:bg-[#151D1A] shadow-sm border border-slate-200 dark:border-white/[0.08]">
+            <div className="px-6 py-5 border-b border-slate-100 dark:border-white/[0.06]">
+              <h2 className="text-base font-bold text-slate-800 dark:text-[#F3F7F5]">Generate New Reports</h2>
+              <p className="text-xs text-slate-500 dark:text-[#9CA3AF]">Select options and generate reports</p>
             </div>
             <div className="p-6">
               <div className="mb-5">
-                <label className="block mb-3 text-sm font-semibold text-slate-700">Report Type</label>
+                <label className="block mb-3 text-sm font-semibold text-slate-700 dark:text-[#E3E3E3]">Report Type</label>
                 <div className="grid grid-cols-3 gap-3">
                   {[
                     { id: "individual", label: "Individual", desc: "Per-student report cards", icon: FileText },
@@ -217,11 +217,11 @@ export default function ReportsClient({
                     <button
                       key={id}
                       onClick={() => setReportType(id)}
-                      className={`p-4 rounded-xl text-left border-2 transition-all ${reportType === id ? 'border-emerald-500 bg-emerald-50' : 'border-transparent bg-slate-50'}`}
+                      className={`p-4 rounded-xl text-left border-2 transition-all ${reportType === id ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30' : 'border-transparent bg-slate-50 dark:bg-[#1E2623]'}`}
                     >
                       <Icon className={`w-5 h-5 mb-2 ${reportType === id ? 'text-emerald-500' : 'text-slate-400'}`} />
-                      <p className={`text-sm font-semibold ${reportType === id ? 'text-emerald-800' : 'text-slate-700'}`}>{label}</p>
-                      <p className="text-xs text-slate-500">{desc}</p>
+                      <p className={`text-sm font-semibold ${reportType === id ? 'text-emerald-800 dark:text-emerald-300' : 'text-slate-700 dark:text-slate-200'}`}>{label}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">{desc}</p>
                     </button>
                   ))}
                 </div>
@@ -229,7 +229,7 @@ export default function ReportsClient({
 
               <div className="grid grid-cols-2 gap-4 mb-5">
                 <div>
-                  <label className="block mb-1.5 text-sm font-semibold text-slate-700">Class</label>
+                  <label className="block mb-1.5 text-sm font-semibold text-slate-700 dark:text-[#E3E3E3]">Class</label>
                   <CustomPillSelect
                     id="reports-class-select"
                     ariaLabel="Class"
@@ -240,7 +240,7 @@ export default function ReportsClient({
                   />
                 </div>
                 <div>
-                  <label className="block mb-1.5 text-sm font-semibold text-slate-700">Academic Term</label>
+                  <label className="block mb-1.5 text-sm font-semibold text-slate-700 dark:text-[#E3E3E3]">Academic Term</label>
                   <CustomPillSelect
                     id="reports-term-select"
                     ariaLabel="Academic Term"
@@ -255,23 +255,23 @@ export default function ReportsClient({
 
 
               {generating && (
-                <div className="mb-5 p-4 rounded-xl border border-emerald-200 bg-emerald-50">
+                <div className="mb-5 p-4 rounded-xl border border-emerald-200 dark:border-emerald-800/60 bg-emerald-50 dark:bg-emerald-950/30">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-emerald-800 font-semibold">Generating reports...</span>
+                    <span className="text-sm text-emerald-800 dark:text-emerald-300 font-semibold">Generating reports...</span>
                     <span className="text-sm text-emerald-500 font-bold">{generationProgress}%</span>
                   </div>
-                  <div className="h-2 rounded-full overflow-hidden bg-emerald-100">
+                  <div className="h-2 rounded-full overflow-hidden bg-emerald-100 dark:bg-emerald-900/50">
                     <div className="h-full rounded-full transition-all duration-300 bg-emerald-500" style={{ width: `${generationProgress}%` }} />
                   </div>
                 </div>
               )}
 
               {generationDone && !generating && (
-                <div className="mb-5 p-4 rounded-xl flex items-center gap-3 border border-emerald-200 bg-emerald-50">
+                <div className="mb-5 p-4 rounded-xl flex items-center gap-3 border border-emerald-200 dark:border-emerald-800/60 bg-emerald-50 dark:bg-emerald-950/30">
                   <Check className="w-5 h-5 text-emerald-500" />
                   <div>
-                    <p className="text-sm text-emerald-800 font-semibold">Reports generated successfully!</p>
-                    <p className="text-xs text-slate-500">Ready for preview and download</p>
+                    <p className="text-sm text-emerald-800 dark:text-emerald-300 font-semibold">Reports generated successfully!</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Ready for preview and download</p>
                   </div>
                 </div>
               )}
@@ -279,7 +279,7 @@ export default function ReportsClient({
               <div className="flex gap-3">
                 <Link
                   href="/admin/reports/blank"
-                  className="flex items-center gap-2 px-5 py-3 rounded-xl font-semibold hover:bg-slate-50 transition-all border border-slate-200 text-slate-700 text-sm"
+                  className="flex items-center gap-2 px-5 py-3 rounded-xl font-semibold hover:bg-slate-50 dark:hover:bg-[#1E2623] transition-all border border-slate-200 dark:border-white/[0.08] text-slate-700 dark:text-[#E3E3E3] text-sm"
                   target="_blank"
                 >
                   <Printer className="w-4 h-4" /> Blank Templates
@@ -294,7 +294,7 @@ export default function ReportsClient({
                 </button>
                 {generationDone && (
                   <button
-                    className="flex items-center gap-2 px-5 py-3 rounded-xl font-semibold hover:bg-slate-50 transition-all border border-slate-200 text-slate-700 text-sm"
+                    className="flex items-center gap-2 px-5 py-3 rounded-xl font-semibold hover:bg-slate-50 dark:hover:bg-[#1E2623] transition-all border border-slate-200 dark:border-white/[0.08] text-slate-700 dark:text-[#E3E3E3] text-sm"
                     onClick={openClassBatchPreview}
                   >
                     <Eye className="w-4 h-4" /> Preview Class
@@ -306,20 +306,20 @@ export default function ReportsClient({
 
           <div className="space-y-4">
             {statsCards.map(({ label, value, subtitle, color, bg }) => (
-              <div key={label} className="rounded-2xl p-5 bg-white border border-slate-200 shadow-sm">
+              <div key={label} className="rounded-2xl p-5 bg-white dark:bg-[#151D1A] border border-slate-200 dark:border-white/[0.08] shadow-sm">
                 <p className="text-xs text-slate-400 uppercase font-semibold">{label}</p>
                 <p className="text-3xl font-bold mt-1" style={{ color }}>{value}</p>
-                <p className="text-xs text-slate-500">{subtitle}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{subtitle}</p>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="rounded-2xl overflow-hidden bg-white shadow-sm border border-slate-200">
-          <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
+        <div className="rounded-2xl overflow-hidden bg-white dark:bg-[#151D1A] shadow-sm border border-slate-200 dark:border-white/[0.08]">
+          <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 dark:border-white/[0.06]">
             <div>
-              <h2 className="text-base font-bold text-slate-800">Report History</h2>
-              <p className="text-xs text-slate-500">All previously generated reports</p>
+              <h2 className="text-base font-bold text-slate-800 dark:text-[#F3F7F5]">Report History</h2>
+              <p className="text-xs text-slate-500 dark:text-[#9CA3AF]">All previously generated reports</p>
             </div>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -327,7 +327,7 @@ export default function ReportsClient({
                 placeholder="Search reports..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="pl-9 pr-4 py-2 rounded-xl border border-slate-200 bg-white text-sm outline-none w-[200px]"
+                className="pl-9 pr-4 py-2 rounded-xl border border-slate-200 dark:border-white/[0.08] bg-white dark:bg-[#1E2623] text-sm text-[#111827] dark:text-[#F3F7F5] outline-none w-[200px]"
               />
             </div>
           </div>

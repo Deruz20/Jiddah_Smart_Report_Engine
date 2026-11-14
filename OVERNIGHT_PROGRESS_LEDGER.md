@@ -674,6 +674,50 @@ Exit code: 0
      - Automated test suite (`src/__tests__/overhaul-workstreams.test.mjs`): 51/51 tests across 16 suites pass (100% pass rate).
      - Next.js webpack production build (`npm run build`): 68/68 routes compiled cleanly with zero build errors.
 
+---
+
+## Milestone 21: Full-Width WhatsApp Document Preview, Dual-Curriculum Report Data Pipeline & Print Stability
+
+- **Files Modified / Created:**
+  - `src/app/api/report/route.ts`
+  - `src/app/api/report/batch/route.ts`
+  - `src/lib/report-selection.ts`
+  - `src/components/ReportGeneratorClient.tsx`
+  - `src/components/figma-ui/TopToolbar.tsx`
+  - `src/components/figma-ui/DocumentCanvas.tsx`
+  - `src/components/figma-ui/StudentRosterSidebar.tsx`
+  - `src/components/reports/ReportPreviewCell.tsx`
+  - `src/components/reports/TheologyMOTReport.tsx`
+  - `src/styles/reports/print-system.css`
+  - `src/__tests__/overhaul-workstreams.test.mjs`
+  - `OVERNIGHT_PROGRESS_LEDGER.md`
+  - `public/sw.js`
+- **Scope & Workstreams Completed:**
+  1. **Workstream 1: Restore the Full-Width Document Preview Stage (WhatsApp Doc Preview + MS Office Compact Top Ribbon):**
+     - **Eliminated Permanently Pinned 320px Sidebar:** Removed the permanent left desktop sidebar from `ReportGeneratorClient.tsx`, dedicating 100% of workspace width and height below the top editor bar to the centered `DocumentCanvas`.
+     - **Topbar Popover Student & Batch Checklist:** Added interactive `studentSelectorPill` (`👥 23 Selected • Nakabiito Rahmah ▾`) directly into `TopToolbar.tsx` and mobile controls, opening the searchable `StudentRosterSidebar` inside an anchored floating popover (`w-[340px] max-h-[75dvh] rounded-2xl shadow-2xl z-50`) with search, filter chips, master Select All / Clear, Shift+Click checkboxes, and instant student jump navigation.
+     - **WhatsApp-Style Floating Control Dock (`DocumentCanvas.tsx`):** Removed the redundant top mini-bar inside the canvas. Implemented a WhatsApp-style floating vertical control dock anchored on the right edge of the stage:
+       - Page Counter badge (`1/23`).
+       - Up `∧` and Down `∨` chevron navigation steppers (`ChevronUp` & `ChevronDown`).
+       - Fine hairline divider.
+       - Unified Zoom control cluster: Zoom In `⊕`, current zoom % button (click to reset/fit), Zoom Out `⊖`, and Fit-to-screen button `⛶` (`Maximize2`).
+  2. **Workstream 2: Fix Report Data Pipeline (Theology Marks & Term Number Reconciliation):**
+     - **Term Reconciliation:** Reconciled equivalent term records by `(academic_year, term_number)` in `/api/report/route.ts` and `/api/report/batch/route.ts`, querying `circular_marks` and `theology_marks` with `.in('term_id', termIds)` to prevent missing marks across seeded/cloned term rows.
+     - **Theology Subjects Table Lookup:** Fixed bug in `/api/report/route.ts` line 401: corrected query from `subjects` to `theology_subjects` (`id, subject_name_arabic, level, sort_order`).
+     - **Dual-Curriculum Arabic Marks Population:** In both single and batch report routes, removed `curriculum === 'secular' ? null : theologySectionData` truncation. Always fetch and populate `theology: theologySectionData`, `theology_class_arabic`, and `theology_class_english` whenever the student has a theology class enrolled, ensuring `PrimaryEOTReport` and dual-curriculum report cards always receive complete Arabic theology marks.
+     - **Eliminated False "Missing" Badges (`StudentRosterSidebar.tsx`):** Evaluated student readiness based on loaded `reportsData`: students with recorded marks or computed divisions display `Ready` or their Division badge (`Div I`, `Div II`), only labeling students with zero recorded marks as `Missing`.
+     - **Dark-Mode Paper Bleed Prevention:** Enforced `color-scheme: light !important; color: #0F172A !important; background-color: #ffffff !important;` on `.report-preview-shell`, `.report-container`, and `ReportPreviewCell.tsx`, preventing dark theme CSS variables from bleeding into the white report sheets.
+  3. **Workstream 3: Fix Print Preview Clipping & Standard Paper Sizes:**
+     - In `print-system.css`, enforced `@page { size: A4 portrait; margin: 0mm; }` and reset all wrappers in `@media print` with `transform: none !important;`.
+     - Standardized `.a4-two-up-page` (`width: 210mm; height: 297mm; max-height: 297mm; padding: 5mm 8mm; box-sizing: border-box; overflow: hidden; page-break-after: always; break-after: page;`).
+     - Constrained each half-card slot to `max-height: 138mm` and cut divider to `6mm` (`5 + 138 + 6 + 138 + 5 = 292mm < 297mm`), completely eliminating second-card cutoff in browser print previews for `TheologyMOTReport` / `Theology2UpPrintSheet`.
+     - Standardized `.a4-full-page-container` for single-sheet A4 reports (`210mm × 297mm`, `padding: 6mm 8mm`).
+  4. **Workstream 4: Verification Gate:**
+     - Verified all 6 locked report card components (`PrimaryEOTReport`, `PrimaryMOTReport`, `NurseryEOTReport`, `NurseryMOTReport`, `TheologyMOTReport`, `NurseryTheologyEOTReport`) remain 100% stable and untouched.
+     - TypeScript check (`npm run typecheck`): 0 errors across entire repository.
+     - Automated test suite (`src/__tests__/overhaul-workstreams.test.mjs`): 56/56 tests across 17 suites pass (100% pass rate).
+     - Next.js webpack production build (`npm run build`): 68/68 routes compiled cleanly with zero build errors.
+
 
 
 

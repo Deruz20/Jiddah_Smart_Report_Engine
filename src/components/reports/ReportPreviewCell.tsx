@@ -83,6 +83,8 @@ export function ReportPreviewCell({
         overflow: 'hidden',
         borderRadius: 6,
         background: '#FFFFFF',
+        colorScheme: 'light',
+        color: '#0F172A',
         boxShadow: isActive
           ? '0 0 0 3px #0D5C3A, 0 16px 48px rgba(0,0,0,0.35)'
           : undefined,

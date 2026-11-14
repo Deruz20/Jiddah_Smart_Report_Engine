@@ -45,6 +45,13 @@ export function StudentRosterSidebar({
     return map;
   }, [reports]);
 
+  // Helper to determine if an enrollment is ready with marks
+  const isStudentReady = React.useCallback((enrollmentId: string) => {
+    const rep = reportMap[enrollmentId];
+    if (rep?.division || (typeof rep?.total === 'number' && rep.total > 0)) return true;
+    return completionByEnrollment[enrollmentId] === 'complete';
+  }, [reportMap, completionByEnrollment]);
+
   // Filter visible students by search and completion status
   const visibleStudents = useMemo(() => {
     let list = enrollments;
@@ -58,27 +65,22 @@ export function StudentRosterSidebar({
       );
     }
 
-    if (statusFilter !== 'all') {
-      list = list.filter((e) => {
-        const status = completionByEnrollment[e.enrollment_id];
-        return status === statusFilter;
-      });
+    if (statusFilter === 'complete') {
+      list = list.filter((e) => isStudentReady(e.enrollment_id));
+    } else if (statusFilter === 'incomplete') {
+      list = list.filter((e) => !isStudentReady(e.enrollment_id));
     }
 
     return list;
-  }, [enrollments, search, statusFilter, completionByEnrollment]);
+  }, [enrollments, search, statusFilter, isStudentReady]);
 
   const readyCount = useMemo(() => {
-    return enrollments.filter(
-      (e) => completionByEnrollment[e.enrollment_id] === 'complete'
-    ).length;
-  }, [enrollments, completionByEnrollment]);
+    return enrollments.filter((e) => isStudentReady(e.enrollment_id)).length;
+  }, [enrollments, isStudentReady]);
 
   const incompleteCount = useMemo(() => {
-    return enrollments.filter(
-      (e) => completionByEnrollment[e.enrollment_id] === 'incomplete'
-    ).length;
-  }, [enrollments, completionByEnrollment]);
+    return enrollments.filter((e) => !isStudentReady(e.enrollment_id)).length;
+  }, [enrollments, isStudentReady]);
 
   const allVisibleSelected =
     visibleStudents.length > 0 &&
@@ -224,7 +226,7 @@ export function StudentRosterSidebar({
                     <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#0D5C3A]/10 text-[#0D5C3A] dark:bg-[#10B981]/15 dark:text-[#34D399]">
                       {rep.division.startsWith('Div') ? rep.division : `Div ${rep.division}`}
                     </span>
-                  ) : completion === 'complete' ? (
+                  ) : (typeof rep?.total === 'number' && rep.total > 0) || completion === 'complete' ? (
                     <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
                       Ready
                     </span>
@@ -252,3 +254,4 @@ export function StudentRosterSidebar({
     </aside>
   );
 }
+

@@ -1,6 +1,6 @@
 import { useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ZoomIn, ZoomOut, Maximize2, ChevronLeft, ChevronRight, LayoutGrid, List } from 'lucide-react';
+import { ZoomIn, ZoomOut, Maximize2, ChevronUp, ChevronDown } from 'lucide-react';
 import type { ReportData, FilterState } from './types';
 import { EmptyState } from './EmptyState';
 
@@ -54,105 +54,91 @@ export function DocumentCanvas({
   return (
     <div
       data-testid="report-preview-stage"
-      className="relative flex-1 flex flex-col min-w-0 bg-[#E6ECE8] dark:bg-[#0D1310] overflow-hidden print:static print:overflow-visible print:block"
+      className="relative flex-1 w-full h-full flex flex-col min-w-0 bg-[#E6ECE8] dark:bg-[#0D1310] overflow-hidden print:static print:overflow-visible print:block"
     >
-      {/* Top Mini Bar Inside Preview Stage */}
+      {/* Floating WhatsApp-Style Vertical Control Dock */}
       <div
-        data-testid="stage-top-mini-bar"
-        className="shrink-0 bg-white/95 dark:bg-[#151D1A]/95 backdrop-blur-md border-b border-[#0D5C3A]/10 dark:border-[#F59E0B]/12 px-3 py-1.5 flex items-center justify-between gap-2 z-10 print:hidden"
+        data-testid="floating-control-dock"
+        className="absolute right-3 sm:right-5 top-1/2 -translate-y-1/2 z-30 flex flex-col items-center bg-white/95 dark:bg-[#151D1A]/95 backdrop-blur-md rounded-2xl border border-black/[0.08] dark:border-white/[0.1] shadow-xl p-1.5 gap-1.5 print:hidden select-none"
       >
-        {/* Left: Visible Student & Steppers */}
-        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-          <div className="flex items-center gap-1 shrink-0">
-            <button
-              type="button"
-              onClick={() => handleNavigate(activeIndex - 1)}
-              disabled={activeIndex <= 0}
-              className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-[#F0F4F9] dark:bg-[#1E2623] hover:bg-[#E4EAE6] dark:hover:bg-[#282A2C] text-stone-700 dark:text-stone-200 disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer"
-              title="Previous student"
-              aria-label="Previous student"
-            >
-              <ChevronLeft size={14} />
-            </button>
-            <button
-              type="button"
-              onClick={() => handleNavigate(activeIndex + 1)}
-              disabled={activeIndex >= reports.length - 1}
-              className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-[#F0F4F9] dark:bg-[#1E2623] hover:bg-[#E4EAE6] dark:hover:bg-[#282A2C] text-stone-700 dark:text-stone-200 disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer"
-              title="Next student"
-              aria-label="Next student"
-            >
-              <ChevronRight size={14} />
-            </button>
-          </div>
-
-          <div className="min-w-0 truncate">
-            {reports.length > 0 && currentReport ? (
-              <span className="text-xs font-semibold text-[#111827] dark:text-[#F3F7F5] truncate tabular-nums">
-                <span className="text-[#0D5C3A] dark:text-[#34D399] font-bold">
-                  {activeIndex + 1} of {reports.length}
-                </span>{' '}
-                • {currentReport.student.name}
-              </span>
-            ) : (
-              <span className="text-xs text-[#6B7280] dark:text-[#9CA3AF] italic">
-                No active report
-              </span>
-            )}
-          </div>
+        {/* Page Counter */}
+        <div className="px-2 py-1 rounded-lg bg-black/[0.04] dark:bg-white/[0.05] text-[10.5px] font-mono font-bold text-[#111827] dark:text-[#F3F7F5] tabular-nums text-center">
+          {reports.length > 0 ? `${activeIndex + 1}/${reports.length}` : '0/0'}
         </div>
 
-        {/* Right: Layout Toggle + Unified Zoom Control */}
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          {onLayoutToggle && (
-            <button
-              type="button"
-              onClick={onLayoutToggle}
-              className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#F0F4F9] dark:bg-[#1E2623] text-stone-700 dark:text-stone-200 hover:bg-[#E4EAE6] dark:hover:bg-[#282A2C] text-[11px] font-semibold transition cursor-pointer"
-              title={isSingle ? 'Switch to continuous scroll' : 'Switch to single view'}
-            >
-              {isSingle ? <LayoutGrid size={13} /> : <List size={13} />}
-              <span className="hidden md:inline">{isSingle ? 'Single View' : 'Continuous'}</span>
-            </button>
-          )}
+        {/* Up Stepper */}
+        <button
+          type="button"
+          onClick={() => handleNavigate(activeIndex - 1)}
+          disabled={activeIndex <= 0}
+          className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center text-stone-700 dark:text-stone-200 hover:bg-black/5 dark:hover:bg-white/5 disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer"
+          title="Previous report card (Up)"
+          aria-label="Previous report card"
+        >
+          <ChevronUp size={16} />
+        </button>
 
-          {/* ONE Unified Zoom Control */}
-          <div
-            data-testid="unified-zoom-control"
-            className="inline-flex items-center bg-[#F0F4F9] dark:bg-[#1E2623] rounded-full p-0.5 border border-black/[0.04] dark:border-white/[0.06] shrink-0"
+        {/* Down Stepper */}
+        <button
+          type="button"
+          onClick={() => handleNavigate(activeIndex + 1)}
+          disabled={activeIndex >= reports.length - 1}
+          className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center text-stone-700 dark:text-stone-200 hover:bg-black/5 dark:hover:bg-white/5 disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer"
+          title="Next report card (Down)"
+          aria-label="Next report card"
+        >
+          <ChevronDown size={16} />
+        </button>
+
+        {/* Fine Hairline Divider */}
+        <div className="w-5 h-px bg-black/[0.08] dark:bg-white/[0.08] my-0.5" />
+
+        {/* Unified Zoom Control */}
+        <div data-testid="unified-zoom-control" className="flex flex-col items-center gap-1">
+          {/* Zoom In */}
+          <button
+            type="button"
+            onClick={onZoomIn}
+            disabled={zoom >= 2}
+            className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center text-stone-700 dark:text-stone-200 hover:bg-black/5 dark:hover:bg-white/5 disabled:opacity-30 transition cursor-pointer"
+            title="Zoom in"
+            aria-label="Zoom in"
           >
-            <button
-              type="button"
-              onClick={onZoomOut}
-              disabled={zoom <= 0.4}
-              className="w-6 h-6 rounded-full inline-flex items-center justify-center text-stone-700 dark:text-stone-200 hover:bg-black/5 dark:hover:bg-white/5 disabled:opacity-30 cursor-pointer"
-              title="Zoom out"
-              aria-label="Zoom out"
-            >
-              <ZoomOut size={12} />
-            </button>
-            <span className="text-[11px] font-mono font-bold text-stone-800 dark:text-stone-100 px-1.5 tabular-nums">
-              {Math.round(zoom * 100)}%
-            </span>
-            <button
-              type="button"
-              onClick={onZoomIn}
-              disabled={zoom >= 2}
-              className="w-6 h-6 rounded-full inline-flex items-center justify-center text-stone-700 dark:text-stone-200 hover:bg-black/5 dark:hover:bg-white/5 disabled:opacity-30 cursor-pointer"
-              title="Zoom in"
-              aria-label="Zoom in"
-            >
-              <ZoomIn size={12} />
-            </button>
-            <button
-              type="button"
-              onClick={onFitScreen}
-              className="px-2 py-0.5 rounded-full text-[10.5px] font-bold text-[#0D5C3A] dark:text-[#34D399] hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer transition"
-              title="Fit to width"
-            >
-              Fit
-            </button>
-          </div>
+            <ZoomIn size={15} />
+          </button>
+
+          {/* Current Zoom % Button (Click to reset/fit) */}
+          <button
+            type="button"
+            onClick={onFitScreen}
+            className="text-[10px] font-mono font-bold text-stone-700 dark:text-stone-200 px-1 py-0.5 rounded hover:bg-black/5 dark:hover:bg-white/5 transition cursor-pointer tabular-nums"
+            title="Reset zoom to fit"
+          >
+            {Math.round(zoom * 100)}%
+          </button>
+
+          {/* Zoom Out */}
+          <button
+            type="button"
+            onClick={onZoomOut}
+            disabled={zoom <= 0.4}
+            className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center text-stone-700 dark:text-stone-200 hover:bg-black/5 dark:hover:bg-white/5 disabled:opacity-30 transition cursor-pointer"
+            title="Zoom out"
+            aria-label="Zoom out"
+          >
+            <ZoomOut size={15} />
+          </button>
+
+          {/* Fit to screen */}
+          <button
+            type="button"
+            onClick={onFitScreen}
+            className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center text-[#0D5C3A] dark:text-[#34D399] hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition cursor-pointer"
+            title="Fit to screen"
+            aria-label="Fit to screen"
+          >
+            <Maximize2 size={14} />
+          </button>
         </div>
       </div>
 
@@ -160,7 +146,7 @@ export function DocumentCanvas({
       <div
         ref={scrollRef}
         data-canvas-scroll
-        className="flex-1 overflow-auto p-4 sm:p-6 pb-20 flex flex-col items-center"
+        className="flex-1 w-full h-full overflow-auto p-4 sm:p-6 pb-20 flex flex-col items-center"
         style={{
           backgroundImage: `
             radial-gradient(circle, rgba(13,92,58,0.06) 1px, transparent 1px),

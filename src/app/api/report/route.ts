@@ -162,6 +162,18 @@ export async function GET(request: NextRequest) {
       term.end_date = stamp_date
     }
 
+    // Reconcile equivalent terms by academic_year and term_number
+    let termIds = [term.id]
+    const { data: equivalentTerms } = await supabase
+      .from('terms')
+      .select('id')
+      .eq('academic_year', term.academic_year)
+      .eq('term_number', term.term_number)
+
+    if (equivalentTerms && equivalentTerms.length > 0) {
+      termIds = [...new Set([term.id, ...equivalentTerms.map((t: any) => t.id)])]
+    }
+
     const { data: circularSubjects, error: circularSubjectsError } = await supabase
       .from('subjects')
       .select('id, subject_name')
@@ -177,7 +189,7 @@ export async function GET(request: NextRequest) {
       .from('circular_marks')
       .select('*')
       .eq('enrollment_id', enrollmentId)
-      .eq('term_id', termId);
+      .in('term_id', termIds);
 
     const debugInfo = {
       enrollmentId,
@@ -398,23 +410,29 @@ export async function GET(request: NextRequest) {
     let existingTheologyMarks: any = null;
 
     if (enrollment.theology_class_id && theologyLevel) {
+      let theologySubjects: any[] = []
       const { data: theologySubjectsRaw, error: theologySubjectsError } = await supabase
-        .from('subjects')
-        .select('id, subject_name')
-        .eq('curriculum', 'theology')
-        .eq('section', theologyLevel)
+        .from('theology_subjects')
+        .select('id, subject_name_arabic, level, sort_order')
+        .eq('level', theologyLevel)
+        .order('sort_order', { ascending: true })
 
-      const theologySubjects = theologySubjectsRaw?.map(s => ({ id: s.id, subject_name_arabic: s.subject_name }))
-
-      if (theologySubjectsError) {
-        return withCors(request, NextResponse.json({ error: theologySubjectsError.message }, { status: 500 }))
+      if (theologySubjectsRaw && theologySubjectsRaw.length > 0) {
+        theologySubjects = theologySubjectsRaw
+      } else {
+        const { data: fallbackSubjects } = await supabase
+          .from('subjects')
+          .select('id, subject_name')
+          .eq('curriculum', 'theology')
+          .eq('section', theologyLevel)
+        theologySubjects = fallbackSubjects?.map((s: any) => ({ id: s.id, subject_name_arabic: s.subject_name })) || []
       }
 
       const { data: theologyMarks, error: theologyError } = await supabase
         .from('theology_marks')
         .select('*')
         .eq('enrollment_id', enrollmentId)
-        .eq('term_id', termId);
+        .in('term_id', termIds);
 
       if (theologyError) {
         console.error('THEOLOGY MARKS ERROR:', JSON.stringify(theologyError, null, 2));
@@ -676,7 +694,7 @@ export async function GET(request: NextRequest) {
         position,
         total_students,
       },
-      theology: curriculum === 'secular' ? null : theologySectionData,
+      theology: theologySectionData,
       meta: {
         is_term_3: isTerm3,
         promotion_status,

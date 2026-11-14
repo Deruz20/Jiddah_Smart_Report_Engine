@@ -476,7 +476,7 @@ export function Theology2UpPrintSheet({
       role="report"
       data-report-type="TheologyMOTReport"
       data-report-orientation="portrait"
-      className="report-container theology-2up-sheet"
+      className="report-container theology-2up-sheet a4-two-up-page"
       style={{
         width: '794px',
         height: '1123px',
@@ -496,6 +496,8 @@ export function Theology2UpPrintSheet({
 
       {/* TOP CARD SLOT — exactly 558px */}
       <div
+        data-slot="half-card"
+        className="theology-card-slot half-card-slot"
         style={{
           width: '794px',
           height: '558px',
@@ -510,6 +512,8 @@ export function Theology2UpPrintSheet({
 
       {/* CUT LINE — 7px */}
       <div
+        data-slot="cut-divider"
+        className="cut-divider-slot cut-divider"
         style={{
           height: '7px',
           flexShrink: 0,
@@ -539,6 +543,8 @@ export function Theology2UpPrintSheet({
 
       {/* BOTTOM CARD SLOT — exactly 558px */}
       <div
+        data-slot="half-card"
+        className="theology-card-slot half-card-slot"
         style={{
           width: '794px',
           height: '558px',

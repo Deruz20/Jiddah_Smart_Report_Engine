@@ -4,12 +4,13 @@ import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { toast } from 'sonner'
 import { motion, AnimatePresence } from 'motion/react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { FileSpreadsheet, Printer, Users, FileText, Sliders, Settings, History } from 'lucide-react'
+import { FileSpreadsheet, Printer, Users, FileText, Sliders, Settings, History, ChevronDown, LayoutGrid } from 'lucide-react'
 import { generateReportBroadsheetCSV } from '@/utils/csvExport'
 import { TopToolbar } from './figma-ui/TopToolbar'
 import { DocumentCanvas } from './figma-ui/DocumentCanvas'
 import { StudentRosterSidebar } from './figma-ui/StudentRosterSidebar'
 import { PrintDialog } from './figma-ui/PrintDialog'
+import { Popover, PopoverTrigger, PopoverContent } from './figma-ui/ui/popover'
 import { CustomPillSelect } from '@/components/ui/custom-pill-select'
 import type { FilterState, ReportData, ClassGroup, EnrollmentItem } from './figma-ui/types'
 
@@ -92,6 +93,8 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
   // Multi-selection state for student checklist
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([])
   const [anchorIndex, setAnchorIndex] = useState<number | null>(null)
+  const [isRosterOpen, setIsRosterOpen] = useState(false)
+  const [isMobileRosterOpen, setIsMobileRosterOpen] = useState(false)
   const [mobileTab, setMobileTab] = useState<'students' | 'preview'>('students')
 
   useEffect(() => {
@@ -401,6 +404,11 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
     return `Print ${count} Selected`
   }, [selectedStudentIds.length, activeClassEnrollments.length])
 
+  // Active student for topbar selector pill
+  const activeStudent = useMemo(() => {
+    return activeClassEnrollments.find((e) => e.enrollment_id === activeReportId) || activeClassEnrollments[0]
+  }, [activeClassEnrollments, activeReportId])
+
   // Primary Print Action
   const handlePrintSelected = useCallback(async () => {
     const targets =
@@ -638,6 +646,48 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
               triggerClassName="h-8.5 px-3 rounded-full text-xs font-semibold shrink-0"
             />
           }
+          studentSelectorPill={
+            <Popover open={isRosterOpen} onOpenChange={setIsRosterOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  data-testid="student-roster-popover-trigger"
+                  className="h-8.5 px-3 rounded-full bg-[#F0F4F9] dark:bg-[#1E2623] hover:bg-[#E4EAE6] dark:hover:bg-[#282A2C] border border-black/[0.04] dark:border-white/[0.06] text-xs font-semibold text-[#111827] dark:text-[#F3F7F5] flex items-center gap-1.5 cursor-pointer transition shrink-0 max-w-[210px] sm:max-w-[280px]"
+                  title="Click to view & select students"
+                >
+                  <Users size={13} className="text-[#0D5C3A] dark:text-[#34D399] shrink-0" />
+                  <span className="truncate tabular-nums">
+                    👥 {selectedStudentIds.length} Selected • {activeStudent?.name || 'All Students'}
+                  </span>
+                  <ChevronDown size={13} className="text-stone-400 shrink-0 ml-0.5" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent
+                align="start"
+                sideOffset={6}
+                className="w-[330px] sm:w-[360px] p-0 rounded-2xl border border-[#0D5C3A]/20 dark:border-[#F59E0B]/25 shadow-2xl overflow-hidden bg-white dark:bg-[#151D1A] z-50 max-h-[75dvh] flex flex-col"
+              >
+                <StudentRosterSidebar
+                  enrollments={activeClassEnrollments}
+                  selectedIds={selectedStudentIds}
+                  onToggleSelect={handleToggleSelect}
+                  onSelectAll={handleSelectAll}
+                  onClearAll={handleClearAll}
+                  activeReportId={activeReportId}
+                  onSelectStudent={(id) => {
+                    setActiveReportId(id)
+                    if (filterState.layout === 'grid') {
+                      const el = document.querySelector(`[data-report-id="${id}"]`)
+                      el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                    }
+                  }}
+                  completionByEnrollment={completionByEnrollment}
+                  reports={rawReports}
+                  className="w-full h-full border-0 rounded-none shadow-none"
+                />
+              </PopoverContent>
+            </Popover>
+          }
           activeTermPill={
             <span
               data-testid="reports-active-term-pill"
@@ -706,6 +756,37 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
               })}
             </div>
           }
+          layoutTrack={
+            <div
+              data-testid="reports-layout-track"
+              className="inline-flex items-center bg-[#F0F4F9] dark:bg-[#1E2623] p-0.5 rounded-full border border-black/[0.04] dark:border-white/[0.06] shrink-0"
+            >
+              <button
+                type="button"
+                onClick={() => setFilterState((prev) => ({ ...prev, layout: 'single' }))}
+                className={`h-7 px-2.5 rounded-full text-xs font-semibold transition cursor-pointer flex items-center gap-1 ${
+                  filterState.layout === 'single'
+                    ? 'bg-[#0D5C3A] text-white font-bold shadow-2xs'
+                    : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white'
+                }`}
+              >
+                <FileText size={12} />
+                <span>Single</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setFilterState((prev) => ({ ...prev, layout: 'grid' }))}
+                className={`h-7 px-2.5 rounded-full text-xs font-semibold transition cursor-pointer flex items-center gap-1 ${
+                  filterState.layout === 'grid'
+                    ? 'bg-[#0D5C3A] text-white font-bold shadow-2xs'
+                    : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white'
+                }`}
+              >
+                <LayoutGrid size={12} />
+                <span>All Pages</span>
+              </button>
+            </div>
+          }
           primaryPrintAction={{
             label: printButtonLabel,
             onClick: handlePrintSelected,
@@ -770,41 +851,52 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
           </div>
         </div>
 
-        {/* Row 2: 2-Tab Switcher + Compact Print CTA */}
+        {/* Row 2: Interactive Student & Batch Popover + Compact Print CTA */}
         <div className="flex items-center justify-between gap-2 p-1.5 bg-white dark:bg-[#151D1A] rounded-2xl border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20">
-          <div className="flex-1 grid grid-cols-2 p-0.5 rounded-full bg-[#F0F4F9] dark:bg-[#1E2623]">
-            <button
-              type="button"
-              onClick={() => setMobileTab('students')}
-              className={`h-7 rounded-full text-xs font-semibold flex items-center justify-center gap-1.5 transition ${
-                mobileTab === 'students'
-                  ? 'bg-[#0D5C3A] text-white font-bold shadow-2xs'
-                  : 'text-stone-600 dark:text-stone-300'
-              }`}
+          <Popover open={isMobileRosterOpen} onOpenChange={setIsMobileRosterOpen}>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="flex-1 h-8 px-3 rounded-full bg-[#F0F4F9] dark:bg-[#1E2623] border border-black/[0.04] dark:border-white/[0.06] text-xs font-semibold text-[#111827] dark:text-[#F3F7F5] flex items-center justify-between gap-1.5 cursor-pointer min-w-0"
+              >
+                <div className="flex items-center gap-1.5 min-w-0 truncate">
+                  <Users size={13} className="text-[#0D5C3A] dark:text-[#34D399] shrink-0" />
+                  <span className="truncate tabular-nums">
+                    👥 {selectedStudentIds.length} Selected • {activeStudent?.name || 'All'}
+                  </span>
+                </div>
+                <ChevronDown size={13} className="text-stone-400 shrink-0" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="center"
+              sideOffset={6}
+              className="w-[calc(100vw-24px)] max-w-[360px] p-0 rounded-2xl border border-[#0D5C3A]/20 dark:border-[#F59E0B]/25 shadow-2xl overflow-hidden bg-white dark:bg-[#151D1A] z-50 max-h-[75dvh] flex flex-col"
             >
-              <Users size={13} />
-              <span>Students ({activeClassEnrollments.length})</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setMobileTab('preview')}
-              className={`h-7 rounded-full text-xs font-semibold flex items-center justify-center gap-1.5 transition ${
-                mobileTab === 'preview'
-                  ? 'bg-[#0D5C3A] text-white font-bold shadow-2xs'
-                  : 'text-stone-600 dark:text-stone-300'
-              }`}
-            >
-              <FileText size={13} />
-              <span>Preview</span>
-            </button>
-          </div>
+              <StudentRosterSidebar
+                enrollments={activeClassEnrollments}
+                selectedIds={selectedStudentIds}
+                onToggleSelect={handleToggleSelect}
+                onSelectAll={handleSelectAll}
+                onClearAll={handleClearAll}
+                activeReportId={activeReportId}
+                onSelectStudent={(id) => {
+                  setActiveReportId(id)
+                  setIsMobileRosterOpen(false)
+                }}
+                completionByEnrollment={completionByEnrollment}
+                reports={rawReports}
+                className="w-full h-full border-0 rounded-none shadow-none"
+              />
+            </PopoverContent>
+          </Popover>
 
           <motion.button
             type="button"
             onClick={handlePrintSelected}
             disabled={selectedStudentIds.length === 0 || isGenerating}
             whileTap={{ scale: 0.96 }}
-            className="h-7.5 px-3.5 rounded-full btn-jiddah-cta text-xs font-bold inline-flex items-center gap-1.5 shrink-0 disabled:opacity-40"
+            className="h-8 px-3.5 rounded-full btn-jiddah-cta text-xs font-bold inline-flex items-center gap-1.5 shrink-0 disabled:opacity-40"
           >
             <Printer size={13} />
             <span>Print ({selectedStudentIds.length})</span>
@@ -812,91 +904,26 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
         </div>
       </div>
 
-      {/* 2-Pane Split Workspace */}
-      <div className="flex flex-1 min-h-0 overflow-hidden relative gap-3">
-        {/* Desktop Left Sidebar Card */}
-        <div className="hidden lg:flex w-[300px] xl:w-[320px] shrink-0 h-full">
-          <StudentRosterSidebar
-            enrollments={activeClassEnrollments}
-            selectedIds={selectedStudentIds}
-            onToggleSelect={handleToggleSelect}
-            onSelectAll={handleSelectAll}
-            onClearAll={handleClearAll}
-            activeReportId={activeReportId}
-            onSelectStudent={(id) => {
-              setActiveReportId(id)
-              if (filterState.layout === 'grid') {
-                const el = document.querySelector(`[data-report-id="${id}"]`)
-                el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-              }
-            }}
-            completionByEnrollment={completionByEnrollment}
-            reports={rawReports}
-            className="w-full h-full"
-          />
-        </div>
-
-        {/* Mobile View: Render either Student Roster or Preview based on mobileTab */}
-        <div className="lg:hidden flex flex-1 min-h-0 w-full h-full">
-          {mobileTab === 'students' ? (
-            <StudentRosterSidebar
-              enrollments={activeClassEnrollments}
-              selectedIds={selectedStudentIds}
-              onToggleSelect={handleToggleSelect}
-              onSelectAll={handleSelectAll}
-              onClearAll={handleClearAll}
-              activeReportId={activeReportId}
-              onSelectStudent={(id) => {
-                setActiveReportId(id)
-                setMobileTab('preview')
-              }}
-              completionByEnrollment={completionByEnrollment}
-              reports={rawReports}
-              className="w-full h-full"
-            />
-          ) : (
-            <DocumentCanvas
-              reports={rawReports}
-              activeReportId={activeReportId}
-              onSelectReport={setActiveReportId}
-              renderReport={renderJiddahReport}
-              zoom={zoom}
-              layout={filterState.layout}
-              onZoomIn={handleZoomIn}
-              onZoomOut={handleZoomOut}
-              onFitScreen={handleFitScreen}
-              onLayoutToggle={() =>
-                setFilterState((prev) => ({
-                  ...prev,
-                  layout: prev.layout === 'grid' ? 'single' : 'grid',
-                }))
-              }
-              printScope={printScope}
-            />
-          )}
-        </div>
-
-        {/* Desktop Right Stage: Preview Canvas */}
-        <div className="hidden lg:flex flex-1 min-h-0 h-full rounded-2xl border border-[#0D5C3A]/12 dark:border-[#F59E0B]/15 overflow-hidden">
-          <DocumentCanvas
-            reports={rawReports}
-            activeReportId={activeReportId}
-            onSelectReport={setActiveReportId}
-            renderReport={renderJiddahReport}
-            zoom={zoom}
-            layout={filterState.layout}
-            onZoomIn={handleZoomIn}
-            onZoomOut={handleZoomOut}
-            onFitScreen={handleFitScreen}
-            onLayoutToggle={() =>
-              setFilterState((prev) => ({
-                ...prev,
-                layout: prev.layout === 'grid' ? 'single' : 'grid',
-              }))
-            }
-            printScope={printScope}
-          />
-        </div>
+      {/* 100% Full-Width Document Preview Canvas */}
+      <div className="flex flex-1 min-h-0 overflow-hidden relative w-full h-full rounded-2xl border border-[#0D5C3A]/12 dark:border-[#F59E0B]/15">
+        <DocumentCanvas
+          reports={rawReports}
+          activeReportId={activeReportId}
+          onSelectReport={setActiveReportId}
+          renderReport={renderJiddahReport}
+          zoom={zoom}
+          layout={filterState.layout}
+          onZoomIn={handleZoomIn}
+          onZoomOut={handleZoomOut}
+          onFitScreen={handleFitScreen}
+          onLayoutToggle={() =>
+            setFilterState((prev) => ({
+              ...prev,
+              layout: prev.layout === 'grid' ? 'single' : 'grid',
+            }))
+          }
+          printScope={printScope}
+        />
       </div>
 
       {/* Print Portal for Stable true A4 Printing */}

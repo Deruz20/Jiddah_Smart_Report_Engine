@@ -20,9 +20,11 @@ interface TopToolbarProps {
   isGenerating?: boolean;
   title?: React.ReactNode;
   classCohortSelect?: React.ReactNode;
+  studentSelectorPill?: React.ReactNode;
   activeTermPill?: React.ReactNode;
   phaseTrack?: React.ReactNode;
   curriculumTrack?: React.ReactNode;
+  layoutTrack?: React.ReactNode;
   primaryPrintAction?: {
     label: string;
     onClick: () => void;
@@ -50,9 +52,11 @@ export function TopToolbar({
   isGenerating,
   title,
   classCohortSelect,
+  studentSelectorPill,
   activeTermPill,
   phaseTrack,
   curriculumTrack,
+  layoutTrack,
   primaryPrintAction,
   moreActionsItems,
 }: TopToolbarProps) {
@@ -63,16 +67,18 @@ export function TopToolbar({
           data-testid="reports-zone-1-bar"
           className="w-full bg-white dark:bg-[#151D1A] rounded-2xl px-3 py-2 border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 flex items-center justify-between gap-2 shadow-2xs z-20 print:hidden"
         >
-          {/* Left Controls: Class Cohort CustomPillSelect + Active Term Pill */}
+          {/* Left Controls: Class Cohort CustomPillSelect + Interactive Student/Batch Pill + Active Term Pill */}
           <div className="flex items-center gap-2 shrink-0 min-w-0">
             {classCohortSelect}
+            {studentSelectorPill}
             {activeTermPill}
           </div>
 
-          {/* Center Controls: Phase Track + Curriculum Track */}
-          <div className="hidden md:flex items-center gap-2 shrink-0">
+          {/* Center Controls: Phase Track + Curriculum Track + Layout Toggle Track */}
+          <div className="hidden lg:flex items-center gap-2 shrink-0">
             {phaseTrack}
             {curriculumTrack}
+            {layoutTrack}
           </div>
 
           {/* Right Actions: Primary Print CTA + MoreActionsMenu */}

@@ -1047,19 +1047,16 @@ describe('Workstream 15: Report Center Smart Defaults, Zone 1 Bar & Split-Pane A
     assert.match(previewCellSrc, /shadow-\[0_12px_36px_rgba\(0,0,0,0\.12\)\] dark:shadow-\[0_16px_48px_rgba\(0,0,0,0\.65\)\]/);
   });
 
-  it('delivers 2-Pane Split Workspace on desktop and seamless segmented switcher on mobile', () => {
+  it('delivers responsive Student Roster & Document Canvas controls', () => {
     const reportGenPath = path.join(rootDir, 'src/components/ReportGeneratorClient.tsx');
     const reportGenSrc = fs.readFileSync(reportGenPath, 'utf8');
 
-    // Desktop split-pane layout
-    assert.match(reportGenSrc, /hidden lg:flex w-\[300px\] xl:w-\[320px\] shrink-0 h-full/);
+    // Preview Canvas & Popover student roster
     assert.match(reportGenSrc, /<StudentRosterSidebar/);
     assert.match(reportGenSrc, /<DocumentCanvas/);
 
     // Mobile layout
     assert.match(reportGenSrc, /id="reports-mobile-class-select"/);
-    assert.match(reportGenSrc, /mobileTab === 'students'/);
-    assert.match(reportGenSrc, /mobileTab === 'preview'/);
 
     // Student Roster Sidebar features
     const sidebarPath = path.join(rootDir, 'src/components/figma-ui/StudentRosterSidebar.tsx');
@@ -1068,12 +1065,100 @@ describe('Workstream 15: Report Center Smart Defaults, Zone 1 Bar & Split-Pane A
     assert.match(sidebarSrc, /data-testid="student-roster-list"/);
     assert.match(sidebarSrc, /selected for batch print/);
 
-    // Document Canvas Top Mini Bar & Unified Zoom Control
+    // Document Canvas Unified Zoom Control & Floating Dock
     const canvasPath = path.join(rootDir, 'src/components/figma-ui/DocumentCanvas.tsx');
     const canvasSrc = fs.readFileSync(canvasPath, 'utf8');
-    assert.match(canvasSrc, /data-testid="stage-top-mini-bar"/);
+    assert.match(canvasSrc, /data-testid="floating-control-dock"/);
     assert.match(canvasSrc, /data-testid="unified-zoom-control"/);
-    assert.doesNotMatch(canvasSrc, /<FloatingControls/);
+  });
+});
+
+describe('WORKSTREAM 16: Full-Width Document Preview & Dual-Curriculum Report Data Pipeline', () => {
+  const rootDir = process.cwd();
+
+  it('dedicates 100% of workspace width to Document Preview Canvas with Topbar Popover Roster', () => {
+    const reportGenPath = path.join(rootDir, 'src/components/ReportGeneratorClient.tsx');
+    const reportGenSrc = fs.readFileSync(reportGenPath, 'utf8');
+
+    // Popover trigger for student & batch checklist
+    assert.match(reportGenSrc, /data-testid="student-roster-popover-trigger"/);
+    assert.match(reportGenSrc, /<Popover open={isRosterOpen}/);
+    assert.match(reportGenSrc, /Selected •/);
+
+    // Full width document preview canvas container (no pinned 320px desktop sidebar)
+    assert.match(reportGenSrc, /100% Full-Width Document Preview Canvas/);
+    assert.match(reportGenSrc, /<DocumentCanvas/);
+
+    // TopToolbar receives studentSelectorPill
+    assert.match(reportGenSrc, /studentSelectorPill={/);
+
+    const toolbarPath = path.join(rootDir, 'src/components/figma-ui/TopToolbar.tsx');
+    const toolbarSrc = fs.readFileSync(toolbarPath, 'utf8');
+    assert.match(toolbarSrc, /studentSelectorPill/);
+  });
+
+  it('provides WhatsApp-style floating vertical dock with steppers and zoom controls in DocumentCanvas', () => {
+    const canvasPath = path.join(rootDir, 'src/components/figma-ui/DocumentCanvas.tsx');
+    const canvasSrc = fs.readFileSync(canvasPath, 'utf8');
+
+    assert.match(canvasSrc, /data-testid="floating-control-dock"/);
+    assert.match(canvasSrc, /ChevronUp/);
+    assert.match(canvasSrc, /ChevronDown/);
+    assert.match(canvasSrc, /data-testid="unified-zoom-control"/);
+    assert.match(canvasSrc, /Maximize2/);
+    assert.doesNotMatch(canvasSrc, /data-testid="stage-top-mini-bar"/);
+  });
+
+  it('guarantees theology marks and subjects are populated for dual-curriculum reports in single and batch APIs', () => {
+    const singleReportPath = path.join(rootDir, 'src/app/api/report/route.ts');
+    const singleReportSrc = fs.readFileSync(singleReportPath, 'utf8');
+
+    // Queries theology_subjects table (not subjects)
+    assert.match(singleReportSrc, /\.from\('theology_subjects'\)/);
+    // Uses equivalent termIds
+    assert.match(singleReportSrc, /termIds = \[...new Set\(\[term\.id/);
+    assert.match(singleReportSrc, /\.in\('term_id', termIds\)/);
+    // Never sets theology to null for secular/dual
+    assert.match(singleReportSrc, /theology: theologySectionData,/);
+
+    const batchReportPath = path.join(rootDir, 'src/app/api/report/batch/route.ts');
+    const batchReportSrc = fs.readFileSync(batchReportPath, 'utf8');
+
+    // Reconciles equivalent terms
+    assert.match(batchReportSrc, /termIds = \[...new Set\(\[term\.id/);
+    // Fetches theology_subjects regardless of curriculum === 'secular'
+    assert.match(batchReportSrc, /\.from\('theology_subjects'\)/);
+    // Always provides theologySectionData for dual-curriculum report cards
+    assert.match(batchReportSrc, /theology: theologySectionData,/);
+  });
+
+  it('properly evaluates student completion readiness without false missing flags', () => {
+    const selectionPath = path.join(rootDir, 'src/lib/report-selection.ts');
+    const selectionSrc = fs.readFileSync(selectionPath, 'utf8');
+
+    assert.match(selectionSrc, /hasRecordedPhaseScore/);
+
+    const sidebarPath = path.join(rootDir, 'src/components/figma-ui/StudentRosterSidebar.tsx');
+    const sidebarSrc = fs.readFileSync(sidebarPath, 'utf8');
+
+    assert.match(sidebarSrc, /isStudentReady/);
+    assert.match(sidebarSrc, /rep\?\.division/);
+  });
+
+  it('enforces print system A4 specifications, 2-up half-card 138mm budget, and light mode color-scheme', () => {
+    const printCssPath = path.join(rootDir, 'src/styles/reports/print-system.css');
+    const printCssSrc = fs.readFileSync(printCssPath, 'utf8');
+
+    assert.match(printCssSrc, /@page \{\s*size: A4 portrait;\s*margin: 0mm;\s*\}/);
+    assert.match(printCssSrc, /\.a4-two-up-page/);
+    assert.match(printCssSrc, /max-height: 138mm;/);
+    assert.match(printCssSrc, /color-scheme: light !important;/);
+    assert.match(printCssSrc, /color: #0F172A !important;/);
+
+    const previewCellPath = path.join(rootDir, 'src/components/reports/ReportPreviewCell.tsx');
+    const previewCellSrc = fs.readFileSync(previewCellPath, 'utf8');
+    assert.match(previewCellSrc, /colorScheme:\s*'light'/);
+    assert.match(previewCellSrc, /color:\s*'#0F172A'/);
   });
 });
 

@@ -29,7 +29,9 @@
   flex-shrink: 0;
   border-radius: 4px;
   box-shadow: 0 4px 40px rgba(0, 0, 0, 0.18);
-  background: #fffbf0;
+  background: #ffffff;
+  color-scheme: light !important;
+  color: #0F172A !important;
   cursor: pointer;
   transition: box-shadow 0.15s, outline-color 0.15s;
 }
@@ -60,7 +62,9 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  background-color: #ffffff;
+  background-color: #ffffff !important;
+  color-scheme: light !important;
+  color: #0F172A !important;
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
@@ -259,17 +263,18 @@
    ============================================================================ */
 
 @page {
-  margin: 0;
+  size: A4 portrait;
+  margin: 0mm;
 }
 
 @page portrait-page {
   size: A4 portrait;
-  margin: 0;
+  margin: 0mm;
 }
 
 @page landscape-page {
   size: A4 landscape;
-  margin: 0;
+  margin: 0mm;
 }
 
 @page hub-portrait-page {
@@ -280,6 +285,58 @@
 @page hub-landscape-page {
   size: A4 landscape;
   margin: 8mm;
+}
+
+/* ============================================================================
+   A4 PRINT SPECIFICATIONS (2-Up Half Sheets & Full-Page Containers)
+   ============================================================================ */
+
+.a4-two-up-page {
+  width: 210mm;
+  height: 297mm;
+  max-height: 297mm;
+  padding: 5mm 8mm;
+  box-sizing: border-box;
+  overflow: hidden;
+  page-break-after: always;
+  break-after: page;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background-color: #ffffff !important;
+  color: #0F172A !important;
+}
+
+.a4-two-up-page .half-card-slot,
+.a4-two-up-page [data-slot="half-card"] {
+  max-height: 138mm;
+  height: 138mm;
+  overflow: hidden;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.a4-two-up-page .cut-divider,
+.a4-two-up-page [data-slot="cut-divider"] {
+  height: 6mm;
+  max-height: 6mm;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.a4-full-page-container {
+  width: 210mm;
+  height: 297mm;
+  padding: 6mm 8mm;
+  box-sizing: border-box;
+  overflow: hidden;
+  page-break-after: always;
+  break-after: page;
+  background-color: #ffffff !important;
+  color: #0F172A !important;
 }
 
 /* Assign named @page to report containers by orientation attribute */

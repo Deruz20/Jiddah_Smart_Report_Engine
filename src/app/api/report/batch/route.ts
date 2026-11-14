@@ -154,6 +154,18 @@ export async function POST(request: NextRequest) {
       term.end_date = stamp_date;
     }
 
+    // Reconcile equivalent terms by academic_year and term_number
+    let termIds = [term.id]
+    const { data: equivalentTerms } = await supabase
+      .from('terms')
+      .select('id')
+      .eq('academic_year', term.academic_year)
+      .eq('term_number', term.term_number)
+
+    if (equivalentTerms && equivalentTerms.length > 0) {
+      termIds = [...new Set([term.id, ...equivalentTerms.map((t: any) => t.id)])]
+    }
+
     const isTerm3 = term.term_number === 3
 
     // 3. Identify all circular classes involved to fetch ALL their students for accurate ranking
@@ -198,7 +210,7 @@ export async function POST(request: NextRequest) {
 
       // Fetch circular marks for EVERYONE in the class in chunks
       if (allClassmateIds.length > 0) {
-        allCircularMarks = await fetchInChunks('circular_marks', '*', 'enrollment_id', allClassmateIds, (q) => q.eq('term_id', term_id))
+        allCircularMarks = await fetchInChunks('circular_marks', '*', 'enrollment_id', allClassmateIds, (q) => q.in('term_id', termIds))
       }
 
       // Compute rankings per class
@@ -221,45 +233,42 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 4. Handle Theology
+    // 4. Handle Theology — ALWAYS fetch theology subjects & marks so dual-curriculum reports are populated
     const theologyLevels = [...new Set(requestedEnrollments.map(e => {
       return Array.isArray(e.theology_classes) ? e.theology_classes[0]?.level : (e.theology_classes as any)?.level
     }).filter(Boolean))]
 
     const theologySubjectsCache: Record<string, any[]> = {}
-    if (curriculum !== 'secular') {
-      for (const lvl of theologyLevels) {
-        if (!lvl) continue;
-        const { data: subs } = await supabase.from('theology_subjects').select('id, subject_name_arabic').eq('level', lvl)
-        theologySubjectsCache[lvl] = subs?.map(s => ({ id: s.id, subject_name_arabic: s.subject_name_arabic })) || []
-      }
+    for (const lvl of theologyLevels) {
+      if (!lvl) continue;
+      const { data: subs } = await supabase.from('theology_subjects').select('id, subject_name_arabic').eq('level', lvl)
+      theologySubjectsCache[lvl] = subs?.map(s => ({ id: s.id, subject_name_arabic: s.subject_name_arabic })) || []
     }
 
-    // Fetch theology marks ONLY for requested enrollments in chunks
+    // Fetch theology marks for requested enrollments in chunks
     let requestedTheologyMarks: any[] = []
     let theologyRankings: Record<string, { id: string, total: number }[]> = {}
     const theologyClassSizes: Record<string, number> = {}
 
-    if (curriculum !== 'secular') {
-      if (requestedEnrollments.length > 0) {
-        requestedTheologyMarks = await fetchInChunks('theology_marks', '*', 'enrollment_id', enrollment_ids, (q) => q.eq('term_id', term_id))
-      }
+    if (requestedEnrollments.length > 0) {
+      requestedTheologyMarks = await fetchInChunks('theology_marks', '*', 'enrollment_id', enrollment_ids, (q) => q.in('term_id', termIds))
+    }
 
-      // If we are in theology mode or dual mode, we need theology class rankings.
-      const theologyClassIds = [...new Set(requestedEnrollments.map(e => e.theology_class_id).filter(Boolean))]
-      if (theologyClassIds.length > 0) {
-        const { data: theoClassmates } = await supabase
-          .from('enrollments')
-          .select('id, theology_class_id')
-          .in('theology_class_id', theologyClassIds)
-          .eq('is_active', true)
+    // If we are in theology mode or dual mode, we need theology class rankings.
+    const theologyClassIds = [...new Set(requestedEnrollments.map(e => e.theology_class_id).filter(Boolean))]
+    if (theologyClassIds.length > 0) {
+      const { data: theoClassmates } = await supabase
+        .from('enrollments')
+        .select('id, theology_class_id')
+        .in('theology_class_id', theologyClassIds)
+        .eq('is_active', true)
 
-        if (theoClassmates) {
-          const allTheoClassmateIds = theoClassmates.map(c => c.id)
-          let allTheoMarks: any[] = []
-          if (allTheoClassmateIds.length > 0) {
-            allTheoMarks = await fetchInChunks('theology_marks', '*', 'enrollment_id', allTheoClassmateIds, (q) => q.eq('term_id', term_id))
-          }
+      if (theoClassmates) {
+        const allTheoClassmateIds = theoClassmates.map(c => c.id)
+        let allTheoMarks: any[] = []
+        if (allTheoClassmateIds.length > 0) {
+          allTheoMarks = await fetchInChunks('theology_marks', '*', 'enrollment_id', allTheoClassmateIds, (q) => q.in('term_id', termIds))
+        }
 
           for (const tId of theologyClassIds) {
             const classMembers = theoClassmates.filter(c => c.theology_class_id === tId)
@@ -278,7 +287,6 @@ export async function POST(request: NextRequest) {
           }
         }
       }
-    }
 
     // 5. Generate Reports Data array
     const subjectOrder = {
@@ -448,7 +456,7 @@ export async function POST(request: NextRequest) {
       // Theology
       let theologySectionData = null
       const theologyLevel = Array.isArray(enrollment.theology_classes) ? enrollment.theology_classes[0]?.level : (enrollment.theology_classes as any)?.level
-      if (curriculum !== 'secular' && enrollment.theology_class_id && theologyLevel) {
+      if (enrollment.theology_class_id && theologyLevel) {
         const tSubjects = theologySubjectsCache[theologyLevel] || []
         const eTheoMarks = requestedTheologyMarks.filter(m => m.enrollment_id === enrollment.id)
         
@@ -585,8 +593,8 @@ export async function POST(request: NextRequest) {
           religion: studentData?.is_muslim === false ? 'Non-Muslim' : 'Muslim',
           class_name: className ?? '—',
           gender: studentData?.gender ?? null,
-          theology_class_arabic: curriculum === 'secular' ? null : theologyClassArabic ?? null,
-          theology_class_english: curriculum === 'secular' ? null : theologyClassEnglish ?? null,
+          theology_class_arabic: theologyClassArabic ?? null,
+          theology_class_english: theologyClassEnglish ?? null,
           section,
           academic_year: enrollment.academic_year,
         },
@@ -618,7 +626,7 @@ export async function POST(request: NextRequest) {
           position,
           total_students,
         },
-        theology: curriculum === 'secular' ? null : theologySectionData,
+        theology: theologySectionData,
         meta: {
           is_term_3: isTerm3,
           promotion_status,

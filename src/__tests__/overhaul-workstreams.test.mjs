@@ -1039,7 +1039,7 @@ describe('Workstream 15: Report Center Smart Defaults, Zone 1 Bar & Split-Pane A
     const topToolbarPath = path.join(rootDir, 'src/components/figma-ui/TopToolbar.tsx');
     const topToolbarSrc = fs.readFileSync(topToolbarPath, 'utf8');
     assert.match(topToolbarSrc, /data-testid="reports-zone-1-bar"/);
-    assert.match(topToolbarSrc, /bg-white dark:bg-\[#151D1A\] rounded-2xl px-2\.5 sm:px-3 py-1\.5 border border-\[#0D5C3A\]\/15 dark:border-\[#F59E0B\]\/20/);
+    assert.match(topToolbarSrc, /bg-white dark:bg-\[#151D1A\] rounded-2xl px-3 py-1\.5 border border-\[#0D5C3A\]\/15 dark:border-\[#F59E0B\]\/20/);
     assert.doesNotMatch(topToolbarSrc, /<div className="text-xs font-bold text-stone-700 dark:text-stone-200 truncate">\s*Report Center\s*<\/div>/);
 
     // ReportPreviewCell paper styling
@@ -1098,13 +1098,13 @@ describe('WORKSTREAM 16: Full-Width Document Preview & Dual-Curriculum Report Da
     assert.match(toolbarSrc, /studentSelectorPill/);
   });
 
-  it('provides WhatsApp-style floating vertical dock with steppers and zoom controls in DocumentCanvas', () => {
+  it('provides translucent bottom-right floating dock with steppers and zoom controls in DocumentCanvas', () => {
     const canvasPath = path.join(rootDir, 'src/components/figma-ui/DocumentCanvas.tsx');
     const canvasSrc = fs.readFileSync(canvasPath, 'utf8');
 
     assert.match(canvasSrc, /data-testid="floating-control-dock"/);
-    assert.match(canvasSrc, /ChevronUp/);
-    assert.match(canvasSrc, /ChevronDown/);
+    assert.match(canvasSrc, /ChevronLeft/);
+    assert.match(canvasSrc, /ChevronRight/);
     assert.match(canvasSrc, /data-testid="unified-zoom-control"/);
     assert.match(canvasSrc, /Maximize2/);
     assert.doesNotMatch(canvasSrc, /data-testid="stage-top-mini-bar"/);
@@ -1150,7 +1150,7 @@ describe('WORKSTREAM 16: Full-Width Document Preview & Dual-Curriculum Report Da
     const printCssPath = path.join(rootDir, 'src/styles/reports/print-system.css');
     const printCssSrc = fs.readFileSync(printCssPath, 'utf8');
 
-    assert.match(printCssSrc, /@page \{\s*size: A4 portrait;\s*margin: 0mm;\s*\}/);
+    assert.doesNotMatch(printCssSrc, /^@page\s*\{\s*size:\s*A4\s+portrait/m);
     assert.match(printCssSrc, /\.a4-two-up-page/);
     assert.match(printCssSrc, /max-height: 138mm;/);
     assert.match(printCssSrc, /color-scheme: light !important;/);
@@ -1318,7 +1318,7 @@ describe('Workstream 23: Authentic Jiddah Vector Stamp, Clean Signature Ink Filt
     assert.match(sigCompSrc, /id="jiddah-clean-ink"/);
     assert.match(sigCompSrc, /<feColorMatrix/);
     assert.match(sigCompSrc, /<feComponentTransfer>/);
-    assert.match(sigCompSrc, /slope="3\.2"\s+intercept="-1\.45"/);
+    assert.match(sigCompSrc, /slope="4\.5"\s+intercept="-1\.35"/);
     assert.match(sigCompSrc, /url\(#jiddah-clean-ink\)/);
   });
 
@@ -1366,24 +1366,81 @@ describe('Workstream 23: Authentic Jiddah Vector Stamp, Clean Signature Ink Filt
     assert.match(theoMotSrc, /font-weight:\s*900;\s*font-size:\s*17px;/);
   });
 
-  it('5. makes Desktop TopToolbar hidden md:flex with MS Word 1|2|3 card switcher and consolidates mobile into a single h-11 header', () => {
+  it('5. makes Desktop TopToolbar hidden md:flex with iconic view-mode-toggle, visual-select-toggle, download, and print buttons, and consolidates mobile into a single h-11 header', () => {
     const toolbarSrc = fs.readFileSync(path.join(rootDir, 'src/components/figma-ui/TopToolbar.tsx'), 'utf8');
-    assert.match(toolbarSrc, /hidden md:flex items-center justify-between gap-1\.5/);
-    assert.match(toolbarSrc, /data-testid="cards-per-row-switcher"/);
-    assert.match(toolbarSrc, /1▢/);
-    assert.match(toolbarSrc, /2▢▢/);
-    assert.match(toolbarSrc, /3▢▢▢/);
-    assert.match(toolbarSrc, /1 Sheet/);
+    assert.match(toolbarSrc, /hidden md:flex items-center justify-between gap-2/);
+    assert.match(toolbarSrc, /data-testid="view-mode-toggle"/);
+    assert.match(toolbarSrc, /data-testid="visual-select-toggle"/);
+    assert.match(toolbarSrc, /data-testid="toolbar-download-btn"/);
+    assert.match(toolbarSrc, /data-testid="toolbar-print-btn"/);
 
     const clientSrc = fs.readFileSync(path.join(rootDir, 'src/components/ReportGeneratorClient.tsx'), 'utf8');
     assert.match(clientSrc, /h-11 px-2 flex md:hidden items-center justify-between gap-1 bg-white dark:bg-\[#151D1A\]/);
-    assert.match(clientSrc, /cardsPerRow=\{cardsPerRow\}/);
-    assert.match(clientSrc, /onCardsPerRowChange=\{/);
+    assert.match(clientSrc, /visualSelectMode=\{visualSelectMode\}/);
+    assert.match(clientSrc, /onToggleVisualSelect=/);
     assert.match(clientSrc, /onPrintCurrent=\{handlePrintCurrent\}/);
 
     const rosterSrc = fs.readFileSync(path.join(rootDir, 'src/components/figma-ui/StudentRosterSidebar.tsx'), 'utf8');
     assert.match(rosterSrc, /Invert Selection/);
     assert.match(rosterSrc, /Ready Only/);
+  });
+});
+
+describe('Workstream 24: Landscape Print Lock, Blank Page 1 Fix, Iconic Studio Topbar & Visual Selection, Translucent Minimizable Dock, Zero-Blur Modals & Adaptive Ink Extraction', () => {
+  const rootDir = process.cwd();
+
+  it('1. removes static portrait @page override, locks landscape tables-row to flex row, and eliminates blank Page 1', () => {
+    const printCssSrc = fs.readFileSync(path.join(rootDir, 'src/styles/reports/print-system.css'), 'utf8');
+    // Static global portrait @page rule must not override dynamic landscape orientation
+    assert.doesNotMatch(printCssSrc, /^@page\s*\{\s*size:\s*A4\s+portrait/m);
+    // Side-by-side landscape tables lock
+    assert.match(printCssSrc, /\.landscape-page\s+\.tables-wrapper,\s*[\r\n]+\s*\.landscape-page\s+\.tables-row\s*\{[\s\S]*?display:\s*flex\s*!important;[\s\S]*?flex-direction:\s*row\s*!important;/);
+    // Scoped main rule so PrimaryEOTReport doesn't collapse
+    assert.match(printCssSrc, /\[data-slot="sidebar-inset"\]\s*>\s*main/);
+    // No blank page 1
+    assert.match(printCssSrc, /\.report-card-sheet:first-child[\s\S]*?break-before:\s*avoid\s*!important;/);
+
+    const eotSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/PrimaryEOTReport.tsx'), 'utf8');
+    assert.match(eotSrc, /<div className="tables-wrapper tables-row">/);
+    assert.doesNotMatch(eotSrc, /<main className="tables-wrapper">/);
+
+    const clientSrc = fs.readFileSync(path.join(rootDir, 'src/components/ReportGeneratorClient.tsx'), 'utf8');
+    assert.match(clientSrc, /print:!p-0 print:!m-0 print:!gap-0 print:!h-auto print:!overflow-visible print:!block/);
+    assert.match(clientSrc, /print:!hidden/);
+    assert.match(clientSrc, /@media print \{ @page \{ size: A4 \$\{isLandscape \? 'landscape' : 'portrait'\} !important; margin: 0mm !important; \} \}/);
+  });
+
+  it('2. upgrades PrintDialog with 3 clear print scopes and on-canvas Select on Canvas mode', () => {
+    const dialogSrc = fs.readFileSync(path.join(rootDir, 'src/components/figma-ui/PrintDialog.tsx'), 'utf8');
+    assert.match(dialogSrc, /onEnterVisualSelect/);
+    assert.match(dialogSrc, /Select on Canvas/);
+    assert.match(dialogSrc, /Batch Print/);
+    assert.match(dialogSrc, /Current Report/);
+    assert.match(dialogSrc, /Custom Visual Selection/);
+
+    const canvasSrc = fs.readFileSync(path.join(rootDir, 'src/components/figma-ui/DocumentCanvas.tsx'), 'utf8');
+    assert.match(canvasSrc, /data-testid="visual-selection-bar"/);
+    assert.match(canvasSrc, /justify-start/);
+  });
+
+  it('3. renders a translucent, minimizable bottom-right floating zoom/page dock with side="top" tooltips', () => {
+    const canvasSrc = fs.readFileSync(path.join(rootDir, 'src/components/figma-ui/DocumentCanvas.tsx'), 'utf8');
+    assert.match(canvasSrc, /dockMinimized/);
+    assert.match(canvasSrc, /side="top"/);
+    assert.match(canvasSrc, /bg-white\/75/);
+  });
+
+  it('4. strips backdrop-blur from modals/dialogs/popovers and removes dark-grey camera boxes from signatures', () => {
+    const globalsSrc = fs.readFileSync(path.join(rootDir, 'src/app/globals.css'), 'utf8');
+    assert.match(globalsSrc, /\[data-slot="dialog-overlay"\][\s\S]*?backdrop-filter:\s*none\s*!important;/);
+    assert.match(globalsSrc, /\[data-slot="popover-content"\][\s\S]*?backdrop-filter:\s*none\s*!important;/);
+
+    const printDialogSrc = fs.readFileSync(path.join(rootDir, 'src/components/figma-ui/PrintDialog.tsx'), 'utf8');
+    assert.doesNotMatch(printDialogSrc, /backdropFilter:\s*'blur\(/);
+
+    const inkSrc = fs.readFileSync(path.join(rootDir, 'src/lib/signature-ink-processor.ts'), 'utf8');
+    assert.match(inkSrc, /lum >= 85/);
+    assert.match(inkSrc, /localBg - 28/);
   });
 });
 

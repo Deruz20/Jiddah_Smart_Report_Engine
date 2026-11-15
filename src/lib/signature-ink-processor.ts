@@ -54,7 +54,7 @@ export function hasOpaquePaperBackground(
         transparentPixels++;
       } else {
         const lum = getLuminance(rgba[idx], rgba[idx + 1], rgba[idx + 2]);
-        if (lum >= 145) {
+        if (lum >= 85) {
           opaqueLightPixels++;
         }
       }
@@ -153,9 +153,20 @@ export function extractCleanSignaturePixels(
     }
   }
 
+  // Sample outer border pixels for global adaptive paper-background luminance (bgLum)
+  const borderSamples: number[] = [];
+  for (let x = 0; x < width; x++) {
+    borderSamples.push(lumBuffer[x], lumBuffer[(height - 1) * width + x]);
+  }
+  for (let y = 0; y < height; y++) {
+    borderSamples.push(lumBuffer[y * width], lumBuffer[y * width + (width - 1)]);
+  }
+  borderSamples.sort((a, b) => a - b);
+  const bgLum = borderSamples.length > 0
+    ? Math.max(95, borderSamples[Math.min(borderSamples.length - 1, Math.floor(borderSamples.length * 0.85))])
+    : 240;
+
   const rawAlpha = new Uint8ClampedArray(totalPixels);
-  const cutoff = Math.max(0.11, Math.min(0.32, 0.25 - (boldness - 1.0) * 0.07));
-  const steepness = 12 + boldness * 7;
 
   for (let y = 0; y < height; y++) {
     const fy = ((y + 0.5) / height) * gridRows - 0.5;
@@ -184,21 +195,16 @@ export function extractCleanSignaturePixels(
         smoothedBg[gy1 * gridCols + gx1] * tx;
       const localBg = top * (1 - ty) + bottom * ty;
 
-      const delta = localBg - lumBuffer[p];
-      if (delta <= 8) {
+      const paperThreshold = localBg - 28;
+      const lum = lumBuffer[p];
+      if (lum >= paperThreshold) {
         rawAlpha[p] = 0;
         continue;
       }
 
-      const relDarkness = Math.min(1, delta / Math.max(70, localBg * 0.72));
-      const sigmoid = 1 / (1 + Math.exp(-steepness * (relDarkness - cutoff)));
-      if (sigmoid < 0.08) {
-        rawAlpha[p] = 0;
-      } else {
-        const stretched = (sigmoid - 0.08) / 0.92;
-        const gamma = Math.max(0.6, 1.1 - (boldness - 1.0) * 0.25);
-        rawAlpha[p] = Math.min(255, Math.round(Math.pow(stretched, gamma) * 255));
-      }
+      const inkDepth = paperThreshold - lum;
+      const boostFactor = 45 / Math.max(0.75, boldness * 0.9);
+      rawAlpha[p] = Math.min(255, Math.round((inkDepth / boostFactor) * 255));
     }
   }
 

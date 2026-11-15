@@ -841,3 +841,41 @@ Exit code: 0
      - Added automated test suite `Workstream 23` in `src/__tests__/overhaul-workstreams.test.mjs` (67/67 total tests passing across 19 suites).
      - TypeScript check (`npm run typecheck`): 0 errors.
      - Next.js production build (`npm run build`): 68/68 routes compiled cleanly.
+
+---
+
+### Milestone 24: Landscape Print Lock, Blank Page 1 Fix, Iconic Studio Topbar & Visual Selection, Translucent Minimizable Dock, Zero-Blur Modals & Adaptive Dark-Grey Signature Removal (`feat/overnight-system-renovation`)
+- **Files Modified:**
+  - `src/styles/reports/print-system.css`
+  - `src/components/reports/PrimaryEOTReport.tsx`
+  - `src/components/ReportGeneratorClient.tsx`
+  - `src/components/figma-ui/TopToolbar.tsx`
+  - `src/components/figma-ui/PrintDialog.tsx`
+  - `src/components/figma-ui/DocumentCanvas.tsx`
+  - `src/components/reports/ReportPreviewCell.tsx`
+  - `src/app/globals.css`
+  - `src/components/figma-ui/ui/dialog.tsx`
+  - `src/components/figma-ui/ui/sheet.tsx`
+  - `src/lib/signature-ink-processor.ts`
+  - `src/components/reports/CleanSignatureImage.tsx`
+  - `src/__tests__/overhaul-workstreams.test.mjs`
+  - `OVERNIGHT_PROGRESS_LEDGER.md`
+- **Scope & Workstreams Completed:**
+  1. **Workstream 1: Print Preview Distortion & Top Screen Clipping Fix:**
+     - Removed static global `@page { size: A4 portrait; margin: 0mm; }` in `src/styles/reports/print-system.css` that overrode landscape Primary EOT reports, and injected dynamic `@page { size: A4 landscape|portrait !important; margin: 0mm !important; }` in `ReportGeneratorClient.tsx` for both direct prints and `PrintDialog` prints.
+     - Changed `<main className="tables-wrapper">` in `PrimaryEOTReport.tsx` to `<div className="tables-wrapper tables-row">` and scoped `print-system.css`'s `main { display: block !important; }` rule to `[data-slot="sidebar-inset"] > main`, locking `.landscape-page .tables-wrapper, .landscape-page .tables-row` to `display: flex !important; flex-direction: row !important;`.
+     - Zeroed margins/padding on unconstrained print ancestors, added `break-before: avoid !important` on `.report-card-sheet:first-child`, and hid the screen canvas (`print:!hidden`) to eliminate the blank Page 1 in Print Preview.
+     - Changed `DocumentCanvas.tsx` scroll container alignment to `justify-start` so top report cards are never clipped at the top edge.
+  2. **Workstream 2: Studio Top Bar Redesign, Download/Print Modal & On-Canvas Visual Card Selection:**
+     - Replaced the wide `[ 1▢ | 2▢▢ | 3▢▢▢ ]` switcher in `TopToolbar.tsx` with a single iconic `view-mode-toggle` (`Grid View` 2-up ↔ `Single Scroll View`), added `visual-select-toggle`, `toolbar-download-btn`, and `toolbar-print-btn`, and added Radix tooltips on all icon buttons.
+     - Upgraded `PrintDialog.tsx` with 3 clear scopes (`Current Report`, `Batch Print`, `Custom Visual Selection`) plus a `Select on Canvas` trigger that enters on-canvas visual card selection mode (`visual-selection-bar`, highlight ring, and clickable `✓ Selected` badges in `DocumentCanvas.tsx`).
+     - Tightened the 44px mobile header in `ReportGeneratorClient.tsx` (`flex-1 min-w-0` on student pill, `max-w-[74px]` on class pill, `onClick={handlePrint}`) so all controls fit cleanly inside `360px`.
+  3. **Workstream 3: Translucent, Minimizable Floating Magnifier & Page Bar:**
+     - Replaced the opaque vertical dock in `DocumentCanvas.tsx` with a compact, translucent bottom-right horizontal pill (`[ < ] 4 / 38 [ > ] | [ − ] 75% [ + ] [ ⤢ Fit ] | [ — ]`), defaulting to a minimized pill (`🔍 75% • 4/38`) on mobile `< md`, with `side="top"` Radix tooltips.
+  4. **Workstream 4: Zero-Blur Modals & Adaptive Dark-Grey Signature Removal:**
+     - Enforced `backdrop-filter: none !important` on Radix dialog/sheet overlays and popover surfaces in `globals.css`, reduced backdrop opacity to `bg-black/25` in `dialog.tsx` and `sheet.tsx`, and removed `backdropFilter: 'blur(4px)'` from `PrintDialog.tsx`.
+     - Lowered `hasOpaquePaperBackground()` luminance threshold from `145` to `85` in `signature-ink-processor.ts`, tuned adaptive local background subtraction (`lum >= localBg - 28` -> `alpha = 0`), and steepened `#jiddah-clean-ink` (`slope="4.5" intercept="-1.35"`) in `CleanSignatureImage.tsx` so dim dark-grey camera boxes (`RGB ~135`) strip to pure transparency while preserving uneven shadowed paper cropping.
+  5. **Workstream 5: Verification Gate:**
+     - Updated `Workstream 23` and added `Workstream 24` in `src/__tests__/overhaul-workstreams.test.mjs` (71/71 tests passing across 20 suites).
+     - TypeScript check (`npm run typecheck`): 0 errors.
+     - Next.js production build (`npm run build`): 68/68 static pages compiled cleanly.

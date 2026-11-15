@@ -91,6 +91,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
   const [printScope, setPrintScope] = useState<'current' | 'all' | string[]>('current')
   const [printRequest, setPrintRequest] = useState<{ title: string } | null>(null)
   const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false)
+  const [visualSelectMode, setVisualSelectMode] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
   const [completionCache, setCompletionCache] = useState<Record<string, StudentCompletionStatus>>({})
 
@@ -431,6 +432,15 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
     setSelectedStudentIds((prev) => prev.filter((id) => !visibleSet.has(id)))
   }, [activeClassEnrollments])
 
+  const handleInvertCards = useCallback(() => {
+    const visibleIds = activeClassEnrollments.map((e) => e.enrollment_id)
+    const selectedSet = new Set(selectedStudentIds)
+    const invertedVisible = visibleIds.filter((id) => !selectedSet.has(id))
+    const visibleSet = new Set(visibleIds)
+    const preservedOther = selectedStudentIds.filter((id) => !visibleSet.has(id))
+    setSelectedStudentIds([...preservedOther, ...invertedVisible])
+  }, [activeClassEnrollments, selectedStudentIds])
+
   // Count-Aware Print Button Label
   const printButtonLabel = useMemo(() => {
     const count = selectedStudentIds.length
@@ -682,6 +692,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
         <ReportPreviewCell
           reportType={resolved.type}
           zoom={zoom}
+          columns={filterState.layout === 'grid' ? 2 : 1}
           isActive={isActive}
           onClick={() => setActiveReportId(report.id)}
         >
@@ -698,7 +709,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
         </ReportPreviewCell>
       )
     },
-    [resolveReport, zoom, studioFormatting]
+    [resolveReport, zoom, filterState.layout, studioFormatting]
   )
 
   const printableReports = useMemo(() => {
@@ -722,8 +733,27 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
 
     const originalTitle = document.title
     document.title = printRequest.title
+
+    const isLandscape = printableReports.some((rep) => {
+      const isP7 = (rep.student?.class_name || '').toLowerCase().includes('p.7')
+      const isPrim =
+        (rep.section_type || '').includes('primary') ||
+        (rep.student?.class_name || '').toLowerCase().includes('p.')
+      const isNonMuslim = isNonMuslimStudent(rep.student, rep)
+      return isPrim && rep.score_type === 'eot' && !isP7 && !isNonMuslim
+    })
+
+    let styleEl = document.getElementById('dynamic-print-page-style') as HTMLStyleElement | null
+    if (!styleEl) {
+      styleEl = document.createElement('style')
+      styleEl.id = 'dynamic-print-page-style'
+      document.head.appendChild(styleEl)
+    }
+    styleEl.textContent = `@media print { @page { size: A4 ${isLandscape ? 'landscape' : 'portrait'} !important; margin: 0mm !important; } }`
+
     const restoreTitle = () => {
       document.title = originalTitle
+      styleEl?.remove()
       setPrintRequest(null)
     }
     const printFrame = window.requestAnimationFrame(() => {
@@ -734,6 +764,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
     return () => {
       window.cancelAnimationFrame(printFrame)
       window.removeEventListener('afterprint', restoreTitle)
+      styleEl?.remove()
       document.title = originalTitle
     }
   }, [isPrintDialogOpen, printableReports, printRequest])
@@ -741,12 +772,15 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
   return (
     <div
       data-testid="report-center-workspace"
-      className="h-full bg-[#EEF3F0] dark:bg-[#0B110E] font-sans flex flex-col relative overflow-hidden text-stone-800 dark:text-stone-100 p-2 sm:p-3 gap-2 sm:gap-2.5"
+      className="h-full bg-[#EEF3F0] dark:bg-[#0B110E] font-sans flex flex-col relative overflow-hidden text-stone-800 dark:text-stone-100 p-2 sm:p-3 gap-2 sm:gap-2.5 print:!p-0 print:!m-0 print:!gap-0 print:!h-auto print:!overflow-visible print:!block"
     >
       <PrintDialog
         open={isPrintDialogOpen}
         onOpenChange={setIsPrintDialogOpen}
         reports={rawReports as any}
+        activeReport={rawReports.find((r) => r.id === activeReportId) as any}
+        preselectedIds={selectedStudentIds}
+        onEnterVisualSelect={() => setVisualSelectMode(true)}
         onConfirmPrint={(mode) => {
           setPrintScope(mode)
 
@@ -958,6 +992,8 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
           cardsPerRow={cardsPerRow}
           onCardsPerRowChange={setCardsPerRow}
           onPrintCurrent={handlePrintCurrent}
+          visualSelectMode={visualSelectMode}
+          onToggleVisualSelect={() => setVisualSelectMode((v) => !v)}
           isGenerating={isGenerating}
         />
       </div>
@@ -978,7 +1014,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
         )}
 
         {/* 2. Compact Class Pill */}
-        <div className="shrink-0 max-w-[90px]">
+        <div className="shrink-0 max-w-[74px]">
           <CustomPillSelect
             id="reports-mobile-class-select"
             ariaLabel="Class"
@@ -994,7 +1030,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
               label: c.name,
             }))}
             className="w-full"
-            triggerClassName="h-8 px-2 text-[11px] font-bold rounded-lg bg-emerald-500/10 dark:bg-emerald-400/15 text-emerald-800 dark:text-emerald-200 border-0"
+            triggerClassName="h-8 px-1.5 text-[11px] font-bold rounded-lg bg-emerald-500/10 dark:bg-emerald-400/15 text-emerald-800 dark:text-emerald-200 border-0"
           />
         </div>
 
@@ -1003,7 +1039,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
           <PopoverTrigger asChild>
             <button
               type="button"
-              className="h-8 px-2 rounded-full bg-[#F0F4F9] dark:bg-[#1E2623] border border-black/[0.04] dark:border-white/[0.06] text-[11px] font-bold text-[#111827] dark:text-[#F3F7F5] flex items-center gap-1 cursor-pointer max-w-[125px] sm:max-w-[150px] truncate shrink-0"
+              className="h-8 px-2 rounded-full bg-[#F0F4F9] dark:bg-[#1E2623] border border-black/[0.04] dark:border-white/[0.06] text-[11px] font-bold text-[#111827] dark:text-[#F3F7F5] flex items-center gap-1 cursor-pointer flex-1 min-w-0 truncate"
             >
               <Users size={12} className="text-[#0D5C3A] dark:text-[#34D399] shrink-0" />
               <span className="truncate tabular-nums">
@@ -1119,11 +1155,11 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
         {/* 6. Primary Print pill button */}
         <motion.button
           type="button"
-          onClick={handlePrintSelected}
-          disabled={selectedStudentIds.length === 0 || isGenerating}
+          onClick={handlePrint}
+          disabled={rawReports.length === 0 || isGenerating}
           whileTap={{ scale: 0.96 }}
           className="h-8 px-2.5 rounded-full btn-jiddah-cta text-[11px] font-bold inline-flex items-center gap-1 shrink-0 disabled:opacity-40"
-          title={`Print ${selectedStudentIds.length} Reports`}
+          title="Print Reports"
         >
           <Printer size={12} />
           <span>{selectedStudentIds.length}</span>
@@ -1131,7 +1167,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
       </div>
 
       {/* 100% Full-Width Document Preview Canvas */}
-      <div className="flex flex-1 min-h-0 overflow-hidden relative w-full h-full rounded-2xl border border-[#0D5C3A]/12 dark:border-[#F59E0B]/15">
+      <div className="flex flex-1 min-h-0 overflow-hidden relative w-full h-full rounded-2xl border border-[#0D5C3A]/12 dark:border-[#F59E0B]/15 print:!hidden">
         <DocumentCanvas
           reports={rawReports}
           activeReportId={activeReportId}
@@ -1150,6 +1186,14 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
             }))
           }
           printScope={printScope}
+          visualSelectMode={visualSelectMode}
+          selectedIds={selectedStudentIds}
+          onToggleSelectCard={(id) => handleToggleSelect(id, false)}
+          onSelectAllCards={handleSelectAll}
+          onClearCards={handleClearAll}
+          onInvertCards={handleInvertCards}
+          onPrintSelectedCards={handlePrintSelected}
+          onExitVisualSelect={() => setVisualSelectMode(false)}
         />
       </div>
 

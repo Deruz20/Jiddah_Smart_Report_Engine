@@ -7,19 +7,37 @@ interface PrintDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   reports: { id: string; student_name?: string; student?: { name?: string; arabic_name?: string } }[];
+  activeReport?: { id: string; student_name?: string; student?: { name?: string; arabic_name?: string } } | null;
+  preselectedIds?: string[];
+  onEnterVisualSelect?: () => void;
   onConfirmPrint: (mode: 'current' | 'all' | string[]) => void;
 }
 
-export function PrintDialog({ open, onOpenChange, reports, onConfirmPrint }: PrintDialogProps) {
+export function PrintDialog({
+  open,
+  onOpenChange,
+  reports,
+  activeReport,
+  preselectedIds = [],
+  onEnterVisualSelect,
+  onConfirmPrint,
+}: PrintDialogProps) {
   const [printMode, setPrintMode] = useState<'current' | 'all' | 'custom'>('current');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (open) {
       setPrintMode('current');
-      setSelectedIds(new Set());
+      setSelectedIds(new Set(preselectedIds));
     }
-  }, [open]);
+  }, [open, preselectedIds]);
+
+  const activeStudentName =
+    activeReport?.student?.name ||
+    activeReport?.student?.arabic_name ||
+    activeReport?.student_name ||
+    reports[0]?.student?.name ||
+    'Active Student';
 
   const toggleSelectAll = () => {
     setSelectedIds(selectedIds.size === reports.length
@@ -43,8 +61,9 @@ export function PrintDialog({ open, onOpenChange, reports, onConfirmPrint }: Pri
           <Dialog.Portal forceMount>
             <Dialog.Overlay asChild>
               <motion.div
+                data-slot="dialog-overlay"
                 className="fixed inset-0 z-[100]"
-                style={{ background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(4px)' }}
+                style={{ background: 'rgba(15, 23, 42, 0.25)', backdropFilter: 'none', WebkitBackdropFilter: 'none' }}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
@@ -99,7 +118,9 @@ export function PrintDialog({ open, onOpenChange, reports, onConfirmPrint }: Pri
                       </div>
                       <div>
                         <div style={{ fontSize: 15, fontWeight: 600, color: '#0f172a' }}>Current Report</div>
-                        <div style={{ fontSize: 13, color: '#64748b' }}>Print only the report currently in view.</div>
+                        <div style={{ fontSize: 13, color: '#64748b' }}>
+                          Print only the report currently in view ({activeStudentName}).
+                        </div>
                       </div>
                     </div>
 
@@ -120,29 +141,58 @@ export function PrintDialog({ open, onOpenChange, reports, onConfirmPrint }: Pri
                       </div>
                       <div>
                         <div style={{ fontSize: 15, fontWeight: 600, color: '#0f172a' }}>Batch Print ({reports.length})</div>
-                        <div style={{ fontSize: 13, color: '#64748b' }}>Print all {reports.length} currently generated reports.</div>
+                        <div style={{ fontSize: 13, color: '#64748b' }}>Print all {reports.length} reports in the current class/filter.</div>
                       </div>
                     </div>
 
-                    {/* Option: Custom Selection */}
+                    {/* Option: Custom Visual Selection */}
                     <div
                       onClick={() => setPrintMode('custom')}
                       style={{
                         padding: 16, borderRadius: 12, border: `2px solid ${printMode === 'custom' ? '#047857' : '#e2e8f0'}`,
                         background: printMode === 'custom' ? '#f0fdf4' : 'white',
-                        cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 16,
+                        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
                         transition: 'all 0.2s',
                         opacity: reports.length > 1 ? 1 : 0.5,
                         pointerEvents: reports.length > 1 ? 'auto' : 'none',
                       }}
                     >
-                      <div style={{ width: 40, height: 40, borderRadius: 10, background: printMode === 'custom' ? '#047857' : '#f1f5f9', color: printMode === 'custom' ? 'white' : '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <ListChecks size={20} />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                        <div style={{ width: 40, height: 40, borderRadius: 10, background: printMode === 'custom' ? '#047857' : '#f1f5f9', color: printMode === 'custom' ? 'white' : '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <ListChecks size={20} />
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 15, fontWeight: 600, color: '#0f172a' }}>
+                            Custom Visual Selection ({selectedIds.size} selected)
+                          </div>
+                          <div style={{ fontSize: 13, color: '#64748b' }}>
+                            Select specific report cards visually on the canvas to print.
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <div style={{ fontSize: 15, fontWeight: 600, color: '#0f172a' }}>Custom Selection</div>
-                        <div style={{ fontSize: 13, color: '#64748b' }}>Choose specific students to print.</div>
-                      </div>
+                      {onEnterVisualSelect && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onOpenChange(false);
+                            onEnterVisualSelect();
+                          }}
+                          style={{
+                            padding: '6px 10px',
+                            borderRadius: 8,
+                            fontSize: 12,
+                            fontWeight: 700,
+                            color: '#047857',
+                            background: '#ecfdf5',
+                            border: '1px solid #a7f3d0',
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          Select on Canvas
+                        </button>
+                      )}
                     </div>
 
                     {printMode === 'custom' && (

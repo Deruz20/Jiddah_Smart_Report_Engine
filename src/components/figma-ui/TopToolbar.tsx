@@ -9,6 +9,8 @@ import {
   Search,
   X,
   LayoutGrid,
+  LayoutList,
+  CheckSquare,
   List,
   Sliders,
   Settings,
@@ -116,6 +118,8 @@ interface TopToolbarProps {
   cardsPerRow?: 1 | 2 | 3
   onCardsPerRowChange?: (count: 1 | 2 | 3) => void
   onPrintCurrent?: () => void
+  visualSelectMode?: boolean
+  onToggleVisualSelect?: () => void
 }
 
 export function TopToolbar({
@@ -145,6 +149,8 @@ export function TopToolbar({
   cardsPerRow = 1,
   onCardsPerRowChange,
   onPrintCurrent,
+  visualSelectMode = false,
+  onToggleVisualSelect,
 }: TopToolbarProps) {
   let sidebar: { toggleSidebar: () => void } | null = null
   try {
@@ -417,98 +423,100 @@ export function TopToolbar({
 
   if (classCohortSelect) {
     return (
-      <Tooltip.Provider delayDuration={150}>
+      <Tooltip.Provider delayDuration={100}>
         <div
           data-testid="reports-zone-1-bar"
-          className="w-full bg-white dark:bg-[#151D1A] rounded-2xl px-2.5 sm:px-3 py-1.5 border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 hidden md:flex items-center justify-between gap-1.5 shadow-2xs z-20 print:hidden overflow-hidden max-w-full"
+          className="w-full h-12 bg-white dark:bg-[#151D1A] rounded-2xl px-3 py-1.5 border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 hidden md:flex items-center justify-between gap-2 shadow-2xs z-20 print:hidden overflow-hidden max-w-full"
         >
-          {/* Left: Back Arrow, Class Cohort, Student Selection Pill, Active Term */}
-          <div className="flex items-center gap-1.5 shrink-0 min-w-0">
-            {/* Back to Dashboard Button */}
-            <Link
-              href="/admin"
-              className="p-1.5 rounded-lg text-stone-600 dark:text-stone-300 hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer shrink-0"
-              title="Back to Dashboard"
-              aria-label="Back to Dashboard"
-            >
-              <ArrowLeft size={16} />
-            </Link>
+          {/* Left Group: Back Arrow, Class Cohort, Student Quick Jump */}
+          <div className="flex items-center gap-1.5 min-w-0 shrink">
+            <Tooltip.Root>
+              <Tooltip.Trigger asChild>
+                <Link
+                  href="/admin"
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-stone-600 dark:text-stone-300 hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer shrink-0"
+                  aria-label="Back to Dashboard"
+                >
+                  <ArrowLeft size={16} />
+                </Link>
+              </Tooltip.Trigger>
+              <TooltipContent>Back to Dashboard</TooltipContent>
+            </Tooltip.Root>
 
-            {/* Class Cohort Select */}
             {classCohortSelect}
-
-            {/* Student Selector Pill */}
             {studentSelectorPill}
-
-            {/* Active Term Pill */}
-            <div className="hidden xl:block shrink-0">{activeTermPill}</div>
           </div>
 
-          {/* Center: Phase Track + Curriculum Track + MS Word Multi-Card Switcher */}
+          {/* Center Group: Phase Track + Curriculum Track */}
           <div className="flex items-center gap-1.5 shrink-0">
             {phaseTrack}
             {curriculumTrack}
-
-            {/* MS Word Multi-Card Preview Switcher: 1 | 2 | 3 cards per row */}
-            <div
-              data-testid="cards-per-row-switcher"
-              className="flex items-center bg-[#F0F4F9] dark:bg-[#1E2623] rounded-lg p-0.5 border border-black/[0.04] dark:border-white/[0.06] shrink-0"
-              title="MS Word Multi-Card View"
-            >
-              <button
-                type="button"
-                onClick={() => onCardsPerRowChange?.(1)}
-                className={`px-1.5 py-0.5 rounded text-[10.5px] font-bold transition cursor-pointer ${
-                  cardsPerRow === 1
-                    ? 'bg-[#0D5C3A] text-white shadow-xs'
-                    : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white'
-                }`}
-                title="1 Card per Row (Large Focus)"
-              >
-                1▢
-              </button>
-              <button
-                type="button"
-                onClick={() => onCardsPerRowChange?.(2)}
-                className={`px-1.5 py-0.5 rounded text-[10.5px] font-bold transition cursor-pointer ${
-                  cardsPerRow === 2
-                    ? 'bg-[#0D5C3A] text-white shadow-xs'
-                    : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white'
-                }`}
-                title="2 Cards Side-by-Side (MS Word 2-Up)"
-              >
-                2▢▢
-              </button>
-              <button
-                type="button"
-                onClick={() => onCardsPerRowChange?.(3)}
-                className={`px-1.5 py-0.5 rounded text-[10.5px] font-bold transition cursor-pointer ${
-                  cardsPerRow === 3
-                    ? 'bg-[#0D5C3A] text-white shadow-xs'
-                    : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white'
-                }`}
-                title="3 Cards Side-by-Side (MS Word 3-Up)"
-              >
-                3▢▢▢
-              </button>
-            </div>
           </div>
 
-          {/* Right Actions: Studio Formatting + Theme Mode + Dual-Mode Print CTA + More Actions */}
-          <div className="flex items-center gap-1.5 shrink-0 ml-auto justify-end">
-            {/* 🎨 Studio Formatting Popover */}
-            <Popover>
-              <PopoverTrigger asChild>
+          {/* Right Studio & Output Group: View Toggle, Visual Select, Studio, Download, Print, Theme, More */}
+          <div className="flex items-center gap-1.5 shrink-0 justify-end">
+            {/* Single Iconic View Mode Toggle (Grid View 2-up <-> Single Scroll View) */}
+            <Tooltip.Root>
+              <Tooltip.Trigger asChild>
                 <button
                   type="button"
-                  data-testid="studio-popover-trigger"
-                  className="h-8 px-2.5 rounded-full bg-[#F0F4F9] dark:bg-[#1E2623] hover:bg-[#E4EAE6] dark:hover:bg-[#282A2C] border border-black/[0.04] dark:border-white/[0.06] text-xs font-semibold text-stone-800 dark:text-stone-200 inline-flex items-center gap-1.5 cursor-pointer transition shrink-0"
-                  title="Document Studio Formatting & Themes"
+                  data-testid="view-mode-toggle"
+                  onClick={onLayoutToggle}
+                  aria-label={layout === 'grid' ? 'Switch to Single scroll view' : 'Switch to Grid view (2 per row)'}
+                  className={`w-8 h-8 rounded-full flex items-center justify-center transition cursor-pointer shrink-0 border ${
+                    layout === 'grid'
+                      ? 'bg-[#0D5C3A] text-white border-[#0D5C3A]'
+                      : 'bg-[#F0F4F9] dark:bg-[#1E2623] text-stone-700 dark:text-stone-200 border-black/[0.04] dark:border-white/[0.06] hover:bg-[#E4EAE6] dark:hover:bg-[#282A2C]'
+                  }`}
                 >
-                  <Palette className="size-3.5 text-[#0D5C3A] dark:text-[#34D399] shrink-0" />
-                  <span className="font-bold">Studio</span>
+                  {layout === 'grid' ? <LayoutList size={15} /> : <LayoutGrid size={15} />}
                 </button>
-              </PopoverTrigger>
+              </Tooltip.Trigger>
+              <TooltipContent>
+                {layout === 'grid' ? 'Single scroll view' : 'Grid view (2 per row)'}
+              </TooltipContent>
+            </Tooltip.Root>
+
+            {/* Visual Card Select Toggle Icon */}
+            {onToggleVisualSelect && (
+              <Tooltip.Root>
+                <Tooltip.Trigger asChild>
+                  <button
+                    type="button"
+                    data-testid="visual-select-toggle"
+                    onClick={onToggleVisualSelect}
+                    aria-label="Select report cards visually on canvas"
+                    aria-pressed={visualSelectMode}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center transition cursor-pointer shrink-0 border ${
+                      visualSelectMode
+                        ? 'bg-[#EA580C] text-white border-[#EA580C]'
+                        : 'bg-[#F0F4F9] dark:bg-[#1E2623] text-stone-700 dark:text-stone-200 border-black/[0.04] dark:border-white/[0.06] hover:bg-[#E4EAE6] dark:hover:bg-[#282A2C]'
+                    }`}
+                  >
+                    <CheckSquare size={15} />
+                  </button>
+                </Tooltip.Trigger>
+                <TooltipContent>Select report cards visually on canvas</TooltipContent>
+              </Tooltip.Root>
+            )}
+
+            {/* Studio Customize Pill */}
+            <Popover>
+              <Tooltip.Root>
+                <Tooltip.Trigger asChild>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      data-testid="studio-popover-trigger"
+                      className="h-8 px-2.5 rounded-full bg-[#F0F4F9] dark:bg-[#1E2623] hover:bg-[#E4EAE6] dark:hover:bg-[#282A2C] border border-black/[0.04] dark:border-white/[0.06] text-xs font-semibold text-stone-800 dark:text-stone-200 inline-flex items-center gap-1.5 cursor-pointer transition shrink-0"
+                    >
+                      <Palette className="size-3.5 text-[#0D5C3A] dark:text-[#34D399] shrink-0" />
+                      <span className="font-bold hidden lg:inline">Studio</span>
+                    </button>
+                  </PopoverTrigger>
+                </Tooltip.Trigger>
+                <TooltipContent>Customize Fonts, Colors, Stamp & Signatures</TooltipContent>
+              </Tooltip.Root>
               <PopoverContent
                 align="end"
                 sideOffset={8}
@@ -518,42 +526,61 @@ export function TopToolbar({
               </PopoverContent>
             </Popover>
 
-            {/* Theme Mode Toggle (Sun/Moon) */}
-            <button
-              type="button"
-              onClick={toggleTheme}
-              aria-label={`Switch to ${themeMode === 'dark' ? 'light' : 'dark'} mode`}
-              className="w-8 h-8 rounded-full flex items-center justify-center bg-[#F0F4F9] dark:bg-[#1E2623] text-stone-700 dark:text-stone-200 hover:bg-[#E4EAE6] dark:hover:bg-[#282A2C] transition cursor-pointer border-0 shrink-0"
-              title={`Switch to ${themeMode === 'dark' ? 'light' : 'dark'} mode`}
-            >
-              {themeMode === 'dark' ? <Sun size={14} className="text-amber-400" /> : <Moon size={14} />}
-            </button>
-
-            {/* Dual-Mode Print CTA Button */}
-            {primaryPrintAction && (
-              <div className="flex items-center bg-[#0D5C3A] dark:bg-[#10B981] rounded-full overflow-hidden p-0.5 shadow-xs shrink-0">
-                <button
-                  type="button"
-                  onClick={primaryPrintAction.onClick}
-                  disabled={primaryPrintAction.disabled}
-                  className="h-7 px-2.5 sm:px-3 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-40 hover:bg-black/10 transition shrink-0"
-                  title={primaryPrintAction.label}
-                >
-                  <Printer className="size-3.5 shrink-0" />
-                  <span className="truncate tabular-nums">{primaryPrintAction.label}</span>
-                </button>
-                {onPrintCurrent && (
+            {/* Download / Export Icon */}
+            {onDownload && (
+              <Tooltip.Root>
+                <Tooltip.Trigger asChild>
                   <button
                     type="button"
-                    onClick={onPrintCurrent}
-                    className="h-7 px-2 text-[10.5px] font-bold text-white/90 hover:text-white hover:bg-black/15 transition border-l border-white/20 shrink-0 cursor-pointer"
-                    title="Print only the single active report sheet (1)"
+                    data-testid="toolbar-download-btn"
+                    onClick={onDownload}
+                    aria-label="Download / Export Reports"
+                    className="w-8 h-8 rounded-full flex items-center justify-center bg-[#F0F4F9] dark:bg-[#1E2623] text-stone-700 dark:text-stone-200 hover:bg-[#E4EAE6] dark:hover:bg-[#282A2C] border border-black/[0.04] dark:border-white/[0.06] transition cursor-pointer shrink-0"
                   >
-                    1 Sheet
+                    <Download size={15} />
                   </button>
-                )}
-              </div>
+                </Tooltip.Trigger>
+                <TooltipContent>Download PDF / CSV</TooltipContent>
+              </Tooltip.Root>
             )}
+
+            {/* Primary Print CTA (opens Print Configuration Modal) */}
+            {(onPrint || primaryPrintAction) && (
+              <Tooltip.Root>
+                <Tooltip.Trigger asChild>
+                  <button
+                    type="button"
+                    data-testid="toolbar-print-btn"
+                    onClick={onPrint || primaryPrintAction?.onClick}
+                    disabled={primaryPrintAction?.disabled}
+                    className="h-8 px-3 rounded-full bg-[#0D5C3A] dark:bg-[#10B981] hover:bg-[#0A472C] text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-40 transition shrink-0 shadow-xs"
+                  >
+                    <Printer className="size-3.5 shrink-0" />
+                    <span className="tabular-nums">
+                      Print{reportCount > 0 ? ` (${reportCount})` : ''}
+                    </span>
+                  </button>
+                </Tooltip.Trigger>
+                <TooltipContent>Print Reports</TooltipContent>
+              </Tooltip.Root>
+            )}
+
+            {/* Theme Mode Toggle (Sun/Moon) */}
+            <Tooltip.Root>
+              <Tooltip.Trigger asChild>
+                <button
+                  type="button"
+                  onClick={toggleTheme}
+                  aria-label={`Switch to ${themeMode === 'dark' ? 'light' : 'dark'} mode`}
+                  className="w-8 h-8 rounded-full flex items-center justify-center bg-[#F0F4F9] dark:bg-[#1E2623] text-stone-700 dark:text-stone-200 hover:bg-[#E4EAE6] dark:hover:bg-[#282A2C] transition cursor-pointer border-0 shrink-0"
+                >
+                  {themeMode === 'dark' ? <Sun size={14} className="text-amber-400" /> : <Moon size={14} />}
+                </button>
+              </Tooltip.Trigger>
+              <TooltipContent>
+                Switch to {themeMode === 'dark' ? 'light' : 'dark'} mode
+              </TooltipContent>
+            </Tooltip.Root>
 
             {/* More Actions Menu */}
             <MoreActionsMenu

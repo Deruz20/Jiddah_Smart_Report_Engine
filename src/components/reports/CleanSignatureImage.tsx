@@ -42,9 +42,9 @@ export function CleanSignatureSvgFilter() {
             values="0.33 0.33 0.33 0 0  0.33 0.33 0.33 0 0  0.33 0.33 0.33 0 0  0 0 0 1 0"
           />
           <feComponentTransfer>
-            <feFuncR type="linear" slope="3.2" intercept="-1.45" />
-            <feFuncG type="linear" slope="3.2" intercept="-1.45" />
-            <feFuncB type="linear" slope="3.2" intercept="-1.45" />
+            <feFuncR type="linear" slope="4.5" intercept="-1.35" />
+            <feFuncG type="linear" slope="4.5" intercept="-1.35" />
+            <feFuncB type="linear" slope="4.5" intercept="-1.35" />
             <feFuncA type="identity" />
           </feComponentTransfer>
         </filter>

@@ -23,6 +23,8 @@ interface ReportPreviewCellProps {
   reportType: StabilizedReportType
   /** User zoom factor from the toolbar */
   zoom?: number
+  /** Number of columns when in Grid View (2-up) */
+  columns?: number
   isActive?: boolean
   onClick?: () => void
   className?: string
@@ -32,6 +34,7 @@ export function ReportPreviewCell({
   children,
   reportType,
   zoom = 1,
+  columns = 1,
   isActive = false,
   onClick,
   className = '',
@@ -45,10 +48,13 @@ export function ReportPreviewCell({
 
   const updateFit = useCallback((availableW: number) => {
     const padding = availableW < 640 ? 24 : 64
-    const usable = Math.max(availableW - padding, 220)
+    const colGap = columns > 1 && availableW >= 1280 ? (columns - 1) * 24 : 0
+    const effectiveCols = columns > 1 && availableW >= 1280 ? columns : 1
+    const colW = Math.floor((availableW - padding - colGap) / effectiveCols)
+    const usable = Math.max(colW, 220)
     const fit = Math.min(usable / reportW, 1)
     setFitScale(Math.max(fit, 0.2))
-  }, [reportW])
+  }, [reportW, columns])
 
   useEffect(() => {
     const sentinel = sentinelRef.current

@@ -98,7 +98,7 @@
   #__next,
   [data-slot="sidebar-wrapper"],
   [data-slot="sidebar-inset"],
-  main,
+  [data-slot="sidebar-inset"] > main,
   .report-studio-root,
   .document-canvas-root,
   .document-canvas-scroll,
@@ -110,6 +110,8 @@
     overflow: visible !important;
     display: block !important;
     position: static !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   /* 1. Hide EVERYTHING on the main page */
@@ -143,16 +145,61 @@
 
   .report-card-sheet,
   #print-portal .report-container {
+    margin: 0 !important;
+    padding: 0 !important;
     page-break-after: always !important;
     break-after: page !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
   }
 
+  .report-card-sheet:first-child,
+  #print-portal .report-container:first-child {
+    page-break-before: avoid !important;
+    break-before: avoid !important;
+  }
+
   .report-card-sheet:last-child,
   #print-portal .report-container:last-child {
     page-break-after: auto !important;
     break-after: auto !important;
+  }
+
+  /* Lock landscape & portrait page boxes in print so side-by-side tables never stack vertically */
+  .landscape-page {
+    width: 297mm !important;
+    min-width: 297mm !important;
+    max-width: 297mm !important;
+    height: 210mm !important;
+    max-height: 210mm !important;
+    padding: 4mm 6mm !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    break-inside: avoid !important;
+  }
+
+  .landscape-page .tables-wrapper,
+  .landscape-page .tables-row {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: stretch !important;
+  }
+
+  .portrait-page,
+  .a4-portrait-page,
+  .a4-two-up-page {
+    width: 210mm !important;
+    min-width: 210mm !important;
+    max-width: 210mm !important;
+    height: 297mm !important;
+    max-height: 297mm !important;
+    overflow: hidden !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    break-inside: avoid !important;
   }
 
   #secular-hub-print-root,
@@ -373,13 +420,8 @@
 }
 
 /* ============================================================================
-   PAGE SIZE STRATEGY (browser-native)
+   PAGE SIZE STRATEGY (browser-native, dynamic @page injected by ReportGeneratorClient)
    ============================================================================ */
-
-@page {
-  size: A4 portrait;
-  margin: 0mm;
-}
 
 @page portrait-page {
   size: A4 portrait;

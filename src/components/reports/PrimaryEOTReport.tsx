@@ -508,6 +508,29 @@ export default function PrimaryEOTReport({ reportData, studioFormatting }: any) 
           letter-spacing: 0.8px;
           border-radius: 4px;
         }
+
+        @media print {
+          .landscape-page {
+            width: 297mm !important;
+            min-width: 297mm !important;
+            max-width: 297mm !important;
+            height: 210mm !important;
+            max-height: 210mm !important;
+            padding: 4mm 6mm !important;
+            box-sizing: border-box !important;
+            overflow: hidden !important;
+            page-break-after: always !important;
+            break-after: page !important;
+            break-inside: avoid !important;
+          }
+          .landscape-page .tables-wrapper,
+          .landscape-page .tables-row {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            align-items: stretch !important;
+          }
+        }
         `
         }}
       />
@@ -603,7 +626,7 @@ export default function PrimaryEOTReport({ reportData, studioFormatting }: any) 
                 </section>
 
                 {/* ── TABLES ── */}
-                <main className="tables-wrapper">
+                <div className="tables-wrapper tables-row">
 
                   {/* ACADEMIC TABLE */}
                   <div className="table-col-academic" style={{ flex: showTheologyPanel ? 1.5 : 1 }}>
@@ -735,7 +758,7 @@ export default function PrimaryEOTReport({ reportData, studioFormatting }: any) 
                       </div>
                     </div>
                   )}
-                </main>
+                </div>
 
                 {/* ── FOOTER ── */}
                 <footer className="footer-section">

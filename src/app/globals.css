@@ -523,3 +523,13 @@ body {
   animation: jiddah-popover-out 135ms cubic-bezier(0.4, 0, 1, 1) forwards !important;
   will-change: transform, opacity;
 }
+
+/* Crisp Modal & Popover Overlays — Never Blur Background Content */
+[data-slot="dialog-overlay"],
+[data-slot="sheet-overlay"],
+[data-slot="popover-content"],
+.jiddah-popover-content,
+[data-radix-popper-content-wrapper] {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}

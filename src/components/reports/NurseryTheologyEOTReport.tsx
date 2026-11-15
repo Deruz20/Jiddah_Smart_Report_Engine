@@ -7,13 +7,13 @@ import { transliterateEnglishToArabic } from '@/lib/transliterate'
 
 import { getClassTeacherSignatureKey } from '@/utils/signatures'
 import { NurseryEducativeWatermark } from '@/components/reports/NurseryEducativeWatermark'
-import { useStudioFormatting } from '@/lib/studio-config-store'
+import { useStudioFormatting, resolveEffectiveStudioStyle } from '@/lib/studio-config-store'
 
 export default function NurseryTheologyEOTReport({ reportData, studioFormatting: studioFormattingProp }: any) {
   const studioFormatting = useStudioFormatting(studioFormattingProp, reportData?.settings?.report_studio_config)
-  const printPrefs = reportData?.settings?.print_preferences
-  const includeSignatures = printPrefs?.includeSignatures !== undefined ? Boolean(printPrefs.includeSignatures) : true
-  const includeStamp = Boolean(printPrefs?.includeStamp)
+  const effective = resolveEffectiveStudioStyle(studioFormatting, reportData)
+  const includeSignatures = effective.showSignatures
+  const includeStamp = effective.showStamp
 
   const rawClassName =
     reportData?.student?.class_name ||
@@ -98,10 +98,10 @@ export default function NurseryTheologyEOTReport({ reportData, studioFormatting:
 .nursery-theology-eot-report {
     --nursery-blue: #e3f2fd;
     --nursery-mint: #e8f5e9;
-    --nursery-gold: #d4af37;
+    --nursery-gold: ${effective.secondaryColor};
     --nursery-text: #2c3e50;
-    --primary-green: #064e3b;
-    --secondary-green: #047857;
+    --primary-green: ${effective.primaryColor};
+    --secondary-green: ${effective.headerAccentColor};
     --data-navy: #0f172a;
     --data-indigo: #1e293b;
     --data-teal: #0369a1;
@@ -116,7 +116,8 @@ export default function NurseryTheologyEOTReport({ reportData, studioFormatting:
     direction: rtl;
     padding: 5mm 10mm;
     margin: 0 auto;
-    font-family: 'Cairo', sans-serif;
+    font-family: ${effective.fontFamilyCss} !important;
+    zoom: ${effective.fontScaleMultiplier};
     color: var(--nursery-text);
 }
 
@@ -168,9 +169,9 @@ export default function NurseryTheologyEOTReport({ reportData, studioFormatting:
 .nursery-theology-eot-report .watermark-bg {
     position: absolute;
     inset: 0;
-    background: url('/logo-512h.png') center center no-repeat;
+    background: url('${normalizeSchoolLogoUrl(effective.schoolHeader.logoUrl)}') center center no-repeat;
     background-size: contain;
-    opacity: 0.04;
+    opacity: ${effective.watermarkOpacity};
     pointer-events: none;
     z-index: 0;
 }
@@ -426,7 +427,7 @@ export default function NurseryTheologyEOTReport({ reportData, studioFormatting:
           </div>
           <div className="header-center">
             <div className="basmala">بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْم</div>
-            <div className="school-name">{reportData?.settings?.arabic_name || "مدرسة جدة الإسلامية للروضة والإبتدائية"}</div>
+            <div className="school-name">{effective.schoolHeader.nameArabic || reportData?.settings?.arabic_name || "مدرسة جدة الإسلامية للروضة والإبتدائية"}</div>
             <div className="report-badge">بطاقة تقرير للروضة</div>
           </div>
           <div className="header-badge" style={{ visibility: 'hidden' }}>
@@ -492,7 +493,7 @@ export default function NurseryTheologyEOTReport({ reportData, studioFormatting:
           <div className="remark-box">
             <span className="remark-label">ملاحظات مرب الفصل</span>
             <div style={{ minHeight: '42px', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', width: '100%' }}>
-              <span style={{ color: '#1E40AF', fontWeight: 800, fontSize: '18.5px', lineHeight: 1.35, textAlign: 'center', direction: 'rtl' }}>
+              <span style={{ color: '#1E40AF', fontWeight: 800, fontSize: `${effective.arabicCommentFontSizePx}px`, lineHeight: 1.35, textAlign: 'center', direction: 'rtl' }}>
                 {getTheologyComment(reportData?.theology?.total ?? null, reportData?.student?.gender, reportData?.settings?.theology_remarks)}
               </span>
             </div>
@@ -500,7 +501,7 @@ export default function NurseryTheologyEOTReport({ reportData, studioFormatting:
           <div className="remark-box">
             <span className="remark-label">ملاحظات مدير المدرسة</span>
             <div style={{ minHeight: '42px', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', width: '100%' }}>
-              <span style={{ color: '#1E40AF', fontWeight: 800, fontSize: '18.5px', lineHeight: 1.35, textAlign: 'center', direction: 'rtl' }}>
+              <span style={{ color: '#1E40AF', fontWeight: 800, fontSize: `${effective.arabicCommentFontSizePx}px`, lineHeight: 1.35, textAlign: 'center', direction: 'rtl' }}>
                 {getTheologyComment(reportData?.theology?.total ?? null, reportData?.student?.gender, reportData?.settings?.theology_remarks)}
               </span>
             </div>

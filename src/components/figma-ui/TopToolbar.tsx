@@ -430,8 +430,9 @@ export function TopToolbar({
 
         {/* Nursery Educative Art Toggle */}
         <div className="flex items-center justify-between">
-          <span className="text-[11px] font-medium text-stone-700 dark:text-stone-200">
-            ✨ Nursery Educative Art
+          <span className="text-[11px] font-medium text-stone-700 dark:text-stone-200 flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+            Nursery Educative Art
           </span>
           <button
             type="button"
@@ -466,13 +467,15 @@ export function TopToolbar({
             }}
             className="w-full h-8 px-3 rounded-lg bg-[#0D5C3A] hover:bg-[#0A472C] text-white text-[11px] font-bold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-2xs"
           >
-            <span>💾 Save as School Default</span>
+            <Check className="w-3.5 h-3.5" />
+            <span>Save as School Default</span>
           </button>
           <Link
             href="/admin/reports/studio"
             className="w-full h-7.5 px-3 rounded-lg bg-[#F0F4F9] dark:bg-[#1E2623] hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-100 text-[11px] font-bold flex items-center justify-center gap-1.5 transition border border-black/[0.06] dark:border-white/[0.08]"
           >
-            <span>🚀 Open Full Report Studio 2.0</span>
+            <Sliders className="w-3.5 h-3.5 text-[#0D5C3A] dark:text-[#10B981]" />
+            <span>Open Full Report Studio 2.0</span>
           </Link>
         </div>
       </div>

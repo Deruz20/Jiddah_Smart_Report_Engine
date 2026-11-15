@@ -7,14 +7,19 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
 
 import { getClassTeacherSignatureKey } from "@/utils/signatures";
 import { NurseryEducativeWatermark } from "@/components/reports/NurseryEducativeWatermark";
-import { useStudioFormatting } from "@/lib/studio-config-store";
+import { useStudioFormatting, resolveEffectiveStudioStyle } from "@/lib/studio-config-store";
 
 export default function NurseryEOTReport({ reportData, studioFormatting: studioFormattingProp }: any) {
   const studioFormatting = useStudioFormatting(studioFormattingProp, reportData?.settings?.report_studio_config)
+  const effective = resolveEffectiveStudioStyle(studioFormatting, reportData)
   const branding = resolveReportBranding(reportData)
   const printPrefs = reportData?.settings?.print_preferences
-  const includeSignatures = printPrefs?.includeSignatures !== undefined ? Boolean(printPrefs.includeSignatures) : true
-  const includeStamp = Boolean(printPrefs?.includeStamp)
+  const includeSignatures =
+    effective.showSignatures &&
+    (printPrefs?.includeSignatures !== undefined ? Boolean(printPrefs.includeSignatures) : true)
+  const includeStamp =
+    effective.showStamp &&
+    (printPrefs?.includeStamp !== undefined ? Boolean(printPrefs.includeStamp) : true)
   const rawClassName =
     reportData?.student?.class_name ||
     reportData?.class_name ||
@@ -70,16 +75,16 @@ export default function NurseryEOTReport({ reportData, studioFormatting: studioF
       primaryFont={branding.primaryFont}
       arabicFont={branding.arabicFont}
       themePreset={branding.themePreset}
-      themeColor={branding.themeColor}
+      themeColor={effective.primaryColor}
     >
       <style dangerouslySetInnerHTML={{
         __html: `
     .nursery-eot-report {
-        --primary-green: #059669;
-        --dark-green: #064e3b;
-        --accent-gold: #fbbf24;
+        --primary-green: ${effective.primaryColor};
+        --dark-green: ${effective.headerAccentColor};
+        --accent-gold: ${effective.secondaryColor};
         --border-light: #e2e8f0;
-        --data-indigo: #4338ca;
+        --data-indigo: ${effective.primaryColor};
         --bg-stripes: #f8fafc;
         
         flex: 1 1 auto;
@@ -88,7 +93,8 @@ export default function NurseryEOTReport({ reportData, studioFormatting: studioF
         display: flex;
         flex-direction: column;
         background: transparent;
-        font-family: 'Inter', system-ui, sans-serif;
+        font-family: ${effective.fontFamilyCss} !important;
+        zoom: ${effective.fontScaleMultiplier};
         position: relative;
         overflow: hidden;
         border: none;
@@ -110,12 +116,12 @@ export default function NurseryEOTReport({ reportData, studioFormatting: studioF
 
     /* HEADER */
     .nursery-eot-report .header-banner {
-        background: linear-gradient(to right, #2563eb, #1e40af);
+        background: linear-gradient(to right, ${effective.primaryColor}, ${effective.headerAccentColor});
         padding: 16px 24px;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        border-bottom: 4px solid var(--accent-gold);
+        border-bottom: 4px solid ${effective.secondaryColor};
         color: white;
         flex-shrink: 0;
     }
@@ -129,7 +135,7 @@ export default function NurseryEOTReport({ reportData, studioFormatting: studioF
         letter-spacing: 0.04em;
         line-height: 1.15;
     }
-    .nursery-eot-report .school-left p { margin: 4px 0 0; font-size: 11px; font-weight: 500; color: #93c5fd; }
+    .nursery-eot-report .school-left p { margin: 4px 0 0; font-size: 11px; font-weight: 500; color: rgba(255,255,255,0.85); }
 
     .nursery-eot-report .header-center { width: 36%; text-align: center; display: flex; flex-direction: column; align-items: center; }
     
@@ -192,7 +198,7 @@ export default function NurseryEOTReport({ reportData, studioFormatting: studioF
     .nursery-eot-report .info-box {
         flex: 1;
         background: #f8fafc;
-        border: 1px solid var(--border-light);
+        border: 1.5px solid ${effective.secondaryColor};
         border-radius: 12px;
         padding: 12px 16px;
         box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
@@ -213,9 +219,9 @@ export default function NurseryEOTReport({ reportData, studioFormatting: studioF
         display: flex;
         align-items: flex-end;
         padding: 0 0 2px 4px;
-        color: #1e40af;
+        color: ${effective.primaryColor};
         font-weight: 700;
-        font-size: 14px;
+        font-size: ${effective.commentFontSizePx}px;
     }
 
     /* TABLES */
@@ -231,17 +237,17 @@ export default function NurseryEOTReport({ reportData, studioFormatting: studioF
         width: 100%;
         border-collapse: separate;
         border-spacing: 0;
-        border: 1px solid var(--border-light);
+        border: 1.5px solid ${effective.secondaryColor};
         border-radius: 8px;
         overflow: hidden;
     }
     .nursery-eot-report th {
-        background: #1e40af;
+        background: ${effective.primaryColor};
         color: white;
         font-size: 11px;
-        padding: 7px 8px;
+        padding: ${effective.densityPadding};
         text-transform: uppercase;
-        border-bottom: 2px solid #1e3a8a;
+        border-bottom: 2px solid ${effective.secondaryColor};
         font-weight: 700;
         letter-spacing: 0.05em;
         border-right: 1px solid rgba(255,255,255,0.2);
@@ -251,7 +257,7 @@ export default function NurseryEOTReport({ reportData, studioFormatting: studioF
     .nursery-eot-report td {
         border-bottom: 1px solid var(--border-light);
         border-right: 1px solid var(--border-light);
-        padding: 7px 9px;
+        padding: ${effective.densityPadding};
         font-size: 12.5px;
         color: #334155;
     }
@@ -261,19 +267,19 @@ export default function NurseryEOTReport({ reportData, studioFormatting: studioF
 
     .nursery-eot-report .data-cell {
         text-align: center;
-        font-weight: 700;
-        color: #1e40af;
+        font-weight: ${effective.scoreFontWeight};
+        color: ${effective.primaryColor};
         font-size: 13px;
     }
     
     .nursery-eot-report .subject-cell {
-        font-weight: 600;
+        font-weight: ${effective.headingFontWeight};
         color: #0f172a;
     }
 
     .nursery-eot-report .table-banner {
         background: #eff6ff;
-        color: #1e40af;
+        color: ${effective.primaryColor};
         font-size: 12px;
         font-weight: 800;
         text-align: center;
@@ -297,7 +303,7 @@ export default function NurseryEOTReport({ reportData, studioFormatting: studioF
         background: #f8fafc;
         border-radius: 12px;
         padding: 12px 16px;
-        border: 1px solid var(--border-light);
+        border: 1.5px solid ${effective.secondaryColor};
     }
     .nursery-eot-report .stamp-box {
         width: 135px;
@@ -319,9 +325,9 @@ export default function NurseryEOTReport({ reportData, studioFormatting: studioF
       <div className="nursery-eot-report">
         <div className="header-banner">
           <div className="school-left">
-            <h1>{branding.schoolName}</h1>
-            <p>{branding.address}</p>
-            <p>Tel: {branding.phone}</p>
+            <h1>{effective.schoolHeader.nameEnglish}</h1>
+            <p>{effective.schoolHeader.address}</p>
+            <p>Tel: {effective.schoolHeader.phone}</p>
           </div>
           <div className="header-center">
             <div className="logo">

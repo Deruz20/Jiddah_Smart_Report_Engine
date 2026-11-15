@@ -6,17 +6,21 @@ import {
   Palette,
   Type,
   Stamp,
-  Image as ImageIcon,
-  Save,
   RotateCcw,
   ArrowLeft,
   Sparkles,
   Check,
+  CheckCircle2,
   ZoomIn,
   ZoomOut,
   Maximize2,
   UserCheck,
-  Award,
+  SlidersHorizontal,
+  Eye,
+  ChevronLeft,
+  ChevronRight,
+  Layers,
+  ShieldCheck,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -247,17 +251,17 @@ const SAMPLE_PROFILES: {
     },
   ];
 
-// Clean SVG data-URI signatures for instant live Studio preview
+// Authentic multi-stroke calligraphic fountain-pen SVG signatures seated directly on the dotted signature line
 const SAMPLE_HEADTEACHER_SIG =
   'data:image/svg+xml;utf8,' +
   encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 70"><path d="M18 48 C42 18, 65 55, 88 30 C105 12, 118 48, 140 34 C162 20, 185 45, 222 24" fill="none" stroke="#1E3A8A" stroke-width="3.2" stroke-linecap="round"/><path d="M44 54 Q115 44 198 50" fill="none" stroke="#1E3A8A" stroke-width="1.8" stroke-linecap="round"/></svg>`
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 72"><g fill="none" stroke="#0C2A84" stroke-linecap="round" stroke-linejoin="round"><path d="M16 54 C28 20, 48 14, 54 38 C58 54, 42 58, 52 42 C64 22, 82 18, 86 44 C88 54, 102 28, 114 34 C124 38, 128 52, 140 36 C152 20, 166 48, 180 34 C194 20, 212 44, 242 26" stroke-width="2.9"/><path d="M26 50 C38 24, 52 22, 56 40" stroke-width="1.6" opacity="0.85"/><path d="M32 60 Q128 48 234 56" stroke-width="2.1"/><path d="M72 65 Q148 56 208 62" stroke-width="1.3" opacity="0.8"/><circle cx="218" cy="46" r="1.8" fill="#0C2A84" stroke="none"/></g></svg>`
   );
 
 const SAMPLE_TEACHER_SIG =
   'data:image/svg+xml;utf8,' +
   encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 65"><path d="M22 44 C45 16, 62 48, 82 28 C98 14, 115 44, 138 30 C158 18, 174 42, 202 26" fill="none" stroke="#0F172A" stroke-width="2.8" stroke-linecap="round"/></svg>`
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 68"><g fill="none" stroke="#0C2A84" stroke-linecap="round" stroke-linejoin="round"><path d="M18 52 C32 18, 52 16, 58 42 C62 54, 74 26, 88 34 C100 42, 108 52, 120 34 C132 18, 146 46, 162 34 C176 24, 192 44, 222 28" stroke-width="2.7"/><path d="M40 34 L74 30" stroke-width="1.8" opacity="0.9"/><path d="M28 58 Q122 48 214 54" stroke-width="1.9"/><circle cx="198" cy="44" r="1.6" fill="#0C2A84" stroke="none"/></g></svg>`
   );
 
 type InspectorTab = 'theme' | 'typography' | 'watermark' | 'stamp';
@@ -285,6 +289,7 @@ export function ReportStudioClient({
   const [activeTemplate, setActiveTemplate] = useState<TemplateType>(initialActiveTemplate);
   const [sampleProfileId, setSampleProfileId] = useState<SampleProfileId>('muslim');
   const [activeTab, setActiveTab] = useState<InspectorTab>('theme');
+  const [mobileView, setMobileView] = useState<'controls' | 'preview'>('controls');
   const [branding, setBranding] = useState<BrandingConfig>(initialBranding || defaultBranding);
   const [gradingScale, setGradingScale] = useState<GradingBand[]>(initialGradingScale);
   const [divisionBoundaries, setDivisionBoundaries] = useState<DivisionBoundary[]>(initialDivisionBoundaries);
@@ -355,6 +360,34 @@ export function ReportStudioClient({
     [setStudioConfig]
   );
 
+  const updateBrandingField = useCallback(
+    (patch: Partial<BrandingConfig>) => {
+      setBranding((prev) => {
+        const updated = { ...prev, ...patch };
+        setStudioConfig((curr) =>
+          normalizeStudioConfig({
+            ...curr,
+            primaryColor: updated.primaryColor,
+            secondaryColor: updated.secondaryColor,
+            accentColor: updated.accentColor,
+            schoolHeader: {
+              ...curr.schoolHeader,
+              nameEnglish: updated.schoolName,
+              nameArabic: updated.arabicSchoolName || 'مدرسة جدة الإسلامية للروضة والإبتدائية',
+              address: updated.schoolAddress,
+              phone: updated.schoolPhone,
+              email: updated.schoolEmail,
+              motto: updated.schoolMotto,
+              logoUrl: updated.logoUrl,
+            },
+          })
+        );
+        return updated;
+      });
+    },
+    [setStudioConfig]
+  );
+
   const handleTemplateSelect = (tpl: TemplateType) => {
     setActiveTemplate(tpl);
     if (tpl === 'p7-eot') {
@@ -377,6 +410,12 @@ export function ReportStudioClient({
     }
   };
 
+  const handleStepTemplate = (direction: -1 | 1) => {
+    const idx = TEMPLATE_OPTIONS.findIndex((t) => t.id === activeTemplate);
+    const nextIdx = (idx + direction + TEMPLATE_OPTIONS.length) % TEMPLATE_OPTIONS.length;
+    handleTemplateSelect(TEMPLATE_OPTIONS[nextIdx].id);
+  };
+
   const handleResetDefaults = () => {
     setStudioConfig(DEFAULT_STUDIO_CONFIG);
     saveStudioConfigToStorage(DEFAULT_STUDIO_CONFIG);
@@ -397,11 +436,35 @@ export function ReportStudioClient({
         primaryColor: branding.primaryColor,
         secondaryColor: branding.secondaryColor,
         accentColor: branding.accentColor,
+        schoolHeader: {
+          nameEnglish: branding.schoolName,
+          nameArabic: branding.arabicSchoolName || 'مدرسة جدة الإسلامية للروضة والإبتدائية',
+          address: branding.schoolAddress,
+          phone: branding.schoolPhone,
+          email: branding.schoolEmail,
+          motto: branding.schoolMotto,
+          logoUrl: branding.logoUrl,
+        },
       });
       saveStudioConfigToStorage(normalized);
 
-      const [studioSaved, brandingRes] = await Promise.all([
+      const [studioSaved, schoolRes, brandingRes] = await Promise.all([
         persistStudioConfigGlobally(normalized),
+        fetch('/api/settings/school', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            school_name: branding.schoolName,
+            arabic_name: branding.arabicSchoolName || 'مدرسة جدة الإسلامية للروضة والإبتدائية',
+            motto: branding.schoolMotto,
+            address: branding.schoolAddress,
+            phone: branding.schoolPhone,
+            email: branding.schoolEmail,
+            logo_url: branding.logoUrl,
+            theme_color: branding.primaryColor,
+            report_studio_config: normalized,
+          }),
+        }).catch(() => null),
         fetch('/api/settings/school/branding', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -423,7 +486,7 @@ export function ReportStudioClient({
         }).catch(() => null),
       ]);
 
-      if (studioSaved || (brandingRes && brandingRes.ok)) {
+      if (studioSaved || (schoolRes && schoolRes.ok) || (brandingRes && brandingRes.ok)) {
         toast.success('Saved & applied to all reports across Report Center and School Settings!');
       } else {
         toast.success('Saved & applied across all reports in this browser.');
@@ -693,6 +756,7 @@ export function ReportStudioClient({
         eot_total: 456,
         total: 456,
         average: 91.2,
+        division: 'ممتاز',
         position: 3,
         total_students: 38,
         theology_position: 3,
@@ -755,18 +819,21 @@ export function ReportStudioClient({
         data-testid="report-studio-2-root"
         className="flex flex-col h-[calc(100dvh-16px)] bg-[#F3F6F4] dark:bg-[#0D1310] rounded-2xl border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 overflow-hidden"
       >
-        {/* Top Studio Header Bar (Single-Row Layout) */}
-        <header className="bg-white dark:bg-[#151D1A] border-b border-stone-200 dark:border-white/10 px-3 sm:px-5 py-2 flex items-center justify-between gap-2 overflow-x-auto whitespace-nowrap shrink-0 z-20">
-          <div className="flex items-center gap-2.5 min-w-0 shrink-0">
+        {/* Top Studio Header Bar (100% Responsive Single-Row Layout — Zero Horizontal Clipping) */}
+        <header className="h-13 px-3 bg-white dark:bg-[#151D1A] border-b border-stone-200 dark:border-white/10 flex items-center justify-between gap-2 w-full max-w-full overflow-hidden shrink-0 z-20">
+          {/* Left Group */}
+          <div className="flex items-center gap-2 shrink-0">
             <Link
               href="/admin/reports"
-              className="h-8 px-3 rounded-full bg-[#F0F4F9] dark:bg-[#1E2623] hover:bg-stone-200 dark:hover:bg-stone-700 text-xs font-bold text-stone-800 dark:text-stone-100 inline-flex items-center gap-1.5 transition shrink-0"
+              className="h-8 px-2.5 sm:px-3 rounded-full bg-[#F0F4F9] dark:bg-[#1E2623] hover:bg-stone-200 dark:hover:bg-stone-700 text-xs font-bold text-stone-800 dark:text-stone-100 inline-flex items-center gap-1.5 transition shrink-0"
+              title="Back to Report Center"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              <span>← Back to Report Center</span>
+              <span className="hidden sm:inline">Back to Report Center</span>
+              <span className="sm:hidden">Back</span>
             </Link>
-            <div className="hidden xl:flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-[#0D5C3A] flex items-center justify-center text-white">
+            <div className="hidden lg:flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-[#0D5C3A]/10 dark:bg-[#10B981]/15 flex items-center justify-center text-[#0D5C3A] dark:text-[#10B981]">
                 <Sparkles className="w-3.5 h-3.5" />
               </div>
               <div>
@@ -774,46 +841,86 @@ export function ReportStudioClient({
                   Report Studio 2.0
                 </h1>
                 <p className="text-[10px] text-stone-500 dark:text-stone-400">
-                  Live Document Design & Global Template Engine
+                  Live Document Engine
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Template Family Switcher Pills (All 8 Official Templates) */}
+          {/* Center Group: Compact Template Selector + Prev/Next Stepper + Sample Archetype */}
           <div
             data-testid="studio-template-switcher"
-            className="flex items-center gap-1 bg-[#F0F4F9] dark:bg-[#1E2623] p-1 rounded-xl border border-black/[0.05] dark:border-white/[0.08] shrink-0"
+            className="flex items-center gap-1.5 min-w-0 flex-1 justify-center"
           >
-            {TEMPLATE_OPTIONS.map((tpl) => {
-              const isSelected = activeTemplate === tpl.id;
-              return (
+            <div className="flex items-center gap-1 bg-[#F0F4F9] dark:bg-[#1E2623] p-1 rounded-xl border border-black/[0.05] dark:border-white/[0.08] min-w-0 max-w-full">
+              <button
+                type="button"
+                onClick={() => handleStepTemplate(-1)}
+                className="h-7 w-7 rounded-lg flex items-center justify-center text-stone-600 dark:text-stone-300 hover:bg-white dark:hover:bg-white/10 transition cursor-pointer shrink-0"
+                title="Previous Template"
+                aria-label="Previous Template"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </button>
+              <select
+                id="studio-template-select"
+                data-testid="studio-template-select"
+                value={activeTemplate}
+                onChange={(e) => handleTemplateSelect(e.target.value as TemplateType)}
+                className="h-7 px-2 rounded-lg bg-white dark:bg-[#151D1A] border border-stone-200/80 dark:border-white/10 text-xs font-bold text-stone-900 dark:text-white min-w-0 max-w-[160px] sm:max-w-[240px] md:max-w-[300px] truncate cursor-pointer"
+                aria-label="Select Report Template"
+              >
+                {TEMPLATE_OPTIONS.map((tpl) => (
+                  <option key={tpl.id} value={tpl.id}>
+                    {tpl.label}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => handleStepTemplate(1)}
+                className="h-7 w-7 rounded-lg flex items-center justify-center text-stone-600 dark:text-stone-300 hover:bg-white dark:hover:bg-white/10 transition cursor-pointer shrink-0"
+                title="Next Template"
+                aria-label="Next Template"
+              >
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <div className="hidden xl:flex items-center gap-1 bg-[#F0F4F9] dark:bg-[#1E2623] p-1 rounded-xl border border-black/[0.05] dark:border-white/[0.08] shrink-0">
+              {SAMPLE_PROFILES.map((prof) => (
                 <button
-                  key={tpl.id}
+                  key={prof.id}
                   type="button"
-                  onClick={() => handleTemplateSelect(tpl.id)}
-                  title={tpl.label}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition cursor-pointer ${isSelected
-                    ? 'bg-[#0D5C3A] text-white shadow-2xs'
-                    : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white'
-                    }`}
+                  onClick={() => setSampleProfileId(prof.id)}
+                  className={`px-2 py-1 rounded-lg text-[10.5px] font-bold whitespace-nowrap transition cursor-pointer ${
+                    sampleProfileId === prof.id
+                      ? 'bg-[#0D5C3A] text-white shadow-2xs'
+                      : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white'
+                  }`}
                 >
-                  {tpl.shortLabel}
+                  {prof.id === 'muslim'
+                    ? 'Muslim'
+                    : prof.id === 'non-muslim'
+                      ? 'Non-Muslim'
+                      : prof.id === 'p7'
+                        ? 'P.7'
+                        : 'Nursery'}
                 </button>
-              );
-            })}
+              ))}
+            </div>
           </div>
 
-          {/* Reset + Save & Apply CTA */}
-          <div className="flex items-center gap-2 shrink-0">
+          {/* Right Group: Reset + Save & Apply to All Reports CTA */}
+          <div className="flex items-center gap-1.5 shrink-0">
             <button
               type="button"
               onClick={handleResetDefaults}
-              className="h-8 px-2.5 rounded-xl border border-stone-200 dark:border-white/15 bg-white dark:bg-[#1E2623] text-[11px] font-bold text-stone-700 dark:text-stone-200 hover:bg-stone-100 transition inline-flex items-center gap-1 cursor-pointer"
+              className="h-8 px-2.5 rounded-xl border border-stone-200 dark:border-white/15 bg-white dark:bg-[#1E2623] text-[11px] font-bold text-stone-700 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-white/10 transition inline-flex items-center gap-1 cursor-pointer shrink-0"
               title="Reset Defaults"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">Reset Defaults</span>
+              <span className="hidden sm:inline">Reset</span>
             </button>
 
             <button
@@ -821,28 +928,64 @@ export function ReportStudioClient({
               data-testid="studio-save-apply-all"
               onClick={handleSaveAndApplyAll}
               disabled={isSaving}
-              className="h-8 px-3.5 rounded-xl bg-[#0D5C3A] hover:bg-[#0A472C] text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-sm transition cursor-pointer disabled:opacity-50"
+              className="h-8 px-3 sm:px-3.5 rounded-xl bg-[#0D5C3A] hover:bg-[#0A472C] text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-sm transition cursor-pointer disabled:opacity-50 shrink-0"
             >
-              <Save className="w-3.5 h-3.5" />
-              <span>{isSaving ? 'Saving...' : 'Save & Apply to All Reports'}</span>
+              <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+              <span className="hidden md:inline">
+                {isSaving ? 'Saving...' : 'Save & Apply to All Reports'}
+              </span>
+              <span className="md:hidden">{isSaving ? 'Saving...' : 'Save & Apply'}</span>
             </button>
           </div>
         </header>
 
-        {/* 2-Pane Workspace: Left Inspector Dock (w-[340px]) + Right Live Sample Preview Stage */}
+        {/* Responsive Mobile/Tablet View Switcher (< lg) */}
+        <div
+          data-testid="studio-mobile-view-switcher"
+          className="lg:hidden grid grid-cols-2 gap-1.5 px-3 py-2 bg-white dark:bg-[#151D1A] border-b border-stone-200 dark:border-white/10 shrink-0"
+        >
+          <button
+            type="button"
+            onClick={() => setMobileView('controls')}
+            className={`h-8 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+              mobileView === 'controls'
+                ? 'bg-[#0D5C3A] text-white shadow-2xs'
+                : 'bg-[#F0F4F9] dark:bg-[#1E2623] text-stone-700 dark:text-stone-300'
+            }`}
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5" />
+            <span>Customize Controls</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileView('preview')}
+            className={`h-8 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+              mobileView === 'preview'
+                ? 'bg-[#0D5C3A] text-white shadow-2xs'
+                : 'bg-[#F0F4F9] dark:bg-[#1E2623] text-stone-700 dark:text-stone-300'
+            }`}
+          >
+            <Eye className="w-3.5 h-3.5" />
+            <span>Live Report Preview</span>
+          </button>
+        </div>
+
+        {/* 2-Pane Workspace: Left Inspector Dock (w-[340px] on lg+) + Right Live Sample Preview Stage */}
         <div className="flex flex-1 min-h-0 flex-col lg:flex-row overflow-hidden">
           {/* Left Inspector Dock */}
           <aside
             data-testid="studio-left-inspector"
-            className="w-full lg:w-[340px] bg-white dark:bg-[#151D1A] border-b lg:border-b-0 lg:border-r border-stone-200 dark:border-white/10 flex flex-col shrink-0 max-h-[44dvh] lg:max-h-none overflow-hidden"
+            className={`w-full lg:w-[340px] bg-white dark:bg-[#151D1A] border-b lg:border-b-0 lg:border-r border-stone-200 dark:border-white/10 flex-col shrink-0 flex-1 lg:flex-initial overflow-hidden ${
+              mobileView === 'controls' ? 'flex' : 'hidden lg:flex'
+            }`}
           >
             {/* 4 Inspector Tabs */}
             <div className="grid grid-cols-4 gap-1 p-2 bg-[#F0F4F9] dark:bg-[#1E2623] border-b border-stone-200 dark:border-white/10 shrink-0">
               {[
-                { id: 'theme' as const, label: 'Theme', fullLabel: '🎨 Theme & Colors', icon: Palette },
-                { id: 'typography' as const, label: 'Type', fullLabel: '🔤 Typography & Layout', icon: Type },
-                { id: 'watermark' as const, label: 'Art', fullLabel: '🖼️ Watermark & Nursery Art', icon: ImageIcon },
-                { id: 'stamp' as const, label: 'Stamp', fullLabel: '✒️ Stamp & Signatures', icon: Stamp },
+                { id: 'theme' as const, label: 'Theme', fullLabel: 'Theme & Colors', icon: Palette },
+                { id: 'typography' as const, label: 'Type', fullLabel: 'Typography & Layout', icon: Type },
+                { id: 'watermark' as const, label: 'Art', fullLabel: 'Watermark & Nursery Art', icon: Sparkles },
+                { id: 'stamp' as const, label: 'Stamp', fullLabel: 'Stamp & Signatures', icon: Stamp },
               ].map((tab) => {
                 const TabIcon = tab.icon;
                 return (
@@ -851,11 +994,10 @@ export function ReportStudioClient({
                     type="button"
                     onClick={() => setActiveTab(tab.id)}
                     title={tab.fullLabel}
-                    className={`py-1.5 px-1.5 rounded-lg text-[11px] font-bold transition cursor-pointer flex items-center justify-center gap-1 ${
-                      activeTab === tab.id
+                    className={`py-1.5 px-1.5 rounded-lg text-[11px] font-bold transition cursor-pointer flex items-center justify-center gap-1 ${activeTab === tab.id
                         ? 'bg-[#0D5C3A] text-white shadow-2xs'
                         : 'text-stone-600 dark:text-stone-300 hover:bg-black/5 dark:hover:bg-white/5'
-                    }`}
+                      }`}
                   >
                     <TabIcon className="w-3.5 h-3.5 shrink-0" />
                     <span>{tab.label}</span>
@@ -869,13 +1011,18 @@ export function ReportStudioClient({
               {/* TAB 1: THEME & COLORS */}
               {activeTab === 'theme' && (
                 <div className="space-y-5">
-                  <div>
-                    <h3 className="text-xs font-black uppercase tracking-wider text-stone-700 dark:text-stone-200">
-                      🎨 Theme & Colors
-                    </h3>
-                    <p className="text-[11px] text-stone-500 mt-0.5">
-                      Choose a curated school palette or customize primary, secondary, and header accent colors live.
-                    </p>
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-[#0D5C3A]/10 dark:bg-[#10B981]/15 flex items-center justify-center text-[#0D5C3A] dark:text-[#10B981] shrink-0">
+                      <Palette className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-black uppercase tracking-wider text-stone-700 dark:text-stone-200">
+                        Theme & Colors
+                      </h3>
+                      <p className="text-[11px] text-stone-500 mt-0.5">
+                        Choose a curated school palette or customize primary, secondary, and header accent colors live.
+                      </p>
+                    </div>
                   </div>
 
                   {/* 5 Curated School Palettes */}
@@ -937,8 +1084,7 @@ export function ReportStudioClient({
                             type="color"
                             value={branding.primaryColor}
                             onChange={(e) => {
-                              setBranding({ ...branding, primaryColor: e.target.value });
-                              updateStudio({ primaryColor: e.target.value });
+                              updateBrandingField({ primaryColor: e.target.value });
                             }}
                             className="w-6 h-6 rounded border-0 cursor-pointer"
                           />
@@ -956,8 +1102,7 @@ export function ReportStudioClient({
                             type="color"
                             value={branding.secondaryColor}
                             onChange={(e) => {
-                              setBranding({ ...branding, secondaryColor: e.target.value });
-                              updateStudio({ secondaryColor: e.target.value });
+                              updateBrandingField({ secondaryColor: e.target.value });
                             }}
                             className="w-6 h-6 rounded border-0 cursor-pointer"
                           />
@@ -975,8 +1120,7 @@ export function ReportStudioClient({
                             type="color"
                             value={branding.accentColor}
                             onChange={(e) => {
-                              setBranding({ ...branding, accentColor: e.target.value });
-                              updateStudio({ accentColor: e.target.value });
+                              updateBrandingField({ accentColor: e.target.value });
                             }}
                             className="w-6 h-6 rounded border-0 cursor-pointer"
                           />
@@ -1000,7 +1144,54 @@ export function ReportStudioClient({
                       <input
                         type="text"
                         value={branding.schoolName}
-                        onChange={(e) => setBranding({ ...branding, schoolName: e.target.value })}
+                        onChange={(e) => updateBrandingField({ schoolName: e.target.value })}
+                        className="w-full px-2.5 py-1.5 text-xs border border-stone-200 dark:border-white/10 rounded-lg bg-stone-50 dark:bg-[#1E2623]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-stone-600 dark:text-stone-300 mb-1">
+                        School Name (Arabic)
+                      </label>
+                      <input
+                        type="text"
+                        dir="rtl"
+                        value={branding.arabicSchoolName || ''}
+                        onChange={(e) => updateBrandingField({ arabicSchoolName: e.target.value })}
+                        className="w-full px-2.5 py-1.5 text-xs border border-stone-200 dark:border-white/10 rounded-lg bg-stone-50 dark:bg-[#1E2623]"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[10px] font-semibold text-stone-600 dark:text-stone-300 mb-1">
+                          Address / P.O. Box
+                        </label>
+                        <input
+                          type="text"
+                          value={branding.schoolAddress}
+                          onChange={(e) => updateBrandingField({ schoolAddress: e.target.value })}
+                          className="w-full px-2.5 py-1.5 text-xs border border-stone-200 dark:border-white/10 rounded-lg bg-stone-50 dark:bg-[#1E2623]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold text-stone-600 dark:text-stone-300 mb-1">
+                          Phone
+                        </label>
+                        <input
+                          type="text"
+                          value={branding.schoolPhone}
+                          onChange={(e) => updateBrandingField({ schoolPhone: e.target.value })}
+                          className="w-full px-2.5 py-1.5 text-xs border border-stone-200 dark:border-white/10 rounded-lg bg-stone-50 dark:bg-[#1E2623]"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-stone-600 dark:text-stone-300 mb-1">
+                        Email
+                      </label>
+                      <input
+                        type="text"
+                        value={branding.schoolEmail}
+                        onChange={(e) => updateBrandingField({ schoolEmail: e.target.value })}
                         className="w-full px-2.5 py-1.5 text-xs border border-stone-200 dark:border-white/10 rounded-lg bg-stone-50 dark:bg-[#1E2623]"
                       />
                     </div>
@@ -1011,7 +1202,7 @@ export function ReportStudioClient({
                       <input
                         type="text"
                         value={branding.schoolMotto}
-                        onChange={(e) => setBranding({ ...branding, schoolMotto: e.target.value })}
+                        onChange={(e) => updateBrandingField({ schoolMotto: e.target.value })}
                         className="w-full px-2.5 py-1.5 text-xs border border-stone-200 dark:border-white/10 rounded-lg bg-stone-50 dark:bg-[#1E2623]"
                       />
                     </div>
@@ -1022,13 +1213,18 @@ export function ReportStudioClient({
               {/* TAB 2: TYPOGRAPHY & LAYOUT */}
               {activeTab === 'typography' && (
                 <div className="space-y-5">
-                  <div>
-                    <h3 className="text-xs font-black uppercase tracking-wider text-stone-700 dark:text-stone-200">
-                      🔤 Typography & Layout
-                    </h3>
-                    <p className="text-[11px] text-stone-500 mt-0.5">
-                      Control font families, scaling, bold emphasis, and page density across all report templates.
-                    </p>
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-[#0D5C3A]/10 dark:bg-[#10B981]/15 flex items-center justify-center text-[#0D5C3A] dark:text-[#10B981] shrink-0">
+                      <Type className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-black uppercase tracking-wider text-stone-700 dark:text-stone-200">
+                        Typography & Layout
+                      </h3>
+                      <p className="text-[11px] text-stone-500 mt-0.5">
+                        Control font families, scaling, bold emphasis, comment font size, and page density across all report templates.
+                      </p>
+                    </div>
                   </div>
 
                   {/* Font Family Selector */}
@@ -1102,6 +1298,32 @@ export function ReportStudioClient({
                     </button>
                   </div>
 
+                  {/* Comment Font Size */}
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500">
+                      Comment Font Size
+                    </span>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {([
+                        { id: 'normal', label: 'Normal' },
+                        { id: 'large', label: 'Large' },
+                        { id: 'xlarge', label: 'X-Large' },
+                      ] as const).map((sizeOpt) => (
+                        <button
+                          key={sizeOpt.id}
+                          type="button"
+                          onClick={() => updateStudio({ commentFontSize: sizeOpt.id })}
+                          className={`py-2 rounded-lg text-xs font-bold border transition cursor-pointer ${(studioConfig.commentFontSize || 'large') === sizeOpt.id
+                            ? 'bg-[#0D5C3A] text-white border-[#0D5C3A]'
+                            : 'bg-stone-50 dark:bg-[#1E2623] text-stone-700 dark:text-stone-300 border-stone-200 dark:border-white/10'
+                            }`}
+                        >
+                          {sizeOpt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   {/* Page Margin / Padding Density */}
                   <div className="space-y-1.5">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500">
@@ -1129,13 +1351,18 @@ export function ReportStudioClient({
               {/* TAB 3: WATERMARK & NURSERY ART */}
               {activeTab === 'watermark' && (
                 <div className="space-y-5">
-                  <div>
-                    <h3 className="text-xs font-black uppercase tracking-wider text-stone-700 dark:text-stone-200">
-                      🖼️ Watermark & Nursery Art
-                    </h3>
-                    <p className="text-[11px] text-stone-500 mt-0.5">
-                      Configure the central school crest watermark and blended educative Nursery background art.
-                    </p>
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-[#0D5C3A]/10 dark:bg-[#10B981]/15 flex items-center justify-center text-[#0D5C3A] dark:text-[#10B981] shrink-0">
+                      <Layers className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-black uppercase tracking-wider text-stone-700 dark:text-stone-200">
+                        Watermark & Nursery Art
+                      </h3>
+                      <p className="text-[11px] text-stone-500 mt-0.5">
+                        Configure the central school crest watermark and blended educative Nursery background art.
+                      </p>
+                    </div>
                   </div>
 
                   {/* Central School Crest Watermark Opacity */}
@@ -1167,13 +1394,18 @@ export function ReportStudioClient({
 
                   {/* Toggle for Nursery Educative Background Artwork */}
                   <div className="p-3.5 rounded-xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-700/30 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-bold text-stone-900 dark:text-stone-100">
-                          ✨ Nursery Educative Background Artwork
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-start gap-2">
+                        <div className="w-6 h-6 rounded-md bg-amber-500/15 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0 mt-0.5">
+                          <Sparkles className="w-3.5 h-3.5" />
                         </div>
-                        <div className="text-[10.5px] text-stone-500">
-                          A B C blocks, 1 2 3 numerals, storybooks, giraffe, baby elephant & lion cub
+                        <div>
+                          <div className="font-bold text-stone-900 dark:text-stone-100">
+                            Nursery Educative Background Artwork
+                          </div>
+                          <div className="text-[10.5px] text-stone-500">
+                            A B C blocks, 1 2 3 numerals, storybooks, giraffe, baby elephant & lion cub
+                          </div>
                         </div>
                       </div>
                       <button
@@ -1214,13 +1446,18 @@ export function ReportStudioClient({
               {/* TAB 4: STAMP & SIGNATURES */}
               {activeTab === 'stamp' && (
                 <div className="space-y-5">
-                  <div>
-                    <h3 className="text-xs font-black uppercase tracking-wider text-stone-700 dark:text-stone-200">
-                      ✒️ Stamp & Signatures
-                    </h3>
-                    <p className="text-[11px] text-stone-500 mt-0.5">
-                      Configure the authentic Jiddah Headteacher double-bordered oval stamp and transparent ink signatures.
-                    </p>
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-[#0D5C3A]/10 dark:bg-[#10B981]/15 flex items-center justify-center text-[#0D5C3A] dark:text-[#10B981] shrink-0">
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-black uppercase tracking-wider text-stone-700 dark:text-stone-200">
+                        Stamp & Signatures
+                      </h3>
+                      <p className="text-[11px] text-stone-500 mt-0.5">
+                        Configure the authentic Jiddah Headteacher vector rubber stamp and transparent ink signatures.
+                      </p>
+                    </div>
                   </div>
 
                   {/* Official Headteacher Stamp Toggle */}
@@ -1230,7 +1467,7 @@ export function ReportStudioClient({
                         Official Headteacher Stamp
                       </div>
                       <div className="text-[10px] text-stone-500">
-                        Double-bordered oval vector rubber stamp
+                        Authentic Jiddah vector rubber stamp
                       </div>
                     </div>
                     <button
@@ -1388,7 +1625,9 @@ export function ReportStudioClient({
           <main
             data-testid="studio-live-preview-stage"
             data-canvas-scroll
-            className="flex-1 bg-[#E6ECE8] dark:bg-[#0D1310] overflow-auto relative flex flex-col items-center justify-start p-4 sm:p-8"
+            className={`flex-1 bg-[#E6ECE8] dark:bg-[#0D1310] overflow-auto relative flex-col items-center justify-start p-3 sm:p-8 ${
+              mobileView === 'preview' ? 'flex' : 'hidden lg:flex'
+            }`}
             style={{
               backgroundImage:
                 'radial-gradient(circle, rgba(13,92,58,0.08) 1px, transparent 1px)',
@@ -1411,11 +1650,10 @@ export function ReportStudioClient({
                     key={prof.id}
                     type="button"
                     onClick={() => setSampleProfileId(prof.id)}
-                    className={`px-2 py-0.5 rounded-full text-[10.5px] font-bold whitespace-nowrap transition cursor-pointer ${
-                      sampleProfileId === prof.id
+                    className={`px-2 py-0.5 rounded-full text-[10.5px] font-bold whitespace-nowrap transition cursor-pointer ${sampleProfileId === prof.id
                         ? 'bg-[#0D5C3A] text-white shadow-2xs'
                         : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white'
-                    }`}
+                      }`}
                   >
                     {prof.label}
                   </button>

@@ -12,10 +12,11 @@ import { OfficialReportStamp } from '@/components/reports/StampGenerator'
 import { resolveReportBranding, resolveReportGradingBands } from '@/lib/school-settings-helper'
 import { getClassTeacherSignatureKey } from '@/utils/signatures'
 import { transliterateEnglishToArabic } from '@/lib/transliterate'
-import { useStudioFormatting } from '@/lib/studio-config-store'
+import { useStudioFormatting, resolveEffectiveStudioStyle } from '@/lib/studio-config-store'
 
 export default function PrimaryEOTReport({ reportData, studioFormatting: studioFormattingProp }: any) {
   const studioFormatting = useStudioFormatting(studioFormattingProp, reportData?.settings?.report_studio_config)
+  const effective = resolveEffectiveStudioStyle(studioFormatting, reportData)
   const branding = resolveReportBranding(reportData)
   const gradingBands = resolveReportGradingBands(reportData)
 
@@ -61,8 +62,12 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
     Math.round((gregorianYear - 622) * (33 / 32))
 
   const printPrefs = reportData?.settings?.print_preferences
-  const includeSignatures = printPrefs?.includeSignatures !== undefined ? Boolean(printPrefs.includeSignatures) : true
-  const includeStamp = Boolean(printPrefs?.includeStamp)
+  const includeSignatures =
+    effective.showSignatures &&
+    (printPrefs?.includeSignatures !== undefined ? Boolean(printPrefs.includeSignatures) : true)
+  const includeStamp =
+    effective.showStamp &&
+    (printPrefs?.includeStamp !== undefined ? Boolean(printPrefs.includeStamp) : true)
 
   const teacherComment =
     reportData?.circular?.class_teacher_comment ||
@@ -110,16 +115,16 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
   const renderSubjectRow = (subject: any, i: number) => (
     <tr key={subject.subject_name} className={i % 2 === 0 ? "row-even" : "row-odd"}>
       <td className="subj-name">{subject.subject_name}</td>
-      <td>{subject.bot_score ?? "--"}</td>
+      <td style={{ fontWeight: effective.scoreFontWeight }}>{subject.bot_score ?? "--"}</td>
       <td className="grade-cell">{subject.bot_grade_display ?? subject.bot_agg ?? "--"}</td>
-      <td>{subject.mot_score ?? "--"}</td>
+      <td style={{ fontWeight: effective.scoreFontWeight }}>{subject.mot_score ?? "--"}</td>
       <td className="grade-cell">{subject.mot_grade_display ?? subject.mot_agg ?? "--"}</td>
-      <td>{subject.eot_score ?? "--"}</td>
+      <td style={{ fontWeight: effective.scoreFontWeight }}>{subject.eot_score ?? "--"}</td>
       <td className="grade-cell">{subject.eot_grade_display ?? subject.eot_agg ?? subject.grade ?? "--"}</td>
       <td className="remark-cell" style={{ color: remarkColor(subject.remark) }}>
         {subject.remark || (subject.eot_score != null ? getSubjectRemark(getSubjectGradeNumber(subject.eot_score)) : subject.mot_score != null ? getSubjectRemark(getSubjectGradeNumber(subject.mot_score)) : "")}
       </td>
-      <td style={{ textTransform: 'uppercase', fontFamily: '"Caveat", cursive', fontWeight: 'bold', fontSize: '1.2em', color: '#047857' }}>{(subject.teacher_initials || '').toUpperCase()}</td>
+      <td style={{ textTransform: 'uppercase', fontFamily: '"Caveat", cursive', fontWeight: 'bold', fontSize: '1.2em', color: effective.primaryColor }}>{(subject.teacher_initials || '').toUpperCase()}</td>
     </tr>
   )
 
@@ -129,7 +134,7 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
       primaryFont={branding.primaryFont}
       arabicFont={branding.arabicFont}
       themePreset={branding.themePreset}
-      themeColor={branding.themeColor}
+      themeColor={effective.primaryColor}
     >
       <style
         dangerouslySetInnerHTML={{
@@ -148,6 +153,10 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
 
         /* ── PAGE CONTAINER ── */
         .landscape-page {
+          --report-primary-color: ${effective.primaryColor};
+          --report-secondary-color: ${effective.secondaryColor};
+          --report-border-color: ${effective.secondaryColor};
+          --report-accent-color: ${effective.headerAccentColor};
           width: 100%;
           height: 100%;
           background: white;
@@ -158,6 +167,7 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
           flex-direction: column;
           box-sizing: border-box;
           flex: 1;
+          font-family: ${effective.fontFamilyCss} !important;
         }
 
         .landscape-page * { box-sizing: border-box; }
@@ -165,7 +175,7 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
 
         /* ── PREMIUM DOUBLE BORDERS ── */
         .outer-border {
-          border: 4px solid var(--report-border-color, #c2994c);
+          border: 4px solid ${effective.secondaryColor};
           padding: 2px;
           flex: 1; 
           display: flex;
@@ -173,7 +183,7 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
         }
         
         .inner-border {
-          border: 1.5px solid var(--report-primary-color, #0f4d25);
+          border: 1.5px solid ${effective.primaryColor};
           padding: 4px 14px;
           flex: 1; 
           position: relative;
@@ -189,7 +199,7 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
           inset: 0;
           background: url('${branding.logoUrl}') center center no-repeat;
           background-size: 420px;
-          opacity: 0.04;
+          opacity: ${effective.watermarkOpacity};
           pointer-events: none;
           z-index: 0;
         }
@@ -202,6 +212,8 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
           height: 100%;
           justify-content: space-between;
           gap: 4px;
+          font-family: ${effective.fontFamilyCss} !important;
+          zoom: ${effective.fontScaleMultiplier};
         }
 
         /* ── HEADER SECTION ── */
@@ -215,7 +227,7 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
         
         .header-left { flex: 0 0 36%; overflow: visible; }
         .header-left h1 {
-          color: #7F1D1D;
+          color: ${effective.headerAccentColor};
           font-size: 22px;
           font-weight: 900;
           margin: 0 0 3px 0;
@@ -239,7 +251,7 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
         .bismillah {
           font-family: 'Amiri', serif;
           font-size: 24px;
-          color: var(--report-primary-color, #0f4d25);
+          color: ${effective.primaryColor};
           line-height: 1;
           margin-bottom: 2px;
         }
@@ -248,7 +260,7 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
           margin-bottom: 4px;
         }
         .report-badge {
-          background-color: var(--report-primary-color, #0f4d25);
+          background-color: ${effective.primaryColor};
           color: #ffffff;
           padding: 4px 18px;
           border-radius: 12px;
@@ -264,7 +276,7 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
           direction: rtl;
         }
         .header-right h2 {
-          color: #7F1D1D;
+          color: ${effective.headerAccentColor};
           font-family: 'Amiri', serif;
           font-size: 25px;
           font-weight: 900;
@@ -273,7 +285,7 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
         }
 
         .header-divider {
-          border-top: 1.5px solid var(--report-primary-color, #0f4d25);
+          border-top: 1.5px solid ${effective.primaryColor};
           margin: 4px 0;
           flex-shrink: 0;
         }
@@ -285,7 +297,7 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
           flex-shrink: 0;
         }
         .info-box {
-          border: 1.5px dashed var(--report-border-color, #c2994c);
+          border: 1.5px dashed ${effective.secondaryColor};
           border-radius: 8px;
           padding: 5px 12px; 
           flex: 1;
@@ -350,7 +362,7 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
         }
 
         .table-container {
-          border: 2px solid var(--report-border-color, #c2994c);
+          border: 2px solid ${effective.secondaryColor};
           border-radius: 8px;
           overflow: hidden;
           background: white;
@@ -369,24 +381,24 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
 
         .table-container th, .table-container td {
           border: 1px solid #cbd5e1;
-          padding: 2.5px 3.5px;
+          padding: ${effective.densityPadding};
           text-align: center;
           font-size: 10px;
           vertical-align: middle;
         }
         
         .th-banner {
-          background-color: var(--report-border-color, #c2994c);
+          background-color: ${effective.secondaryColor};
           color: #ffffff;
           font-size: 12px;
           font-weight: 800;
           letter-spacing: 1px;
           text-transform: uppercase;
         }
-        .table-container thead th { border-color: var(--report-border-color, #c2994c); }
+        .table-container thead th { border-color: ${effective.secondaryColor}; }
         
         .th-sub {
-          background-color: var(--report-primary-color, #0f4d25);
+          background-color: ${effective.primaryColor};
           color: #ffffff;
           font-size: 9.5px;
           font-weight: 700;
@@ -398,11 +410,11 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
         
         .subj-name {
           text-align: left;
-          font-weight: 800;
-          color: var(--report-primary-color, #0f4d25);
+          font-weight: ${effective.headingFontWeight};
+          color: ${effective.primaryColor};
           padding-left: 10px !important;
         }
-        .grade-cell { font-weight: 800; color: #1e293b; }
+        .grade-cell { font-weight: ${effective.scoreFontWeight}; color: #1e293b; }
         .remark-cell { font-style: italic; font-weight: 800; }
         .total-row td { background-color: #f1f5f9; font-weight: 800; }
 
@@ -410,14 +422,14 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
         .grading-container {
           flex-shrink: 0;
         }
-        .grade-head { background-color: var(--report-primary-color, #0f4d25); color: white; font-weight: 800; } 
+        .grade-head { background-color: ${effective.primaryColor}; color: white; font-weight: 800; } 
         .marks-head { background-color: #475569; color: white; font-weight: 800; }
         .grade-val { background-color: #f1f5f9; font-weight: 700; }
 
         /* Theology Specifics */
         .theology-table th { font-family: 'Amiri', serif; font-size: 14px; }
-        .theology-table td { font-family: 'Amiri', serif; font-size: 14px; font-weight: bold; }
-        .theology-subj { text-align: right; font-weight: 700; padding-right: 12px !important; color: var(--report-primary-color, #0f4d25); }
+        .theology-table td { font-family: 'Amiri', serif; font-size: 14px; font-weight: ${effective.scoreFontWeight}; }
+        .theology-subj { text-align: right; font-weight: 700; padding-right: 12px !important; color: ${effective.primaryColor}; }
         
         .theology-notes {
           font-family: 'Amiri', serif;
@@ -426,7 +438,7 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
         }
         .t-note-row { display: flex; align-items: flex-end; gap: 8px; margin-bottom: 6px; }
         .t-note-lbl { font-weight: 700; white-space: nowrap; }
-        .t-note-val { border-bottom: 1.5px dotted #94a3b8; flex: 1; min-width: 50px; font-style: italic; font-weight: 700; color: #ea580c; text-align: right; padding-bottom: 2px;}
+        .t-note-val { border-bottom: 1.5px dotted #94a3b8; flex: 1; min-width: 50px; font-style: italic; font-weight: 700; color: #ea580c; text-align: right; padding-bottom: 2px; font-size: ${effective.arabicCommentFontSizePx}px; }
 
         /* ── FOOTER SECTION ── */
         .footer-section {
@@ -467,7 +479,7 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
         .c-value {
           flex: 1;
           border-bottom: 1.5px dotted #94a3b8;
-          font-size: 12px;
+          font-size: ${effective.commentFontSizePx}px;
           font-weight: 800;
           font-style: italic;
           color: #0ea5e9;
@@ -524,7 +536,7 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
         }
 
         .validity-bar {
-          background-color: #8b0000;
+          background-color: ${effective.headerAccentColor};
           color: white;
           text-align: center;
           padding: 5px; 
@@ -569,11 +581,11 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
                 {/* ── HEADER ── */}
                 <header className="header-section">
                   <div className="header-left">
-                    <h1 data-testid="report-school-name">{branding.schoolName}</h1>
-                    <p data-testid="report-school-address">{branding.address}</p>
-                    <p data-testid="report-school-phone">Tel: {branding.phone}</p>
-                    <p style={{ textTransform: 'lowercase' }} data-testid="report-school-email">{branding.email}</p>
-                    {branding.motto ? <p style={{ fontStyle: 'italic' }} data-testid="report-school-motto">&ldquo;{branding.motto}&rdquo;</p> : null}
+                    <h1 data-testid="report-school-name">{effective.schoolHeader.nameEnglish}</h1>
+                    <p data-testid="report-school-address">{effective.schoolHeader.address}</p>
+                    <p data-testid="report-school-phone">Tel: {effective.schoolHeader.phone}</p>
+                    <p style={{ textTransform: 'lowercase' }} data-testid="report-school-email">{effective.schoolHeader.email}</p>
+                    {effective.schoolHeader.motto ? <p style={{ fontStyle: 'italic' }} data-testid="report-school-motto">&ldquo;{effective.schoolHeader.motto}&rdquo;</p> : null}
                   </div>
 
                   <div className="header-center">
@@ -598,7 +610,7 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
                   </div>
 
                   <div className="header-right">
-                    <h2>مدرسة جدة الإسلامية للروضة<br />والإبتدائية - انساغو - واكيسو</h2>
+                    <h2>{effective.schoolHeader.nameArabic}</h2>
                   </div>
                 </header>
 
@@ -686,12 +698,12 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
                             <th rowSpan={2} className="th-sub" style={{ width: '10%' }}>INITIALS</th>
                           </tr>
                           <tr>
-                            <th className="th-sub border-t border-t-[#c2994c]">MARK</th>
-                            <th className="th-sub border-t border-t-[#c2994c]">AGG</th>
-                            <th className="th-sub border-t border-t-[#c2994c]">MARK</th>
-                            <th className="th-sub border-t border-t-[#c2994c]">AGG</th>
-                            <th className="th-sub border-t border-t-[#c2994c]">MARK</th>
-                            <th className="th-sub border-t border-t-[#c2994c]">AGG</th>
+                            <th className="th-sub" style={{ borderTop: `1px solid ${effective.secondaryColor}` }}>MARK</th>
+                            <th className="th-sub" style={{ borderTop: `1px solid ${effective.secondaryColor}` }}>AGG</th>
+                            <th className="th-sub" style={{ borderTop: `1px solid ${effective.secondaryColor}` }}>MARK</th>
+                            <th className="th-sub" style={{ borderTop: `1px solid ${effective.secondaryColor}` }}>AGG</th>
+                            <th className="th-sub" style={{ borderTop: `1px solid ${effective.secondaryColor}` }}>MARK</th>
+                            <th className="th-sub" style={{ borderTop: `1px solid ${effective.secondaryColor}` }}>AGG</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -720,7 +732,7 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
                             ))}
                           </tr>
                           <tr>
-                            <th className="marks-head border-t border-t-[#c2994c]">Marks</th>
+                            <th className="marks-head" style={{ borderTop: `1px solid ${effective.secondaryColor}` }}>Marks</th>
                             {gradingBands.map((b) => (
                               <td key={b.grade}>{b.range}</td>
                             ))}
@@ -746,10 +758,10 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
                               <th rowSpan={2} className="th-sub" style={{ width: '26%' }}>الملاحظات</th>
                             </tr>
                             <tr>
-                              <th className="th-sub border-t border-t-[#c2994c]">الدرجة الكبرى</th>
-                              <th className="th-sub border-t border-t-[#c2994c]">الدرجة الصغرى</th>
-                              <th className="th-sub border-t border-t-[#c2994c]">الدرجة الكبرى</th>
-                              <th className="th-sub border-t border-t-[#c2994c]">الدرجة الصغرى</th>
+                              <th className="th-sub" style={{ borderTop: `1px solid ${effective.secondaryColor}` }}>الدرجة الكبرى</th>
+                              <th className="th-sub" style={{ borderTop: `1px solid ${effective.secondaryColor}` }}>الدرجة الصغرى</th>
+                              <th className="th-sub" style={{ borderTop: `1px solid ${effective.secondaryColor}` }}>الدرجة الكبرى</th>
+                              <th className="th-sub" style={{ borderTop: `1px solid ${effective.secondaryColor}` }}>الدرجة الصغرى</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -831,9 +843,9 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
                       </div>
                     </div>
 
-                    <div className="stamp-wrapper" style={{ width: '135px', height: '68px', maxWidth: '135px', maxHeight: '68px', overflow: 'hidden', flexShrink: 0, padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent' }}>
+                    <div className="stamp-wrapper" style={{ width: '132px', height: '62px', maxWidth: '132px', maxHeight: '62px', marginBottom: '2px', overflow: 'hidden', flexShrink: 0, padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent' }}>
                       {includeStamp ? (
-                        <OfficialReportStamp reportData={reportData} studioFormatting={studioFormatting} maxWidth={135} maxHeight={68} />
+                        <OfficialReportStamp reportData={reportData} studioFormatting={studioFormatting} maxWidth={128} maxHeight={60} />
                       ) : null}
                     </div>
                   </div>

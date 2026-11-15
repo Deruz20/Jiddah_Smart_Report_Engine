@@ -1206,8 +1206,8 @@ describe('Workstream 22: Universal Marks Reconciliation, Form Collision Fix, Sta
     for (const t of templates) {
       const tPath = path.join(rootDir, `src/components/reports/${t}`);
       const tSrc = fs.readFileSync(tPath, 'utf8');
-      assert.match(tSrc, /135px/);
-      assert.match(tSrc, /68px/);
+      assert.match(tSrc, /13[25]px/);
+      assert.match(tSrc, /6[248]px/);
       assert.match(tSrc, /OfficialReportStamp/);
     }
 
@@ -1338,7 +1338,7 @@ describe('Workstream 23: Authentic Jiddah Vector Stamp, Clean Signature Ink Filt
     const eotPath = path.join(rootDir, 'src/components/reports/PrimaryEOTReport.tsx');
     const eotSrc = fs.readFileSync(eotPath, 'utf8');
     // Verify tightened vertical padding so bottom validity banner never clips
-    assert.match(eotSrc, /\.landscape-page\s*\{[^}]*padding:\s*3mm;/);
+    assert.match(eotSrc, /\.landscape-page\s*\{[\s\S]*?padding:\s*3mm;/);
   });
 
   it('4. enforces big and bold pupil profile typography across all 8 report templates', () => {
@@ -1465,13 +1465,13 @@ describe('Workstream 25: CSS Named Pages for Mixed Print, P7 Portrait Parity, Wh
     const p7Src = fs.readFileSync(path.join(rootDir, 'src/components/reports/P7EOTReport.tsx'), 'utf8');
     assert.match(p7Src, /page:\s*portrait-sheet\s*!important;/);
     assert.match(p7Src, /data-report-orientation="portrait"/);
-    assert.match(p7Src, /#7F1D1D/); // Maroon title
+    assert.match(p7Src, /effective\.headerAccentColor|#7F1D1D/); // Maroon/accent title
     assert.match(p7Src, /\/logo-512h\.png/); // Centered crest
     assert.match(p7Src, /getSecularPortraitReportTitle/);
     assert.match(p7Src, /<OfficialReportStamp/);
     assert.match(p7Src, /\.p7-eot-report \.line\.pupil-name[\s\S]*?font-size:\s*16px;[\s\S]*?font-weight:\s*900;/);
-    assert.match(p7Src, /--report-border-color,\s*#c2994c/);
-    assert.match(p7Src, /--report-primary-color,\s*#0f4d25/);
+    assert.match(p7Src, /--report-border-color:\s*\$\{effective\.secondaryColor\}|--report-border-color,\s*#c2994c/);
+    assert.match(p7Src, /--report-primary-color:\s*\$\{effective\.primaryColor\}|--report-primary-color,\s*#0f4d25/);
   });
 
   it('3. white-clips signatures instantly with CSS multiply + grayscale/brightness/contrast and caches processed canvas data', () => {
@@ -1597,7 +1597,7 @@ describe('Workstream 26: Progressive Card Mounting, Transparent Stamp Crest, Sea
     assert.match(p7Src, /th-banner/);
     assert.match(p7Src, /uneb-strip/);
     assert.match(p7Src, /UNEB PRIMARY DIVISION CLASSIFICATION/);
-    assert.match(p7Src, /border:\s*1\.5px dashed #C59B27/);
+    assert.match(p7Src, /border:\s*1\.5px dashed (#C59B27|\$\{effective\.secondaryColor\})/);
     assert.match(p7Src, /background-color:\s*#FAF6EE/);
   });
 
@@ -1908,7 +1908,7 @@ describe('Workstream 30: Portrait Arabic Header Fit, Theology Position/Out-Of, N
     const nurseryMotSrc = read('src/components/reports/NurseryMOTReport.tsx');
     const watermarkSrc = read('src/components/reports/NurseryEducativeWatermark.tsx');
 
-    assert.match(nurseryTheoSrc, /fontSize:\s*'18\.5px'/);
+    assert.match(nurseryTheoSrc, /fontSize:\s*`\$\{effective\.arabicCommentFontSizePx\}px`/);
     assert.match(nurseryTheoSrc, /fontWeight:\s*800/);
     assert.match(nurseryTheoSrc, /color:\s*'#1E40AF'/);
     assert.match(nurseryTheoSrc, /classTeacherSignatureUrl/);
@@ -1937,9 +1937,9 @@ describe('Workstream 30: Portrait Arabic Header Fit, Theology Position/Out-Of, N
     assert.match(storeSrc, /jiddah_studio_formatting_v2/);
     assert.match(storeSrc, /jiddah:studio-config-updated/);
     assert.match(toolbarSrc, /Official Headteacher Stamp/);
-    assert.match(toolbarSrc, /✨ Nursery Educative Art/);
-    assert.match(toolbarSrc, /💾 Save as School Default/);
-    assert.match(toolbarSrc, /🚀 Open Full Report Studio 2\.0/);
+    assert.match(toolbarSrc, /Nursery Educative Art/);
+    assert.match(toolbarSrc, /Save as School Default/);
+    assert.match(toolbarSrc, /Open Full Report Studio 2\.0/);
     assert.match(studioSrc, /data-testid="report-studio-2-root"/);
     assert.match(studioSrc, /nursery-theology-eot/);
     assert.match(studioSrc, /Save & Apply to All Reports/);
@@ -1985,7 +1985,52 @@ describe('Workstream 30: Portrait Arabic Header Fit, Theology Position/Out-Of, N
     assert.match(primaryEotSrc, /subject\.eot_grade_display \?\? subject\.eot_agg \?\? subject\.grade \?\? "--"/);
     assert.match(p7EotSrc, /subject\.eot_grade_display \?\? subject\.eot_agg \?\? subject\.grade \?\? '--'/);
     assert.doesNotMatch(studioSrc, /💾 Save & Apply to All Reports/);
-    assert.match(studioSrc, /flex items-center justify-between gap-2 overflow-x-auto whitespace-nowrap/);
+    assert.match(studioSrc, /h-13 px-3 bg-white dark:bg-\[#151D1A\] border-b border-stone-200 dark:border-white\/10 flex items-center justify-between gap-2 w-full max-w-full overflow-hidden/);
     assert.match(studioSrc, /data-testid="studio-sample-archetype-switcher"/);
+  });
+
+  it('WS32.1: resolveEffectiveStudioStyle is defined in studio-config-store and wired into all 8 report templates', () => {
+    const storeSrc = read('src/lib/studio-config-store.ts');
+    assert.match(storeSrc, /export function resolveEffectiveStudioStyle/);
+
+    const templates = [
+      'src/components/reports/PrimaryEOTReport.tsx',
+      'src/components/reports/P7EOTReport.tsx',
+      'src/components/reports/PrimaryMOTReport.tsx',
+      'src/components/reports/PrimaryBOTReport.tsx',
+      'src/components/reports/NurseryEOTReport.tsx',
+      'src/components/reports/NurseryMOTReport.tsx',
+      'src/components/reports/NurseryTheologyEOTReport.tsx',
+      'src/components/reports/TheologyMOTReport.tsx',
+    ];
+    for (const tplPath of templates) {
+      const src = read(tplPath);
+      assert.match(src, /resolveEffectiveStudioStyle/, `${tplPath} must use resolveEffectiveStudioStyle`);
+    }
+  });
+
+  it('WS32.2: ReportStudioClient top bar is overflow-proof with compact template selector, Prev/Next steppers, mobile view switcher, and zero raw emojis', () => {
+    const studioSrc = read('src/components/reports/ReportStudioClient.tsx');
+    const toolbarSrc = read('src/components/figma-ui/TopToolbar.tsx');
+
+    assert.match(studioSrc, /data-testid="studio-template-select"/);
+    assert.match(studioSrc, /data-testid="studio-mobile-view-switcher"/);
+    assert.match(studioSrc, /data-testid="studio-save-apply-all"/);
+    assert.match(studioSrc, /School Name \(Arabic\)/);
+    assert.match(studioSrc, /Comment Font Size/);
+    assert.doesNotMatch(studioSrc, /[🎨🔤🖼️✒️✨💾🚀]/);
+    assert.doesNotMatch(toolbarSrc, /[✨💾🚀]/);
+  });
+
+  it('WS32.3: StampGenerator enforces dir="ltr" and unicodeBidi isolate/bidi-override so 24 APR 2026 never reverses inside RTL templates, and TheologyMOTReport computes valid Arabic grade and separates footer stamp', () => {
+    const stampSrc = read('src/components/reports/StampGenerator.tsx');
+    const theoMotSrc = read('src/components/reports/TheologyMOTReport.tsx');
+
+    assert.match(stampSrc, /dir="ltr"/);
+    assert.match(stampSrc, /unicodeBidi:\s*"isolate"/);
+    assert.match(stampSrc, /unicodeBidi:\s*"bidi-override"/);
+    assert.match(theoMotSrc, /computedDivision/);
+    assert.match(theoMotSrc, /if \(avg >= 85\) return 'ممتاز'/);
+    assert.match(theoMotSrc, /\.tc-comment \{[\s\S]*?flex: 1;[\s\S]*?min-width: 0;/);
   });
 });

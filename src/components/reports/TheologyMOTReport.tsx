@@ -1,7 +1,7 @@
 import { getTheologyComment } from '@/lib/grading'
 import { ReportContainer } from '@/components/reports/shared/ReportContainer'
 import { OfficialReportStamp } from '@/components/reports/StampGenerator'
-import { useStudioFormatting } from '@/lib/studio-config-store'
+import { useStudioFormatting, resolveEffectiveStudioStyle } from '@/lib/studio-config-store'
 
 const theologyCSS = `
 @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
@@ -15,6 +15,12 @@ const theologyCSS = `
 
 /* Wrapper provided by the 2-up sheet / single preview */
 .theology-card-page {
+    --tc-primary: #064e3b;
+    --tc-secondary: #d6b14c;
+    --tc-accent: #047857;
+    --tc-watermark-opacity: 0.08;
+    --tc-score-weight: 800;
+    --tc-comment-size: 17px;
     width: 100%;
     height: 100%;
     display: flex;
@@ -28,7 +34,7 @@ const theologyCSS = `
 
 /* OUTER GOLD BORDER */
 .theology-card-outer {
-    border: 3.5px solid #d6b14c;
+    border: 3.5px solid var(--tc-secondary);
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -40,7 +46,7 @@ const theologyCSS = `
 
 /* INNER GREEN BORDER */
 .theology-card-inner {
-    border: 2px solid #064e3b;
+    border: 2px solid var(--tc-primary);
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -58,7 +64,7 @@ const theologyCSS = `
     inset: 0;
     background: url('/logo-512h.png') center center no-repeat;
     background-size: 240px;
-    opacity: 0.08;
+    opacity: var(--tc-watermark-opacity);
     pointer-events: none;
     z-index: 0;
 }
@@ -82,10 +88,10 @@ const theologyCSS = `
 /* HEADER */
 .tc-header {
     text-align: center;
-    background: linear-gradient(to right, #064e3b, #047857);
+    background: linear-gradient(to right, var(--tc-primary), var(--tc-accent));
     padding: 10px 18px;
     border-radius: 12px;
-    border-bottom: 3.5px solid #fbbf24;
+    border-bottom: 3.5px solid var(--tc-secondary);
     flex-shrink: 0;
     display: flex;
     align-items: center;
@@ -174,13 +180,13 @@ const theologyCSS = `
 .tc-field {
     flex: 1;
     min-width: 0;
-    border-bottom: 2px dashed #064e3b;
+    border-bottom: 2px dashed var(--tc-primary);
     height: 28px;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 0 8px 1px;
-    color: #064e3b;
+    color: var(--tc-primary);
     font-weight: 900;
     font-size: 17px;
 }
@@ -205,7 +211,7 @@ const theologyCSS = `
 
 /* SCORES TABLE */
 .tc-table-wrap {
-    border: 2.5px solid #d6b14c;
+    border: 2.5px solid var(--tc-secondary);
     border-radius: 10px;
     overflow: hidden;
     flex-shrink: 0;
@@ -220,10 +226,10 @@ const theologyCSS = `
 
 .tc-table th {
     padding: 9px 4px;
-    background: #047857;
+    background: var(--tc-primary);
     color: white;
     font-weight: 800;
-    border: 1px solid #064e3b;
+    border: 1px solid var(--tc-secondary);
     font-size: 14.5px;
     text-align: center;
 }
@@ -234,7 +240,7 @@ const theologyCSS = `
     vertical-align: middle;
     padding: 2px 4px;
     color: #0f172a;
-    font-weight: 800;
+    font-weight: var(--tc-score-weight);
     font-size: 17px;
     border: 1px solid #e2e8f0;
     text-align: center;
@@ -281,7 +287,7 @@ const theologyCSS = `
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 20px;
+    gap: 16px;
     flex-shrink: 0;
 }
 
@@ -292,10 +298,11 @@ const theologyCSS = `
     font-size: 15.5px;
     font-weight: 800;
     flex: 1;
+    min-width: 0;
 }
 
 .tc-comment-label {
-    color: #064e3b;
+    color: var(--tc-primary);
     font-size: 16px;
     font-weight: 800;
     white-space: nowrap;
@@ -303,6 +310,7 @@ const theologyCSS = `
 
 .tc-comment-field {
     flex: 1;
+    min-width: 0;
     border-bottom: 2px dashed #94a3b8;
     height: 38px;
     display: flex;
@@ -311,12 +319,15 @@ const theologyCSS = `
     color: #0369a1;
     font-style: italic;
     font-weight: 900;
-    font-size: 17px;
+    font-size: var(--tc-comment-size);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .tc-stamp {
     width: 132px;
-    height: 84px;
+    height: 64px;
     border: none;
     background: transparent;
     display: flex;
@@ -342,11 +353,13 @@ const theologyCSS = `
 
 export function TheologyCard({
   reportData,
-  studioFormatting,
+  studioFormatting: studioFormattingProp,
 }: {
   reportData: any
   studioFormatting?: any
 }) {
+  const studioFormatting = useStudioFormatting(studioFormattingProp, reportData?.settings?.report_studio_config)
+  const effective = resolveEffectiveStudioStyle(studioFormatting, reportData)
   const toAr = (val: number | string | null | undefined): string => {
     if (val == null) return '--'
     return String(val).replace(/[0-9]/g, (d) => '٠١٢٣٤٥٦٧٨٩'[+d])
@@ -372,20 +385,44 @@ export function TheologyCard({
     ? (reportData?.theology?.eot_total ?? 0)
     : (reportData?.theology?.mot_total ?? 0)
 
-  const printPrefs = reportData?.settings?.print_preferences
-  const includeStamp = Boolean(printPrefs?.includeStamp)
+  const rawDivision = reportData?.theology?.division
+  const computedDivision = (() => {
+    if (rawDivision && rawDivision !== '--') return rawDivision
+    const validScores = subjects
+      .map((s: any) => (isEOT ? s?.eot_score : s?.mot_score))
+      .filter((v: any): v is number => typeof v === 'number' && !Number.isNaN(v))
+    if (validScores.length === 0) return '--'
+    const avg = validScores.reduce((acc: number, v: number) => acc + v, 0) / validScores.length
+    if (avg >= 85) return 'ممتاز'
+    if (avg >= 75) return 'جيد جداً'
+    if (avg >= 65) return 'جيد'
+    if (avg >= 50) return 'مقبول'
+    return 'ضعيف'
+  })()
+
+  const includeStamp = effective.showStamp
 
   return (
-    <div className="theology-card-page">
+    <div
+      className="theology-card-page"
+      style={{
+        ['--tc-primary' as any]: effective.primaryColor,
+        ['--tc-secondary' as any]: effective.secondaryColor,
+        ['--tc-accent' as any]: effective.headerAccentColor,
+        ['--tc-watermark-opacity' as any]: effective.watermarkOpacity,
+        ['--tc-score-weight' as any]: effective.scoreFontWeight,
+        ['--tc-comment-size' as any]: `${effective.arabicCommentFontSizePx}px`,
+      }}
+    >
       <div className="theology-card-outer">
         <div className="theology-card-inner">
-          <div className="theology-card">
+          <div className="theology-card" style={{ fontFamily: effective.fontFamilyCss, zoom: effective.fontScaleMultiplier }}>
 
             {/* HEADER */}
             <div className="tc-header">
               <div className="tc-badge">
                 <img
-                  src={reportData?.settings?.logo_url || "/logo-512h.png"}
+                  src={effective.schoolHeader.logoUrl || "/logo-512h.png"}
                   alt="School Badge"
                   onError={(e) => {
                     if (!e.currentTarget.src.endsWith('/logo-512h.png') && !e.currentTarget.src.endsWith('/school_logo.svg')) {
@@ -398,7 +435,7 @@ export function TheologyCard({
               </div>
               <div className="tc-header-center">
                 <div className="tc-basmala">بسم الله الرحمن الرحيم</div>
-                <div className="tc-school">{reportData?.settings?.arabic_name || "مدرسة جدة الإسلامية للروضة والابتدائية _ انساغو واكيسو"}</div>
+                <div className="tc-school">{effective.schoolHeader.nameArabic || reportData?.settings?.arabic_name || "مدرسة جدة الإسلامية للروضة والابتدائية _ انساغو واكيسو"}</div>
                 <div className="tc-title">
                   {isEOT ? 'كشف الدرجات لنهاية الفترة' : 'كشف الدرجات لمنتصف الفترة'}
                 </div>
@@ -443,7 +480,7 @@ export function TheologyCard({
                       <td key={index}>{toAr(isEOT ? subj.eot_score : subj.mot_score)}</td>
                     ))}
                     <td>{toAr(isEOT ? reportData?.theology?.eot_total : reportData?.theology?.mot_total)}</td>
-                    <td className="tc-red">{reportData?.theology?.division ?? '--'}</td>
+                    <td className="tc-red">{computedDivision}</td>
                   </tr>
                 </tbody>
               </table>
@@ -465,9 +502,9 @@ export function TheologyCard({
                   {getTheologyComment(totalScore, reportData?.student?.gender, reportData?.settings?.theology_remarks)}
                 </div>
               </div>
-              <div className="tc-stamp" style={{ width: '135px', height: '68px', maxWidth: '135px', maxHeight: '68px', overflow: 'hidden', padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <div className="tc-stamp" style={{ width: '132px', height: '64px', maxWidth: '132px', maxHeight: '64px', overflow: 'hidden', padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 {includeStamp ? (
-                  <OfficialReportStamp reportData={reportData} studioFormatting={studioFormatting} maxWidth={135} maxHeight={68} />
+                  <OfficialReportStamp reportData={reportData} studioFormatting={studioFormatting} maxWidth={128} maxHeight={60} />
                 ) : null}
               </div>
             </div>

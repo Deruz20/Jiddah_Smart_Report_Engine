@@ -46,6 +46,15 @@ export interface StudioFormattingConfig {
   primaryColor?: string
   secondaryColor?: string
   accentColor?: string
+  schoolHeader?: {
+    nameEnglish?: string
+    nameArabic?: string
+    address?: string
+    phone?: string
+    email?: string
+    motto?: string
+    logoUrl?: string
+  }
 
   // Legacy / Toolbar alias fields kept synchronized for 100% compatibility
   colorTheme: string
@@ -77,14 +86,14 @@ export const STUDIO_COLOR_THEMES: Record<string, StudioThemePalette> = {
   'jiddah-classic': {
     id: 'jiddah-classic',
     label: 'Jiddah Classic',
-    primary: '#0f4d25',
+    primary: '#14532D',
     secondary: '#C59B27',
     accent: '#7F1D1D',
-    primaryColor: '#0f4d25',
+    primaryColor: '#14532D',
     secondaryColor: '#C59B27',
     accentColor: '#7F1D1D',
-    headerBg: 'linear-gradient(135deg, #064e3b, #047857)',
-    borderColor: '#c2994c',
+    headerBg: 'linear-gradient(135deg, #14532D, #047857)',
+    borderColor: '#C59B27',
   },
   'royal-emerald': {
     id: 'royal-emerald',
@@ -115,24 +124,24 @@ export const STUDIO_COLOR_THEMES: Record<string, StudioThemePalette> = {
     label: 'Burgundy Heritage',
     primary: '#7F1D1D',
     secondary: '#B45309',
-    accent: '#991B1B',
+    accent: '#881337',
     primaryColor: '#7F1D1D',
     secondaryColor: '#B45309',
-    accentColor: '#991B1B',
-    headerBg: 'linear-gradient(135deg, #7F1D1D, #991B1B)',
+    accentColor: '#881337',
+    headerBg: 'linear-gradient(135deg, #7F1D1D, #881337)',
     borderColor: '#B45309',
   },
   monochrome: {
     id: 'monochrome',
     label: 'Monochrome Ink-Saver',
-    primary: '#18181B',
-    secondary: '#71717A',
-    accent: '#27272A',
-    primaryColor: '#18181B',
-    secondaryColor: '#71717A',
-    accentColor: '#27272A',
-    headerBg: 'linear-gradient(135deg, #18181B, #3F3F46)',
-    borderColor: '#52525B',
+    primary: '#1F2937',
+    secondary: '#6B7280',
+    accent: '#111827',
+    primaryColor: '#1F2937',
+    secondaryColor: '#6B7280',
+    accentColor: '#111827',
+    headerBg: 'linear-gradient(135deg, #1F2937, #374151)',
+    borderColor: '#6B7280',
   },
 }
 
@@ -245,6 +254,12 @@ export function normalizeStudioConfig(
   const stampScale = Number.isFinite(rawStampScale) ? Math.min(125, Math.max(75, rawStampScale)) : 100
   const fontFamily = String(raw.fontFamily || DEFAULT_STUDIO_CONFIG.fontFamily)
 
+  const themeSwitched =
+    (raw.colorTheme && raw.themeId && raw.colorTheme !== raw.themeId) ||
+    (validThemeId !== 'jiddah-classic' &&
+      raw.primaryColor === DEFAULT_STUDIO_CONFIG.primaryColor &&
+      raw.secondaryColor === DEFAULT_STUDIO_CONFIG.secondaryColor)
+
   return {
     themeId: validThemeId,
     fontFamily,
@@ -263,9 +278,10 @@ export function normalizeStudioConfig(
     signatureThreshold,
     stampScale,
     pageDensity: raw.pageDensity || 'balanced',
-    primaryColor: raw.primaryColor || themePalette.primaryColor,
-    secondaryColor: raw.secondaryColor || themePalette.secondaryColor,
-    accentColor: raw.accentColor || themePalette.accentColor,
+    primaryColor: themeSwitched ? themePalette.primaryColor : raw.primaryColor || themePalette.primaryColor,
+    secondaryColor: themeSwitched ? themePalette.secondaryColor : raw.secondaryColor || themePalette.secondaryColor,
+    accentColor: themeSwitched ? themePalette.accentColor : raw.accentColor || themePalette.accentColor,
+    schoolHeader: raw.schoolHeader && typeof raw.schoolHeader === 'object' ? { ...raw.schoolHeader } : undefined,
 
     // Keep aliases in lockstep
     colorTheme: validThemeId,
@@ -277,13 +293,148 @@ export function normalizeStudioConfig(
   }
 }
 
-export function resolveStudioFontStack(fontFamily?: StudioFontFamily): string | undefined {
-  if (!fontFamily || fontFamily === 'default' || fontFamily === 'Default Academic') return undefined
-  if (fontFamily === 'inter' || fontFamily === 'Inter Sans') return "'Inter', system-ui, sans-serif"
-  if (fontFamily === 'serif' || fontFamily === 'Times Serif') return "'Times New Roman', Georgia, serif"
+export function resolveStudioFontStack(fontFamily?: StudioFontFamily): string {
+  if (!fontFamily || fontFamily === 'default' || fontFamily === 'Default Academic') {
+    return "'Montserrat', 'Inter', system-ui, sans-serif"
+  }
+  if (fontFamily === 'inter' || fontFamily === 'Inter Sans') return "'Inter', sans-serif"
+  if (fontFamily === 'serif' || fontFamily === 'Times Serif') return "'Georgia', 'Times New Roman', serif"
   if (fontFamily === 'cinzel' || fontFamily === 'Cinzel Prestige') return "'Cinzel', Georgia, serif"
-  if (fontFamily === 'amiri' || fontFamily === 'Amiri Arabic') return "'Amiri', 'Cairo', serif"
-  return undefined
+  if (fontFamily === 'amiri' || fontFamily === 'Amiri Arabic') return "'Amiri', 'Traditional Arabic', serif"
+  return "'Montserrat', 'Inter', system-ui, sans-serif"
+}
+
+export interface EffectiveStudioStyle {
+  primaryColor: string
+  secondaryColor: string
+  headerAccentColor: string
+  fontFamilyCss: string
+  fontScaleMultiplier: number
+  scoreFontWeight: number
+  headingFontWeight: number
+  commentFontSizePx: number
+  arabicCommentFontSizePx: number
+  densityPadding: string
+  watermarkOpacity: number
+  watermarkOpacityPercent: number
+  showNurseryArt: boolean
+  nurseryArtOpacity: number
+  showStamp: boolean
+  stampMode: 'digital' | 'uploaded'
+  stampColor: string
+  stampDate: string
+  stampScale: number
+  showSignatures: boolean
+  signatureInkColor: string
+  signatureThreshold: number
+  schoolHeader: {
+    nameEnglish: string
+    nameArabic: string
+    address: string
+    phone: string
+    email: string
+    motto: string
+    logoUrl: string
+  }
+}
+
+export function resolveEffectiveStudioStyle(
+  studioConfig?: Partial<StudioFormattingConfig> | Record<string, any> | null,
+  reportData?: any
+): EffectiveStudioStyle {
+  const normalized = normalizeStudioConfig(
+    studioConfig || reportData?.settings?.report_studio_config || DEFAULT_STUDIO_CONFIG
+  )
+  const palette = STUDIO_COLOR_THEMES[normalized.themeId] || STUDIO_COLOR_THEMES['jiddah-classic']
+  const settings = reportData?.settings || {}
+
+  // Determine whether colors were explicitly overridden or belong to the active theme palette
+  const primaryColor = normalized.primaryColor || settings.primary_color || palette.primaryColor
+  const secondaryColor = normalized.secondaryColor || settings.secondary_color || palette.secondaryColor
+  const headerAccentColor = normalized.accentColor || settings.accent_color || palette.accentColor
+
+  const fontFamilyCss = resolveStudioFontStack(normalized.fontFamily)
+  const fontScaleMultiplier = Number((normalized.fontScale / 100).toFixed(3))
+  const scoreFontWeight = normalized.boldScores ? 900 : 700
+  const headingFontWeight = normalized.boldScores ? 900 : 800
+
+  const commentFontSizePx =
+    normalized.commentFontSize === 'xlarge'
+      ? 16
+      : normalized.commentFontSize === 'large'
+      ? 14
+      : 12
+
+  const arabicCommentFontSizePx =
+    normalized.commentFontSize === 'xlarge'
+      ? 20
+      : normalized.commentFontSize === 'large'
+      ? 18.5
+      : 15
+
+  const densityPadding =
+    normalized.pageDensity === 'compact'
+      ? '2px 4px'
+      : normalized.pageDensity === 'spacious'
+      ? '6px 8px'
+      : '3.5px 6px'
+
+  const watermarkOpacityPercent = normalized.watermarkOpacity
+  const watermarkOpacity = Number((watermarkOpacityPercent / 100).toFixed(3))
+
+  const rawSchoolName = settings.school_name || settings.name
+  const nameEnglish =
+    rawSchoolName && !String(rawSchoolName).toLowerCase().includes('nursery and primary')
+      ? String(rawSchoolName)
+      : 'Jiddah Islamic Schools'
+
+  const nameArabic =
+    settings.arabic_name ||
+    settings.arabic_school_name ||
+    'مدرسة جدة الإسلامية للروضة والإبتدائية - انساغو - واكيسو'
+
+  const address = settings.address || 'P.O. BOX 34008 Kampala (U)'
+  const phone =
+    settings.phone_1 || settings.phone
+      ? `${settings.phone_1 || settings.phone}${settings.phone_2 ? ` / ${settings.phone_2}` : ''}`
+      : '+256705316961 / +256 787 779 909'
+  const email = settings.email || 'jiddahislamicnurseryandpri@gmail.com'
+  const motto = settings.motto || 'Striving for Life & The Hereafter'
+  const logoUrl = settings.logo_url || '/logo-512h.png'
+
+  return {
+    primaryColor,
+    secondaryColor,
+    headerAccentColor,
+    fontFamilyCss,
+    fontScaleMultiplier,
+    scoreFontWeight,
+    headingFontWeight,
+    commentFontSizePx,
+    arabicCommentFontSizePx,
+    densityPadding,
+    watermarkOpacity,
+    watermarkOpacityPercent,
+    showNurseryArt: normalized.showNurseryArt,
+    nurseryArtOpacity: normalized.nurseryArtOpacity,
+    showStamp: normalized.showStamp,
+    stampMode: normalized.stampMode,
+    stampColor: normalized.stampColor,
+    stampDate: normalized.stampDate,
+    stampScale: normalized.stampScale,
+    showSignatures: normalized.showSignatures,
+    signatureInkColor: normalized.signatureInkColor,
+    signatureThreshold: normalized.signatureThreshold,
+    schoolHeader: {
+      nameEnglish,
+      nameArabic,
+      address,
+      phone,
+      email,
+      motto,
+      logoUrl,
+    },
+  }
 }
 
 export function loadStudioConfigFromStorage(): StudioFormattingConfig {
@@ -397,7 +548,25 @@ export function useSyncedStudioConfig(initial?: Partial<StudioFormattingConfig>)
     (updater: Partial<StudioFormattingConfig> | ((prev: StudioFormattingConfig) => Partial<StudioFormattingConfig>)) => {
       setConfig((prev) => {
         const nextPartial = typeof updater === 'function' ? updater(prev) : updater
-        return saveStudioConfigToStorage({ ...prev, ...nextPartial })
+        const themeChanged =
+          (nextPartial.colorTheme && nextPartial.colorTheme !== prev.colorTheme) ||
+          (nextPartial.themeId && nextPartial.themeId !== prev.themeId)
+        const nextThemeId = String(nextPartial.colorTheme || nextPartial.themeId || prev.themeId)
+        const nextPalette = STUDIO_COLOR_THEMES[nextThemeId] || STUDIO_COLOR_THEMES['jiddah-classic']
+        const mergedInput: Partial<StudioFormattingConfig> = {
+          ...prev,
+          ...nextPartial,
+          ...(themeChanged
+            ? {
+                themeId: nextThemeId,
+                colorTheme: nextThemeId,
+                primaryColor: nextPartial.primaryColor || nextPalette.primaryColor,
+                secondaryColor: nextPartial.secondaryColor || nextPalette.secondaryColor,
+                accentColor: nextPartial.accentColor || nextPalette.accentColor,
+              }
+            : {}),
+        }
+        return saveStudioConfigToStorage(mergedInput)
       })
     },
     []

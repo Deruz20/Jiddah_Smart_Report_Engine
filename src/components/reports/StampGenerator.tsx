@@ -221,6 +221,7 @@ export function VectorStamp({
   return (
     <div
       data-testid="official-vector-stamp"
+      dir="ltr"
       style={{
         display: "inline-flex",
         alignItems: "center",
@@ -231,13 +232,21 @@ export function VectorStamp({
         opacity,
         transformOrigin: "center center",
         mixBlendMode: "multiply",
+        direction: "ltr",
+        unicodeBidi: "isolate",
       }}
     >
       <svg
         width={baseW}
         height={baseH}
         viewBox={`0 0 ${baseW} ${baseH}`}
-        style={{ overflow: "visible", filter: useFilter ? `url(#${filterId})` : undefined }}
+        direction="ltr"
+        style={{
+          overflow: "visible",
+          filter: useFilter ? `url(#${filterId})` : undefined,
+          direction: "ltr",
+          unicodeBidi: "isolate",
+        }}
       >
         <defs>
           <filter id={filterId} x="-5%" y="-5%" width="110%" height="110%">
@@ -381,6 +390,8 @@ export function VectorStamp({
               fontWeight="900"
               fontFamily="'Impact', 'Arial Black', sans-serif"
               letterSpacing="1.6px"
+              direction="ltr"
+              style={{ direction: "ltr", unicodeBidi: "bidi-override" }}
             >
               {displayDate}
             </text>
@@ -483,6 +494,8 @@ export function VectorStamp({
               fontFamily="'Courier New', Courier, monospace"
               textAnchor="middle"
               stroke="none"
+              direction="ltr"
+              style={{ direction: "ltr", unicodeBidi: "bidi-override" }}
             >
               {displayDate}
             </text>
@@ -540,6 +553,8 @@ export function VectorStamp({
               fontFamily="'Courier New', Courier, monospace"
               textAnchor="middle"
               stroke="none"
+              direction="ltr"
+              style={{ direction: "ltr", unicodeBidi: "bidi-override" }}
             >
               {displayDate}
             </text>
@@ -578,6 +593,11 @@ export function OfficialReportStamp({
     reportData?.settings?.print_preferences?.stamp_config ||
     {};
 
+  const studioScaleMultiplier =
+    typeof studioFormatting?.stampScale === "number" && studioFormatting.stampScale > 0
+      ? studioFormatting.stampScale / 100
+      : 1;
+
   const config: StampConfig = {
     ...DEFAULT_STAMP_CONFIG,
     ...savedStampConfig,
@@ -585,6 +605,7 @@ export function OfficialReportStamp({
       studioFormatting?.stampInkColor ||
       savedStampConfig.ink_color ||
       DEFAULT_STAMP_CONFIG.ink_color,
+    size_scale: (savedStampConfig.size_scale ?? DEFAULT_STAMP_CONFIG.size_scale ?? 1) * studioScaleMultiplier,
   };
 
   const resolvedDate =

@@ -135,6 +135,8 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
         .portrait-page.p7-eot-report {
           width: 100%;
           height: 100%;
+          max-height: 296mm;
+          overflow: hidden;
           background: white;
           padding: 3mm;
           margin: 0;
@@ -147,6 +149,8 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
           color: #0F172A;
           -webkit-print-color-adjust: exact;
           print-color-adjust: exact;
+          break-inside: avoid !important;
+          page-break-inside: avoid !important;
         }
 
         .portrait-page.p7-eot-report * { box-sizing: border-box; }
@@ -191,8 +195,8 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
           display: flex;
           flex-direction: column;
           height: 100%;
-          justify-content: space-between;
-          gap: 4px;
+          justify-content: flex-start;
+          gap: 6px;
         }
 
         /* ── HEADER (Identical to PrimaryEOTReport) ── */
@@ -201,7 +205,7 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
           align-items: center;
           justify-content: space-between;
           padding-bottom: 2px;
-          min-height: 38mm;
+          min-height: 36mm;
         }
 
         .p7-eot-report .header-left { flex: 0 0 35%; }
@@ -256,7 +260,7 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
         .p7-eot-report .header-right h2 {
           font-family: 'Amiri', serif;
           font-size: 13.5px;
-          color: var(--report-primary-color, #0f4d25);
+          color: #7F1D1D;
           line-height: 1.25;
           margin: 0;
         }
@@ -321,33 +325,37 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
           border-radius: 6px;
           overflow: hidden;
           background: white;
+          flex: 1 1 auto;
+          display: flex;
+          flex-direction: column;
         }
         .p7-eot-report table {
           width: 100%;
           border-collapse: collapse;
-          font-size: 11.5px;
+          font-size: 13.5px;
           text-align: center;
+          height: 100%;
         }
         .p7-eot-report th,
         .p7-eot-report td {
           border: 1px solid #cbd5e1;
-          padding: 4px 4px;
-          height: 22px;
+          padding: 8px 6px;
         }
         .p7-eot-report .th-banner {
           background-color: #C59B27 !important;
           color: #ffffff;
           font-weight: 900;
-          font-size: 11px;
+          font-size: 12px;
           letter-spacing: 0.8px;
-          padding: 3px 0;
+          padding: 5px 0;
         }
         .p7-eot-report th {
           background-color: var(--report-primary-color, #0f4d25);
           color: white;
           font-weight: 800;
           letter-spacing: 0.2px;
-          font-size: 10px;
+          font-size: 11px;
+          padding: 6px 4px;
         }
 
         .p7-eot-report .row-even { background-color: #ffffff; }
@@ -366,17 +374,23 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
           font-weight: 800;
           color: #0F172A;
         }
-        .p7-eot-report .remark-cell { font-style: italic; font-weight: 800; font-size: 11px; }
-        .p7-eot-report .total-row td { background-color: #f1f5f9; font-weight: 800; font-size: 13px; }
+        .p7-eot-report .remark-cell { font-style: italic; font-weight: 800; font-size: 11.5px; }
+        .p7-eot-report .total-row td { background-color: #f1f5f9; font-weight: 800; font-size: 13.5px; }
 
         /* Grading Table + UNEB Strip (~28mm) */
         .p7-eot-report .grading-container {
           flex-shrink: 0;
-          margin-top: 2px;
+          margin-top: 4px;
         }
-        .p7-eot-report .grade-head { background-color: var(--report-primary-color, #0f4d25); color: white; font-weight: 800; font-size: 9px; }
-        .p7-eot-report .marks-head { background-color: #475569; color: white; font-weight: 800; font-size: 9px; }
-        .p7-eot-report .grade-val { background-color: #f1f5f9; font-weight: 700; font-size: 9px; }
+        .p7-eot-report .grading-container table {
+          height: auto;
+        }
+        .p7-eot-report .grading-container td {
+          padding: 6px 6px;
+        }
+        .p7-eot-report .grade-head { background-color: var(--report-primary-color, #0f4d25); color: white; font-weight: 800; font-size: 9.5px; }
+        .p7-eot-report .marks-head { background-color: #475569; color: white; font-weight: 800; font-size: 9.5px; }
+        .p7-eot-report .grade-val { background-color: #f1f5f9; font-weight: 700; font-size: 9.5px; }
 
         .p7-eot-report .uneb-strip {
           display: flex;
@@ -385,10 +399,10 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
           background: #f8fafc;
           border: 1px solid #cbd5e1;
           border-radius: 4px;
-          padding: 2.5px 8px;
-          font-size: 9px;
+          padding: 3.5px 10px;
+          font-size: 9.5px;
           color: #334155;
-          margin-top: 3px;
+          margin-top: 4px;
         }
         .p7-eot-report .uneb-label {
           font-weight: 800;
@@ -399,17 +413,18 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
         .p7-eot-report .footer-section {
           display: flex;
           flex-direction: column;
-          gap: 4px;
+          gap: 5px;
+          flex-shrink: 0;
         }
 
         .p7-eot-report .comments-box {
           background-color: #faf8f5;
           border: 1px solid #e2d8b8;
           border-radius: 6px;
-          padding: 4px 8px;
+          padding: 8px 12px;
           display: flex;
           flex-direction: column;
-          gap: 3px;
+          gap: 5px;
         }
 
         .p7-eot-report .comment-row {
@@ -493,13 +508,14 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
             min-width: 210mm !important;
             max-width: 210mm !important;
             height: 297mm !important;
-            max-height: 297mm !important;
-            padding: 4mm 5mm !important;
+            max-height: 296mm !important;
+            padding: 3mm 4mm !important;
             box-sizing: border-box !important;
             overflow: hidden !important;
             page-break-after: always !important;
             break-after: page !important;
             break-inside: avoid !important;
+            page-break-inside: avoid !important;
           }
         }
         `
@@ -527,11 +543,7 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
                   </div>
 
                   <div className="header-center">
-                    {isMuslim ? (
-                      <div className="bismillah">بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْم</div>
-                    ) : (
-                      <div className="h-4" />
-                    )}
+                    <div className="bismillah">بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْم</div>
                     <div
                       style={{
                         width: '52px',
@@ -560,22 +572,11 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
                   </div>
 
                   <div className="header-right">
-                    {isMuslim ? (
-                      <h2>
-                        مدرسة جدة الإسلامية للروضة
-                        <br />
-                        والإبتدائية - انساغو - واكيسو
-                      </h2>
-                    ) : (
-                      <div>
-                        <h2 style={{ fontFamily: 'Montserrat, sans-serif', fontSize: '11px', fontWeight: 800, color: '#0f4d25' }}>
-                          MINISTRY OF EDUCATION &amp; SPORTS
-                        </h2>
-                        <p style={{ fontSize: '9px', color: '#64748b', fontWeight: 600 }}>
-                          Reg No: PSS/J/04 • UNEB Center No: 610084
-                        </p>
-                      </div>
-                    )}
+                    <h2>
+                      مدرسة جدة الإسلامية للروضة
+                      <br />
+                      والإبتدائية - انساغو - واكيسو
+                    </h2>
                   </div>
                 </header>
 
@@ -584,58 +585,58 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
                 {/* ── PUPIL INFO ── */}
                 <div className="info-grid">
                   <div className="info-row">
-                    <div className="info-item" style={{ flex: 2 }}>
-                      <span className="info-label">PUPIL'S NAME:</span>
-                      <span className="info-value pupil-name line line.pupil-name" style={{ fontSize: '17px', fontWeight: 900 }}>
+                    <div className="info-item" style={{ flex: 2.5, minWidth: 0, whiteSpace: 'nowrap' }}>
+                      <span className="info-label" style={{ whiteSpace: 'nowrap' }}>PUPIL'S NAME:</span>
+                      <span className="info-value pupil-name line line.pupil-name" style={{ fontSize: '16.5px', fontWeight: 900, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {studentName}
                       </span>
                     </div>
                     {arabicName && (
-                      <div className="info-item" style={{ flex: 1.5, direction: 'rtl' }}>
-                        <span className="info-label" style={{ fontFamily: 'Amiri, serif' }}>اسم التلميذ:</span>
-                        <span className="info-value" style={{ fontFamily: 'Amiri, serif', fontSize: '16.5px', fontWeight: 900 }}>
+                      <div className="info-item" style={{ flex: 1.5, direction: 'rtl', minWidth: 0, whiteSpace: 'nowrap' }}>
+                        <span className="info-label" style={{ fontFamily: 'Amiri, serif', whiteSpace: 'nowrap' }}>اسم التلميذ:</span>
+                        <span className="info-value" style={{ fontFamily: 'Amiri, serif', fontSize: '16.5px', fontWeight: 900, whiteSpace: 'nowrap' }}>
                           {arabicName}
                         </span>
                       </div>
                     )}
-                    <div className="info-item">
-                      <span className="info-label">CLASS:</span>
+                    <div className="info-item" style={{ flex: 0.8, minWidth: 0, whiteSpace: 'nowrap' }}>
+                      <span className="info-label" style={{ whiteSpace: 'nowrap' }}>CLASS:</span>
                       <span className="info-value" style={{ fontSize: '15px', fontWeight: 800 }}>{className || 'P.7'}</span>
                     </div>
-                    <div className="info-item">
-                      <span className="info-label">TERM:</span>
+                    <div className="info-item" style={{ flex: 0.8, minWidth: 0, whiteSpace: 'nowrap' }}>
+                      <span className="info-label" style={{ whiteSpace: 'nowrap' }}>TERM:</span>
                       <span className="info-value" style={{ fontSize: '15px', fontWeight: 800 }}>{reportData?.term?.term_number || '3'}</span>
                     </div>
-                    <div className="info-item">
-                      <span className="info-label">YEAR:</span>
+                    <div className="info-item" style={{ flex: 0.8, minWidth: 0, whiteSpace: 'nowrap' }}>
+                      <span className="info-label" style={{ whiteSpace: 'nowrap' }}>YEAR:</span>
                       <span className="info-value" style={{ fontSize: '15px', fontWeight: 800 }}>{reportData?.term?.academic_year || 2026}</span>
                     </div>
                   </div>
 
                   <div className="info-row">
-                    <div className="info-item">
-                      <span className="info-label">LIN / ADM:</span>
-                      <span className="info-value" style={{ fontSize: '14px', fontWeight: 700 }}>{reportData?.student?.admission_number || reportData?.student?.lin || '--'}</span>
+                    <div className="info-item" style={{ flex: 1.5, minWidth: 0, whiteSpace: 'nowrap' }}>
+                      <span className="info-label" style={{ whiteSpace: 'nowrap' }}>LIN / ADM:</span>
+                      <span className="info-value" style={{ fontSize: '14px', fontWeight: 700, whiteSpace: 'nowrap' }}>{reportData?.student?.admission_number || reportData?.student?.lin || '--'}</span>
                     </div>
-                    <div className="info-item">
-                      <span className="info-label">GENDER:</span>
-                      <span className="info-value" style={{ fontSize: '14px', fontWeight: 700 }}>{reportData?.student?.gender || 'N/A'}</span>
+                    <div className="info-item" style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap' }}>
+                      <span className="info-label" style={{ whiteSpace: 'nowrap' }}>GENDER:</span>
+                      <span className="info-value" style={{ fontSize: '14px', fontWeight: 700, whiteSpace: 'nowrap' }}>{reportData?.student?.gender || 'N/A'}</span>
                     </div>
-                    <div className="info-item">
-                      <span className="info-label">TOTAL MARKS:</span>
-                      <span className="info-value" style={{ fontSize: '15px', fontWeight: 800 }}>
+                    <div className="info-item" style={{ flex: 1.2, minWidth: 0, whiteSpace: 'nowrap' }}>
+                      <span className="info-label" style={{ whiteSpace: 'nowrap' }}>TOTAL MARKS:</span>
+                      <span className="info-value" style={{ fontSize: '15px', fontWeight: 800, whiteSpace: 'nowrap' }}>
                         {reportData?.circular?.eot_total ?? reportData?.circular?.total_marks ?? '--'}
                       </span>
                     </div>
-                    <div className="info-item">
-                      <span className="info-label">AGGREGATE:</span>
-                      <span className="info-value" style={{ fontSize: '15px', fontWeight: 800, color: '#0D5C3A' }}>
+                    <div className="info-item" style={{ flex: 1.1, minWidth: 0, whiteSpace: 'nowrap' }}>
+                      <span className="info-label" style={{ whiteSpace: 'nowrap' }}>AGGREGATE:</span>
+                      <span className="info-value" style={{ fontSize: '15px', fontWeight: 800, color: '#0D5C3A', whiteSpace: 'nowrap' }}>
                         {reportData?.circular?.aggregate ?? '--'}
                       </span>
                     </div>
-                    <div className="info-item">
-                      <span className="info-label">DIVISION:</span>
-                      <span className="info-value" style={{ fontSize: '15px', fontWeight: 900, color: '#0D5C3A' }}>
+                    <div className="info-item" style={{ flex: 1.1, minWidth: 0, whiteSpace: 'nowrap' }}>
+                      <span className="info-label" style={{ whiteSpace: 'nowrap' }}>DIVISION:</span>
+                      <span className="info-value" style={{ fontSize: '15px', fontWeight: 900, color: '#0D5C3A', whiteSpace: 'nowrap' }}>
                         {reportData?.circular?.division
                           ? reportData.circular.division.startsWith('Div')
                             ? reportData.circular.division

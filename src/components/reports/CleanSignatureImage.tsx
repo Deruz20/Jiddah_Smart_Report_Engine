@@ -36,14 +36,14 @@ export function CleanSignatureSvgFilter() {
       style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden' }}
     >
       <defs>
-        {/* Dedicated Luminance-to-Blue-Ink Filter: strips dark grey backgrounds (RGB >= 0.48 -> alpha 0) and colors pen strokes in Royal Ballpoint Blue (#0F3491) */}
+        {/* Dedicated Luminance-to-Blue-Ink Filter: strips dark grey backgrounds and colors pen strokes in Royal Ballpoint Blue (#0F3491) without clipping transparent pixels into solid blocks */}
         <filter id="jiddah-blue-signature-ink" colorInterpolationFilters="sRGB">
           <feColorMatrix
             type="matrix"
             values="0 0 0 0 0.059
                     0 0 0 0 0.204
                     0 0 0 0 0.569
-                    -2.8 -2.8 -2.8 0 3.9"
+                    0 0 0 1 0"
           />
         </filter>
         <filter id="jiddah-clean-ink" colorInterpolationFilters="sRGB">
@@ -105,6 +105,8 @@ export function CleanSignatureImage({
 
   if (!resolvedSrc || hidden) return null;
 
+  const isProcessed = Boolean(resolvedSrc?.startsWith('data:'));
+
   return (
     <>
       <CleanSignatureSvgFilter />
@@ -115,12 +117,12 @@ export function CleanSignatureImage({
         crossOrigin="anonymous"
         onError={() => setHidden(true)}
         style={{
-          mixBlendMode: 'multiply',
+          mixBlendMode: isProcessed ? undefined : 'multiply',
           backgroundColor: 'transparent',
           objectFit: 'contain',
-          filter: cleanEnabled
+          filter: cleanEnabled && !isProcessed
             ? (inkMode === 'blue'
-                ? 'url(#jiddah-blue-signature-ink)'
+                ? undefined
                 : 'grayscale(1) brightness(1.48) contrast(3.8) url(#jiddah-clean-ink)')
             : undefined,
           ...style,

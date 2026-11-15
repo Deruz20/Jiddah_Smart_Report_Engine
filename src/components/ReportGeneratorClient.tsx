@@ -566,7 +566,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
     document.title = baseName.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_')
 
     // Dynamically inject exact @page orientation so Chrome Print Preview never clips Landscape onto Portrait
-    const isLandscape = targets.some((targetId) => {
+    const hasLandscape = targets.some((targetId) => {
       const rep = (reportsForPrint || rawReports).find((r) => r.id === targetId)
       if (!rep) return false
       const isP7 = (rep.student?.class_name || '').toLowerCase().includes('p.7')
@@ -575,13 +575,30 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
       return isPrim && rep.score_type === 'eot' && !isP7 && !isNonMuslim
     })
 
+    const hasPortrait = targets.some((targetId) => {
+      const rep = (reportsForPrint || rawReports).find((r) => r.id === targetId)
+      if (!rep) return true
+      const isP7 = (rep.student?.class_name || '').toLowerCase().includes('p.7')
+      const isPrim = (rep.section_type || '').includes('primary') || (rep.student?.class_name || '').toLowerCase().includes('p.')
+      const isNonMuslim = isNonMuslimStudent(rep.student, rep)
+      const isLandscapeCard = isPrim && rep.score_type === 'eot' && !isP7 && !isNonMuslim
+      return !isLandscapeCard
+    })
+
     let styleEl = document.getElementById('dynamic-print-page-style') as HTMLStyleElement | null
     if (!styleEl) {
       styleEl = document.createElement('style')
       styleEl.id = 'dynamic-print-page-style'
       document.head.appendChild(styleEl)
     }
-    styleEl.textContent = `@media print { @page { size: A4 ${isLandscape ? 'landscape' : 'portrait'} !important; margin: 0mm !important; } }`
+    if (hasLandscape && !hasPortrait) {
+      styleEl.textContent = `@media print { @page { size: A4 landscape; margin: 0mm; } }`
+    } else if (hasPortrait && !hasLandscape) {
+      styleEl.textContent = `@media print { @page { size: A4 portrait; margin: 0mm; } }`
+    } else {
+      // Mixed orientation batch: do NOT inject unnamed @page so Chromium uses @page landscape-sheet & portrait-sheet
+      styleEl.textContent = ''
+    }
 
     setTimeout(() => {
       window.print()
@@ -626,7 +643,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
       styleEl.id = 'dynamic-print-page-style'
       document.head.appendChild(styleEl)
     }
-    styleEl.textContent = `@media print { @page { size: A4 ${isLandscape ? 'landscape' : 'portrait'} !important; margin: 0mm !important; } }`
+    styleEl.textContent = `@media print { @page { size: A4 ${isLandscape ? 'landscape' : 'portrait'}; margin: 0mm; } }`
 
     setTimeout(() => {
       window.print()
@@ -764,14 +781,23 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
   )
 
   const renderJiddahReport = useCallback(
-    (report: ReportData, isActive: boolean) => {
+    (report: ReportData, isActive: boolean, scales?: { landscapeScale: number; portraitScale: number } | number) => {
       const resolved = resolveReport(report)
       if (!resolved) return <div className="p-8 text-rose-600">Error: Unmapped report format.</div>
+
+      const dims = STABILIZED_REPORT_ORIENTATIONS[resolved.type]
+      const isLandscape = dims?.pageOrientation === 'landscape'
+      const scale = typeof scales === 'number'
+        ? scales
+        : scales
+        ? (isLandscape ? scales.landscapeScale : scales.portraitScale)
+        : undefined
 
       return (
         <ReportPreviewCell
           reportType={resolved.type}
           zoom={zoom}
+          scale={scale}
           columns={filterState.layout === 'grid' ? 2 : 1}
           isActive={isActive}
           onClick={() => setActiveReportId(report.id)}
@@ -814,7 +840,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
     const originalTitle = document.title
     document.title = printRequest.title
 
-    const isLandscape = printableReports.some((rep) => {
+    const hasLandscape = printableReports.some((rep) => {
       const isP7 = (rep.student?.class_name || '').toLowerCase().includes('p.7')
       const isPrim =
         (rep.section_type || '').includes('primary') ||
@@ -823,13 +849,29 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
       return isPrim && rep.score_type === 'eot' && !isP7 && !isNonMuslim
     })
 
+    const hasPortrait = printableReports.some((rep) => {
+      const isP7 = (rep.student?.class_name || '').toLowerCase().includes('p.7')
+      const isPrim =
+        (rep.section_type || '').includes('primary') ||
+        (rep.student?.class_name || '').toLowerCase().includes('p.')
+      const isNonMuslim = isNonMuslimStudent(rep.student, rep)
+      const isLandscapeCard = isPrim && rep.score_type === 'eot' && !isP7 && !isNonMuslim
+      return !isLandscapeCard
+    })
+
     let styleEl = document.getElementById('dynamic-print-page-style') as HTMLStyleElement | null
     if (!styleEl) {
       styleEl = document.createElement('style')
       styleEl.id = 'dynamic-print-page-style'
       document.head.appendChild(styleEl)
     }
-    styleEl.textContent = `@media print { @page { size: A4 ${isLandscape ? 'landscape' : 'portrait'} !important; margin: 0mm !important; } }`
+    if (hasLandscape && !hasPortrait) {
+      styleEl.textContent = `@media print { @page { size: A4 landscape; margin: 0mm; } }`
+    } else if (hasPortrait && !hasLandscape) {
+      styleEl.textContent = `@media print { @page { size: A4 portrait; margin: 0mm; } }`
+    } else {
+      styleEl.textContent = ''
+    }
 
     const restoreTitle = () => {
       document.title = originalTitle
@@ -1395,12 +1437,20 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
             : rawReports.length > 0
             ? [rawReports[0]]
             : []
-        const firstPrintableReport = reportsToPrint
-          .map(resolveReport)
-          .find((resolved) => resolved !== null)
-        const pageOrientation = firstPrintableReport
-          ? STABILIZED_REPORT_ORIENTATIONS[firstPrintableReport.type].pageOrientation
-          : 'portrait'
+        const hasLandscape = reportsToPrint.some((rep) => {
+          const res = resolveReport(rep)
+          return res && STABILIZED_REPORT_ORIENTATIONS[res.type]?.pageOrientation === 'landscape'
+        })
+        const hasPortrait = reportsToPrint.some((rep) => {
+          const res = resolveReport(rep)
+          return res && STABILIZED_REPORT_ORIENTATIONS[res.type]?.pageOrientation === 'portrait'
+        })
+        const pageOrientation: 'portrait' | 'landscape' | 'mixed' =
+          hasLandscape && !hasPortrait
+            ? 'landscape'
+            : hasPortrait && !hasLandscape
+            ? 'portrait'
+            : 'mixed'
 
         if (reportsToPrint.length === 0) {
           return <PrintPortal pageOrientation={pageOrientation}>{null}</PrintPortal>
@@ -1446,8 +1496,14 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
                     i += 1
                   }
                 } else {
+                  const dims = STABILIZED_REPORT_ORIENTATIONS[resolved.type]
+                  const isCardLandscape = dims?.pageOrientation === 'landscape'
                   nodes.push(
-                    <div key={report.id} className="report-card-sheet">
+                    <div
+                      key={report.id}
+                      className={`report-card-sheet ${isCardLandscape ? 'report-sheet-landscape' : 'report-sheet-portrait'}`}
+                      data-report-orientation={isCardLandscape ? 'landscape' : 'portrait'}
+                    >
                       {resolved.component}
                     </div>
                   )

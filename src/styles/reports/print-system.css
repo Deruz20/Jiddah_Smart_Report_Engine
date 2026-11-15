@@ -180,6 +180,7 @@
   }
 
   /* Lock landscape & portrait page boxes in print with CSS Named Pages */
+  .report-sheet-landscape,
   .landscape-page,
   [data-report-orientation="landscape"] {
     page: landscape-sheet !important;
@@ -204,6 +205,7 @@
     align-items: stretch !important;
   }
 
+  .report-sheet-portrait,
   .portrait-page,
   .a4-portrait-page,
   .a4-two-up-page,

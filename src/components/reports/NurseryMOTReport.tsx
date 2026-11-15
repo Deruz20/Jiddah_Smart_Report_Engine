@@ -204,7 +204,7 @@ export default function NurseryMOTReport({ reportData, studioFormatting }: any) 
         flex: 1 1 auto;
         display: flex;
         flex-direction: column;
-        gap: 16px;
+        gap: 14px;
         min-height: 0;
     }
     
@@ -219,8 +219,8 @@ export default function NurseryMOTReport({ reportData, studioFormatting }: any) 
     .nursery-mot-report th {
         background: #1e40af;
         color: white;
-        font-size: 11px;
-        padding: 8px 6px;
+        font-size: 11.5px;
+        padding: 9px 8px;
         text-transform: uppercase;
         border-bottom: 2px solid #1e3a8a;
         font-weight: 700;
@@ -232,8 +232,8 @@ export default function NurseryMOTReport({ reportData, studioFormatting }: any) 
     .nursery-mot-report td {
         border-bottom: 1px solid var(--border-light);
         border-right: 1px solid var(--border-light);
-        padding: 7px 6px;
-        font-size: 12px;
+        padding: 9px 10px;
+        font-size: 13px;
         color: #334155;
     }
     .nursery-mot-report td:last-child { border-right: none; }
@@ -358,7 +358,7 @@ export default function NurseryMOTReport({ reportData, studioFormatting }: any) 
               </tbody>
             </table>
 
-            <table style={{ marginTop: 'auto' }}>
+            <table>
               <thead>
                 <tr>
                   <th colSpan={6} style={{ background: '#1e40af', textAlign: 'center' }}>OFFICIAL GRADING SCALE</th>

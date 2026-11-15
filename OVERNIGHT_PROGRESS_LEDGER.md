@@ -971,3 +971,45 @@ Exit code: 0
      - Full automated suite: 84/84 tests passing across 22 suites in `src/__tests__/overhaul-workstreams.test.mjs` and 5/5 in `report-print.test.mjs`.
      - TypeScript compiler (`npm run typecheck`): 0 errors (`tsc --noEmit`).
      - Next.js production build (`npm run build`): 68/68 routes compiled cleanly in Next.js 16.4.6.
+
+
+---
+
+### Milestone 27: Solid Blue Block Elimination, Ink Promise Deduplication, Filled Portrait Gaps & Mixed-Orientation Single-Sheet Print Lock (`feat/overnight-system-renovation`)
+- **Files Modified:**
+  - `src/lib/signature-ink-processor.ts`
+  - `src/components/reports/CleanSignatureImage.tsx`
+  - `src/components/reports/StampGenerator.tsx`
+  - `src/components/reports/ReportPreviewCell.tsx`
+  - `src/components/figma-ui/DocumentCanvas.tsx`
+  - `src/components/ReportGeneratorClient.tsx`
+  - `src/components/reports/PrintPortal.tsx`
+  - `src/styles/reports/print-system.css`
+  - `src/components/reports/P7EOTReport.tsx`
+  - `src/components/reports/NurseryEOTReport.tsx`
+  - `src/components/reports/NurseryMOTReport.tsx`
+  - `src/components/figma-ui/PrintDialog.tsx`
+  - `src/components/figma-ui/StudentRosterSidebar.tsx`
+  - `src/__tests__/overhaul-workstreams.test.mjs`
+  - `src/__tests__/signature-assets.test.mjs`
+  - `OVERNIGHT_PROGRESS_LEDGER.md`
+- **Scope & Workstreams Completed:**
+  1. **Workstream 1: Fix Solid Dark-Blue Signature & Stamp Blocks AND Eliminate Main-Thread Lag:**
+     - Fixed SVG color matrix in `CleanSignatureImage.tsx`: changed `#jiddah-blue-signature-ink` `<feColorMatrix>` alpha row from `-2.8 -2.8 -2.8 0 3.9` to `0 0 0 1 0` so transparent pixels (`alpha = 0`) never turn into opaque dark-blue blocks (`0 * -2.8 + 3.9 = 3.9 -> 1.0`).
+     - In `CleanSignatureImage.tsx`, when `resolvedSrc` is already a processed data URL (`data:image/png;base64,...`), bypassed `mixBlendMode` and CSS SVG filters entirely to prevent GPU pipeline thrashing and solid blue clipping.
+     - Added `inFlightSignaturePromises` Map in `signature-ink-processor.ts` to deduplicate concurrent extraction calls across 38 student cards down to 2 offscreen `<canvas>` extractions instead of 76.
+     - In `StampGenerator.tsx`, exported `stampCrestCache` and singleton hook `useMonochromeStampCrest(inkColor)`. Pre-renders `/logo-512h.png` to an offscreen 120×120 canvas once, clips white background (`lum > 215`) to pure transparency (`alpha = 0`), recolors crest emblem to ink color, and replaces `<image filter="url(#jiddah-stamp-crest-ink)">` with clean `<image href={crestDataUrl || "/logo-512h.png"}>`.
+     - In `DocumentCanvas.tsx` & `ReportPreviewCell.tsx`: replaced 38 per-cell `ResizeObserver` instances with a single debounced `ResizeObserver` on the canvas container that precalculates `landscapeScale` and `portraitScale` based on container dimensions and zoom, passing `scale={scale}` down to each cell to lock preview scrolling to 60fps.
+  2. **Workstream 2: Proportional Void Elimination in `P7EOTReport.tsx` & Nursery Reports:**
+     - In `P7EOTReport.tsx`: unconditionally rendered Maroon Arabic school title `<h2>مدرسة جدة الإسلامية للروضة<br />والإبتدائية - انساغو - واكيسو</h2>` and `bismillah` across all religions; added `white-space: nowrap` on Pupil Name and LIN/ADM items so identity details never wrap onto 2 lines; changed `.content-layer` to `justify-content: flex-start; gap: 6px;`; expanded `.table-container` with `flex: 1 1 auto; display: flex; flex-direction: column;` and `table { height: 100%; font-size: 13.5px; }` with `padding: 8px 6px;` per cell; increased padding on UNEB strip and footer comments box (`padding: 8px 12px; gap: 5px;`) to distribute space evenly without an empty middle gap.
+     - In `NurseryEOTReport.tsx` & `NurseryMOTReport.tsx`: removed `style={{ marginTop: 'auto' }}` on grading scale tables, enlarged cell padding to `9px 10px; font-size: 13px;` and header padding to `9px 8px; font-size: 11.5px;`.
+     - In `NurseryEOTReport.tsx`: updated `Learner's Competence (Progressive Records)` to display all 3 rows (`Beginning of Term (BOT)`, `Mid-Term Assessment (MOT)`, and `End of Term Assessment (EOT)`) across LA1–LA5 and Writing.
+  3. **Workstream 3: Mixed-Orientation Print Hardening (Single Sheet per Student):**
+     - In `print-system.css`: added explicit `.report-sheet-landscape` (`page: landscape-sheet !important; width: 297mm; height: 210mm;`) and `.report-sheet-portrait` (`page: portrait-sheet !important; width: 210mm; height: 297mm;`).
+     - In `PrintPortal.tsx`: supported `pageOrientation?: 'portrait' | 'landscape' | 'mixed'`. In mixed orientation, omitted the unnamed `@page` tag so Chromium uses CSS named pages.
+     - In `ReportGeneratorClient.tsx`: dynamically inspected batch students; if all landscape, injected `@page { size: A4 landscape; margin: 0mm; }`; if all portrait, injected `@page { size: A4 portrait; margin: 0mm; }`; if mixed, injected empty string so Chromium respects `@page landscape-sheet` and `@page portrait-sheet` per student sheet without forcing 210mm portrait cards onto 297mm landscape sheets or breaking onto 2 pages (38 students = 38 sheets exactly).
+     - In `P7EOTReport.tsx`: added `max-height: 296mm; overflow: hidden; break-inside: avoid !important; page-break-inside: avoid !important;`.
+  4. **Workstream 4: Verification Gate:**
+     - Full automated suite: 89/89 tests passing across 23 suites in `src/__tests__/overhaul-workstreams.test.mjs`, 63/63 tests passing in related report unit tests (`report-print.test.mjs`, `signature-assets.test.mjs`, `report-logo.test.mjs`, `grading-and-calculations.test.mjs`). Total 152/152 unit assertions green.
+     - TypeScript compiler (`npm run typecheck`): 0 errors (`tsc --noEmit`).
+     - Next.js production build (`npm run build`): 68/68 routes compiled cleanly in Next.js 16.4.6 with webpack.

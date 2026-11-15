@@ -98,7 +98,7 @@ export function extractCleanSignaturePixels(
   for (let i = 0; i < totalPixels; i++) {
     const idx = i * 4;
     const a = sourceRgba[idx + 3];
-    lumBuffer[i] = a < 20 ? 255 : getLuminance(sourceRgba[idx], sourceRgba[idx + 1], sourceRgba[idx + 2]);
+    lumBuffer[i] = a < 40 ? 255 : getLuminance(sourceRgba[idx], sourceRgba[idx + 1], sourceRgba[idx + 2]);
   }
 
   // Build coarse illumination grid using 80th percentile per block to handle uneven lighting
@@ -154,12 +154,19 @@ export function extractCleanSignaturePixels(
   }
 
   // Sample outer border pixels for global adaptive paper-background luminance (bgLum)
+  // Only sample opaque pixels (alpha >= 40) so pre-transparent padding doesn't skew lighting
   const borderSamples: number[] = [];
   for (let x = 0; x < width; x++) {
-    borderSamples.push(lumBuffer[x], lumBuffer[(height - 1) * width + x]);
+    const topIdx = x * 4;
+    const btmIdx = ((height - 1) * width + x) * 4;
+    if (sourceRgba[topIdx + 3] >= 40) borderSamples.push(lumBuffer[x]);
+    if (sourceRgba[btmIdx + 3] >= 40) borderSamples.push(lumBuffer[(height - 1) * width + x]);
   }
   for (let y = 0; y < height; y++) {
-    borderSamples.push(lumBuffer[y * width], lumBuffer[y * width + (width - 1)]);
+    const leftIdx = (y * width) * 4;
+    const rightIdx = (y * width + (width - 1)) * 4;
+    if (sourceRgba[leftIdx + 3] >= 40) borderSamples.push(lumBuffer[y * width]);
+    if (sourceRgba[rightIdx + 3] >= 40) borderSamples.push(lumBuffer[y * width + (width - 1)]);
   }
   borderSamples.sort((a, b) => a - b);
   const bgLum = borderSamples.length > 0
@@ -177,7 +184,7 @@ export function extractCleanSignaturePixels(
     for (let x = 0; x < width; x++) {
       const p = y * width + x;
       const srcIdx = p * 4;
-      if (sourceRgba[srcIdx + 3] < 20) {
+      if (sourceRgba[srcIdx + 3] < 40) {
         rawAlpha[p] = 0;
         continue;
       }
@@ -195,7 +202,7 @@ export function extractCleanSignaturePixels(
         smoothedBg[gy1 * gridCols + gx1] * tx;
       const localBg = top * (1 - ty) + bottom * ty;
 
-      const paperThreshold = localBg - 28;
+      const paperThreshold = Math.min(localBg - 28, bgLum - 22);
       const lum = lumBuffer[p];
       if (lum >= paperThreshold) {
         rawAlpha[p] = 0;
@@ -451,6 +458,8 @@ export async function processSignatureFileToPng(
   }
 }
 
+export const inFlightSignaturePromises = new Map<string, Promise<string>>();
+
 export async function cleanSignatureImageUrl(
   src: string,
   options: SignatureExtractionOptions = {}
@@ -461,25 +470,35 @@ export async function cleanSignatureImageUrl(
   const cached = cleanedUrlCache.get(cacheKey);
   if (cached) return cached;
 
-  try {
-    const img = await loadBrowserImage(src, 'anonymous');
-    const { rgba, width, height } = imageElementToCanvasData(img);
+  const inFlight = inFlightSignaturePromises.get(cacheKey);
+  if (inFlight) return inFlight;
 
-    if (!hasOpaquePaperBackground(rgba, width, height)) {
-      cleanedUrlCache.set(cacheKey, src);
+  const promise = (async () => {
+    try {
+      const img = await loadBrowserImage(src, 'anonymous');
+      const { rgba, width, height } = imageElementToCanvasData(img);
+
+      if (!hasOpaquePaperBackground(rgba, width, height)) {
+        cleanedUrlCache.set(cacheKey, src);
+        return src;
+      }
+
+      const extracted = extractCleanSignaturePixels(rgba, width, height, options);
+      if (extracted.width === 0 || extracted.height === 0 || extracted.inkPixelRatio < 0.0005) {
+        cleanedUrlCache.set(cacheKey, src);
+        return src;
+      }
+
+      const { dataUrl } = await rgbaToPngBlobAndDataUrl(extracted.data, extracted.width, extracted.height);
+      cleanedUrlCache.set(cacheKey, dataUrl);
+      return dataUrl;
+    } catch {
       return src;
     }
+  })().finally(() => {
+    inFlightSignaturePromises.delete(cacheKey);
+  });
 
-    const extracted = extractCleanSignaturePixels(rgba, width, height, options);
-    if (extracted.width === 0 || extracted.height === 0 || extracted.inkPixelRatio < 0.0005) {
-      cleanedUrlCache.set(cacheKey, src);
-      return src;
-    }
-
-    const { dataUrl } = await rgbaToPngBlobAndDataUrl(extracted.data, extracted.width, extracted.height);
-    cleanedUrlCache.set(cacheKey, dataUrl);
-    return dataUrl;
-  } catch {
-    return src;
-  }
+  inFlightSignaturePromises.set(cacheKey, promise);
+  return promise;
 }

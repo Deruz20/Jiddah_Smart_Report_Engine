@@ -25,6 +25,8 @@ interface ReportPreviewCellProps {
   zoom?: number
   /** Number of columns when in Grid View (2-up) */
   columns?: number
+  /** Direct scale factor passed from parent container to eliminate per-cell ResizeObserver lag */
+  scale?: number
   isActive?: boolean
   onClick?: () => void
   className?: string
@@ -35,6 +37,7 @@ function ReportPreviewCellComponent({
   reportType,
   zoom = 1,
   columns = 1,
+  scale: externalScale,
   isActive = false,
   onClick,
   className = '',
@@ -57,6 +60,7 @@ function ReportPreviewCellComponent({
   }, [reportW, columns])
 
   useEffect(() => {
+    if (externalScale !== undefined) return
     const sentinel = sentinelRef.current
     if (!sentinel) return
     // Watch the nearest scroll container, not the shell itself
@@ -69,9 +73,11 @@ function ReportPreviewCellComponent({
     observer.observe(target)
     updateFit(target.clientWidth)
     return () => observer.disconnect()
-  }, [updateFit])
+  }, [updateFit, externalScale])
 
-  const scale = Math.min(Math.max(fitScale * zoom, 0.2), 2)
+  const scale = externalScale !== undefined
+    ? externalScale
+    : Math.min(Math.max(fitScale * zoom, 0.2), 2)
   const scaledW = Math.round(reportW * scale)
   const scaledH = Math.round(reportH * scale)
 

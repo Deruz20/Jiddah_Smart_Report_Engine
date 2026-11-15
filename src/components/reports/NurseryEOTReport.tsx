@@ -204,7 +204,7 @@ export default function NurseryEOTReport({ reportData, studioFormatting }: any) 
         flex: 1 1 auto;
         display: flex;
         flex-direction: column;
-        gap: 16px;
+        gap: 14px;
         min-height: 0;
     }
     
@@ -219,8 +219,8 @@ export default function NurseryEOTReport({ reportData, studioFormatting }: any) 
     .nursery-eot-report th {
         background: #1e40af;
         color: white;
-        font-size: 11px;
-        padding: 8px 6px;
+        font-size: 11.5px;
+        padding: 9px 8px;
         text-transform: uppercase;
         border-bottom: 2px solid #1e3a8a;
         font-weight: 700;
@@ -232,8 +232,8 @@ export default function NurseryEOTReport({ reportData, studioFormatting }: any) 
     .nursery-eot-report td {
         border-bottom: 1px solid var(--border-light);
         border-right: 1px solid var(--border-light);
-        padding: 7px 6px;
-        font-size: 12px;
+        padding: 9px 10px;
+        font-size: 13px;
         color: #334155;
     }
     .nursery-eot-report td:last-child { border-right: none; }
@@ -389,23 +389,48 @@ export default function NurseryEOTReport({ reportData, studioFormatting }: any) 
               </thead>
               <tbody>
                 <tr>
-                  <td className="subject-cell">Mid-Term Assessment</td>
+                  <td className="subject-cell">Beginning of Term (BOT)</td>
                   {subjects.slice(0, 6).map((subject: any, index: number) => (
-                    <td key={index} className="data-cell">
+                    <td key={'bot-' + index} className="data-cell">
+                      {subject.bot_score != null 
+                        ? getNurseryGrade(subject.bot_score).grade 
+                        : '--'}
+                    </td>
+                  ))}
+                  {Array.from({ length: Math.max(0, (!reportData?.student?.class_name?.toLowerCase().includes('top') ? 6 : 5) - subjects.slice(0, 6).length) }).map((_, i) => (
+                    <td key={'bot-empty-' + i} className="data-cell">--</td>
+                  ))}
+                </tr>
+                <tr>
+                  <td className="subject-cell">Mid-Term Assessment (MOT)</td>
+                  {subjects.slice(0, 6).map((subject: any, index: number) => (
+                    <td key={'mot-' + index} className="data-cell">
                       {subject.mot_score != null 
                         ? getNurseryGrade(subject.mot_score).grade 
                         : '--'}
                     </td>
                   ))}
-                  {/* Fill empty cells if fewer than 6 subjects */}
                   {Array.from({ length: Math.max(0, (!reportData?.student?.class_name?.toLowerCase().includes('top') ? 6 : 5) - subjects.slice(0, 6).length) }).map((_, i) => (
-                    <td key={'empty-'+i} className="data-cell">--</td>
+                    <td key={'mot-empty-' + i} className="data-cell">--</td>
+                  ))}
+                </tr>
+                <tr>
+                  <td className="subject-cell">End of Term Assessment (EOT)</td>
+                  {subjects.slice(0, 6).map((subject: any, index: number) => (
+                    <td key={'eot-' + index} className="data-cell">
+                      {subject.eot_score != null 
+                        ? getNurseryGrade(subject.eot_score).grade 
+                        : '--'}
+                    </td>
+                  ))}
+                  {Array.from({ length: Math.max(0, (!reportData?.student?.class_name?.toLowerCase().includes('top') ? 6 : 5) - subjects.slice(0, 6).length) }).map((_, i) => (
+                    <td key={'eot-empty-' + i} className="data-cell">--</td>
                   ))}
                 </tr>
               </tbody>
             </table>
 
-            <table style={{ marginTop: 'auto' }}>
+            <table>
               <thead>
                 <tr>
                   <th colSpan={6} style={{ background: '#1e40af', textAlign: 'center' }}>OFFICIAL GRADING SCALE</th>

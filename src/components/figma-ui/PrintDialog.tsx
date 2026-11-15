@@ -69,7 +69,7 @@ export function PrintDialog({
                 exit={{ opacity: 0 }}
               />
             </Dialog.Overlay>
-            
+
             <Dialog.Content asChild>
               <motion.div
                 className="fixed left-[50%] top-[50%] z-[101] w-[92vw] max-w-[440px] outline-none flex flex-col"
@@ -104,7 +104,7 @@ export function PrintDialog({
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {/* Option: Current Report */}
-                    <div 
+                    <div
                       onClick={() => setPrintMode('current')}
                       style={{
                         padding: '10px 14px', borderRadius: 10, border: `2px solid ${printMode === 'current' ? '#047857' : '#e2e8f0'}`,
@@ -125,7 +125,7 @@ export function PrintDialog({
                     </div>
 
                     {/* Option: Batch */}
-                    <div 
+                    <div
                       onClick={() => setPrintMode('all')}
                       style={{
                         padding: '10px 14px', borderRadius: 10, border: `2px solid ${printMode === 'all' ? '#047857' : '#e2e8f0'}`,
@@ -241,17 +241,17 @@ export function PrintDialog({
                   <Dialog.Close style={{ padding: '8px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600, color: '#475569', background: 'transparent', border: '1px solid #cbd5e1', cursor: 'pointer' }} className="hover:bg-slate-100 transition-colors">
                     Cancel
                   </Dialog.Close>
-                  <button 
+                  <button
                     onClick={() => {
                       onConfirmPrint(printMode === 'custom' ? Array.from(selectedIds) : printMode);
                       onOpenChange(false);
                     }}
                     disabled={printMode === 'custom' && selectedIds.size === 0}
-                    style={{ 
-                      padding: '8px 20px', borderRadius: 8, fontSize: 13, fontWeight: 600, color: 'white', 
+                    style={{
+                      padding: '8px 20px', borderRadius: 8, fontSize: 13, fontWeight: 600, color: 'white',
                       background: printMode === 'custom' && selectedIds.size === 0 ? '#94a3b8' : '#047857',
                       border: 'none', cursor: printMode === 'custom' && selectedIds.size === 0 ? 'not-allowed' : 'pointer',
-                      display: 'flex', alignItems: 'center', gap: 8, 
+                      display: 'flex', alignItems: 'center', gap: 8,
                       boxShadow: printMode === 'custom' && selectedIds.size === 0 ? 'none' : '0 2px 4px rgba(4,120,87,0.2)'
                     }}
                   >

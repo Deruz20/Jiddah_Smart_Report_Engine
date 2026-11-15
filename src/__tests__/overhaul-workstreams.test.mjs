@@ -1407,7 +1407,7 @@ describe('Workstream 24: Landscape Print Lock, Blank Page 1 Fix, Iconic Studio T
     const clientSrc = fs.readFileSync(path.join(rootDir, 'src/components/ReportGeneratorClient.tsx'), 'utf8');
     assert.match(clientSrc, /print:!p-0 print:!m-0 print:!gap-0 print:!h-auto print:!overflow-visible print:!block/);
     assert.match(clientSrc, /print:!hidden/);
-    assert.match(clientSrc, /@media print \{ @page \{ size: A4 \$\{isLandscape \? 'landscape' : 'portrait'\} !important; margin: 0mm !important; \} \}/);
+    assert.match(clientSrc, /@media print \{ @page \{ size: A4 \$\{isLandscape \? 'landscape' : 'portrait'\}/);
   });
 
   it('2. upgrades PrintDialog with 3 clear print scopes and on-canvas Select on Canvas mode', () => {
@@ -1474,7 +1474,8 @@ describe('Workstream 25: CSS Named Pages for Mixed Print, P7 Portrait Parity, Wh
 
   it('3. white-clips signatures instantly with CSS multiply + grayscale/brightness/contrast and caches processed canvas data', () => {
     const sigImgSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/CleanSignatureImage.tsx'), 'utf8');
-    assert.match(sigImgSrc, /mixBlendMode:\s*'multiply'/);
+    assert.match(sigImgSrc, /mixBlendMode/);
+    assert.match(sigImgSrc, /'multiply'/);
     assert.match(sigImgSrc, /grayscale\(1\) brightness\(1\.48\) contrast\(3\.8\)/);
 
     const procSrc = fs.readFileSync(path.join(rootDir, 'src/lib/signature-ink-processor.ts'), 'utf8');
@@ -1485,7 +1486,7 @@ describe('Workstream 25: CSS Named Pages for Mixed Print, P7 Portrait Parity, Wh
   it('4. renders authentic Jiddah badge image with ink filter in StampGenerator', () => {
     const stampSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/StampGenerator.tsx'), 'utf8');
     assert.match(stampSrc, /id="jiddah-stamp-ink-filter"/);
-    assert.match(stampSrc, /href="\/logo-512h\.png"/);
+    assert.match(stampSrc, /href=\{crestDataUrl \|\| "\/logo-512h\.png"\}|href="\/logo-512h\.png"/);
   });
 
   it('5. provides pearl-on-dark tooltips in dark mode without sluggish animations', () => {
@@ -1546,7 +1547,7 @@ describe('Workstream 26: Progressive Card Mounting, Transparent Stamp Crest, Sea
   it('2. adds transparent stamp crest SVG luminance filter and royal blue signature ink filter', () => {
     const stampSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/StampGenerator.tsx'), 'utf8');
     assert.match(stampSrc, /id="jiddah-stamp-crest-ink"/);
-    assert.match(stampSrc, /filter="url\(#jiddah-stamp-crest-ink\)"/);
+    assert.match(stampSrc, /useMonochromeStampCrest|filter="url\(#jiddah-stamp-crest-ink\)"/);
 
     const cleanSigSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/CleanSignatureImage.tsx'), 'utf8');
     assert.match(cleanSigSrc, /id="jiddah-blue-signature-ink"/);
@@ -1611,6 +1612,76 @@ describe('Workstream 26: Progressive Card Mounting, Transparent Stamp Crest, Sea
 
     const emptySrc = fs.readFileSync(path.join(rootDir, 'src/components/figma-ui/EmptyState.tsx'), 'utf8');
     assert.doesNotMatch(emptySrc, /Open Filters &amp; Roster/);
+  });
+});
+
+describe('Workstream 27: Solid Blue Block Elimination, Canvas Deduplication, Filled Gaps & Single-Sheet Print Lock', () => {
+  const rootDir = process.cwd();
+
+  it('1. eliminates solid blue blocks by fixing SVG alpha matrix and rendering transparent processed signatures', () => {
+    const cleanSigSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/CleanSignatureImage.tsx'), 'utf8');
+    assert.match(cleanSigSrc, /0 0 0 1 0/);
+    assert.match(cleanSigSrc, /isProcessed\s*=\s*Boolean\(resolvedSrc\?\.startsWith\('data:'\)\)/);
+
+    const procSrc = fs.readFileSync(path.join(rootDir, 'src/lib/signature-ink-processor.ts'), 'utf8');
+    assert.match(procSrc, /export const inFlightSignaturePromises = new Map<string, Promise<string>>\(\)/);
+    assert.match(procSrc, /sourceRgba\[topIdx \+ 3\] >= 40/);
+    assert.match(procSrc, /sourceRgba\[srcIdx \+ 3\] < 40/);
+  });
+
+  it('2. renders monochromatic stamp crest without filter clipping blocks via cached singleton hook', () => {
+    const stampSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/StampGenerator.tsx'), 'utf8');
+    assert.match(stampSrc, /export const stampCrestCache = new Map<string, string>\(\)/);
+    assert.match(stampSrc, /export function useMonochromeStampCrest/);
+    assert.match(stampSrc, /const crestDataUrl = useMonochromeStampCrest/);
+    assert.match(stampSrc, /href=\{crestDataUrl \|\| "\/logo-512h\.png"\}/);
+    assert.doesNotMatch(stampSrc, /<image[^>]*filter="url\(#jiddah-stamp-crest-ink\)"/);
+  });
+
+  it('3. eliminates per-cell ResizeObservers and broadcasts scale from DocumentCanvas at 60fps', () => {
+    const previewCellSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/ReportPreviewCell.tsx'), 'utf8');
+    assert.match(previewCellSrc, /scale:\s*externalScale/);
+    assert.match(previewCellSrc, /if \(externalScale !== undefined\) return/);
+
+    const canvasSrc = fs.readFileSync(path.join(rootDir, 'src/components/figma-ui/DocumentCanvas.tsx'), 'utf8');
+    assert.match(canvasSrc, /const \[containerWidth, setContainerWidth\] = useState<number>\(0\)/);
+    assert.match(canvasSrc, /renderReport\(report, isActive, \{ landscapeScale, portraitScale \}\)/);
+
+    const clientSrc = fs.readFileSync(path.join(rootDir, 'src/components/ReportGeneratorClient.tsx'), 'utf8');
+    assert.match(clientSrc, /renderJiddahReport = useCallback\(\s*\(report: ReportData, isActive: boolean, scales\?:/);
+  });
+
+  it('4. fills middle void in P7EOTReport and Nursery reports with proportional tables and progressive records', () => {
+    const p7Src = fs.readFileSync(path.join(rootDir, 'src/components/reports/P7EOTReport.tsx'), 'utf8');
+    assert.match(p7Src, /مدرسة جدة الإسلامية للروضة/);
+    assert.match(p7Src, /justify-content:\s*flex-start;/);
+    assert.match(p7Src, /white-space:\s*nowrap/);
+    assert.match(p7Src, /max-height:\s*296mm;/);
+
+    const nurseryEotSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/NurseryEOTReport.tsx'), 'utf8');
+    assert.doesNotMatch(nurseryEotSrc, /<table style=\{\{ marginTop: 'auto' \}\}>/);
+    assert.match(nurseryEotSrc, /Beginning of Term \(BOT\)/);
+    assert.match(nurseryEotSrc, /Mid-Term Assessment \(MOT\)/);
+    assert.match(nurseryEotSrc, /End of Term Assessment \(EOT\)/);
+
+    const nurseryMotSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/NurseryMOTReport.tsx'), 'utf8');
+    assert.doesNotMatch(nurseryMotSrc, /<table style=\{\{ marginTop: 'auto' \}\}>/);
+  });
+
+  it('5. enforces named page sheet styling and prevents unnamed @page overriding mixed-batch orientation', () => {
+    const printCssSrc = fs.readFileSync(path.join(rootDir, 'src/styles/reports/print-system.css'), 'utf8');
+    assert.match(printCssSrc, /\.report-sheet-landscape/);
+    assert.match(printCssSrc, /\.report-sheet-portrait/);
+
+    const portalSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/PrintPortal.tsx'), 'utf8');
+    assert.match(portalSrc, /pageOrientation\?: 'portrait' \| 'landscape' \| 'mixed'/);
+    assert.match(portalSrc, /pageOrientation !== 'mixed'/);
+
+    const clientSrc = fs.readFileSync(path.join(rootDir, 'src/components/ReportGeneratorClient.tsx'), 'utf8');
+    assert.match(clientSrc, /report-sheet-landscape/);
+    assert.match(clientSrc, /report-sheet-portrait/);
+    assert.match(clientSrc, /hasLandscape && !hasPortrait/);
+    assert.match(clientSrc, /hasPortrait && !hasLandscape/);
   });
 });
 

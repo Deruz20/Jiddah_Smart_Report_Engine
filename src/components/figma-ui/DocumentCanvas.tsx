@@ -28,7 +28,7 @@ interface DocumentCanvasProps {
   onFitScreen: () => void;
   onSearchOpen?: () => void;
   onLayoutToggle?: () => void;
-  renderReport: (report: any, isActive: boolean) => React.ReactNode;
+  renderReport: (report: any, isActive: boolean, scale?: any) => React.ReactNode;
   printScope?: 'current' | 'all' | string[];
   cardsPerRow?: 1 | 2 | 3;
   isGenerating?: boolean;
@@ -121,6 +121,46 @@ export function DocumentCanvas({
   }
 
   const isGrid = layout === 'grid';
+
+  // Single debounced ResizeObserver on stage to broadcast optimal fit scales to all cells at 60fps
+  const [containerWidth, setContainerWidth] = useState<number>(0);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    let rAF: number | null = null;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const w = entry.contentRect.width;
+        if (rAF) cancelAnimationFrame(rAF);
+        rAF = requestAnimationFrame(() => {
+          setContainerWidth(w);
+        });
+      }
+    });
+    observer.observe(el);
+    setContainerWidth(el.clientWidth);
+    return () => {
+      if (rAF) cancelAnimationFrame(rAF);
+      observer.disconnect();
+    };
+  }, []);
+
+  const { landscapeScale, portraitScale } = useMemo(() => {
+    const w = containerWidth || (typeof window !== 'undefined' ? window.innerWidth : 1200);
+    const padding = w < 640 ? 24 : 64;
+    const colGap = isGrid && w >= 1280 ? 24 : 0;
+    const effectiveCols = isGrid && w >= 1280 ? 2 : 1;
+    const colW = Math.max(Math.floor((w - padding - colGap) / effectiveCols), 220);
+
+    const fitLandscape = Math.min(colW / 1122.52, 1);
+    const fitPortrait = Math.min(colW / 793.7, 1);
+
+    const lScale = Math.min(Math.max(fitLandscape * zoom, 0.2), 2);
+    const pScale = Math.min(Math.max(fitPortrait * zoom, 0.2), 2);
+
+    return { landscapeScale: lScale, portraitScale: pScale };
+  }, [containerWidth, isGrid, zoom]);
 
   return (
     <Tooltip.Provider delayDuration={120}>
@@ -351,7 +391,7 @@ export function DocumentCanvas({
                           <span>{isSelected ? 'Selected' : 'Select'}</span>
                         </button>
                       )}
-                      {renderReport(report, isActive)}
+                      {renderReport(report, isActive, { landscapeScale, portraitScale })}
                     </motion.div>
                   );
                 })}

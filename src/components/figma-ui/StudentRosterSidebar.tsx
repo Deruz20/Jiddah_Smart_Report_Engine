@@ -230,11 +230,10 @@ export function StudentRosterSidebar({
                 key={student.enrollment_id}
                 data-student-id={student.enrollment_id}
                 onClick={() => onSelectStudent(student.enrollment_id)}
-                className={`px-3 py-2 flex items-center justify-between gap-2 cursor-pointer transition-colors ${
-                  isActive
-                    ? 'bg-emerald-50/80 dark:bg-emerald-950/30 border-l-3 border-[#0D5C3A] dark:border-[#10B981]'
-                    : 'hover:bg-stone-50 dark:hover:bg-[#1E2623]/60'
-                }`}
+                className={`px-3 py-2 flex items-center justify-between gap-2 cursor-pointer transition-colors ${isActive
+                  ? 'bg-emerald-50/80 dark:bg-emerald-950/30 border-l-3 border-[#0D5C3A] dark:border-[#10B981]'
+                  : 'hover:bg-stone-50 dark:hover:bg-[#1E2623]/60'
+                  }`}
               >
                 {/* Left: Checkbox + Avatar + Name */}
                 <div className="flex items-center gap-2 min-w-0">
@@ -267,13 +266,12 @@ export function StudentRosterSidebar({
                 <div className="shrink-0 flex items-center gap-1">
                   {rep?.badgeText || rep?.division ? (
                     <span
-                      className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                        rep.badgeType === 'theology'
-                          ? 'bg-amber-100/80 text-amber-900 dark:bg-amber-950/40 dark:text-amber-300 font-serif'
-                          : rep.badgeType === 'nursery'
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${rep.badgeType === 'theology'
+                        ? 'bg-amber-100/80 text-amber-900 dark:bg-amber-950/40 dark:text-amber-300 font-serif'
+                        : rep.badgeType === 'nursery'
                           ? 'bg-sky-100/80 text-sky-900 dark:bg-sky-950/40 dark:text-sky-300'
                           : 'bg-[#0D5C3A]/10 text-[#0D5C3A] dark:bg-[#10B981]/15 dark:text-[#34D399]'
-                      }`}
+                        }`}
                     >
                       {rep.badgeText}
                     </span>

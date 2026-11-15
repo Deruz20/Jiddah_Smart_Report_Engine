@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useId, useState } from "react";
+import React, { useId, useState, useEffect } from "react";
 import { Sliders, Save, RefreshCw, Check, Calendar } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
@@ -84,6 +84,85 @@ function splitStampSchoolHeader(name: string): [string, string] {
   return [words.slice(0, mid).join(" "), words.slice(mid).join(" ")];
 }
 
+export const stampCrestCache = new Map<string, string>();
+
+/**
+ * Singleton hook that converts /logo-512h.png to a transparent monochromatic emblem
+ * matching the stamp's ink color via an offscreen canvas once, eliminating SVG filter clipping blocks.
+ */
+export function useMonochromeStampCrest(inkColor: string = "#1B3B8B"): string {
+  const [crestUrl, setCrestUrl] = useState<string>(() => stampCrestCache.get(inkColor) || "/logo-512h.png");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const cached = stampCrestCache.get(inkColor);
+    if (cached) {
+      setCrestUrl(cached);
+      return;
+    }
+
+    let active = true;
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = 120;
+        canvas.height = 120;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+
+        ctx.drawImage(img, 0, 0, 120, 120);
+        const imgData = ctx.getImageData(0, 0, 120, 120);
+        const data = imgData.data;
+
+        let hex = inkColor.replace("#", "");
+        if (hex.length === 3) hex = hex.split("").map((c) => c + c).join("");
+        const inkR = parseInt(hex.slice(0, 2), 16) || 27;
+        const inkG = parseInt(hex.slice(2, 4), 16) || 59;
+        const inkB = parseInt(hex.slice(4, 6), 16) || 139;
+
+        for (let i = 0; i < data.length; i += 4) {
+          const a = data[i + 3];
+          if (a < 40) {
+            data[i + 3] = 0;
+            continue;
+          }
+          const lum = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+          // Strip white canvas backing inside crest
+          if (lum > 215) {
+            data[i + 3] = 0;
+            continue;
+          }
+          // Recolor darker crest pixels to inkColor with antialiased alpha
+          data[i] = inkR;
+          data[i + 1] = inkG;
+          data[i + 2] = inkB;
+          const strokeAlpha = Math.min(255, Math.round(((215 - lum) / 140) * 255));
+          data[i + 3] = Math.min(a, Math.max(0, strokeAlpha));
+        }
+
+        ctx.putImageData(imgData, 0, 0);
+        const resultUrl = canvas.toDataURL("image/png");
+        stampCrestCache.set(inkColor, resultUrl);
+        if (active) {
+          setCrestUrl(resultUrl);
+        }
+      } catch {
+        // Fallback to /logo-512h.png
+      }
+    };
+    img.onerror = () => {};
+    img.src = "/logo-512h.png";
+
+    return () => {
+      active = false;
+    };
+  }, [inkColor]);
+
+  return crestUrl;
+}
+
 export function VectorStamp({
   config,
   date,
@@ -103,6 +182,8 @@ export function VectorStamp({
     ...DEFAULT_STAMP_CONFIG,
     ...config,
   };
+
+  const crestDataUrl = useMonochromeStampCrest(merged.ink_color);
 
   const displayDate = formatStampDisplayDate(date || merged.date);
   const grunge = Math.max(0, Math.min(100, merged.grunge_intensity ?? (merged.grain_realism ? 35 : 0)));
@@ -280,12 +361,11 @@ export function VectorStamp({
             <g transform="translate(0, 0)">
               <desc>DAY AND BOARDING - STRIVE FOR LIFE &amp; HERE AFTER</desc>
               <image
-                href="/logo-512h.png"
+                href={crestDataUrl || "/logo-512h.png"}
                 x="24"
                 y="66"
                 width="76"
                 height="74"
-                filter="url(#jiddah-stamp-crest-ink)"
                 preserveAspectRatio="xMidYMid meet"
               />
             </g>

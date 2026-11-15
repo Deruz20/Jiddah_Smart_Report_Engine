@@ -430,8 +430,8 @@ export function VectorStamp({
 
 export function OfficialReportStamp({
   reportData,
-  maxWidth = 152,
-  maxHeight = 84,
+  maxWidth = 135,
+  maxHeight = 68,
 }: {
   reportData: any;
   maxWidth?: number;
@@ -456,27 +456,38 @@ export function OfficialReportStamp({
 
   if (config.use_uploaded_image && reportData?.signatures?.["school-stamp"]) {
     return (
-      <img
-        src={reportData.signatures["school-stamp"]}
-        alt="Official School Stamp"
-        style={{
-          maxWidth: `${maxWidth}px`,
-          maxHeight: `${maxHeight}px`,
-          objectFit: "contain",
-          mixBlendMode: "multiply",
-          backgroundColor: "transparent",
-        }}
-      />
+      <div
+        className="w-[135px] h-[68px] max-w-[135px] max-h-[68px] overflow-hidden flex items-center justify-center shrink-0"
+        style={{ width: `${maxWidth}px`, height: `${maxHeight}px`, maxWidth: `${maxWidth}px`, maxHeight: `${maxHeight}px` }}
+      >
+        <img
+          src={reportData.signatures["school-stamp"]}
+          alt="Official School Stamp"
+          style={{
+            maxWidth: "100%",
+            maxHeight: "100%",
+            objectFit: "contain",
+            mixBlendMode: "multiply",
+            filter: "contrast(1.65) brightness(1.12)",
+            backgroundColor: "transparent",
+          }}
+        />
+      </div>
     );
   }
 
   return (
-    <VectorStamp
-      config={config}
-      date={resolvedDate}
-      maxWidth={maxWidth}
-      maxHeight={maxHeight}
-    />
+    <div
+      className="w-[135px] h-[68px] max-w-[135px] max-h-[68px] overflow-hidden flex items-center justify-center shrink-0"
+      style={{ width: `${maxWidth}px`, height: `${maxHeight}px`, maxWidth: `${maxWidth}px`, maxHeight: `${maxHeight}px` }}
+    >
+      <VectorStamp
+        config={config}
+        date={resolvedDate}
+        maxWidth={maxWidth}
+        maxHeight={maxHeight}
+      />
+    </div>
   );
 }
 

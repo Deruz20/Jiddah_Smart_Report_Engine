@@ -415,12 +415,12 @@ export default function PrimaryBOTReport({ reportData }: any) {
           </div>
 
           <div className="bot-footer-stamp">
-            <div className="bot-stamp" style={{ padding: '2px' }}>
+            <div className="bot-stamp" style={{ width: '135px', height: '68px', maxWidth: '135px', maxHeight: '68px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: '2px' }}>
               {includeStamp ? (
                 reportData?.signatures?.['school-stamp'] ? (
-                  <img src={reportData.signatures['school-stamp']} alt="Official school stamp" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                  <img src={reportData.signatures['school-stamp']} alt="Official school stamp" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', mixBlendMode: 'multiply', filter: 'contrast(1.65) brightness(1.12)' }} />
                 ) : (
-                  <OfficialReportStamp reportData={reportData} maxWidth={144} maxHeight={88} />
+                  <OfficialReportStamp reportData={reportData} maxWidth={135} maxHeight={68} />
                 )
               ) : null}
             </div>

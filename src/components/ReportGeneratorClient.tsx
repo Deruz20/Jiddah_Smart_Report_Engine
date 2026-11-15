@@ -6,7 +6,8 @@ import { motion, AnimatePresence } from 'motion/react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { FileSpreadsheet, Printer, Users, FileText, Sliders, Settings, History, ChevronDown, LayoutGrid } from 'lucide-react'
 import { generateReportBroadsheetCSV } from '@/utils/csvExport'
-import { TopToolbar } from './figma-ui/TopToolbar'
+import { TopToolbar, StudioFormattingState, DEFAULT_STUDIO_FORMATTING } from './figma-ui/TopToolbar'
+import { isNonMuslimStudent, shouldUseSecularPortraitTemplate } from '@/lib/student-religion'
 import { DocumentCanvas } from './figma-ui/DocumentCanvas'
 import { StudentRosterSidebar } from './figma-ui/StudentRosterSidebar'
 import { PrintDialog } from './figma-ui/PrintDialog'
@@ -90,6 +91,40 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
   const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
   const [completionCache, setCompletionCache] = useState<Record<string, StudentCompletionStatus>>({})
+
+  // Studio formatting and customisation state
+  const [studioFormatting, setStudioFormatting] = useState<StudioFormattingState>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('jiddah_report_studio_formatting')
+        if (saved) return { ...DEFAULT_STUDIO_FORMATTING, ...JSON.parse(saved) }
+      } catch {}
+    }
+    return DEFAULT_STUDIO_FORMATTING
+  })
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('jiddah_report_studio_formatting', JSON.stringify(studioFormatting))
+      } catch {}
+    }
+  }, [studioFormatting])
+
+  // Auto-scale preview on mobile (< md) to fit 100vw cleanly without horizontal scroll
+  useEffect(() => {
+    const handleResize = () => {
+      if (typeof window !== 'undefined' && window.innerWidth < 768) {
+        const availableWidth = window.innerWidth - 24
+        const targetWidth = 794
+        const mobileScale = Math.min(0.65, Math.max(0.35, +(availableWidth / targetWidth).toFixed(2)))
+        setZoom(mobileScale)
+      }
+    }
+    handleResize()
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   // Multi-selection state for student checklist
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([])
@@ -438,12 +473,31 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
         : `Selected_${targets.length}_Reports${termSuffix}.pdf`
     document.title = baseName.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_')
 
+    // Dynamically inject exact @page orientation so Chrome Print Preview never clips Landscape onto Portrait
+    const isLandscape = targets.some((targetId) => {
+      const rep = (reportsForPrint || rawReports).find((r) => r.id === targetId)
+      if (!rep) return false
+      const isP7 = (rep.student?.class_name || '').toLowerCase().includes('p.7')
+      const isPrim = (rep.section_type || '').includes('primary') || (rep.student?.class_name || '').toLowerCase().includes('p.')
+      const isNonMuslim = isNonMuslimStudent(rep.student, rep)
+      return isPrim && rep.score_type === 'eot' && !isP7 && !isNonMuslim
+    })
+
+    let styleEl = document.getElementById('dynamic-print-page-style') as HTMLStyleElement | null
+    if (!styleEl) {
+      styleEl = document.createElement('style')
+      styleEl.id = 'dynamic-print-page-style'
+      document.head.appendChild(styleEl)
+    }
+    styleEl.textContent = `@media print { @page { size: A4 ${isLandscape ? 'landscape' : 'portrait'} !important; margin: 0mm !important; } }`
+
     setTimeout(() => {
       window.print()
     }, 320)
 
     const restoreTitle = () => {
       document.title = originalTitle
+      styleEl?.remove()
       window.removeEventListener('afterprint', restoreTitle)
     }
     window.addEventListener('afterprint', restoreTitle)
@@ -513,31 +567,57 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
         }
       }
 
+      const rep = report as any
+      const enhancedReport = {
+        ...report,
+        branding: {
+          ...rep.branding,
+          primaryFont: studioFormatting.fontFamily,
+          themePreset: studioFormatting.colorTheme,
+        },
+        settings: {
+          ...rep.settings,
+          primary_font: studioFormatting.fontFamily,
+          theme_preset: studioFormatting.colorTheme,
+          print_preferences: {
+            ...rep.settings?.print_preferences,
+            includeStamp: studioFormatting.stampEnabled,
+            includeSignatures: studioFormatting.signaturesEnabled,
+            stamp_config: {
+              ...rep.settings?.print_preferences?.stamp_config,
+              ink_color: studioFormatting.stampInkColor,
+              date: studioFormatting.stampDate || rep?.term?.end_date,
+            },
+          },
+        },
+      }
+
       if (format === 'combined' || format === 'circular') {
         if (isPrim && report.score_type === 'eot') {
-          component = isP7 ? <P7EOTReport reportData={report} /> : <PrimaryEOTReport reportData={report} />
-          type = isP7 ? 'P7EOTReport' : 'PrimaryEOTReport'
+          const useSecularPortrait = isP7 || shouldUseSecularPortraitTemplate(report.student, report)
+          component = useSecularPortrait ? <P7EOTReport reportData={enhancedReport} /> : <PrimaryEOTReport reportData={enhancedReport} />
+          type = useSecularPortrait ? 'P7EOTReport' : 'PrimaryEOTReport'
         } else if (report.section_type === 'nursery') {
           if (report.score_type === 'mot') {
-            component = <NurseryMOTReport reportData={report} />
+            component = <NurseryMOTReport reportData={enhancedReport} />
             type = 'NurseryMOTReport'
           } else {
-            component = <NurseryEOTReport reportData={report} />
+            component = <NurseryEOTReport reportData={enhancedReport} />
             type = 'NurseryEOTReport'
           }
         } else if (report.score_type === 'bot') {
-          component = <PrimaryBOTReport reportData={report} />
+          component = <PrimaryBOTReport reportData={enhancedReport} />
           type = 'PrimaryBOTReport'
         } else {
-          component = <PrimaryMOTReport reportData={report} />
+          component = <PrimaryMOTReport reportData={enhancedReport} />
           type = 'PrimaryMOTReport'
         }
       } else if (format === 'theology') {
         if (report.section_type === 'nursery' && report.score_type === 'eot') {
-          component = <NurseryTheologyEOTReport reportData={report} />
+          component = <NurseryTheologyEOTReport reportData={enhancedReport} />
           type = 'NurseryTheologyEOTReport'
         } else {
-          component = <TheologyMOTReport reportData={report} />
+          component = <TheologyMOTReport reportData={enhancedReport} />
           type = 'TheologyMOTReport'
         }
       }
@@ -546,7 +626,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
 
       return { component, type }
     },
-    [filterState.curriculum]
+    [filterState.curriculum, studioFormatting]
   )
 
   const renderJiddahReport = useCallback(
@@ -561,11 +641,20 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
           isActive={isActive}
           onClick={() => setActiveReportId(report.id)}
         >
-          {resolved.component}
+          <div
+            style={{
+              fontSize: `${studioFormatting.fontSize}%`,
+              fontWeight: studioFormatting.isBold ? 600 : 'normal',
+              width: '100%',
+              height: '100%',
+            }}
+          >
+            {resolved.component}
+          </div>
         </ReportPreviewCell>
       )
     },
-    [resolveReport, zoom]
+    [resolveReport, zoom, studioFormatting]
   )
 
   const printableReports = useMemo(() => {
@@ -808,6 +897,8 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
             onClick: handlePrintSelected,
             disabled: selectedStudentIds.length === 0 || isGenerating,
           }}
+          studioFormatting={studioFormatting}
+          onStudioFormattingChange={setStudioFormatting}
           onDownload={handleDownload}
           onPrint={handlePrint}
           onShare={handleShare}

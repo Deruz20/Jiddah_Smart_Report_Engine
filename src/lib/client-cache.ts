@@ -25,6 +25,18 @@ export function invalidateClientCache() {
   if (typeof window !== 'undefined') {
     try {
       sessionStorage.removeItem(TERM_CACHE_KEY)
+      for (let i = sessionStorage.length - 1; i >= 0; i--) {
+        const key = sessionStorage.key(i)
+        if (key && (key.includes('mark') || key.includes('report') || key.includes('hub'))) {
+          sessionStorage.removeItem(key)
+        }
+      }
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const key = localStorage.key(i)
+        if (key && (key.includes('mark') || key.includes('report') || key.includes('hub'))) {
+          localStorage.removeItem(key)
+        }
+      }
     } catch {}
   }
 }

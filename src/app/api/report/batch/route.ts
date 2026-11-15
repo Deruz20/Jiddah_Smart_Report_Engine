@@ -30,6 +30,7 @@ import { fetchMergedSchoolSettings } from '@/lib/school-settings-helper'
 import { getMarkScore } from '@/lib/mark-scores'
 import { fetchAllSupabaseRows } from '@/lib/supabase-pagination'
 import { getReportSignatures } from '@/utils/signatures'
+import { resolveEquivalentTerms } from '@/lib/marks-reconciliation'
 import { applyRateLimit, rateLimitResponse } from '@/utils/rate-limit'
 import { z } from 'zod'
 
@@ -162,16 +163,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Reconcile equivalent terms by academic_year and term_number
-    let termIds = [term.id]
-    const { data: equivalentTerms } = await supabase
-      .from('terms')
-      .select('id')
-      .eq('academic_year', term.academic_year)
-      .eq('term_number', term.term_number)
-
-    if (equivalentTerms && equivalentTerms.length > 0) {
-      termIds = [...new Set([term.id, ...equivalentTerms.map((t: any) => t.id)])]
-    }
+    const termInfo = await resolveEquivalentTerms(supabase, term_id)
+    const termIds = termInfo.termIds
 
     const isTerm3 = term.term_number === 3
 

@@ -8,6 +8,7 @@ import { verifyDataAccess, resolveUserScope, canAccessSubjectInScope } from '@/l
 import { recordActivity } from '@/lib/api-server'
 import { canAccessClass, isAdministratorRole } from '@/lib/teacher-access'
 import { fetchMergedSchoolSettings, isExamSetLockedForUser } from '@/lib/school-settings-helper'
+import { resolveEquivalentTerms, fetchAndReconcileSecularMarks, fetchAndReconcileTheologyMarks } from '@/lib/marks-reconciliation'
 
 export async function OPTIONS(request: NextRequest) {
   return apiOptions(request)
@@ -46,7 +47,7 @@ export async function GET(request: NextRequest) {
 
     const { data: enrollment, error: enrollmentError } = await supabase
       .from('enrollments')
-      .select('id, circular_class_id, theology_class_id, circular_classes(section, class_name), theology_classes(level)')
+      .select('id, student_id, circular_class_id, theology_class_id, circular_classes(section, class_name), theology_classes(level)')
       .eq('id', enrollment_id)
       .single()
 
@@ -86,20 +87,19 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: subjectsError.message }, { status: 500 }))
     }
 
-    // Fetch existing circular marks
-    const { data: existingCircularMarks, error: circularMarksError } = await supabase
-      .from('circular_marks')
-      .select('subject_id, bot_score, mot_score, eot_score')
-      .eq('enrollment_id', enrollment_id)
-      .eq('term_id', term_id)
+    const termInfo = await resolveEquivalentTerms(supabase, term_id)
+    const studentIdList = enrollment.student_id ? [enrollment.student_id] : []
 
-    if (circularMarksError) {
-      console.error('circular_marks DB error:', circularMarksError.message)
-      return withCors(request, NextResponse.json({ error: circularMarksError.message }, { status: 500 }))
-    }
+    // Fetch and reconcile circular marks
+    const reconciledSecular = await fetchAndReconcileSecularMarks(supabase, {
+      enrollmentIds: [enrollment_id],
+      studentIds: studentIdList,
+      termIds: termInfo.termIds,
+      termAliases: termInfo.termAliases,
+    })
 
     const circularMarkMap = new Map(
-      (existingCircularMarks || []).map((mark: any) => [mark.subject_id, mark])
+      reconciledSecular.map((mark) => [mark.subject_id, mark])
     )
 
     let circular_marks = (subjects || []).map((subject: any) => {
@@ -131,20 +131,16 @@ export async function GET(request: NextRequest) {
         return withCors(request, NextResponse.json({ error: theologySubjectsError.message }, { status: 500 }))
       }
 
-      // Fetch existing theology marks
-      const { data: existingTheologyMarks, error: theologyMarksError } = await supabase
-        .from('theology_marks')
-        .select('subject_id, mot_score, eot_score')
-        .eq('enrollment_id', enrollment_id)
-        .eq('term_id', term_id)
-
-      if (theologyMarksError) {
-        console.error('theology_marks DB error:', theologyMarksError.message)
-        return withCors(request, NextResponse.json({ error: theologyMarksError.message }, { status: 500 }))
-      }
+      // Fetch and reconcile existing theology marks
+      const reconciledTheology = await fetchAndReconcileTheologyMarks(supabase, {
+        enrollmentIds: [enrollment_id],
+        studentIds: studentIdList,
+        termIds: termInfo.termIds,
+        termAliases: termInfo.termAliases,
+      })
 
       const theologyMarkMap = new Map(
-        (existingTheologyMarks || []).map((mark: any) => [mark.subject_id, mark])
+        reconciledTheology.map((mark) => [mark.subject_id, mark])
       )
 
       theology_marks = (theologySubjects || []).map((subject: any) => {

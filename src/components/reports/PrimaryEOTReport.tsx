@@ -524,17 +524,20 @@ export default function PrimaryEOTReport({ reportData }: any) {
 
                   <div className="header-center">
                     <div className="bismillah">بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْم</div>
-                    <img
-                      src={branding.logoUrl || '/school_logo.svg'}
-                      alt="School Badge"
-                      className="school-logo"
-                      data-testid="report-school-logo"
-                      onError={(e) => {
-                        if (!e.currentTarget.src.endsWith('/school_logo.svg')) {
-                          e.currentTarget.src = '/school_logo.svg';
-                        }
-                      }}
-                    />
+                    <div className="w-14 h-14 overflow-visible flex items-center justify-center mx-auto my-0.5" style={{ width: '56px', height: '56px', overflow: 'visible', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '2px auto' }}>
+                      <img
+                        src={branding.logoUrl || '/school_logo.svg'}
+                        alt="School Badge"
+                        className="school-logo"
+                        style={{ width: '100%', height: '100%', objectFit: 'contain', maxHeight: '56px' }}
+                        data-testid="report-school-logo"
+                        onError={(e) => {
+                          if (!e.currentTarget.src.endsWith('/school_logo.svg')) {
+                            e.currentTarget.src = '/school_logo.svg';
+                          }
+                        }}
+                      />
+                    </div>
                     <div className="report-badge">
                       {isLower ? 'LOWER' : 'UPPER'} REPORT FORM – END OF TERM
                     </div>
@@ -758,12 +761,12 @@ export default function PrimaryEOTReport({ reportData }: any) {
                       </div>
                     </div>
 
-                    <div className="stamp-wrapper" style={{ flexShrink: 0, padding: '2px', minWidth: '132px', minHeight: '72px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent' }}>
+                    <div className="stamp-wrapper" style={{ width: '135px', height: '68px', maxWidth: '135px', maxHeight: '68px', overflow: 'hidden', flexShrink: 0, padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent' }}>
                       {includeStamp ? (
                         reportData?.signatures?.['school-stamp'] ? (
-                          <img src={reportData.signatures['school-stamp']} alt="Official school stamp" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                          <img src={reportData.signatures['school-stamp']} alt="Official school stamp" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', mixBlendMode: 'multiply', filter: 'contrast(1.65) brightness(1.12)' }} />
                         ) : (
-                          <OfficialReportStamp reportData={reportData} maxWidth={145} maxHeight={80} />
+                          <OfficialReportStamp reportData={reportData} maxWidth={135} maxHeight={68} />
                         )
                       ) : null}
                     </div>

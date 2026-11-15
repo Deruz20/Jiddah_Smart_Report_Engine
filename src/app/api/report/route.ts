@@ -28,6 +28,8 @@ import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { evaluateCriteria, GradingCriterion } from '@/lib/grading-engine'
 import { fetchMergedSchoolSettings } from '@/lib/school-settings-helper'
 import { getReportSignatures } from '@/utils/signatures'
+import { resolveEquivalentTerms, fetchAndReconcileSecularMarks, fetchAndReconcileTheologyMarks } from '@/lib/marks-reconciliation'
+import { isNonMuslimStudent } from '@/lib/student-religion'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -165,16 +167,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Reconcile equivalent terms by academic_year and term_number
-    let termIds = [term.id]
-    const { data: equivalentTerms } = await supabase
-      .from('terms')
-      .select('id')
-      .eq('academic_year', term.academic_year)
-      .eq('term_number', term.term_number)
-
-    if (equivalentTerms && equivalentTerms.length > 0) {
-      termIds = [...new Set([term.id, ...equivalentTerms.map((t: any) => t.id)])]
-    }
+    const termInfo = await resolveEquivalentTerms(supabase, termId)
+    const termIds = termInfo.termIds
 
     const { data: circularSubjects, error: circularSubjectsError } = await supabase
       .from('subjects')
@@ -187,23 +181,15 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: circularSubjectsError.message }, { status: 500 }))
     }
 
-    const { data: circularMarks, error: circularError } = await supabase
-      .from('circular_marks')
-      .select('*')
-      .eq('enrollment_id', enrollmentId)
-      .in('term_id', termIds);
+    const studentId = (Array.isArray(enrollment.students) ? enrollment.students[0]?.id : (enrollment.students as any)?.id) || null
 
-    const debugInfo = {
-      enrollmentId,
-      termId,
-      circularMarksCount: circularMarks?.length || 0,
-      supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    }
-
-    if (circularError) {
-      console.error('CIRCULAR MARKS ERROR:', JSON.stringify(circularError, null, 2));
-      return withCors(request, NextResponse.json({ error: circularError.message }, { status: 500 }))
-    }
+    const circularMarks = await fetchAndReconcileSecularMarks(supabase, {
+      enrollmentIds: [enrollmentId],
+      studentIds: studentId ? [studentId] : [],
+      termIds,
+      termAliases: termInfo.termAliases,
+      academicYear: term.academic_year,
+    })
 
     const { data: initialsData } = await supabase.from('teacher_initials').select('*')
     const teacherInitialsMap: Record<string, string> = {}
@@ -434,16 +420,13 @@ export async function GET(request: NextRequest) {
         theologySubjects = fallbackSubjects?.map((s: any) => ({ id: s.id, subject_name_arabic: s.subject_name })) || []
       }
 
-      const { data: theologyMarks, error: theologyError } = await supabase
-        .from('theology_marks')
-        .select('*')
-        .eq('enrollment_id', enrollmentId)
-        .in('term_id', termIds);
-
-      if (theologyError) {
-        console.error('THEOLOGY MARKS ERROR:', JSON.stringify(theologyError, null, 2));
-        return withCors(request, NextResponse.json({ error: theologyError.message }, { status: 500 }))
-      }
+      const theologyMarks = await fetchAndReconcileTheologyMarks(supabase, {
+        enrollmentIds: [enrollmentId],
+        studentIds: studentId ? [studentId] : [],
+        termIds,
+        termAliases: termInfo.termAliases,
+        academicYear: term.academic_year,
+      })
 
       existingTheologyMarks = theologyMarks
 
@@ -721,7 +704,11 @@ export async function GET(request: NextRequest) {
       signatures,
       settings: schoolSettings,
       stamp_date: stamp_date || term.end_date || null,
-      debug: {debugInfo},
+      debug: {
+        circularMarksCount: circularMarks?.length || 0,
+        enrollmentId,
+        termId,
+      },
     }
 
     return withCors(request, NextResponse.json(reportData))

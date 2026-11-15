@@ -3,6 +3,7 @@ import { ReportContainer } from '@/components/reports/shared/ReportContainer'
 import { CleanSignatureImg } from '@/components/reports/shared/CleanSignatureImg'
 import { OfficialReportStamp } from '@/components/reports/StampGenerator'
 import { resolveReportBranding, resolveReportGradingBands } from '@/lib/school-settings-helper'
+import { getSecularPortraitReportTitle } from '@/lib/student-religion'
 
 import { getClassTeacherSignatureKey } from '@/utils/signatures'
 
@@ -75,16 +76,16 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
 }
 
 .p7-eot-report {
-  --primary-green: #064e3b;
-  --secondary-green: #047857;
-  --accent-gold: #fbbf24;
-  --deep-maroon: #800000;
-  --bg-cream: transparent;
-  --border-light: #e2e8f0;
+  --primary-green: #14532D;
+  --secondary-green: #166534;
+  --accent-gold: #C59B27;
+  --deep-maroon: #7F1D1D;
+  --bg-cream: #FAF6EE;
+  --border-light: #C59B27;
   --data-navy: #0f172a;
   --data-indigo: #1e293b;
   --data-teal: #0369a1;
-  --soft-gray: #f8fafc;
+  --soft-gray: #FAF6EE;
   
   flex: 1 1 auto;
   width: 100%;
@@ -470,8 +471,8 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
 .p7-eot-report .blue-date { border-color: #93c5fd; color: #1d4ed8; }
 
 .p7-eot-report .validity-strip {
-  background: var(--primary-green);
-  color: white;
+  background: var(--deep-maroon, #7F1D1D);
+  color: #FFFFFF;
   border-radius: 4px;
   text-align: center;
   padding: 8px;
@@ -481,8 +482,11 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
 }
 
 .p7-eot-report .stamp-box {
-  width: 148px;
-  height: 98px;
+  width: 135px;
+  height: 68px;
+  max-width: 135px;
+  max-height: 68px;
+  overflow: hidden;
   border: none;
   background: transparent;
   display: flex;
@@ -507,10 +511,11 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
           </div>
 
           <div className="header-center">
-            <div className="logo">
+            <div className="w-14 h-14 overflow-visible flex items-center justify-center mx-auto my-0.5" style={{ width: '56px', height: '56px', overflow: 'visible', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '2px auto' }}>
               <img
                 src={branding.logoUrl || '/school_logo.svg'}
                 alt="School Badge"
+                style={{ width: '100%', height: '100%', objectFit: 'contain', maxHeight: '56px' }}
                 onError={(e) => {
                   if (!e.currentTarget.src.endsWith('/school_logo.svg')) {
                     e.currentTarget.src = '/school_logo.svg';
@@ -522,7 +527,7 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
 
           <div className="header-right">
             <div className="report-badge">
-              P.7 REPORT FORM - END OF TERM
+              {getSecularPortraitReportTitle(reportData?.student?.class_name)}
             </div>
           </div>
         </header>
@@ -802,12 +807,12 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
               </div>
             </div>
 
-            <div className="stamp-box" style={{ padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div className="stamp-box" style={{ width: '135px', height: '68px', maxWidth: '135px', maxHeight: '68px', overflow: 'hidden', padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               {includeStamp ? (
                 reportData?.signatures?.['school-stamp'] ? (
-                  <img src={reportData.signatures['school-stamp']} alt="Official school stamp" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                  <img src={reportData.signatures['school-stamp']} alt="Official school stamp" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', mixBlendMode: 'multiply', filter: 'contrast(1.65) brightness(1.12)' }} />
                 ) : (
-                  <OfficialReportStamp reportData={reportData} maxWidth={144} maxHeight={92} />
+                  <OfficialReportStamp reportData={reportData} maxWidth={135} maxHeight={68} />
                 )
               ) : null}
             </div>

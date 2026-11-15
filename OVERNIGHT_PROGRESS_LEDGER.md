@@ -718,6 +718,68 @@ Exit code: 0
      - Automated test suite (`src/__tests__/overhaul-workstreams.test.mjs`): 56/56 tests across 17 suites pass (100% pass rate).
      - Next.js webpack production build (`npm run build`): 68/68 routes compiled cleanly with zero build errors.
 
+---
+
+## Milestone 22: Universal Marks & Term Reconciliation Engine, Stamp Hardening, Non-Muslim Portrait Routing & Document Studio
+
+- **Files Modified / Created:**
+  - `src/lib/marks-reconciliation.ts` (new universal reconciliation engine)
+  - `src/lib/student-religion.ts` (new religion & portrait template resolver)
+  - `src/lib/fonts.ts` (new canonical academic font definitions)
+  - `src/lib/themes.ts` (expanded 5 canonical studio report themes)
+  - `src/lib/client-cache.ts` (purges cached marks, hubs & reports on mutation)
+  - `src/lib/enrollment-shape.ts` (exposes `is_muslim`, `religion`, `theology_exempt`)
+  - `src/app/api/marks/route.ts`
+  - `src/app/api/circular-marks/route.ts`
+  - `src/app/api/theology-marks/route.ts`
+  - `src/app/api/secular-hub/route.ts`
+  - `src/app/api/theology-hub/route.ts`
+  - `src/app/api/report/route.ts`
+  - `src/app/api/report/batch/route.ts`
+  - `src/app/api/enrollments/route.ts`
+  - `src/components/shared-marks-entry.tsx`
+  - `src/components/ReportGeneratorClient.tsx`
+  - `src/components/figma-ui/TopToolbar.tsx`
+  - `src/components/layout/app-topbar.tsx`
+  - `src/components/reports/StampGenerator.tsx`
+  - `src/components/reports/ReportSchoolLogo.tsx`
+  - `src/components/reports/PrimaryEOTReport.tsx`
+  - `src/components/reports/P7EOTReport.tsx`
+  - `src/components/reports/PrimaryMOTReport.tsx`
+  - `src/components/reports/PrimaryBOTReport.tsx`
+  - `src/components/reports/NurseryEOTReport.tsx`
+  - `src/components/reports/NurseryMOTReport.tsx`
+  - `src/components/reports/NurseryTheologyEOTReport.tsx`
+  - `src/components/reports/TheologyMOTReport.tsx`
+  - `src/__tests__/overhaul-workstreams.test.mjs`
+  - `OVERNIGHT_PROGRESS_LEDGER.md`
+- **Scope & Workstreams Completed:**
+  1. **Workstream 1: Universal Marks & Term Reconciliation Engine (`src/lib/marks-reconciliation.ts`):**
+     - Sourced equivalent terms across academic years and term numbers via `resolveEquivalentTerms()`.
+     - Built `fetchAllSupabaseRows()` to safely bypass Supabase's default 1,000-row limit using deterministic chunked `.range()` queries.
+     - Implemented `fetchAndReconcileSecularMarks()` and `fetchAndReconcileTheologyMarks()` with canonical subject code normalization (`canonicalSecularSubjectCode()`, `canonicalTheologySubjectCode()`), resolving and merging identical subjects across equivalent term records.
+     - Integrated the universal reconciler into `Secular Hub`, `Theology Hub`, `Marks Entry` (`/api/marks`), `Circular Marks` (`/api/circular-marks`), `Theology Marks` (`/api/theology-marks`), and `Report APIs` (`/api/report`, `/api/report/batch`).
+     - Added `invalidateClientCache()` in `src/lib/client-cache.ts` to invalidate client `sessionStorage` and `localStorage` marks and report keys upon every mark save.
+  2. **Workstream 2: Marks Entry Layout Polish (`src/components/shared-marks-entry.tsx`):**
+     - Bound progress bar widths in `SecularMarkTableRow` and `TheologyMarkTableRow` to `max-w-[140px] pr-5 overflow-hidden`, eliminating score input collisions.
+     - Hidden duplicate desktop `● Term 3, 2026` pill in Zone 1 via `md:hidden` while preserving mobile badge.
+     - Formatted Theology summary numbers exclusively through `toArabicDigits()` with `whitespace-nowrap truncate` to prevent Western numeral mixing.
+  3. **Workstream 3: Stamp Hardening, School Crest & Non-Muslim Secular Portrait Routing:**
+     - Enforced strict 135px × 68px stamp boundaries (`w-[135px] h-[68px] max-w-[135px] max-h-[68px] overflow-hidden`) with `mix-blend-mode: multiply; filter: contrast(1.65) brightness(1.12)` across all 8 report templates (`PrimaryEOTReport`, `P7EOTReport`, `PrimaryMOTReport`, `PrimaryBOTReport`, `NurseryEOTReport`, `NurseryMOTReport`, `NurseryTheologyEOTReport`, `TheologyMOTReport`) and `StampGenerator.tsx`.
+     - Unclipped school crest in `ReportSchoolLogo.tsx` and `PrimaryEOTReport.tsx` with `w-14 h-14 overflow-visible flex items-center justify-center`.
+     - Built `src/lib/student-religion.ts` (`isNonMuslimStudent`, `isMuslimStudent`, `shouldUseSecularPortraitTemplate`, `getSecularPortraitReportTitle`) and routed non-Muslim Primary (`P.1–P.6`) and P.7 EOT students to `P7EOTReport.tsx` (A4 Portrait).
+     - Color-harmonized `P7EOTReport.tsx` with Forest Green (`#14532D`), Warm Gold (`#C59B27`), Warm Ivory (`#FAF6EE`), and Maroon (`#7F1D1D`).
+     - Enforced dynamic `@page` Landscape printing for Primary Muslim Dual EOT while keeping Portrait orientation for all other 7 templates.
+  4. **Workstream 4: Full-Screen Document Studio Transformation (`app-topbar.tsx`, `TopToolbar.tsx`, `ReportGeneratorClient.tsx`):**
+     - Hid global `AppTopbar` on `/admin/reports` to grant 100% of vertical screen height to Document Studio.
+     - Equipped `TopToolbar.tsx` with mobile sidebar trigger (`☰`), `←` back navigation button, Sun/Moon theme toggle, `StudioFormattingState` (5 canonical themes from `src/lib/themes.ts`, typography font selector and scaling, bold weight toggle), and `✒️ Stamp & Sign` popover controls.
+     - Built responsive 2-row mobile Studio header with dynamic auto-scaled preview fitting 100% mobile viewport width.
+  5. **Workstream 5: Verification Gate:**
+     - TypeScript check (`npm run typecheck`): 0 errors across entire repository.
+     - Automated test suite (`src/__tests__/overhaul-workstreams.test.mjs`): 61/61 tests across 18 suites pass (100% pass rate).
+     - Next.js webpack production build (`npm run build`): 68/68 routes compiled cleanly with zero build errors.
+
+
 
 
 

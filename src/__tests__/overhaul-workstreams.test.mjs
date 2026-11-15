@@ -1116,8 +1116,8 @@ describe('WORKSTREAM 16: Full-Width Document Preview & Dual-Curriculum Report Da
     // Queries theology_subjects table (not subjects)
     assert.match(singleReportSrc, /\.from\('theology_subjects'\)/);
     // Uses equivalent termIds
-    assert.match(singleReportSrc, /termIds = \[...new Set\(\[term\.id/);
-    assert.match(singleReportSrc, /\.in\('term_id', termIds\)/);
+    assert.match(singleReportSrc, /resolveEquivalentTerms/);
+    assert.match(singleReportSrc, /fetchAndReconcileSecularMarks/);
     // Never sets theology to null for secular/dual
     assert.match(singleReportSrc, /theology: theologySectionData,/);
 
@@ -1125,7 +1125,7 @@ describe('WORKSTREAM 16: Full-Width Document Preview & Dual-Curriculum Report Da
     const batchReportSrc = fs.readFileSync(batchReportPath, 'utf8');
 
     // Reconciles equivalent terms
-    assert.match(batchReportSrc, /termIds = \[...new Set\(\[term\.id/);
+    assert.match(batchReportSrc, /resolveEquivalentTerms/);
     // Fetches theology_subjects regardless of curriculum === 'secular'
     assert.match(batchReportSrc, /\.from\('theology_subjects'\)/);
     // Always provides theologySectionData for dual-curriculum report cards
@@ -1159,6 +1159,86 @@ describe('WORKSTREAM 16: Full-Width Document Preview & Dual-Curriculum Report Da
     const previewCellSrc = fs.readFileSync(previewCellPath, 'utf8');
     assert.match(previewCellSrc, /colorScheme:\s*'light'/);
     assert.match(previewCellSrc, /color:\s*'#0F172A'/);
+  });
+});
+
+describe('Workstream 22: Universal Marks Reconciliation, Form Collision Fix, Stamp Hardening & Document Studio', () => {
+  const rootDir = process.cwd();
+
+  it('verifies marks-reconciliation engine handles equivalent terms, fetchAllSupabaseRows, and merging', () => {
+    const reconcilerPath = path.join(rootDir, 'src/lib/marks-reconciliation.ts');
+    const reconcilerSrc = fs.readFileSync(reconcilerPath, 'utf8');
+
+    assert.match(reconcilerSrc, /export async function resolveEquivalentTerms/);
+    assert.match(reconcilerSrc, /export async function fetchAndReconcileSecularMarks/);
+    assert.match(reconcilerSrc, /export async function fetchAndReconcileTheologyMarks/);
+    assert.match(reconcilerSrc, /fetchAllSupabaseRows/);
+    assert.match(reconcilerSrc, /canonicalSecularSubjectCode/);
+    assert.match(reconcilerSrc, /canonicalTheologySubjectCode/);
+  });
+
+  it('verifies TheologyMarkTableRow and SecularMarkTableRow have bounded progress bars and no duplicate labels', () => {
+    const marksEntryPath = path.join(rootDir, 'src/components/shared-marks-entry.tsx');
+    const marksEntrySrc = fs.readFileSync(marksEntryPath, 'utf8');
+
+    assert.match(marksEntrySrc, /max-w-\[140px\]/);
+    assert.match(marksEntrySrc, /pr-5 overflow-hidden/);
+    assert.match(marksEntrySrc, /toArabicDigits\(theologyStats\.total\)/);
+    assert.match(marksEntrySrc, /whitespace-nowrap truncate/);
+    assert.match(marksEntrySrc, /md:hidden/);
+  });
+
+  it('verifies all 8 report templates bound stamps to 135x68 and crest renders unclipped', () => {
+    const templates = [
+      'PrimaryEOTReport.tsx',
+      'P7EOTReport.tsx',
+      'PrimaryMOTReport.tsx',
+      'PrimaryBOTReport.tsx',
+      'NurseryEOTReport.tsx',
+      'NurseryMOTReport.tsx',
+      'NurseryTheologyEOTReport.tsx',
+      'TheologyMOTReport.tsx',
+    ];
+
+    for (const t of templates) {
+      const tPath = path.join(rootDir, `src/components/reports/${t}`);
+      const tSrc = fs.readFileSync(tPath, 'utf8');
+      assert.match(tSrc, /135px/);
+      assert.match(tSrc, /68px/);
+      assert.match(tSrc, /OfficialReportStamp/);
+    }
+
+    const crestPath = path.join(rootDir, 'src/components/reports/ReportSchoolLogo.tsx');
+    const crestSrc = fs.readFileSync(crestPath, 'utf8');
+    assert.match(crestSrc, /w-14 h-14/);
+    assert.match(crestSrc, /overflow-visible/);
+  });
+
+  it('verifies student religion resolver and non-Muslim Secular Portrait routing', () => {
+    const religionPath = path.join(rootDir, 'src/lib/student-religion.ts');
+    const religionSrc = fs.readFileSync(religionPath, 'utf8');
+
+    assert.match(religionSrc, /export function isNonMuslimStudent/);
+    assert.match(religionSrc, /export function shouldUseSecularPortraitTemplate/);
+    assert.match(religionSrc, /export function getSecularPortraitReportTitle/);
+
+    const clientPath = path.join(rootDir, 'src/components/ReportGeneratorClient.tsx');
+    const clientSrc = fs.readFileSync(clientPath, 'utf8');
+    assert.match(clientSrc, /shouldUseSecularPortraitTemplate/);
+    assert.match(clientSrc, /dynamic-print-page-style/);
+  });
+
+  it('verifies global AppTopbar hides on /admin/reports and TopToolbar exposes full Document Studio controls', () => {
+    const topbarPath = path.join(rootDir, 'src/components/layout/app-topbar.tsx');
+    const topbarSrc = fs.readFileSync(topbarPath, 'utf8');
+    assert.match(topbarSrc, /pathname\?\.startsWith\('\/admin\/reports'\)/);
+
+    const toolbarPath = path.join(rootDir, 'src/components/figma-ui/TopToolbar.tsx');
+    const toolbarSrc = fs.readFileSync(toolbarPath, 'utf8');
+    assert.match(toolbarSrc, /Document Studio Controls/);
+    assert.match(toolbarSrc, /Template Color Themes/);
+    assert.match(toolbarSrc, /Stamps, Signatures & Watermarks/);
+    assert.match(toolbarSrc, /data-testid="studio-popover-trigger"/);
   });
 });
 

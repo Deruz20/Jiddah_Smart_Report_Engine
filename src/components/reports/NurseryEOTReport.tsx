@@ -281,8 +281,11 @@ export default function NurseryEOTReport({ reportData }: any) {
         border: 1px solid var(--border-light);
     }
     .nursery-eot-report .stamp-box {
-        width: 146px;
-        height: 98px;
+        width: 135px;
+        height: 68px;
+        max-width: 135px;
+        max-height: 68px;
+        overflow: hidden;
         border: none;
         display: flex;
         flex-direction: column;
@@ -451,12 +454,12 @@ export default function NurseryEOTReport({ reportData }: any) {
               </div>
             </div>
 
-            <div className="stamp-box" style={{ padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div className="stamp-box" style={{ width: '135px', height: '68px', maxWidth: '135px', maxHeight: '68px', overflow: 'hidden', padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               {includeStamp ? (
                 reportData?.signatures?.['school-stamp'] ? (
-                  <img src={reportData.signatures['school-stamp']} alt="Official school stamp" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                  <img src={reportData.signatures['school-stamp']} alt="Official school stamp" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', mixBlendMode: 'multiply', filter: 'contrast(1.65) brightness(1.12)' }} />
                 ) : (
-                  <OfficialReportStamp reportData={reportData} maxWidth={140} maxHeight={92} />
+                  <OfficialReportStamp reportData={reportData} maxWidth={135} maxHeight={68} />
                 )
               ) : null}
             </div>

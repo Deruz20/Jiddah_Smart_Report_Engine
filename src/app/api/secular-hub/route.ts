@@ -6,6 +6,7 @@ import { verifyDataAccess, resolveUserScope, canAccessSubjectInScope } from '@/l
 import { classIdsForType } from '@/lib/teacher-access'
 import { fetchAllSupabaseRows } from '@/lib/supabase-pagination'
 import { getMarkScore } from '@/lib/mark-scores'
+import { resolveEquivalentTerms, fetchAndReconcileSecularMarks } from '@/lib/marks-reconciliation'
 
 export async function OPTIONS(request: NextRequest) {
   return apiOptions(request)
@@ -97,29 +98,26 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    let marks: any[] = []
-    if (enrollmentIds.length > 0) {
-      for (let index = 0; index < enrollmentIds.length; index += 100) {
-        const enrollmentChunk = enrollmentIds.slice(index, index + 100)
-        const chunkMarks = await fetchAllSupabaseRows(() =>
-          supabase
-            .from('circular_marks')
-            // Read both legacy mark and current score columns, then return normalized values.
-            .select('*')
-            .eq('term_id', termId)
-            .in('enrollment_id', enrollmentChunk)
-            .order('id', { ascending: true })
-        )
-        marks.push(...chunkMarks.map((mark) => ({
-          id: mark.id,
-          enrollment_id: mark.enrollment_id,
-          subject_id: mark.subject_id,
-          bot_score: getMarkScore(mark, 'bot'),
-          mot_score: getMarkScore(mark, 'mot'),
-          eot_score: getMarkScore(mark, 'eot'),
-        })))
-      }
-    }
+    const termInfo = await resolveEquivalentTerms(supabase, termId)
+    const studentIds = enrollments.map((e: any) => e.student_id).filter(Boolean) as string[]
+
+    const reconciledMarks = await fetchAndReconcileSecularMarks(supabase, {
+      enrollmentIds,
+      studentIds,
+      termIds: termInfo.termIds,
+      termAliases: termInfo.termAliases,
+      academicYear: termInfo.academicYear,
+    })
+
+    const marks = reconciledMarks.map((mark) => ({
+      id: mark.id,
+      enrollment_id: mark.enrollment_id,
+      student_id: mark.student_id,
+      subject_id: mark.subject_id,
+      bot_score: mark.bot_score,
+      mot_score: mark.mot_score,
+      eot_score: mark.eot_score,
+    }))
 
     return withCors(
       request,

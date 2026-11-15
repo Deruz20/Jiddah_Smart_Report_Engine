@@ -123,12 +123,11 @@ const SecularMarkTableRow = React.memo(function SecularMarkTableRow({
         </td>
       )}
       {!isAllPhases && (
-        <td className="hidden sm:table-cell sm:w-[36%] px-3 py-1">
+        <td className="hidden sm:table-cell sm:w-[36%] px-3 py-1 pr-5 overflow-hidden">
           {hasScore ? (
-            <div className="flex flex-col gap-0.5 w-full max-w-[220px]">
+            <div className="flex flex-col gap-0.5 w-full max-w-[140px]">
               <div className="flex items-center justify-between text-[11px] font-semibold">
                 <span className="text-[var(--text-secondary)] truncate">{remark}</span>
-                <span className="font-mono text-[var(--text-primary)] font-bold">{activeScore}%</span>
               </div>
               <div className="w-full h-1.5 rounded-full bg-black/[0.06] dark:bg-white/[0.08] overflow-hidden">
                 <div
@@ -238,12 +237,11 @@ const TheologyMarkTableRow = React.memo(function TheologyMarkTableRow({
         </div>
       </td>
       {!isAllPhases && (
-        <td className={`hidden sm:table-cell sm:w-[36%] px-3 ${isBothView ? 'py-2.5' : 'py-1'}`} dir="rtl">
+        <td className={`hidden sm:table-cell sm:w-[36%] px-3 pr-5 overflow-hidden ${isBothView ? 'py-2.5' : 'py-1'}`} dir="rtl">
           {hasScore ? (
-            <div className="flex flex-col gap-0.5 w-full max-w-[220px]">
+            <div className="flex flex-col gap-0.5 w-full max-w-[140px]">
               <div className="flex items-center justify-between text-[11px] font-semibold">
                 <span className="text-[var(--text-secondary)] font-bold truncate">{remark}</span>
-                <span className="font-mono text-[var(--text-primary)] font-bold">{toArabicNumerals(activeScore)}٪</span>
               </div>
               <div className="w-full h-1.5 rounded-full bg-black/[0.06] dark:bg-white/[0.08] overflow-hidden">
                 <div
@@ -1231,9 +1229,9 @@ export function SharedMarksEntry({
 
             {/* Right Group */}
             <div className="flex items-center gap-1.5 shrink-0 ml-auto">
-              {/* Read-Only Active Term Confirmation Pill */}
+              {/* Read-Only Active Term Confirmation Pill (Hidden on desktop as Topbar displays active term) */}
               <div
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#0D5C3A]/8 text-[#0D5C3A] dark:bg-[#10B981]/15 dark:text-[#34D399] font-semibold text-[11px] border border-[#0D5C3A]/15 dark:border-[#10B981]/25 select-none shrink-0"
+                className="hidden md:hidden inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#0D5C3A]/8 text-[#0D5C3A] dark:bg-[#10B981]/15 dark:text-[#34D399] font-semibold text-[11px] border border-[#0D5C3A]/15 dark:border-[#10B981]/25 select-none shrink-0"
                 title="Active Term (use ⋮ menu to change)"
               >
                 <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
@@ -1954,9 +1952,9 @@ export function SharedMarksEntry({
                           </div>
 
                           {/* Theology Card Footer Summary */}
-                          <div className="px-3.5 py-1.5 bg-gradient-to-l from-[#D97706]/[0.08] to-[#0D5C3A]/[0.05] dark:from-[#F59E0B]/[0.12] dark:to-[#10B981]/[0.08] border-t border-[#D97706]/20 dark:border-[#F59E0B]/25 flex items-center justify-between text-xs font-semibold text-[var(--text-primary)] mt-auto shrink-0" dir="rtl">
-                            <span className="font-bold text-[#D97706] dark:text-[#F59E0B]">ملخص المواد الشرعية</span>
-                            <span className="tabular-nums font-mono font-bold">
+                          <div className="px-3.5 py-1.5 bg-gradient-to-l from-[#D97706]/[0.08] to-[#0D5C3A]/[0.05] dark:from-[#F59E0B]/[0.12] dark:to-[#10B981]/[0.08] border-t border-[#D97706]/20 dark:border-[#F59E0B]/25 flex items-center justify-between text-xs font-semibold text-[var(--text-primary)] mt-auto shrink-0 gap-2 overflow-hidden" dir="rtl">
+                            <span className="font-bold text-[#D97706] dark:text-[#F59E0B] shrink-0 whitespace-nowrap">ملخص المواد الشرعية</span>
+                            <span className="tabular-nums font-mono font-bold whitespace-nowrap truncate text-[11px] sm:text-xs">
                               المجموع: {toArabicDigits(theologyStats.total)} / {toArabicDigits(theologyStats.maxTotal)} • المعدل: {toArabicDigits(theologyStats.mean)}٪ • التقدير: {theologyStats.remark}
                             </span>
                           </div>

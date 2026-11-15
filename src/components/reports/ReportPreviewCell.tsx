@@ -46,18 +46,21 @@ function ReportPreviewCellComponent({
   const [fitScale, setFitScale] = useState(1)
 
   const dims = STABILIZED_REPORT_ORIENTATIONS[reportType]
-  const reportW = dims.width
-  const reportH = dims.height
+  const nativeWidthPx = dims.width
+  const nativeHeightPx = dims.height
+  const reportW = nativeWidthPx
+  const reportH = nativeHeightPx
 
   const updateFit = useCallback((availableW: number) => {
-    const padding = availableW < 640 ? 24 : 64
-    const colGap = columns > 1 && availableW >= 1280 ? (columns - 1) * 24 : 0
-    const effectiveCols = columns > 1 && availableW >= 1280 ? columns : 1
-    const colW = Math.floor((availableW - padding - colGap) / effectiveCols)
-    const usable = Math.max(colW, 220)
-    const fit = Math.min(usable / reportW, 1)
+    const isMobile = availableW < 768
+    const effectiveCols = columns > 1 && !isMobile ? columns : 1
+    const slotWidth = effectiveCols > 1
+      ? Math.floor((availableW - 72) / effectiveCols)
+      : Math.floor(availableW - (isMobile ? 16 : 48))
+    const usable = Math.max(slotWidth, 200)
+    const fit = Math.min(usable / nativeWidthPx, 1)
     setFitScale(Math.max(fit, 0.2))
-  }, [reportW, columns])
+  }, [nativeWidthPx, columns])
 
   useEffect(() => {
     if (externalScale !== undefined) return
@@ -75,11 +78,13 @@ function ReportPreviewCellComponent({
     return () => observer.disconnect()
   }, [updateFit, externalScale])
 
-  const scale = externalScale !== undefined
+  const clampedZoom = Math.min(1.5, Math.max(0.5, zoom))
+  const actualScale = externalScale !== undefined
     ? externalScale
-    : Math.min(Math.max(fitScale * zoom, 0.2), 2)
-  const scaledW = Math.round(reportW * scale)
-  const scaledH = Math.round(reportH * scale)
+    : Math.min(Math.max(fitScale * clampedZoom, 0.2), 2)
+  const scale = actualScale
+  const scaledW = Math.round(nativeWidthPx * actualScale)
+  const scaledH = Math.round(nativeHeightPx * actualScale)
 
   return (
     <div

@@ -29,12 +29,15 @@ import NurseryTheologyEOTReport from './reports/NurseryTheologyEOTReport'
 import { ReportPreviewCell } from './reports/ReportPreviewCell'
 import { PrintPortal } from './reports/PrintPortal'
 import { STABILIZED_REPORT_ORIENTATIONS } from '@/lib/report-constants'
+import { isNurseryClass } from '@/lib/grading'
 import {
   getReportCompletionStatus,
   applyRangeSelection,
   toggleSelectAllPreservingOthers,
   type StudentCompletionStatus,
 } from '@/lib/report-selection'
+
+export const ZOOM_STEPS = [0.5, 0.75, 0.9, 1.0, 1.15, 1.25, 1.5] as const
 
 type TermData = {
   id: string
@@ -178,21 +181,6 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
     }
   }, [studioFormatting])
 
-  // Auto-scale preview on mobile (< md) to fit 100vw cleanly without horizontal scroll
-  useEffect(() => {
-    const handleResize = () => {
-      if (typeof window !== 'undefined' && window.innerWidth < 768) {
-        const availableWidth = window.innerWidth - 24
-        const targetWidth = 794
-        const mobileScale = Math.min(0.65, Math.max(0.35, +(availableWidth / targetWidth).toFixed(2)))
-        setZoom(mobileScale)
-      }
-    }
-    handleResize()
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
-
   // Multi-selection state for student checklist
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([])
   const [anchorIndex, setAnchorIndex] = useState<number | null>(null)
@@ -299,6 +287,29 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
     [selectedStudentIds, activeClassIdSet]
   )
   const selectedInViewCount = selectedInViewIds.length
+
+  const isCurrentNurseryOrTheology = useMemo(() => {
+    if (filterState.curriculum === 'theology') return true
+    const currentCls = filterState.classIds[0] || ''
+    if (currentCls && currentCls !== 'all') {
+      if (isNurseryClass(currentCls) || currentCls.includes('الروضة')) return true
+    }
+    if (activeClassEnrollments.length > 0 && activeClassEnrollments.every((e) => e.section_type === 'nursery' || isNurseryClass(e.circular_class))) {
+      return true
+    }
+    return false
+  }, [filterState.curriculum, filterState.classIds, activeClassEnrollments])
+
+  const availablePhases = useMemo(
+    () => (isCurrentNurseryOrTheology ? (['MOT', 'EOT'] as const) : (['BOT', 'MOT', 'EOT'] as const)),
+    [isCurrentNurseryOrTheology]
+  )
+
+  useEffect(() => {
+    if (isCurrentNurseryOrTheology && filterState.phase.toUpperCase() === 'BOT') {
+      setFilterState((prev) => ({ ...prev, phase: 'EOT' }))
+    }
+  }, [isCurrentNurseryOrTheology, filterState.phase])
 
   // Sync selectedStudentIds with active class enrollments on class change / initial load
   useEffect(() => {
@@ -690,9 +701,19 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
     }
   }, [])
 
-  const handleZoomIn = useCallback(() => setZoom((z) => Math.min(2, +(z + 0.25).toFixed(2))), [])
-  const handleZoomOut = useCallback(() => setZoom((z) => Math.max(0.4, +(z - 0.25).toFixed(2))), [])
-  const handleFitScreen = useCallback(() => setZoom(1), [])
+  const handleZoomIn = useCallback(() => {
+    setZoom((z) => {
+      const next = ZOOM_STEPS.find((step) => step > z + 0.01)
+      return next ?? 1.5
+    })
+  }, [])
+  const handleZoomOut = useCallback(() => {
+    setZoom((z) => {
+      const prevSteps = ZOOM_STEPS.filter((step) => step < z - 0.01)
+      return prevSteps.length > 0 ? prevSteps[prevSteps.length - 1] : 0.5
+    })
+  }, [])
+  const handleFitScreen = useCallback(() => setZoom(1.0), [])
 
   const resolveReport = useCallback(
     (report: ReportData): { component: React.ReactNode; type: keyof typeof STABILIZED_REPORT_ORIENTATIONS } | null => {
@@ -985,7 +1006,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
               <PopoverContent
                 align="start"
                 sideOffset={6}
-                className="w-[330px] sm:w-[360px] p-0 rounded-2xl border border-[#0D5C3A]/20 dark:border-[#F59E0B]/25 shadow-2xl overflow-hidden bg-white dark:bg-[#151D1A] z-50 max-h-[75dvh] flex flex-col"
+                className="w-[330px] sm:w-[360px] max-w-[calc(100vw-20px)] max-h-[72dvh] p-0 rounded-2xl border border-[#0D5C3A]/20 dark:border-[#F59E0B]/25 shadow-2xl overflow-hidden bg-white dark:bg-[#151D1A] z-50 flex flex-col"
               >
                 <StudentRosterSidebar
                   enrollments={activeClassEnrollments}
@@ -1022,7 +1043,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
               data-testid="reports-phase-track"
               className="inline-flex items-center bg-[#F0F4F9] dark:bg-[#1E2623] p-0.5 rounded-full border border-black/[0.04] dark:border-white/[0.06] shrink-0"
             >
-              {(['BOT', 'MOT', 'EOT'] as const).map((p) => {
+              {availablePhases.map((p) => {
                 const isActive = filterState.phase.toUpperCase() === p
                 return (
                   <button
@@ -1155,7 +1176,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
         />
       </div>
 
-      {/* Sleek Single 44px Mobile Action Header (< md) */}
+      {/* Sleek Single 44px Mobile Action Header (< md) — Strictly 6 Compact Elements */}
       <div className="h-11 px-2 flex md:hidden items-center justify-between gap-1 bg-white dark:bg-[#151D1A] rounded-2xl border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 shrink-0 print:hidden shadow-2xs w-full max-w-full overflow-hidden">
         {/* 1. Hamburger to open main sidebar */}
         {sidebar && (
@@ -1171,7 +1192,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
         )}
 
         {/* 2. Compact Class Pill */}
-        <div className="min-w-0 flex-1 max-w-[105px]">
+        <div className="min-w-0 shrink max-w-[92px] sm:max-w-[120px]">
           <CustomPillSelect
             id="reports-mobile-class-select"
             ariaLabel="Class"
@@ -1191,7 +1212,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
               })),
             ]}
             className="w-full"
-            triggerClassName="h-7.5 px-1.5 text-[11px] font-bold rounded-lg bg-emerald-500/10 dark:bg-emerald-400/15 text-emerald-800 dark:text-emerald-200 border-0 truncate"
+            triggerClassName="h-7.5 px-2 text-[11px] font-bold rounded-lg bg-emerald-500/10 dark:bg-emerald-400/15 text-emerald-800 dark:text-emerald-200 border-0 truncate"
           />
         </div>
 
@@ -1200,21 +1221,17 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
           <PopoverTrigger asChild>
             <button
               type="button"
-              className="h-7.5 px-1.5 rounded-full bg-[#F0F4F9] dark:bg-[#1E2623] border border-black/[0.04] dark:border-white/[0.06] text-[11px] font-bold text-[#111827] dark:text-[#F3F7F5] flex items-center gap-1 cursor-pointer flex-1 min-w-0 truncate"
+              data-testid="mobile-roster-pill"
+              className="h-7.5 px-2 rounded-full bg-[#F0F4F9] dark:bg-[#1E2623] border border-black/[0.04] dark:border-white/[0.06] text-[11px] font-bold text-[#111827] dark:text-[#F3F7F5] flex items-center gap-1 cursor-pointer shrink-0 tabular-nums"
             >
-              <Users size={12} className="text-[#0D5C3A] dark:text-[#34D399] shrink-0" />
-              <span className="truncate tabular-nums">
-                <span className="hidden min-[380px]:inline">{selectedInViewCount}/{activeClassEnrollments.length} • </span>
-                <span className="min-[380px]:hidden">{selectedInViewCount}</span>
-                <span className="hidden min-[380px]:inline">{activeStudent?.name?.split(' ')[0] || 'All'}</span>
-              </span>
+              <span className="truncate tabular-nums">👥 {selectedInViewCount}</span>
               <ChevronDown size={11} className="text-stone-400 shrink-0" />
             </button>
           </PopoverTrigger>
           <PopoverContent
             align="center"
             sideOffset={6}
-            className="w-[calc(100vw-24px)] max-w-[360px] p-0 rounded-2xl border border-[#0D5C3A]/20 dark:border-[#F59E0B]/25 shadow-2xl overflow-hidden bg-white dark:bg-[#151D1A] z-50 max-h-[75dvh] flex flex-col"
+            className="w-[calc(100vw-20px)] max-w-[calc(100vw-20px)] sm:max-w-[360px] max-h-[72dvh] p-0 rounded-2xl border border-[#0D5C3A]/20 dark:border-[#F59E0B]/25 shadow-2xl overflow-hidden bg-white dark:bg-[#151D1A] z-50 flex flex-col"
           >
             <StudentRosterSidebar
               enrollments={activeClassEnrollments}
@@ -1240,11 +1257,12 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
           <PopoverTrigger asChild>
             <button
               type="button"
-              className="h-8 px-2 rounded-lg bg-stone-100 dark:bg-stone-800 text-[11px] font-bold text-stone-800 dark:text-stone-200 flex items-center gap-1 shrink-0 cursor-pointer"
+              data-testid="mobile-phase-curriculum-pill"
+              className="h-7.5 px-2 rounded-lg bg-stone-100 dark:bg-stone-800 text-[11px] font-bold text-stone-800 dark:text-stone-200 flex items-center gap-1 shrink-0 whitespace-nowrap cursor-pointer"
               title="Phase & Curriculum"
             >
               <span>
-                {filterState.phase.toUpperCase()} •{' '}
+                {filterState.phase.toUpperCase()}•
                 {filterState.curriculum === 'combined'
                   ? 'Both'
                   : filterState.curriculum === 'secular'
@@ -1257,11 +1275,11 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
           <PopoverContent
             align="center"
             sideOffset={6}
-            className="w-56 p-2 rounded-xl bg-white dark:bg-[#151D1A] border border-[#0D5C3A]/20 shadow-xl flex flex-col gap-2 z-50 text-xs"
+            className="w-56 max-w-[calc(100vw-20px)] max-h-[72dvh] p-2 rounded-xl bg-white dark:bg-[#151D1A] border border-[#0D5C3A]/20 shadow-xl flex flex-col gap-2 z-50 text-xs"
           >
             <span className="text-[10px] font-bold uppercase text-stone-500">Assessment Phase</span>
-            <div className="grid grid-cols-3 gap-1">
-              {(['BOT', 'MOT', 'EOT'] as const).map((p) => (
+            <div className={`grid ${availablePhases.length === 2 ? 'grid-cols-2' : 'grid-cols-3'} gap-1`}>
+              {availablePhases.map((p) => (
                 <button
                   key={p}
                   type="button"
@@ -1287,7 +1305,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
                   key={c.id}
                   type="button"
                   onClick={() => {
-                    const newCurriculum = c.id as any
+                    const newCurriculum = c.id === 'both' ? 'combined' : (c.id as any)
                     setFilterState((prev) => {
                       const currentClassId = prev.classIds[0]
                       let mappedClassId = currentClassId
@@ -1307,7 +1325,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
                     setSelectedStudentIds([])
                   }}
                   className={`h-7 rounded text-xs font-bold transition cursor-pointer ${
-                    filterState.curriculum === c.id
+                    (c.id === 'both' ? filterState.curriculum === 'combined' : filterState.curriculum === c.id)
                       ? 'bg-[#0D5C3A] text-white'
                       : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300'
                   }`}
@@ -1319,41 +1337,27 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
           </PopoverContent>
         </Popover>
 
-        {/* 5. Studio Format icon button */}
-        <button
-          type="button"
-          onClick={() => {
-            const studioTrigger = document.querySelector(
-              '[data-testid="studio-popover-trigger"]'
-            ) as HTMLButtonElement | null
-            studioTrigger?.click()
-          }}
-          className="hidden min-[420px]:inline-flex w-8 h-8 rounded-full bg-[#F0F4F9] dark:bg-[#1E2623] items-center justify-center text-stone-700 dark:text-stone-200 cursor-pointer shrink-0"
-          title="Studio Format"
-        >
-          <Palette size={14} className="text-[#0D5C3A] dark:text-[#34D399]" />
-        </button>
-
-        {/* 6. Primary Print pill button */}
+        {/* 5. Primary Print pill button */}
         <motion.button
           type="button"
+          data-testid="mobile-print-cta"
           onClick={handlePrint}
           disabled={rawReports.length === 0 || isGenerating}
           whileTap={{ scale: 0.96 }}
-          className="h-7.5 px-2 rounded-full btn-jiddah-cta text-[11px] font-bold inline-flex items-center gap-1 shrink-0 disabled:opacity-40"
+          className="h-7.5 px-2.5 rounded-full btn-jiddah-cta text-[11px] font-bold inline-flex items-center gap-1 shrink-0 whitespace-nowrap disabled:opacity-40"
           title="Print Reports"
         >
           <Printer size={12} />
           <span>{selectedInViewCount}</span>
         </motion.button>
 
-        {/* 7. Mobile ⋮ More Actions Menu */}
+        {/* 6. Mobile ⋮ More Actions Menu (Guaranteed 100% visible down to 280px) */}
         <MoreActionsMenu
           align="end"
-          triggerClassName="w-7 h-7 rounded-full bg-[#F0F4F9] dark:bg-[#1E2623] border border-black/[0.04] dark:border-white/[0.06] text-stone-700 dark:text-stone-200 shrink-0"
+          triggerClassName="w-7 h-7 shrink-0 rounded-full bg-[#F0F4F9] dark:bg-[#1E2623] border border-black/[0.04] dark:border-white/[0.06] text-stone-700 dark:text-stone-200"
           items={[
             {
-              label: 'Studio Format / Customize',
+              label: '🎨 Customize Studio & Stamp',
               icon: Palette,
               onClick: () => {
                 const studioTrigger = document.querySelector(
@@ -1363,7 +1367,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
               },
             },
             {
-              label: filterState.layout === 'grid' ? 'Switch to Single View' : 'Switch to Grid View',
+              label: filterState.layout === 'grid' ? '⊞ Single View' : '⊞ Grid / Single View',
               icon: LayoutGrid,
               onClick: () => {
                 setFilterState((prev) => ({
@@ -1373,17 +1377,17 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
               },
             },
             {
-              label: visualSelectMode ? 'Exit Visual Select' : 'Visual Card Select',
+              label: visualSelectMode ? '☑️ Exit Card Selection' : '☑️ Select Cards on Canvas',
               icon: CheckSquare,
               onClick: () => setVisualSelectMode((v) => !v),
             },
             {
-              label: 'Download / Print Reports',
+              label: '↓ Download PDF',
               icon: Download,
               onClick: handlePrint,
             },
             {
-              label: 'Toggle Dark / Light Mode',
+              label: '☀️/🌙 Theme',
               icon: Sun,
               onClick: () => {
                 const isDark = document.documentElement.classList.contains('dark')
@@ -1398,7 +1402,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
               },
             },
             {
-              label: 'Report Studio 2.0',
+              label: '⚙️ Report Studio 2.0',
               icon: Sliders,
               onClick: () => {
                 window.location.href = '/admin/reports/studio'

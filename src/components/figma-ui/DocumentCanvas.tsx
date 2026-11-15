@@ -66,7 +66,9 @@ export function DocumentCanvas({
   onExitVisualSelect,
 }: DocumentCanvasProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [dockMinimized, setDockMinimized] = useState(false);
+  const [dockMinimized, setDockMinimized] = useState<boolean>(() =>
+    typeof window !== 'undefined' ? window.innerWidth < 768 : true
+  );
 
   // Progressive frame-sliced mounting to eliminate main-thread freeze
   const [visibleCount, setVisibleCount] = useState<number>(2);
@@ -155,17 +157,20 @@ export function DocumentCanvas({
   }, []);
 
   const { landscapeScale, portraitScale } = useMemo(() => {
-    const w = containerWidth || (typeof window !== 'undefined' ? window.innerWidth : 1200);
-    const padding = w < 640 ? 24 : 64;
-    const colGap = isGrid && w >= 1280 ? 24 : 0;
-    const effectiveCols = isGrid && w >= 1280 ? 2 : 1;
-    const colW = Math.max(Math.floor((w - padding - colGap) / effectiveCols), 220);
+    const stageClientWidth = containerWidth || (typeof window !== 'undefined' ? window.innerWidth : 1200);
+    const isMobile = stageClientWidth < 768;
+    const slotWidth =
+      isGrid && !isMobile
+        ? (stageClientWidth - 72) / 2
+        : stageClientWidth - (isMobile ? 16 : 48);
+    const usableSlotWidth = Math.max(slotWidth, 200);
 
-    const fitLandscape = Math.min(colW / 1122.52, 1);
-    const fitPortrait = Math.min(colW / 793.7, 1);
+    const fitScaleLandscape = Math.min(usableSlotWidth / 1122.52, 1);
+    const fitScalePortrait = Math.min(usableSlotWidth / 793.7, 1);
 
-    const lScale = Math.min(Math.max(fitLandscape * zoom, 0.2), 2);
-    const pScale = Math.min(Math.max(fitPortrait * zoom, 0.2), 2);
+    const clampedZoom = Math.min(1.5, Math.max(0.5, zoom));
+    const lScale = +(fitScaleLandscape * clampedZoom).toFixed(4);
+    const pScale = +(fitScalePortrait * clampedZoom).toFixed(4);
 
     return { landscapeScale: lScale, portraitScale: pScale };
   }, [containerWidth, isGrid, zoom]);
@@ -180,52 +185,56 @@ export function DocumentCanvas({
         {visualSelectMode && reports.length > 0 && (
           <div
             data-testid="visual-selection-bar"
-            className="shrink-0 z-20 mx-3 mt-2.5 px-3 py-2 rounded-xl bg-white dark:bg-[#151D1A] border border-[#0D5C3A]/25 dark:border-[#F59E0B]/30 shadow-md flex flex-wrap items-center justify-between gap-2 print:hidden"
+            className="shrink-0 z-20 mx-2 sm:mx-3 mt-2 flex items-center justify-between gap-1 px-2.5 py-1.5 rounded-xl bg-white dark:bg-[#151D1A] border border-[#0D5C3A]/25 dark:border-[#F59E0B]/30 shadow-md print:hidden overflow-x-auto"
           >
-            <div className="flex items-center gap-2 text-xs font-bold text-[#0F172A] dark:text-stone-100">
-              <span className="px-2 py-0.5 rounded-full bg-[#0D5C3A]/10 text-[#0D5C3A] dark:bg-emerald-500/20 dark:text-emerald-300 tabular-nums">
-                {selectedIds.length} / {reports.length} Selected
+            <div className="flex items-center gap-1.5 text-xs font-bold text-[#0F172A] dark:text-stone-100 shrink-0">
+              <span className="px-2 py-0.5 rounded-full bg-[#0D5C3A]/10 text-[#0D5C3A] dark:bg-emerald-500/20 dark:text-emerald-300 tabular-nums text-[11px]">
+                {selectedIds.length}/{reports.length}
+                <span className="hidden sm:inline"> Selected</span>
               </span>
-              <span className="hidden sm:inline text-stone-500 dark:text-stone-400 font-medium">
+              <span className="hidden lg:inline text-stone-500 dark:text-stone-400 font-medium">
                 Click any report card below to select or deselect
               </span>
             </div>
-            <div className="flex items-center gap-1.5 flex-wrap">
+            <div className="flex items-center gap-1 shrink-0">
               <button
                 type="button"
                 onClick={onSelectAllCards}
-                className="h-7 px-2.5 rounded-lg bg-[#F0F4F9] dark:bg-[#1E2623] text-[11px] font-bold text-stone-700 dark:text-stone-200 hover:bg-stone-200 dark:hover:bg-stone-700 transition cursor-pointer"
+                className="h-6.5 sm:h-7 px-2 sm:px-2.5 rounded-lg bg-[#F0F4F9] dark:bg-[#1E2623] text-[10.5px] sm:text-[11px] font-bold text-stone-700 dark:text-stone-200 hover:bg-stone-200 dark:hover:bg-stone-700 transition cursor-pointer shrink-0"
               >
-                Select All
+                <span className="sm:hidden">All</span>
+                <span className="hidden sm:inline">Select All</span>
               </button>
               <button
                 type="button"
                 onClick={onClearCards}
-                className="h-7 px-2.5 rounded-lg bg-[#F0F4F9] dark:bg-[#1E2623] text-[11px] font-bold text-stone-700 dark:text-stone-200 hover:bg-stone-200 dark:hover:bg-stone-700 transition cursor-pointer"
+                className="h-6.5 sm:h-7 px-2 sm:px-2.5 rounded-lg bg-[#F0F4F9] dark:bg-[#1E2623] text-[10.5px] sm:text-[11px] font-bold text-stone-700 dark:text-stone-200 hover:bg-stone-200 dark:hover:bg-stone-700 transition cursor-pointer shrink-0"
               >
                 Clear
               </button>
               <button
                 type="button"
                 onClick={onInvertCards}
-                className="h-7 px-2.5 rounded-lg bg-[#F0F4F9] dark:bg-[#1E2623] text-[11px] font-bold text-stone-700 dark:text-stone-200 hover:bg-stone-200 dark:hover:bg-stone-700 transition cursor-pointer"
+                className="h-6.5 sm:h-7 px-2 sm:px-2.5 rounded-lg bg-[#F0F4F9] dark:bg-[#1E2623] text-[10.5px] sm:text-[11px] font-bold text-stone-700 dark:text-stone-200 hover:bg-stone-200 dark:hover:bg-stone-700 transition cursor-pointer shrink-0"
               >
                 Invert
               </button>
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
               <button
                 type="button"
                 onClick={onPrintSelectedCards}
                 disabled={selectedIds.length === 0}
-                className="h-7 px-3 rounded-full bg-[#0D5C3A] text-white text-[11px] font-bold inline-flex items-center gap-1.5 hover:bg-[#0A472C] disabled:opacity-40 transition cursor-pointer"
+                className="h-6.5 sm:h-7 px-2.5 sm:px-3 rounded-full bg-[#0D5C3A] text-white text-[10.5px] sm:text-[11px] font-bold inline-flex items-center gap-1 hover:bg-[#0A472C] disabled:opacity-40 transition cursor-pointer shrink-0 whitespace-nowrap"
               >
-                <Printer size={12} />
-                <span>Print {selectedIds.length} Selected Cards</span>
+                <Printer size={11} />
+                <span>Print ({selectedIds.length})</span>
               </button>
               {onExitVisualSelect && (
                 <button
                   type="button"
                   onClick={onExitVisualSelect}
-                  className="h-7 px-2 rounded-lg text-stone-500 hover:text-stone-900 dark:hover:text-white transition cursor-pointer"
+                  className="h-6.5 sm:h-7 px-1.5 rounded-lg text-stone-500 hover:text-stone-900 dark:hover:text-white transition cursor-pointer shrink-0"
                   title="Exit Selection Mode"
                 >
                   <X size={14} />
@@ -287,7 +296,7 @@ export function DocumentCanvas({
                 <DockTooltipButton
                   label="Zoom out"
                   onClick={onZoomOut}
-                  disabled={zoom <= 0.4}
+                  disabled={zoom <= 0.5}
                 >
                   <ZoomOut size={13} />
                 </DockTooltipButton>
@@ -301,7 +310,7 @@ export function DocumentCanvas({
                 <DockTooltipButton
                   label="Zoom in"
                   onClick={onZoomIn}
-                  disabled={zoom >= 2}
+                  disabled={zoom >= 1.5}
                 >
                   <ZoomIn size={13} />
                 </DockTooltipButton>
@@ -325,8 +334,14 @@ export function DocumentCanvas({
         <div
           ref={scrollRef}
           data-canvas-scroll
-          className="flex-1 w-full h-full overflow-y-auto overflow-x-hidden py-6 px-4 pb-20 flex flex-col items-center justify-start"
+          className={`flex-1 w-full h-full ${
+            zoom > 1.0
+              ? 'overflow-x-auto overflow-y-auto items-start md:items-center'
+              : 'overflow-y-auto overflow-x-hidden items-center'
+          } py-4 sm:py-6 px-2 sm:px-4 pb-20 flex flex-col justify-start`}
           style={{
+            WebkitOverflowScrolling: 'touch',
+            touchAction: zoom > 1.0 ? 'pan-x pan-y' : 'pan-y',
             backgroundImage: `
               radial-gradient(circle, rgba(13,92,58,0.06) 1px, transparent 1px),
               radial-gradient(circle, rgba(245,158,11,0.04) 1px, transparent 1px)
@@ -352,7 +367,7 @@ export function DocumentCanvas({
             <div
               className={
                 isGrid
-                  ? 'grid grid-cols-1 xl:grid-cols-2 gap-6 py-2 w-full max-w-[1750px] justify-items-center'
+                  ? 'grid grid-cols-1 md:grid-cols-2 gap-6 py-2 w-full max-w-[1750px] justify-items-center items-start'
                   : 'flex flex-col items-center justify-start gap-8 py-2 w-full max-w-[1200px]'
               }
             >

@@ -1,6 +1,6 @@
 export type SignatureInkMode = 'blue' | 'black' | 'original';
 
-export const SIG_CACHE_VERSION = 'v5-adaptive-local';
+export const SIG_CACHE_VERSION = 'v7-sauvola-solid-royal-blue';
 
 const EMPTY_TRANSPARENT_PNG_DATA_URL =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
@@ -152,13 +152,15 @@ export function extractCleanSignaturePixels(
   }
   const isOpaquePhoto = totalBorderPixels > 0 && borderSamples.length / totalBorderPixels >= 0.45;
 
-  // Build 2D Integral Images (prefix sums) for O(1) 17x17 local neighborhood mean
+  // Build 2D Integral Images (prefix sums of L and L^2) for O(1) 19x19 Sauvola local mean & std-dev
   const strideW = width + 1;
   const integralLum = new Float64Array(strideW * (height + 1));
+  const integralLumSq = new Float64Array(strideW * (height + 1));
   const integralCount = new Int32Array(strideW * (height + 1));
 
   for (let y = 0; y < height; y++) {
     let rowLum = 0;
+    let rowLumSq = 0;
     let rowCnt = 0;
     const srcRow = y * width;
     const dstRow = (y + 1) * strideW;
@@ -167,16 +169,20 @@ export function extractCleanSignaturePixels(
     for (let x = 0; x < width; x++) {
       const p = srcRow + x;
       if (opaqueMask[p] === 1) {
-        rowLum += lumBuffer[p];
+        const l = lumBuffer[p];
+        rowLum += l;
+        rowLumSq += l * l;
         rowCnt += 1;
       }
       integralLum[dstRow + x + 1] = integralLum[prevDstRow + x + 1] + rowLum;
+      integralLumSq[dstRow + x + 1] = integralLumSq[prevDstRow + x + 1] + rowLumSq;
       integralCount[dstRow + x + 1] = integralCount[prevDstRow + x + 1] + rowCnt;
     }
   }
 
-  const windowRadius = 8; // 17x17 window: [-8, +8]
+  const windowRadius = 9; // 19x19 Sauvola window: [-9, +9]
   const rawAlpha = new Uint8ClampedArray(totalPixels);
+  const localContrastBuf = new Float32Array(totalPixels);
 
   for (let y = 0; y < height; y++) {
     const y0 = Math.max(0, y - windowRadius);
@@ -206,6 +212,11 @@ export function extractCleanSignaturePixels(
         integralLum[r1 + x0] -
         integralLum[r0 + x1 + 1] +
         integralLum[r0 + x0];
+      const sumSq =
+        integralLumSq[r1 + x1 + 1] -
+        integralLumSq[r1 + x0] -
+        integralLumSq[r0 + x1 + 1] +
+        integralLumSq[r0 + x0];
       const cnt =
         integralCount[r1 + x1 + 1] -
         integralCount[r1 + x0] -
@@ -213,26 +224,59 @@ export function extractCleanSignaturePixels(
         integralCount[r0 + x0];
 
       const localMean = cnt > 0 ? sum / cnt : globalMedian;
+      const variance = cnt > 0 ? Math.max(0, sumSq / cnt - localMean * localMean) : 0;
+      const localStd = Math.sqrt(variance);
       const lum = lumBuffer[p];
       const localContrast = localMean - lum;
       const globalContrast = globalMedian - lum;
+      localContrastBuf[p] = localContrast;
 
-      // Strict Paper Removal Rule: uniform paper has negligible local or global contrast
-      if (localContrast < 9 || globalContrast < 10) {
+      // Sauvola Adaptive Document Binarization: T(x,y) = m(x,y) * (1 - 0.14 * (1 - s(x,y)/128))
+      const sauvolaThreshold = localMean * (1 - 0.14 * (1 - localStd / 128));
+
+      // Paper Background (L(x,y) > T(x,y) or insufficient local/global contrast): alpha = 0 (100% transparent)
+      if (lum > sauvolaThreshold || localContrast < 8 || globalContrast < 10) {
         rawAlpha[p] = 0;
         continue;
       }
 
-      // Boost stroke contrast so even faint pen lines on dark paper become bold
-      const boostedAlpha = Math.min(
+      // Pen Strokes (L(x,y) <= T(x,y)): Full solid opacity (alpha = 235 to 255)
+      const solidAlpha = Math.min(
         255,
-        Math.round((localContrast - 8) * 16 * (boldness / 1.25))
+        Math.max(235, Math.round(235 + Math.min(20, (localContrast - 8) * boldness)))
       );
-      rawAlpha[p] = Math.max(0, boostedAlpha);
+      rawAlpha[p] = solidAlpha;
     }
   }
 
-  // Gentle despeckle + edge anti-aliasing
+  // Pass 1: Despeckle isolated 1-pixel noise grains
+  const despeckledAlpha = new Uint8ClampedArray(totalPixels);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const p = y * width + x;
+      const cAlpha = rawAlpha[p];
+      if (cAlpha === 0) continue;
+
+      let activeNeighbors = 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          const ny = y + dy;
+          const nx = x + dx;
+          if (ny >= 0 && ny < height && nx >= 0 && nx < width) {
+            if (rawAlpha[ny * width + nx] >= 215) activeNeighbors++;
+          }
+        }
+      }
+
+      if (activeNeighbors === 0 && localContrastBuf[p] < 18) {
+        continue;
+      }
+      despeckledAlpha[p] = cAlpha;
+    }
+  }
+
+  // Pass 2: 3x3 Stroke-Strengthening Pass + Solid Royal Blue Recoloring (R=12, G=42, B=132 / #0C2A84)
   const finalRgba = new Uint8ClampedArray(sourceRgba.length);
   let minX = width;
   let minY = height;
@@ -243,58 +287,49 @@ export function extractCleanSignaturePixels(
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const p = y * width + x;
-      const cAlpha = rawAlpha[p];
-      if (cAlpha === 0) continue;
+      let strokeAlpha = despeckledAlpha[p];
 
-      let activeNeighbors = 0;
-      let neighborAlphaSum = 0;
-      for (let dy = -1; dy <= 1; dy++) {
-        for (let dx = -1; dx <= 1; dx++) {
-          if (dx === 0 && dy === 0) continue;
-          const ny = y + dy;
-          const nx = x + dx;
-          if (ny >= 0 && ny < height && nx >= 0 && nx < width) {
-            const na = rawAlpha[ny * width + nx];
-            if (na > 12) activeNeighbors++;
-            neighborAlphaSum += na;
+      if (strokeAlpha === 0 && localContrastBuf[p] >= 5 && (!isOpaquePhoto || (x >= 4 && x < width - 4 && y >= 4 && y < height - 4))) {
+        // 3x3 stroke-strengthening: reinforce immediate neighbors of core pen strokes
+        let maxNeighbor = 0;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (dx === 0 && dy === 0) continue;
+            const ny = y + dy;
+            const nx = x + dx;
+            if (ny >= 0 && ny < height && nx >= 0 && nx < width) {
+              const na = despeckledAlpha[ny * width + nx];
+              if (na > maxNeighbor) maxNeighbor = na;
+            }
           }
+        }
+        if (maxNeighbor >= 235 && boldness >= 1.0) {
+          strokeAlpha = 235;
         }
       }
 
-      // Drop isolated 1px noise grains
-      if (activeNeighbors === 0 && cAlpha < 210) {
-        continue;
-      }
-
-      const smoothedAlpha =
-        cAlpha < 210
-          ? Math.min(255, Math.round(cAlpha * 0.72 + (neighborAlphaSum / 8) * 0.28))
-          : cAlpha;
-
-      if (smoothedAlpha < 12) continue;
+      if (strokeAlpha < 215) continue;
 
       const idx = p * 4;
-      const strength = smoothedAlpha / 255;
-
       let outR: number;
       let outG: number;
       let outB: number;
 
       if (inkMode === 'blue') {
-        // Royal Ballpoint Pen Blue (#0F3491 -> R=15, G=52, B=145)
-        outR = Math.round(15);
-        outG = Math.round(52);
-        outB = Math.round(145);
+        // Deep Royal Ballpoint Pen Blue (R = 12, G = 42, B = 132 / #0C2A84)
+        outR = Math.round(12);
+        outG = Math.round(42);
+        outB = Math.round(132);
       } else if (inkMode === 'black') {
         // Jet Black (#0F172A)
-        outR = Math.round(24 - strength * 10);
-        outG = Math.round(34 - strength * 12);
-        outB = Math.round(52 - strength * 12);
+        outR = 15;
+        outG = 23;
+        outB = 42;
       } else {
         const srcR = sourceRgba[idx];
         const srcG = sourceRgba[idx + 1];
         const srcB = sourceRgba[idx + 2];
-        const darken = 0.78;
+        const darken = 0.72;
         outR = Math.max(0, Math.min(255, Math.round(srcR * darken)));
         outG = Math.max(0, Math.min(255, Math.round(srcG * darken)));
         outB = Math.max(0, Math.min(255, Math.round(srcB * darken)));
@@ -303,7 +338,7 @@ export function extractCleanSignaturePixels(
       finalRgba[idx] = outR;
       finalRgba[idx + 1] = outG;
       finalRgba[idx + 2] = outB;
-      finalRgba[idx + 3] = smoothedAlpha;
+      finalRgba[idx + 3] = Math.min(255, Math.max(235, strokeAlpha));
 
       inkPixels++;
       if (x < minX) minX = x;
@@ -353,9 +388,11 @@ export function extractCleanSignaturePixels(
   };
 }
 
+export const extractSignatureInk = extractCleanSignaturePixels;
+
 /**
- * Recolors an already-transparent PNG signature cleanly into Royal Blue / Black ink
- * without altering existing transparency.
+ * Recolors an already-transparent PNG signature cleanly into solid Royal Blue / Black ink
+ * (alpha = 235 to 255) with 3x3 stroke-strengthening so faint pre-extracted PNGs are 100% bold.
  */
 function recolorTransparentSignature(
   sourceRgba: Uint8ClampedArray,
@@ -363,16 +400,44 @@ function recolorTransparentSignature(
   height: number,
   inkMode: SignatureInkMode
 ): Uint8ClampedArray {
-  if (inkMode === 'original') return sourceRgba;
   const out = new Uint8ClampedArray(sourceRgba.length);
-  for (let i = 0; i < width * height; i++) {
-    const idx = i * 4;
-    const a = sourceRgba[idx + 3];
-    if (a < 20) continue;
-    out[idx] = inkMode === 'blue' ? 15 : 15;
-    out[idx + 1] = inkMode === 'blue' ? 52 : 23;
-    out[idx + 2] = inkMode === 'blue' ? 145 : 42;
-    out[idx + 3] = Math.min(255, Math.round(a * 1.15));
+  const total = width * height;
+  const coreMask = new Uint8Array(total);
+
+  for (let i = 0; i < total; i++) {
+    const a = sourceRgba[i * 4 + 3];
+    if (a >= 22) coreMask[i] = 1;
+  }
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const p = y * width + x;
+      let isStroke = coreMask[p] === 1;
+      if (!isStroke) {
+        // 3x3 stroke-strengthening on 4-connected neighbors
+        if (
+          (x > 0 && coreMask[p - 1] === 1) ||
+          (x + 1 < width && coreMask[p + 1] === 1) ||
+          (y > 0 && coreMask[p - width] === 1) ||
+          (y + 1 < height && coreMask[p + width] === 1)
+        ) {
+          isStroke = true;
+        }
+      }
+      if (!isStroke) continue;
+      const idx = p * 4;
+      const srcA = sourceRgba[idx + 3];
+      if (inkMode === 'original') {
+        out[idx] = sourceRgba[idx];
+        out[idx + 1] = sourceRgba[idx + 1];
+        out[idx + 2] = sourceRgba[idx + 2];
+      } else {
+        out[idx] = inkMode === 'blue' ? 12 : 15;
+        out[idx + 1] = inkMode === 'blue' ? 42 : 23;
+        out[idx + 2] = inkMode === 'blue' ? 132 : 42;
+      }
+      out[idx + 3] = Math.min(255, Math.max(235, srcA));
+    }
   }
   return out;
 }
@@ -591,7 +656,7 @@ export async function cleanSignatureImageUrl(
       cleanedUrlCache.set(cacheKey, dataUrl);
       return dataUrl;
     } catch {
-      return src;
+      return EMPTY_TRANSPARENT_PNG_DATA_URL;
     }
   })().finally(() => {
     inFlightSignaturePromises.delete(cacheKey);

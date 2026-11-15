@@ -390,19 +390,6 @@ export default function NurseryEOTReport({ reportData, studioFormatting }: any) 
               </thead>
               <tbody>
                 <tr>
-                  <td className="subject-cell">Beginning of Term (BOT)</td>
-                  {subjects.slice(0, 6).map((subject: any, index: number) => (
-                    <td key={'bot-' + index} className="data-cell">
-                      {subject.bot_score != null 
-                        ? getNurseryGrade(subject.bot_score).grade 
-                        : '--'}
-                    </td>
-                  ))}
-                  {Array.from({ length: Math.max(0, (!reportData?.student?.class_name?.toLowerCase().includes('top') ? 6 : 5) - subjects.slice(0, 6).length) }).map((_, i) => (
-                    <td key={'bot-empty-' + i} className="data-cell">--</td>
-                  ))}
-                </tr>
-                <tr>
                   <td className="subject-cell">Mid-Term Assessment (MOT)</td>
                   {subjects.slice(0, 6).map((subject: any, index: number) => (
                     <td key={'mot-' + index} className="data-cell">
@@ -413,19 +400,6 @@ export default function NurseryEOTReport({ reportData, studioFormatting }: any) 
                   ))}
                   {Array.from({ length: Math.max(0, (!reportData?.student?.class_name?.toLowerCase().includes('top') ? 6 : 5) - subjects.slice(0, 6).length) }).map((_, i) => (
                     <td key={'mot-empty-' + i} className="data-cell">--</td>
-                  ))}
-                </tr>
-                <tr>
-                  <td className="subject-cell">End of Term Assessment (EOT)</td>
-                  {subjects.slice(0, 6).map((subject: any, index: number) => (
-                    <td key={'eot-' + index} className="data-cell">
-                      {subject.eot_score != null 
-                        ? getNurseryGrade(subject.eot_score).grade 
-                        : '--'}
-                    </td>
-                  ))}
-                  {Array.from({ length: Math.max(0, (!reportData?.student?.class_name?.toLowerCase().includes('top') ? 6 : 5) - subjects.slice(0, 6).length) }).map((_, i) => (
-                    <td key={'eot-empty-' + i} className="data-cell">--</td>
                   ))}
                 </tr>
               </tbody>

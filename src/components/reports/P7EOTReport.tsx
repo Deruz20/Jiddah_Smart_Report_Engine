@@ -598,21 +598,27 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
                   </div>
 
                   <div className="info-row">
-                    <div className="info-item" style={{ flex: 0.9, minWidth: 0, whiteSpace: 'nowrap' }}>
+                    <div className="info-item" style={{ flex: 0.8, minWidth: 0, whiteSpace: 'nowrap' }}>
                       <span className="info-label" style={{ whiteSpace: 'nowrap' }}>TERM:</span>
                       <span className="info-value" style={{ fontSize: '15px', fontWeight: 800, whiteSpace: 'nowrap' }}>{reportData?.term?.term_number || '3'}</span>
                     </div>
-                    <div className="info-item" style={{ flex: 0.9, minWidth: 0, whiteSpace: 'nowrap' }}>
+                    <div className="info-item" style={{ flex: 0.8, minWidth: 0, whiteSpace: 'nowrap' }}>
                       <span className="info-label" style={{ whiteSpace: 'nowrap' }}>YEAR:</span>
                       <span className="info-value" style={{ fontSize: '15px', fontWeight: 800, whiteSpace: 'nowrap' }}>{reportData?.term?.academic_year || 2026}</span>
                     </div>
                     <div className="info-item" style={{ flex: 1.1, minWidth: 0, whiteSpace: 'nowrap' }}>
+                      <span className="info-label" style={{ whiteSpace: 'nowrap' }}>TOTAL MARKS:</span>
+                      <span className="info-value" style={{ fontSize: '15px', fontWeight: 900, color: '#0F172A', whiteSpace: 'nowrap' }}>
+                        {reportData?.circular?.eot_total ?? reportData?.circular?.total ?? '--'}
+                      </span>
+                    </div>
+                    <div className="info-item" style={{ flex: 1.0, minWidth: 0, whiteSpace: 'nowrap' }}>
                       <span className="info-label" style={{ whiteSpace: 'nowrap' }}>AGGREGATE:</span>
                       <span className="info-value" style={{ fontSize: '15px', fontWeight: 900, color: '#0F172A', whiteSpace: 'nowrap' }}>
                         {reportData?.circular?.aggregate ?? '--'}
                       </span>
                     </div>
-                    <div className="info-item" style={{ flex: 1.1, minWidth: 0, whiteSpace: 'nowrap' }}>
+                    <div className="info-item" style={{ flex: 1.0, minWidth: 0, whiteSpace: 'nowrap' }}>
                       <span className="info-label" style={{ whiteSpace: 'nowrap' }}>DIVISION:</span>
                       <span className="info-value" style={{ fontSize: '15.5px', fontWeight: 900, color: '#0D5C3A', whiteSpace: 'nowrap' }}>
                         {reportData?.circular?.division

@@ -151,7 +151,7 @@ const SecularMarkTableRow = React.memo(function SecularMarkTableRow({
           )}
         </td>
       )}
-      {['bot', 'all'].includes(examType) && (
+      {!isNursery && ['bot', 'all'].includes(examType) && (
         <td
           className={
             isAllPhases
@@ -708,6 +708,18 @@ export function SharedMarksEntry({
     )
   }, [selectedEnrollment?.circular_class, selectedEnrollment?.theology_class_level, selectedClassFilter])
 
+  const hideBotPhase = isCurrentNursery || activeView === 'theology' || allowedDepartment === 'theology'
+  const availableExamTypes = useMemo<ExamType[]>(
+    () => (hideBotPhase ? ['mot', 'eot', 'all'] : ['bot', 'mot', 'eot', 'all']),
+    [hideBotPhase]
+  )
+
+  useEffect(() => {
+    if (hideBotPhase && examType === 'bot') {
+      setExamType('eot')
+    }
+  }, [hideBotPhase, examType])
+
   const getSubjectOrder = (name: string) => {
     const n = (name || '').toUpperCase()
     if (n.includes('ENG')) return 1
@@ -1246,7 +1258,7 @@ export function SharedMarksEntry({
                 className="inline-flex items-center bg-[#F0F4F9] dark:bg-[#131314] h-8 p-0.5 rounded-full border-0 gap-0.5 shrink-0"
                 aria-label="Exam Type"
               >
-                {(['bot', 'mot', 'eot', 'all'] as ExamType[]).map((type) => (
+                {availableExamTypes.map((type) => (
                   <button
                     key={type}
                     type="button"
@@ -1361,8 +1373,8 @@ export function SharedMarksEntry({
             {/* Row 2: Phase Track + Department View */}
             <div className="flex items-center gap-1.5 w-full">
               {/* Phase Track (BOT | MOT | EOT | ALL) */}
-              <div className="flex-[4] grid grid-cols-4 bg-white dark:bg-[#1E1F20] p-0.5 rounded-full border border-black/[0.06] dark:border-white/[0.06] h-[34px] items-center" aria-label="Exam Phase Mobile">
-                {(['bot', 'mot', 'eot', 'all'] as ExamType[]).map((type) => (
+              <div className={`flex-[4] grid ${hideBotPhase ? 'grid-cols-3' : 'grid-cols-4'} bg-white dark:bg-[#1E1F20] p-0.5 rounded-full border border-black/[0.06] dark:border-white/[0.06] h-[34px] items-center`} aria-label="Exam Phase Mobile">
+                {availableExamTypes.map((type) => (
                   <button
                     key={type}
                     type="button"
@@ -1791,7 +1803,7 @@ export function SharedMarksEntry({
                                     Performance &amp; Remark
                                   </th>
                                 )}
-                                {['bot', 'all'].includes(examType) && (
+                                {!isCurrentNursery && ['bot', 'all'].includes(examType) && (
                                   <th
                                     className={
                                       examType === 'all'

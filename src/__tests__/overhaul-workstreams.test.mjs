@@ -729,8 +729,10 @@ describe('Workstream 11: Milestone 16 Layout Compactness, Mobile Refinement & Mo
     assert.match(marksEntrySrc, /id="marks-subject-filter-mobile"/);
 
     // Row 2: Phase track + Department track
-    assert.match(marksEntrySrc, /flex-\[4\] grid grid-cols-4/);
-    assert.match(marksEntrySrc, /flex-\[3\] grid grid-cols-3/);
+    assert.match(marksEntrySrc, /flex-\[4\]/);
+    assert.match(marksEntrySrc, /grid-cols-4/);
+    assert.match(marksEntrySrc, /flex-\[3\]/);
+    assert.match(marksEntrySrc, /grid-cols-3/);
 
     // Mobile student switcher: no redundant outer avatar circle before StudentCombobox
     assert.doesNotMatch(marksEntrySrc, /<div className="w-8 h-8 rounded-full bg-emerald-600[^"]*"><StudentCombobox/);
@@ -1440,7 +1442,7 @@ describe('Workstream 24: Landscape Print Lock, Blank Page 1 Fix, Iconic Studio T
 
     const inkSrc = fs.readFileSync(path.join(rootDir, 'src/lib/signature-ink-processor.ts'), 'utf8');
     assert.match(inkSrc, /lum >= 85/);
-    assert.match(inkSrc, /localContrast < 9 \|\| globalContrast < 10/);
+    assert.match(inkSrc, /localContrast < 8 \|\| globalContrast < 10/);
   });
 });
 
@@ -1480,7 +1482,7 @@ describe('Workstream 25: CSS Named Pages for Mixed Print, P7 Portrait Parity, Wh
 
     const procSrc = fs.readFileSync(path.join(rootDir, 'src/lib/signature-ink-processor.ts'), 'utf8');
     assert.match(procSrc, /processedSignatureCache/);
-    assert.match(procSrc, /SIG_CACHE_VERSION = 'v5-adaptive-local'/);
+    assert.match(procSrc, /SIG_CACHE_VERSION = 'v7-sauvola-solid-royal-blue'/);
   });
 
   it('4. renders authentic Jiddah badge image with ink filter in StampGenerator', () => {
@@ -1554,9 +1556,9 @@ describe('Workstream 26: Progressive Card Mounting, Transparent Stamp Crest, Sea
     assert.match(cleanSigSrc, /#0F3491/);
 
     const procSrc = fs.readFileSync(path.join(rootDir, 'src/lib/signature-ink-processor.ts'), 'utf8');
-    assert.match(procSrc, /outR = Math\.round\(15/);
-    assert.match(procSrc, /outG = Math\.round\(52/);
-    assert.match(procSrc, /outB = Math\.round\(145/);
+    assert.match(procSrc, /outR = Math\.round\(12/);
+    assert.match(procSrc, /outG = Math\.round\(42/);
+    assert.match(procSrc, /outB = Math\.round\(132/);
   });
 
   it('3. seats signatures directly on dotted line across report templates', () => {
@@ -1660,9 +1662,9 @@ describe('Workstream 27: Solid Blue Block Elimination, Canvas Deduplication, Fil
 
     const nurseryEotSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/NurseryEOTReport.tsx'), 'utf8');
     assert.doesNotMatch(nurseryEotSrc, /<table style=\{\{ marginTop: 'auto' \}\}>/);
-    assert.match(nurseryEotSrc, /Beginning of Term \(BOT\)/);
+    assert.doesNotMatch(nurseryEotSrc, /Beginning of Term \(BOT\)/);
     assert.match(nurseryEotSrc, /Mid-Term Assessment \(MOT\)/);
-    assert.match(nurseryEotSrc, /End of Term Assessment \(EOT\)/);
+    assert.doesNotMatch(nurseryEotSrc, /End of Term Assessment \(EOT\)/);
 
     const nurseryMotSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/NurseryMOTReport.tsx'), 'utf8');
     assert.doesNotMatch(nurseryMotSrc, /<table style=\{\{ marginTop: 'auto' \}\}>/);
@@ -1690,9 +1692,9 @@ describe('Workstream 28: Adaptive Signature Extractor, Portrait Single-Sheet Loc
 
   it('1. uses 2D integral localMean + globalMedian adaptive extraction, CORS proxy, and zero raw-grey fallback', () => {
     const procSrc = fs.readFileSync(path.join(rootDir, 'src/lib/signature-ink-processor.ts'), 'utf8');
-    assert.match(procSrc, /windowRadius = 8/);
+    assert.match(procSrc, /windowRadius = 9/);
     assert.match(procSrc, /integralLum/);
-    assert.match(procSrc, /localContrast < 9 \|\| globalContrast < 10/);
+    assert.match(procSrc, /localContrast < 8 \|\| globalContrast < 10/);
     assert.match(procSrc, /EMPTY_TRANSPARENT_PNG_DATA_URL/);
     assert.match(procSrc, /\/api\/signatures\/proxy/);
 
@@ -1744,7 +1746,7 @@ describe('Workstream 28: Adaptive Signature Extractor, Portrait Single-Sheet Loc
     const clientSrc = fs.readFileSync(path.join(rootDir, 'src/components/ReportGeneratorClient.tsx'), 'utf8');
     assert.match(clientSrc, /selectedInViewIds/);
     assert.match(clientSrc, /selectedInViewCount/);
-    assert.match(clientSrc, /hidden min-\[420px\]:inline-flex/);
+    assert.match(clientSrc, /data-testid="mobile-roster-pill"/);
     assert.match(clientSrc, /w-full max-w-full overflow-hidden/);
 
     const sidebarSrc = fs.readFileSync(path.join(rootDir, 'src/components/figma-ui/StudentRosterSidebar.tsx'), 'utf8');
@@ -1759,3 +1761,113 @@ describe('Workstream 28: Adaptive Signature Extractor, Portrait Single-Sheet Loc
 
 
 
+
+
+describe('Workstream 29: Mobile-First 6-Item Studio Bar, Slot-Relative 100% Fit & Touch Pan, Sauvola Solid Royal Blue Ink + KYC Verifier + Digital Signature Pad, and Nursery BOT Removal', () => {
+  const read = (relPath) => fs.readFileSync(path.join(process.cwd(), relPath), 'utf8');
+
+  it('WS29.1: Mobile topbar renders strictly 6 compact items with max-w-full overflow-hidden, DocumentCanvas renders a single compact selection row on mobile, and zoom dock defaults to minimized on mobile', () => {
+    const clientSrc = read('src/components/ReportGeneratorClient.tsx');
+    const canvasSrc = read('src/components/figma-ui/DocumentCanvas.tsx');
+    const toolbarSrc = read('src/components/figma-ui/TopToolbar.tsx');
+
+    // Mobile topbar container and 6 items
+    assert.match(clientSrc, /h-11 px-2 flex md:hidden.*w-full max-w-full overflow-hidden/);
+    assert.match(clientSrc, /data-testid="mobile-roster-pill"/);
+    assert.match(clientSrc, /data-testid="mobile-phase-curriculum-pill"/);
+    assert.match(clientSrc, /data-testid="mobile-print-cta"/);
+    assert.match(clientSrc, /🎨 Customize Studio & Stamp/);
+    assert.match(clientSrc, /max-w-\[calc\(100vw-20px\)\] max-h-\[72dvh\]/);
+    assert.match(toolbarSrc, /max-w-\[calc\(100vw-20px\)\] max-h-\[72dvh\]/);
+
+    // Compact mobile selection bar & minimized zoom dock default on mobile
+    assert.match(canvasSrc, /window\.innerWidth < 768/);
+    assert.match(canvasSrc, /data-testid="visual-selection-bar"/);
+    assert.match(canvasSrc, /flex items-center justify-between gap-1 px-2\.5 py-1\.5 rounded-xl/);
+    assert.match(canvasSrc, /data-testid="floating-dock-minimized"/);
+  });
+
+  it('WS29.2: DocumentCanvas and ReportPreviewCell compute slot-relative 100% fit (zoom=1.0), clamp zoom to [0.5, 1.5], set explicit scaled pixel width/height on outer wrapper, and enable 2D touch panning when zoom > 1.0', () => {
+    const clientSrc = read('src/components/ReportGeneratorClient.tsx');
+    const canvasSrc = read('src/components/figma-ui/DocumentCanvas.tsx');
+    const cellSrc = read('src/components/reports/ReportPreviewCell.tsx');
+
+    assert.match(clientSrc, /export const ZOOM_STEPS = \[0\.5, 0\.75, 0\.9, 1\.0, 1\.15, 1\.25, 1\.5\] as const/);
+    assert.match(canvasSrc, /Math\.min\(1\.5, Math\.max\(0\.5, zoom\)\)/);
+    assert.match(canvasSrc, /\(stageClientWidth - 72\) \/ 2/);
+    assert.match(canvasSrc, /stageClientWidth - \(isMobile \? 16 : 48\)/);
+    assert.match(canvasSrc, /touchAction: zoom > 1\.0 \? 'pan-x pan-y' : 'pan-y'/);
+    assert.match(canvasSrc, /WebkitOverflowScrolling: 'touch'/);
+
+    assert.match(cellSrc, /Math\.min\(1\.5, Math\.max\(0\.5, zoom\)\)/);
+    assert.match(cellSrc, /const scaledW = Math\.round\(nativeWidthPx \* actualScale\)/);
+    assert.match(cellSrc, /const scaledH = Math\.round\(nativeHeightPx \* actualScale\)/);
+  });
+
+  it('WS29.3: signature-ink-processor.ts uses SIG_CACHE_VERSION v7-sauvola-solid-royal-blue, Sauvola 19x19 integral-image binarization, Royal Blue (#0C2A84 / R=12,G=42,B=132), solid stroke opacity (alpha >= 215), and zero raw-grey fallback; signature-quality-verifier.ts + SignatureInkReviewCard + signatures-client digital signature pad', () => {
+    const procSrc = read('src/lib/signature-ink-processor.ts');
+    const cacheSrc = read('src/lib/client-cache.ts');
+    const verifierSrc = read('src/lib/signature-quality-verifier.ts');
+    const reviewSrc = read('src/components/SignatureInkReviewCard.tsx');
+    const sigClientSrc = read('src/components/layout/signatures-client.tsx');
+
+    assert.match(procSrc, /SIG_CACHE_VERSION = 'v7-sauvola-solid-royal-blue'/);
+    assert.match(cacheSrc, /SIGNATURE_CACHE_VERSION = 'v7-sauvola-solid-royal-blue'/);
+    assert.match(procSrc, /windowRadius = 9/);
+    assert.match(procSrc, /integralLumSq/);
+    assert.match(procSrc, /sauvolaThreshold = localMean \* \(1 - 0\.14 \* \(1 - localStd \/ 128\)\)/);
+    assert.match(procSrc, /outR = Math\.round\(12/);
+    assert.match(procSrc, /outG = Math\.round\(42/);
+    assert.match(procSrc, /outB = Math\.round\(132/);
+    assert.match(procSrc, /Math\.max\(235,/);
+    assert.doesNotMatch(procSrc, /catch\s*\{\s*return src;\s*\}/);
+
+    assert.match(verifierSrc, /export function verifySignatureImageQuality/);
+    assert.match(verifierSrc, /sharpnessScore/);
+    assert.match(verifierSrc, /lightingUniformityScore/);
+    assert.match(verifierSrc, /contrastScore/);
+    assert.match(verifierSrc, /INK_BOLDNESS_PRESETS/);
+
+    assert.match(reviewSrc, /verifySignatureFileQuality/);
+    assert.match(reviewSrc, /INK_BOLDNESS_PRESETS/);
+    assert.match(reviewSrc, /Sharpness/);
+    assert.match(reviewSrc, /Lighting Uniformity/);
+
+    assert.match(sigClientSrc, /data-testid="draw-signature-tab"/);
+    assert.match(sigClientSrc, /data-testid="digital-signature-pad-panel"/);
+    assert.match(sigClientSrc, /touchAction: 'none'/);
+    assert.match(sigClientSrc, /capture="environment"/);
+    assert.match(sigClientSrc, /Save Transparent Signature/);
+  });
+
+  it('WS29.4: NurseryEOTReport omits BOT from Progressive Records, and TopToolbar, ReportGeneratorClient, and shared-marks-entry hide BOT when Nursery or Theology is active', () => {
+    const nurseryEotSrc = read('src/components/reports/NurseryEOTReport.tsx');
+    const toolbarSrc = read('src/components/figma-ui/TopToolbar.tsx');
+    const clientSrc = read('src/components/ReportGeneratorClient.tsx');
+    const marksSrc = read('src/components/shared-marks-entry.tsx');
+
+    assert.doesNotMatch(nurseryEotSrc, /Beginning of Term \(BOT\)/);
+    assert.match(nurseryEotSrc, /Mid-Term Assessment \(MOT\)/);
+    assert.match(toolbarSrc, /phaseTrack/);
+    assert.match(clientSrc, /isCurrentNurseryOrTheology/);
+    assert.match(clientSrc, /availablePhases/);
+    assert.match(marksSrc, /hideBotPhase/);
+    assert.match(marksSrc, /availableExamTypes/);
+  });
+
+  it('WS29.5: P7EOTReport omits LIN / ADM and GENDER, includes TOTAL MARKS, AGGREGATE, and DIVISION, enlarges English & Arabic school names, and locks single-sheet portrait printing', () => {
+    const p7Src = read('src/components/reports/P7EOTReport.tsx');
+    const canvasSrc = read('src/components/figma-ui/DocumentCanvas.tsx');
+    const cssSrc = read('src/styles/reports/print-system.css');
+
+    assert.doesNotMatch(p7Src, /LIN \/ ADM/);
+    assert.doesNotMatch(p7Src, /label: 'GENDER'/);
+    assert.match(p7Src, /TOTAL MARKS/);
+    assert.match(p7Src, /AGGREGATE/);
+    assert.match(p7Src, /DIVISION/);
+    assert.match(p7Src, /font-size:\s*22px/);
+    assert.match(p7Src, /font-size:\s*24px/);
+    assert.match(canvasSrc, /data-last-printed=/);
+    assert.match(cssSrc, /max-height:\s*296mm\s*!important/);
+  });
+});

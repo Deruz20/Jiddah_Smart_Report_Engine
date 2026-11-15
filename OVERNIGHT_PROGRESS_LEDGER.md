@@ -1058,3 +1058,28 @@ Exit code: 0
      - `overhaul-workstreams.test.mjs`: 93/93 tests passing across 24 suites (including Workstream 28).
      - `report-print.test.mjs`, `signature-assets.test.mjs`, `report-logo.test.mjs`, `grading-and-calculations.test.mjs`: 63/63 tests passing across 7 suites (total 156/156 assertions passing).
      - `npm run build`: 69/69 static pages and all dynamic routes compiled cleanly in Next.js 16.4.6 (`--webpack`).
+
+
+## Milestone 29 — Mobile-First 6-Item Studio Bar, Slot-Relative 100% Fit & Touch Pan, Sauvola Solid Royal Blue Ink + KYC Quality Verifier + Digital Signature Pad, and Nursery BOT Removal
+- **WS1 — Mobile-First Studio Bar, Compact Mobile Selection Strip & Touch-Panning Zoom (`src/components/ReportGeneratorClient.tsx`, `src/components/figma-ui/DocumentCanvas.tsx`, `src/components/reports/ReportPreviewCell.tsx`, `src/components/figma-ui/TopToolbar.tsx`):**
+  - Rebuilt the mobile topbar (`flex md:hidden items-center justify-between gap-1 px-2 h-11 w-full max-w-full overflow-hidden`) to render strictly **6 compact elements**:
+    1. `☰` Sidebar Drawer Trigger (`w-7 h-7 shrink-0`)
+    2. `Class CustomPillSelect` (`min-w-0 shrink max-w-[92px] sm:max-w-[120px] h-7.5 px-2 text-[11px] font-bold truncate`)
+    3. `👥 Roster & Batch Pill` (`h-7.5 px-2 text-[11px] font-bold shrink-0` showing `👥 ${selectedInViewCount}`)
+    4. `Phase • Curriculum Pill` (`h-7.5 px-2 text-[11px] font-bold shrink-0 whitespace-nowrap` dynamically displaying `EOT•Sec` / `EOT•Theo` / `MOT•Both` and hiding `BOT` when Nursery or Theology is active)
+    5. `🖨️ Print CTA` (`h-7.5 px-2.5 rounded-full text-[11px] font-bold shrink-0 whitespace-nowrap` showing `🖨️ ${selectedInViewCount}`)
+    6. `⋮` `MoreActionsMenu` (`w-7 h-7 shrink-0` — 100% visible down to `280px`) exposing `🎨 Customize Studio & Stamp`, `⊞ Grid / Single View`, `☑️ Select Cards on Canvas`, `↓ Download PDF`, `☀️/🌙 Theme`, and `⚙️ Report Studio 2.0`.
+  - Refactored `visual-selection-bar` in `DocumentCanvas.tsx` into a single compact horizontal row on mobile (`37/38` badge | `All | Clear | Invert` | `🖨️ Print (37)` | `✕`).
+  - Defaulted the floating zoom dock to minimized (`🔍 100% • 1/38`) on mobile (`< 768px`) and applied `max-w-[calc(100vw-20px)] max-h-[72dvh]` on mobile/desktop popovers.
+  - Replaced hardcoded/viewport-crushing zoom scaling with slot-relative `100%` Fit (`zoom = 1.0`), clamped `zoom` strictly to `[0.5, 0.75, 0.9, 1.0, 1.15, 1.25, 1.5]` (`50%`–`150%`), set explicit scaled pixel width/height on the outer wrapper in `ReportPreviewCell.tsx` (`Math.round(nativeWidthPx * actualScale)` × `Math.round(nativeHeightPx * actualScale)`), and enabled 2D touch panning (`overflow-x: auto; overflow-y: auto; -webkit-overflow-scrolling: touch; touch-action: pan-x pan-y`) when `zoom > 1.0`.
+- **WS2 — Sauvola Solid Royal Blue Signature Ink + Real-Time KYC Quality Verifier + Digital Signature Pad (`src/lib/signature-ink-processor.ts`, `src/lib/signature-quality-verifier.ts`, `src/components/SignatureInkReviewCard.tsx`, `src/components/layout/signatures-client.tsx`):**
+  - Upgraded `signature-ink-processor.ts` (`SIG_CACHE_VERSION = 'v7-sauvola-solid-royal-blue'`) to Sauvola Adaptive Document Binarization (`19×19` local window `windowRadius = 9` mean $m(x,y)$ and std-dev $s(x,y)$ via 2D integral images `integralLum` and `integralLumSq`, threshold $T(x,y) = m(x,y) \cdot (1 - 0.14 \cdot (1 - s(x,y)/128))$ with `localContrast >= 8` and `globalContrast >= 10`), Royal Ballpoint Pen Blue (`R = 12, G = 42, B = 132` / `#0C2A84`), full solid stroke opacity (`alpha = 235..255`, `alpha >= 215`) + `3×3` stroke-strengthening pass, and zero raw-grey fallback.
+  - Created `src/lib/signature-quality-verifier.ts` with `verifySignatureImageQuality` (`sharpnessScore`, `lightingUniformityScore`, `contrastScore`) and `INK_BOLDNESS_PRESETS` (`Light | Balanced | Bold`), wired into `SignatureInkReviewCard.tsx`.
+  - Added the Mobile & Desktop Digital Signature Pad Tab (`"✍️ Draw Signature"`) with smooth HTML5 `<canvas>` Bézier pen pad (`touch-action: none`), `Pen Color (Royal Blue / Black)`, `Stroke Thickness`, `Clear`, `Save Transparent Signature`, and `<input type="file" accept="image/*" capture="environment" />` camera snap support in `signatures-client.tsx`.
+- **WS3 — Remove `BOT` from Nursery & Hide `BOT` When Nursery or Theology Is Active (`src/components/reports/NurseryEOTReport.tsx`, `src/components/figma-ui/TopToolbar.tsx`, `src/components/ReportGeneratorClient.tsx`, `src/components/shared-marks-entry.tsx`):**
+  - Removed `Beginning of Term (BOT)` and `End of Term Assessment (EOT)` rows from `Learner's Competence (Progressive Records)` in `NurseryEOTReport.tsx` so only `Mid-Term Assessment (MOT)` renders across `LA1..LA5` (+ `Writing`).
+  - Hid `BOT` from desktop and mobile phase selectors whenever a Nursery class (`Baby`, `Middle`, `Top`) or `Theology` curriculum is active, with automatic fallback from `BOT` to `EOT`.
+- **WS4 — Polish `P7EOTReport.tsx` & Single-Sheet Portrait Print Lock (`src/components/reports/P7EOTReport.tsx`, `src/components/figma-ui/DocumentCanvas.tsx`, `src/styles/print-system.css`):**
+  - Verified `P7EOTReport.tsx` omits `LIN / ADM` and `GENDER`, includes `PUPIL'S NAME`, `CLASS`, `TERM`, `YEAR`, `TOTAL MARKS`, `AGGREGATE`, and `DIVISION`, enlarges the English & Arabic school names (`22px` / `24px` `#7F1D1D`), and locks single-sheet portrait printing (`data-last-printed="true"` + `max-height: 296mm !important`).
+- **WS5 — Automated Verification Gate (`src/__tests__/overhaul-workstreams.test.mjs`):**
+  - Added `Workstream 29` automated regression tests (`WS29.1`–`WS29.5`).

@@ -520,7 +520,7 @@ export function TopToolbar({
               <PopoverContent
                 align="end"
                 sideOffset={8}
-                className="w-[320px] sm:w-[360px] p-0 rounded-2xl border border-[#0D5C3A]/20 dark:border-[#F59E0B]/25 shadow-2xl bg-white dark:bg-[#151D1A] z-50 overflow-hidden"
+                className="w-[320px] sm:w-[360px] max-w-[calc(100vw-20px)] max-h-[72dvh] overflow-y-auto p-0 rounded-2xl border border-[#0D5C3A]/20 dark:border-[#F59E0B]/25 shadow-2xl bg-white dark:bg-[#151D1A] z-50"
               >
                 {studioControlsContent}
               </PopoverContent>

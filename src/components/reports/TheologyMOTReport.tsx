@@ -487,16 +487,19 @@ export function Theology2UpPrintSheet({
   topReport,
   bottomReport,
   studioFormatting,
+  isLastPrinted = false,
 }: {
   topReport: any
   bottomReport?: any
   studioFormatting?: any
+  isLastPrinted?: boolean
 }) {
   return (
     <div
       role="report"
       data-report-type="TheologyMOTReport"
       data-report-orientation="portrait"
+      data-last-printed={isLastPrinted ? 'true' : 'false'}
       className="report-container theology-2up-sheet a4-two-up-page"
       style={{
         width: '794px',

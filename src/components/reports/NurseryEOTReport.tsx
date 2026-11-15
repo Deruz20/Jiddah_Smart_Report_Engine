@@ -156,11 +156,12 @@ export default function NurseryEOTReport({ reportData, studioFormatting }: any) 
 
     /* BODY PADDING */
     .nursery-eot-report .report-body {
-        padding: 20px 24px;
+        padding: 14px 24px;
         display: flex;
         flex-direction: column;
+        justify-content: space-between;
+        gap: 8px;
         flex: 1 1 auto;
-        min-height: 0;
     }
 
     /* INFO BOXES */
@@ -168,7 +169,7 @@ export default function NurseryEOTReport({ reportData, studioFormatting }: any) 
         flex: 0 0 auto;
         display: flex;
         gap: 16px;
-        margin-bottom: 16px;
+        margin-bottom: 0;
     }
     .nursery-eot-report .info-box {
         flex: 1;
@@ -204,8 +205,8 @@ export default function NurseryEOTReport({ reportData, studioFormatting }: any) 
         flex: 1 1 auto;
         display: flex;
         flex-direction: column;
-        gap: 14px;
-        min-height: 0;
+        justify-content: space-between;
+        gap: 10px;
     }
     
     .nursery-eot-report table {
@@ -219,8 +220,8 @@ export default function NurseryEOTReport({ reportData, studioFormatting }: any) 
     .nursery-eot-report th {
         background: #1e40af;
         color: white;
-        font-size: 11.5px;
-        padding: 9px 8px;
+        font-size: 11px;
+        padding: 7px 8px;
         text-transform: uppercase;
         border-bottom: 2px solid #1e3a8a;
         font-weight: 700;
@@ -232,8 +233,8 @@ export default function NurseryEOTReport({ reportData, studioFormatting }: any) 
     .nursery-eot-report td {
         border-bottom: 1px solid var(--border-light);
         border-right: 1px solid var(--border-light);
-        padding: 9px 10px;
-        font-size: 13px;
+        padding: 7px 9px;
+        font-size: 12.5px;
         color: #334155;
     }
     .nursery-eot-report td:last-child { border-right: none; }
@@ -267,7 +268,7 @@ export default function NurseryEOTReport({ reportData, studioFormatting }: any) 
     /* FOOTER */
     .nursery-eot-report .report-footer {
         flex: 0 0 auto;
-        margin-top: 16px;
+        margin-top: 4px;
         display: flex;
         justify-content: space-between;
         align-items: flex-end;
@@ -454,21 +455,27 @@ export default function NurseryEOTReport({ reportData, studioFormatting }: any) 
           <div className="report-footer">
             <div className="remarks-box">
               <div className="info-row"><span className="label" style={{ minWidth: '100px' }}>Conduct</span><div className="line">{reportData?.circular?.conduct_remark ?? getConductRemark(null)}</div></div>
-              <div className="info-row" style={{ marginTop: '12px' }}>
+              <div className="info-row" style={{ marginTop: '10px', alignItems: 'flex-end', gap: '8px' }}>
                 <span className="label" style={{ minWidth: '100px' }}>Class Teacher</span>
-                <div className="line" style={{ position: 'relative', display: 'flex', alignItems: 'flex-end', minHeight: '36px', borderBottom: '1.5px dotted #334155' }}>
-                  <span style={{ flex: 1 }}>{getNurseryTeacherComment(grades)}</span>
-                  {includeSignatures && reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.class_name) ?? ''] && (
-                    <CleanSignatureImage src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} alt="Signature" style={{ maxHeight: '38px', width: '112px', objectFit: 'contain', marginBottom: '-6px' }} studioFormatting={studioFormatting} />
+                <div className="line" style={{ flex: 1, minHeight: '22px', borderBottom: '1.5px dotted #cbd5e1', display: 'flex', alignItems: 'flex-end' }}>
+                  <span>{getNurseryTeacherComment(grades)}</span>
+                </div>
+                <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#475569', flexShrink: 0, paddingBottom: '2px' }}>SIG:</span>
+                <div style={{ borderBottom: '1.5px dotted #334155', minWidth: '95px', width: '108px', height: '28px', display: 'inline-flex', alignItems: 'flex-end', justifyContent: 'center', position: 'relative', flexShrink: 0 }}>
+                  {includeSignatures && (reportData?.student?.class_name || reportData?.class_name || reportData?.class) && reportData?.signatures?.[getClassTeacherSignatureKey((reportData?.student?.class_name || reportData?.class_name || reportData?.class)!) ?? ''] && (
+                    <CleanSignatureImage src={reportData.signatures[getClassTeacherSignatureKey((reportData?.student?.class_name || reportData?.class_name || reportData?.class)!)!]} alt="Signature" style={{ maxHeight: '34px', width: '104px', objectFit: 'contain', marginBottom: '-6px' }} studioFormatting={studioFormatting} />
                   )}
                 </div>
               </div>
-              <div className="info-row" style={{ marginTop: '12px' }}>
+              <div className="info-row" style={{ marginTop: '10px', alignItems: 'flex-end', gap: '8px' }}>
                 <span className="label" style={{ minWidth: '100px' }}>Head Teacher</span>
-                <div className="line" style={{ position: 'relative', display: 'flex', alignItems: 'flex-end', minHeight: '36px', borderBottom: '1.5px dotted #334155' }}>
-                  <span style={{ flex: 1 }}>{getNurseryTeacherComment(grades)}</span>
+                <div className="line" style={{ flex: 1, minHeight: '22px', borderBottom: '1.5px dotted #cbd5e1', display: 'flex', alignItems: 'flex-end' }}>
+                  <span>{getNurseryTeacherComment(grades)}</span>
+                </div>
+                <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#475569', flexShrink: 0, paddingBottom: '2px' }}>SIG:</span>
+                <div style={{ borderBottom: '1.5px dotted #334155', minWidth: '95px', width: '108px', height: '28px', display: 'inline-flex', alignItems: 'flex-end', justifyContent: 'center', position: 'relative', flexShrink: 0 }}>
                   {includeSignatures && reportData?.signatures?.['head-teacher'] && (
-                    <CleanSignatureImage src={reportData.signatures['head-teacher']} alt="Signature" style={{ maxHeight: '38px', width: '112px', objectFit: 'contain', marginBottom: '-6px' }} studioFormatting={studioFormatting} />
+                    <CleanSignatureImage src={reportData.signatures['head-teacher']} alt="Signature" style={{ maxHeight: '34px', width: '104px', objectFit: 'contain', marginBottom: '-6px' }} studioFormatting={studioFormatting} />
                   )}
                 </div>
               </div>

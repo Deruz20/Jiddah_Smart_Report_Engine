@@ -161,6 +161,11 @@ export function StudentRosterSidebar({
     visibleStudents.length > 0 &&
     visibleStudents.every((e) => selectedIds.includes(e.enrollment_id));
 
+  const inViewSelectedCount = useMemo(() => {
+    const idSet = new Set(enrollments.map((e) => e.enrollment_id));
+    return selectedIds.filter((id) => idSet.has(id)).length;
+  }, [enrollments, selectedIds]);
+
   return (
     <aside
       data-testid="student-roster-sidebar"
@@ -194,7 +199,7 @@ export function StudentRosterSidebar({
         <div className="flex items-center justify-between gap-2 px-1 text-xs">
           <span className="font-semibold text-stone-700 dark:text-stone-300 tabular-nums">
             <strong className="text-[#111827] dark:text-[#F3F7F5]">{visibleStudents.length}</strong> Students{' '}
-            <span className="text-[#0D5C3A] dark:text-[#34D399] font-medium">({selectedIds.length} selected)</span>
+            <span className="text-[#0D5C3A] dark:text-[#34D399] font-medium">({inViewSelectedCount} selected)</span>
           </span>
 
           <button

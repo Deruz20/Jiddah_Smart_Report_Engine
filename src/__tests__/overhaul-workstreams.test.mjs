@@ -1342,7 +1342,7 @@ describe('Workstream 23: Authentic Jiddah Vector Stamp, Clean Signature Ink Filt
   it('4. enforces big and bold pupil profile typography across all 8 report templates', () => {
     const eotSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/PrimaryEOTReport.tsx'), 'utf8');
     assert.match(eotSrc, /font-size:\s*15\.5px;\s*font-weight:\s*900;/);
-    assert.match(eotSrc, /font-size:\s*17px;\s*font-weight:\s*900;/);
+    assert.match(eotSrc, /font-size:\s*(?:17|22)px;\s*font-weight:\s*900;/);
 
     const p7Src = fs.readFileSync(path.join(rootDir, 'src/components/reports/P7EOTReport.tsx'), 'utf8');
     assert.match(p7Src, /\.p7-eot-report \.line\.pupil-name\s*\{[^}]*font-size:\s*16px;\s*font-weight:\s*900;/);
@@ -1382,7 +1382,7 @@ describe('Workstream 23: Authentic Jiddah Vector Stamp, Clean Signature Ink Filt
 
     const rosterSrc = fs.readFileSync(path.join(rootDir, 'src/components/figma-ui/StudentRosterSidebar.tsx'), 'utf8');
     assert.match(rosterSrc, /data-testid="roster-select-all-btn"/);
-    assert.match(rosterSrc, /selectedIds\.length\} selected/);
+    assert.match(rosterSrc, /inViewSelectedCount\} selected/);
   });
 });
 
@@ -1440,7 +1440,7 @@ describe('Workstream 24: Landscape Print Lock, Blank Page 1 Fix, Iconic Studio T
 
     const inkSrc = fs.readFileSync(path.join(rootDir, 'src/lib/signature-ink-processor.ts'), 'utf8');
     assert.match(inkSrc, /lum >= 85/);
-    assert.match(inkSrc, /localBg - 28/);
+    assert.match(inkSrc, /localContrast < 9 \|\| globalContrast < 10/);
   });
 });
 
@@ -1480,7 +1480,7 @@ describe('Workstream 25: CSS Named Pages for Mixed Print, P7 Portrait Parity, Wh
 
     const procSrc = fs.readFileSync(path.join(rootDir, 'src/lib/signature-ink-processor.ts'), 'utf8');
     assert.match(procSrc, /processedSignatureCache/);
-    assert.match(procSrc, /borderSamples\[Math\.min\(borderSamples\.length - 1, Math\.floor\(borderSamples\.length \* 0\.65\)\)\]/);
+    assert.match(procSrc, /SIG_CACHE_VERSION = 'v5-adaptive-local'/);
   });
 
   it('4. renders authentic Jiddah badge image with ink filter in StampGenerator', () => {
@@ -1682,6 +1682,73 @@ describe('Workstream 27: Solid Blue Block Elimination, Canvas Deduplication, Fil
     assert.match(clientSrc, /report-sheet-portrait/);
     assert.match(clientSrc, /hasLandscape && !hasPortrait/);
     assert.match(clientSrc, /hasPortrait && !hasLandscape/);
+  });
+});
+
+describe('Workstream 28: Adaptive Signature Extractor, Portrait Single-Sheet Lock, Nursery Overlap Fix & Fluid Mobile/Roster Count', () => {
+  const rootDir = process.cwd();
+
+  it('1. uses 2D integral localMean + globalMedian adaptive extraction, CORS proxy, and zero raw-grey fallback', () => {
+    const procSrc = fs.readFileSync(path.join(rootDir, 'src/lib/signature-ink-processor.ts'), 'utf8');
+    assert.match(procSrc, /windowRadius = 8/);
+    assert.match(procSrc, /integralLum/);
+    assert.match(procSrc, /localContrast < 9 \|\| globalContrast < 10/);
+    assert.match(procSrc, /EMPTY_TRANSPARENT_PNG_DATA_URL/);
+    assert.match(procSrc, /\/api\/signatures\/proxy/);
+
+    const cleanSigSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/CleanSignatureImage.tsx'), 'utf8');
+    assert.match(cleanSigSrc, /getCachedSignatureUrl/);
+    assert.match(cleanSigSrc, /useState<string \| null>\(\(\) =>/);
+
+    const proxyPath = path.join(rootDir, 'src/app/api/signatures/proxy/route.ts');
+    assert.ok(fs.existsSync(proxyPath), 'proxy route exists');
+    const proxySrc = fs.readFileSync(proxyPath, 'utf8');
+    assert.match(proxySrc, /verifyDataAccess/);
+    assert.match(proxySrc, /Access-Control-Allow-Origin/);
+  });
+
+  it('2. cleans P7EOTReport identity rows, enlarges school headers, and eliminates trailing blank portrait sheet', () => {
+    const p7Src = fs.readFileSync(path.join(rootDir, 'src/components/reports/P7EOTReport.tsx'), 'utf8');
+    assert.doesNotMatch(p7Src, /LIN \/ ADM/);
+    assert.doesNotMatch(p7Src, />GENDER</);
+    assert.match(p7Src, /height:\s*296mm\s*!important/);
+
+    const primaryEotSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/PrimaryEOTReport.tsx'), 'utf8');
+    assert.match(primaryEotSrc, /font-size:\s*22px/);
+
+    const printCssSrc = fs.readFileSync(path.join(rootDir, 'src/styles/reports/print-system.css'), 'utf8');
+    assert.match(printCssSrc, /height:\s*296mm\s*!important/);
+    assert.match(printCssSrc, /data-last-printed="true"/);
+
+    const canvasSrc = fs.readFileSync(path.join(rootDir, 'src/components/figma-ui/DocumentCanvas.tsx'), 'utf8');
+    assert.match(canvasSrc, /data-last-printed=\{report\.id === lastPrintedId \? 'true' : 'false'\}/);
+
+    const theoSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/TheologyMOTReport.tsx'), 'utf8');
+    assert.match(theoSrc, /data-last-printed=\{isLastPrinted \? 'true' : 'false'\}/);
+  });
+
+  it('3. eliminates Nursery footer overlap and seats Class Teacher + Head Teacher signatures on dedicated SIG lines', () => {
+    for (const file of ['src/components/reports/NurseryEOTReport.tsx', 'src/components/reports/NurseryMOTReport.tsx']) {
+      const src = fs.readFileSync(path.join(rootDir, file), 'utf8');
+      assert.doesNotMatch(src, /\.tables-container\s*\{[^}]*min-height:\s*0/);
+      assert.match(src, /justify-content:\s*space-between/);
+      assert.match(src, />SIG:</);
+      assert.match(src, /borderBottom:\s*'1\.5px dotted #334155'/);
+    }
+
+    const nurseryTheoSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/NurseryTheologyEOTReport.tsx'), 'utf8');
+    assert.match(nurseryTheoSrc, /border-top:\s*none;/);
+  });
+
+  it('4. displays in-view selected count and preserves 280px fluid mobile topbar', () => {
+    const clientSrc = fs.readFileSync(path.join(rootDir, 'src/components/ReportGeneratorClient.tsx'), 'utf8');
+    assert.match(clientSrc, /selectedInViewIds/);
+    assert.match(clientSrc, /selectedInViewCount/);
+    assert.match(clientSrc, /hidden min-\[420px\]:inline-flex/);
+    assert.match(clientSrc, /w-full max-w-full overflow-hidden/);
+
+    const sidebarSrc = fs.readFileSync(path.join(rootDir, 'src/components/figma-ui/StudentRosterSidebar.tsx'), 'utf8');
+    assert.match(sidebarSrc, /inViewSelectedCount/);
   });
 });
 

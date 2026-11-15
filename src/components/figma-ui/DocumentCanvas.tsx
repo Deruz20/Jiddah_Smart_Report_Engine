@@ -54,6 +54,7 @@ export function DocumentCanvas({
   onFitScreen,
   onSearchOpen,
   renderReport,
+  printScope = 'all',
   isGenerating = false,
   visualSelectMode = false,
   selectedIds = [],
@@ -99,6 +100,13 @@ export function DocumentCanvas({
   const visibleReports = useMemo(() => {
     return reports.slice(0, visibleCount);
   }, [reports, visibleCount]);
+
+  const printedReportIds = useMemo(() => {
+    if (printScope === 'current') return activeReportId ? [activeReportId] : [];
+    if (Array.isArray(printScope)) return printScope;
+    return reports.map((r) => r.id);
+  }, [printScope, activeReportId, reports]);
+  const lastPrintedId = printedReportIds[printedReportIds.length - 1];
 
   // Minimize dock by default on mobile (< 768px) so report cards remain unobstructed
   useEffect(() => {
@@ -356,6 +364,7 @@ export function DocumentCanvas({
                     <motion.div
                       key={report.id}
                       data-report-id={report.id}
+                      data-last-printed={report.id === lastPrintedId ? 'true' : 'false'}
                       onClick={() => {
                         onSelectReport(report.id);
                         if (visualSelectMode && onToggleSelectCard) {

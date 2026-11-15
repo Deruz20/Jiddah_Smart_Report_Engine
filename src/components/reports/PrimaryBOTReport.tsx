@@ -114,16 +114,18 @@ export default function PrimaryBOTReport({ reportData, studioFormatting }: any) 
 
         .bot-school-left { width: 42%; }
         .bot-school-left h1 {
-            color: #7a1408;
-            font-size: 18px;
-            line-height: 1.2;
-            font-weight: 800;
+            color: #7F1D1D;
+            font-size: 21px;
+            line-height: 1.15;
+            letter-spacing: -0.3px;
+            font-weight: 900;
             margin: 0;
         }
         .bot-school-left p {
             margin-top: 5px;
-            font-size: 11px;
-            line-height: 1.5;
+            font-size: 11.5px;
+            font-weight: 600;
+            line-height: 1.45;
             color: #444;
             margin-bottom: 0;
         }
@@ -139,7 +141,7 @@ export default function PrimaryBOTReport({ reportData, studioFormatting }: any) 
         .bot-logo img { width: 100%; height: 100%; object-fit: contain; }
 
         .bot-school-right { width: 42%; text-align: right; font-family: 'Cairo', sans-serif; }
-        .bot-school-right h2 { color: #7a1408; font-size: 21px; line-height: 1.4; margin: 0; }
+        .bot-school-right h2 { color: #7F1D1D; font-size: 24px; font-weight: 900; line-height: 1.25; margin: 0; }
 
         .bot-ribbon {
             width: 360px;

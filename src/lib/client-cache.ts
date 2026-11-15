@@ -5,6 +5,7 @@ export type ThemeMode = 'light' | 'dark'
 const THEME_STORAGE_KEY = 'jiddah_theme_mode_v1'
 const SETTINGS_CACHE_KEY = 'jiddah_school_settings_cache_v1'
 const TERM_CACHE_KEY = 'jiddah_active_term_cache_v1'
+export const SIGNATURE_CACHE_VERSION = 'v5-adaptive-local'
 
 let memorySettings: any = null
 let inFlightSettingsPromise: Promise<any> | null = null

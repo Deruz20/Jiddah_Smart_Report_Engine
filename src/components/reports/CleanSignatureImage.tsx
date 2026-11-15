@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import {
   cleanSignatureImageUrl,
   extractCleanSignaturePixels,
+  getCachedSignatureUrl,
   type SignatureInkMode,
 } from '@/lib/signature-ink-processor';
 
@@ -76,17 +77,39 @@ export function CleanSignatureImage({
   boldness = 1.25,
   studioFormatting,
 }: CleanSignatureImageProps) {
-  const [resolvedSrc, setResolvedSrc] = useState<string | null>(src || null);
-  const [hidden, setHidden] = useState(false);
-
   const cleanEnabled = studioFormatting?.cleanSignatures !== false;
+
+  const [resolvedSrc, setResolvedSrc] = useState<string | null>(() => {
+    if (!src) return null;
+    if (!cleanEnabled) return src;
+    if (src.startsWith('data:')) return src;
+    return getCachedSignatureUrl(src, { inkMode, boldness }) ?? null;
+  });
+  const [hidden, setHidden] = useState(false);
 
   useEffect(() => {
     let active = true;
     setHidden(false);
-    setResolvedSrc(src || null);
 
-    if (!src || !cleanEnabled) return;
+    if (!src) {
+      setResolvedSrc(null);
+      return;
+    }
+
+    if (!cleanEnabled) {
+      setResolvedSrc(src);
+      return;
+    }
+
+    const cached = src.startsWith('data:')
+      ? src
+      : getCachedSignatureUrl(src, { inkMode, boldness });
+    if (cached) {
+      setResolvedSrc(cached);
+      return;
+    }
+
+    setResolvedSrc(null);
 
     extractSignatureInk(src, { inkMode, boldness })
       .then((cleaned) => {
@@ -95,7 +118,9 @@ export function CleanSignatureImage({
         }
       })
       .catch(() => {
-        // Fallback to raw src silently
+        if (active) {
+          setResolvedSrc(src);
+        }
       });
 
     return () => {
@@ -122,7 +147,7 @@ export function CleanSignatureImage({
           objectFit: 'contain',
           filter: cleanEnabled && !isProcessed
             ? (inkMode === 'blue'
-                ? undefined
+                ? 'grayscale(1) brightness(1.48) contrast(3.8) url(#jiddah-blue-signature-ink)'
                 : 'grayscale(1) brightness(1.48) contrast(3.8) url(#jiddah-clean-ink)')
             : undefined,
           ...style,

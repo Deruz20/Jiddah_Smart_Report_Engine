@@ -184,16 +184,14 @@
   .landscape-page,
   [data-report-orientation="landscape"] {
     page: landscape-sheet !important;
-    width: 297mm !important;
-    min-width: 297mm !important;
-    max-width: 297mm !important;
-    height: 210mm !important;
-    max-height: 210mm !important;
+    width: 296mm !important;
+    min-width: 296mm !important;
+    max-width: 296mm !important;
+    height: 209mm !important;
+    max-height: 209mm !important;
     padding: 4mm 6mm !important;
     box-sizing: border-box !important;
     overflow: hidden !important;
-    page-break-after: always !important;
-    break-after: page !important;
     break-inside: avoid !important;
   }
 
@@ -214,11 +212,9 @@
     width: 210mm !important;
     min-width: 210mm !important;
     max-width: 210mm !important;
-    height: 297mm !important;
-    max-height: 297mm !important;
+    height: 296mm !important;
+    max-height: 296mm !important;
     overflow: hidden !important;
-    page-break-after: always !important;
-    break-after: page !important;
     break-inside: avoid !important;
   }
 
@@ -293,13 +289,13 @@
 
   #print-portal .report-container[data-report-orientation='portrait']:not(.theology-2up-sheet):not([data-report-type='TheologyMOTReport']) {
     width: 210mm !important;
-    height: 297mm !important;
-    max-height: 1122px !important;
+    height: 296mm !important;
+    max-height: 296mm !important;
   }
 
   #print-portal .report-container[data-report-orientation='landscape'] {
-    width: 297mm !important;
-    height: 210mm !important;
+    width: 296mm !important;
+    height: 209mm !important;
   }
 
   /* 3b. Theology 2-up sheet strictly constrains height to prevent spillover */
@@ -359,7 +355,15 @@
   #print-portal .report-container:last-child,
   #secular-hub-print-root .hub-sheet-page:last-child,
   #theology-hub-print-root .hub-sheet-page:last-child,
-  #class-roster-print-root .hub-sheet-page:last-child {
+  #class-roster-print-root .hub-sheet-page:last-child,
+  .report-card-sheet[data-last-printed="true"],
+  .report-card-sheet[data-last-printed="true"] .report-container,
+  .report-card-sheet[data-last-printed="true"] .portrait-page,
+  .report-card-sheet[data-last-printed="true"] .landscape-page,
+  .report-card-sheet[data-last-printed="true"] .a4-portrait-page,
+  .report-card-sheet[data-last-printed="true"] .a4-two-up-page,
+  .report-card-sheet[data-last-printed="true"] [data-report-orientation],
+  .theology-2up-sheet[data-last-printed="true"] {
     page-break-after: auto !important;
     break-after: auto !important;
   }

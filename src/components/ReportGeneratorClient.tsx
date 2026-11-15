@@ -289,6 +289,17 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
     return figmaEnrollments.filter((e) => cls.enrollmentIds.includes(e.enrollment_id))
   }, [figmaClasses, figmaEnrollments, filterState.classIds])
 
+  const activeClassIdSet = useMemo(
+    () => new Set(activeClassEnrollments.map((e) => e.enrollment_id)),
+    [activeClassEnrollments]
+  )
+
+  const selectedInViewIds = useMemo(
+    () => selectedStudentIds.filter((id) => activeClassIdSet.has(id)),
+    [selectedStudentIds, activeClassIdSet]
+  )
+  const selectedInViewCount = selectedInViewIds.length
+
   // Sync selectedStudentIds with active class enrollments on class change / initial load
   useEffect(() => {
     if (activeClassEnrollments.length > 0) {
@@ -523,14 +534,14 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
 
   // Count-Aware Print Button Label
   const printButtonLabel = useMemo(() => {
-    const count = selectedStudentIds.length
+    const count = selectedInViewCount
     if (count === 0) return 'Print Reports'
     if (count === 1) return 'Print 1 Report'
     if (count === activeClassEnrollments.length && activeClassEnrollments.length > 0) {
       return `Print ${count} Reports`
     }
     return `Print ${count} Selected`
-  }, [selectedStudentIds.length, activeClassEnrollments.length])
+  }, [selectedInViewCount, activeClassEnrollments.length])
 
   // Active student for topbar selector pill
   const activeStudent = useMemo(() => {
@@ -540,8 +551,8 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
   // Primary Print Action
   const handlePrintSelected = useCallback(async () => {
     const targets =
-      selectedStudentIds.length > 0
-        ? selectedStudentIds
+      selectedInViewIds.length > 0
+        ? selectedInViewIds
         : activeReportId
         ? [activeReportId]
         : []
@@ -901,7 +912,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
         onOpenChange={setIsPrintDialogOpen}
         reports={rawReports as any}
         activeReport={rawReports.find((r) => r.id === activeReportId) as any}
-        preselectedIds={selectedStudentIds}
+        preselectedIds={selectedInViewIds}
         onEnterVisualSelect={() => setVisualSelectMode(true)}
         onConfirmPrint={(mode) => {
           setPrintScope(mode)
@@ -966,7 +977,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
                 >
                   <Users size={13} className="text-[#0D5C3A] dark:text-[#34D399] shrink-0" />
                   <span className="truncate tabular-nums">
-                    👥 {selectedStudentIds.length} <span className="hidden xl:inline">Selected • {activeStudent?.name || 'All Students'}</span><span className="xl:hidden">Selected</span>
+                    👥 {selectedInViewCount} <span className="hidden xl:inline">Selected • {activeStudent?.name || 'All Students'}</span><span className="xl:hidden">Selected</span>
                   </span>
                   <ChevronDown size={13} className="text-stone-400 shrink-0 ml-0.5" />
                 </button>
@@ -1120,7 +1131,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
           primaryPrintAction={{
             label: printButtonLabel,
             onClick: handlePrintSelected,
-            disabled: selectedStudentIds.length === 0 || isGenerating,
+            disabled: selectedInViewCount === 0 || isGenerating,
           }}
           studioFormatting={studioFormatting}
           onStudioFormattingChange={setStudioFormatting}
@@ -1145,13 +1156,13 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
       </div>
 
       {/* Sleek Single 44px Mobile Action Header (< md) */}
-      <div className="h-11 px-2 flex md:hidden items-center justify-between gap-1 bg-white dark:bg-[#151D1A] rounded-2xl border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 shrink-0 print:hidden shadow-2xs">
+      <div className="h-11 px-2 flex md:hidden items-center justify-between gap-1 bg-white dark:bg-[#151D1A] rounded-2xl border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 shrink-0 print:hidden shadow-2xs w-full max-w-full overflow-hidden">
         {/* 1. Hamburger to open main sidebar */}
         {sidebar && (
           <button
             type="button"
             onClick={sidebar.toggleSidebar}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-stone-700 dark:text-stone-200 hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer shrink-0"
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-stone-700 dark:text-stone-200 hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer shrink-0"
             title="Open Navigation"
             aria-label="Open Navigation"
           >
@@ -1160,7 +1171,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
         )}
 
         {/* 2. Compact Class Pill */}
-        <div className="shrink-0 max-w-[74px]">
+        <div className="min-w-0 flex-1 max-w-[105px]">
           <CustomPillSelect
             id="reports-mobile-class-select"
             ariaLabel="Class"
@@ -1180,7 +1191,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
               })),
             ]}
             className="w-full"
-            triggerClassName="h-8 px-1.5 text-[11px] font-bold rounded-lg bg-emerald-500/10 dark:bg-emerald-400/15 text-emerald-800 dark:text-emerald-200 border-0"
+            triggerClassName="h-7.5 px-1.5 text-[11px] font-bold rounded-lg bg-emerald-500/10 dark:bg-emerald-400/15 text-emerald-800 dark:text-emerald-200 border-0 truncate"
           />
         </div>
 
@@ -1189,11 +1200,13 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
           <PopoverTrigger asChild>
             <button
               type="button"
-              className="h-8 px-2 rounded-full bg-[#F0F4F9] dark:bg-[#1E2623] border border-black/[0.04] dark:border-white/[0.06] text-[11px] font-bold text-[#111827] dark:text-[#F3F7F5] flex items-center gap-1 cursor-pointer flex-1 min-w-0 truncate"
+              className="h-7.5 px-1.5 rounded-full bg-[#F0F4F9] dark:bg-[#1E2623] border border-black/[0.04] dark:border-white/[0.06] text-[11px] font-bold text-[#111827] dark:text-[#F3F7F5] flex items-center gap-1 cursor-pointer flex-1 min-w-0 truncate"
             >
               <Users size={12} className="text-[#0D5C3A] dark:text-[#34D399] shrink-0" />
               <span className="truncate tabular-nums">
-                {selectedStudentIds.length}/{activeClassEnrollments.length} • {activeStudent?.name?.split(' ')[0] || 'All'}
+                <span className="hidden min-[380px]:inline">{selectedInViewCount}/{activeClassEnrollments.length} • </span>
+                <span className="min-[380px]:hidden">{selectedInViewCount}</span>
+                <span className="hidden min-[380px]:inline">{activeStudent?.name?.split(' ')[0] || 'All'}</span>
               </span>
               <ChevronDown size={11} className="text-stone-400 shrink-0" />
             </button>
@@ -1315,7 +1328,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
             ) as HTMLButtonElement | null
             studioTrigger?.click()
           }}
-          className="w-8 h-8 rounded-full bg-[#F0F4F9] dark:bg-[#1E2623] flex items-center justify-center text-stone-700 dark:text-stone-200 cursor-pointer shrink-0"
+          className="hidden min-[420px]:inline-flex w-8 h-8 rounded-full bg-[#F0F4F9] dark:bg-[#1E2623] items-center justify-center text-stone-700 dark:text-stone-200 cursor-pointer shrink-0"
           title="Studio Format"
         >
           <Palette size={14} className="text-[#0D5C3A] dark:text-[#34D399]" />
@@ -1327,17 +1340,17 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
           onClick={handlePrint}
           disabled={rawReports.length === 0 || isGenerating}
           whileTap={{ scale: 0.96 }}
-          className="h-8 px-2.5 rounded-full btn-jiddah-cta text-[11px] font-bold inline-flex items-center gap-1 shrink-0 disabled:opacity-40"
+          className="h-7.5 px-2 rounded-full btn-jiddah-cta text-[11px] font-bold inline-flex items-center gap-1 shrink-0 disabled:opacity-40"
           title="Print Reports"
         >
           <Printer size={12} />
-          <span>{selectedStudentIds.length}</span>
+          <span>{selectedInViewCount}</span>
         </motion.button>
 
         {/* 7. Mobile ⋮ More Actions Menu */}
         <MoreActionsMenu
           align="end"
-          triggerClassName="w-8 h-8 rounded-full bg-[#F0F4F9] dark:bg-[#1E2623] border border-black/[0.04] dark:border-white/[0.06] text-stone-700 dark:text-stone-200"
+          triggerClassName="w-7 h-7 rounded-full bg-[#F0F4F9] dark:bg-[#1E2623] border border-black/[0.04] dark:border-white/[0.06] text-stone-700 dark:text-stone-200 shrink-0"
           items={[
             {
               label: 'Studio Format / Customize',
@@ -1416,7 +1429,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
           }
           printScope={printScope}
           visualSelectMode={visualSelectMode}
-          selectedIds={selectedStudentIds}
+          selectedIds={selectedInViewIds}
           onToggleSelectCard={(id) => handleToggleSelect(id, false)}
           onSelectAllCards={handleSelectAll}
           onClearCards={handleClearAll}
@@ -1474,33 +1487,27 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
                   const topReport = report
                   const nextReport = reportsToPrint[i + 1]
                   const nextResolved = nextReport ? resolveReport(nextReport) : null
+                  const advance = nextReport && nextResolved?.type === 'TheologyMOTReport' ? 2 : 1
+                  const isLastSheet = i + advance >= reportsToPrint.length
 
-                  if (nextReport && nextResolved?.type === 'TheologyMOTReport') {
-                    nodes.push(
-                      <Theology2UpPrintSheet
-                        key={`theology-sheet-${topReport.id}-${nextReport.id}`}
-                        topReport={topReport}
-                        bottomReport={nextReport}
-                        studioFormatting={studioFormatting}
-                      />
-                    )
-                    i += 2
-                  } else {
-                    nodes.push(
-                      <Theology2UpPrintSheet
-                        key={`theology-sheet-${topReport.id}`}
-                        topReport={topReport}
-                        studioFormatting={studioFormatting}
-                      />
-                    )
-                    i += 1
-                  }
+                  nodes.push(
+                    <Theology2UpPrintSheet
+                      key={advance === 2 ? `theology-sheet-${topReport.id}-${nextReport.id}` : `theology-sheet-${topReport.id}`}
+                      topReport={topReport}
+                      bottomReport={advance === 2 ? nextReport : undefined}
+                      studioFormatting={studioFormatting}
+                      isLastPrinted={isLastSheet}
+                    />
+                  )
+                  i += advance
                 } else {
                   const dims = STABILIZED_REPORT_ORIENTATIONS[resolved.type]
                   const isCardLandscape = dims?.pageOrientation === 'landscape'
+                  const isLastSheet = i + 1 >= reportsToPrint.length
                   nodes.push(
                     <div
                       key={report.id}
+                      data-last-printed={isLastSheet ? 'true' : 'false'}
                       className={`report-card-sheet ${isCardLandscape ? 'report-sheet-landscape' : 'report-sheet-portrait'}`}
                       data-report-orientation={isCardLandscape ? 'landscape' : 'portrait'}
                     >

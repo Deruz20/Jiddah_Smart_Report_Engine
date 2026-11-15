@@ -208,24 +208,24 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
           min-height: 36mm;
         }
 
-        .p7-eot-report .header-left { flex: 0 0 35%; }
+        .p7-eot-report .header-left { flex: 0 0 36%; }
         .p7-eot-report .header-left h1 {
           color: #7F1D1D;
-          font-size: 16px;
+          font-size: 22px;
           font-weight: 900;
-          margin: 0 0 2px 0;
+          margin: 0 0 3px 0;
           line-height: 1.15;
-          letter-spacing: -0.2px;
+          letter-spacing: -0.3px;
         }
         .p7-eot-report .header-left p {
           color: #4b5563;
-          font-size: 9.5px;
+          font-size: 11.5px;
           font-weight: 600;
           margin: 1px 0;
         }
 
         .p7-eot-report .header-center {
-          flex: 0 0 32%;
+          flex: 0 0 28%;
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -238,7 +238,7 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
           margin-bottom: 2px;
         }
         .p7-eot-report .school-logo {
-          height: 52px;
+          height: 64px;
           margin-bottom: 2px;
         }
         .p7-eot-report .report-badge {
@@ -254,12 +254,14 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
         }
 
         .p7-eot-report .header-right {
-          flex: 0 0 33%;
+          flex: 0 0 36%;
           text-align: right;
+          direction: rtl;
         }
         .p7-eot-report .header-right h2 {
           font-family: 'Amiri', serif;
-          font-size: 13.5px;
+          font-size: 24px;
+          font-weight: 900;
           color: #7F1D1D;
           line-height: 1.25;
           margin: 0;
@@ -507,13 +509,11 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
             width: 210mm !important;
             min-width: 210mm !important;
             max-width: 210mm !important;
-            height: 297mm !important;
+            height: 296mm !important;
             max-height: 296mm !important;
             padding: 3mm 4mm !important;
             box-sizing: border-box !important;
             overflow: hidden !important;
-            page-break-after: always !important;
-            break-after: page !important;
             break-inside: avoid !important;
             page-break-inside: avoid !important;
           }
@@ -546,8 +546,8 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
                     <div className="bismillah">بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْم</div>
                     <div
                       style={{
-                        width: '52px',
-                        height: '52px',
+                        width: '64px',
+                        height: '64px',
                         overflow: 'visible',
                         display: 'flex',
                         alignItems: 'center',
@@ -559,7 +559,7 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
                         src={branding.logoUrl || '/logo-512h.png'}
                         alt="School Badge"
                         className="school-logo"
-                        style={{ width: '100%', height: '100%', objectFit: 'contain', maxHeight: '52px' }}
+                        style={{ width: '100%', height: '100%', objectFit: 'contain', maxHeight: '64px' }}
                         data-testid="report-school-logo"
                         onError={(e) => {
                           if (!e.currentTarget.src.endsWith('/logo-512h.png')) {
@@ -585,58 +585,36 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
                 {/* ── PUPIL INFO ── */}
                 <div className="info-grid">
                   <div className="info-row">
-                    <div className="info-item" style={{ flex: 2.5, minWidth: 0, whiteSpace: 'nowrap' }}>
+                    <div className="info-item" style={{ flex: 3, minWidth: 0, whiteSpace: 'nowrap' }}>
                       <span className="info-label" style={{ whiteSpace: 'nowrap' }}>PUPIL'S NAME:</span>
-                      <span className="info-value pupil-name line line.pupil-name" style={{ fontSize: '16.5px', fontWeight: 900, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <span className="info-value pupil-name line line.pupil-name" style={{ fontSize: '17px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.025em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {studentName}
                       </span>
                     </div>
-                    {arabicName && (
-                      <div className="info-item" style={{ flex: 1.5, direction: 'rtl', minWidth: 0, whiteSpace: 'nowrap' }}>
-                        <span className="info-label" style={{ fontFamily: 'Amiri, serif', whiteSpace: 'nowrap' }}>اسم التلميذ:</span>
-                        <span className="info-value" style={{ fontFamily: 'Amiri, serif', fontSize: '16.5px', fontWeight: 900, whiteSpace: 'nowrap' }}>
-                          {arabicName}
-                        </span>
-                      </div>
-                    )}
-                    <div className="info-item" style={{ flex: 0.8, minWidth: 0, whiteSpace: 'nowrap' }}>
+                    <div className="info-item" style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap' }}>
                       <span className="info-label" style={{ whiteSpace: 'nowrap' }}>CLASS:</span>
-                      <span className="info-value" style={{ fontSize: '15px', fontWeight: 800 }}>{className || 'P.7'}</span>
-                    </div>
-                    <div className="info-item" style={{ flex: 0.8, minWidth: 0, whiteSpace: 'nowrap' }}>
-                      <span className="info-label" style={{ whiteSpace: 'nowrap' }}>TERM:</span>
-                      <span className="info-value" style={{ fontSize: '15px', fontWeight: 800 }}>{reportData?.term?.term_number || '3'}</span>
-                    </div>
-                    <div className="info-item" style={{ flex: 0.8, minWidth: 0, whiteSpace: 'nowrap' }}>
-                      <span className="info-label" style={{ whiteSpace: 'nowrap' }}>YEAR:</span>
-                      <span className="info-value" style={{ fontSize: '15px', fontWeight: 800 }}>{reportData?.term?.academic_year || 2026}</span>
+                      <span className="info-value" style={{ fontSize: '15.5px', fontWeight: 800, whiteSpace: 'nowrap' }}>{className || 'P.7'}</span>
                     </div>
                   </div>
 
                   <div className="info-row">
-                    <div className="info-item" style={{ flex: 1.5, minWidth: 0, whiteSpace: 'nowrap' }}>
-                      <span className="info-label" style={{ whiteSpace: 'nowrap' }}>LIN / ADM:</span>
-                      <span className="info-value" style={{ fontSize: '14px', fontWeight: 700, whiteSpace: 'nowrap' }}>{reportData?.student?.admission_number || reportData?.student?.lin || '--'}</span>
+                    <div className="info-item" style={{ flex: 0.9, minWidth: 0, whiteSpace: 'nowrap' }}>
+                      <span className="info-label" style={{ whiteSpace: 'nowrap' }}>TERM:</span>
+                      <span className="info-value" style={{ fontSize: '15px', fontWeight: 800, whiteSpace: 'nowrap' }}>{reportData?.term?.term_number || '3'}</span>
                     </div>
-                    <div className="info-item" style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap' }}>
-                      <span className="info-label" style={{ whiteSpace: 'nowrap' }}>GENDER:</span>
-                      <span className="info-value" style={{ fontSize: '14px', fontWeight: 700, whiteSpace: 'nowrap' }}>{reportData?.student?.gender || 'N/A'}</span>
-                    </div>
-                    <div className="info-item" style={{ flex: 1.2, minWidth: 0, whiteSpace: 'nowrap' }}>
-                      <span className="info-label" style={{ whiteSpace: 'nowrap' }}>TOTAL MARKS:</span>
-                      <span className="info-value" style={{ fontSize: '15px', fontWeight: 800, whiteSpace: 'nowrap' }}>
-                        {reportData?.circular?.eot_total ?? reportData?.circular?.total_marks ?? '--'}
-                      </span>
+                    <div className="info-item" style={{ flex: 0.9, minWidth: 0, whiteSpace: 'nowrap' }}>
+                      <span className="info-label" style={{ whiteSpace: 'nowrap' }}>YEAR:</span>
+                      <span className="info-value" style={{ fontSize: '15px', fontWeight: 800, whiteSpace: 'nowrap' }}>{reportData?.term?.academic_year || 2026}</span>
                     </div>
                     <div className="info-item" style={{ flex: 1.1, minWidth: 0, whiteSpace: 'nowrap' }}>
                       <span className="info-label" style={{ whiteSpace: 'nowrap' }}>AGGREGATE:</span>
-                      <span className="info-value" style={{ fontSize: '15px', fontWeight: 800, color: '#0D5C3A', whiteSpace: 'nowrap' }}>
+                      <span className="info-value" style={{ fontSize: '15px', fontWeight: 900, color: '#0F172A', whiteSpace: 'nowrap' }}>
                         {reportData?.circular?.aggregate ?? '--'}
                       </span>
                     </div>
                     <div className="info-item" style={{ flex: 1.1, minWidth: 0, whiteSpace: 'nowrap' }}>
                       <span className="info-label" style={{ whiteSpace: 'nowrap' }}>DIVISION:</span>
-                      <span className="info-value" style={{ fontSize: '15px', fontWeight: 900, color: '#0D5C3A', whiteSpace: 'nowrap' }}>
+                      <span className="info-value" style={{ fontSize: '15.5px', fontWeight: 900, color: '#0D5C3A', whiteSpace: 'nowrap' }}>
                         {reportData?.circular?.division
                           ? reportData.circular.division.startsWith('Div')
                             ? reportData.circular.division

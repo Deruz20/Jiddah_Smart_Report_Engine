@@ -189,24 +189,24 @@ export default function PrimaryEOTReport({ reportData, studioFormatting }: any) 
           flex-shrink: 0;
         }
         
-        .header-left { flex: 0 0 35%; }
+        .header-left { flex: 0 0 36%; }
         .header-left h1 {
-          color: #8b0000;
-          font-size: 17px;
+          color: #7F1D1D;
+          font-size: 22px;
           font-weight: 900;
-          margin: 0 0 4px 0;
+          margin: 0 0 3px 0;
           line-height: 1.15;
-          letter-spacing: -0.2px;
+          letter-spacing: -0.3px;
         }
         .header-left p {
           color: #4b5563;
-          font-size: 10px;
+          font-size: 11.5px;
           font-weight: 600;
-          margin: 2px 0;
+          margin: 1.5px 0;
         }
         
         .header-center {
-          flex: 0 0 30%;
+          flex: 0 0 28%;
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -219,7 +219,7 @@ export default function PrimaryEOTReport({ reportData, studioFormatting }: any) 
           margin-bottom: 2px;
         }
         .school-logo {
-          height: 44px; 
+          height: 52px; 
           margin-bottom: 4px;
         }
         .report-badge {
@@ -234,15 +234,15 @@ export default function PrimaryEOTReport({ reportData, studioFormatting }: any) 
         }
 
         .header-right {
-          flex: 0 0 35%;
+          flex: 0 0 36%;
           text-align: right;
           direction: rtl;
         }
         .header-right h2 {
-          color: #8b0000;
+          color: #7F1D1D;
           font-family: 'Amiri', serif;
-          font-size: 22px;
-          font-weight: 700;
+          font-size: 25px;
+          font-weight: 900;
           margin: 0;
           line-height: 1.25;
         }
@@ -512,17 +512,16 @@ export default function PrimaryEOTReport({ reportData, studioFormatting }: any) 
         @media print {
           .landscape-page {
             page: landscape-sheet !important;
-            width: 297mm !important;
-            min-width: 297mm !important;
-            max-width: 297mm !important;
-            height: 210mm !important;
-            max-height: 210mm !important;
+            width: 296mm !important;
+            min-width: 296mm !important;
+            max-width: 296mm !important;
+            height: 209mm !important;
+            max-height: 209mm !important;
             padding: 4mm 6mm !important;
             box-sizing: border-box !important;
             overflow: hidden !important;
-            page-break-after: always !important;
-            break-after: page !important;
             break-inside: avoid !important;
+            page-break-inside: avoid !important;
           }
           .landscape-page .tables-wrapper,
           .landscape-page .tables-row {

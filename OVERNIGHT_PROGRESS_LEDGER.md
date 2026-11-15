@@ -1013,3 +1013,48 @@ Exit code: 0
      - Full automated suite: 89/89 tests passing across 23 suites in `src/__tests__/overhaul-workstreams.test.mjs`, 63/63 tests passing in related report unit tests (`report-print.test.mjs`, `signature-assets.test.mjs`, `report-logo.test.mjs`, `grading-and-calculations.test.mjs`). Total 152/152 unit assertions green.
      - TypeScript compiler (`npm run typecheck`): 0 errors (`tsc --noEmit`).
      - Next.js production build (`npm run build`): 68/68 routes compiled cleanly in Next.js 16.4.6 with webpack.
+
+
+---
+
+### Milestone 28: Adaptive Signature Extraction, Portrait Single-Sheet Lock, Nursery Overlap Fix & Fluid Mobile/Roster Count (`feat/overnight-system-renovation`)
+- **Files Created / Modified:**
+  - `src/app/api/signatures/proxy/route.ts` (New)
+  - `src/lib/client-cache.ts`
+  - `src/lib/signature-ink-processor.ts`
+  - `src/components/reports/CleanSignatureImage.tsx`
+  - `src/components/reports/P7EOTReport.tsx`
+  - `src/components/reports/PrimaryEOTReport.tsx`
+  - `src/components/reports/PrimaryMOTReport.tsx`
+  - `src/components/reports/PrimaryBOTReport.tsx`
+  - `src/styles/reports/print-system.css`
+  - `src/components/reports/TheologyMOTReport.tsx`
+  - `src/components/figma-ui/DocumentCanvas.tsx`
+  - `src/components/reports/NurseryEOTReport.tsx`
+  - `src/components/reports/NurseryMOTReport.tsx`
+  - `src/components/reports/NurseryTheologyEOTReport.tsx`
+  - `src/components/ReportGeneratorClient.tsx`
+  - `src/components/figma-ui/StudentRosterSidebar.tsx`
+  - `src/__tests__/overhaul-workstreams.test.mjs`
+  - `OVERNIGHT_PROGRESS_LEDGER.md`
+- **Scope & Workstreams Completed:**
+  1. **WS1 — Clean & Transparent Class Teacher Signature:**
+     - Replaced failing coarse background threshold in `signature-ink-processor.ts` with an O(1) 2D integral image `17×17` (`windowRadius = 8`) adaptive local-contrast extractor (`localContrast >= 9` and `globalContrast >= 10`), 4px outer photo frame trim, Royal Ballpoint Blue (`#0F3491`) normalization with boosted alpha `(localContrast - 8) * 16`, bumped `SIG_CACHE_VERSION = 'v5-adaptive-local'`, and removed raw-grey-image fallback (`EMPTY_TRANSPARENT_PNG_DATA_URL`).
+     - Added authenticated `GET /api/signatures/proxy` (`verifyDataAccess` + SSRF allowlist for Supabase storage `/storage/v1/object/`, `/signatures/`, and localhost) so un-CORS'd Supabase URLs extract reliably without canvas tainting.
+     - Updated `CleanSignatureImage.tsx` to initialize synchronously from `getCachedSignatureUrl` without raw grey flash.
+  2. **WS2 — `P7EOTReport.tsx` Cleanup, Header Enlargement & Single-Sheet Portrait Print Lock:**
+     - Removed `LIN / ADM` and `GENDER` fields from `P7EOTReport.tsx` and organized Pupil Identity into 2 balanced rows (`PUPIL'S NAME` + `CLASS`; `TERM` + `YEAR` + `AGGREGATE` + `DIVISION`).
+     - Enlarged English (`21px–22px` bold Maroon) and Arabic (`24px–25px` bold Maroon) school header titles across `P7EOTReport.tsx`, `PrimaryEOTReport.tsx`, `PrimaryMOTReport.tsx`, and `PrimaryBOTReport.tsx`.
+     - Locked single-sheet portrait & landscape bounds in `print-system.css`, `P7EOTReport.tsx`, `PrimaryEOTReport.tsx`, `TheologyMOTReport.tsx`, `DocumentCanvas.tsx`, and `ReportGeneratorClient.tsx` (`296mm` portrait max-height, `296mm × 209mm` landscape bounds, and `data-last-printed="true"` page-break reset) to eliminate trailing blank pages.
+  3. **WS3 — Restore Nursery Footer Clarity & Dedicated `SIG:` Dotted Lines:**
+     - Removed flex `min-height: 0` compression in `NurseryEOTReport.tsx` & `NurseryMOTReport.tsx` and compacted table/body padding so `OFFICIAL GRADING SCALE` never overlaps the footer.
+     - Separated Class Teacher and Head Teacher comment lines from dedicated right-aligned `SIG:` + `#334155` dotted signature boxes (`borderBottom: '1.5px dotted #334155'`).
+     - Removed colliding `border-top` on `.sign-line` in `NurseryTheologyEOTReport.tsx`.
+  4. **WS4 — Fluid Mobile Topbar (`280px–320px`) & In-View Roster Count:**
+     - Added `selectedInViewIds` and `selectedInViewCount` in `ReportGeneratorClient.tsx` and `inViewSelectedCount` in `StudentRosterSidebar.tsx` so counters reflect active cohort selection cleanly while preserving cross-class selection memory.
+     - Hardened mobile topbar layout in `ReportGeneratorClient.tsx` (`overflow-hidden`, `hidden min-[420px]:inline-flex` palette trigger, `hidden min-[380px]:inline` ratio) so `MoreActionsMenu` (`⋮`) stays visible down to `280px`.
+  5. **WS5 — Verification Gate:**
+     - `npm run typecheck`: 0 errors (`tsc --noEmit`).
+     - `overhaul-workstreams.test.mjs`: 93/93 tests passing across 24 suites (including Workstream 28).
+     - `report-print.test.mjs`, `signature-assets.test.mjs`, `report-logo.test.mjs`, `grading-and-calculations.test.mjs`: 63/63 tests passing across 7 suites (total 156/156 assertions passing).
+     - `npm run build`: 69/69 static pages and all dynamic routes compiled cleanly in Next.js 16.4.6 (`--webpack`).

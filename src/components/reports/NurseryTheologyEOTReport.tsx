@@ -360,8 +360,8 @@ export default function NurseryTheologyEOTReport({ reportData, studioFormatting 
 
 .nursery-theology-eot-report .sign-line {
     width: 180px;
-    border-top: 1.5px dashed var(--nursery-text);
-    margin-top: 35px;
+    border-top: none;
+    margin-top: 8px;
 }
 
 .nursery-theology-eot-report .footer-stamp {

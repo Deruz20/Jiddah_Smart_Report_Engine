@@ -924,3 +924,50 @@ Exit code: 0
      - Full automated suite: 78/78 tests passing across 21 suites in `src/__tests__/overhaul-workstreams.test.mjs`.
      - TypeScript compiler (`npm run typecheck`): 0 errors (`tsc --noEmit`).
      - Next.js production build (`npm run build`): 68/68 routes compiled cleanly in Next.js 16.4.6.
+
+---
+
+### Milestone 26: Progressive Card Mounting, Transparent Stamp Crest, Seated Signatures, Redesigned P7 & Topbar Responsiveness (`feat/overnight-system-renovation`)
+- **Files Modified:**
+  - `src/components/ReportGeneratorClient.tsx`
+  - `src/components/figma-ui/DocumentCanvas.tsx`
+  - `src/components/ui/jiddah-loader.tsx`
+  - `src/components/reports/StampGenerator.tsx`
+  - `src/components/reports/CleanSignatureImage.tsx`
+  - `src/lib/signature-ink-processor.ts`
+  - `src/components/reports/PrimaryEOTReport.tsx`
+  - `src/components/reports/PrimaryMOTReport.tsx`
+  - `src/components/reports/PrimaryBOTReport.tsx`
+  - `src/components/reports/NurseryEOTReport.tsx`
+  - `src/components/reports/NurseryMOTReport.tsx`
+  - `src/components/reports/NurseryTheologyEOTReport.tsx`
+  - `src/components/reports/TheologyMOTReport.tsx`
+  - `src/components/reports/P7EOTReport.tsx`
+  - `src/components/figma-ui/EmptyState.tsx`
+  - `src/components/figma-ui/TopToolbar.tsx`
+  - `src/components/figma-ui/ui/tooltip.tsx`
+  - `src/__tests__/overhaul-workstreams.test.mjs`
+  - `src/__tests__/report-print.test.mjs`
+  - `OVERNIGHT_PROGRESS_LEDGER.md`
+- **Scope & Workstreams Completed:**
+  1. **Workstream 1: Eliminate Loading Freeze/Lag & Duplicate Toast:**
+     - Removed duplicate `toast.loading('Generating batch reports...')` and `toast.dismiss()` in `ReportGeneratorClient.tsx`.
+     - Implemented progressive frame-sliced card mounting in `DocumentCanvas.tsx` (`visibleCount` starting at `2` on Frame 1, incrementing by `4` per frame via `requestAnimationFrame` with subtle `180ms ease-out` opacity fade-in), preventing 38 heavy DOM trees and 76 canvas operations from freezing the main thread.
+     - Replaced layout-triggering `left: -40%` in `jiddah-loader.tsx` with GPU-composited `transform: translateX(-100%)` to `translateX(250%)` and `willChange: 'transform'`.
+  2. **Workstream 2: Transparent Stamp Crest + Royal Blue Ink Signatures Seated on Dotted Lines:**
+     - Defined SVG Luminance-to-Alpha Inversion Filter `<filter id="jiddah-stamp-crest-ink">` in `StampGenerator.tsx` (`values="0 0 0 0 0.106  0 0 0 0 0.231  0 0 0 0 0.545  -1.6 -1.6 -1.6 0 2.2"`), stripping the white background bounding box from `/logo-512h.png` to 100% transparency.
+     - Added inline SVG Luminance-to-Blue-Ink Alpha Filter `<filter id="jiddah-blue-signature-ink">` in `CleanSignatureImage.tsx` (`values="0 0 0 0 0.059  0 0 0 0 0.204  0 0 0 0 0.569  -2.8 -2.8 -2.8 0 3.9"`) and tuned ballpoint pen blue ink in `signature-ink-processor.ts` to authentic Royal Blue (`#0F3491` / `R=15, G=52, B=145`).
+     - Seated signatures directly ON the dotted line across all report templates (`PrimaryEOTReport`, `PrimaryMOTReport`, `PrimaryBOTReport`, `NurseryEOTReport`, `NurseryMOTReport`, `NurseryTheologyEOTReport`, `TheologyMOTReport`, `P7EOTReport`) with `position: 'relative', display: 'flex', alignItems: 'flex-end', height: '36px', borderBottom: '1.5px dotted #334155'` and `marginBottom: '-6px'` on `<CleanSignatureImage />`.
+  3. **Workstream 3: Redesign Portrait Template `P7EOTReport.tsx` & Bold Arabic Typography:**
+     - Completely redesigned `P7EOTReport.tsx` (Secular A4 Portrait for Non-Muslims & P.7) to fill the 210mm × 297mm sheet proportionally with ZERO middle gap: Jiddah header (~38mm) with Maroon `#7F1D1D` title, centered 56px crest, and Bismillah/title badge; warm-ivory bordered Pupil card (~26mm, `border: 1.5px dashed #C59B27`, `bg: #FAF6EE`) with Pupil Name (17px font-black), Class (15px font-extrabold), Term (15px), Year (15px), and Row 2 LIN/ADM (14px), Total Marks (15px), Aggregate (15px), Division (15px `#0D5C3A`); Comparative Performance Table (~108mm) with Gold `#C59B27` banner, Forest Green header, 13.5px font-weight 800 subjects and marks, Total + Average rows; full D1–F9 table + UNEB Division Classification Strip (~28mm); General Conduct, Class Teacher Comment + Signature on dotted line, Head Teacher Comment + Signature on dotted line, inside `<OfficialReportStamp />` (~56mm); Term dates + Maroon validity banner sitting flush at bottom (~20mm).
+     - Upgraded Arabic pupil names across `PrimaryEOTReport.tsx`, `NurseryTheologyEOTReport.tsx`, and `TheologyMOTReport.tsx` to `21px font-black text-[#0F172A]` and Arabic cohort values (`الفصل`, `الفترة`, `عام`) to `16.5px font-extrabold text-[#0F172A]`.
+  4. **Workstream 4: Zoom Normalization, "All Classes", Auto-Map Class Aliases, Delete "Open Filters & Roster", Topbar Responsiveness:**
+     - Defaulted zoom in `ReportGeneratorClient.tsx` to `1.0` (`100%` = Fit to Window), where `scale = fitScale * zoom`.
+     - Prepended `{ value: 'all', label: 'All Classes', count: figmaEnrollments.length }` in desktop and mobile class dropdowns and sorted classes in natural school order (`Baby`, `Middle`, `Top`, `P.1`–`P.7`).
+     - Implemented bidirectional `SECULAR_TO_THEOLOGY_MAP` and `THEOLOGY_TO_SECULAR_MAP` class mapping on curriculum switch so switching curriculum preserves active cohort and resets `selectedStudentIds` without dropping to `0 Selected`.
+     - Deleted redundant `"Open Filters & Roster"` button from `EmptyState.tsx`.
+     - In `TopToolbar.tsx`: set `min-w-0 shrink max-w-[145px] xl:max-w-[230px]` on Student Roster pill, hid `• [Student Name]` below `xl`, hid `"Customize"` text label below `xl`, and set tooltip `delayDuration={50}`.
+  5. **Workstream 5: Verification Gate:**
+     - Full automated suite: 84/84 tests passing across 22 suites in `src/__tests__/overhaul-workstreams.test.mjs` and 5/5 in `report-print.test.mjs`.
+     - TypeScript compiler (`npm run typecheck`): 0 errors (`tsc --noEmit`).
+     - Next.js production build (`npm run build`): 68/68 routes compiled cleanly in Next.js 16.4.6.

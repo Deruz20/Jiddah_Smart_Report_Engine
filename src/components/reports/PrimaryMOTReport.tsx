@@ -410,9 +410,9 @@ export default function PrimaryMOTReport({ reportData, studioFormatting }: any) 
             <span className="mot-comment-label">Class Teacher&apos;s Comment:</span>
             <div className="mot-comment-value">{teacherComment}</div>
             <span className="mot-sig-label">Signature:</span>
-            <div className="mot-sig-line">
+            <div className="mot-sig-line" style={{ position: 'relative', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', height: '36px', minWidth: '120px', borderBottom: '1.5px dotted #334155' }}>
               {includeSignatures && classTeacherSig && (
-                <CleanSignatureImage src={classTeacherSig} alt="Class Teacher Signature" style={{ maxHeight: '34px' }} studioFormatting={studioFormatting} />
+                <CleanSignatureImage src={classTeacherSig} alt="Class Teacher Signature" style={{ height: '36px', width: '112px', objectFit: 'contain', marginBottom: '-6px' }} studioFormatting={studioFormatting} />
               )}
             </div>
           </div>
@@ -421,9 +421,9 @@ export default function PrimaryMOTReport({ reportData, studioFormatting }: any) 
             <span className="mot-comment-label">Head Teacher&apos;s Comment:</span>
             <div className="mot-comment-value">{headComment}</div>
             <span className="mot-sig-label">Signature:</span>
-            <div className="mot-sig-line">
+            <div className="mot-sig-line" style={{ position: 'relative', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', height: '36px', minWidth: '120px', borderBottom: '1.5px dotted #334155' }}>
               {includeSignatures && headTeacherSig && (
-                <CleanSignatureImage src={headTeacherSig} alt="Head Teacher Signature" style={{ maxHeight: '34px' }} studioFormatting={studioFormatting} />
+                <CleanSignatureImage src={headTeacherSig} alt="Head Teacher Signature" style={{ height: '36px', width: '112px', objectFit: 'contain', marginBottom: '-6px' }} studioFormatting={studioFormatting} />
               )}
             </div>
           </div>

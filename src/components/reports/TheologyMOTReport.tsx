@@ -411,17 +411,17 @@ export function TheologyCard({
             <div className="tc-info">
               <div className="tc-row">
                 <span className="tc-label">اسم الطالب/ة :</span>
-                <div className="tc-field pupil-name" style={{ fontWeight: 900, fontSize: '17px', color: '#0F172A' }}>{reportData?.student?.arabic_name || reportData?.student?.name || '___'}</div>
+                <div className="tc-field pupil-name" style={{ fontWeight: 900, fontSize: '21px', color: '#0F172A' }}>{reportData?.student?.arabic_name || reportData?.student?.name || '___'}</div>
               </div>
               <div className="tc-row tc-row-sub">
                 <span className="tc-label">الفترة:</span>
-                <div className="tc-field tc-term" style={{ fontWeight: 800, fontSize: '14.5px', color: '#0F172A' }}>{toAr(reportData?.term?.term_number)}</div>
+                <div className="tc-field tc-term" style={{ fontWeight: 900, fontSize: '16.5px', color: '#0F172A' }}>{toAr(reportData?.term?.term_number)}</div>
                 <span className="tc-label">الفصل:</span>
-                <div className="tc-field tc-class" style={{ fontWeight: 800, fontSize: '14.5px', color: '#0F172A' }}>{reportData?.student?.theology_class_arabic ?? '--'}</div>
+                <div className="tc-field tc-class" style={{ fontWeight: 900, fontSize: '16.5px', color: '#0F172A' }}>{reportData?.student?.theology_class_arabic ?? '--'}</div>
                 <span className="tc-label">السنة :</span>
-                <div className="tc-field tc-year" style={{ fontWeight: 800, fontSize: '14.5px', color: '#0F172A' }}>{toAr(toHijri(Number(reportData?.term?.academic_year)))}</div>
+                <div className="tc-field tc-year" style={{ fontWeight: 900, fontSize: '16.5px', color: '#0F172A' }}>{toAr(toHijri(Number(reportData?.term?.academic_year)))}</div>
                 <span className="tc-label">هـ</span>
-                <div className="tc-field tc-year" style={{ fontWeight: 800, fontSize: '14.5px', color: '#0F172A' }}>{toAr(reportData?.term?.academic_year)}</div>
+                <div className="tc-field tc-year" style={{ fontWeight: 900, fontSize: '16.5px', color: '#0F172A' }}>{toAr(reportData?.term?.academic_year)}</div>
                 <span className="tc-label">م</span>
               </div>
             </div>

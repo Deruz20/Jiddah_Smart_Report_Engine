@@ -78,11 +78,11 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
   const renderSubjectRow = (subject: any, idx: number) => (
     <tr key={subject.subject_name || idx} className={idx % 2 === 0 ? 'row-even' : 'row-odd'}>
       <td className="subj-name">{subject.subject_name}</td>
-      <td>{subject.bot_score ?? '--'}</td>
+      <td className="score-cell">{subject.bot_score ?? '--'}</td>
       <td className="grade-cell">{subject.bot_grade_display ?? '--'}</td>
-      <td>{subject.mot_score ?? '--'}</td>
+      <td className="score-cell">{subject.mot_score ?? '--'}</td>
       <td className="grade-cell">{subject.mot_grade_display ?? '--'}</td>
-      <td>{subject.eot_score ?? '--'}</td>
+      <td className="score-cell">{subject.eot_score ?? '--'}</td>
       <td className="grade-cell">{subject.eot_grade_display ?? '--'}</td>
       <td className="remark-cell" style={{ color: remarkColor(subject.remark) }}>
         {subject.remark ||
@@ -159,16 +159,18 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
           flex: 1;
           display: flex;
           flex-direction: column;
+          height: 100%;
         }
 
         .p7-eot-report .inner-border {
           border: 1.5px solid var(--report-primary-color, #0f4d25);
-          padding: 4px 10px;
+          padding: 5px 12px;
           flex: 1;
           position: relative;
           display: flex;
           flex-direction: column;
           background: #ffffff;
+          height: 100%;
         }
 
         /* ── WATERMARK ── */
@@ -189,7 +191,7 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
           display: flex;
           flex-direction: column;
           height: 100%;
-          justify-content: flex-start;
+          justify-content: space-between;
           gap: 4px;
         }
 
@@ -199,6 +201,7 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
           align-items: center;
           justify-content: space-between;
           padding-bottom: 2px;
+          min-height: 38mm;
         }
 
         .p7-eot-report .header-left { flex: 0 0 35%; }
@@ -231,7 +234,7 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
           margin-bottom: 2px;
         }
         .p7-eot-report .school-logo {
-          height: 48px;
+          height: 52px;
           margin-bottom: 2px;
         }
         .p7-eot-report .report-badge {
@@ -261,20 +264,19 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
         .p7-eot-report .header-divider {
           height: 1.5px;
           background: #c2994c;
-          margin: 2px 0 4px 0;
+          margin: 1px 0 3px 0;
           opacity: 0.85;
         }
 
-        /* ── PUPIL INFO ── */
+        /* ── PUPIL INFO CARD (~26mm) ── */
         .p7-eot-report .info-grid {
           display: flex;
           flex-direction: column;
-          gap: 3px;
-          background-color: #faf8f5;
-          border: 1px solid #e2d8b8;
-          padding: 5px 8px;
+          gap: 4px;
+          background-color: #FAF6EE;
+          border: 1.5px dashed #C59B27;
+          padding: 6px 10px;
           border-radius: 6px;
-          font-size: 11px;
         }
 
         .p7-eot-report .info-row {
@@ -291,44 +293,61 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
         .p7-eot-report .info-label {
           font-weight: 800;
           color: #475569;
-          font-size: 10.5px;
+          font-size: 11px;
           white-space: nowrap;
         }
         .p7-eot-report .info-value {
-          font-weight: 900;
+          font-weight: 800;
           color: #0F172A;
           border-bottom: 1px dotted #94a3b8;
           flex: 1;
           padding-left: 4px;
-          font-size: 12px;
+          font-size: 15px;
         }
-        .p7-eot-report .info-value.pupil-name,
         .p7-eot-report .line.pupil-name {
           font-size: 16px;
+          font-weight: 900;
+        }
+        .p7-eot-report .info-value.pupil-name {
+          font-size: 17px;
           font-weight: 900;
           letter-spacing: 0.3px;
           color: #0F172A;
         }
 
-        /* ── TABLES ── */
+        /* ── COMPARATIVE PERFORMANCE TABLE (~108mm) ── */
+        .p7-eot-report .table-container {
+          border: 1.5px solid var(--report-border-color, #c2994c);
+          border-radius: 6px;
+          overflow: hidden;
+          background: white;
+        }
         .p7-eot-report table {
           width: 100%;
           border-collapse: collapse;
-          font-size: 10px;
+          font-size: 11.5px;
           text-align: center;
         }
         .p7-eot-report th,
         .p7-eot-report td {
           border: 1px solid #cbd5e1;
-          padding: 2.5px 3.5px;
-          height: 19px;
+          padding: 4px 4px;
+          height: 22px;
+        }
+        .p7-eot-report .th-banner {
+          background-color: #C59B27 !important;
+          color: #ffffff;
+          font-weight: 900;
+          font-size: 11px;
+          letter-spacing: 0.8px;
+          padding: 3px 0;
         }
         .p7-eot-report th {
           background-color: var(--report-primary-color, #0f4d25);
           color: white;
           font-weight: 800;
           letter-spacing: 0.2px;
-          font-size: 9.5px;
+          font-size: 10px;
         }
 
         .p7-eot-report .row-even { background-color: #ffffff; }
@@ -337,14 +356,20 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
         .p7-eot-report .subj-name {
           text-align: left;
           font-weight: 800;
+          font-size: 13.5px;
           color: var(--report-primary-color, #0f4d25);
           padding-left: 8px !important;
         }
-        .p7-eot-report .grade-cell { font-weight: 800; color: #1e293b; }
-        .p7-eot-report .remark-cell { font-style: italic; font-weight: 800; }
-        .p7-eot-report .total-row td { background-color: #f1f5f9; font-weight: 800; }
+        .p7-eot-report td.score-cell,
+        .p7-eot-report .grade-cell {
+          font-size: 13.5px;
+          font-weight: 800;
+          color: #0F172A;
+        }
+        .p7-eot-report .remark-cell { font-style: italic; font-weight: 800; font-size: 11px; }
+        .p7-eot-report .total-row td { background-color: #f1f5f9; font-weight: 800; font-size: 13px; }
 
-        /* Grading Table */
+        /* Grading Table + UNEB Strip (~28mm) */
         .p7-eot-report .grading-container {
           flex-shrink: 0;
           margin-top: 2px;
@@ -353,22 +378,38 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
         .p7-eot-report .marks-head { background-color: #475569; color: white; font-weight: 800; font-size: 9px; }
         .p7-eot-report .grade-val { background-color: #f1f5f9; font-weight: 700; font-size: 9px; }
 
-        /* ── FOOTER SECTION ── */
+        .p7-eot-report .uneb-strip {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          background: #f8fafc;
+          border: 1px solid #cbd5e1;
+          border-radius: 4px;
+          padding: 2.5px 8px;
+          font-size: 9px;
+          color: #334155;
+          margin-top: 3px;
+        }
+        .p7-eot-report .uneb-label {
+          font-weight: 800;
+          color: var(--report-primary-color, #0f4d25);
+        }
+
+        /* ── FOOTER SECTION (~56mm + ~20mm) ── */
         .p7-eot-report .footer-section {
           display: flex;
           flex-direction: column;
           gap: 4px;
-          margin-top: auto;
         }
 
         .p7-eot-report .comments-box {
           background-color: #faf8f5;
           border: 1px solid #e2d8b8;
           border-radius: 6px;
-          padding: 5px 8px;
+          padding: 4px 8px;
           display: flex;
           flex-direction: column;
-          gap: 4px;
+          gap: 3px;
         }
 
         .p7-eot-report .comment-row {
@@ -381,7 +422,7 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
           font-weight: 800;
           color: #334155;
           white-space: nowrap;
-          font-size: 10px;
+          font-size: 10.5px;
         }
         .p7-eot-report .comment-val {
           border-bottom: 1px dotted #94a3b8;
@@ -394,7 +435,7 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
         }
         .p7-eot-report .sig-box {
           display: flex;
-          align-items: center;
+          align-items: flex-end;
           gap: 4px;
           width: 140px;
           flex-shrink: 0;
@@ -411,7 +452,7 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
         .p7-eot-report .dates-col {
           display: flex;
           flex-direction: column;
-          gap: 4px;
+          gap: 3px;
           flex: 1;
         }
         .p7-eot-report .date-box {
@@ -438,7 +479,7 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
           background-color: #8b0000;
           color: white;
           text-align: center;
-          padding: 4px;
+          padding: 3.5px;
           font-size: 9.5px;
           font-weight: 800;
           letter-spacing: 0.6px;
@@ -545,50 +586,56 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
                   <div className="info-row">
                     <div className="info-item" style={{ flex: 2 }}>
                       <span className="info-label">PUPIL'S NAME:</span>
-                      <span className="info-value pupil-name line line.pupil-name">
+                      <span className="info-value pupil-name line line.pupil-name" style={{ fontSize: '17px', fontWeight: 900 }}>
                         {studentName}
                       </span>
                     </div>
                     {arabicName && (
                       <div className="info-item" style={{ flex: 1.5, direction: 'rtl' }}>
                         <span className="info-label" style={{ fontFamily: 'Amiri, serif' }}>اسم التلميذ:</span>
-                        <span className="info-value" style={{ fontFamily: 'Amiri, serif', fontSize: '15px' }}>
+                        <span className="info-value" style={{ fontFamily: 'Amiri, serif', fontSize: '16.5px', fontWeight: 900 }}>
                           {arabicName}
                         </span>
                       </div>
                     )}
                     <div className="info-item">
                       <span className="info-label">CLASS:</span>
-                      <span className="info-value">{className || 'P.7'}</span>
+                      <span className="info-value" style={{ fontSize: '15px', fontWeight: 800 }}>{className || 'P.7'}</span>
+                    </div>
+                    <div className="info-item">
+                      <span className="info-label">TERM:</span>
+                      <span className="info-value" style={{ fontSize: '15px', fontWeight: 800 }}>{reportData?.term?.term_number || '3'}</span>
                     </div>
                     <div className="info-item">
                       <span className="info-label">YEAR:</span>
-                      <span className="info-value">{reportData?.term?.academic_year || 2026}</span>
+                      <span className="info-value" style={{ fontSize: '15px', fontWeight: 800 }}>{reportData?.term?.academic_year || 2026}</span>
                     </div>
                   </div>
 
                   <div className="info-row">
                     <div className="info-item">
-                      <span className="info-label">TERM:</span>
-                      <span className="info-value">{reportData?.term?.term_number || '3'}</span>
+                      <span className="info-label">LIN / ADM:</span>
+                      <span className="info-value" style={{ fontSize: '14px', fontWeight: 700 }}>{reportData?.student?.admission_number || reportData?.student?.lin || '--'}</span>
                     </div>
                     <div className="info-item">
                       <span className="info-label">GENDER:</span>
-                      <span className="info-value">{reportData?.student?.gender || 'N/A'}</span>
+                      <span className="info-value" style={{ fontSize: '14px', fontWeight: 700 }}>{reportData?.student?.gender || 'N/A'}</span>
                     </div>
                     <div className="info-item">
-                      <span className="info-label">LIN / REG:</span>
-                      <span className="info-value">{reportData?.student?.admission_number || reportData?.student?.lin || '--'}</span>
+                      <span className="info-label">TOTAL MARKS:</span>
+                      <span className="info-value" style={{ fontSize: '15px', fontWeight: 800 }}>
+                        {reportData?.circular?.eot_total ?? reportData?.circular?.total_marks ?? '--'}
+                      </span>
                     </div>
                     <div className="info-item">
-                      <span className="info-label">TOTAL AGG:</span>
-                      <span className="info-value" style={{ color: '#0D5C3A' }}>
+                      <span className="info-label">AGGREGATE:</span>
+                      <span className="info-value" style={{ fontSize: '15px', fontWeight: 800, color: '#0D5C3A' }}>
                         {reportData?.circular?.aggregate ?? '--'}
                       </span>
                     </div>
                     <div className="info-item">
                       <span className="info-label">DIVISION:</span>
-                      <span className="info-value" style={{ color: '#0D5C3A' }}>
+                      <span className="info-value" style={{ fontSize: '15px', fontWeight: 900, color: '#0D5C3A' }}>
                         {reportData?.circular?.division
                           ? reportData.circular.division.startsWith('Div')
                             ? reportData.circular.division
@@ -601,41 +648,58 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
 
                 {/* ── SECULAR MARKS TABLE ── */}
                 <div style={{ flex: '1 1 auto', display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                  <table>
-                    <thead>
-                      <tr>
-                        <th style={{ width: '28%' }} rowSpan={2}>SUBJECT</th>
-                        <th colSpan={2} style={{ width: '15%' }}>BOT</th>
-                        <th colSpan={2} style={{ width: '15%' }}>MOT</th>
-                        <th colSpan={2} style={{ width: '15%' }}>EOT</th>
-                        <th style={{ width: '17%' }} rowSpan={2}>REMARKS</th>
-                        <th style={{ width: '10%' }} rowSpan={2}>INITIALS</th>
-                      </tr>
-                      <tr>
-                        <th>MARK</th>
-                        <th>GRD</th>
-                        <th>MARK</th>
-                        <th>GRD</th>
-                        <th>MARK</th>
-                        <th>GRD</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(reportData?.circular?.subjects || []).map(renderSubjectRow)}
-                      <tr className="total-row">
-                        <td className="subj-name" style={{ color: '#0F172A' }}>TOTAL</td>
-                        <td>{reportData?.circular?.bot_total ?? '--'}</td>
-                        <td className="grade-cell">{reportData?.circular?.bot_aggregate ?? '--'}</td>
-                        <td>{reportData?.circular?.mot_total ?? '--'}</td>
-                        <td className="grade-cell">{reportData?.circular?.mot_aggregate ?? '--'}</td>
-                        <td>{reportData?.circular?.eot_total ?? '--'}</td>
-                        <td className="grade-cell">{reportData?.circular?.aggregate ?? '--'}</td>
-                        <td colSpan={2} />
-                      </tr>
-                    </tbody>
-                  </table>
+                  <div className="table-container">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th colSpan={9} className="th-banner">
+                            COMPARATIVE PERFORMANCE
+                          </th>
+                        </tr>
+                        <tr>
+                          <th style={{ width: '28%' }} rowSpan={2}>SUBJECT</th>
+                          <th colSpan={2} style={{ width: '15%' }}>BOT</th>
+                          <th colSpan={2} style={{ width: '15%' }}>MOT</th>
+                          <th colSpan={2} style={{ width: '15%' }}>EOT</th>
+                          <th style={{ width: '17%' }} rowSpan={2}>REMARKS</th>
+                          <th style={{ width: '10%' }} rowSpan={2}>INITIALS</th>
+                        </tr>
+                        <tr>
+                          <th>MARK</th>
+                          <th>GRD</th>
+                          <th>MARK</th>
+                          <th>GRD</th>
+                          <th>MARK</th>
+                          <th>GRD</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(reportData?.circular?.subjects || []).map(renderSubjectRow)}
+                        <tr className="total-row">
+                          <td className="subj-name" style={{ color: '#0F172A' }}>TOTAL</td>
+                          <td className="score-cell">{reportData?.circular?.bot_total ?? '--'}</td>
+                          <td className="grade-cell">{reportData?.circular?.bot_aggregate ?? '--'}</td>
+                          <td className="score-cell">{reportData?.circular?.mot_total ?? '--'}</td>
+                          <td className="grade-cell">{reportData?.circular?.mot_aggregate ?? '--'}</td>
+                          <td className="score-cell">{reportData?.circular?.eot_total ?? '--'}</td>
+                          <td className="grade-cell">{reportData?.circular?.aggregate ?? '--'}</td>
+                          <td colSpan={2} />
+                        </tr>
+                        <tr className="total-row">
+                          <td className="subj-name" style={{ color: '#0F172A' }}>AVERAGE</td>
+                          <td className="score-cell">{reportData?.circular?.bot_average != null ? `${reportData.circular.bot_average}%` : '--'}</td>
+                          <td>--</td>
+                          <td className="score-cell">{reportData?.circular?.mot_average != null ? `${reportData.circular.mot_average}%` : '--'}</td>
+                          <td>--</td>
+                          <td className="score-cell">{reportData?.circular?.eot_average != null ? `${reportData.circular.eot_average}%` : (reportData?.circular?.average ? `${reportData.circular.average}%` : '--')}</td>
+                          <td>--</td>
+                          <td colSpan={2} />
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
 
-                  {/* Grading Key */}
+                  {/* Grading Key + UNEB Strip */}
                   <div className="grading-container">
                     <table>
                       <tbody>
@@ -653,6 +717,14 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
                         </tr>
                       </tbody>
                     </table>
+                    <div className="uneb-strip">
+                      <span className="uneb-label">UNEB PRIMARY DIVISION CLASSIFICATION:</span>
+                      <span><strong>Div 1:</strong> 4 – 12</span>
+                      <span><strong>Div 2:</strong> 13 – 23</span>
+                      <span><strong>Div 3:</strong> 24 – 29</span>
+                      <span><strong>Div 4:</strong> 30 – 34</span>
+                      <span><strong>Div U:</strong> 35 – 36</span>
+                    </div>
                   </div>
 
                   {/* Optional Theology Candidate Section */}
@@ -715,15 +787,15 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
                       <span className="comment-lbl">Class Teacher's Comment:</span>
                       <span className="comment-val">{teacherComment}</span>
                       <div className="sig-box">
-                        <span className="comment-lbl">Sig:</span>
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '22px' }}>
+                        <span className="comment-lbl" style={{ paddingBottom: '2px' }}>Sig:</span>
+                        <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'flex-end', height: '36px', borderBottom: '1.5px dotted #334155' }}>
                           {includeSignatures &&
                             reportData?.student?.class_name &&
                             reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.class_name) ?? ''] && (
                               <CleanSignatureImage
                                 src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]}
                                 alt="Class Teacher Signature"
-                                style={{ maxHeight: '24px' }}
+                                style={{ maxHeight: '38px', marginBottom: '-6px' }}
                                 studioFormatting={studioFormatting}
                               />
                             )}
@@ -735,13 +807,13 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
                       <span className="comment-lbl">Head Teacher's Comment:</span>
                       <span className="comment-val">{headComment}</span>
                       <div className="sig-box">
-                        <span className="comment-lbl">Sig:</span>
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '22px' }}>
+                        <span className="comment-lbl" style={{ paddingBottom: '2px' }}>Sig:</span>
+                        <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'flex-end', height: '36px', borderBottom: '1.5px dotted #334155' }}>
                           {includeSignatures && reportData?.signatures?.['head-teacher'] && (
                             <CleanSignatureImage
                               src={reportData.signatures['head-teacher']}
                               alt="Head Teacher Signature"
-                              style={{ maxHeight: '24px' }}
+                              style={{ maxHeight: '38px', marginBottom: '-6px' }}
                               studioFormatting={studioFormatting}
                             />
                           )}

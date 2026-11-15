@@ -187,6 +187,15 @@ export function VectorStamp({
               <feFuncA type="linear" slope="-4.0" intercept="3.6" />
             </feComponentTransfer>
           </filter>
+          <filter id="jiddah-stamp-crest-ink" colorInterpolationFilters="sRGB">
+            <feColorMatrix
+              type="matrix"
+              values="0 0 0 0 0.106
+                      0 0 0 0 0.231
+                      0 0 0 0 0.545
+                      -1.6 -1.6 -1.6 0 2.2"
+            />
+          </filter>
           <path id={pathTopId} d="M 18,68 A 50,50 0 1,1 118,68" fill="none" />
           <path id={pathBottomId} d="M 118,68 A 50,50 0 0,1 18,68" fill="none" />
         </defs>
@@ -276,7 +285,7 @@ export function VectorStamp({
                 y="66"
                 width="76"
                 height="74"
-                filter="url(#jiddah-stamp-ink-filter)"
+                filter="url(#jiddah-stamp-crest-ink)"
                 preserveAspectRatio="xMidYMid meet"
               />
             </g>

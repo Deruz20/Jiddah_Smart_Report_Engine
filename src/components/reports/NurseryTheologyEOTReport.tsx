@@ -404,26 +404,26 @@ export default function NurseryTheologyEOTReport({ reportData, studioFormatting 
         <div className="info-grid">
           <div className="info-item" style={{ gridColumn: 'span 2' }}>
             <span>اسم الطفل/ة:</span>
-            <div className="dot-line pupil-name" style={{ fontSize: '17px', fontWeight: 900, color: '#0F172A' }}>{reportData?.student?.arabic_name || "___"}</div>
+            <div className="dot-line pupil-name" style={{ fontSize: '21px', fontWeight: 900, color: '#0F172A' }}>{reportData?.student?.arabic_name || "___"}</div>
           </div>
           <div className="info-item">
             <span>الروضة:</span>
-            <div className="dot-line" style={{ fontSize: '14.5px', fontWeight: 800, color: '#0F172A' }}>{reportData?.student?.theology_class_arabic ?? reportData?.student?.class_name}</div>
+            <div className="dot-line" style={{ fontSize: '16.5px', fontWeight: 900, color: '#0F172A' }}>{reportData?.student?.theology_class_arabic ?? reportData?.student?.class_name}</div>
           </div>
           <div className="info-item">
             <span>الفترة:</span>
-            <div className="dot-line" style={{ fontSize: '14.5px', fontWeight: 800, color: '#0F172A' }}>{toAr(reportData?.term?.term_number)}</div>
+            <div className="dot-line" style={{ fontSize: '16.5px', fontWeight: 900, color: '#0F172A' }}>{toAr(reportData?.term?.term_number)}</div>
           </div>
           <div className="info-item">
             <span>السنة:</span>
-            <div className="dot-line medium" style={{ fontSize: '14px', fontWeight: 800, color: '#0F172A' }}>{toAr(toHijri(Number(reportData?.term?.academic_year)))}</div>
+            <div className="dot-line medium" style={{ fontSize: '16.5px', fontWeight: 900, color: '#0F172A' }}>{toAr(toHijri(Number(reportData?.term?.academic_year)))}</div>
             <span>هـ</span>
-            <div className="dot-line medium" style={{ fontSize: '14px', fontWeight: 800, color: '#0F172A' }}>{toAr(reportData?.term?.academic_year)}</div>
+            <div className="dot-line medium" style={{ fontSize: '16.5px', fontWeight: 900, color: '#0F172A' }}>{toAr(reportData?.term?.academic_year)}</div>
             <span>م</span>
           </div>
           <div className="info-item">
             <span>عدد الأطفال:</span>
-            <div className="dot-line" style={{ fontSize: '14px', fontWeight: 800, color: '#0F172A' }}>{toAr(reportData?.meta?.total_students)}</div>
+            <div className="dot-line" style={{ fontSize: '16.5px', fontWeight: 900, color: '#0F172A' }}>{toAr(reportData?.meta?.total_students)}</div>
           </div>
         </div>
 
@@ -473,9 +473,9 @@ export default function NurseryTheologyEOTReport({ reportData, studioFormatting 
         <div className="signature-row">
           <div className="sign-field">
             <div>تقرير مرب الفصل</div>
-            <div className="sign-line" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', height: '40px' }}>
+            <div className="sign-line" style={{ position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'flex-end', height: '36px', minWidth: '130px', borderBottom: '1.5px dotted #334155' }}>
               {includeSignatures && reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.class_name) ?? ''] && (
-                <CleanSignatureImage src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} alt="Signature" style={{ maxHeight: '30px' }} studioFormatting={studioFormatting} />
+                <CleanSignatureImage src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} alt="Signature" style={{ height: '36px', width: '112px', objectFit: 'contain', marginBottom: '-6px' }} studioFormatting={studioFormatting} />
               )}
             </div>
           </div>
@@ -486,9 +486,9 @@ export default function NurseryTheologyEOTReport({ reportData, studioFormatting 
           </div>
           <div className="sign-field">
             <div>تقرير مدير المدرسة</div>
-            <div className="sign-line" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', height: '40px' }}>
+            <div className="sign-line" style={{ position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'flex-end', height: '36px', minWidth: '130px', borderBottom: '1.5px dotted #334155' }}>
               {includeSignatures && reportData?.signatures?.['head-teacher'] && (
-                <CleanSignatureImage src={reportData.signatures['head-teacher']} alt="Signature" style={{ maxHeight: '30px' }} studioFormatting={studioFormatting} />
+                <CleanSignatureImage src={reportData.signatures['head-teacher']} alt="Signature" style={{ height: '36px', width: '112px', objectFit: 'contain', marginBottom: '-6px' }} studioFormatting={studioFormatting} />
               )}
             </div>
           </div>

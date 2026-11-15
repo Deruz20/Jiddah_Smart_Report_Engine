@@ -301,8 +301,8 @@ export default function PrimaryEOTReport({ reportData, studioFormatting }: any) 
           font-family: 'Amiri', serif;
         }
         .info-box.arabic .info-label { font-size: 13.5px; font-weight: 700; }
-        .info-box.arabic .info-value { font-size: 14.5px; font-weight: 800; border-bottom: 1.5px dotted #94a3b8; }
-        .info-box.arabic .info-value.arabic-pupil-name { font-size: 17px; font-weight: 900; }
+        .info-box.arabic .info-value { font-size: 16.5px; font-weight: 900; color: #0F172A; border-bottom: 1.5px dotted #94a3b8; }
+        .info-box.arabic .info-value.arabic-pupil-name { font-size: 21px; font-weight: 900; color: #0F172A; }
 
         /* ── TABLES SECTION (DYNAMIC EXPANSION) ── */
         .tables-wrapper {
@@ -773,9 +773,9 @@ export default function PrimaryEOTReport({ reportData, studioFormatting }: any) 
                         <span className="c-label">CLASS TEACHER&apos;S COMMENT:</span>
                         <div className="c-value" style={{ textTransform: 'uppercase' }}>{teacherComment}</div>
                         <span className="c-label">SIGNATURE:</span>
-                        <div className="c-sig" style={{ display: 'flex', justifyContent: 'center' }}>
+                        <div className="c-sig" style={{ position: 'relative', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', height: '36px', borderBottom: '1.5px dotted #334155' }}>
                           {includeSignatures && reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.class_name) ?? ''] ? (
-                            <CleanSignatureImage src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} style={{ maxHeight: '28px' }} alt="Class Teacher Signature" studioFormatting={studioFormatting} />
+                            <CleanSignatureImage src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} style={{ height: '36px', width: '112px', objectFit: 'contain', marginBottom: '-6px' }} alt="Class Teacher Signature" studioFormatting={studioFormatting} />
                           ) : null}
                         </div>
                       </div>
@@ -783,9 +783,9 @@ export default function PrimaryEOTReport({ reportData, studioFormatting }: any) 
                         <span className="c-label">HEAD TEACHER&apos;S COMMENT:</span>
                         <div className="c-value" style={{ textTransform: 'uppercase' }}>{headComment}</div>
                         <span className="c-label">SIGNATURE:</span>
-                        <div className="c-sig" style={{ display: 'flex', justifyContent: 'center' }}>
+                        <div className="c-sig" style={{ position: 'relative', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', height: '36px', borderBottom: '1.5px dotted #334155' }}>
                           {includeSignatures && reportData?.signatures?.['head-teacher'] ? (
-                            <CleanSignatureImage src={reportData.signatures['head-teacher']} style={{ maxHeight: '28px' }} alt="Head Teacher Signature" studioFormatting={studioFormatting} />
+                            <CleanSignatureImage src={reportData.signatures['head-teacher']} style={{ height: '36px', width: '112px', objectFit: 'contain', marginBottom: '-6px' }} alt="Head Teacher Signature" studioFormatting={studioFormatting} />
                           ) : null}
                         </div>
                       </div>

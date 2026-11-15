@@ -55,12 +55,13 @@ export function JiddahLoader({
         {/* Outer Orbit: Forest Emerald */}
         <div
           className="absolute inset-0 rounded-full border-[3px] border-transparent border-t-[#0D5C3A] border-r-[#0D5C3A] dark:border-t-[#10B981] dark:border-r-[#10B981] animate-spin"
-          style={{ animationDuration: '1.8s' }}
+          style={{ animationDuration: '1.8s', willChange: 'transform' }}
         />
 
         {/* Inner Counter-Orbit: Warm Gold */}
         <div
           className="absolute inset-2 rounded-full border-[2.5px] border-transparent border-b-[#D97706] border-l-[#D97706] dark:border-b-[#F59E0B] dark:border-l-[#F59E0B] animate-[spin_2.4s_linear_infinite_reverse]"
+          style={{ willChange: 'transform' }}
         />
 
         {/* Subtle Ambient Pulse Halo */}
@@ -88,12 +89,13 @@ export function JiddahLoader({
         </p>
       )}
 
-      {/* Animated Gradient Shimmer Bar */}
+      {/* Animated Gradient Shimmer Bar (Strict GPU-Composited transform) */}
       <div className="w-48 h-1 rounded-full bg-stone-200/80 dark:bg-stone-800/80 overflow-hidden relative mt-2">
         <div
-          className="absolute top-0 bottom-0 w-24 rounded-full bg-gradient-to-r from-[#0D5C3A] via-[#D97706] to-[#0D5C3A] dark:from-[#10B981] dark:via-[#F59E0B] dark:to-[#10B981] animate-[jiddahShimmer_1.6s_ease-in-out_infinite]"
+          className="absolute top-0 bottom-0 left-0 w-24 rounded-full bg-gradient-to-r from-[#0D5C3A] via-[#D97706] to-[#0D5C3A] dark:from-[#10B981] dark:via-[#F59E0B] dark:to-[#10B981]"
           style={{
             animation: 'jiddahShimmer 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite',
+            willChange: 'transform',
           }}
         />
       </div>
@@ -101,13 +103,10 @@ export function JiddahLoader({
       <style jsx>{`
         @keyframes jiddahShimmer {
           0% {
-            left: -40%;
-          }
-          50% {
-            left: 50%;
+            transform: translateX(-100%);
           }
           100% {
-            left: 110%;
+            transform: translateX(250%);
           }
         }
       `}</style>

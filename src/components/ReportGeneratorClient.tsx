@@ -59,6 +59,69 @@ interface ReportGeneratorClientProps {
   terms: TermData[]
 }
 
+export const SECULAR_TO_THEOLOGY_MAP: Record<string, string> = {
+  Baby: 'الروضة السفلى',
+  Middle: 'الروضة الوسطى',
+  Top: 'الروضة العليا',
+  'P.1': 'الصف الأول',
+  'P.2': 'الصف الثاني',
+  'P.3': 'الصف الثالث',
+  'P.4': 'الصف الرابع',
+  'P.5': 'الصف الخامس',
+  'P.6': 'الصف السادس',
+  'P.7': 'الصف السابع',
+  P1: 'الصف الأول',
+  P2: 'الصف الثاني',
+  P3: 'الصف الثالث',
+  P4: 'الصف الرابع',
+  P5: 'الصف الخامس',
+  P6: 'الصف السادس',
+  P7: 'الصف السابع',
+}
+
+export const THEOLOGY_TO_SECULAR_MAP: Record<string, string> = {
+  'الروضة السفلى': 'Baby',
+  'الروضة الوسطى': 'Middle',
+  'الروضة العليا': 'Top',
+  'الصف الأول': 'P.1',
+  'الصف الثاني': 'P.2',
+  'الصف الثالث': 'P.3',
+  'الصف الرابع': 'P.4',
+  'الصف الخامس': 'P.5',
+  'الصف السادس': 'P.6',
+  'الصف السابع': 'P.7',
+}
+
+export const CLASS_ORDER: Record<string, number> = {
+  Baby: 1,
+  Middle: 2,
+  Top: 3,
+  'P.1': 4,
+  P1: 4,
+  'P.2': 5,
+  P2: 5,
+  'P.3': 6,
+  P3: 6,
+  'P.4': 7,
+  P4: 7,
+  'P.5': 8,
+  P5: 8,
+  'P.6': 9,
+  P6: 9,
+  'P.7': 10,
+  P7: 10,
+  'الروضة السفلى': 1,
+  'الروضة الوسطى': 2,
+  'الروضة العليا': 3,
+  'الصف الأول': 4,
+  'الصف الثاني': 5,
+  'الصف الثالث': 6,
+  'الصف الرابع': 7,
+  'الصف الخامس': 8,
+  'الصف السادس': 9,
+  'الصف السابع': 10,
+}
+
 export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
   const router = useRouter()
   const pathname = usePathname()
@@ -87,7 +150,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
 
   const [rawReports, setRawReports] = useState<ReportData[]>([])
   const [activeReportId, setActiveReportId] = useState<string | null>(null)
-  const [zoom, setZoom] = useState(0.75)
+  const [zoom, setZoom] = useState(1.0)
   const [cardsPerRow, setCardsPerRow] = useState<1 | 2 | 3>(1)
   const [printScope, setPrintScope] = useState<'current' | 'all' | string[]>('current')
   const [printRequest, setPrintRequest] = useState<{ title: string } | null>(null)
@@ -206,12 +269,21 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
       classMap.get(clsName)!.enrollmentIds.push(id)
     }
 
-    return { figmaClasses: Array.from(classMap.values()), figmaEnrollments: eList }
+    const sortedClasses = Array.from(classMap.values()).sort((a, b) => {
+      const orderA = CLASS_ORDER[a.name] ?? 99
+      const orderB = CLASS_ORDER[b.name] ?? 99
+      if (orderA !== orderB) return orderA - orderB
+      return a.name.localeCompare(b.name)
+    })
+
+    return { figmaClasses: sortedClasses, figmaEnrollments: eList }
   }, [enrollments, filterState.curriculum])
 
   // Active class enrollments
   const activeClassEnrollments = useMemo(() => {
-    if (filterState.classIds.length === 0) return []
+    if (filterState.classIds.length === 0 || filterState.classIds.includes('all')) {
+      return figmaEnrollments
+    }
     const cls = figmaClasses.find((c) => filterState.classIds.includes(c.id))
     if (!cls) return []
     return figmaEnrollments.filter((e) => cls.enrollmentIds.includes(e.enrollment_id))
@@ -228,14 +300,15 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
     }
   }, [activeClassEnrollments])
 
-  // Smart defaults: Automatically select active class if none chosen
+  // Smart defaults: Automatically select active class if none chosen or alias-mapped
   useEffect(() => {
     if (figmaClasses.length === 0) return
-    if (filterState.classIds.length === 0) {
+    const currentClassId = filterState.classIds[0]
+    if (!currentClassId) {
       let chosenClassId = figmaClasses[0].id
       if (typeof window !== 'undefined') {
         const stored = localStorage.getItem('jiddah_reports_last_class')
-        if (stored && figmaClasses.some((c) => c.id === stored)) {
+        if (stored && (stored === 'all' || figmaClasses.some((c) => c.id === stored))) {
           chosenClassId = stored
         }
       }
@@ -245,8 +318,16 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
         term: (prev.term || activeTermNumber) as any,
         phase: prev.phase || 'EOT',
       }))
+    } else if (currentClassId !== 'all' && !figmaClasses.some((c) => c.id === currentClassId)) {
+      const alias = SECULAR_TO_THEOLOGY_MAP[currentClassId] || THEOLOGY_TO_SECULAR_MAP[currentClassId]
+      const chosenClassId = alias && figmaClasses.some((c) => c.id === alias) ? alias : figmaClasses[0].id
+      setFilterState((prev) => ({
+        ...prev,
+        classIds: [chosenClassId],
+      }))
+      setSelectedStudentIds([])
     }
-  }, [figmaClasses, filterState.classIds.length, activeTermNumber])
+  }, [figmaClasses, filterState.classIds, activeTermNumber])
 
   const executeGeneration = useCallback(async (): Promise<ReportData[]> => {
     const { mode, studentIds, classIds, section, term, phase } = filterState
@@ -255,9 +336,13 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
     if (mode === 'individual') {
       targets = studentIds
     } else {
-      targets = figmaClasses
-        .filter((c) => classIds.includes(c.id))
-        .flatMap((c) => c.enrollmentIds)
+      if (classIds.includes('all')) {
+        targets = figmaClasses.flatMap((c) => c.enrollmentIds)
+      } else {
+        targets = figmaClasses
+          .filter((c) => classIds.includes(c.id))
+          .flatMap((c) => c.enrollmentIds)
+      }
     }
 
     if (targets.length === 0) {
@@ -271,14 +356,11 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
     }
 
     setIsGenerating(true)
-    const loadingId = toast.loading(
-      mode === 'class' ? 'Generating batch reports…' : 'Generating report…'
-    )
 
     try {
       const isPrimaryClass = figmaClasses.some(
         (c) =>
-          classIds.includes(c.id) &&
+          (classIds.includes('all') || classIds.includes(c.id)) &&
           (c.section_type === 'lower_primary' || c.section_type === 'upper_primary')
       )
       const isPrimaryStudent = figmaEnrollments.some(
@@ -310,8 +392,6 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
       })
       const data = await response.json()
 
-      toast.dismiss(loadingId)
-
       if (!response.ok) throw new Error(data.error || 'Failed to generate reports')
 
       const generatedReportsData: ReportData[] = data.reports || []
@@ -339,7 +419,6 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
       )
       return generatedReportsData
     } catch (err: any) {
-      toast.dismiss(loadingId)
       toast.error(err.message || 'Report generation failed')
       setRawReports([])
       return []
@@ -820,12 +899,16 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
                 if (typeof window !== 'undefined') {
                   localStorage.setItem('jiddah_reports_last_class', val)
                 }
+                setSelectedStudentIds([])
                 setFilterState((prev) => ({ ...prev, classIds: [val] }))
               }}
-              options={figmaClasses.map((c) => ({
-                value: c.id,
-                label: `${c.name} (${c.enrollmentIds.length})`,
-              }))}
+              options={[
+                { value: 'all', label: `All Classes (${figmaEnrollments.length})` },
+                ...figmaClasses.map((c) => ({
+                  value: c.id,
+                  label: `${c.name} (${c.enrollmentIds.length})`,
+                })),
+              ]}
               className="shrink-0"
               triggerClassName="h-8.5 px-3 rounded-full text-xs font-semibold shrink-0"
             />
@@ -836,12 +919,12 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
                 <button
                   type="button"
                   data-testid="student-roster-popover-trigger"
-                  className="h-8.5 px-3 rounded-full bg-[#F0F4F9] dark:bg-[#1E2623] hover:bg-[#E4EAE6] dark:hover:bg-[#282A2C] border border-black/[0.04] dark:border-white/[0.06] text-xs font-semibold text-[#111827] dark:text-[#F3F7F5] flex items-center gap-1.5 cursor-pointer transition shrink-0 max-w-[210px] sm:max-w-[280px]"
+                  className="h-8.5 px-3 rounded-full bg-[#F0F4F9] dark:bg-[#1E2623] hover:bg-[#E4EAE6] dark:hover:bg-[#282A2C] border border-black/[0.04] dark:border-white/[0.06] text-xs font-semibold text-[#111827] dark:text-[#F3F7F5] flex items-center gap-1.5 cursor-pointer transition min-w-0 shrink max-w-[145px] xl:max-w-[230px]"
                   title="Click to view & select students"
                 >
                   <Users size={13} className="text-[#0D5C3A] dark:text-[#34D399] shrink-0" />
                   <span className="truncate tabular-nums">
-                    👥 {selectedStudentIds.length} Selected • {activeStudent?.name || 'All Students'}
+                    👥 {selectedStudentIds.length} <span className="hidden xl:inline">Selected • {activeStudent?.name || 'All Students'}</span><span className="xl:hidden">Selected</span>
                   </span>
                   <ChevronDown size={13} className="text-stone-400 shrink-0 ml-0.5" />
                 </button>
@@ -929,10 +1012,24 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
                     type="button"
                     onClick={() =>
                       React.startTransition(() => {
-                        setFilterState((prev) => ({
-                          ...prev,
-                          curriculum: c.id === 'both' ? 'combined' : (c.id as 'secular' | 'theology'),
-                        }))
+                        const newCurriculum = c.id === 'both' ? 'combined' : (c.id as 'secular' | 'theology')
+                        setFilterState((prev) => {
+                          const currentClassId = prev.classIds[0]
+                          let mappedClassId = currentClassId
+                          if (currentClassId && currentClassId !== 'all') {
+                            if (newCurriculum === 'theology') {
+                              mappedClassId = SECULAR_TO_THEOLOGY_MAP[currentClassId] || currentClassId
+                            } else if (newCurriculum === 'secular') {
+                              mappedClassId = THEOLOGY_TO_SECULAR_MAP[currentClassId] || currentClassId
+                            }
+                          }
+                          return {
+                            ...prev,
+                            curriculum: newCurriculum,
+                            classIds: mappedClassId ? [mappedClassId] : prev.classIds,
+                          }
+                        })
+                        setSelectedStudentIds([])
                       })
                     }
                     className={`h-7 px-3 rounded-full text-xs font-semibold transition cursor-pointer ${
@@ -1030,12 +1127,16 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
               if (typeof window !== 'undefined') {
                 localStorage.setItem('jiddah_reports_last_class', val)
               }
+              setSelectedStudentIds([])
               setFilterState((prev) => ({ ...prev, classIds: [val] }))
             }}
-            options={figmaClasses.map((c) => ({
-              value: c.id,
-              label: c.name,
-            }))}
+            options={[
+              { value: 'all', label: `All Classes (${figmaEnrollments.length})` },
+              ...figmaClasses.map((c) => ({
+                value: c.id,
+                label: c.name,
+              })),
+            ]}
             className="w-full"
             triggerClassName="h-8 px-1.5 text-[11px] font-bold rounded-lg bg-emerald-500/10 dark:bg-emerald-400/15 text-emerald-800 dark:text-emerald-200 border-0"
           />
@@ -1130,7 +1231,26 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
                 <button
                   key={c.id}
                   type="button"
-                  onClick={() => setFilterState((prev) => ({ ...prev, curriculum: c.id as any }))}
+                  onClick={() => {
+                    const newCurriculum = c.id as any
+                    setFilterState((prev) => {
+                      const currentClassId = prev.classIds[0]
+                      let mappedClassId = currentClassId
+                      if (currentClassId && currentClassId !== 'all') {
+                        if (newCurriculum === 'theology') {
+                          mappedClassId = SECULAR_TO_THEOLOGY_MAP[currentClassId] || currentClassId
+                        } else if (newCurriculum === 'secular') {
+                          mappedClassId = THEOLOGY_TO_SECULAR_MAP[currentClassId] || currentClassId
+                        }
+                      }
+                      return {
+                        ...prev,
+                        curriculum: newCurriculum,
+                        classIds: mappedClassId ? [mappedClassId] : prev.classIds,
+                      }
+                    })
+                    setSelectedStudentIds([])
+                  }}
                   className={`h-7 rounded text-xs font-bold transition cursor-pointer ${
                     filterState.curriculum === c.id
                       ? 'bg-[#0D5C3A] text-white'

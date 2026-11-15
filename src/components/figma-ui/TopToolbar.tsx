@@ -511,7 +511,7 @@ export function TopToolbar({
                       className="h-8 px-2.5 rounded-full bg-[#D97706]/12 text-[#B45309] dark:bg-[#F59E0B]/20 dark:text-[#FCD34D] border border-[#D97706]/30 hover:bg-[#D97706]/20 dark:hover:bg-[#F59E0B]/30 text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer transition shrink-0"
                     >
                       <Palette className="size-3.5 text-[#D97706] dark:text-[#FCD34D] shrink-0" />
-                      <span className="font-bold hidden lg:inline">Customize</span>
+                      <span className="font-bold hidden xl:inline">Customize</span>
                     </button>
                   </PopoverTrigger>
                 </Tooltip.Trigger>

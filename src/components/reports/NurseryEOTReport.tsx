@@ -431,19 +431,19 @@ export default function NurseryEOTReport({ reportData, studioFormatting }: any) 
               <div className="info-row"><span className="label" style={{ minWidth: '100px' }}>Conduct</span><div className="line">{reportData?.circular?.conduct_remark ?? getConductRemark(null)}</div></div>
               <div className="info-row" style={{ marginTop: '12px' }}>
                 <span className="label" style={{ minWidth: '100px' }}>Class Teacher</span>
-                <div className="line" style={{ position: 'relative' }}>
-                  {getNurseryTeacherComment(grades)}
+                <div className="line" style={{ position: 'relative', display: 'flex', alignItems: 'flex-end', minHeight: '36px', borderBottom: '1.5px dotted #334155' }}>
+                  <span style={{ flex: 1 }}>{getNurseryTeacherComment(grades)}</span>
                   {includeSignatures && reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.class_name) ?? ''] && (
-                    <CleanSignatureImage src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} alt="Signature" style={{ position: 'absolute', bottom: 0, height: '40px', right: 0 }} studioFormatting={studioFormatting} />
+                    <CleanSignatureImage src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} alt="Signature" style={{ maxHeight: '38px', width: '112px', objectFit: 'contain', marginBottom: '-6px' }} studioFormatting={studioFormatting} />
                   )}
                 </div>
               </div>
               <div className="info-row" style={{ marginTop: '12px' }}>
                 <span className="label" style={{ minWidth: '100px' }}>Head Teacher</span>
-                <div className="line" style={{ position: 'relative' }}>
-                  {getNurseryTeacherComment(grades)}
+                <div className="line" style={{ position: 'relative', display: 'flex', alignItems: 'flex-end', minHeight: '36px', borderBottom: '1.5px dotted #334155' }}>
+                  <span style={{ flex: 1 }}>{getNurseryTeacherComment(grades)}</span>
                   {includeSignatures && reportData?.signatures?.['head-teacher'] && (
-                    <CleanSignatureImage src={reportData.signatures['head-teacher']} alt="Signature" style={{ position: 'absolute', bottom: 0, height: '40px', right: 0 }} studioFormatting={studioFormatting} />
+                    <CleanSignatureImage src={reportData.signatures['head-teacher']} alt="Signature" style={{ maxHeight: '38px', width: '112px', objectFit: 'contain', marginBottom: '-6px' }} studioFormatting={studioFormatting} />
                   )}
                 </div>
               </div>

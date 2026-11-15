@@ -67,6 +67,39 @@ export function DocumentCanvas({
   const scrollRef = useRef<HTMLDivElement>(null);
   const [dockMinimized, setDockMinimized] = useState(false);
 
+  // Progressive frame-sliced mounting to eliminate main-thread freeze
+  const [visibleCount, setVisibleCount] = useState<number>(2);
+
+  useEffect(() => {
+    if (reports.length <= 2) {
+      setVisibleCount(reports.length);
+      return;
+    }
+    // Frame 1: immediately mount first 2 cards (< 12ms, zero freeze)
+    setVisibleCount(2);
+
+    let animationFrameId: number;
+    const step = () => {
+      setVisibleCount((prev) => {
+        if (prev >= reports.length) return prev;
+        const next = Math.min(prev + 4, reports.length);
+        if (next < reports.length) {
+          animationFrameId = requestAnimationFrame(step);
+        }
+        return next;
+      });
+    };
+
+    animationFrameId = requestAnimationFrame(step);
+    return () => {
+      if (animationFrameId) cancelAnimationFrame(animationFrameId);
+    };
+  }, [reports]);
+
+  const visibleReports = useMemo(() => {
+    return reports.slice(0, visibleCount);
+  }, [reports, visibleCount]);
+
   // Minimize dock by default on mobile (< 768px) so report cards remain unobstructed
   useEffect(() => {
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
@@ -276,7 +309,7 @@ export function DocumentCanvas({
               }
             >
               <AnimatePresence>
-                {reports.map((report, index) => {
+                {visibleReports.map((report, index) => {
                   const isSelected = selectedIds.includes(report.id);
                   const isActive = report.id === activeReportId;
                   return (
@@ -289,9 +322,9 @@ export function DocumentCanvas({
                           onToggleSelectCard(report.id);
                         }
                       }}
-                      initial={{ opacity: 0, y: 12 }}
+                      initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: Math.min(index * 0.03, 0.3), type: 'spring', stiffness: 280, damping: 28 }}
+                      transition={{ duration: 0.18, ease: 'easeOut' }}
                       className={`relative flex justify-center rounded-xl transition ${
                         visualSelectMode
                           ? isSelected

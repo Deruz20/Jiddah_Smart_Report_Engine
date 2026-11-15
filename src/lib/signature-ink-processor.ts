@@ -257,10 +257,10 @@ export function extractCleanSignaturePixels(
       let outB: number;
 
       if (inkMode === 'blue') {
-        // Pen Blue (#14387F) with slight stroke depth richness
-        outR = Math.round(24 - strength * 8);
-        outG = Math.round(64 - strength * 12);
-        outB = Math.round(138 - strength * 16);
+        // Royal Pen Blue (#0F3491 -> R=15, G=52, B=145)
+        outR = Math.round(15 - strength * 5);
+        outG = Math.round(52 - strength * 10);
+        outB = Math.round(145 - strength * 12);
       } else if (inkMode === 'black') {
         // Jet Black (#0F172A)
         outR = Math.round(24 - strength * 10);

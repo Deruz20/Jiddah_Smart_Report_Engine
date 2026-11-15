@@ -1530,6 +1530,90 @@ describe('Workstream 25: CSS Named Pages for Mixed Print, P7 Portrait Parity, Wh
   });
 });
 
+describe('Workstream 26: Progressive Card Mounting, Transparent Stamp Crest, Seated Signatures, Redesigned P7 & Topbar Responsiveness', () => {
+  const rootDir = process.cwd();
+
+  it('1. progressively mounts preview cards via requestAnimationFrame and eliminates duplicate batch toast', () => {
+    const canvasSrc = fs.readFileSync(path.join(rootDir, 'src/components/figma-ui/DocumentCanvas.tsx'), 'utf8');
+    assert.match(canvasSrc, /visibleCount/);
+    assert.match(canvasSrc, /requestAnimationFrame/);
+    assert.match(canvasSrc, /visibleReports/);
+
+    const clientSrc = fs.readFileSync(path.join(rootDir, 'src/components/ReportGeneratorClient.tsx'), 'utf8');
+    assert.doesNotMatch(clientSrc, /toast\.loading\('Generating batch reports/);
+  });
+
+  it('2. adds transparent stamp crest SVG luminance filter and royal blue signature ink filter', () => {
+    const stampSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/StampGenerator.tsx'), 'utf8');
+    assert.match(stampSrc, /id="jiddah-stamp-crest-ink"/);
+    assert.match(stampSrc, /filter="url\(#jiddah-stamp-crest-ink\)"/);
+
+    const cleanSigSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/CleanSignatureImage.tsx'), 'utf8');
+    assert.match(cleanSigSrc, /id="jiddah-blue-signature-ink"/);
+    assert.match(cleanSigSrc, /#0F3491/);
+
+    const procSrc = fs.readFileSync(path.join(rootDir, 'src/lib/signature-ink-processor.ts'), 'utf8');
+    assert.match(procSrc, /outR = Math\.round\(15/);
+    assert.match(procSrc, /outG = Math\.round\(52/);
+    assert.match(procSrc, /outB = Math\.round\(145/);
+  });
+
+  it('3. seats signatures directly on dotted line across report templates', () => {
+    const reportFiles = [
+      'src/components/reports/PrimaryEOTReport.tsx',
+      'src/components/reports/PrimaryMOTReport.tsx',
+      'src/components/reports/PrimaryBOTReport.tsx',
+      'src/components/reports/NurseryEOTReport.tsx',
+      'src/components/reports/NurseryMOTReport.tsx',
+      'src/components/reports/NurseryTheologyEOTReport.tsx',
+      'src/components/reports/P7EOTReport.tsx',
+    ];
+
+    for (const file of reportFiles) {
+      const src = fs.readFileSync(path.join(rootDir, file), 'utf8');
+      assert.match(src, /borderBottom:\s*'1\.5px dotted #334155'/);
+      assert.match(src, /marginBottom:\s*'-6px'/);
+    }
+  });
+
+  it('4. enforces 21px font-black Arabic pupil typography and 16.5px cohort values', () => {
+    const primarySrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/PrimaryEOTReport.tsx'), 'utf8');
+    assert.match(primarySrc, /\.arabic-pupil-name[\s\S]*?font-size:\s*21px;[\s\S]*?font-weight:\s*900;/);
+    assert.match(primarySrc, /\.info-box\.arabic \.info-value[\s\S]*?font-size:\s*16\.5px;[\s\S]*?font-weight:\s*900;/);
+
+    const nurseryTheoSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/NurseryTheologyEOTReport.tsx'), 'utf8');
+    assert.match(nurseryTheoSrc, /fontSize:\s*'21px',\s*fontWeight:\s*900/);
+
+    const theoMotSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/TheologyMOTReport.tsx'), 'utf8');
+    assert.match(theoMotSrc, /fontSize:\s*'21px',\s*color:\s*'#0F172A'/);
+  });
+
+  it('5. enforces redesigned P7EOTReport proportional layout with Comparative Performance gold banner, UNEB strip, and zero middle gap', () => {
+    const p7Src = fs.readFileSync(path.join(rootDir, 'src/components/reports/P7EOTReport.tsx'), 'utf8');
+    assert.match(p7Src, /COMPARATIVE PERFORMANCE/);
+    assert.match(p7Src, /th-banner/);
+    assert.match(p7Src, /uneb-strip/);
+    assert.match(p7Src, /UNEB PRIMARY DIVISION CLASSIFICATION/);
+    assert.match(p7Src, /border:\s*1\.5px dashed #C59B27/);
+    assert.match(p7Src, /background-color:\s*#FAF6EE/);
+  });
+
+  it('6. normalizes default zoom to 1.0, prepends All Classes, auto-maps curriculum aliases, and collapses Topbar responsively', () => {
+    const clientSrc = fs.readFileSync(path.join(rootDir, 'src/components/ReportGeneratorClient.tsx'), 'utf8');
+    assert.match(clientSrc, /const \[zoom, setZoom\] = useState\(1\.0\)/);
+    assert.match(clientSrc, /SECULAR_TO_THEOLOGY_MAP/);
+    assert.match(clientSrc, /THEOLOGY_TO_SECULAR_MAP/);
+    assert.match(clientSrc, /All Classes/);
+    assert.match(clientSrc, /max-w-\[145px\] xl:max-w-\[230px\]/);
+
+    const toolbarSrc = fs.readFileSync(path.join(rootDir, 'src/components/figma-ui/TopToolbar.tsx'), 'utf8');
+    assert.match(toolbarSrc, /hidden xl:inline">Customize/);
+
+    const emptySrc = fs.readFileSync(path.join(rootDir, 'src/components/figma-ui/EmptyState.tsx'), 'utf8');
+    assert.doesNotMatch(emptySrc, /Open Filters &amp; Roster/);
+  });
+});
+
 
 
 

@@ -1,936 +1,1452 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import {
-  Sliders,
-  Move,
-  RotateCw,
-  Eye,
-  RotateCcw,
+  Palette,
+  Type,
+  Stamp,
+  Image as ImageIcon,
   Save,
+  RotateCcw,
+  ArrowLeft,
+  Sparkles,
   Check,
-  AlertTriangle,
   ZoomIn,
   ZoomOut,
   Maximize2,
-  FileText,
+  UserCheck,
   Award,
-  Palette,
-  Layout,
-  RefreshCw,
-  X,
-  Keyboard,
-  ArrowUp,
-  ArrowDown,
-  ArrowLeft,
-  ArrowRight,
-  Shield,
-  Minimize2,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { createClient } from '@/utils/supabase/client';
 
 import PrimaryEOTReport from '@/components/reports/PrimaryEOTReport';
+import P7EOTReport from '@/components/reports/P7EOTReport';
 import PrimaryMOTReport from '@/components/reports/PrimaryMOTReport';
 import PrimaryBOTReport from '@/components/reports/PrimaryBOTReport';
-import P7EOTReport from '@/components/reports/P7EOTReport';
 import NurseryEOTReport from '@/components/reports/NurseryEOTReport';
 import NurseryMOTReport from '@/components/reports/NurseryMOTReport';
+import NurseryTheologyEOTReport from '@/components/reports/NurseryTheologyEOTReport';
 import TheologyMOTReport from '@/components/reports/TheologyMOTReport';
-
-import { DraggableOverlayLayer } from '@/components/reports/DraggableOverlayLayer';
-import { RankingSettingsPreview } from '@/components/reports/RankingSettingsPreview';
-import { ReportCardDesignGate } from '@/components/reports/ReportCardDesignGate';
-import { StampGeneratorPanel, StampConfig, DEFAULT_STAMP_CONFIG } from '@/components/reports/StampGenerator';
-import { WatermarkConfigPanel, WatermarkOverlay, WatermarkConfig, DEFAULT_WATERMARK_CONFIG } from '@/components/reports/WatermarkConfigurator';
-import { ReportTemplateOverridesPanel } from '@/components/reports/ReportTemplateOverrides';
-import { SmartPreFlightWarningBar } from '@/components/reports/SmartPreFlightWarningBar';
+import { ReportPreviewCell } from '@/components/reports/ReportPreviewCell';
+import type { StabilizedReportType } from '@/types/report';
 import {
-  TemplateOverlays,
-  DEFAULT_OVERLAYS_BY_TEMPLATE,
-  getStoredOverlays,
-  saveStoredOverlays,
-} from '@/lib/report-overlays';
-import { SYNTHETIC_REPORT_FIXTURES } from '@/lib/report-synthetic-fixtures';
-import { getContrastRatio } from '@/lib/contrast-guard';
-import { themePresets, ThemePreset } from '@/lib/themes';
+  DEFAULT_STUDIO_CONFIG,
+  STUDIO_COLOR_THEMES,
+  STUDIO_FONT_FAMILIES,
+  STUDIO_STAMP_INK_COLORS,
+  useSyncedStudioConfig,
+  persistStudioConfigGlobally,
+  saveStudioConfigToStorage,
+  normalizeStudioConfig,
+  StudioFormattingProvider,
+  type StudioFormattingConfig,
+} from '@/lib/studio-config-store';
 
-interface ReportStudioClientProps {
-  initialSettings?: {
-    primary_font?: string;
-    arabic_font?: string;
-    report_theme_preset?: string;
-    theme_color?: string;
-    school_name?: string;
-  };
+export interface BrandingConfig {
+  schoolName: string;
+  schoolMotto: string;
+  schoolAddress: string;
+  schoolPhone: string;
+  schoolEmail: string;
+  logoUrl: string;
+  primaryColor: string;
+  secondaryColor: string;
+  accentColor: string;
+  arabicSchoolName?: string;
 }
 
-const TEMPLATE_OPTIONS = [
-  { id: 'primary-eot', label: 'Primary EOT (A4 Landscape)', orientation: 'landscape', width: 1123, height: 794 },
-  { id: 'primary-mot', label: 'Primary MOT (A4 Portrait)', orientation: 'portrait', width: 794, height: 1123 },
-  { id: 'primary-bot', label: 'Primary BOT (A4 Portrait)', orientation: 'portrait', width: 794, height: 1123 },
-  { id: 'p7-eot', label: 'P.7 Candidate EOT (A4 Landscape)', orientation: 'landscape', width: 1123, height: 794 },
-  { id: 'nursery-eot', label: 'Nursery EOT (A4 Landscape)', orientation: 'landscape', width: 1123, height: 794 },
-  { id: 'nursery-mot', label: 'Nursery MOT (A4 Portrait)', orientation: 'portrait', width: 794, height: 1123 },
-  { id: 'theology-mot', label: 'Theology MOT (2-Up Sheet)', orientation: 'portrait', width: 794, height: 1123 },
+export interface OverlayTransform {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation: number;
+  opacity: number;
+  visible: boolean;
+  label: string;
+}
+
+export type TemplateType =
+  | 'primary-eot'
+  | 'p7-eot'
+  | 'primary-mot'
+  | 'primary-bot'
+  | 'nursery-eot'
+  | 'nursery-mot'
+  | 'nursery-theology-eot'
+  | 'theology-mot';
+
+export type SampleProfileId = 'muslim' | 'non-muslim' | 'p7' | 'nursery';
+
+export interface PrintPreferencesWithStudio {
+  includeStamp?: boolean;
+  includeSignatures?: boolean;
+  stamp_config?: {
+    shape?: 'circular' | 'rectangular' | 'oval';
+    ink_color?: string;
+    custom_text?: string;
+    date?: string;
+  };
+  studio_overlays?: Record<string, Record<string, OverlayTransform>>;
+}
+
+export interface GradingBand {
+  grade: string;
+  minScore: number;
+  maxScore: number;
+  points: number;
+  remark: string;
+}
+
+export interface DivisionBoundary {
+  division: string;
+  minAggregate: number;
+  maxAggregate: number;
+}
+
+interface ReportStudioClientProps {
+  initialBranding?: BrandingConfig;
+  initialPrintPreferences?: PrintPreferencesWithStudio;
+  initialGradingScale?: GradingBand[];
+  initialDivisionBoundaries?: DivisionBoundary[];
+  initialActiveTemplate?: TemplateType;
+  initialSettings?: Record<string, any>;
+}
+
+const TEMPLATE_OPTIONS: {
+  id: TemplateType;
+  label: string;
+  shortLabel: string;
+  reportType: StabilizedReportType;
+}[] = [
+  {
+    id: 'primary-eot',
+    label: 'Primary EOT Landscape',
+    shortLabel: 'Primary EOT',
+    reportType: 'PrimaryEOTReport',
+  },
+  {
+    id: 'p7-eot',
+    label: 'Primary Secular Portrait (P.7 / Non-Muslim)',
+    shortLabel: 'Portrait Secular',
+    reportType: 'P7EOTReport',
+  },
+  {
+    id: 'primary-mot',
+    label: 'Primary MOT',
+    shortLabel: 'Primary MOT',
+    reportType: 'PrimaryMOTReport',
+  },
+  {
+    id: 'primary-bot',
+    label: 'Primary BOT',
+    shortLabel: 'Primary BOT',
+    reportType: 'PrimaryBOTReport',
+  },
+  {
+    id: 'nursery-eot',
+    label: 'Nursery EOT',
+    shortLabel: 'Nursery EOT',
+    reportType: 'NurseryEOTReport',
+  },
+  {
+    id: 'nursery-mot',
+    label: 'Nursery MOT',
+    shortLabel: 'Nursery MOT',
+    reportType: 'NurseryMOTReport',
+  },
+  {
+    id: 'nursery-theology-eot',
+    label: 'Nursery Theology EOT',
+    shortLabel: 'Nursery Theology',
+    reportType: 'NurseryTheologyEOTReport',
+  },
+  {
+    id: 'theology-mot',
+    label: 'Theology 2-Up',
+    shortLabel: 'Theology 2-Up',
+    reportType: 'TheologyMOTReport',
+  },
 ];
 
-export default function ReportStudioClient({ initialSettings }: ReportStudioClientProps) {
-  // Active template
-  const [selectedTemplate, setSelectedTemplate] = useState<string>('primary-eot');
-
-  // Active side drawer
-  const [activeDrawer, setActiveDrawer] = useState<'overlays' | 'stamp-design' | 'watermark' | 'overrides' | 'branding' | 'ranking' | 'design-gate'>('overlays');
-
-  // Zoom scale & Minimizable toolbar
-  const [zoom, setZoom] = useState<number>(0.7);
-  const [isZoomCollapsed, setIsZoomCollapsed] = useState<boolean>(false);
-
-  // Parameterized Stamp & Watermark Configs
-  const [stampConfig, setStampConfig] = useState<StampConfig>(DEFAULT_STAMP_CONFIG);
-  const [watermarkConfig, setWatermarkConfig] = useState<WatermarkConfig>(DEFAULT_WATERMARK_CONFIG);
-
-  // Overlay state per template
-  const [overlays, setOverlays] = useState<TemplateOverlays>(() =>
-    getStoredOverlays('primary-eot')
-  );
-  const [selectedElementId, setSelectedElementId] = useState<'stamp' | 'head-teacher' | 'class-teacher' | null>('stamp');
-  const [snapEnabled, setSnapEnabled] = useState<boolean>(true);
-
-  // Live customization state
-  const savedBranding = {
-    primaryFont: initialSettings?.primary_font || 'Montserrat',
-    arabicFont: initialSettings?.arabic_font || 'Amiri',
-    themePreset: initialSettings?.report_theme_preset || 'emerald-gold',
-    themeColor: initialSettings?.theme_color || '#0f4d25',
+const SAMPLE_PROFILES: {
+  id: SampleProfileId;
+  label: string;
+  student: {
+    id: string;
+    name: string;
+    arabic_name: string;
+    admission_number: string;
+    class_name: string;
+    theology_class_arabic: string;
+    gender: string;
+    religion: string;
+    is_muslim: boolean;
   };
+}[] = [
+  {
+    id: 'muslim',
+    label: 'Muslim Student',
+    student: {
+      id: 'sample-muslim-p4',
+      name: 'AISHA BINTI SULAIMAN',
+      arabic_name: 'عائشة بنت سليمان',
+      admission_number: 'JID-2026-042',
+      class_name: 'P.4',
+      theology_class_arabic: 'الصف الرابع',
+      gender: 'Female',
+      religion: 'Muslim',
+      is_muslim: true,
+    },
+  },
+  {
+    id: 'non-muslim',
+    label: 'Non-Muslim Student',
+    student: {
+      id: 'sample-non-muslim-p4',
+      name: 'SSUUNA HARBERT',
+      arabic_name: 'سونا هربرت',
+      admission_number: 'JID-2026-108',
+      class_name: 'P.4',
+      theology_class_arabic: 'الصف الرابع',
+      gender: 'Male',
+      religion: 'Non-Muslim',
+      is_muslim: false,
+    },
+  },
+  {
+    id: 'p7',
+    label: 'P.7 Candidate',
+    student: {
+      id: 'sample-p7-candidate',
+      name: 'ABDULLAH HASSAN KATO',
+      arabic_name: 'عبد الله حسن كاتو',
+      admission_number: 'JID-2026-007',
+      class_name: 'P.7',
+      theology_class_arabic: 'الصف السابع',
+      gender: 'Male',
+      religion: 'Muslim',
+      is_muslim: true,
+    },
+  },
+  {
+    id: 'nursery',
+    label: 'Nursery Pupil',
+    student: {
+      id: 'sample-nursery-pupil',
+      name: 'ZAYNAB NAMUKASA',
+      arabic_name: 'زينب ناموكاسا',
+      admission_number: 'JID-2026-301',
+      class_name: 'Top Class',
+      theology_class_arabic: 'الروضة العليا',
+      gender: 'Female',
+      religion: 'Muslim',
+      is_muslim: true,
+    },
+  },
+];
 
-  const [previewBranding, setPreviewBranding] = useState(savedBranding);
-  const [isSavingBranding, setIsSavingBranding] = useState(false);
+// Clean SVG data-URI signatures for instant live Studio preview
+const SAMPLE_HEADTEACHER_SIG =
+  'data:image/svg+xml;utf8,' +
+  encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 70"><path d="M18 48 C42 18, 65 55, 88 30 C105 12, 118 48, 140 34 C162 20, 185 45, 222 24" fill="none" stroke="#1E3A8A" stroke-width="3.2" stroke-linecap="round"/><path d="M44 54 Q115 44 198 50" fill="none" stroke="#1E3A8A" stroke-width="1.8" stroke-linecap="round"/></svg>`
+  );
 
-  // Load overlay positions when template changes
+const SAMPLE_TEACHER_SIG =
+  'data:image/svg+xml;utf8,' +
+  encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 65"><path d="M22 44 C45 16, 62 48, 82 28 C98 14, 115 44, 138 30 C158 18, 174 42, 202 26" fill="none" stroke="#0F172A" stroke-width="2.8" stroke-linecap="round"/></svg>`
+  );
+
+type InspectorTab = 'theme' | 'typography' | 'watermark' | 'stamp';
+
+export function ReportStudioClient({
+  initialBranding,
+  initialPrintPreferences = {},
+  initialGradingScale = [],
+  initialDivisionBoundaries = [],
+  initialActiveTemplate = 'primary-eot',
+  initialSettings,
+}: ReportStudioClientProps) {
+  const defaultBranding: BrandingConfig = {
+    schoolName: initialSettings?.school_name || 'JIDDAH ISLAMIC NURSERY AND PRIMARY SCHOOL',
+    schoolMotto: initialSettings?.motto || 'Fear Allah, Seek Knowledge and Excel',
+    schoolAddress: initialSettings?.address || 'Nsangi - Katereke, P.O. Box 24523, Kampala - Uganda',
+    schoolPhone: initialSettings?.phone || '0705-556930 / 0752-960454 / 0702-975852',
+    schoolEmail: initialSettings?.email || 'jiddahislamicschool@gmail.com',
+    logoUrl: initialSettings?.logo_url || '/logo-512h.png',
+    primaryColor: initialSettings?.theme_color || '#14532D',
+    secondaryColor: '#C59B27',
+    accentColor: '#7F1D1D',
+    arabicSchoolName: initialSettings?.arabic_name || 'مدرسة جدة الإسلامية للروضة والإبتدائية',
+  };
+  const [activeTemplate, setActiveTemplate] = useState<TemplateType>(initialActiveTemplate);
+  const [sampleProfileId, setSampleProfileId] = useState<SampleProfileId>('muslim');
+  const [activeTab, setActiveTab] = useState<InspectorTab>('theme');
+  const [branding, setBranding] = useState<BrandingConfig>(initialBranding || defaultBranding);
+  const [gradingScale, setGradingScale] = useState<GradingBand[]>(initialGradingScale);
+  const [divisionBoundaries, setDivisionBoundaries] = useState<DivisionBoundary[]>(initialDivisionBoundaries);
+  const [studioConfig, setStudioConfig] = useSyncedStudioConfig();
+  const [zoom, setZoom] = useState<number>(0.85);
+  const [isSaving, setIsSaving] = useState(false);
+  const [liveSignatures, setLiveSignatures] = useState<Record<string, string>>({
+    'head-teacher': SAMPLE_HEADTEACHER_SIG,
+    'class-teacher-p4': SAMPLE_TEACHER_SIG,
+    'class-teacher-p7': SAMPLE_TEACHER_SIG,
+    'class-teacher-top': SAMPLE_TEACHER_SIG,
+    'class-teacher-middle': SAMPLE_TEACHER_SIG,
+    'class-teacher-baby': SAMPLE_TEACHER_SIG,
+    'theology-teacher-top': SAMPLE_TEACHER_SIG,
+  });
+
+  // Load real uploaded signatures if available so the studio preview shows the school's real signatures
   useEffect(() => {
-    setOverlays(getStoredOverlays(selectedTemplate));
-    setSelectedElementId('stamp');
-  }, [selectedTemplate]);
-
-  // Load persisted Overlays + Stamp config from /api/settings/school
-  useEffect(() => {
-    let active = true;
-    fetch('/api/settings/school')
-      .then((res) => (res.ok ? res.json() : null))
-      .then((result) => {
-        if (!active || !result?.data) return;
-        const remoteOverlays = result.data.report_overlays;
-        if (remoteOverlays && typeof remoteOverlays === 'object') {
-          try {
-            localStorage.setItem('jiddah_report_overlay_positions', JSON.stringify(remoteOverlays));
-            if (remoteOverlays[selectedTemplate]) {
-              setOverlays(remoteOverlays[selectedTemplate]);
-            }
-          } catch {}
+    let cancelled = false;
+    async function fetchRealSignatures() {
+      try {
+        const res = await fetch('/api/signatures');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (cancelled || !data || typeof data !== 'object') return;
+        const map: Record<string, string> = {};
+        if (Array.isArray(data.signatures)) {
+          for (const item of data.signatures) {
+            if (item?.slot && item?.url) map[item.slot] = item.url;
+          }
+        } else if (data.signatures && typeof data.signatures === 'object') {
+          Object.assign(map, data.signatures);
         }
-        const savedStampCfg = result.data?.print_preferences?.stamp_config;
-        if (savedStampCfg && typeof savedStampCfg === 'object') {
-          setStampConfig((prev) => ({ ...prev, ...savedStampCfg }));
+        if (Object.keys(map).length > 0) {
+          setLiveSignatures((prev) => ({ ...prev, ...map }));
         }
-      })
-      .catch(() => {});
+      } catch {
+        // Keep clean SVG sample signatures
+      }
+    }
+    fetchRealSignatures();
     return () => {
-      active = false;
-    };
-  }, [selectedTemplate]);
-
-  // Load persisted Stamp & Watermark configs from school_settings.print_preferences
-  useEffect(() => {
-    let active = true;
-    fetch('/api/settings/school', { cache: 'no-store' })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((payload) => {
-        if (!active || !payload) return;
-        const settings = payload?.data || payload;
-        const prefs = settings?.print_preferences || {};
-        if (prefs.stamp_config && typeof prefs.stamp_config === 'object') {
-          setStampConfig((prev) => ({ ...prev, ...prefs.stamp_config }));
-        }
-        if (prefs.watermark_config && typeof prefs.watermark_config === 'object') {
-          setWatermarkConfig((prev) => ({ ...prev, ...prefs.watermark_config }));
-        }
-      })
-      .catch(() => {});
-    return () => {
-      active = false;
+      cancelled = true;
     };
   }, []);
 
-  // Contrast calculation
-  const contrastRatio = getContrastRatio(previewBranding.themeColor, '#FFFFFF');
-  const isContrastLow = contrastRatio < 4.5;
-
-  const currentTemplateMeta = TEMPLATE_OPTIONS.find((t) => t.id === selectedTemplate) || TEMPLATE_OPTIONS[0];
-  const baseFixture = SYNTHETIC_REPORT_FIXTURES[selectedTemplate] || SYNTHETIC_REPORT_FIXTURES['primary-eot'];
-  const currentFixture = {
-    ...baseFixture,
-    settings: {
-      ...(baseFixture.settings || {}),
-      print_preferences: {
-        ...(baseFixture.settings?.print_preferences || {}),
-        includeStamp: true,
-        includeSignatures: true,
-        stamp_config: stampConfig,
-      },
-    },
-  };
-
-  // Handle overlay updates
-  const handleOverlayChange = (updated: TemplateOverlays) => {
-    setOverlays(updated);
-    saveStoredOverlays(selectedTemplate, updated);
-  };
-
-  const handleResetOverlays = () => {
-    const defaults = DEFAULT_OVERLAYS_BY_TEMPLATE[selectedTemplate] || DEFAULT_OVERLAYS_BY_TEMPLATE['primary-eot'];
-    setOverlays(defaults);
-    saveStoredOverlays(selectedTemplate, defaults);
-    toast.success('Overlay positions reset to template defaults');
-  };
-
-  // Handle Branding Save / Cancel / Reset
-  const handleApplyBranding = async () => {
-    setIsSavingBranding(true);
-    try {
-      let allOverlays: Record<string, TemplateOverlays> = { [selectedTemplate]: overlays };
-      try {
-        const raw = localStorage.getItem('jiddah_report_overlay_positions');
-        if (raw) {
-          allOverlays = { ...JSON.parse(raw), [selectedTemplate]: overlays };
+  const updateStudio = useCallback(
+    (partial: Partial<StudioFormattingConfig>) => {
+      setStudioConfig((prev) => {
+        const next = normalizeStudioConfig({ ...prev, ...partial });
+        if (partial.colorTheme) {
+          const themePreset = STUDIO_COLOR_THEMES[partial.colorTheme];
+          if (themePreset) {
+            next.primaryColor = themePreset.primary;
+            next.secondaryColor = themePreset.secondary;
+            next.accentColor = themePreset.accent;
+            setBranding((b) => ({
+              ...b,
+              primaryColor: themePreset.primary,
+              secondaryColor: themePreset.secondary,
+              accentColor: themePreset.accent,
+            }));
+          }
         }
-      } catch {}
-
-      const res = await fetch('/api/settings/school', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          primary_font: previewBranding.primaryFont,
-          arabic_font: previewBranding.arabicFont,
-          report_theme_preset: previewBranding.themePreset,
-          theme_color: previewBranding.themeColor,
-          report_overlays: allOverlays,
-        }),
+        return next;
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to save school settings');
-      toast.success('Report branding and template overlays persisted to backend');
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to save settings');
-    } finally {
-      setIsSavingBranding(false);
+    },
+    [setStudioConfig]
+  );
+
+  const handleTemplateSelect = (tpl: TemplateType) => {
+    setActiveTemplate(tpl);
+    if (tpl === 'p7-eot' && sampleProfileId === 'muslim') {
+      setSampleProfileId('non-muslim');
+    } else if (
+      (tpl === 'nursery-eot' || tpl === 'nursery-mot' || tpl === 'nursery-theology-eot') &&
+      sampleProfileId !== 'nursery'
+    ) {
+      setSampleProfileId('nursery');
+    } else if (tpl === 'primary-eot' && sampleProfileId === 'nursery') {
+      setSampleProfileId('muslim');
     }
   };
 
-  const handleCancelBranding = () => {
-    setPreviewBranding(savedBranding);
-    toast.info('Preview reverted to saved settings');
+  const handleResetDefaults = () => {
+    setStudioConfig(DEFAULT_STUDIO_CONFIG);
+    saveStudioConfigToStorage(DEFAULT_STUDIO_CONFIG);
+    setBranding((prev) => ({
+      ...prev,
+      primaryColor: DEFAULT_STUDIO_CONFIG.primaryColor || '#14532D',
+      secondaryColor: DEFAULT_STUDIO_CONFIG.secondaryColor || '#C59B27',
+      accentColor: DEFAULT_STUDIO_CONFIG.accentColor || '#7F1D1D',
+    }));
+    toast.success('Studio formatting reset to defaults.');
   };
 
-  const handleResetBrandingDefaults = () => {
-    setPreviewBranding({
-      primaryFont: 'Montserrat',
-      arabicFont: 'Amiri',
-      themePreset: 'emerald-gold',
-      themeColor: '#0f4d25',
-    });
-    toast.info('Branding reset to system defaults (Emerald & Gold)');
+  const handleSaveAndApplyAll = async () => {
+    setIsSaving(true);
+    try {
+      const normalized = normalizeStudioConfig({
+        ...studioConfig,
+        primaryColor: branding.primaryColor,
+        secondaryColor: branding.secondaryColor,
+        accentColor: branding.accentColor,
+      });
+      saveStudioConfigToStorage(normalized);
+
+      const [studioSaved, brandingRes] = await Promise.all([
+        persistStudioConfigGlobally(normalized),
+        fetch('/api/settings/school/branding', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...branding,
+             grading_scale: gradingScale,
+            division_boundaries: divisionBoundaries,
+            print_preferences: {
+              ...initialPrintPreferences,
+              includeStamp: normalized.stampEnabled,
+              includeSignatures: normalized.signaturesEnabled,
+              stamp_config: {
+                ...initialPrintPreferences?.stamp_config,
+                ink_color: normalized.stampInkColor,
+                date: normalized.stampDate,
+              },
+            },
+          }),
+        }).catch(() => null),
+      ]);
+
+      if (studioSaved || (brandingRes && brandingRes.ok)) {
+        toast.success('Saved & applied to all reports across Report Center and School Settings!');
+      } else {
+        toast.success('Saved & applied across all reports in this browser.');
+      }
+    } catch {
+      toast.error('Saved locally; could not sync with server.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  // Keyboard nudging handler for active element
-  const handleNudge = (deltaX: number, deltaY: number) => {
-    if (!selectedElementId) return;
-    const key = selectedElementId === 'stamp' ? 'stamp' : selectedElementId === 'head-teacher' ? 'headTeacher' : 'classTeacher';
-    const elem = overlays[key];
-    const updated = {
-      ...overlays,
-      [key]: {
-        ...elem,
-        xPercent: Math.max(1, Math.min(96, Math.round((elem.xPercent + deltaX) * 10) / 10)),
-        yPercent: Math.max(1, Math.min(96, Math.round((elem.yPercent + deltaY) * 10) / 10)),
+  const activeSampleProfile = useMemo(
+    () => SAMPLE_PROFILES.find((p) => p.id === sampleProfileId) || SAMPLE_PROFILES[0],
+    [sampleProfileId]
+  );
+
+  const sampleReportData = useMemo(() => {
+    const isNurseryTemplate =
+      activeTemplate === 'nursery-eot' ||
+      activeTemplate === 'nursery-mot' ||
+      activeTemplate === 'nursery-theology-eot';
+    const student = isNurseryTemplate
+      ? SAMPLE_PROFILES.find((p) => p.id === 'nursery')!.student
+      : activeSampleProfile.student;
+
+    const primarySubjects = [
+      {
+        subject_name: 'English',
+        bot_score: 86,
+        mot_score: 88,
+        eot_score: 92,
+        score: 92,
+        grade: 'D1',
+        remark: 'EXCELLENT',
+        teacher_initials: 'M.K',
       },
-    };
-    handleOverlayChange(updated);
-  };
+      {
+        subject_name: 'Mathematics',
+        bot_score: 82,
+        mot_score: 85,
+        eot_score: 89,
+        score: 89,
+        grade: 'D2',
+        remark: 'VERY GOOD',
+        teacher_initials: 'A.S',
+      },
+      {
+        subject_name: 'Science',
+        bot_score: 80,
+        mot_score: 84,
+        eot_score: 86,
+        score: 86,
+        grade: 'D2',
+        remark: 'VERY GOOD',
+        teacher_initials: 'J.O',
+      },
+      {
+        subject_name: 'SST',
+        bot_score: 85,
+        mot_score: 88,
+        eot_score: 91,
+        score: 91,
+        grade: 'D1',
+        remark: 'EXCELLENT',
+        teacher_initials: 'R.N',
+      },
+    ];
 
-  const activeElementKey = selectedElementId === 'stamp' ? 'stamp' : selectedElementId === 'head-teacher' ? 'headTeacher' : 'classTeacher';
-  const activeElement = overlays[activeElementKey];
+    const nurserySubjects = [
+      {
+        subject_name: 'Reading & Language',
+        mot_score: 92,
+        eot_score: 95,
+        score: 95,
+        grade: 'A',
+        remark: 'EXCELLENT',
+        teacher_initials: 'F.N',
+      },
+      {
+        subject_name: 'Numbers',
+        mot_score: 88,
+        eot_score: 91,
+        score: 91,
+        grade: 'A',
+        remark: 'EXCELLENT',
+        teacher_initials: 'F.N',
+      },
+      {
+        subject_name: 'Health Habits',
+        mot_score: 85,
+        eot_score: 88,
+        score: 88,
+        grade: 'B',
+        remark: 'VERY GOOD',
+        teacher_initials: 'H.A',
+      },
+      {
+        subject_name: 'Writing',
+        mot_score: 82,
+        eot_score: 86,
+        score: 86,
+        grade: 'B',
+        remark: 'VERY GOOD',
+        teacher_initials: 'F.N',
+      },
+      {
+        subject_name: 'Drawing & Art',
+        mot_score: 90,
+        eot_score: 94,
+        score: 94,
+        grade: 'A',
+        remark: 'EXCELLENT',
+        teacher_initials: 'S.K',
+      },
+    ];
+
+    return {
+      id: `studio-preview-${activeTemplate}-${student.id}`,
+      student,
+      term: {
+        name: 'Term 1',
+        term_number: 1,
+        academic_year: '2026',
+        end_date: '2026-04-24',
+        next_term_start: '2026-05-18',
+        next_term_start_boarders: '2026-05-16',
+        next_term_start_day: '2026-05-18',
+      },
+      branding: {
+        schoolName: branding.schoolName,
+        address: branding.schoolAddress,
+        phone: branding.schoolPhone,
+        email: branding.schoolEmail,
+        motto: branding.schoolMotto,
+        logoUrl: branding.logoUrl || '/logo-512h.png',
+        primaryColor: branding.primaryColor,
+        secondaryColor: branding.secondaryColor,
+        accentColor: branding.accentColor,
+        primaryFont: studioConfig.fontFamily,
+        themePreset: studioConfig.colorTheme,
+      },
+      settings: {
+        school_name: branding.schoolName,
+        arabic_name: branding.arabicSchoolName || 'مدرسة جدة الإسلامية للروضة والإبتدائية',
+        address: branding.schoolAddress,
+        phone: branding.schoolPhone,
+        email: branding.schoolEmail,
+        motto: branding.schoolMotto,
+        logo_url: branding.logoUrl || '/logo-512h.png',
+        primary_color: branding.primaryColor,
+        secondary_color: branding.secondaryColor,
+        accent_color: branding.accentColor,
+        grading_scale: gradingScale,
+        division_boundaries: divisionBoundaries,
+        report_studio_config: studioConfig,
+        print_preferences: {
+          ...initialPrintPreferences,
+          includeStamp: studioConfig.stampEnabled,
+          includeSignatures: studioConfig.signaturesEnabled,
+          stamp_config: {
+            ...initialPrintPreferences?.stamp_config,
+            ink_color: studioConfig.stampInkColor,
+            date: studioConfig.stampDate || '24 APR 2026',
+          },
+        },
+      },
+      gradingBands: gradingScale,
+      divisionBoundaries,
+      circular: {
+        subjects: isNurseryTemplate ? nurserySubjects : primarySubjects,
+        bot_total: 333,
+        bot_aggregate: 6,
+        bot_division: 'I',
+        mot_total: 345,
+        mot_aggregate: 6,
+        mot_division: 'I',
+        eot_total: 358,
+        eot_aggregate: 6,
+        eot_division: 'I',
+        total: 358,
+        average: 89.5,
+        aggregate: 6,
+        division: 'I',
+        position: 2,
+        total_students: 38,
+        class_teacher_comment: 'Impressive performance, thank you.',
+        head_teacher_comment: 'Excellent results, keep shining!',
+        conduct_remark: 'Very Good',
+      },
+      theology: {
+        subjects: [
+          {
+            subject_name: 'القرآن الكريم',
+            subject_name_arabic: 'القرآن الكريم',
+            mot_score: 92,
+            eot_score: 95,
+            score: 95,
+            grade: 'ممتاز',
+            teacher_initials: 'ع.م',
+          },
+          {
+            subject_name: 'الفقه',
+            subject_name_arabic: 'الفقه',
+            mot_score: 86,
+            eot_score: 89,
+            score: 89,
+            grade: 'جيد جدا',
+            teacher_initials: 'ح.س',
+          },
+          {
+            subject_name: 'التوحيد',
+            subject_name_arabic: 'التوحيد',
+            mot_score: 88,
+            eot_score: 91,
+            score: 91,
+            grade: 'ممتاز',
+            teacher_initials: 'م.أ',
+          },
+          {
+            subject_name: 'اللغة العربية',
+            subject_name_arabic: 'اللغة العربية',
+            mot_score: 84,
+            eot_score: 88,
+            score: 88,
+            grade: 'جيد جدا',
+            teacher_initials: 'ي.ك',
+          },
+          {
+            subject_name: 'التربية الإسلامية',
+            subject_name_arabic: 'التربية الإسلامية',
+            mot_score: 90,
+            eot_score: 93,
+            score: 93,
+            grade: 'ممتاز',
+            teacher_initials: 'س.ن',
+          },
+        ],
+        mot_total: 440,
+        eot_total: 456,
+        total: 456,
+        average: 91.2,
+        position: 3,
+        total_students: 38,
+        theology_position: 3,
+        theology_total_students: 38,
+      },
+      theology_position: 3,
+      theology_total_students: 38,
+      meta: {
+        is_term_3: false,
+        position: 2,
+        total_students: 38,
+        theology_position: 3,
+        theology_total_students: 38,
+      },
+      signatures: liveSignatures,
+      stamp_date: studioConfig.stampDate || '24 APR 2026',
+    };
+  }, [
+    activeTemplate,
+    activeSampleProfile,
+    branding,
+    gradingScale,
+    divisionBoundaries,
+    studioConfig,
+    initialPrintPreferences,
+    liveSignatures,
+  ]);
+
+  const activeTemplateMeta = useMemo(
+    () => TEMPLATE_OPTIONS.find((t) => t.id === activeTemplate) || TEMPLATE_OPTIONS[0],
+    [activeTemplate]
+  );
+
+  const renderActiveTemplateNode = () => {
+    switch (activeTemplate) {
+      case 'primary-eot':
+        return <PrimaryEOTReport reportData={sampleReportData} studioFormatting={studioConfig} />;
+      case 'p7-eot':
+        return <P7EOTReport reportData={sampleReportData} studioFormatting={studioConfig} />;
+      case 'primary-mot':
+        return <PrimaryMOTReport reportData={sampleReportData} studioFormatting={studioConfig} />;
+      case 'primary-bot':
+        return <PrimaryBOTReport reportData={sampleReportData} studioFormatting={studioConfig} />;
+      case 'nursery-eot':
+        return <NurseryEOTReport reportData={sampleReportData} studioFormatting={studioConfig} />;
+      case 'nursery-mot':
+        return <NurseryMOTReport reportData={sampleReportData} studioFormatting={studioConfig} />;
+      case 'nursery-theology-eot':
+        return <NurseryTheologyEOTReport reportData={sampleReportData} studioFormatting={studioConfig} />;
+      case 'theology-mot':
+        return <TheologyMOTReport reportData={sampleReportData} studioFormatting={studioConfig} />;
+      default:
+        return <PrimaryEOTReport reportData={sampleReportData} studioFormatting={studioConfig} />;
+    }
+  };
 
   return (
-    <div className="flex flex-col h-screen bg-stone-100 text-stone-800 overflow-hidden select-none">
-      {/* Top Navbar */}
-      <header className="h-14 bg-white border-b border-stone-200 px-4 flex items-center justify-between shrink-0 z-30">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-emerald-800 text-white flex items-center justify-center font-bold text-sm shadow-sm">
-            RS
-          </div>
-          <div>
-            <h1 className="text-sm font-bold text-stone-900 leading-none">Report Studio & Customization Hub</h1>
-            <p className="text-[11px] text-stone-500 mt-0.5">
-              Interactive stamp/signature positioning & live preview harness
-            </p>
-          </div>
-        </div>
-
-        {/* Template Selector */}
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-stone-600">Template:</span>
-          <select
-            value={selectedTemplate}
-            onChange={(e) => setSelectedTemplate(e.target.value)}
-            className="text-xs rounded-lg border border-stone-300 bg-stone-50 px-3 py-1.5 font-medium text-stone-800 outline-none focus:border-emerald-600 focus:bg-white transition"
-          >
-            {TEMPLATE_OPTIONS.map((tmpl) => (
-              <option key={tmpl.id} value={tmpl.id}>
-                {tmpl.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Tab Switcher */}
-        <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-xl border border-stone-200 overflow-x-auto max-w-full">
-          <button
-            onClick={() => setActiveDrawer('overlays')}
-            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-              activeDrawer === 'overlays'
-                ? 'bg-white text-emerald-800 shadow-sm border border-stone-200/60'
-                : 'text-stone-600 hover:text-stone-900'
-            }`}
-          >
-            <Move className="w-3.5 h-3.5" />
-            <span>Positions</span>
-          </button>
-          <button
-            onClick={() => setActiveDrawer('stamp-design')}
-            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-              activeDrawer === 'stamp-design'
-                ? 'bg-white text-emerald-800 shadow-sm border border-stone-200/60'
-                : 'text-stone-600 hover:text-stone-900'
-            }`}
-          >
-            <Sliders className="w-3.5 h-3.5" />
-            <span>Stamp</span>
-          </button>
-          <button
-            onClick={() => setActiveDrawer('watermark')}
-            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-              activeDrawer === 'watermark'
-                ? 'bg-white text-emerald-800 shadow-sm border border-stone-200/60'
-                : 'text-stone-600 hover:text-stone-900'
-            }`}
-          >
-            <Shield className="w-3.5 h-3.5" />
-            <span>Watermark</span>
-          </button>
-          <button
-            onClick={() => setActiveDrawer('overrides')}
-            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-              activeDrawer === 'overrides'
-                ? 'bg-white text-emerald-800 shadow-sm border border-stone-200/60'
-                : 'text-stone-600 hover:text-stone-900'
-            }`}
-          >
-            <Layout className="w-3.5 h-3.5" />
-            <span>Styling</span>
-          </button>
-          <button
-            onClick={() => setActiveDrawer('branding')}
-            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-              activeDrawer === 'branding'
-                ? 'bg-white text-emerald-800 shadow-sm border border-stone-200/60'
-                : 'text-stone-600 hover:text-stone-900'
-            }`}
-          >
-            <Palette className="w-3.5 h-3.5" />
-            <span>Theme</span>
-          </button>
-          <button
-            onClick={() => setActiveDrawer('ranking')}
-            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-              activeDrawer === 'ranking'
-                ? 'bg-white text-emerald-800 shadow-sm border border-stone-200/60'
-                : 'text-stone-600 hover:text-stone-900'
-            }`}
-          >
-            <Award className="w-3.5 h-3.5" />
-            <span>Ties</span>
-          </button>
-          <button
-            onClick={() => setActiveDrawer('design-gate')}
-            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-              activeDrawer === 'design-gate'
-                ? 'bg-white text-emerald-800 shadow-sm border border-stone-200/60'
-                : 'text-stone-600 hover:text-stone-900'
-            }`}
-          >
-            <Check className="w-3.5 h-3.5" />
-            <span>Audit</span>
-          </button>
-        </div>
-      </header>
-
-      {/* Main Workspace Area */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left Interactive Canvas Area */}
-        <div className="flex-1 flex flex-col overflow-hidden relative">
-          {/* Smart Pre-Flight Warning Bar */}
-          <div className="px-4 py-2 bg-stone-100 border-b border-stone-200">
-            <SmartPreFlightWarningBar
-              overlays={overlays}
-              templateId={selectedTemplate}
-              signatures={currentFixture.signatures}
-              onAutoFix={handleResetOverlays}
-            />
-          </div>
-
-          {/* Minimizable Zoom & Canvas Toolbar */}
-          {!isZoomCollapsed ? (
-            <div className="h-10 bg-stone-50 border-b border-stone-200 px-4 flex items-center justify-between z-20 text-xs text-stone-600 transition-all">
-              <div className="flex items-center gap-3">
-                <span className="font-mono text-[11px] bg-stone-200/70 text-stone-700 px-2 py-0.5 rounded">
-                  {currentTemplateMeta.width} × {currentTemplateMeta.height}px ({currentTemplateMeta.orientation})
-                </span>
-                <span className="text-[11px] text-stone-500 hidden sm:inline">
-                  Pupil: <strong>{currentFixture.student?.name}</strong> ({currentFixture.student?.class_name})
-                </span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setZoom((z) => Math.max(0.3, Math.round((z - 0.1) * 10) / 10))}
-                  className="p-1 rounded hover:bg-stone-200 transition cursor-pointer"
-                  title="Zoom Out"
-                >
-                  <ZoomOut className="w-4 h-4" />
-                </button>
-                <span className="font-mono text-xs w-12 text-center">{Math.round(zoom * 100)}%</span>
-                <button
-                  onClick={() => setZoom((z) => Math.min(1.5, Math.round((z + 0.1) * 10) / 10))}
-                  className="p-1 rounded hover:bg-stone-200 transition cursor-pointer"
-                  title="Zoom In"
-                >
-                  <ZoomIn className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => setZoom(0.7)}
-                  className="px-2 py-0.5 text-[11px] font-medium rounded hover:bg-stone-200 transition cursor-pointer"
-                >
-                  Reset
-                </button>
-                <button
-                  onClick={() => setIsZoomCollapsed(true)}
-                  className="p-1 rounded hover:bg-stone-200 text-stone-400 hover:text-stone-700 transition cursor-pointer ml-1"
-                  title="Minimize zoom bar"
-                >
-                  <Minimize2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-          ) : (
-            <button
-              onClick={() => setIsZoomCollapsed(false)}
-              className="absolute top-14 left-4 z-30 px-2.5 py-1 rounded-full bg-stone-900/80 text-white text-[11px] font-mono shadow-lg backdrop-blur-xs flex items-center gap-1.5 hover:bg-black transition cursor-pointer"
-              title="Expand zoom toolbar"
+    <StudioFormattingProvider value={studioConfig}>
+      <div
+        data-testid="report-studio-2-root"
+        className="flex flex-col h-[calc(100dvh-16px)] bg-[#F3F6F4] dark:bg-[#0D1310] rounded-2xl border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 overflow-hidden"
+      >
+        {/* Top Studio Header Bar */}
+        <header className="bg-white dark:bg-[#151D1A] border-b border-stone-200 dark:border-white/10 px-3 sm:px-5 py-2.5 flex flex-wrap items-center justify-between gap-2.5 shrink-0 z-20">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <Link
+              href="/admin/reports"
+              className="h-8 px-3 rounded-full bg-[#F0F4F9] dark:bg-[#1E2623] hover:bg-stone-200 dark:hover:bg-stone-700 text-xs font-bold text-stone-800 dark:text-stone-100 inline-flex items-center gap-1.5 transition shrink-0"
             >
-              <Maximize2 className="w-3 h-3 text-emerald-400" />
-              <span>{Math.round(zoom * 100)}%</span>
-            </button>
-          )}
-
-          {/* Scrollable Canvas Viewport */}
-          <div className="flex-1 overflow-auto p-4 sm:p-8 flex items-center justify-center bg-stone-200/60">
-            <div
-              className="relative shadow-2xl transition-transform duration-75 origin-top-center"
-              style={{
-                width: `${currentTemplateMeta.width}px`,
-                height: `${currentTemplateMeta.height}px`,
-                transform: `scale(${zoom})`,
-                marginBottom: `${(currentTemplateMeta.height * (zoom - 1)) / 2}px`,
-              }}
-            >
-              {/* Report Render Wrapper */}
-              <div
-                className="w-full h-full bg-white relative overflow-hidden"
-                style={{
-                  '--report-primary-color': previewBranding.themeColor,
-                } as any}
-              >
-                {/* Watermark Underlay */}
-                <WatermarkOverlay config={watermarkConfig} />
-
-                {selectedTemplate === 'primary-eot' && <PrimaryEOTReport reportData={currentFixture} />}
-                {selectedTemplate === 'primary-mot' && <PrimaryMOTReport reportData={currentFixture} />}
-                {selectedTemplate === 'primary-bot' && <PrimaryBOTReport reportData={currentFixture} />}
-                {selectedTemplate === 'p7-eot' && <P7EOTReport reportData={currentFixture} />}
-                {selectedTemplate === 'nursery-eot' && <NurseryEOTReport reportData={currentFixture} />}
-                {selectedTemplate === 'nursery-mot' && <NurseryMOTReport reportData={currentFixture} />}
-                {selectedTemplate === 'theology-mot' && <TheologyMOTReport reportData={currentFixture} />}
-
-                {/* Interactive Overlays Layer */}
-                <DraggableOverlayLayer
-                  overlays={overlays}
-                  onChange={handleOverlayChange}
-                  selectedElementId={selectedElementId}
-                  onSelectElement={setSelectedElementId}
-                  snapEnabled={snapEnabled}
-                  isInteractive={true}
-                />
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>← Back to Report Center</span>
+            </Link>
+            <div className="hidden xl:flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-[#0D5C3A] flex items-center justify-center text-white">
+                <Sparkles className="w-3.5 h-3.5" />
               </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Right Controls Panel */}
-        <div className="w-96 bg-white border-l border-stone-200 flex flex-col shrink-0 overflow-y-auto">
-          {/* Drawer 1: Stamp & Signature Positioning Controls */}
-          {activeDrawer === 'overlays' && (
-            <div className="p-5 space-y-6">
               <div>
-                <div className="flex items-center justify-between">
-                  <h2 className="text-sm font-bold text-stone-900">Stamp & Signature Overlay Controls</h2>
-                  <button
-                    onClick={handleResetOverlays}
-                    className="text-[11px] text-stone-500 hover:text-stone-800 flex items-center gap-1 font-medium"
-                    title="Reset to template defaults"
-                  >
-                    <RotateCcw className="w-3 h-3" />
-                    <span>Reset</span>
-                  </button>
-                </div>
-                <p className="text-xs text-stone-500 mt-1">
-                  Click or drag overlay elements directly on the canvas, or use the controls below to nudge with pixel accuracy.
+                <h1 className="text-xs font-black tracking-tight text-stone-900 dark:text-white leading-tight">
+                  Report Studio 2.0
+                </h1>
+                <p className="text-[10px] text-stone-500 dark:text-stone-400">
+                  Live Document Design & Global Template Engine
                 </p>
               </div>
+            </div>
+          </div>
 
-              {/* Element Selector Tabs */}
-              <div className="grid grid-cols-3 gap-1 bg-stone-100 p-1 rounded-xl">
+          {/* Template Family Switcher Pills (All 8 Official Templates) */}
+          <div
+            data-testid="studio-template-switcher"
+            className="flex items-center gap-1 bg-[#F0F4F9] dark:bg-[#1E2623] p-1 rounded-xl border border-black/[0.05] dark:border-white/[0.08] overflow-x-auto max-w-full"
+          >
+            {TEMPLATE_OPTIONS.map((tpl) => {
+              const isSelected = activeTemplate === tpl.id;
+              return (
                 <button
-                  onClick={() => setSelectedElementId('stamp')}
-                  className={`py-1.5 text-xs font-semibold rounded-lg transition ${
-                    selectedElementId === 'stamp' ? 'bg-white text-emerald-800 shadow-sm' : 'text-stone-600'
+                  key={tpl.id}
+                  type="button"
+                  onClick={() => handleTemplateSelect(tpl.id)}
+                  title={tpl.label}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition cursor-pointer ${
+                    isSelected
+                      ? 'bg-[#0D5C3A] text-white shadow-2xs'
+                      : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white'
                   }`}
                 >
-                  Stamp
+                  {tpl.shortLabel}
                 </button>
+              );
+            })}
+          </div>
+
+          {/* Sample Student Switcher + Reset + Save & Apply CTA */}
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="hidden sm:flex items-center gap-1 bg-[#F0F4F9] dark:bg-[#1E2623] p-0.5 rounded-xl border border-black/[0.05] dark:border-white/[0.08]">
+              {SAMPLE_PROFILES.map((prof) => (
                 <button
-                  onClick={() => setSelectedElementId('head-teacher')}
-                  className={`py-1.5 text-xs font-semibold rounded-lg transition ${
-                    selectedElementId === 'head-teacher' ? 'bg-white text-blue-800 shadow-sm' : 'text-stone-600'
+                  key={prof.id}
+                  type="button"
+                  onClick={() => setSampleProfileId(prof.id)}
+                  className={`px-2 py-1 rounded-lg text-[10.5px] font-bold whitespace-nowrap transition cursor-pointer ${
+                    sampleProfileId === prof.id
+                      ? 'bg-white dark:bg-[#151D1A] text-[#0D5C3A] dark:text-[#34D399] shadow-2xs'
+                      : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
                   }`}
                 >
-                  Head Teacher
+                  {prof.label}
                 </button>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={handleResetDefaults}
+              className="h-8 px-2.5 rounded-xl border border-stone-200 dark:border-white/15 bg-white dark:bg-[#1E2623] text-[11px] font-bold text-stone-700 dark:text-stone-200 hover:bg-stone-100 transition inline-flex items-center gap-1 cursor-pointer"
+              title="Reset Defaults"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">Reset Defaults</span>
+            </button>
+
+            <button
+              type="button"
+              data-testid="studio-save-apply-all"
+              onClick={handleSaveAndApplyAll}
+              disabled={isSaving}
+              className="h-8 px-3.5 rounded-xl bg-[#0D5C3A] hover:bg-[#0A472C] text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-sm transition cursor-pointer disabled:opacity-50"
+            >
+              <Save className="w-3.5 h-3.5" />
+              <span>{isSaving ? 'Saving...' : '💾 Save & Apply to All Reports'}</span>
+            </button>
+          </div>
+        </header>
+
+        {/* 2-Pane Workspace: Left Inspector Dock (w-[340px]) + Right Live Sample Preview Stage */}
+        <div className="flex flex-1 min-h-0 flex-col lg:flex-row overflow-hidden">
+          {/* Left Inspector Dock */}
+          <aside
+            data-testid="studio-left-inspector"
+            className="w-full lg:w-[340px] bg-white dark:bg-[#151D1A] border-b lg:border-b-0 lg:border-r border-stone-200 dark:border-white/10 flex flex-col shrink-0 max-h-[44dvh] lg:max-h-none overflow-hidden"
+          >
+            {/* 4 Inspector Tabs */}
+            <div className="grid grid-cols-4 gap-1 p-2 bg-[#F0F4F9] dark:bg-[#1E2623] border-b border-stone-200 dark:border-white/10 shrink-0">
+              {[
+                { id: 'theme' as const, label: '🎨 Theme', fullLabel: '🎨 Theme & Colors', icon: Palette },
+                { id: 'typography' as const, label: '🔤 Type', fullLabel: '🔤 Typography & Layout', icon: Type },
+                { id: 'watermark' as const, label: '🖼️ Art', fullLabel: '🖼️ Watermark & Nursery Art', icon: ImageIcon },
+                { id: 'stamp' as const, label: '✒️ Stamp', fullLabel: '✒️ Stamp & Signatures', icon: Stamp },
+              ].map((tab) => (
                 <button
-                  onClick={() => setSelectedElementId('class-teacher')}
-                  className={`py-1.5 text-xs font-semibold rounded-lg transition ${
-                    selectedElementId === 'class-teacher' ? 'bg-white text-purple-800 shadow-sm' : 'text-stone-600'
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  title={tab.fullLabel}
+                  className={`py-1.5 px-1.5 rounded-lg text-[11px] font-bold transition cursor-pointer flex items-center justify-center gap-1 ${
+                    activeTab === tab.id
+                      ? 'bg-[#0D5C3A] text-white shadow-2xs'
+                      : 'text-stone-600 dark:text-stone-300 hover:bg-black/5 dark:hover:bg-white/5'
                   }`}
                 >
-                  Class Teacher
+                  <span>{tab.label}</span>
                 </button>
-              </div>
+              ))}
+            </div>
 
-              {/* Selected Element Controls */}
-              {activeElement && (
-                <div className="space-y-4 bg-stone-50 p-4 rounded-xl border border-stone-200">
-                  <div className="flex items-center justify-between border-b border-stone-200 pb-2">
-                    <span className="text-xs font-bold text-stone-800">{activeElement.label}</span>
-                    <label className="flex items-center gap-1.5 text-xs text-stone-600 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={activeElement.visible}
-                        onChange={(e) => {
-                          handleOverlayChange({
-                            ...overlays,
-                            [activeElementKey]: { ...activeElement, visible: e.target.checked },
-                          });
-                        }}
-                        className="rounded border-stone-300 text-emerald-600 focus:ring-emerald-500"
-                      />
-                      <span>Show on card</span>
-                    </label>
+            {/* Tab Content Area */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-5 text-xs">
+              {/* TAB 1: THEME & COLORS */}
+              {activeTab === 'theme' && (
+                <div className="space-y-5">
+                  <div>
+                    <h3 className="text-xs font-black uppercase tracking-wider text-stone-700 dark:text-stone-200">
+                      🎨 Theme & Colors
+                    </h3>
+                    <p className="text-[11px] text-stone-500 mt-0.5">
+                      Choose a curated school palette or customize primary, secondary, and header accent colors live.
+                    </p>
                   </div>
 
-                  {/* Position Coordinates */}
-                  <div className="grid grid-cols-2 gap-3">
+                  {/* 5 Curated School Palettes */}
+                  <div className="space-y-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500">
+                      Curated School Palettes
+                    </span>
+                    <div className="grid grid-cols-1 gap-2">
+                      {Object.values(STUDIO_COLOR_THEMES).map((theme) => {
+                        const isSelected = studioConfig.colorTheme === theme.id;
+                        return (
+                          <button
+                            key={theme.id}
+                            type="button"
+                            onClick={() => updateStudio({ colorTheme: theme.id })}
+                            className={`p-2.5 rounded-xl border flex items-center justify-between transition cursor-pointer ${
+                              isSelected
+                                ? 'border-[#0D5C3A] bg-[#0D5C3A]/5 dark:bg-[#0D5C3A]/20 shadow-2xs'
+                                : 'border-stone-200 dark:border-white/10 hover:bg-stone-50 dark:hover:bg-white/5'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <div className="flex items-center -space-x-1.5">
+                                <span
+                                  className="w-5 h-5 rounded-full border-2 border-white shadow-xs"
+                                  style={{ backgroundColor: theme.primary }}
+                                />
+                                <span
+                                  className="w-5 h-5 rounded-full border-2 border-white shadow-xs"
+                                  style={{ backgroundColor: theme.secondary }}
+                                />
+                                <span
+                                  className="w-5 h-5 rounded-full border-2 border-white shadow-xs"
+                                  style={{ backgroundColor: theme.accent }}
+                                />
+                              </div>
+                              <span className="font-bold text-stone-800 dark:text-stone-100 text-xs">
+                                {theme.label}
+                              </span>
+                            </div>
+                            {isSelected && <Check className="w-4 h-4 text-[#0D5C3A]" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Custom Color Pickers */}
+                  <div className="space-y-3 pt-3 border-t border-stone-200 dark:border-white/10">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500">
+                      Custom Brand Accent Colors
+                    </span>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <label className="block text-[10px] font-bold text-stone-600 dark:text-stone-300 mb-1">
+                          Primary
+                        </label>
+                        <div className="flex items-center gap-1.5 bg-stone-50 dark:bg-[#1E2623] p-1.5 rounded-lg border border-stone-200 dark:border-white/10">
+                          <input
+                            type="color"
+                            value={branding.primaryColor}
+                            onChange={(e) => {
+                              setBranding({ ...branding, primaryColor: e.target.value });
+                              updateStudio({ primaryColor: e.target.value });
+                            }}
+                            className="w-6 h-6 rounded border-0 cursor-pointer"
+                          />
+                          <span className="text-[10px] font-mono text-stone-600 dark:text-stone-300">
+                            {branding.primaryColor}
+                          </span>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-stone-600 dark:text-stone-300 mb-1">
+                          Secondary
+                        </label>
+                        <div className="flex items-center gap-1.5 bg-stone-50 dark:bg-[#1E2623] p-1.5 rounded-lg border border-stone-200 dark:border-white/10">
+                          <input
+                            type="color"
+                            value={branding.secondaryColor}
+                            onChange={(e) => {
+                              setBranding({ ...branding, secondaryColor: e.target.value });
+                              updateStudio({ secondaryColor: e.target.value });
+                            }}
+                            className="w-6 h-6 rounded border-0 cursor-pointer"
+                          />
+                          <span className="text-[10px] font-mono text-stone-600 dark:text-stone-300">
+                            {branding.secondaryColor}
+                          </span>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-stone-600 dark:text-stone-300 mb-1">
+                          Header Accent
+                        </label>
+                        <div className="flex items-center gap-1.5 bg-stone-50 dark:bg-[#1E2623] p-1.5 rounded-lg border border-stone-200 dark:border-white/10">
+                          <input
+                            type="color"
+                            value={branding.accentColor}
+                            onChange={(e) => {
+                              setBranding({ ...branding, accentColor: e.target.value });
+                              updateStudio({ accentColor: e.target.value });
+                            }}
+                            className="w-6 h-6 rounded border-0 cursor-pointer"
+                          />
+                          <span className="text-[10px] font-mono text-stone-600 dark:text-stone-300">
+                            {branding.accentColor}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* School Identity Quick Edit */}
+                  <div className="space-y-2.5 pt-3 border-t border-stone-200 dark:border-white/10">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500">
+                      School Header Identity
+                    </span>
                     <div>
-                      <div className="flex justify-between text-[11px] font-semibold text-stone-600 mb-1">
-                        <span>Position X</span>
-                        <span className="font-mono">{activeElement.xPercent}%</span>
-                      </div>
+                      <label className="block text-[10px] font-semibold text-stone-600 dark:text-stone-300 mb-1">
+                        School Name (English)
+                      </label>
                       <input
-                        type="range"
-                        min="1"
-                        max="95"
-                        step="0.5"
-                        value={activeElement.xPercent}
-                        onChange={(e) =>
-                          handleOverlayChange({
-                            ...overlays,
-                            [activeElementKey]: { ...activeElement, xPercent: parseFloat(e.target.value) },
-                          })
-                        }
-                        className="w-full h-1.5 bg-stone-200 rounded-lg appearance-none cursor-pointer accent-emerald-600"
+                        type="text"
+                        value={branding.schoolName}
+                        onChange={(e) => setBranding({ ...branding, schoolName: e.target.value })}
+                        className="w-full px-2.5 py-1.5 text-xs border border-stone-200 dark:border-white/10 rounded-lg bg-stone-50 dark:bg-[#1E2623]"
                       />
                     </div>
                     <div>
-                      <div className="flex justify-between text-[11px] font-semibold text-stone-600 mb-1">
-                        <span>Position Y</span>
-                        <span className="font-mono">{activeElement.yPercent}%</span>
-                      </div>
+                      <label className="block text-[10px] font-semibold text-stone-600 dark:text-stone-300 mb-1">
+                        School Motto
+                      </label>
                       <input
-                        type="range"
-                        min="1"
-                        max="95"
-                        step="0.5"
-                        value={activeElement.yPercent}
-                        onChange={(e) =>
-                          handleOverlayChange({
-                            ...overlays,
-                            [activeElementKey]: { ...activeElement, yPercent: parseFloat(e.target.value) },
-                          })
-                        }
-                        className="w-full h-1.5 bg-stone-200 rounded-lg appearance-none cursor-pointer accent-emerald-600"
+                        type="text"
+                        value={branding.schoolMotto}
+                        onChange={(e) => setBranding({ ...branding, schoolMotto: e.target.value })}
+                        className="w-full px-2.5 py-1.5 text-xs border border-stone-200 dark:border-white/10 rounded-lg bg-stone-50 dark:bg-[#1E2623]"
                       />
                     </div>
                   </div>
-
-                  {/* Rotation & Opacity */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <div className="flex justify-between text-[11px] font-semibold text-stone-600 mb-1">
-                        <span>Rotation</span>
-                        <span className="font-mono">{activeElement.rotation}°</span>
-                      </div>
-                      <input
-                        type="range"
-                        min="-45"
-                        max="45"
-                        step="1"
-                        value={activeElement.rotation}
-                        onChange={(e) =>
-                          handleOverlayChange({
-                            ...overlays,
-                            [activeElementKey]: { ...activeElement, rotation: parseInt(e.target.value) },
-                          })
-                        }
-                        className="w-full h-1.5 bg-stone-200 rounded-lg appearance-none cursor-pointer accent-emerald-600"
-                      />
-                    </div>
-                    <div>
-                      <div className="flex justify-between text-[11px] font-semibold text-stone-600 mb-1">
-                        <span>Opacity</span>
-                        <span className="font-mono">{Math.round(activeElement.opacity * 100)}%</span>
-                      </div>
-                      <input
-                        type="range"
-                        min="0.1"
-                        max="1.0"
-                        step="0.05"
-                        value={activeElement.opacity}
-                        onChange={(e) =>
-                          handleOverlayChange({
-                            ...overlays,
-                            [activeElementKey]: { ...activeElement, opacity: parseFloat(e.target.value) },
-                          })
-                        }
-                        className="w-full h-1.5 bg-stone-200 rounded-lg appearance-none cursor-pointer accent-emerald-600"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Nudge Control Pad */}
-                  <div className="pt-2">
-                    <span className="text-[11px] font-semibold text-stone-600 block mb-2">Fine Nudge (0.5% Step)</span>
-                    <div className="flex flex-col items-center gap-1">
-                      <button
-                        onClick={() => handleNudge(0, -0.5)}
-                        className="p-1.5 bg-white border border-stone-200 rounded-lg shadow-sm hover:bg-stone-100 active:scale-95 transition"
-                        title="Nudge Up"
-                      >
-                        <ArrowUp className="w-4 h-4 text-stone-700" />
-                      </button>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleNudge(-0.5, 0)}
-                          className="p-1.5 bg-white border border-stone-200 rounded-lg shadow-sm hover:bg-stone-100 active:scale-95 transition"
-                          title="Nudge Left"
-                        >
-                          <ArrowLeft className="w-4 h-4 text-stone-700" />
-                        </button>
-                        <span className="text-[10px] text-stone-400 font-mono">Move</span>
-                        <button
-                          onClick={() => handleNudge(0.5, 0)}
-                          className="p-1.5 bg-white border border-stone-200 rounded-lg shadow-sm hover:bg-stone-100 active:scale-95 transition"
-                          title="Nudge Right"
-                        >
-                          <ArrowRight className="w-4 h-4 text-stone-700" />
-                        </button>
-                      </div>
-                      <button
-                        onClick={() => handleNudge(0, 0.5)}
-                        className="p-1.5 bg-white border border-stone-200 rounded-lg shadow-sm hover:bg-stone-100 active:scale-95 transition"
-                        title="Nudge Down"
-                      >
-                        <ArrowDown className="w-4 h-4 text-stone-700" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Snap Guides Toggle */}
-                  <div className="flex items-center justify-between pt-2 border-t border-stone-200">
-                    <span className="text-xs text-stone-700">Snap to Margins & Guides</span>
-                    <button
-                      type="button"
-                      onClick={() => setSnapEnabled(!snapEnabled)}
-                      className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                        snapEnabled ? 'bg-emerald-600' : 'bg-stone-300'
-                      }`}
-                    >
-                      <span
-                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                          snapEnabled ? 'translate-x-4' : 'translate-x-0'
-                        }`}
-                      />
-                    </button>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleApplyBranding}
-                    disabled={isSavingBranding}
-                    className="w-full min-h-[44px] py-2.5 px-4 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 cursor-pointer"
-                  >
-                    {isSavingBranding ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                    <span>Save Overlay Positions</span>
-                  </button>
                 </div>
               )}
 
-              {/* Keyboard Shortcuts Hint */}
-              <div className="p-3 bg-stone-50 rounded-xl border border-stone-200 text-[11px] text-stone-600 space-y-1">
-                <div className="flex items-center gap-1 font-semibold text-stone-800">
-                  <Keyboard className="w-3.5 h-3.5" />
-                  <span>Keyboard Shortcuts (When selected):</span>
-                </div>
-                <div>• Arrow keys: Fine nudge (0.5%)</div>
-                <div>• Shift + Arrow: Fast nudge (2.5%)</div>
-                <div>• [ and ]: Rotate -1° / +1°</div>
-              </div>
-            </div>
-          )}
+              {/* TAB 2: TYPOGRAPHY & LAYOUT */}
+              {activeTab === 'typography' && (
+                <div className="space-y-5">
+                  <div>
+                    <h3 className="text-xs font-black uppercase tracking-wider text-stone-700 dark:text-stone-200">
+                      🔤 Typography & Layout
+                    </h3>
+                    <p className="text-[11px] text-stone-500 mt-0.5">
+                      Control font families, scaling, bold emphasis, and page density across all report templates.
+                    </p>
+                  </div>
 
-          {/* Drawer: Stamp Vector Customizer */}
-          {activeDrawer === 'stamp-design' && (
-            <StampGeneratorPanel config={stampConfig} onChange={setStampConfig} tone="light" />
-          )}
-
-          {/* Drawer: Watermark Controls */}
-          {activeDrawer === 'watermark' && (
-            <WatermarkConfigPanel config={watermarkConfig} onChange={setWatermarkConfig} />
-          )}
-
-          {/* Drawer: No-Code Section Overrides */}
-          {activeDrawer === 'overrides' && (
-            <ReportTemplateOverridesPanel templateType={selectedTemplate} />
-          )}
-
-          {/* Drawer 2: Live Customization & Branding */}
-          {activeDrawer === 'branding' && (
-            <div className="p-5 space-y-6">
-              <div>
-                <h2 className="text-sm font-bold text-stone-900">Live Customization & Contrast Guard</h2>
-                <p className="text-xs text-stone-500 mt-1">
-                  Every customization gets a live preview before applying. Changes reflect immediately on the canvas.
-                </p>
-              </div>
-
-              {/* Theme Presets */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-stone-700 uppercase tracking-wider">
-                  Report Theme Preset
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { id: 'emerald-gold', label: 'Emerald & Gold', primary: '#0f4d25', accent: '#c2994c' },
-                    { id: 'navy-silver', label: 'Navy & Silver', primary: '#1e3a8a', accent: '#94a3b8' },
-                    { id: 'maroon-cream', label: 'Maroon & Cream', primary: '#7f1d1d', accent: '#d4a373' },
-                    { id: 'charcoal-teal', label: 'Charcoal & Teal', primary: '#0f766e', accent: '#475569' },
-                  ].map((preset) => (
-                    <button
-                      key={preset.id}
-                      onClick={() =>
-                        setPreviewBranding({
-                          ...previewBranding,
-                          themePreset: preset.id,
-                          themeColor: preset.primary,
-                        })
-                      }
-                      className={`p-2.5 rounded-xl border text-left transition flex items-center justify-between ${
-                        previewBranding.themePreset === preset.id
-                          ? 'border-emerald-600 bg-emerald-50/40 ring-1 ring-emerald-600'
-                          : 'border-stone-200 hover:border-stone-300'
-                      }`}
+                  {/* Font Family Selector */}
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-stone-500">
+                      Font Family
+                    </label>
+                    <select
+                      value={studioConfig.fontFamily}
+                      onChange={(e) => updateStudio({ fontFamily: e.target.value })}
+                      className="w-full h-9 px-3 rounded-xl bg-[#F0F4F9] dark:bg-[#1E2623] border border-stone-200 dark:border-white/10 text-xs font-bold text-stone-800 dark:text-stone-100 cursor-pointer"
                     >
-                      <div>
-                        <div className="text-xs font-semibold text-stone-800">{preset.label}</div>
-                        <div className="flex items-center gap-1 mt-1">
-                          <span className="w-3 h-3 rounded-full border border-black/10" style={{ background: preset.primary }} />
-                          <span className="w-3 h-3 rounded-full border border-black/10" style={{ background: preset.accent }} />
-                        </div>
-                      </div>
-                      {previewBranding.themePreset === preset.id && <Check className="w-4 h-4 text-emerald-600" />}
-                    </button>
-                  ))}
-                </div>
-              </div>
+                      {STUDIO_FONT_FAMILIES.map((font) => (
+                        <option key={font} value={font}>
+                          {font}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-              {/* Custom Accent Color & Contrast Guard */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-stone-700 uppercase tracking-wider">
-                  Accent Color & Contrast
-                </label>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="color"
-                    value={previewBranding.themeColor}
-                    onChange={(e) =>
-                      setPreviewBranding({
-                        ...previewBranding,
-                        themeColor: e.target.value,
-                      })
-                    }
-                    className="w-10 h-10 rounded-lg cursor-pointer border border-stone-200 p-0 overflow-hidden"
-                  />
-                  <input
-                    type="text"
-                    value={previewBranding.themeColor}
-                    onChange={(e) =>
-                      setPreviewBranding({
-                        ...previewBranding,
-                        themeColor: e.target.value,
-                      })
-                    }
-                    className="flex-1 px-3 py-2 text-xs font-mono rounded-xl border border-stone-200 uppercase bg-white text-stone-800 outline-none"
-                  />
-                </div>
-
-                {/* Inline Contrast Warning (Only shown when below WCAG AA 4.5:1) */}
-                {isContrastLow ? (
-                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2 text-xs text-amber-800 mt-2">
-                    <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <div className="font-semibold">Contrast Warning: {contrastRatio.toFixed(1)}:1</div>
-                      <p className="text-[11px] text-amber-700 mt-0.5">
-                        Selected color falls below WCAG 2.1 AA 4.5:1 against white background. Text may be hard for parents to read.
-                      </p>
+                  {/* Font Scale Stepper (85% to 115%) */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500">
+                        Font Scale (85% – 115%)
+                      </span>
+                      <span className="text-xs font-mono font-bold text-[#0D5C3A]">
+                        {studioConfig.fontSize}%
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => updateStudio({ fontSize: Math.max(85, studioConfig.fontSize - 5) })}
+                        className="h-8 px-3 rounded-lg bg-[#F0F4F9] dark:bg-[#1E2623] font-bold text-xs cursor-pointer"
+                      >
+                        A-
+                      </button>
+                      <input
+                        type="range"
+                        min={85}
+                        max={115}
+                        step={5}
+                        value={studioConfig.fontSize}
+                        onChange={(e) => updateStudio({ fontSize: Number(e.target.value) })}
+                        className="flex-1 accent-[#0D5C3A]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => updateStudio({ fontSize: Math.min(115, studioConfig.fontSize + 5) })}
+                        className="h-8 px-3 rounded-lg bg-[#F0F4F9] dark:bg-[#1E2623] font-bold text-xs cursor-pointer"
+                      >
+                        A+
+                      </button>
                     </div>
                   </div>
-                ) : (
-                  <div className="text-[11px] text-emerald-700 flex items-center gap-1 mt-1 font-medium">
-                    <Check className="w-3.5 h-3.5" />
-                    <span>Contrast ratio: {contrastRatio.toFixed(1)}:1 (WCAG AA Compliant)</span>
+
+                  {/* Bold Scores/Headings Toggle */}
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-[#F0F4F9] dark:bg-[#1E2623]">
+                    <div>
+                      <div className="font-bold text-stone-800 dark:text-stone-100">Bold Scores & Headings</div>
+                      <div className="text-[10px] text-stone-500">High-contrast print legibility</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => updateStudio({ isBold: !studioConfig.isBold })}
+                      className={`w-10 h-5.5 rounded-full p-0.5 flex items-center transition cursor-pointer ${
+                        studioConfig.isBold ? 'bg-[#0D5C3A] justify-end' : 'bg-stone-300 justify-start'
+                      }`}
+                    >
+                      <span className="w-4.5 h-4.5 rounded-full bg-white shadow-xs" />
+                    </button>
                   </div>
-                )}
-              </div>
 
-              {/* Fonts */}
-              <div className="space-y-4">
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-stone-700 uppercase tracking-wider">
-                    Primary Font (Latin / English)
-                  </label>
-                  <select
-                    value={previewBranding.primaryFont}
-                    onChange={(e) =>
-                      setPreviewBranding({
-                        ...previewBranding,
-                        primaryFont: e.target.value,
-                      })
-                    }
-                    className="w-full text-xs rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-stone-800 outline-none focus:bg-white"
-                  >
-                    <option value="Montserrat">Montserrat (Official Clean)</option>
-                    <option value="Inter">Inter (Swiss Modern)</option>
-                    <option value="Poppins">Poppins (Friendly Rounded)</option>
-                    <option value="Roboto">Roboto (Technical Standard)</option>
-                  </select>
+                  {/* Page Margin / Padding Density */}
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500">
+                      Page Margin / Padding Density
+                    </span>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {(['compact', 'balanced', 'spacious'] as const).map((density) => (
+                        <button
+                          key={density}
+                          type="button"
+                          onClick={() => updateStudio({ pageDensity: density })}
+                          className={`py-2 rounded-lg text-xs font-bold capitalize border transition cursor-pointer ${
+                            (studioConfig.pageDensity || 'balanced') === density
+                              ? 'bg-[#0D5C3A] text-white border-[#0D5C3A]'
+                              : 'bg-stone-50 dark:bg-[#1E2623] text-stone-700 dark:text-stone-300 border-stone-200 dark:border-white/10'
+                          }`}
+                        >
+                          {density}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
+              )}
 
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-stone-700 uppercase tracking-wider">
-                    Arabic Font (Theology / Islamic Studies)
-                  </label>
-                  <select
-                    value={previewBranding.arabicFont}
-                    onChange={(e) =>
-                      setPreviewBranding({
-                        ...previewBranding,
-                        arabicFont: e.target.value,
-                      })
-                    }
-                    className="w-full text-xs rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-stone-800 outline-none focus:bg-white"
-                  >
-                    <option value="Amiri">Amiri (Classical Naskh)</option>
-                    <option value="Cairo">Cairo (Modern Geometric)</option>
-                    <option value="Tajawal">Tajawal (Contemporary Elegant)</option>
-                    <option value="Almarai">Almarai (Clean Screen Sans)</option>
-                    <option value="Changa">Changa (Display Condensed)</option>
-                    <option value="Kufam">Kufam (Modern Kufic)</option>
-                  </select>
+              {/* TAB 3: WATERMARK & NURSERY ART */}
+              {activeTab === 'watermark' && (
+                <div className="space-y-5">
+                  <div>
+                    <h3 className="text-xs font-black uppercase tracking-wider text-stone-700 dark:text-stone-200">
+                      🖼️ Watermark & Nursery Art
+                    </h3>
+                    <p className="text-[11px] text-stone-500 mt-0.5">
+                      Configure the central school crest watermark and blended educative Nursery background art.
+                    </p>
+                  </div>
+
+                  {/* Central School Crest Watermark Opacity */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-stone-800 dark:text-stone-100">
+                        Central School Crest Watermark Opacity
+                      </span>
+                      <span className="text-xs font-mono font-bold text-[#0D5C3A]">
+                        {studioConfig.watermarkOpacity}%
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-5 gap-1.5">
+                      {[0, 4, 8, 12, 15].map((op) => (
+                        <button
+                          key={op}
+                          type="button"
+                          onClick={() => updateStudio({ watermarkOpacity: op })}
+                          className={`py-1.5 rounded-lg text-xs font-bold tabular-nums cursor-pointer transition ${
+                            studioConfig.watermarkOpacity === op
+                              ? 'bg-[#0D5C3A] text-white shadow-2xs'
+                              : 'bg-[#F0F4F9] dark:bg-[#1E2623] text-stone-700 dark:text-stone-300'
+                          }`}
+                        >
+                          {op}%
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Toggle for Nursery Educative Background Artwork */}
+                  <div className="p-3.5 rounded-xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-700/30 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-bold text-stone-900 dark:text-stone-100">
+                          ✨ Nursery Educative Background Artwork
+                        </div>
+                        <div className="text-[10.5px] text-stone-500">
+                          A B C blocks, 1 2 3 numerals, storybooks, giraffe, baby elephant & lion cub
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => updateStudio({ showNurseryArt: !studioConfig.showNurseryArt })}
+                        className={`w-10 h-5.5 rounded-full p-0.5 flex items-center transition cursor-pointer shrink-0 ${
+                          studioConfig.showNurseryArt ? 'bg-[#0D5C3A] justify-end' : 'bg-stone-300 justify-start'
+                        }`}
+                      >
+                        <span className="w-4.5 h-4.5 rounded-full bg-white shadow-xs" />
+                      </button>
+                    </div>
+
+                    {studioConfig.showNurseryArt && (
+                      <div className="space-y-1.5 pt-2 border-t border-amber-200/60 dark:border-amber-800/30">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10.5px] font-bold text-stone-700 dark:text-stone-300">
+                            Nursery Art Opacity (4% – 12%)
+                          </span>
+                          <span className="text-xs font-mono font-bold text-[#0D5C3A]">
+                            {studioConfig.nurseryArtOpacity}%
+                          </span>
+                        </div>
+                        <input
+                          type="range"
+                          min={4}
+                          max={12}
+                          step={1}
+                          value={studioConfig.nurseryArtOpacity}
+                          onChange={(e) => updateStudio({ nurseryArtOpacity: Number(e.target.value) })}
+                          className="w-full accent-[#0D5C3A]"
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {/* Action Buttons: Apply, Cancel, Reset */}
-              <div className="pt-4 border-t border-stone-200 space-y-2">
-                <button
-                  onClick={handleApplyBranding}
-                  disabled={isSavingBranding}
-                  className="w-full py-2.5 px-4 bg-emerald-800 hover:bg-emerald-900 active:scale-98 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
-                >
-                  {isSavingBranding ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                  <span>Apply Customization</span>
-                </button>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={handleCancelBranding}
-                    className="py-2 px-3 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl text-xs font-semibold transition"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleResetBrandingDefaults}
-                    className="py-2 px-3 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl text-xs font-semibold transition"
-                  >
-                    Reset Defaults
-                  </button>
+              {/* TAB 4: STAMP & SIGNATURES */}
+              {activeTab === 'stamp' && (
+                <div className="space-y-5">
+                  <div>
+                    <h3 className="text-xs font-black uppercase tracking-wider text-stone-700 dark:text-stone-200">
+                      ✒️ Stamp & Signatures
+                    </h3>
+                    <p className="text-[11px] text-stone-500 mt-0.5">
+                      Configure the authentic Jiddah Headteacher double-bordered oval stamp and transparent ink signatures.
+                    </p>
+                  </div>
+
+                  {/* Official Headteacher Stamp Toggle */}
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-[#F0F4F9] dark:bg-[#1E2623]">
+                    <div>
+                      <div className="font-bold text-stone-800 dark:text-stone-100">
+                        Official Headteacher Stamp
+                      </div>
+                      <div className="text-[10px] text-stone-500">
+                        Double-bordered oval vector rubber stamp
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => updateStudio({ stampEnabled: !studioConfig.stampEnabled })}
+                      className={`w-10 h-5.5 rounded-full p-0.5 flex items-center transition cursor-pointer ${
+                        studioConfig.stampEnabled ? 'bg-[#0D5C3A] justify-end' : 'bg-stone-300 justify-start'
+                      }`}
+                    >
+                      <span className="w-4.5 h-4.5 rounded-full bg-white shadow-xs" />
+                    </button>
+                  </div>
+
+                  {studioConfig.stampEnabled && (
+                    <div className="space-y-3.5 pl-1">
+                      {/* Stamp Mode */}
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500">
+                          Stamp Mode
+                        </span>
+                        <div className="grid grid-cols-2 gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => updateStudio({ stampMode: 'digital' })}
+                            className={`py-2 rounded-lg text-xs font-bold border transition cursor-pointer ${
+                              studioConfig.stampMode === 'digital'
+                                ? 'bg-[#0D5C3A] text-white border-[#0D5C3A]'
+                                : 'bg-stone-50 dark:bg-[#1E2623] text-stone-700 dark:text-stone-300 border-stone-200'
+                            }`}
+                          >
+                            Digital Vector
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => updateStudio({ stampMode: 'uploaded' })}
+                            className={`py-2 rounded-lg text-xs font-bold border transition cursor-pointer ${
+                              studioConfig.stampMode === 'uploaded'
+                                ? 'bg-[#0D5C3A] text-white border-[#0D5C3A]'
+                                : 'bg-stone-50 dark:bg-[#1E2623] text-stone-700 dark:text-stone-300 border-stone-200'
+                            }`}
+                          >
+                            Uploaded Image Backup
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Stamp Ink Color Swatches */}
+                      <div className="space-y-1.5">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500">
+                          Stamp Ink Color
+                        </span>
+                        <div className="grid grid-cols-2 gap-1.5">
+                          {STUDIO_STAMP_INK_COLORS.map((ink) => (
+                            <button
+                              key={ink.id}
+                              type="button"
+                              onClick={() => updateStudio({ stampInkColor: ink.id })}
+                              className={`p-2 rounded-lg border flex items-center gap-2 transition cursor-pointer ${
+                                studioConfig.stampInkColor === ink.id
+                                  ? 'border-[#0D5C3A] bg-[#0D5C3A]/5 font-bold'
+                                  : 'border-stone-200 dark:border-white/10'
+                              }`}
+                            >
+                              <span
+                                className="w-4 h-4 rounded-full shrink-0"
+                                style={{ backgroundColor: ink.id }}
+                              />
+                              <span className="text-[11px] truncate">{ink.label}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Stamp Date Input */}
+                      <div className="space-y-1">
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-stone-500">
+                          Stamp Date
+                        </label>
+                        <input
+                          type="text"
+                          value={studioConfig.stampDate}
+                          onChange={(e) => updateStudio({ stampDate: e.target.value.toUpperCase() })}
+                          placeholder="24 OCT 2026"
+                          className="w-full h-8 px-2.5 rounded-lg bg-[#F0F4F9] dark:bg-[#1E2623] border border-stone-200 dark:border-white/10 text-xs font-bold"
+                        />
+                      </div>
+
+                      {/* Stamp Scale (85% - 115%) */}
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500">
+                            Stamp Scale (85% – 115%)
+                          </span>
+                          <span className="text-xs font-mono font-bold text-[#0D5C3A]">
+                            {studioConfig.stampScale}%
+                          </span>
+                        </div>
+                        <input
+                          type="range"
+                          min={85}
+                          max={115}
+                          step={5}
+                          value={studioConfig.stampScale}
+                          onChange={(e) => updateStudio({ stampScale: Number(e.target.value) })}
+                          className="w-full accent-[#0D5C3A]"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Teacher & Headteacher Signatures Toggle */}
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-[#F0F4F9] dark:bg-[#1E2623]">
+                    <div>
+                      <div className="font-bold text-stone-800 dark:text-stone-100">
+                        Teacher & Headteacher Signatures
+                      </div>
+                      <div className="text-[10px] text-stone-500">
+                        Auto background-stripped transparent ink
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => updateStudio({ signaturesEnabled: !studioConfig.signaturesEnabled })}
+                      className={`w-10 h-5.5 rounded-full p-0.5 flex items-center transition cursor-pointer ${
+                        studioConfig.signaturesEnabled ? 'bg-[#0D5C3A] justify-end' : 'bg-stone-300 justify-start'
+                      }`}
+                    >
+                      <span className="w-4.5 h-4.5 rounded-full bg-white shadow-xs" />
+                    </button>
+                  </div>
+
+                  {/* Signature Ink Contrast / Threshold Slider */}
+                  {studioConfig.signaturesEnabled && (
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500">
+                          Signature Ink Contrast / Threshold
+                        </span>
+                        <span className="text-xs font-mono font-bold text-[#0D5C3A]">
+                          {studioConfig.signatureThreshold}
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min={160}
+                        max={240}
+                        step={5}
+                        value={studioConfig.signatureThreshold}
+                        onChange={(e) => updateStudio({ signatureThreshold: Number(e.target.value) })}
+                        className="w-full accent-[#0D5C3A]"
+                      />
+                    </div>
+                  )}
                 </div>
+              )}
+            </div>
+          </aside>
+
+          {/* Right Live Sample Preview Stage */}
+          <main
+            data-testid="studio-live-preview-stage"
+            data-canvas-scroll
+            className="flex-1 bg-[#E6ECE8] dark:bg-[#0D1310] overflow-auto relative flex flex-col items-center justify-start p-4 sm:p-8"
+            style={{
+              backgroundImage:
+                'radial-gradient(circle, rgba(13,92,58,0.08) 1px, transparent 1px)',
+              backgroundSize: '20px 20px',
+            }}
+          >
+            {/* Floating Preview Status & Zoom Pill */}
+            <div className="sticky top-2 z-20 mb-4 flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/90 dark:bg-[#151D1A]/90 border border-black/10 dark:border-white/15 shadow-md text-xs">
+              <UserCheck className="w-3.5 h-3.5 text-[#0D5C3A]" />
+              <span className="font-bold text-stone-800 dark:text-stone-100">
+                {activeTemplateMeta.label}
+              </span>
+              <span className="text-stone-400">•</span>
+              <span className="text-stone-600 dark:text-stone-300 font-medium">
+                {sampleReportData.student.name} ({sampleReportData.student.class_name})
+              </span>
+              <div className="w-px h-3.5 bg-stone-300 dark:bg-white/15 mx-1" />
+              <button
+                type="button"
+                onClick={() => setZoom((z) => Math.max(0.5, +(z - 0.1).toFixed(2)))}
+                className="p-1 rounded hover:bg-stone-100 dark:hover:bg-white/10 cursor-pointer"
+                title="Zoom Out"
+              >
+                <ZoomOut className="w-3.5 h-3.5" />
+              </button>
+              <span className="font-mono font-bold text-[11px] tabular-nums">
+                {Math.round(zoom * 100)}%
+              </span>
+              <button
+                type="button"
+                onClick={() => setZoom((z) => Math.min(1.3, +(z + 0.1).toFixed(2)))}
+                className="p-1 rounded hover:bg-stone-100 dark:hover:bg-white/10 cursor-pointer"
+                title="Zoom In"
+              >
+                <ZoomIn className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setZoom(0.85)}
+                className="p-1 rounded hover:bg-stone-100 dark:hover:bg-white/10 cursor-pointer"
+                title="Reset Zoom"
+              >
+                <Maximize2 className="w-3.5 h-3.5 text-[#0D5C3A]" />
+              </button>
+            </div>
+
+            {/* Live Rendered Sample Report Card */}
+            <ReportPreviewCell
+              reportType={activeTemplateMeta.reportType}
+              zoom={zoom}
+              studioFormatting={studioConfig}
+              isActive={true}
+            >
+              <div
+                style={{
+                  fontSize: `${studioConfig.fontSize}%`,
+                  fontWeight: studioConfig.isBold ? 600 : 'normal',
+                  width: '100%',
+                  height: '100%',
+                }}
+              >
+                {renderActiveTemplateNode()}
               </div>
-            </div>
-          )}
-
-          {/* Drawer 3: Ranking Ties Interactive Preview */}
-          {activeDrawer === 'ranking' && (
-            <div className="p-5 space-y-4">
-              <RankingSettingsPreview isStandalone={false} />
-            </div>
-          )}
-
-          {/* Drawer 4: A4 Report-Card Design Gate */}
-          {activeDrawer === 'design-gate' && (
-            <div className="p-5 space-y-4">
-              <ReportCardDesignGate isStandalone={false} />
-            </div>
-          )}
+            </ReportPreviewCell>
+          </main>
         </div>
       </div>
-    </div>
+    </StudioFormattingProvider>
   );
 }
+
+export default ReportStudioClient;
+

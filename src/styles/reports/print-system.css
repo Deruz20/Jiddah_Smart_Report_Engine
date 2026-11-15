@@ -116,6 +116,8 @@
   .report-studio-root,
   .document-canvas-root,
   .document-canvas-scroll,
+  .document-canvas-grid,
+  [data-canvas-scroll],
   [data-testid="report-center-workspace"],
   [data-testid="report-preview-stage"] {
     height: auto !important;
@@ -126,6 +128,12 @@
     position: static !important;
     margin: 0 !important;
     padding: 0 !important;
+    gap: 0 !important;
+    border: 0 !important;
+  }
+
+  .report-card-sheet.print-excluded {
+    display: none !important;
   }
 
   /* 1. Hide EVERYTHING on the main page */
@@ -175,8 +183,8 @@
 
   .report-card-sheet:last-child,
   #print-portal .report-container:last-child {
-    page-break-after: auto !important;
-    break-after: auto !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
   }
 
   /* Lock landscape & portrait page boxes in print with CSS Named Pages */
@@ -184,11 +192,11 @@
   .landscape-page,
   [data-report-orientation="landscape"] {
     page: landscape-sheet !important;
-    width: 296mm !important;
-    min-width: 296mm !important;
-    max-width: 296mm !important;
-    height: 209mm !important;
-    max-height: 209mm !important;
+    width: 294mm !important;
+    min-width: 294mm !important;
+    max-width: 294mm !important;
+    height: 206mm !important;
+    max-height: 206mm !important;
     padding: 4mm 6mm !important;
     box-sizing: border-box !important;
     overflow: hidden !important;
@@ -212,8 +220,10 @@
     width: 210mm !important;
     min-width: 210mm !important;
     max-width: 210mm !important;
-    height: 296mm !important;
-    max-height: 296mm !important;
+    height: 292mm !important;
+    max-height: 292mm !important;
+    margin: 0 auto !important;
+    box-sizing: border-box !important;
     overflow: hidden !important;
     break-inside: avoid !important;
   }
@@ -289,13 +299,13 @@
 
   #print-portal .report-container[data-report-orientation='portrait']:not(.theology-2up-sheet):not([data-report-type='TheologyMOTReport']) {
     width: 210mm !important;
-    height: 296mm !important;
-    max-height: 296mm !important;
+    height: 292mm !important;
+    max-height: 292mm !important;
   }
 
   #print-portal .report-container[data-report-orientation='landscape'] {
-    width: 296mm !important;
-    height: 209mm !important;
+    width: 294mm !important;
+    height: 206mm !important;
   }
 
   /* 3b. Theology 2-up sheet strictly constrains height to prevent spillover */
@@ -364,8 +374,8 @@
   .report-card-sheet[data-last-printed="true"] .a4-two-up-page,
   .report-card-sheet[data-last-printed="true"] [data-report-orientation],
   .theology-2up-sheet[data-last-printed="true"] {
-    page-break-after: auto !important;
-    break-after: auto !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
   }
 
   /* 5. Kill ALL transforms everywhere in print scope (safety net) */

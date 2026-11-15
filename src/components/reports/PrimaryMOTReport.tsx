@@ -8,8 +8,11 @@ import { CleanSignatureImage } from "@/components/reports/CleanSignatureImage";
 import { OfficialReportStamp } from "@/components/reports/StampGenerator";
 import { resolveReportBranding, resolveReportGradingBands } from "@/lib/school-settings-helper";
 import { getClassTeacherSignatureKey } from "@/utils/signatures";
+import { useStudioFormatting } from "@/lib/studio-config-store";
+import { NurseryEducativeWatermark } from "@/components/reports/NurseryEducativeWatermark";
 
-export default function PrimaryMOTReport({ reportData, studioFormatting }: any) {
+export default function PrimaryMOTReport({ reportData, studioFormatting: studioFormattingProp }: any) {
+  const studioFormatting = useStudioFormatting(studioFormattingProp, reportData?.settings?.report_studio_config);
   const branding = resolveReportBranding(reportData);
   const gradingBands = resolveReportGradingBands(reportData);
 
@@ -296,6 +299,11 @@ export default function PrimaryMOTReport({ reportData, studioFormatting }: any) 
         }}
       />
       <div className="mot-report-page">
+        <NurseryEducativeWatermark
+          logoUrl={branding.logoUrl || "/logo-512h.png"}
+          studioFormatting={studioFormatting}
+          includeEducativeArt={false}
+        />
         <div className="mot-top-arabic">بِسْمِ ٱللَّٰهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</div>
 
         <div className="mot-header">

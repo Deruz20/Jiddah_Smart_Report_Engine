@@ -21,6 +21,8 @@ import type { StabilizedReportType } from '@/types/report'
 interface ReportPreviewCellProps {
   children: React.ReactNode
   reportType: StabilizedReportType
+  /** Optional report object for O(1) memoization comparator */
+  report?: any
   /** User zoom factor from the toolbar */
   zoom?: number
   /** Number of columns when in Grid View (2-up) */
@@ -28,6 +30,10 @@ interface ReportPreviewCellProps {
   /** Direct scale factor passed from parent container to eliminate per-cell ResizeObserver lag */
   scale?: number
   isActive?: boolean
+  isSelected?: boolean
+  isSelectionMode?: boolean
+  onToggleSelectCard?: (studentId: string) => void
+  studioFormatting?: any
   onClick?: () => void
   className?: string
 }
@@ -142,4 +148,34 @@ function ReportPreviewCellComponent({
   )
 }
 
-export const ReportPreviewCell = React.memo(ReportPreviewCellComponent)
+export const ReportPreviewCell = React.memo(
+  ReportPreviewCellComponent,
+  (prev, next) => {
+    if (prev.report || next.report) {
+      return (
+        prev.report === next.report &&
+        prev.report?.student?.id === next.report?.student?.id &&
+        prev.report?.id === next.report?.id &&
+        prev.reportType === next.reportType &&
+        prev.isActive === next.isActive &&
+        prev.isSelected === next.isSelected &&
+        prev.isSelectionMode === next.isSelectionMode &&
+        prev.scale === next.scale &&
+        prev.zoom === next.zoom &&
+        prev.columns === next.columns &&
+        prev.studioFormatting === next.studioFormatting
+      )
+    }
+    return (
+      prev.children === next.children &&
+      prev.reportType === next.reportType &&
+      prev.isActive === next.isActive &&
+      prev.isSelected === next.isSelected &&
+      prev.isSelectionMode === next.isSelectionMode &&
+      prev.scale === next.scale &&
+      prev.zoom === next.zoom &&
+      prev.columns === next.columns &&
+      prev.studioFormatting === next.studioFormatting
+    )
+  }
+)

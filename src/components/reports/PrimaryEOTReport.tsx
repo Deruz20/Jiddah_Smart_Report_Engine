@@ -12,8 +12,10 @@ import { OfficialReportStamp } from '@/components/reports/StampGenerator'
 import { resolveReportBranding, resolveReportGradingBands } from '@/lib/school-settings-helper'
 import { getClassTeacherSignatureKey } from '@/utils/signatures'
 import { transliterateEnglishToArabic } from '@/lib/transliterate'
+import { useStudioFormatting } from '@/lib/studio-config-store'
 
-export default function PrimaryEOTReport({ reportData, studioFormatting }: any) {
+export default function PrimaryEOTReport({ reportData, studioFormatting: studioFormattingProp }: any) {
+  const studioFormatting = useStudioFormatting(studioFormattingProp, reportData?.settings?.report_studio_config)
   const branding = resolveReportBranding(reportData)
   const gradingBands = resolveReportGradingBands(reportData)
 
@@ -37,6 +39,23 @@ export default function PrimaryEOTReport({ reportData, studioFormatting }: any) 
     if (val == null) return '--'
     return String(val).replace(/[0-9]/g, (d) => '٠١٢٣٤٥٦٧٨٩'[+d])
   }
+  const toArabicNumerals = toAr
+
+  const theologyPosition =
+    reportData?.theology?.position ??
+    reportData?.theology?.theology_position ??
+    reportData?.theology_position ??
+    reportData?.meta?.theology_position ??
+    reportData?.circular?.position ??
+    null
+
+  const theologyTotalStudents =
+    reportData?.theology?.total_students ??
+    reportData?.theology?.theology_total_students ??
+    reportData?.theology_total_students ??
+    reportData?.meta?.theology_total_students ??
+    reportData?.circular?.total_students ??
+    null
 
   const toHijri = (gregorianYear: number): number =>
     Math.round((gregorianYear - 622) * (33 / 32))
@@ -620,6 +639,16 @@ export default function PrimaryEOTReport({ reportData, studioFormatting }: any) 
                         <div className="info-value" style={{ flex: 0.4 }}>{toAr(reportData?.term?.academic_year)}</div>
                         <span className="info-label" style={{ marginRight: '4px' }}>ه‍</span>
                         <div className="info-value" style={{ flex: 0.4 }}>{toAr(toHijri(Number(reportData?.term?.academic_year)))}</div>
+                      </div>
+                      <div className="info-row">
+                        <span className="info-label">الترتيب :</span>
+                        <div className="info-value" style={{ flex: 1, fontSize: '15.5px', fontWeight: 900, color: '#0F172A', textAlign: 'center' }}>
+                          {toArabicNumerals(theologyPosition)}
+                        </div>
+                        <span className="info-label" style={{ marginRight: '8px' }}>عدد الطلبة :</span>
+                        <div className="info-value" style={{ flex: 1, fontSize: '15.5px', fontWeight: 900, color: '#0F172A', textAlign: 'center' }}>
+                          {toArabicNumerals(theologyTotalStudents)}
+                        </div>
                       </div>
                     </div>
                   )}

@@ -14,13 +14,22 @@ import { OfficialReportStamp } from '@/components/reports/StampGenerator'
 import { resolveReportBranding, resolveReportGradingBands } from '@/lib/school-settings-helper'
 import { getSecularPortraitReportTitle, isMuslimStudent } from '@/lib/student-religion'
 import { getClassTeacherSignatureKey } from '@/utils/signatures'
+import { useStudioFormatting } from '@/lib/studio-config-store'
 
 export default function P7EOTReport({ reportData, studioFormatting }: any) {
+  const { formatting, palette, fontStack } = useStudioFormatting(studioFormatting)
   const branding = resolveReportBranding(reportData)
   const gradingBands = resolveReportGradingBands(reportData)
   const printPrefs = reportData?.settings?.print_preferences
-  const includeSignatures = printPrefs?.includeSignatures !== undefined ? Boolean(printPrefs.includeSignatures) : true
-  const includeStamp = Boolean(printPrefs?.includeStamp)
+  const includeSignatures =
+    formatting.showSignatures !== false &&
+    (printPrefs?.includeSignatures !== undefined ? Boolean(printPrefs.includeSignatures) : true)
+  const includeStamp =
+    formatting.showStamp !== false &&
+    (printPrefs?.includeStamp !== undefined ? Boolean(printPrefs.includeStamp) : true)
+  const primaryColor = palette.accentColor || '#7F1D1D'
+  const rawWatermarkOp = formatting.watermarkOpacity ?? 4
+  const watermarkOpacity = rawWatermarkOp > 0.5 ? rawWatermarkOp / 100 : rawWatermarkOp
 
   const className =
     reportData?.class_name ||
@@ -89,8 +98,8 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
           (subject.eot_score != null
             ? getSubjectRemark(getSubjectGradeNumber(subject.eot_score))
             : subject.mot_score != null
-            ? getSubjectRemark(getSubjectGradeNumber(subject.mot_score))
-            : '')}
+              ? getSubjectRemark(getSubjectGradeNumber(subject.mot_score))
+              : '')}
       </td>
       <td
         style={{
@@ -158,7 +167,7 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
 
         /* ── PREMIUM DOUBLE BORDERS (Identical to PrimaryEOTReport) ── */
         .p7-eot-report .outer-border {
-          border: 4px solid var(--report-border-color, #c2994c);
+          border: 4px solid ${palette.borderColor || 'var(--report-border-color, #c2994c)'};
           padding: 2px;
           flex: 1;
           display: flex;
@@ -167,7 +176,7 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
         }
 
         .p7-eot-report .inner-border {
-          border: 1.5px solid var(--report-primary-color, #0f4d25);
+          border: 1.5px solid ${palette.primaryColor || 'var(--report-primary-color, #0f4d25)'};
           padding: 5px 12px;
           flex: 1;
           position: relative;
@@ -183,8 +192,8 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
           position: absolute;
           inset: 0;
           background: url('${branding.logoUrl || '/logo-512h.png'}') center center no-repeat;
-          background-size: 380px;
-          opacity: 0.04;
+          background-size: 320px;
+          opacity: ${watermarkOpacity};
           pointer-events: none;
           z-index: 0;
         }
@@ -197,20 +206,24 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
           height: 100%;
           justify-content: flex-start;
           gap: 6px;
+          ${fontStack ? `font-family: ${fontStack};` : ''}
         }
 
-        /* ── HEADER (Identical to PrimaryEOTReport) ── */
+        /* ── HEADER (3-Column Grid Preventing Right Arabic Overflow) ── */
         .p7-eot-report .header-section {
-          display: flex;
+          display: grid;
+          grid-template-columns: 1fr auto 1fr;
           align-items: center;
-          justify-content: space-between;
-          padding-bottom: 2px;
+          gap: 8px;
+          width: 100%;
+          box-sizing: border-box;
+          padding: 2px 6px;
           min-height: 36mm;
         }
 
-        .p7-eot-report .header-left { flex: 0 0 36%; }
+        .p7-eot-report .header-left { min-width: 0; }
         .p7-eot-report .header-left h1 {
-          color: #7F1D1D;
+          color: ${primaryColor || '#7F1D1D'};
           font-size: 22px;
           font-weight: 900;
           margin: 0 0 3px 0;
@@ -225,7 +238,6 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
         }
 
         .p7-eot-report .header-center {
-          flex: 0 0 28%;
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -233,7 +245,7 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
         .p7-eot-report .bismillah {
           font-family: 'Amiri', serif;
           font-size: 19px;
-          color: var(--report-primary-color, #0f4d25);
+          color: ${palette.primaryColor || 'var(--report-primary-color, #0f4d25)'};
           line-height: 1;
           margin-bottom: 2px;
         }
@@ -242,7 +254,7 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
           margin-bottom: 2px;
         }
         .p7-eot-report .report-badge {
-          background-color: var(--report-primary-color, #0f4d25);
+          background-color: ${palette.primaryColor || 'var(--report-primary-color, #0f4d25)'};
           color: #ffffff;
           padding: 3px 14px;
           border-radius: 999px;
@@ -254,17 +266,30 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
         }
 
         .p7-eot-report .header-right {
-          flex: 0 0 36%;
-          text-align: right;
           direction: rtl;
+          text-align: right;
+          padding-right: 6px;
+          min-width: 0;
+          max-width: 100%;
+          overflow: hidden;
+          box-sizing: border-box;
         }
         .p7-eot-report .header-right h2 {
           font-family: 'Amiri', serif;
-          font-size: 24px;
+          font-size: 18.5px;
           font-weight: 900;
-          color: #7F1D1D;
+          color: ${primaryColor || '#7F1D1D'};
           line-height: 1.25;
           margin: 0;
+        }
+        @media print {
+          .portrait-page.p7-eot-report {
+            height: 292mm !important;
+            max-height: 292mm !important;
+            overflow: hidden !important;
+            margin: 0 auto !important;
+            box-sizing: border-box !important;
+          }
         }
 
         .p7-eot-report .header-divider {
@@ -571,8 +596,26 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
                     <div className="report-badge">{reportTitle}</div>
                   </div>
 
-                  <div className="header-right">
-                    <h2>
+                  <div
+                    className="header-right"
+                    style={{
+                      direction: 'rtl',
+                      textAlign: 'right',
+                      paddingRight: '6px',
+                      minWidth: 0,
+                      maxWidth: '100%',
+                      overflow: 'hidden',
+                      boxSizing: 'border-box',
+                    }}
+                  >
+                    <h2
+                      style={{
+                        fontSize: '18.5px',
+                        fontWeight: 900,
+                        lineHeight: 1.25,
+                        color: primaryColor || '#7F1D1D',
+                      }}
+                    >
                       مدرسة جدة الإسلامية للروضة
                       <br />
                       والإبتدائية - انساغو - واكيسو

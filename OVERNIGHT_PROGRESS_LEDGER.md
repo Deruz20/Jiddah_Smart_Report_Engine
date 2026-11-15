@@ -1083,3 +1083,23 @@ Exit code: 0
   - Verified `P7EOTReport.tsx` omits `LIN / ADM` and `GENDER`, includes `PUPIL'S NAME`, `CLASS`, `TERM`, `YEAR`, `TOTAL MARKS`, `AGGREGATE`, and `DIVISION`, enlarges the English & Arabic school names (`22px` / `24px` `#7F1D1D`), and locks single-sheet portrait printing (`data-last-printed="true"` + `max-height: 296mm !important`).
 - **WS5 — Automated Verification Gate (`src/__tests__/overhaul-workstreams.test.mjs`):**
   - Added `Workstream 29` automated regression tests (`WS29.1`–`WS29.5`).
+
+
+---
+
+## Milestone 30: Portrait Arabic Header Fit, Theology Position/Out-Of, Nursery Educative Watermark & Comments, Instant Selection, and Report Studio 2.0
+- **WS1 — Portrait Arabic Header Fit & Single-Sheet Print Lock (`src/components/reports/P7EOTReport.tsx`, `src/styles/reports/print-system.css`):**
+  - Constrained `.header-section` to a strict 3-column grid (`grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; width: 100%; box-sizing: border-box; padding: 2px 6px;`) and right Arabic column (`direction: rtl; text-align: right; padding-right: 6px; min-width: 0; max-width: 100%; overflow: hidden;`) with `18.5px` (`fontWeight: 900`, `lineHeight: 1.25`) Arabic school name lines so `مدرسة جدة الإسلامية للروضة` / `والإبتدائية - انساغي` never clips at the right page border.
+  - Capped `.portrait-page` and `.report-sheet-portrait` height in `@media print` to `292mm !important`, zeroed out padding/margins/gaps on `.document-canvas-root`, `.document-canvas-scroll`, `.document-canvas-grid`, and `[data-canvas-scroll]`, hid `.report-card-sheet.print-excluded`, and enforced `page-break-after: avoid !important; break-after: avoid !important;` on `.report-card-sheet[data-last-printed="true"]` and all descendants.
+- **WS2 — `الترتيب` (Position) & `عدد الطلبة` (Out Of) on Theology Profile Card (`src/components/reports/PrimaryEOTReport.tsx`, `src/app/api/report/route.ts`, `src/app/api/report/batch/route.ts`):**
+  - Updated single and batch report API routes to compute and attach `theology_position` and `theology_total_students` across all curricula (`secular`, `theology`, `combined`).
+  - Added the 3rd row to `.info-box.arabic` in `PrimaryEOTReport.tsx` displaying `الترتيب :` and `عدد الطلبة :` in bold (`15.5px`, `fontWeight: 900`, `#0F172A`) Arabic-Indic numerals while keeping the Secular identity box unchanged.
+- **WS3 — Nursery Templates Polish & Blended Educative Artwork (`src/components/reports/NurseryEducativeWatermark.tsx`, `src/components/reports/NurseryTheologyEOTReport.tsx`, `src/components/reports/NurseryEOTReport.tsx`, `src/components/reports/NurseryMOTReport.tsx`, `src/utils/signatures.ts`):**
+  - Enlarged and centered Arabic teacher and headteacher remarks (`18.5px`, `fontWeight: 800`, `#1E40AF`) in `NurseryTheologyEOTReport.tsx` and wired `classTeacherSignatureUrl` on the `تقرير مرب الفصل` dotted line.
+  - Created `NurseryEducativeWatermark.tsx` combining Layer 1 (Central School Crest `/logo-512h.png` `320px × 320px`) and Layer 2 (SVG vector educative nursery artwork: `A B C` blocks, open storybook, `1 2 3` numerals, pencil & musical notes, giraffe, baby elephant, lion cub, and graduation cap) and wired it into the Nursery templates.
+- **WS4 — Instantaneous Card Selection & Button Response (`src/components/figma-ui/DocumentCanvas.tsx`, `src/components/reports/ReportPreviewCell.tsx`, `src/components/ReportGeneratorClient.tsx`):**
+  - Added `O(1)` `selectedIdSet` lookup, `MemoizedCanvasCard` (`React.memo`), custom `ReportPreviewCell` `React.memo` comparator, and stable `handleToggleSelectCard` `useCallback`.
+- **WS5 — Quick Studio Popover & Full `Report Studio 2.0` Overhaul (`src/lib/studio-config-store.ts`, `src/components/figma-ui/TopToolbar.tsx`, `src/components/reports/ReportStudioClient.tsx`, `src/app/api/settings/school/route.ts`):**
+  - Created shared persistent `studio-config-store.ts` (`jiddah_studio_formatting_v2` + `/api/settings/school` `report_studio_config` + `jiddah:studio-config-updated` custom event) consumed by all 8 report templates.
+  - Updated `TopToolbar.tsx` Studio Popover with `"Official Headteacher Stamp"`, `"✨ Nursery Educative Art"`, `"💾 Save as School Default"`, and `"🚀 Open Full Report Studio 2.0"`.
+  - Rebuilt `ReportStudioClient.tsx` as a 2-Pane Live Document Design Studio with all 8 templates, 4 sample student profiles, 4-tab Left Inspector Dock (`w-[340px]`), and global persistence.

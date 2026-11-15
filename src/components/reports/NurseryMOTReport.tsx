@@ -6,12 +6,30 @@ import { resolveReportBranding } from '@/lib/school-settings-helper'
 import { formatDateWithOrdinal } from '@/utils/dateHelpers';
 
 import { getClassTeacherSignatureKey } from "@/utils/signatures";
+import { NurseryEducativeWatermark } from "@/components/reports/NurseryEducativeWatermark";
+import { useStudioFormatting } from "@/lib/studio-config-store";
 
-export default function NurseryMOTReport({ reportData, studioFormatting }: any) {
+export default function NurseryMOTReport({ reportData, studioFormatting: studioFormattingProp }: any) {
+  const studioFormatting = useStudioFormatting(studioFormattingProp, reportData?.settings?.report_studio_config)
   const branding = resolveReportBranding(reportData)
   const printPrefs = reportData?.settings?.print_preferences
   const includeSignatures = printPrefs?.includeSignatures !== undefined ? Boolean(printPrefs.includeSignatures) : true
   const includeStamp = Boolean(printPrefs?.includeStamp)
+  const rawClassName =
+    reportData?.student?.class_name ||
+    reportData?.class_name ||
+    reportData?.class ||
+    ''
+  const secTeacherKey = getClassTeacherSignatureKey(rawClassName, false)
+  const theoTeacherKey = getClassTeacherSignatureKey(rawClassName, true)
+  const sigMap = reportData?.signatures || {}
+  const classTeacherSignatureUrl =
+    (secTeacherKey && sigMap[secTeacherKey]) ||
+    (theoTeacherKey && sigMap[theoTeacherKey]) ||
+    sigMap['class-teacher-baby'] ||
+    sigMap['class-teacher-middle'] ||
+    sigMap['class-teacher-top'] ||
+    null
   const subjects = (reportData?.circular?.subjects || []).filter((s: any) => {
     if (reportData?.student?.class_name?.toLowerCase().includes('top') && s.subject_name.toLowerCase().includes('writing')) {
       return false;
@@ -315,7 +333,12 @@ export default function NurseryMOTReport({ reportData, studioFormatting }: any) 
           </div>
         </div>
 
-        <div className="report-body">
+        <div className="report-body" style={{ position: 'relative' }}>
+          <NurseryEducativeWatermark
+            logoUrl={branding.logoUrl || '/logo-512h.png'}
+            studioFormatting={studioFormatting}
+            includeEducativeArt={true}
+          />
           {/* INFO BOXES */}
           <div className="info-container">
             <div className="info-box">
@@ -390,8 +413,8 @@ export default function NurseryMOTReport({ reportData, studioFormatting }: any) 
                 </div>
                 <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#475569', flexShrink: 0, paddingBottom: '2px' }}>SIG:</span>
                 <div style={{ borderBottom: '1.5px dotted #334155', minWidth: '95px', width: '108px', height: '28px', display: 'inline-flex', alignItems: 'flex-end', justifyContent: 'center', position: 'relative', flexShrink: 0 }}>
-                  {includeSignatures && (reportData?.student?.class_name || reportData?.class_name || reportData?.class) && reportData?.signatures?.[getClassTeacherSignatureKey((reportData?.student?.class_name || reportData?.class_name || reportData?.class)!) ?? ''] && (
-                    <CleanSignatureImage src={reportData.signatures[getClassTeacherSignatureKey((reportData?.student?.class_name || reportData?.class_name || reportData?.class)!)!]} alt="Signature" style={{ maxHeight: '34px', width: '104px', objectFit: 'contain', marginBottom: '-6px' }} studioFormatting={studioFormatting} />
+                  {includeSignatures && classTeacherSignatureUrl && (
+                    <CleanSignatureImage src={classTeacherSignatureUrl} alt="Signature" style={{ maxHeight: '34px', width: '104px', objectFit: 'contain', marginBottom: '-6px' }} studioFormatting={studioFormatting} />
                   )}
                 </div>
               </div>

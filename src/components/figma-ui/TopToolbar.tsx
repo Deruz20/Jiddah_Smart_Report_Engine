@@ -33,6 +33,8 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover
 import { MoreActionsMenu } from '@/components/ui/more-actions-menu'
 import { useSidebar } from '@/components/figma-ui/ui/sidebar'
 import { getStoredThemeMode, setStoredThemeMode, type ThemeMode } from '@/lib/client-cache'
+import { persistStudioConfigGlobally, saveStudioConfigToStorage, normalizeStudioConfig } from '@/lib/studio-config-store'
+import { toast } from 'sonner'
 
 export interface StudioFormattingState {
   fontFamily: string
@@ -45,6 +47,10 @@ export interface StudioFormattingState {
   stampDate?: string
   signaturesEnabled: boolean
   watermarkOpacity: number
+  showNurseryArt?: boolean
+  nurseryArtOpacity?: number
+  signatureThreshold?: number
+  stampScale?: number
 }
 
 export const DEFAULT_STUDIO_FORMATTING: StudioFormattingState = {
@@ -58,6 +64,10 @@ export const DEFAULT_STUDIO_FORMATTING: StudioFormattingState = {
   stampDate: '',
   signaturesEnabled: true,
   watermarkOpacity: 4,
+  showNurseryArt: true,
+  nurseryArtOpacity: 7,
+  signatureThreshold: 210,
+  stampScale: 100,
 }
 
 const COLOR_THEMES = [
@@ -304,7 +314,7 @@ export function TopToolbar({
         {/* Official Stamp Toggle */}
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-medium text-stone-700 dark:text-stone-200">
-            Official Circular Stamp
+            Official Headteacher Stamp
           </span>
           <button
             type="button"
@@ -416,6 +426,54 @@ export function TopToolbar({
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Nursery Educative Art Toggle */}
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] font-medium text-stone-700 dark:text-stone-200">
+            ✨ Nursery Educative Art
+          </span>
+          <button
+            type="button"
+            onClick={() =>
+              updateFormatting({
+                showNurseryArt: !(studioFormatting.showNurseryArt ?? true),
+              })
+            }
+            className={`w-9 h-5 rounded-full transition cursor-pointer p-0.5 flex items-center ${
+              (studioFormatting.showNurseryArt ?? true)
+                ? 'bg-[#0D5C3A] justify-end'
+                : 'bg-stone-300 dark:bg-stone-700 justify-start'
+            }`}
+          >
+            <span className="w-4 h-4 rounded-full bg-white shadow-xs" />
+          </button>
+        </div>
+
+        {/* Save as School Default + Open Full Report Studio 2.0 */}
+        <div className="flex flex-col gap-1.5 pt-2 border-t border-black/[0.06] dark:border-white/[0.08]">
+          <button
+            type="button"
+            onClick={async () => {
+              const normalized = normalizeStudioConfig(studioFormatting)
+              saveStudioConfigToStorage(normalized)
+              const ok = await persistStudioConfigGlobally(normalized)
+              if (ok) {
+                toast.success('Studio design saved as school default across all reports.')
+              } else {
+                toast.success('Studio design saved locally across all reports.')
+              }
+            }}
+            className="w-full h-8 px-3 rounded-lg bg-[#0D5C3A] hover:bg-[#0A472C] text-white text-[11px] font-bold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-2xs"
+          >
+            <span>💾 Save as School Default</span>
+          </button>
+          <Link
+            href="/admin/reports/studio"
+            className="w-full h-7.5 px-3 rounded-lg bg-[#F0F4F9] dark:bg-[#1E2623] hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-100 text-[11px] font-bold flex items-center justify-center gap-1.5 transition border border-black/[0.06] dark:border-white/[0.08]"
+          >
+            <span>🚀 Open Full Report Studio 2.0</span>
+          </Link>
         </div>
       </div>
     </div>

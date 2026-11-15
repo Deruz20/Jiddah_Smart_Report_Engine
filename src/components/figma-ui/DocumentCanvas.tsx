@@ -1,5 +1,5 @@
-import { useRef, useMemo, useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import React, { useRef, useMemo, useState, useEffect } from 'react';
+import { motion } from 'motion/react';
 import {
   ZoomIn,
   ZoomOut,
@@ -174,6 +174,8 @@ export function DocumentCanvas({
 
     return { landscapeScale: lScale, portraitScale: pScale };
   }, [containerWidth, isGrid, zoom]);
+
+  const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
 
   return (
     <Tooltip.Provider delayDuration={120}>
@@ -365,61 +367,31 @@ export function DocumentCanvas({
             </div>
           ) : (
             <div
-              className={
+              className={`document-canvas-grid ${
                 isGrid
                   ? 'grid grid-cols-1 md:grid-cols-2 gap-6 py-2 w-full max-w-[1750px] justify-items-center items-start'
                   : 'flex flex-col items-center justify-start gap-8 py-2 w-full max-w-[1200px]'
-              }
+              }`}
             >
-              <AnimatePresence>
-                {visibleReports.map((report, index) => {
-                  const isSelected = selectedIds.includes(report.id);
-                  const isActive = report.id === activeReportId;
-                  return (
-                    <motion.div
-                      key={report.id}
-                      data-report-id={report.id}
-                      data-last-printed={report.id === lastPrintedId ? 'true' : 'false'}
-                      onClick={() => {
-                        onSelectReport(report.id);
-                        if (visualSelectMode && onToggleSelectCard) {
-                          onToggleSelectCard(report.id);
-                        }
-                      }}
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.18, ease: 'easeOut' }}
-                      className={`relative flex justify-center rounded-xl transition ${
-                        visualSelectMode
-                          ? isSelected
-                            ? 'ring-3 ring-[#EA580C] dark:ring-[#F59E0B] ring-offset-2 ring-offset-[#E6ECE8] dark:ring-offset-[#0D1310] cursor-pointer'
-                            : 'opacity-80 hover:opacity-100 ring-1 ring-black/10 dark:ring-white/15 cursor-pointer'
-                          : ''
-                      }`}
-                    >
-                      {visualSelectMode && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onToggleSelectCard?.(report.id);
-                          }}
-                          aria-pressed={isSelected}
-                          className={`absolute top-2 right-2 z-20 px-2.5 py-1 rounded-full text-[11px] font-bold shadow-md inline-flex items-center gap-1 transition cursor-pointer ${
-                            isSelected
-                              ? 'bg-[#EA580C] text-white'
-                              : 'bg-white/95 text-stone-700 border border-stone-300 hover:bg-stone-100'
-                          }`}
-                        >
-                          <Check size={12} strokeWidth={3} />
-                          <span>{isSelected ? 'Selected' : 'Select'}</span>
-                        </button>
-                      )}
-                      {renderReport(report, isActive, { landscapeScale, portraitScale })}
-                    </motion.div>
-                  );
-                })}
-              </AnimatePresence>
+              {visibleReports.map((report) => {
+                const isSelected = selectedIdSet.has(report.id);
+                const isActive = report.id === activeReportId;
+                return (
+                  <MemoizedCanvasCard
+                    key={report.id}
+                    report={report}
+                    isSelected={isSelected}
+                    isActive={isActive}
+                    visualSelectMode={visualSelectMode}
+                    isLastPrinted={report.id === lastPrintedId}
+                    landscapeScale={landscapeScale}
+                    portraitScale={portraitScale}
+                    onSelectReport={onSelectReport}
+                    onToggleSelectCard={onToggleSelectCard}
+                    renderReport={renderReport}
+                  />
+                );
+              })}
             </div>
           )}
         </div>
@@ -427,6 +399,81 @@ export function DocumentCanvas({
     </Tooltip.Provider>
   );
 }
+
+const MemoizedCanvasCard = React.memo(
+  function CanvasCard({
+    report,
+    isSelected,
+    isActive,
+    visualSelectMode,
+    isLastPrinted,
+    landscapeScale,
+    portraitScale,
+    onSelectReport,
+    onToggleSelectCard,
+    renderReport,
+  }: {
+    report: ReportData;
+    isSelected: boolean;
+    isActive: boolean;
+    visualSelectMode: boolean;
+    isLastPrinted: boolean;
+    landscapeScale: number;
+    portraitScale: number;
+    onSelectReport: (id: string) => void;
+    onToggleSelectCard?: (id: string) => void;
+    renderReport: (report: any, isActive: boolean, scale?: any) => React.ReactNode;
+  }) {
+    return (
+      <div
+        data-report-id={report.id}
+        data-last-printed={isLastPrinted ? 'true' : 'false'}
+        onClick={() => {
+          onSelectReport(report.id);
+          if (visualSelectMode && onToggleSelectCard) {
+            onToggleSelectCard(report.id);
+          }
+        }}
+        className={`relative flex justify-center rounded-xl transition ${
+          visualSelectMode
+            ? isSelected
+              ? 'ring-3 ring-[#EA580C] dark:ring-[#F59E0B] ring-offset-2 ring-offset-[#E6ECE8] dark:ring-offset-[#0D1310] cursor-pointer'
+              : 'opacity-80 hover:opacity-100 ring-1 ring-black/10 dark:ring-white/15 cursor-pointer'
+            : ''
+        }`}
+      >
+        {visualSelectMode && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleSelectCard?.(report.id);
+            }}
+            aria-pressed={isSelected}
+            className={`absolute top-2 right-2 z-20 px-2.5 py-1 rounded-full text-[11px] font-bold shadow-md inline-flex items-center gap-1 transition cursor-pointer ${
+              isSelected
+                ? 'bg-[#EA580C] text-white'
+                : 'bg-white/95 text-stone-700 border border-stone-300 hover:bg-stone-100'
+            }`}
+          >
+            <Check size={12} strokeWidth={3} />
+            <span>{isSelected ? 'Selected' : 'Select'}</span>
+          </button>
+        )}
+        {renderReport(report, isActive, { landscapeScale, portraitScale })}
+      </div>
+    );
+  },
+  (prev, next) =>
+    prev.report === next.report &&
+    prev.isSelected === next.isSelected &&
+    prev.isActive === next.isActive &&
+    prev.visualSelectMode === next.visualSelectMode &&
+    prev.isLastPrinted === next.isLastPrinted &&
+    prev.landscapeScale === next.landscapeScale &&
+    prev.portraitScale === next.portraitScale &&
+    prev.renderReport === next.renderReport
+);
 
 function DockTooltipButton({
   label,

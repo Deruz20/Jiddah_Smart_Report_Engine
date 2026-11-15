@@ -158,25 +158,25 @@ export function getClassTeacherSignatureKey(className: string | undefined | null
   
   let baseClass = '';
 
-  if (c.includes('baby')) {
+  if (c.includes('baby') || c.includes('lower kindergarten') || c.includes('الروضة السفلى')) {
     baseClass = 'baby';
-  } else if (c.includes('middle')) {
+  } else if (c.includes('middle') || c.includes('middle kindergarten') || c.includes('الروضة الوسطى')) {
     baseClass = 'middle';
-  } else if (c.includes('top')) {
+  } else if (c.includes('top') || c.includes('upper kindergarten') || c.includes('الروضة العليا')) {
     baseClass = 'top';
-  } else if (c.includes('p.1') || c.includes('p1') || c.includes('primary 1') || c.includes('primary one')) {
+  } else if (c.includes('p.1') || c.includes('p1') || c.includes('primary 1') || c.includes('primary one') || c.includes('الصف الأول')) {
     baseClass = 'p1';
-  } else if (c.includes('p.2') || c.includes('p2') || c.includes('primary 2') || c.includes('primary two')) {
+  } else if (c.includes('p.2') || c.includes('p2') || c.includes('primary 2') || c.includes('primary two') || c.includes('الصف الثاني')) {
     baseClass = 'p2';
-  } else if (c.includes('p.3') || c.includes('p3') || c.includes('primary 3') || c.includes('primary three')) {
+  } else if (c.includes('p.3') || c.includes('p3') || c.includes('primary 3') || c.includes('primary three') || c.includes('الصف الثالث')) {
     baseClass = 'p3';
-  } else if (c.includes('p.4') || c.includes('p4') || c.includes('primary 4') || c.includes('primary four')) {
+  } else if (c.includes('p.4') || c.includes('p4') || c.includes('primary 4') || c.includes('primary four') || c.includes('الصف الرابع')) {
     baseClass = 'p4';
-  } else if (c.includes('p.5') || c.includes('p5') || c.includes('primary 5') || c.includes('primary five')) {
+  } else if (c.includes('p.5') || c.includes('p5') || c.includes('primary 5') || c.includes('primary five') || c.includes('الصف الخامس')) {
     baseClass = 'p5';
-  } else if (c.includes('p.6') || c.includes('p6') || c.includes('primary 6') || c.includes('primary six')) {
+  } else if (c.includes('p.6') || c.includes('p6') || c.includes('primary 6') || c.includes('primary six') || c.includes('الصف السادس')) {
     baseClass = 'p6';
-  } else if (c.includes('p.7') || c.includes('p7') || c.includes('primary 7') || c.includes('primary seven')) {
+  } else if (c.includes('p.7') || c.includes('p7') || c.includes('primary 7') || c.includes('primary seven') || c.includes('الصف السابع')) {
     baseClass = 'p7';
   } else {
     return null;

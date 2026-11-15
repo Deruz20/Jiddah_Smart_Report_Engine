@@ -6,12 +6,30 @@ import { resolveReportBranding } from '@/lib/school-settings-helper'
 import { formatDateWithOrdinal } from '@/utils/dateHelpers';
 
 import { getClassTeacherSignatureKey } from "@/utils/signatures";
+import { NurseryEducativeWatermark } from "@/components/reports/NurseryEducativeWatermark";
+import { useStudioFormatting } from "@/lib/studio-config-store";
 
-export default function NurseryEOTReport({ reportData, studioFormatting }: any) {
+export default function NurseryEOTReport({ reportData, studioFormatting: studioFormattingProp }: any) {
+  const studioFormatting = useStudioFormatting(studioFormattingProp, reportData?.settings?.report_studio_config)
   const branding = resolveReportBranding(reportData)
   const printPrefs = reportData?.settings?.print_preferences
   const includeSignatures = printPrefs?.includeSignatures !== undefined ? Boolean(printPrefs.includeSignatures) : true
   const includeStamp = Boolean(printPrefs?.includeStamp)
+  const rawClassName =
+    reportData?.student?.class_name ||
+    reportData?.class_name ||
+    reportData?.class ||
+    ''
+  const secTeacherKey = getClassTeacherSignatureKey(rawClassName, false)
+  const theoTeacherKey = getClassTeacherSignatureKey(rawClassName, true)
+  const sigMap = reportData?.signatures || {}
+  const classTeacherSignatureUrl =
+    (secTeacherKey && sigMap[secTeacherKey]) ||
+    (theoTeacherKey && sigMap[theoTeacherKey]) ||
+    sigMap['class-teacher-baby'] ||
+    sigMap['class-teacher-middle'] ||
+    sigMap['class-teacher-top'] ||
+    null
   const subjects = (reportData?.circular?.subjects || []).filter((s: any) => {
     if (reportData?.student?.class_name?.toLowerCase().includes('top') && s.subject_name.toLowerCase().includes('writing')) {
       return false;
@@ -327,7 +345,12 @@ export default function NurseryEOTReport({ reportData, studioFormatting }: any) 
           </div>
         </div>
 
-        <div className="report-body">
+        <div className="report-body" style={{ position: 'relative' }}>
+          <NurseryEducativeWatermark
+            logoUrl={branding.logoUrl || '/logo-512h.png'}
+            studioFormatting={studioFormatting}
+            includeEducativeArt={true}
+          />
           {/* INFO BOXES */}
           <div className="info-container">
             <div className="info-box">
@@ -343,7 +366,7 @@ export default function NurseryEOTReport({ reportData, studioFormatting }: any) 
 
           {/* TABLES */}
           <div className="tables-container">
-            
+
             <table>
               <thead>
                 <tr>
@@ -359,7 +382,7 @@ export default function NurseryEOTReport({ reportData, studioFormatting }: any) 
                   return (
                     <tr key={subject.subject_name}>
                       <td className="subject-cell">
-                        <span style={{marginRight: '8px', fontSize: '14px'}}>{getSubjectIcon(subject.subject_name)}</span>
+                        <span style={{ marginRight: '8px', fontSize: '14px' }}>{getSubjectIcon(subject.subject_name)}</span>
                         {subject.subject_name}
                       </td>
                       <td className="data-cell">{eotGrade?.grade ?? '--'}</td>
@@ -393,8 +416,8 @@ export default function NurseryEOTReport({ reportData, studioFormatting }: any) 
                   <td className="subject-cell">Mid-Term Assessment (MOT)</td>
                   {subjects.slice(0, 6).map((subject: any, index: number) => (
                     <td key={'mot-' + index} className="data-cell">
-                      {subject.mot_score != null 
-                        ? getNurseryGrade(subject.mot_score).grade 
+                      {subject.mot_score != null
+                        ? getNurseryGrade(subject.mot_score).grade
                         : '--'}
                     </td>
                   ))}
@@ -436,8 +459,8 @@ export default function NurseryEOTReport({ reportData, studioFormatting }: any) 
                 </div>
                 <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#475569', flexShrink: 0, paddingBottom: '2px' }}>SIG:</span>
                 <div style={{ borderBottom: '1.5px dotted #334155', minWidth: '95px', width: '108px', height: '28px', display: 'inline-flex', alignItems: 'flex-end', justifyContent: 'center', position: 'relative', flexShrink: 0 }}>
-                  {includeSignatures && (reportData?.student?.class_name || reportData?.class_name || reportData?.class) && reportData?.signatures?.[getClassTeacherSignatureKey((reportData?.student?.class_name || reportData?.class_name || reportData?.class)!) ?? ''] && (
-                    <CleanSignatureImage src={reportData.signatures[getClassTeacherSignatureKey((reportData?.student?.class_name || reportData?.class_name || reportData?.class)!)!]} alt="Signature" style={{ maxHeight: '34px', width: '104px', objectFit: 'contain', marginBottom: '-6px' }} studioFormatting={studioFormatting} />
+                  {includeSignatures && classTeacherSignatureUrl && (
+                    <CleanSignatureImage src={classTeacherSignatureUrl} alt="Signature" style={{ maxHeight: '34px', width: '104px', objectFit: 'contain', marginBottom: '-6px' }} studioFormatting={studioFormatting} />
                   )}
                 </div>
               </div>
@@ -466,7 +489,7 @@ export default function NurseryEOTReport({ reportData, studioFormatting }: any) 
               ) : null}
             </div>
           </div>
-          
+
           <div style={{ textAlign: 'center', marginTop: '12px', fontSize: '9px', color: '#94a3b8', fontWeight: 600, letterSpacing: '0.05em' }}>
             NOT VALID WITHOUT OFFICIAL SCHOOL STAMP AND SIGNATURE
           </div>

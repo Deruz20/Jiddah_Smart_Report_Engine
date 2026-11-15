@@ -7,6 +7,10 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { FileSpreadsheet, Printer, Users, FileText, Sliders, Settings, History, ChevronDown, LayoutGrid, Menu, Palette, Sun, Moon, Download, CheckSquare } from 'lucide-react'
 import { generateReportBroadsheetCSV } from '@/utils/csvExport'
 import { TopToolbar, StudioFormattingState, DEFAULT_STUDIO_FORMATTING } from './figma-ui/TopToolbar'
+import {
+  useSyncedStudioConfig,
+  StudioFormattingProvider,
+} from '@/lib/studio-config-store'
 import { MoreActionsMenu } from '@/components/ui/more-actions-menu'
 import { isNonMuslimStudent, shouldUseSecularPortraitTemplate } from '@/lib/student-religion'
 import { DocumentCanvas } from './figma-ui/DocumentCanvas'
@@ -162,24 +166,8 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
   const [isGenerating, setIsGenerating] = useState(false)
   const [completionCache, setCompletionCache] = useState<Record<string, StudentCompletionStatus>>({})
 
-  // Studio formatting and customisation state
-  const [studioFormatting, setStudioFormatting] = useState<StudioFormattingState>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('jiddah_report_studio_formatting')
-        if (saved) return { ...DEFAULT_STUDIO_FORMATTING, ...JSON.parse(saved) }
-      } catch {}
-    }
-    return DEFAULT_STUDIO_FORMATTING
-  })
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('jiddah_report_studio_formatting', JSON.stringify(studioFormatting))
-      } catch {}
-    }
-  }, [studioFormatting])
+  // Studio formatting and customisation state (shared across Report Center & Report Studio 2.0)
+  const [studioFormatting, setStudioFormatting] = useSyncedStudioConfig()
 
   // Multi-selection state for student checklist
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([])
@@ -523,6 +511,12 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
     [activeClassEnrollments, selectedStudentIds, anchorIndex]
   )
 
+  const handleToggleSelectCard = useCallback((id: string) => {
+    setSelectedStudentIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    )
+  }, [])
+
   const handleSelectAll = useCallback(() => {
     const visibleIds = activeClassEnrollments.map((e) => e.enrollment_id)
     const next = toggleSelectAllPreservingOthers(visibleIds, selectedStudentIds)
@@ -565,8 +559,8 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
       selectedInViewIds.length > 0
         ? selectedInViewIds
         : activeReportId
-        ? [activeReportId]
-        : []
+          ? [activeReportId]
+          : []
 
     if (targets.length === 0) {
       toast.error('Please select at least one student to print.')
@@ -822,16 +816,18 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
       const scale = typeof scales === 'number'
         ? scales
         : scales
-        ? (isLandscape ? scales.landscapeScale : scales.portraitScale)
-        : undefined
+          ? (isLandscape ? scales.landscapeScale : scales.portraitScale)
+          : undefined
 
       return (
         <ReportPreviewCell
           reportType={resolved.type}
+          report={report}
           zoom={zoom}
           scale={scale}
           columns={filterState.layout === 'grid' ? 2 : 1}
           isActive={isActive}
+          studioFormatting={studioFormatting}
           onClick={() => setActiveReportId(report.id)}
         >
           <div
@@ -1054,11 +1050,10 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
                         setFilterState((prev) => ({ ...prev, phase: p }))
                       })
                     }
-                    className={`h-7 px-3 rounded-full text-xs font-semibold transition cursor-pointer ${
-                      isActive
-                        ? 'bg-[#0D5C3A] text-white shadow-2xs font-bold'
-                        : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white'
-                    }`}
+                    className={`h-7 px-3 rounded-full text-xs font-semibold transition cursor-pointer ${isActive
+                      ? 'bg-[#0D5C3A] text-white shadow-2xs font-bold'
+                      : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white'
+                      }`}
                   >
                     {p}
                   </button>
@@ -1106,11 +1101,10 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
                         setSelectedStudentIds([])
                       })
                     }
-                    className={`h-7 px-3 rounded-full text-xs font-semibold transition cursor-pointer ${
-                      isActive
-                        ? 'bg-gradient-to-r from-[#D97706] to-[#EA580C] text-white shadow-xs font-bold'
-                        : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white'
-                    }`}
+                    className={`h-7 px-3 rounded-full text-xs font-semibold transition cursor-pointer ${isActive
+                      ? 'bg-gradient-to-r from-[#D97706] to-[#EA580C] text-white shadow-xs font-bold'
+                      : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white'
+                      }`}
                   >
                     {c.label}
                   </button>
@@ -1126,11 +1120,10 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
               <button
                 type="button"
                 onClick={() => setFilterState((prev) => ({ ...prev, layout: 'single' }))}
-                className={`h-7 px-2.5 rounded-full text-xs font-semibold transition cursor-pointer flex items-center gap-1 ${
-                  filterState.layout === 'single'
-                    ? 'bg-[#0D5C3A] text-white font-bold shadow-2xs'
-                    : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white'
-                }`}
+                className={`h-7 px-2.5 rounded-full text-xs font-semibold transition cursor-pointer flex items-center gap-1 ${filterState.layout === 'single'
+                  ? 'bg-[#0D5C3A] text-white font-bold shadow-2xs'
+                  : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white'
+                  }`}
               >
                 <FileText size={12} />
                 <span>Single</span>
@@ -1138,11 +1131,10 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
               <button
                 type="button"
                 onClick={() => setFilterState((prev) => ({ ...prev, layout: 'grid' }))}
-                className={`h-7 px-2.5 rounded-full text-xs font-semibold transition cursor-pointer flex items-center gap-1 ${
-                  filterState.layout === 'grid'
-                    ? 'bg-[#0D5C3A] text-white font-bold shadow-2xs'
-                    : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white'
-                }`}
+                className={`h-7 px-2.5 rounded-full text-xs font-semibold transition cursor-pointer flex items-center gap-1 ${filterState.layout === 'grid'
+                  ? 'bg-[#0D5C3A] text-white font-bold shadow-2xs'
+                  : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white'
+                  }`}
               >
                 <LayoutGrid size={12} />
                 <span>All Pages</span>
@@ -1266,8 +1258,8 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
                 {filterState.curriculum === 'combined'
                   ? 'Both'
                   : filterState.curriculum === 'secular'
-                  ? 'Sec'
-                  : 'Theo'}
+                    ? 'Sec'
+                    : 'Theo'}
               </span>
               <ChevronDown size={11} className="text-stone-400" />
             </button>
@@ -1284,11 +1276,10 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
                   key={p}
                   type="button"
                   onClick={() => setFilterState((prev) => ({ ...prev, phase: p }))}
-                  className={`h-7 rounded text-xs font-bold transition cursor-pointer ${
-                    filterState.phase.toUpperCase() === p
-                      ? 'bg-[#0D5C3A] text-white'
-                      : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300'
-                  }`}
+                  className={`h-7 rounded text-xs font-bold transition cursor-pointer ${filterState.phase.toUpperCase() === p
+                    ? 'bg-[#0D5C3A] text-white'
+                    : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300'
+                    }`}
                 >
                   {p}
                 </button>
@@ -1324,11 +1315,10 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
                     })
                     setSelectedStudentIds([])
                   }}
-                  className={`h-7 rounded text-xs font-bold transition cursor-pointer ${
-                    (c.id === 'both' ? filterState.curriculum === 'combined' : filterState.curriculum === c.id)
-                      ? 'bg-[#0D5C3A] text-white'
-                      : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300'
-                  }`}
+                  className={`h-7 rounded text-xs font-bold transition cursor-pointer ${(c.id === 'both' ? filterState.curriculum === 'combined' : filterState.curriculum === c.id)
+                    ? 'bg-[#0D5C3A] text-white'
+                    : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300'
+                    }`}
                 >
                   {c.label}
                 </button>
@@ -1434,7 +1424,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
           printScope={printScope}
           visualSelectMode={visualSelectMode}
           selectedIds={selectedInViewIds}
-          onToggleSelectCard={(id) => handleToggleSelect(id, false)}
+          onToggleSelectCard={handleToggleSelectCard}
           onSelectAllCards={handleSelectAll}
           onClearCards={handleClearAll}
           onInvertCards={handleInvertCards}
@@ -1450,10 +1440,10 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
           printableReports.length > 0
             ? printableReports
             : rawReports.filter((r) => r.id === activeReportId).length > 0
-            ? rawReports.filter((r) => r.id === activeReportId)
-            : rawReports.length > 0
-            ? [rawReports[0]]
-            : []
+              ? rawReports.filter((r) => r.id === activeReportId)
+              : rawReports.length > 0
+                ? [rawReports[0]]
+                : []
         const hasLandscape = reportsToPrint.some((rep) => {
           const res = resolveReport(rep)
           return res && STABILIZED_REPORT_ORIENTATIONS[res.type]?.pageOrientation === 'landscape'
@@ -1466,8 +1456,8 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
           hasLandscape && !hasPortrait
             ? 'landscape'
             : hasPortrait && !hasLandscape
-            ? 'portrait'
-            : 'mixed'
+              ? 'portrait'
+              : 'mixed'
 
         if (reportsToPrint.length === 0) {
           return <PrintPortal pageOrientation={pageOrientation}>{null}</PrintPortal>

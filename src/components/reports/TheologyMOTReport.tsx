@@ -1,6 +1,7 @@
 import { getTheologyComment } from '@/lib/grading'
 import { ReportContainer } from '@/components/reports/shared/ReportContainer'
 import { OfficialReportStamp } from '@/components/reports/StampGenerator'
+import { useStudioFormatting } from '@/lib/studio-config-store'
 
 const theologyCSS = `
 @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
@@ -588,7 +589,8 @@ export function Theology2UpPrintSheet({
   )
 }
 
-export default function TheologyMOTReport({ reportData, studioFormatting }: any) {
+export default function TheologyMOTReport({ reportData, studioFormatting: studioFormattingProp }: any) {
+  const studioFormatting = useStudioFormatting(studioFormattingProp, reportData?.settings?.report_studio_config)
   return (
     <ReportContainer reportType="TheologyMOTReport">
       <style dangerouslySetInnerHTML={{ __html: theologyCSS }} />

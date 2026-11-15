@@ -6,11 +6,39 @@ import { normalizeSchoolLogoUrl } from '@/lib/school-settings-helper'
 import { transliterateEnglishToArabic } from '@/lib/transliterate'
 
 import { getClassTeacherSignatureKey } from '@/utils/signatures'
+import { NurseryEducativeWatermark } from '@/components/reports/NurseryEducativeWatermark'
+import { useStudioFormatting } from '@/lib/studio-config-store'
 
-export default function NurseryTheologyEOTReport({ reportData, studioFormatting }: any) {
+export default function NurseryTheologyEOTReport({ reportData, studioFormatting: studioFormattingProp }: any) {
+  const studioFormatting = useStudioFormatting(studioFormattingProp, reportData?.settings?.report_studio_config)
   const printPrefs = reportData?.settings?.print_preferences
   const includeSignatures = printPrefs?.includeSignatures !== undefined ? Boolean(printPrefs.includeSignatures) : true
   const includeStamp = Boolean(printPrefs?.includeStamp)
+
+  const rawClassName =
+    reportData?.student?.class_name ||
+    reportData?.student?.theology_class_english ||
+    reportData?.student?.theology_class_arabic ||
+    reportData?.class_name ||
+    ''
+  const theoTeacherKey = getClassTeacherSignatureKey(rawClassName, true)
+  const secTeacherKey = getClassTeacherSignatureKey(rawClassName, false)
+  const sigMap = reportData?.signatures || {}
+  const fallbackTeacherSig =
+    sigMap['class-teacher-baby'] ||
+    sigMap['class-teacher-middle'] ||
+    sigMap['class-teacher-top'] ||
+    sigMap['theology-teacher-baby'] ||
+    sigMap['theology-teacher-middle'] ||
+    sigMap['theology-teacher-top'] ||
+    Object.entries(sigMap).find(([k, v]) => (k.startsWith('class-teacher-') || k.startsWith('theology-teacher-')) && Boolean(v))?.[1] ||
+    null
+  const classTeacherSignatureUrl =
+    (theoTeacherKey && sigMap[theoTeacherKey]) ||
+    (secTeacherKey && sigMap[secTeacherKey]) ||
+    sigMap['theology-head'] ||
+    fallbackTeacherSig ||
+    null
 
   const getTheologyRemark = (score: number | null): string => {
     if (score == null) return '--'
@@ -377,8 +405,13 @@ export default function NurseryTheologyEOTReport({ reportData, studioFormatting 
         `
       }} />
 
-      <div className="nursery-theology-eot-report font-cairo" dir="rtl">
+      <div className="nursery-theology-eot-report font-cairo" dir="rtl" style={{ position: 'relative' }}>
         <div className="watermark-bg"></div>
+        <NurseryEducativeWatermark
+          logoUrl={normalizeSchoolLogoUrl(reportData?.settings?.logo_url)}
+          studioFormatting={studioFormatting}
+          includeEducativeArt={false}
+        />
         <div className="header">
           <div className="header-badge">
             <img
@@ -458,14 +491,18 @@ export default function NurseryTheologyEOTReport({ reportData, studioFormatting 
         <div className="remarks-area">
           <div className="remark-box">
             <span className="remark-label">ملاحظات مرب الفصل</span>
-            <div style={{ height: '40px' }}>
-              <span style={{ color: 'var(--data-teal)', fontStyle: 'italic', fontWeight: 900, fontSize: '16px', direction: 'rtl' }}>{getTheologyComment(reportData?.theology?.total ?? null, reportData?.student?.gender, reportData?.settings?.theology_remarks)}</span>
+            <div style={{ minHeight: '42px', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', width: '100%' }}>
+              <span style={{ color: '#1E40AF', fontWeight: 800, fontSize: '18.5px', lineHeight: 1.35, textAlign: 'center', direction: 'rtl' }}>
+                {getTheologyComment(reportData?.theology?.total ?? null, reportData?.student?.gender, reportData?.settings?.theology_remarks)}
+              </span>
             </div>
           </div>
           <div className="remark-box">
             <span className="remark-label">ملاحظات مدير المدرسة</span>
-            <div style={{ height: '40px' }}>
-              <span style={{ color: 'var(--data-teal)', fontStyle: 'italic', fontWeight: 900, fontSize: '16px', direction: 'rtl' }}>{getTheologyComment(reportData?.theology?.total ?? null, reportData?.student?.gender, reportData?.settings?.theology_remarks)}</span>
+            <div style={{ minHeight: '42px', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', width: '100%' }}>
+              <span style={{ color: '#1E40AF', fontWeight: 800, fontSize: '18.5px', lineHeight: 1.35, textAlign: 'center', direction: 'rtl' }}>
+                {getTheologyComment(reportData?.theology?.total ?? null, reportData?.student?.gender, reportData?.settings?.theology_remarks)}
+              </span>
             </div>
           </div>
         </div>
@@ -474,8 +511,8 @@ export default function NurseryTheologyEOTReport({ reportData, studioFormatting 
           <div className="sign-field">
             <div>تقرير مرب الفصل</div>
             <div className="sign-line" style={{ position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'flex-end', height: '36px', minWidth: '130px', borderBottom: '1.5px dotted #334155' }}>
-              {includeSignatures && reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.class_name) ?? ''] && (
-                <CleanSignatureImage src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} alt="Signature" style={{ height: '36px', width: '112px', objectFit: 'contain', marginBottom: '-6px' }} studioFormatting={studioFormatting} />
+              {includeSignatures && classTeacherSignatureUrl && (
+                <CleanSignatureImage src={classTeacherSignatureUrl} alt="Signature" style={{ height: '36px', width: '112px', objectFit: 'contain', marginBottom: '-6px' }} studioFormatting={studioFormatting} />
               )}
             </div>
           </div>

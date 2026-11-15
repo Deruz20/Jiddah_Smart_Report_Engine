@@ -509,6 +509,59 @@ export async function GET(request: NextRequest) {
         division: theologyAggregate !== null ? getDivision(theologyAggregate, schoolSettings?.division_boundaries) : null,
       }
     }
+
+    let theologyPosition: number | null = null
+    let totalTheologyStudents: number | null = null
+    if (enrollment.theology_class_id && theologySectionData && typeof theologySectionData.total === 'number' && showClassPosition) {
+      const { data: theologyEnrollments } = await supabase
+        .from('enrollments')
+        .select('id, student_id')
+        .eq('theology_class_id', enrollment.theology_class_id)
+        .eq('is_active', true)
+
+      if (theologyEnrollments && theologyEnrollments.length > 0) {
+        const tEnrollmentIds = theologyEnrollments.map(e => e.id)
+        const { data: allTheologyMarks } = await supabase
+          .from('theology_marks')
+          .select('enrollment_id, subject_id, mot_score, eot_score')
+          .eq('term_id', termId)
+          .in('enrollment_id', tEnrollmentIds)
+
+        if (allTheologyMarks) {
+          const totals: { id: string; total: number }[] = []
+
+          for (const e of theologyEnrollments) {
+            const eMarks = allTheologyMarks.filter(m => m.enrollment_id === e.id)
+            let eTotal = 0
+            let hasMarks = false
+
+            for (const m of eMarks) {
+              const s = scoreType === 'mot' ? m.mot_score : m.eot_score
+              if (typeof s === 'number') {
+                eTotal += s
+                hasMarks = true
+              }
+            }
+
+            if (hasMarks) totals.push({ id: e.id, total: eTotal })
+          }
+
+          if (totals.length > 0) {
+            totalTheologyStudents = theologyEnrollments.length
+            totals.sort((a, b) => b.total - a.total)
+            const myObj = totals.find(r => r.id === enrollment.id)
+            if (myObj) {
+              theologyPosition = totals.findIndex(r => r.total === myObj.total) + 1
+            }
+          }
+        }
+      }
+      ;(theologySectionData as any).position = theologyPosition
+      ;(theologySectionData as any).total_students = totalTheologyStudents
+      ;(theologySectionData as any).theology_position = theologyPosition
+      ;(theologySectionData as any).theology_total_students = totalTheologyStudents
+    }
+
     const { data: signatureObjects } = await supabase.storage.from('signatures').list('', { limit: 100 })
     const signatures: Record<string, string | null> = {
       'head-teacher': null,
@@ -532,59 +585,6 @@ export async function GET(request: NextRequest) {
       const theologyClass = Array.isArray(enrollment.theology_classes) ? enrollment.theology_classes[0] : enrollment.theology_classes
       const theologyClassArabic = theologyClass?.class_name_arabic
       const theologyClassEnglish = theologyClass?.class_name_english
-
-      // For theology ranking, we need to calculate class positions.
-      // Doing this inline for theology if requested in theology mode.
-      let theologyPosition = null;
-      let totalTheologyStudents = null;
-
-      if (enrollment.theology_class_id && theologySectionData && typeof theologySectionData.total === 'number' && showClassPosition) {
-        const { data: theologyEnrollments } = await supabase
-          .from('enrollments')
-          .select('id, student_id')
-          .eq('theology_class_id', enrollment.theology_class_id)
-          .eq('is_active', true)
-
-        if (theologyEnrollments && theologyEnrollments.length > 0) {
-          const tEnrollmentIds = theologyEnrollments.map(e => e.id)
-          const { data: allTheologyMarks } = await supabase
-            .from('theology_marks')
-            .select('enrollment_id, subject_id, mot_score, eot_score')
-            .eq('term_id', termId)
-            .in('enrollment_id', tEnrollmentIds)
-
-          if (allTheologyMarks) {
-            const totals: {id: string, total: number}[] = []
-
-            for (const e of theologyEnrollments) {
-              const eMarks = allTheologyMarks.filter(m => m.enrollment_id === e.id)
-              let eTotal = 0
-              let hasMarks = false
-
-              for (const m of eMarks) {
-                 const s = scoreType === 'mot' ? m.mot_score : m.eot_score;
-                 if (typeof s === 'number') {
-                    eTotal += s;
-                    hasMarks = true;
-                 }
-              }
-
-              if (hasMarks) totals.push({ id: e.id, total: eTotal })
-            }
-
-            if (totals.length > 0) {
-              totalTheologyStudents = theologyEnrollments.length
-              totals.sort((a, b) => b.total - a.total)
-              const myObj = totals.find(r => r.id === enrollment.id)
-              if (myObj) {
-                // Standard Competition Ranking (1224 ranking)
-                theologyPosition = totals.findIndex(r => r.total === myObj.total) + 1
-              }
-            }
-          }
-        }
-      }
-
 
       return withCors(request, NextResponse.json({
           id: enrollment.id,
@@ -695,11 +695,15 @@ export async function GET(request: NextRequest) {
         total_students,
       },
       theology: theologySectionData,
+      theology_position: theologyPosition,
+      theology_total_students: totalTheologyStudents,
       meta: {
         is_term_3: isTerm3,
         promotion_status,
         position,
         total_students,
+        theology_position: theologyPosition,
+        theology_total_students: totalTheologyStudents,
       },
       signatures,
       settings: schoolSettings,

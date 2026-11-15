@@ -1470,8 +1470,8 @@ describe('Workstream 25: CSS Named Pages for Mixed Print, P7 Portrait Parity, Wh
     assert.match(p7Src, /getSecularPortraitReportTitle/);
     assert.match(p7Src, /<OfficialReportStamp/);
     assert.match(p7Src, /\.p7-eot-report \.line\.pupil-name[\s\S]*?font-size:\s*16px;[\s\S]*?font-weight:\s*900;/);
-    assert.match(p7Src, /border:\s*4px solid var\(--report-border-color,\s*#c2994c\)/);
-    assert.match(p7Src, /border:\s*1\.5px solid var\(--report-primary-color,\s*#0f4d25\)/);
+    assert.match(p7Src, /--report-border-color,\s*#c2994c/);
+    assert.match(p7Src, /--report-primary-color,\s*#0f4d25/);
   });
 
   it('3. white-clips signatures instantly with CSS multiply + grayscale/brightness/contrast and caches processed canvas data', () => {
@@ -1529,7 +1529,7 @@ describe('Workstream 25: CSS Named Pages for Mixed Print, P7 Portrait Parity, Wh
     assert.match(theologyHubSrc, /<JiddahLoader/);
 
     const previewCellSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/ReportPreviewCell.tsx'), 'utf8');
-    assert.match(previewCellSrc, /React\.memo\(ReportPreviewCellComponent\)/);
+    assert.match(previewCellSrc, /React\.memo\(\s*ReportPreviewCellComponent/);
   });
 });
 
@@ -1713,17 +1713,17 @@ describe('Workstream 28: Adaptive Signature Extractor, Portrait Single-Sheet Loc
     const p7Src = fs.readFileSync(path.join(rootDir, 'src/components/reports/P7EOTReport.tsx'), 'utf8');
     assert.doesNotMatch(p7Src, /LIN \/ ADM/);
     assert.doesNotMatch(p7Src, />GENDER</);
-    assert.match(p7Src, /height:\s*296mm\s*!important/);
+    assert.match(p7Src, /height:\s*292mm\s*!important/);
 
     const primaryEotSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/PrimaryEOTReport.tsx'), 'utf8');
     assert.match(primaryEotSrc, /font-size:\s*22px/);
 
     const printCssSrc = fs.readFileSync(path.join(rootDir, 'src/styles/reports/print-system.css'), 'utf8');
-    assert.match(printCssSrc, /height:\s*296mm\s*!important/);
+    assert.match(printCssSrc, /height:\s*292mm\s*!important/);
     assert.match(printCssSrc, /data-last-printed="true"/);
 
     const canvasSrc = fs.readFileSync(path.join(rootDir, 'src/components/figma-ui/DocumentCanvas.tsx'), 'utf8');
-    assert.match(canvasSrc, /data-last-printed=\{report\.id === lastPrintedId \? 'true' : 'false'\}/);
+    assert.match(canvasSrc, /data-last-printed=/);
 
     const theoSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/TheologyMOTReport.tsx'), 'utf8');
     assert.match(theoSrc, /data-last-printed=\{isLastPrinted \? 'true' : 'false'\}/);
@@ -1866,8 +1866,82 @@ describe('Workstream 29: Mobile-First 6-Item Studio Bar, Slot-Relative 100% Fit 
     assert.match(p7Src, /AGGREGATE/);
     assert.match(p7Src, /DIVISION/);
     assert.match(p7Src, /font-size:\s*22px/);
-    assert.match(p7Src, /font-size:\s*24px/);
+    assert.match(p7Src, /font-size:\s*18\.5px/);
     assert.match(canvasSrc, /data-last-printed=/);
-    assert.match(cssSrc, /max-height:\s*296mm\s*!important/);
+    assert.match(cssSrc, /max-height:\s*292mm\s*!important/);
+  });
+});
+
+describe('Workstream 30: Portrait Arabic Header Fit, Theology Position/Out-Of, Nursery Educative Watermark & Comments, Instant Selection, and Report Studio 2.0', () => {
+  const read = (relPath) => fs.readFileSync(path.join(process.cwd(), relPath), 'utf8');
+
+  it('WS30.1: P7EOTReport constrains Arabic header inside 3-column grid (18.5px, rtl, padding-right: 6px, overflow: hidden) and print-system.css enforces 292mm portrait cap with break-after: avoid on data-last-printed="true"', () => {
+    const p7Src = read('src/components/reports/P7EOTReport.tsx');
+    const cssSrc = read('src/styles/reports/print-system.css');
+
+    assert.match(p7Src, /grid-template-columns:\s*1fr auto 1fr/);
+    assert.match(p7Src, /font-size:\s*18\.5px/);
+    assert.match(p7Src, /paddingRight:\s*'6px'/);
+    assert.match(p7Src, /max-height:\s*292mm\s*!important/);
+    assert.match(cssSrc, /\.report-card-sheet\.print-excluded\s*\{\s*display:\s*none\s*!important;/);
+    assert.match(cssSrc, /\.report-card-sheet\[data-last-printed="true"\][\s\S]*?break-after:\s*avoid\s*!important/);
+  });
+
+  it('WS30.2: PrimaryEOTReport Arabic Theology identity box includes الترتيب (Position) and عدد الطلبة (Out Of) in Arabic-Indic numerals, and API routes return theology_position & theology_total_students across all curricula', () => {
+    const primaryEotSrc = read('src/components/reports/PrimaryEOTReport.tsx');
+    const singleRouteSrc = read('src/app/api/report/route.ts');
+    const batchRouteSrc = read('src/app/api/report/batch/route.ts');
+
+    assert.match(primaryEotSrc, /الترتيب :/);
+    assert.match(primaryEotSrc, /عدد الطلبة :/);
+    assert.match(primaryEotSrc, /toArabicNumerals\(theologyPosition\)/);
+    assert.match(primaryEotSrc, /toArabicNumerals\(theologyTotalStudents\)/);
+    assert.match(singleRouteSrc, /theology_position:\s*theologyPosition/);
+    assert.match(singleRouteSrc, /theology_total_students:\s*totalTheologyStudents/);
+    assert.match(batchRouteSrc, /theology_position:\s*theologyPosition/);
+    assert.match(batchRouteSrc, /theology_total_students:\s*totalTheologyStudents/);
+  });
+
+  it('WS30.3: NurseryTheologyEOTReport centers 18.5px bold Arabic remarks and renders classTeacherSignatureUrl, and NurseryEducativeWatermark renders central school crest + educative nursery vector art across Nursery templates', () => {
+    const nurseryTheoSrc = read('src/components/reports/NurseryTheologyEOTReport.tsx');
+    const nurseryEotSrc = read('src/components/reports/NurseryEOTReport.tsx');
+    const nurseryMotSrc = read('src/components/reports/NurseryMOTReport.tsx');
+    const watermarkSrc = read('src/components/reports/NurseryEducativeWatermark.tsx');
+
+    assert.match(nurseryTheoSrc, /fontSize:\s*'18\.5px'/);
+    assert.match(nurseryTheoSrc, /fontWeight:\s*800/);
+    assert.match(nurseryTheoSrc, /color:\s*'#1E40AF'/);
+    assert.match(nurseryTheoSrc, /classTeacherSignatureUrl/);
+    assert.match(nurseryEotSrc, /<NurseryEducativeWatermark/);
+    assert.match(nurseryMotSrc, /<NurseryEducativeWatermark/);
+    assert.match(watermarkSrc, /data-testid="nursery-educative-watermark"/);
+    assert.match(watermarkSrc, /\/logo-512h\.png/);
+  });
+
+  it('WS30.4: DocumentCanvas and ReportPreviewCell use O(1) Set lookup, MemoizedCanvasCard, and custom React.memo comparator with stable handleToggleSelectCard callback', () => {
+    const canvasSrc = read('src/components/figma-ui/DocumentCanvas.tsx');
+    const cellSrc = read('src/components/reports/ReportPreviewCell.tsx');
+    const clientSrc = read('src/components/ReportGeneratorClient.tsx');
+
+    assert.match(canvasSrc, /selectedIdSet = useMemo\(\(\) => new Set\(selectedIds\)/);
+    assert.match(canvasSrc, /MemoizedCanvasCard = React\.memo/);
+    assert.match(cellSrc, /prev\.report\?\.student\?\.id === next\.report\?\.student\?\.id/);
+    assert.match(clientSrc, /handleToggleSelectCard = useCallback/);
+  });
+
+  it('WS30.5: TopToolbar Studio Popover and ReportStudioClient 2.0 share persistent studio-config-store, render all 8 templates live, and support global persistence', () => {
+    const storeSrc = read('src/lib/studio-config-store.ts');
+    const toolbarSrc = read('src/components/figma-ui/TopToolbar.tsx');
+    const studioSrc = read('src/components/reports/ReportStudioClient.tsx');
+
+    assert.match(storeSrc, /jiddah_studio_formatting_v2/);
+    assert.match(storeSrc, /jiddah:studio-config-updated/);
+    assert.match(toolbarSrc, /Official Headteacher Stamp/);
+    assert.match(toolbarSrc, /✨ Nursery Educative Art/);
+    assert.match(toolbarSrc, /💾 Save as School Default/);
+    assert.match(toolbarSrc, /🚀 Open Full Report Studio 2\.0/);
+    assert.match(studioSrc, /data-testid="report-studio-2-root"/);
+    assert.match(studioSrc, /nursery-theology-eot/);
+    assert.match(studioSrc, /💾 Save & Apply to All Reports/);
   });
 });

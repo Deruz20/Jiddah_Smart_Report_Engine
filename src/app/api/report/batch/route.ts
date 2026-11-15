@@ -528,7 +528,7 @@ export async function POST(request: NextRequest) {
 
       let theologyPosition = null;
       let totalTheologyStudents = null;
-      if (curriculum !== 'secular' && showClassPosition && enrollment.theology_class_id && theologyRankings[enrollment.theology_class_id] && theologySectionData) {
+      if (showClassPosition && enrollment.theology_class_id && theologyRankings[enrollment.theology_class_id] && theologySectionData) {
          const rankings = theologyRankings[enrollment.theology_class_id]
          totalTheologyStudents = theologyClassSizes[enrollment.theology_class_id]
          if (rankings.length > 0) {
@@ -539,6 +539,8 @@ export async function POST(request: NextRequest) {
          }
          theologySectionData.position = theologyPosition;
          theologySectionData.total_students = totalTheologyStudents;
+         theologySectionData.theology_position = theologyPosition;
+         theologySectionData.theology_total_students = totalTheologyStudents;
       }
 
       if (curriculum === 'theology') {
@@ -644,11 +646,15 @@ export async function POST(request: NextRequest) {
           total_students,
         },
         theology: theologySectionData,
+        theology_position: theologyPosition,
+        theology_total_students: totalTheologyStudents,
         meta: {
           is_term_3: isTerm3,
           promotion_status,
           position,
           total_students,
+          theology_position: theologyPosition,
+          theology_total_students: totalTheologyStudents,
         },
         signatures,
         settings: schoolSettings,

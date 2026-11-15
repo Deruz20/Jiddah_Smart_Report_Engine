@@ -103,15 +103,19 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
     "التربية",
   ];
 
+  const eotAgg = reportData?.circular?.eot_aggregate ?? reportData?.circular?.aggregate ?? reportData?.total_aggregates ?? null
+  const division = reportData?.circular?.eot_division ?? reportData?.circular?.division ?? null
+  const formattedTerm = reportData?.term?.term_number ? `Term ${reportData.term.term_number}` : (reportData?.term?.label || 'Term 1')
+
   const renderSubjectRow = (subject: any, i: number) => (
     <tr key={subject.subject_name} className={i % 2 === 0 ? "row-even" : "row-odd"}>
       <td className="subj-name">{subject.subject_name}</td>
       <td>{subject.bot_score ?? "--"}</td>
-      <td className="grade-cell">{subject.bot_grade_display ?? "--"}</td>
+      <td className="grade-cell">{subject.bot_grade_display ?? subject.bot_agg ?? "--"}</td>
       <td>{subject.mot_score ?? "--"}</td>
-      <td className="grade-cell">{subject.mot_grade_display ?? "--"}</td>
+      <td className="grade-cell">{subject.mot_grade_display ?? subject.mot_agg ?? "--"}</td>
       <td>{subject.eot_score ?? "--"}</td>
-      <td className="grade-cell">{subject.eot_grade_display ?? "--"}</td>
+      <td className="grade-cell">{subject.eot_grade_display ?? subject.eot_agg ?? subject.grade ?? "--"}</td>
       <td className="remark-cell" style={{ color: remarkColor(subject.remark) }}>
         {subject.remark || (subject.eot_score != null ? getSubjectRemark(getSubjectGradeNumber(subject.eot_score)) : subject.mot_score != null ? getSubjectRemark(getSubjectGradeNumber(subject.mot_score)) : "")}
       </td>
@@ -206,9 +210,10 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
           justify-content: space-between;
           align-items: flex-start;
           flex-shrink: 0;
+          overflow: visible;
         }
         
-        .header-left { flex: 0 0 36%; }
+        .header-left { flex: 0 0 36%; overflow: visible; }
         .header-left h1 {
           color: #7F1D1D;
           font-size: 22px;
@@ -221,6 +226,7 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
           color: #4b5563;
           font-size: 11.5px;
           font-weight: 600;
+          line-height: 1.2;
           margin: 1.5px 0;
         }
         
@@ -609,13 +615,19 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
                       <span className="info-label">CLASS:</span>
                       <div className="info-value" style={{ flex: 0.5 }}>{className}</div>
                       <span className="info-label">TERM:</span>
-                      <div className="info-value" style={{ flex: 0.5 }}>{reportData?.term?.label || `Term ${reportData?.term?.term_number}`}</div>
+                      <div className="info-value" style={{ flex: 0.5, whiteSpace: 'nowrap' }}>{formattedTerm}</div>
                       <span className="info-label">YEAR:</span>
                       <div className="info-value" style={{ flex: 0.5 }}>{reportData?.term?.academic_year}</div>
                     </div>
                     <div className="info-row">
+                      <span className="info-label">AGGREGATE:</span>
+                      <div className="info-value" style={{ flex: 1, fontSize: '14.5px', fontWeight: 900, color: '#0F172A', textAlign: 'center' }}>
+                        {eotAgg || reportData?.total_aggregates || '--'}
+                      </div>
                       <span className="info-label">DIVISION:</span>
-                      <div className="info-value" style={{ flex: 1 }}>{reportData?.circular?.division ?? '--'}</div>
+                      <div className="info-value" style={{ flex: 1, fontSize: '14.5px', fontWeight: 900, color: '#0D5C3A', textAlign: 'center' }}>
+                        {division || '--'}
+                      </div>
                     </div>
                   </div>
 

@@ -88,11 +88,11 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
     <tr key={subject.subject_name || idx} className={idx % 2 === 0 ? 'row-even' : 'row-odd'}>
       <td className="subj-name">{subject.subject_name}</td>
       <td className="score-cell">{subject.bot_score ?? '--'}</td>
-      <td className="grade-cell">{subject.bot_grade_display ?? '--'}</td>
+      <td className="grade-cell">{subject.bot_grade_display ?? subject.bot_agg ?? '--'}</td>
       <td className="score-cell">{subject.mot_score ?? '--'}</td>
-      <td className="grade-cell">{subject.mot_grade_display ?? '--'}</td>
+      <td className="grade-cell">{subject.mot_grade_display ?? subject.mot_agg ?? '--'}</td>
       <td className="score-cell">{subject.eot_score ?? '--'}</td>
-      <td className="grade-cell">{subject.eot_grade_display ?? '--'}</td>
+      <td className="grade-cell">{subject.eot_grade_display ?? subject.eot_agg ?? subject.grade ?? '--'}</td>
       <td className="remark-cell" style={{ color: remarkColor(subject.remark) }}>
         {subject.remark ||
           (subject.eot_score != null
@@ -219,9 +219,10 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
           box-sizing: border-box;
           padding: 2px 6px;
           min-height: 36mm;
+          overflow: visible;
         }
 
-        .p7-eot-report .header-left { min-width: 0; }
+        .p7-eot-report .header-left { min-width: 0; overflow: visible; }
         .p7-eot-report .header-left h1 {
           color: ${primaryColor || '#7F1D1D'};
           font-size: 22px;
@@ -234,6 +235,7 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
           color: #4b5563;
           font-size: 11.5px;
           font-weight: 600;
+          line-height: 1.2;
           margin: 1px 0;
         }
 
@@ -643,7 +645,9 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
                   <div className="info-row">
                     <div className="info-item" style={{ flex: 0.8, minWidth: 0, whiteSpace: 'nowrap' }}>
                       <span className="info-label" style={{ whiteSpace: 'nowrap' }}>TERM:</span>
-                      <span className="info-value" style={{ fontSize: '15px', fontWeight: 800, whiteSpace: 'nowrap' }}>{reportData?.term?.term_number || '3'}</span>
+                      <span className="info-value" style={{ fontSize: '14.5px', fontWeight: 800, whiteSpace: 'nowrap' }}>
+                        {reportData?.term?.term_number ? `Term ${reportData.term.term_number}` : (reportData?.term?.label || 'Term 3')}
+                      </span>
                     </div>
                     <div className="info-item" style={{ flex: 0.8, minWidth: 0, whiteSpace: 'nowrap' }}>
                       <span className="info-label" style={{ whiteSpace: 'nowrap' }}>YEAR:</span>

@@ -120,55 +120,55 @@ const TEMPLATE_OPTIONS: {
   shortLabel: string;
   reportType: StabilizedReportType;
 }[] = [
-  {
-    id: 'primary-eot',
-    label: 'Primary EOT Landscape',
-    shortLabel: 'Primary EOT',
-    reportType: 'PrimaryEOTReport',
-  },
-  {
-    id: 'p7-eot',
-    label: 'Primary Secular Portrait (P.7 / Non-Muslim)',
-    shortLabel: 'Portrait Secular',
-    reportType: 'P7EOTReport',
-  },
-  {
-    id: 'primary-mot',
-    label: 'Primary MOT',
-    shortLabel: 'Primary MOT',
-    reportType: 'PrimaryMOTReport',
-  },
-  {
-    id: 'primary-bot',
-    label: 'Primary BOT',
-    shortLabel: 'Primary BOT',
-    reportType: 'PrimaryBOTReport',
-  },
-  {
-    id: 'nursery-eot',
-    label: 'Nursery EOT',
-    shortLabel: 'Nursery EOT',
-    reportType: 'NurseryEOTReport',
-  },
-  {
-    id: 'nursery-mot',
-    label: 'Nursery MOT',
-    shortLabel: 'Nursery MOT',
-    reportType: 'NurseryMOTReport',
-  },
-  {
-    id: 'nursery-theology-eot',
-    label: 'Nursery Theology EOT',
-    shortLabel: 'Nursery Theology',
-    reportType: 'NurseryTheologyEOTReport',
-  },
-  {
-    id: 'theology-mot',
-    label: 'Theology 2-Up',
-    shortLabel: 'Theology 2-Up',
-    reportType: 'TheologyMOTReport',
-  },
-];
+    {
+      id: 'primary-eot',
+      label: 'Primary EOT Landscape',
+      shortLabel: 'Primary EOT',
+      reportType: 'PrimaryEOTReport',
+    },
+    {
+      id: 'p7-eot',
+      label: 'Primary Secular Portrait (P.7 / Non-Muslim)',
+      shortLabel: 'Portrait Secular',
+      reportType: 'P7EOTReport',
+    },
+    {
+      id: 'primary-mot',
+      label: 'Primary MOT',
+      shortLabel: 'Primary MOT',
+      reportType: 'PrimaryMOTReport',
+    },
+    {
+      id: 'primary-bot',
+      label: 'Primary BOT',
+      shortLabel: 'Primary BOT',
+      reportType: 'PrimaryBOTReport',
+    },
+    {
+      id: 'nursery-eot',
+      label: 'Nursery EOT',
+      shortLabel: 'Nursery EOT',
+      reportType: 'NurseryEOTReport',
+    },
+    {
+      id: 'nursery-mot',
+      label: 'Nursery MOT',
+      shortLabel: 'Nursery MOT',
+      reportType: 'NurseryMOTReport',
+    },
+    {
+      id: 'nursery-theology-eot',
+      label: 'Nursery Theology EOT',
+      shortLabel: 'Nursery Theology',
+      reportType: 'NurseryTheologyEOTReport',
+    },
+    {
+      id: 'theology-mot',
+      label: 'Theology 2-Up',
+      shortLabel: 'Theology 2-Up',
+      reportType: 'TheologyMOTReport',
+    },
+  ];
 
 const SAMPLE_PROFILES: {
   id: SampleProfileId;
@@ -185,67 +185,67 @@ const SAMPLE_PROFILES: {
     is_muslim: boolean;
   };
 }[] = [
-  {
-    id: 'muslim',
-    label: 'Muslim Student',
-    student: {
-      id: 'sample-muslim-p4',
-      name: 'AISHA BINTI SULAIMAN',
-      arabic_name: 'عائشة بنت سليمان',
-      admission_number: 'JID-2026-042',
-      class_name: 'P.4',
-      theology_class_arabic: 'الصف الرابع',
-      gender: 'Female',
-      religion: 'Muslim',
-      is_muslim: true,
+    {
+      id: 'muslim',
+      label: 'Muslim Student',
+      student: {
+        id: 'sample-muslim-p4',
+        name: 'AISHA BINTI SULAIMAN',
+        arabic_name: 'عائشة بنت سليمان',
+        admission_number: 'JID-2026-042',
+        class_name: 'P.4',
+        theology_class_arabic: 'الصف الرابع',
+        gender: 'Female',
+        religion: 'Muslim',
+        is_muslim: true,
+      },
     },
-  },
-  {
-    id: 'non-muslim',
-    label: 'Non-Muslim Student',
-    student: {
-      id: 'sample-non-muslim-p4',
-      name: 'SSUUNA HARBERT',
-      arabic_name: 'سونا هربرت',
-      admission_number: 'JID-2026-108',
-      class_name: 'P.4',
-      theology_class_arabic: 'الصف الرابع',
-      gender: 'Male',
-      religion: 'Non-Muslim',
-      is_muslim: false,
+    {
+      id: 'non-muslim',
+      label: 'Non-Muslim Student',
+      student: {
+        id: 'sample-non-muslim-p4',
+        name: 'SSUUNA HARBERT',
+        arabic_name: 'سونا هربرت',
+        admission_number: 'JID-2026-108',
+        class_name: 'P.4',
+        theology_class_arabic: 'الصف الرابع',
+        gender: 'Male',
+        religion: 'Non-Muslim',
+        is_muslim: false,
+      },
     },
-  },
-  {
-    id: 'p7',
-    label: 'P.7 Candidate',
-    student: {
-      id: 'sample-p7-candidate',
-      name: 'ABDULLAH HASSAN KATO',
-      arabic_name: 'عبد الله حسن كاتو',
-      admission_number: 'JID-2026-007',
-      class_name: 'P.7',
-      theology_class_arabic: 'الصف السابع',
-      gender: 'Male',
-      religion: 'Muslim',
-      is_muslim: true,
+    {
+      id: 'p7',
+      label: 'P.7 Candidate',
+      student: {
+        id: 'sample-p7-candidate',
+        name: 'ABDULLAH HASSAN KATO',
+        arabic_name: 'عبد الله حسن كاتو',
+        admission_number: 'JID-2026-007',
+        class_name: 'P.7',
+        theology_class_arabic: 'الصف السابع',
+        gender: 'Male',
+        religion: 'Muslim',
+        is_muslim: true,
+      },
     },
-  },
-  {
-    id: 'nursery',
-    label: 'Nursery Pupil',
-    student: {
-      id: 'sample-nursery-pupil',
-      name: 'ZAYNAB NAMUKASA',
-      arabic_name: 'زينب ناموكاسا',
-      admission_number: 'JID-2026-301',
-      class_name: 'Top Class',
-      theology_class_arabic: 'الروضة العليا',
-      gender: 'Female',
-      religion: 'Muslim',
-      is_muslim: true,
+    {
+      id: 'nursery',
+      label: 'Nursery Pupil',
+      student: {
+        id: 'sample-nursery-pupil',
+        name: 'ZAYNAB NAMUKASA',
+        arabic_name: 'زينب ناموكاسا',
+        admission_number: 'JID-2026-301',
+        class_name: 'Top Class',
+        theology_class_arabic: 'الروضة العليا',
+        gender: 'Female',
+        religion: 'Muslim',
+        is_muslim: true,
+      },
     },
-  },
-];
+  ];
 
 // Clean SVG data-URI signatures for instant live Studio preview
 const SAMPLE_HEADTEACHER_SIG =
@@ -271,11 +271,11 @@ export function ReportStudioClient({
   initialSettings,
 }: ReportStudioClientProps) {
   const defaultBranding: BrandingConfig = {
-    schoolName: initialSettings?.school_name || 'JIDDAH ISLAMIC NURSERY AND PRIMARY SCHOOL',
-    schoolMotto: initialSettings?.motto || 'Fear Allah, Seek Knowledge and Excel',
-    schoolAddress: initialSettings?.address || 'Nsangi - Katereke, P.O. Box 24523, Kampala - Uganda',
-    schoolPhone: initialSettings?.phone || '0705-556930 / 0752-960454 / 0702-975852',
-    schoolEmail: initialSettings?.email || 'jiddahislamicschool@gmail.com',
+    schoolName: initialSettings?.school_name || 'Jiddah Islamic Schools',
+    schoolMotto: initialSettings?.motto || 'Striving for Life & The Hereafter',
+    schoolAddress: initialSettings?.address || 'P.O. BOX 34008 Kampala (U)',
+    schoolPhone: initialSettings?.phone || '+256705316961 / +256 787 779 909',
+    schoolEmail: initialSettings?.email || 'jiddahislamicnurseryandpri@gmail.com',
     logoUrl: initialSettings?.logo_url || '/logo-512h.png',
     primaryColor: initialSettings?.theme_color || '#14532D',
     secondaryColor: '#C59B27',
@@ -357,14 +357,22 @@ export function ReportStudioClient({
 
   const handleTemplateSelect = (tpl: TemplateType) => {
     setActiveTemplate(tpl);
-    if (tpl === 'p7-eot' && sampleProfileId === 'muslim') {
-      setSampleProfileId('non-muslim');
+    if (tpl === 'p7-eot') {
+      if (sampleProfileId !== 'p7') {
+        setSampleProfileId('non-muslim');
+      }
     } else if (
-      (tpl === 'nursery-eot' || tpl === 'nursery-mot' || tpl === 'nursery-theology-eot') &&
-      sampleProfileId !== 'nursery'
+      tpl === 'nursery-eot' ||
+      tpl === 'nursery-mot' ||
+      tpl === 'nursery-theology-eot'
     ) {
       setSampleProfileId('nursery');
-    } else if (tpl === 'primary-eot' && sampleProfileId === 'nursery') {
+    } else if (
+      tpl === 'primary-eot' ||
+      tpl === 'primary-mot' ||
+      tpl === 'primary-bot' ||
+      tpl === 'theology-mot'
+    ) {
       setSampleProfileId('muslim');
     }
   };
@@ -399,7 +407,7 @@ export function ReportStudioClient({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             ...branding,
-             grading_scale: gradingScale,
+            grading_scale: gradingScale,
             division_boundaries: divisionBoundaries,
             print_preferences: {
               ...initialPrintPreferences,
@@ -445,40 +453,68 @@ export function ReportStudioClient({
       {
         subject_name: 'English',
         bot_score: 86,
+        bot_grade_display: 'D1',
+        bot_agg: 'D1',
         mot_score: 88,
+        mot_grade_display: 'D1',
+        mot_agg: 'D1',
         eot_score: 92,
+        eot_grade_display: 'D1',
+        eot_agg: 'D1',
         score: 92,
         grade: 'D1',
+        is_core: true,
         remark: 'EXCELLENT',
         teacher_initials: 'M.K',
       },
       {
         subject_name: 'Mathematics',
         bot_score: 82,
+        bot_grade_display: 'D2',
+        bot_agg: 'D2',
         mot_score: 85,
+        mot_grade_display: 'D2',
+        mot_agg: 'D2',
         eot_score: 89,
+        eot_grade_display: 'D2',
+        eot_agg: 'D2',
         score: 89,
         grade: 'D2',
+        is_core: true,
         remark: 'VERY GOOD',
         teacher_initials: 'A.S',
       },
       {
         subject_name: 'Science',
         bot_score: 80,
+        bot_grade_display: 'D2',
+        bot_agg: 'D2',
         mot_score: 84,
+        mot_grade_display: 'D2',
+        mot_agg: 'D2',
         eot_score: 86,
+        eot_grade_display: 'D2',
+        eot_agg: 'D2',
         score: 86,
         grade: 'D2',
+        is_core: true,
         remark: 'VERY GOOD',
         teacher_initials: 'J.O',
       },
       {
         subject_name: 'SST',
         bot_score: 85,
+        bot_grade_display: 'D1',
+        bot_agg: 'D1',
         mot_score: 88,
+        mot_grade_display: 'D1',
+        mot_agg: 'D1',
         eot_score: 91,
+        eot_grade_display: 'D1',
+        eot_agg: 'D1',
         score: 91,
         grade: 'D1',
+        is_core: true,
         remark: 'EXCELLENT',
         teacher_initials: 'R.N',
       },
@@ -719,9 +755,9 @@ export function ReportStudioClient({
         data-testid="report-studio-2-root"
         className="flex flex-col h-[calc(100dvh-16px)] bg-[#F3F6F4] dark:bg-[#0D1310] rounded-2xl border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 overflow-hidden"
       >
-        {/* Top Studio Header Bar */}
-        <header className="bg-white dark:bg-[#151D1A] border-b border-stone-200 dark:border-white/10 px-3 sm:px-5 py-2.5 flex flex-wrap items-center justify-between gap-2.5 shrink-0 z-20">
-          <div className="flex items-center gap-2.5 min-w-0">
+        {/* Top Studio Header Bar (Single-Row Layout) */}
+        <header className="bg-white dark:bg-[#151D1A] border-b border-stone-200 dark:border-white/10 px-3 sm:px-5 py-2 flex items-center justify-between gap-2 overflow-x-auto whitespace-nowrap shrink-0 z-20">
+          <div className="flex items-center gap-2.5 min-w-0 shrink-0">
             <Link
               href="/admin/reports"
               className="h-8 px-3 rounded-full bg-[#F0F4F9] dark:bg-[#1E2623] hover:bg-stone-200 dark:hover:bg-stone-700 text-xs font-bold text-stone-800 dark:text-stone-100 inline-flex items-center gap-1.5 transition shrink-0"
@@ -747,7 +783,7 @@ export function ReportStudioClient({
           {/* Template Family Switcher Pills (All 8 Official Templates) */}
           <div
             data-testid="studio-template-switcher"
-            className="flex items-center gap-1 bg-[#F0F4F9] dark:bg-[#1E2623] p-1 rounded-xl border border-black/[0.05] dark:border-white/[0.08] overflow-x-auto max-w-full"
+            className="flex items-center gap-1 bg-[#F0F4F9] dark:bg-[#1E2623] p-1 rounded-xl border border-black/[0.05] dark:border-white/[0.08] shrink-0"
           >
             {TEMPLATE_OPTIONS.map((tpl) => {
               const isSelected = activeTemplate === tpl.id;
@@ -757,11 +793,10 @@ export function ReportStudioClient({
                   type="button"
                   onClick={() => handleTemplateSelect(tpl.id)}
                   title={tpl.label}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition cursor-pointer ${
-                    isSelected
-                      ? 'bg-[#0D5C3A] text-white shadow-2xs'
-                      : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white'
-                  }`}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition cursor-pointer ${isSelected
+                    ? 'bg-[#0D5C3A] text-white shadow-2xs'
+                    : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white'
+                    }`}
                 >
                   {tpl.shortLabel}
                 </button>
@@ -769,25 +804,8 @@ export function ReportStudioClient({
             })}
           </div>
 
-          {/* Sample Student Switcher + Reset + Save & Apply CTA */}
+          {/* Reset + Save & Apply CTA */}
           <div className="flex items-center gap-2 shrink-0">
-            <div className="hidden sm:flex items-center gap-1 bg-[#F0F4F9] dark:bg-[#1E2623] p-0.5 rounded-xl border border-black/[0.05] dark:border-white/[0.08]">
-              {SAMPLE_PROFILES.map((prof) => (
-                <button
-                  key={prof.id}
-                  type="button"
-                  onClick={() => setSampleProfileId(prof.id)}
-                  className={`px-2 py-1 rounded-lg text-[10.5px] font-bold whitespace-nowrap transition cursor-pointer ${
-                    sampleProfileId === prof.id
-                      ? 'bg-white dark:bg-[#151D1A] text-[#0D5C3A] dark:text-[#34D399] shadow-2xs'
-                      : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
-                  }`}
-                >
-                  {prof.label}
-                </button>
-              ))}
-            </div>
-
             <button
               type="button"
               onClick={handleResetDefaults}
@@ -806,7 +824,7 @@ export function ReportStudioClient({
               className="h-8 px-3.5 rounded-xl bg-[#0D5C3A] hover:bg-[#0A472C] text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-sm transition cursor-pointer disabled:opacity-50"
             >
               <Save className="w-3.5 h-3.5" />
-              <span>{isSaving ? 'Saving...' : '💾 Save & Apply to All Reports'}</span>
+              <span>{isSaving ? 'Saving...' : 'Save & Apply to All Reports'}</span>
             </button>
           </div>
         </header>
@@ -821,25 +839,29 @@ export function ReportStudioClient({
             {/* 4 Inspector Tabs */}
             <div className="grid grid-cols-4 gap-1 p-2 bg-[#F0F4F9] dark:bg-[#1E2623] border-b border-stone-200 dark:border-white/10 shrink-0">
               {[
-                { id: 'theme' as const, label: '🎨 Theme', fullLabel: '🎨 Theme & Colors', icon: Palette },
-                { id: 'typography' as const, label: '🔤 Type', fullLabel: '🔤 Typography & Layout', icon: Type },
-                { id: 'watermark' as const, label: '🖼️ Art', fullLabel: '🖼️ Watermark & Nursery Art', icon: ImageIcon },
-                { id: 'stamp' as const, label: '✒️ Stamp', fullLabel: '✒️ Stamp & Signatures', icon: Stamp },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setActiveTab(tab.id)}
-                  title={tab.fullLabel}
-                  className={`py-1.5 px-1.5 rounded-lg text-[11px] font-bold transition cursor-pointer flex items-center justify-center gap-1 ${
-                    activeTab === tab.id
-                      ? 'bg-[#0D5C3A] text-white shadow-2xs'
-                      : 'text-stone-600 dark:text-stone-300 hover:bg-black/5 dark:hover:bg-white/5'
-                  }`}
-                >
-                  <span>{tab.label}</span>
-                </button>
-              ))}
+                { id: 'theme' as const, label: 'Theme', fullLabel: '🎨 Theme & Colors', icon: Palette },
+                { id: 'typography' as const, label: 'Type', fullLabel: '🔤 Typography & Layout', icon: Type },
+                { id: 'watermark' as const, label: 'Art', fullLabel: '🖼️ Watermark & Nursery Art', icon: ImageIcon },
+                { id: 'stamp' as const, label: 'Stamp', fullLabel: '✒️ Stamp & Signatures', icon: Stamp },
+              ].map((tab) => {
+                const TabIcon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setActiveTab(tab.id)}
+                    title={tab.fullLabel}
+                    className={`py-1.5 px-1.5 rounded-lg text-[11px] font-bold transition cursor-pointer flex items-center justify-center gap-1 ${
+                      activeTab === tab.id
+                        ? 'bg-[#0D5C3A] text-white shadow-2xs'
+                        : 'text-stone-600 dark:text-stone-300 hover:bg-black/5 dark:hover:bg-white/5'
+                    }`}
+                  >
+                    <TabIcon className="w-3.5 h-3.5 shrink-0" />
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
             </div>
 
             {/* Tab Content Area */}
@@ -869,11 +891,10 @@ export function ReportStudioClient({
                             key={theme.id}
                             type="button"
                             onClick={() => updateStudio({ colorTheme: theme.id })}
-                            className={`p-2.5 rounded-xl border flex items-center justify-between transition cursor-pointer ${
-                              isSelected
-                                ? 'border-[#0D5C3A] bg-[#0D5C3A]/5 dark:bg-[#0D5C3A]/20 shadow-2xs'
-                                : 'border-stone-200 dark:border-white/10 hover:bg-stone-50 dark:hover:bg-white/5'
-                            }`}
+                            className={`p-2.5 rounded-xl border flex items-center justify-between transition cursor-pointer ${isSelected
+                              ? 'border-[#0D5C3A] bg-[#0D5C3A]/5 dark:bg-[#0D5C3A]/20 shadow-2xs'
+                              : 'border-stone-200 dark:border-white/10 hover:bg-stone-50 dark:hover:bg-white/5'
+                              }`}
                           >
                             <div className="flex items-center gap-2.5">
                               <div className="flex items-center -space-x-1.5">
@@ -1074,9 +1095,8 @@ export function ReportStudioClient({
                     <button
                       type="button"
                       onClick={() => updateStudio({ isBold: !studioConfig.isBold })}
-                      className={`w-10 h-5.5 rounded-full p-0.5 flex items-center transition cursor-pointer ${
-                        studioConfig.isBold ? 'bg-[#0D5C3A] justify-end' : 'bg-stone-300 justify-start'
-                      }`}
+                      className={`w-10 h-5.5 rounded-full p-0.5 flex items-center transition cursor-pointer ${studioConfig.isBold ? 'bg-[#0D5C3A] justify-end' : 'bg-stone-300 justify-start'
+                        }`}
                     >
                       <span className="w-4.5 h-4.5 rounded-full bg-white shadow-xs" />
                     </button>
@@ -1093,11 +1113,10 @@ export function ReportStudioClient({
                           key={density}
                           type="button"
                           onClick={() => updateStudio({ pageDensity: density })}
-                          className={`py-2 rounded-lg text-xs font-bold capitalize border transition cursor-pointer ${
-                            (studioConfig.pageDensity || 'balanced') === density
-                              ? 'bg-[#0D5C3A] text-white border-[#0D5C3A]'
-                              : 'bg-stone-50 dark:bg-[#1E2623] text-stone-700 dark:text-stone-300 border-stone-200 dark:border-white/10'
-                          }`}
+                          className={`py-2 rounded-lg text-xs font-bold capitalize border transition cursor-pointer ${(studioConfig.pageDensity || 'balanced') === density
+                            ? 'bg-[#0D5C3A] text-white border-[#0D5C3A]'
+                            : 'bg-stone-50 dark:bg-[#1E2623] text-stone-700 dark:text-stone-300 border-stone-200 dark:border-white/10'
+                            }`}
                         >
                           {density}
                         </button>
@@ -1135,11 +1154,10 @@ export function ReportStudioClient({
                           key={op}
                           type="button"
                           onClick={() => updateStudio({ watermarkOpacity: op })}
-                          className={`py-1.5 rounded-lg text-xs font-bold tabular-nums cursor-pointer transition ${
-                            studioConfig.watermarkOpacity === op
-                              ? 'bg-[#0D5C3A] text-white shadow-2xs'
-                              : 'bg-[#F0F4F9] dark:bg-[#1E2623] text-stone-700 dark:text-stone-300'
-                          }`}
+                          className={`py-1.5 rounded-lg text-xs font-bold tabular-nums cursor-pointer transition ${studioConfig.watermarkOpacity === op
+                            ? 'bg-[#0D5C3A] text-white shadow-2xs'
+                            : 'bg-[#F0F4F9] dark:bg-[#1E2623] text-stone-700 dark:text-stone-300'
+                            }`}
                         >
                           {op}%
                         </button>
@@ -1161,9 +1179,8 @@ export function ReportStudioClient({
                       <button
                         type="button"
                         onClick={() => updateStudio({ showNurseryArt: !studioConfig.showNurseryArt })}
-                        className={`w-10 h-5.5 rounded-full p-0.5 flex items-center transition cursor-pointer shrink-0 ${
-                          studioConfig.showNurseryArt ? 'bg-[#0D5C3A] justify-end' : 'bg-stone-300 justify-start'
-                        }`}
+                        className={`w-10 h-5.5 rounded-full p-0.5 flex items-center transition cursor-pointer shrink-0 ${studioConfig.showNurseryArt ? 'bg-[#0D5C3A] justify-end' : 'bg-stone-300 justify-start'
+                          }`}
                       >
                         <span className="w-4.5 h-4.5 rounded-full bg-white shadow-xs" />
                       </button>
@@ -1219,9 +1236,8 @@ export function ReportStudioClient({
                     <button
                       type="button"
                       onClick={() => updateStudio({ stampEnabled: !studioConfig.stampEnabled })}
-                      className={`w-10 h-5.5 rounded-full p-0.5 flex items-center transition cursor-pointer ${
-                        studioConfig.stampEnabled ? 'bg-[#0D5C3A] justify-end' : 'bg-stone-300 justify-start'
-                      }`}
+                      className={`w-10 h-5.5 rounded-full p-0.5 flex items-center transition cursor-pointer ${studioConfig.stampEnabled ? 'bg-[#0D5C3A] justify-end' : 'bg-stone-300 justify-start'
+                        }`}
                     >
                       <span className="w-4.5 h-4.5 rounded-full bg-white shadow-xs" />
                     </button>
@@ -1238,22 +1254,20 @@ export function ReportStudioClient({
                           <button
                             type="button"
                             onClick={() => updateStudio({ stampMode: 'digital' })}
-                            className={`py-2 rounded-lg text-xs font-bold border transition cursor-pointer ${
-                              studioConfig.stampMode === 'digital'
-                                ? 'bg-[#0D5C3A] text-white border-[#0D5C3A]'
-                                : 'bg-stone-50 dark:bg-[#1E2623] text-stone-700 dark:text-stone-300 border-stone-200'
-                            }`}
+                            className={`py-2 rounded-lg text-xs font-bold border transition cursor-pointer ${studioConfig.stampMode === 'digital'
+                              ? 'bg-[#0D5C3A] text-white border-[#0D5C3A]'
+                              : 'bg-stone-50 dark:bg-[#1E2623] text-stone-700 dark:text-stone-300 border-stone-200'
+                              }`}
                           >
                             Digital Vector
                           </button>
                           <button
                             type="button"
                             onClick={() => updateStudio({ stampMode: 'uploaded' })}
-                            className={`py-2 rounded-lg text-xs font-bold border transition cursor-pointer ${
-                              studioConfig.stampMode === 'uploaded'
-                                ? 'bg-[#0D5C3A] text-white border-[#0D5C3A]'
-                                : 'bg-stone-50 dark:bg-[#1E2623] text-stone-700 dark:text-stone-300 border-stone-200'
-                            }`}
+                            className={`py-2 rounded-lg text-xs font-bold border transition cursor-pointer ${studioConfig.stampMode === 'uploaded'
+                              ? 'bg-[#0D5C3A] text-white border-[#0D5C3A]'
+                              : 'bg-stone-50 dark:bg-[#1E2623] text-stone-700 dark:text-stone-300 border-stone-200'
+                              }`}
                           >
                             Uploaded Image Backup
                           </button>
@@ -1271,11 +1285,10 @@ export function ReportStudioClient({
                               key={ink.id}
                               type="button"
                               onClick={() => updateStudio({ stampInkColor: ink.id })}
-                              className={`p-2 rounded-lg border flex items-center gap-2 transition cursor-pointer ${
-                                studioConfig.stampInkColor === ink.id
-                                  ? 'border-[#0D5C3A] bg-[#0D5C3A]/5 font-bold'
-                                  : 'border-stone-200 dark:border-white/10'
-                              }`}
+                              className={`p-2 rounded-lg border flex items-center gap-2 transition cursor-pointer ${studioConfig.stampInkColor === ink.id
+                                ? 'border-[#0D5C3A] bg-[#0D5C3A]/5 font-bold'
+                                : 'border-stone-200 dark:border-white/10'
+                                }`}
                             >
                               <span
                                 className="w-4 h-4 rounded-full shrink-0"
@@ -1337,9 +1350,8 @@ export function ReportStudioClient({
                     <button
                       type="button"
                       onClick={() => updateStudio({ signaturesEnabled: !studioConfig.signaturesEnabled })}
-                      className={`w-10 h-5.5 rounded-full p-0.5 flex items-center transition cursor-pointer ${
-                        studioConfig.signaturesEnabled ? 'bg-[#0D5C3A] justify-end' : 'bg-stone-300 justify-start'
-                      }`}
+                      className={`w-10 h-5.5 rounded-full p-0.5 flex items-center transition cursor-pointer ${studioConfig.signaturesEnabled ? 'bg-[#0D5C3A] justify-end' : 'bg-stone-300 justify-start'
+                        }`}
                     >
                       <span className="w-4.5 h-4.5 rounded-full bg-white shadow-xs" />
                     </button>
@@ -1383,16 +1395,32 @@ export function ReportStudioClient({
               backgroundSize: '20px 20px',
             }}
           >
-            {/* Floating Preview Status & Zoom Pill */}
-            <div className="sticky top-2 z-20 mb-4 flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/90 dark:bg-[#151D1A]/90 border border-black/10 dark:border-white/15 shadow-md text-xs">
+            {/* Floating Preview Status, Sample Archetype Switcher & Zoom Pill */}
+            <div className="sticky top-2 z-20 mb-4 flex flex-wrap items-center justify-center gap-2 px-3 py-1.5 rounded-full bg-white/95 dark:bg-[#151D1A]/95 border border-black/10 dark:border-white/15 shadow-md text-xs">
               <UserCheck className="w-3.5 h-3.5 text-[#0D5C3A]" />
               <span className="font-bold text-stone-800 dark:text-stone-100">
                 {activeTemplateMeta.label}
               </span>
               <span className="text-stone-400">•</span>
-              <span className="text-stone-600 dark:text-stone-300 font-medium">
-                {sampleReportData.student.name} ({sampleReportData.student.class_name})
-              </span>
+              <div
+                data-testid="studio-sample-archetype-switcher"
+                className="flex items-center gap-1 bg-[#F0F4F9] dark:bg-[#1E2623] p-0.5 rounded-full border border-black/[0.05] dark:border-white/[0.08]"
+              >
+                {SAMPLE_PROFILES.map((prof) => (
+                  <button
+                    key={prof.id}
+                    type="button"
+                    onClick={() => setSampleProfileId(prof.id)}
+                    className={`px-2 py-0.5 rounded-full text-[10.5px] font-bold whitespace-nowrap transition cursor-pointer ${
+                      sampleProfileId === prof.id
+                        ? 'bg-[#0D5C3A] text-white shadow-2xs'
+                        : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white'
+                    }`}
+                  >
+                    {prof.label}
+                  </button>
+                ))}
+              </div>
               <div className="w-px h-3.5 bg-stone-300 dark:bg-white/15 mx-1" />
               <button
                 type="button"

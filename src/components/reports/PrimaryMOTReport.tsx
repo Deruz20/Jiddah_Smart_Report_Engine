@@ -48,9 +48,9 @@ export default function PrimaryMOTReport({ reportData, studioFormatting: studioF
     <tr key={subject.subject_name}>
       <td className="subject" style={{ textAlign: 'left', paddingLeft: '8px' }}>{subject.subject_name}</td>
       <td>{subject.bot_score ?? ""}</td>
-      <td>{subject.bot_grade_display ?? ""}</td>
+      <td>{subject.bot_grade_display ?? subject.bot_agg ?? ""}</td>
       <td>{subject.mot_score ?? ""}</td>
-      <td>{subject.mot_grade_display ?? ""}</td>
+      <td>{subject.mot_grade_display ?? subject.mot_agg ?? ""}</td>
       <td style={{ textAlign: "left", paddingLeft: "8px", fontFamily: '"Caveat", cursive', fontSize: '1.2em' }}>
         {subject.remark ?? ""}
       </td>
@@ -310,8 +310,8 @@ export default function PrimaryMOTReport({ reportData, studioFormatting: studioF
           <div className="mot-school-left">
             <h1 data-testid="report-school-name">{branding.schoolName}</h1>
             <p>
-              {branding.address}<br/>
-              Tel: {branding.phone}<br/>
+              {branding.address}<br />
+              Tel: {branding.phone}<br />
               {branding.email}
             </p>
           </div>
@@ -330,7 +330,7 @@ export default function PrimaryMOTReport({ reportData, studioFormatting: studioF
           </div>
 
           <div className="mot-school-right">
-            <h2>مدرسة جدة الإسلامية للروضة <br/> والإبتدائية بنساغو</h2>
+            <h2>مدرسة جدة الإسلامية للروضة <br /> والإبتدائية بنساغو</h2>
           </div>
         </div>
 
@@ -365,10 +365,10 @@ export default function PrimaryMOTReport({ reportData, studioFormatting: studioF
           <table className="mot-main-table">
             <thead>
               <tr>
-                <th rowSpan={2} style={{width: '22%'}}>SUBJECTS</th>
+                <th rowSpan={2} style={{ width: '22%' }}>SUBJECTS</th>
                 <th colSpan={2}>BEGINNING OF TERM</th>
                 <th colSpan={2}>MIDTERM</th>
-                <th rowSpan={2} style={{width: '28%'}}>SUBJECT TEACHER&apos;S COMMENT</th>
+                <th rowSpan={2} style={{ width: '28%' }}>SUBJECT TEACHER&apos;S COMMENT</th>
               </tr>
               <tr className="subhead">
                 <th>MARK</th><th>AGG</th><th>MARK</th><th>AGG</th>
@@ -377,7 +377,7 @@ export default function PrimaryMOTReport({ reportData, studioFormatting: studioF
             <tbody>
               {reportData?.circular?.subjects?.map(renderSubjectRow)}
               <tr>
-                <td className="subject" style={{textAlign: 'left', paddingLeft: '8px'}}>TOTAL</td>
+                <td className="subject" style={{ textAlign: 'left', paddingLeft: '8px' }}>TOTAL</td>
                 <td>{reportData?.circular?.bot_total ?? ""}</td>
                 <td>{reportData?.circular?.bot_aggregate ?? ""}</td>
                 <td>{reportData?.circular?.mot_total ?? ""}</td>
@@ -413,7 +413,7 @@ export default function PrimaryMOTReport({ reportData, studioFormatting: studioF
         <div className="mot-bottom">
           <div className="mot-conduct-row">
             <span className="mot-comment-label">Conduct:</span>
-            <div className="mot-comment-value" style={{fontFamily: '"Caveat", cursive', fontSize: '18px'}}>{conductRemark}</div>
+            <div className="mot-comment-value" style={{ fontFamily: '"Caveat", cursive', fontSize: '18px' }}>{conductRemark}</div>
           </div>
 
           <div className="mot-comment-row">

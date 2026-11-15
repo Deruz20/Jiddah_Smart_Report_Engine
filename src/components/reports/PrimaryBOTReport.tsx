@@ -48,7 +48,7 @@ export default function PrimaryBOTReport({ reportData, studioFormatting: studioF
     <tr key={subject.subject_name}>
       <td className="subject" style={{ textAlign: 'left', paddingLeft: '8px' }}>{subject.subject_name}</td>
       <td>{subject.bot_score ?? ""}</td>
-      <td>{subject.bot_grade_display ?? ""}</td>
+      <td>{subject.bot_grade_display ?? subject.bot_agg ?? ""}</td>
       <td style={{ textAlign: "left", paddingLeft: "8px", fontFamily: '"Caveat", cursive', fontSize: '1.2em' }}>
         {subject.remark ?? ""}
       </td>
@@ -302,8 +302,8 @@ export default function PrimaryBOTReport({ reportData, studioFormatting: studioF
           <div className="bot-school-left">
             <h1 data-testid="report-school-name">{branding.schoolName}</h1>
             <p>
-              {branding.address}<br/>
-              Tel: {branding.phone}<br/>
+              {branding.address}<br />
+              Tel: {branding.phone}<br />
               {branding.email}
             </p>
           </div>
@@ -322,7 +322,7 @@ export default function PrimaryBOTReport({ reportData, studioFormatting: studioF
           </div>
 
           <div className="bot-school-right">
-            <h2>مدرسة جدة الإسلامية للروضة <br/> والإبتدائية بنساغو</h2>
+            <h2>مدرسة جدة الإسلامية للروضة <br /> والإبتدائية بنساغو</h2>
           </div>
         </div>
 
@@ -339,7 +339,10 @@ export default function PrimaryBOTReport({ reportData, studioFormatting: studioF
             <div className="bot-field" style={{ flex: 1 }}>
               Year: <div className="bot-line" style={{ fontWeight: 800, fontSize: '14.5px', textAlign: 'center', color: '#0F172A' }}>{reportData?.term?.academic_year ?? "--"}</div>
             </div>
-            <div className="bot-field" style={{ flex: 1.2 }}>
+            <div className="bot-field" style={{ flex: 1 }}>
+              AGG: <div className="bot-line" style={{ fontWeight: 900, fontSize: '14.5px', textAlign: 'center', color: '#0F172A' }}>{reportData?.circular?.bot_aggregate ?? reportData?.circular?.aggregate ?? reportData?.total_aggregates ?? "_________"}</div>
+            </div>
+            <div className="bot-field" style={{ flex: 1 }}>
               DIV: <div className="bot-line" style={{ fontWeight: 900, fontSize: '14.5px', textAlign: 'center', color: '#b10000' }}>{reportData?.circular?.division || reportData?.student?.division || "_________"}</div>
             </div>
           </div>
@@ -354,9 +357,9 @@ export default function PrimaryBOTReport({ reportData, studioFormatting: studioF
           <table className="bot-main-table">
             <thead>
               <tr>
-                <th rowSpan={2} style={{width: '25%'}}>SUBJECTS</th>
+                <th rowSpan={2} style={{ width: '25%' }}>SUBJECTS</th>
                 <th colSpan={2}>BEGINNING OF TERM</th>
-                <th rowSpan={2} style={{width: '35%'}}>SUBJECT TEACHER&apos;S COMMENT</th>
+                <th rowSpan={2} style={{ width: '35%' }}>SUBJECT TEACHER&apos;S COMMENT</th>
               </tr>
               <tr className="subhead">
                 <th>MARK</th><th>AGG</th>
@@ -365,7 +368,7 @@ export default function PrimaryBOTReport({ reportData, studioFormatting: studioF
             <tbody>
               {reportData?.circular?.subjects?.map(renderSubjectRow)}
               <tr>
-                <td className="subject" style={{textAlign: 'left', paddingLeft: '8px'}}>TOTAL</td>
+                <td className="subject" style={{ textAlign: 'left', paddingLeft: '8px' }}>TOTAL</td>
                 <td>{reportData?.circular?.bot_total ?? ""}</td>
                 <td>{reportData?.circular?.bot_aggregate ?? ""}</td>
                 <td></td>
@@ -399,7 +402,7 @@ export default function PrimaryBOTReport({ reportData, studioFormatting: studioF
         <div className="bot-bottom">
           <div className="bot-conduct-row">
             <span className="bot-comment-label">Conduct:</span>
-            <div className="bot-comment-value" style={{fontFamily: '"Caveat", cursive', fontSize: '18px'}}>{conductRemark}</div>
+            <div className="bot-comment-value" style={{ fontFamily: '"Caveat", cursive', fontSize: '18px' }}>{conductRemark}</div>
           </div>
 
           <div className="bot-comment-row">

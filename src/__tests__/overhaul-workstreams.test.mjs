@@ -1942,6 +1942,50 @@ describe('Workstream 30: Portrait Arabic Header Fit, Theology Position/Out-Of, N
     assert.match(toolbarSrc, /🚀 Open Full Report Studio 2\.0/);
     assert.match(studioSrc, /data-testid="report-studio-2-root"/);
     assert.match(studioSrc, /nursery-theology-eot/);
-    assert.match(studioSrc, /💾 Save & Apply to All Reports/);
+    assert.match(studioSrc, /Save & Apply to All Reports/);
+  });
+
+  it('WS31.1: PrimaryEOTReport Secular Profile Box Row 3 displays AGGREGATE and DIVISION side-by-side, PrimaryBOTReport includes AGG alongside DIV, and TERM display is standardized', () => {
+    const primaryEotSrc = read('src/components/reports/PrimaryEOTReport.tsx');
+    const p7EotSrc = read('src/components/reports/P7EOTReport.tsx');
+    const primaryBotSrc = read('src/components/reports/PrimaryBOTReport.tsx');
+
+    assert.match(primaryEotSrc, /<span className="info-label">AGGREGATE:<\/span>/);
+    assert.match(primaryEotSrc, /eotAgg \|\| reportData\?\.total_aggregates \|\| '--'/);
+    assert.match(primaryEotSrc, /<span className="info-label">DIVISION:<\/span>/);
+    assert.match(primaryEotSrc, /division \|\| '--'/);
+    assert.match(primaryEotSrc, /formattedTerm = reportData\?\.term\?\.term_number \? `Term \$\{reportData\.term\.term_number\}`/);
+    assert.match(p7EotSrc, /reportData\?\.term\?\.term_number \? `Term \$\{reportData\.term\.term_number\}`/);
+    assert.match(primaryBotSrc, /AGG: <div className="bot-line"/);
+  });
+
+  it('WS31.2: ReportStudioClient uses authentic Jiddah Islamic Schools metadata and PrimaryEOTReport/P7EOTReport prevent motto clipping', () => {
+    const studioSrc = read('src/components/reports/ReportStudioClient.tsx');
+    const primaryEotSrc = read('src/components/reports/PrimaryEOTReport.tsx');
+    const p7EotSrc = read('src/components/reports/P7EOTReport.tsx');
+
+    assert.match(studioSrc, /Jiddah Islamic Schools/);
+    assert.match(studioSrc, /P\.O\. BOX 34008 Kampala \(U\)/);
+    assert.match(studioSrc, /\+256705316961 \/ \+256 787 779 909/);
+    assert.match(studioSrc, /jiddahislamicnurseryandpri@gmail\.com/);
+    assert.match(studioSrc, /Striving for Life & The Hereafter/);
+    assert.match(primaryEotSrc, /\.header-left \{ flex: 0 0 36%; overflow: visible; \}/);
+    assert.match(p7EotSrc, /\.p7-eot-report \.header-left \{ min-width: 0; overflow: visible; \}/);
+  });
+
+  it('WS31.3: ReportStudioClient populates GRD display fields, auto-pairs sample student archetypes, removes duplicate emojis, and renders single-row studio header with floating stage archetype pill', () => {
+    const studioSrc = read('src/components/reports/ReportStudioClient.tsx');
+    const primaryEotSrc = read('src/components/reports/PrimaryEOTReport.tsx');
+    const p7EotSrc = read('src/components/reports/P7EOTReport.tsx');
+
+    assert.match(studioSrc, /bot_grade_display:\s*'D1'/);
+    assert.match(studioSrc, /mot_grade_display:\s*'D1'/);
+    assert.match(studioSrc, /eot_grade_display:\s*'D1'/);
+    assert.match(studioSrc, /is_core:\s*true/);
+    assert.match(primaryEotSrc, /subject\.eot_grade_display \?\? subject\.eot_agg \?\? subject\.grade \?\? "--"/);
+    assert.match(p7EotSrc, /subject\.eot_grade_display \?\? subject\.eot_agg \?\? subject\.grade \?\? '--'/);
+    assert.doesNotMatch(studioSrc, /💾 Save & Apply to All Reports/);
+    assert.match(studioSrc, /flex items-center justify-between gap-2 overflow-x-auto whitespace-nowrap/);
+    assert.match(studioSrc, /data-testid="studio-sample-archetype-switcher"/);
   });
 });

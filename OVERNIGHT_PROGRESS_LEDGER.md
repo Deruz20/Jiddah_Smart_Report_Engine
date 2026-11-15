@@ -1103,3 +1103,17 @@ Exit code: 0
   - Created shared persistent `studio-config-store.ts` (`jiddah_studio_formatting_v2` + `/api/settings/school` `report_studio_config` + `jiddah:studio-config-updated` custom event) consumed by all 8 report templates.
   - Updated `TopToolbar.tsx` Studio Popover with `"Official Headteacher Stamp"`, `"✨ Nursery Educative Art"`, `"💾 Save as School Default"`, and `"🚀 Open Full Report Studio 2.0"`.
   - Rebuilt `ReportStudioClient.tsx` as a 2-Pane Live Document Design Studio with all 8 templates, 4 sample student profiles, 4-tab Left Inspector Dock (`w-[340px]`), and global persistence.
+
+---
+
+### Milestone 31 — Final Precision Polish Across PrimaryEOTReport, P7EOTReport, PrimaryMOTReport, PrimaryBOTReport & Report Studio 2.0
+- **WS1 — Secular Profile Box `AGGREGATE` Alongside `DIVISION` & Standardized `TERM` Display (`src/components/reports/PrimaryEOTReport.tsx`, `src/components/reports/P7EOTReport.tsx`, `src/components/reports/PrimaryBOTReport.tsx`):**
+  - Updated Row 3 of the Left Secular Pupil Identity box in `PrimaryEOTReport.tsx` to display two balanced fields side-by-side (`AGGREGATE:` in bold `14.5px` `#0F172A` and `DIVISION:` in bold `14.5px` `#0D5C3A`), matching the right-hand Theology box and `P7EOTReport.tsx`.
+  - Added `AGG:` alongside `DIV:` in `PrimaryBOTReport.tsx` and standardized `TERM:` display to `Term ${term_number}` across `PrimaryEOTReport.tsx` and `P7EOTReport.tsx`.
+- **WS2 — Authentic Jiddah School Metadata & Unclipped Header Motto (`src/components/reports/ReportStudioClient.tsx`, `src/components/reports/P7EOTReport.tsx`, `src/components/reports/PrimaryEOTReport.tsx`):**
+  - Updated `defaultBranding` in `ReportStudioClient.tsx` with authentic Jiddah Islamic Schools metadata (`Jiddah Islamic Schools`, `P.O. BOX 34008 Kampala (U)`, `+256705316961 / +256 787 779 909`, `jiddahislamicnurseryandpri@gmail.com`, `Striving for Life & The Hereafter`).
+  - Added `overflow: visible` and `line-height: 1.2` on `.header-section` and `.header-left` in `P7EOTReport.tsx` and `PrimaryEOTReport.tsx` so the motto is never clipped vertically.
+- **WS3 — Report Studio 2.0 Single-Row Header, Clean Icons, Populated `GRD` & Auto-Paired Archetypes (`src/components/reports/ReportStudioClient.tsx`, `src/components/reports/PrimaryEOTReport.tsx`, `src/components/reports/P7EOTReport.tsx`, `src/components/reports/PrimaryMOTReport.tsx`, `src/components/reports/PrimaryBOTReport.tsx`):**
+  - Removed duplicate `💾` text emoji from `Save & Apply to All Reports` and rendered clean Lucide icons in the 4 inspector tabs.
+  - Populated `bot_grade_display`, `mot_grade_display`, `eot_grade_display`, `bot_agg`, `mot_agg`, `eot_agg`, and `is_core: true` on `primarySubjects` in `ReportStudioClient.tsx`, plus grade fallbacks in the report templates.
+  - Auto-paired sample student archetypes when switching templates (`handleTemplateSelect`) and moved the Sample Student archetype switcher into the floating stage pill above the document so the top `<header>` sits cleanly on a single row.

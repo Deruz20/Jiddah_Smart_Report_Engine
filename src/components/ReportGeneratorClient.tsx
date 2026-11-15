@@ -4,9 +4,10 @@ import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { toast } from 'sonner'
 import { motion, AnimatePresence } from 'motion/react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { FileSpreadsheet, Printer, Users, FileText, Sliders, Settings, History, ChevronDown, LayoutGrid, Menu, Palette } from 'lucide-react'
+import { FileSpreadsheet, Printer, Users, FileText, Sliders, Settings, History, ChevronDown, LayoutGrid, Menu, Palette, Sun, Moon, Download, CheckSquare } from 'lucide-react'
 import { generateReportBroadsheetCSV } from '@/utils/csvExport'
 import { TopToolbar, StudioFormattingState, DEFAULT_STUDIO_FORMATTING } from './figma-ui/TopToolbar'
+import { MoreActionsMenu } from '@/components/ui/more-actions-menu'
 import { isNonMuslimStudent, shouldUseSecularPortraitTemplate } from '@/lib/student-religion'
 import { DocumentCanvas } from './figma-ui/DocumentCanvas'
 import { StudentRosterSidebar } from './figma-ui/StudentRosterSidebar'
@@ -891,7 +892,11 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
                   <button
                     key={p}
                     type="button"
-                    onClick={() => setFilterState((prev) => ({ ...prev, phase: p }))}
+                    onClick={() =>
+                      React.startTransition(() => {
+                        setFilterState((prev) => ({ ...prev, phase: p }))
+                      })
+                    }
                     className={`h-7 px-3 rounded-full text-xs font-semibold transition cursor-pointer ${
                       isActive
                         ? 'bg-[#0D5C3A] text-white shadow-2xs font-bold'
@@ -923,14 +928,16 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
                     key={c.id}
                     type="button"
                     onClick={() =>
-                      setFilterState((prev) => ({
-                        ...prev,
-                        curriculum: c.id === 'both' ? 'combined' : (c.id as 'secular' | 'theology'),
-                      }))
+                      React.startTransition(() => {
+                        setFilterState((prev) => ({
+                          ...prev,
+                          curriculum: c.id === 'both' ? 'combined' : (c.id as 'secular' | 'theology'),
+                        }))
+                      })
                     }
                     className={`h-7 px-3 rounded-full text-xs font-semibold transition cursor-pointer ${
                       isActive
-                        ? 'bg-[#0D5C3A] text-white shadow-2xs font-bold'
+                        ? 'bg-gradient-to-r from-[#D97706] to-[#EA580C] text-white shadow-xs font-bold'
                         : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white'
                     }`}
                   >
@@ -1164,6 +1171,66 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
           <Printer size={12} />
           <span>{selectedStudentIds.length}</span>
         </motion.button>
+
+        {/* 7. Mobile ⋮ More Actions Menu */}
+        <MoreActionsMenu
+          align="end"
+          triggerClassName="w-8 h-8 rounded-full bg-[#F0F4F9] dark:bg-[#1E2623] border border-black/[0.04] dark:border-white/[0.06] text-stone-700 dark:text-stone-200"
+          items={[
+            {
+              label: 'Studio Format / Customize',
+              icon: Palette,
+              onClick: () => {
+                const studioTrigger = document.querySelector(
+                  '[data-testid="studio-popover-trigger"]'
+                ) as HTMLButtonElement | null
+                studioTrigger?.click()
+              },
+            },
+            {
+              label: filterState.layout === 'grid' ? 'Switch to Single View' : 'Switch to Grid View',
+              icon: LayoutGrid,
+              onClick: () => {
+                setFilterState((prev) => ({
+                  ...prev,
+                  layout: prev.layout === 'grid' ? 'single' : 'grid',
+                }))
+              },
+            },
+            {
+              label: visualSelectMode ? 'Exit Visual Select' : 'Visual Card Select',
+              icon: CheckSquare,
+              onClick: () => setVisualSelectMode((v) => !v),
+            },
+            {
+              label: 'Download / Print Reports',
+              icon: Download,
+              onClick: handlePrint,
+            },
+            {
+              label: 'Toggle Dark / Light Mode',
+              icon: Sun,
+              onClick: () => {
+                const isDark = document.documentElement.classList.contains('dark')
+                if (isDark) {
+                  document.documentElement.classList.remove('dark')
+                  localStorage.setItem('theme', 'light')
+                } else {
+                  document.documentElement.classList.add('dark')
+                  localStorage.setItem('theme', 'dark')
+                }
+                window.dispatchEvent(new Event('jiddah-theme-changed'))
+              },
+            },
+            {
+              label: 'Report Studio 2.0',
+              icon: Sliders,
+              onClick: () => {
+                window.location.href = '/admin/reports/studio'
+              },
+            },
+          ]}
+        />
       </div>
 
       {/* 100% Full-Width Document Preview Canvas */}
@@ -1194,6 +1261,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
           onInvertCards={handleInvertCards}
           onPrintSelectedCards={handlePrintSelected}
           onExitVisualSelect={() => setVisualSelectMode(false)}
+          isGenerating={isGenerating}
         />
       </div>
 

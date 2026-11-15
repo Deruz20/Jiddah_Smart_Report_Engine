@@ -19,6 +19,7 @@ import {
 import { toast } from "sonner";
 import { createClient } from "@/utils/supabase/client";
 import { JiddahLogo } from "@/components/brand/JiddahLogo";
+import { JiddahLoader } from "@/components/ui/jiddah-loader";
 
 import {
   forgotPasswordSchema,
@@ -342,6 +343,19 @@ function LoginContent() {
       `}</style>
 
       {/* Page Canvas: Warm Cream/Alabaster (#FAF7F2) with subtle top warm-gold ambient wash */}
+      {loading && (
+        <JiddahLoader
+          variant="fullscreen"
+          label={
+            screen === "reset"
+              ? "Updating Security Credentials..."
+              : screen === "forgot"
+              ? "Sending Password Reset..."
+              : "Signing in to Jiddah Workspace..."
+          }
+          sublabel="Verifying credentials & session tokens..."
+        />
+      )}
       <main
         className="min-h-screen min-h-[100dvh] w-full flex flex-col items-center justify-center p-4 sm:p-6 bg-[#FAF7F2] text-[#111827]"
         style={{

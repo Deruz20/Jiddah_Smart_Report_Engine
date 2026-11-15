@@ -879,3 +879,48 @@ Exit code: 0
      - Updated `Workstream 23` and added `Workstream 24` in `src/__tests__/overhaul-workstreams.test.mjs` (71/71 tests passing across 20 suites).
      - TypeScript check (`npm run typecheck`): 0 errors.
      - Next.js production build (`npm run build`): 68/68 static pages compiled cleanly.
+
+---
+
+### Milestone 25: CSS Named Pages for Mixed Print, P7 Portrait Parity, White-Clipped Signatures, Authentic Badge Stamp & Branded Jiddah Loader (`feat/overnight-system-renovation`)
+- **Files Modified:**
+  - `src/styles/reports/print-system.css`
+  - `src/components/reports/PrimaryEOTReport.tsx`
+  - `src/components/reports/P7EOTReport.tsx`
+  - `src/components/reports/ReportPreviewCell.tsx`
+  - `src/components/reports/CleanSignatureImage.tsx`
+  - `src/lib/signature-ink-processor.ts`
+  - `src/components/reports/StampGenerator.tsx`
+  - `src/components/ui/jiddah-loader.tsx` (new component)
+  - `src/components/figma-ui/ui/tooltip.tsx`
+  - `src/components/figma-ui/StudentRosterSidebar.tsx`
+  - `src/components/figma-ui/TopToolbar.tsx`
+  - `src/components/figma-ui/PrintDialog.tsx`
+  - `src/components/figma-ui/DocumentCanvas.tsx`
+  - `src/components/ReportGeneratorClient.tsx`
+  - `src/app/login/page.tsx`
+  - `src/components/shared-marks-entry.tsx`
+  - `src/components/secular-hub/SecularHubClient.tsx`
+  - `src/components/theology-hub/TheologyHubClient.tsx`
+  - `src/__tests__/overhaul-workstreams.test.mjs`
+  - `OVERNIGHT_PROGRESS_LEDGER.md`
+- **Scope & Workstreams Completed:**
+  1. **Workstream 1: Non-Muslim Portrait Template & Mixed Landscape/Portrait Batch Print Hardening:**
+     - Added standard Chromium CSS Named Pages (`@page landscape-sheet { size: A4 landscape; margin: 0mm; }` & `@page portrait-sheet { size: A4 portrait; margin: 0mm; }`) in `print-system.css`, with explicit page assignment on `.landscape-page` and `.portrait-page`, eliminating orientation overrides when batch printing mixed cohorts like P.4 (38 students: Muslim Landscape + Non-Muslim Portrait).
+     - Completely rebuilt `P7EOTReport.tsx` for exact design parity with `PrimaryEOTReport.tsx` (double `#c2994c` gold & `#0f4d25` emerald border, `#7F1D1D` maroon title, centered `/logo-512h.png` crest, dynamic title from `getSecularPortraitReportTitle`, inside-border `<OfficialReportStamp />`, bold pupil profile typography, and normal flow `justify-start` fitting 100% within 297mm without page breaking).
+  2. **Workstream 2: Instant Mathematical Signature White-Clipping & Processed Ink Cache:**
+     - Applied `mixBlendMode: 'multiply'` with `filter: 'grayscale(1) brightness(1.48) contrast(3.8) url(#jiddah-clean-ink)'` on `CleanSignatureImage.tsx`, providing instant client-side white-clipping of camera-photo paper grey tones.
+     - Added module-level `processedSignatureCache` in `signature-ink-processor.ts` and tuned adaptive background luminance threshold to the 65th-percentile so dark-grey paper drops to `alpha = 0`.
+     - In `StampGenerator.tsx`, integrated authentic school badge (`/logo-512h.png`) through monochrome SVG ink filter `<filter id="jiddah-stamp-ink-filter">`.
+  3. **Workstream 3: Branded Jiddah Loader & Zero-Lag Tooltips:**
+     - Created `<JiddahLoader />` with dual orbiting emerald (`#0D5C3A`) and gold (`#D97706`) rings, shimmer bar, and variants (`fullscreen`, `stage`, `inline`), and wired it into `/login`, `DocumentCanvas`, `shared-marks-entry`, `SecularHubClient`, and `TheologyHubClient`.
+     - Optimized `TooltipContent` in `figma-ui/ui/tooltip.tsx` to zero-transition pill with light-on-dark (light) and pearl-on-dark `dark:bg-[#F1F5F2] dark:text-[#093D26]` (dark).
+     - Wrapped `ReportPreviewCell` in `React.memo` and wrapped filter switches in `React.startTransition`.
+  4. **Workstream 4: Clean Student Roster Popover, Studio Accent Hierarchy & Mobile UX:**
+     - Replaced cluttered chips in `StudentRosterSidebar.tsx` with a clean 2-item bar (`N Students (M selected)` + `Select All / Clear All` button), and classified division/grade badges so Nursery shows `Grade A/B`, Theology shows Arabic estimate (`ممتاز/جيد جداً`), and `Div I` only appears for Primary Secular.
+     - Updated Studio toolbar hierarchy with Forest Emerald Phase pills, Warm Gold-Amber Curriculum track, Warm Gold Studio Customize trigger, and Emerald-Gold Primary CTA.
+     - Compacted `PrintDialog.tsx` to `max-w-[440px] max-h-[74dvh]` and added mobile `⋮` menu exposing all 6 desktop capabilities.
+  5. **Workstream 5: Verification Gate:**
+     - Full automated suite: 78/78 tests passing across 21 suites in `src/__tests__/overhaul-workstreams.test.mjs`.
+     - TypeScript compiler (`npm run typecheck`): 0 errors (`tsc --noEmit`).
+     - Next.js production build (`npm run build`): 68/68 routes compiled cleanly in Next.js 16.4.6.

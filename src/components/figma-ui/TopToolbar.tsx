@@ -508,10 +508,10 @@ export function TopToolbar({
                     <button
                       type="button"
                       data-testid="studio-popover-trigger"
-                      className="h-8 px-2.5 rounded-full bg-[#F0F4F9] dark:bg-[#1E2623] hover:bg-[#E4EAE6] dark:hover:bg-[#282A2C] border border-black/[0.04] dark:border-white/[0.06] text-xs font-semibold text-stone-800 dark:text-stone-200 inline-flex items-center gap-1.5 cursor-pointer transition shrink-0"
+                      className="h-8 px-2.5 rounded-full bg-[#D97706]/12 text-[#B45309] dark:bg-[#F59E0B]/20 dark:text-[#FCD34D] border border-[#D97706]/30 hover:bg-[#D97706]/20 dark:hover:bg-[#F59E0B]/30 text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer transition shrink-0"
                     >
-                      <Palette className="size-3.5 text-[#0D5C3A] dark:text-[#34D399] shrink-0" />
-                      <span className="font-bold hidden lg:inline">Studio</span>
+                      <Palette className="size-3.5 text-[#D97706] dark:text-[#FCD34D] shrink-0" />
+                      <span className="font-bold hidden lg:inline">Customize</span>
                     </button>
                   </PopoverTrigger>
                 </Tooltip.Trigger>
@@ -553,7 +553,7 @@ export function TopToolbar({
                     data-testid="toolbar-print-btn"
                     onClick={onPrint || primaryPrintAction?.onClick}
                     disabled={primaryPrintAction?.disabled}
-                    className="h-8 px-3 rounded-full bg-[#0D5C3A] dark:bg-[#10B981] hover:bg-[#0A472C] text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-40 transition shrink-0 shadow-xs"
+                    className="h-8 px-3 rounded-full bg-gradient-to-r from-[#0D5C3A] to-[#117A4D] hover:from-[#09472C] hover:to-[#0D5C3A] text-white ring-1 ring-[#D97706]/50 shadow-md text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-40 transition shrink-0"
                   >
                     <Printer className="size-3.5 shrink-0" />
                     <span className="tabular-nums">

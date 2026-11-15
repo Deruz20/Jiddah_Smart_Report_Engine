@@ -88,6 +88,20 @@
 }
 
 /* ============================================================================
+   PRINT: CSS NAMED PAGES (A4 Landscape & Portrait isolation per sheet)
+   ============================================================================ */
+
+@page landscape-sheet {
+  size: A4 landscape;
+  margin: 0mm;
+}
+
+@page portrait-sheet {
+  size: A4 portrait;
+  margin: 0mm;
+}
+
+/* ============================================================================
    PRINT: @MEDIA RULES
    ============================================================================ */
 
@@ -165,8 +179,10 @@
     break-after: auto !important;
   }
 
-  /* Lock landscape & portrait page boxes in print so side-by-side tables never stack vertically */
-  .landscape-page {
+  /* Lock landscape & portrait page boxes in print with CSS Named Pages */
+  .landscape-page,
+  [data-report-orientation="landscape"] {
+    page: landscape-sheet !important;
     width: 297mm !important;
     min-width: 297mm !important;
     max-width: 297mm !important;
@@ -190,7 +206,9 @@
 
   .portrait-page,
   .a4-portrait-page,
-  .a4-two-up-page {
+  .a4-two-up-page,
+  [data-report-orientation="portrait"] {
+    page: portrait-sheet !important;
     width: 210mm !important;
     min-width: 210mm !important;
     max-width: 210mm !important;

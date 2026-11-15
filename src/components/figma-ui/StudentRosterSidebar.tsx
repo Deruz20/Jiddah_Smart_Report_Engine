@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { Search, Check, Users, Sparkles, AlertCircle } from 'lucide-react';
 import type { EnrollmentItem, ReportData } from './types';
 import type { StudentCompletionStatus, StudentCompletionFilter } from '@/lib/report-selection';
+import { isNurseryClass, getNurseryGrade } from '@/lib/grading';
 
 interface StudentRosterSidebarProps {
   enrollments: EnrollmentItem[];
@@ -37,11 +38,83 @@ export function StudentRosterSidebar({
 
   // Map report divisions/grades by student enrollment ID
   const reportMap = useMemo(() => {
-    const map: Record<string, { division: string | null; total: number | null }> = {};
+    const map: Record<
+      string,
+      {
+        badgeText: string | null;
+        badgeType: 'nursery' | 'theology' | 'secular' | 'ready';
+        division?: string | null;
+        isReady: boolean;
+      }
+    > = {};
+
     for (const r of reports) {
+      const cls = (
+        r.student?.class_name ||
+        (r as any).class_name ||
+        (r as any).class ||
+        ''
+      ).toLowerCase();
+      const secType = (r.section_type || '').toLowerCase();
+      const isNursery = isNurseryClass(cls) || secType.includes('nursery');
+      const isTheology =
+        secType.includes('theology') ||
+        Boolean(r.theology?.subjects?.length && !r.circular?.subjects?.length);
+
+      let badgeText: string | null = null;
+      let badgeType: 'nursery' | 'theology' | 'secular' | 'ready' = 'ready';
+      const hasMarks =
+        (typeof r.circular?.total === 'number' && r.circular.total > 0) ||
+        (typeof r.theology?.total === 'number' && r.theology.total > 0) ||
+        (typeof r.theology?.eot_total === 'number' && r.theology.eot_total > 0);
+
+      if (isNursery) {
+        badgeType = 'nursery';
+        const avgScore =
+          r.circular?.total && r.circular?.subjects?.length
+            ? r.circular.total / r.circular.subjects.length
+            : null;
+        if (avgScore != null) {
+          const nur = getNurseryGrade(avgScore);
+          badgeText = `Grade ${nur.grade}`;
+        } else if (r.circular?.division && !r.circular.division.startsWith('Div')) {
+          badgeText = `Grade ${r.circular.division}`;
+        } else if (hasMarks) {
+          badgeText = 'Ready';
+        }
+      } else if (isTheology) {
+        badgeType = 'theology';
+        const total =
+          r.theology?.total ??
+          r.theology?.eot_total ??
+          r.theology?.mot_total ??
+          null;
+        if (typeof total === 'number' && total > 0) {
+          const avg =
+            total > 100 ? total / (r.theology?.subjects?.length || 4) : total;
+          if (avg >= 85) badgeText = 'ممتاز';
+          else if (avg >= 75) badgeText = 'جيد جداً';
+          else if (avg >= 60) badgeText = 'جيد';
+          else if (avg >= 50) badgeText = 'مقبول';
+          else badgeText = 'ضعيف';
+        } else if (hasMarks) {
+          badgeText = 'Ready';
+        }
+      } else {
+        badgeType = 'secular';
+        const div = r.circular?.division;
+        if (div && (div.startsWith('Div') || /^[1-4Uu]$/.test(div))) {
+          badgeText = div.startsWith('Div') ? div : `Div ${div}`;
+        } else if (hasMarks) {
+          badgeText = 'Ready';
+        }
+      }
+
       map[r.id] = {
-        division: r.circular?.division || r.theology?.division || null,
-        total: r.circular?.total ?? r.theology?.total ?? null,
+        badgeText,
+        badgeType,
+        division: badgeText,
+        isReady: Boolean(badgeText) || hasMarks,
       };
     }
     return map;
@@ -50,7 +123,7 @@ export function StudentRosterSidebar({
   // Helper to determine if an enrollment is ready with marks
   const isStudentReady = React.useCallback((enrollmentId: string) => {
     const rep = reportMap[enrollmentId];
-    if (rep?.division || (typeof rep?.total === 'number' && rep.total > 0)) return true;
+    if (rep?.isReady) return true;
     return completionByEnrollment[enrollmentId] === 'complete';
   }, [reportMap, completionByEnrollment]);
 
@@ -117,91 +190,21 @@ export function StudentRosterSidebar({
           )}
         </div>
 
-        {/* Filter Chips & Select All Toggle */}
-        <div className="flex items-center justify-between gap-1 text-[11px]">
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => setStatusFilter('all')}
-              className={`px-2 py-0.5 rounded-full font-semibold transition cursor-pointer ${
-                statusFilter === 'all'
-                  ? 'bg-[#0D5C3A] text-white shadow-2xs'
-                  : 'bg-white/80 dark:bg-black/20 text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800'
-              }`}
-            >
-              All ({enrollments.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setStatusFilter('complete')}
-              className={`px-2 py-0.5 rounded-full font-semibold transition cursor-pointer ${
-                statusFilter === 'complete'
-                  ? 'bg-emerald-600 text-white shadow-2xs'
-                  : 'bg-white/80 dark:bg-black/20 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'
-              }`}
-            >
-              Ready ({readyCount})
-            </button>
-            {incompleteCount > 0 && (
-              <button
-                type="button"
-                onClick={() => setStatusFilter('incomplete')}
-                className={`px-2 py-0.5 rounded-full font-semibold transition cursor-pointer ${
-                  statusFilter === 'incomplete'
-                    ? 'bg-amber-600 text-white shadow-2xs'
-                    : 'bg-white/80 dark:bg-black/20 text-amber-800 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/40'
-                }`}
-              >
-                Incomplete ({incompleteCount})
-              </button>
-            )}
-          </div>
+        {/* Clean 2-Item Action & Summary Bar */}
+        <div className="flex items-center justify-between gap-2 px-1 text-xs">
+          <span className="font-semibold text-stone-700 dark:text-stone-300 tabular-nums">
+            <strong className="text-[#111827] dark:text-[#F3F7F5]">{visibleStudents.length}</strong> Students{' '}
+            <span className="text-[#0D5C3A] dark:text-[#34D399] font-medium">({selectedIds.length} selected)</span>
+          </span>
 
-          <div className="flex items-center gap-1.5 shrink-0">
-            <button
-              type="button"
-              onClick={allVisibleSelected ? onClearAll : onSelectAll}
-              className="text-[10.5px] font-bold text-[#0D5C3A] dark:text-[#34D399] hover:underline cursor-pointer shrink-0"
-            >
-              {allVisibleSelected ? 'Clear' : `Select All (${enrollments.length})`}
-            </button>
-            <span className="text-stone-300 dark:text-stone-600">•</span>
-            <button
-              type="button"
-              onClick={() => {
-                const inverted = enrollments
-                  .map((e) => e.enrollment_id)
-                  .filter((id) => !selectedIds.includes(id));
-                if (onSetSelectedIds) {
-                  onSetSelectedIds(inverted);
-                } else {
-                  for (const e of enrollments) {
-                    onToggleSelect(e.enrollment_id, false);
-                  }
-                }
-              }}
-              className="text-[10.5px] font-semibold text-stone-600 dark:text-stone-300 hover:underline cursor-pointer shrink-0"
-              title="Invert Selection"
-            >
-              Invert Selection
-            </button>
-            <span className="text-stone-300 dark:text-stone-600">•</span>
-            <button
-              type="button"
-              onClick={() => {
-                const readyIds = enrollments
-                  .filter((e) => isStudentReady(e.enrollment_id))
-                  .map((e) => e.enrollment_id);
-                if (onSetSelectedIds) {
-                  onSetSelectedIds(readyIds);
-                }
-              }}
-              className="text-[10.5px] font-semibold text-emerald-700 dark:text-emerald-300 hover:underline cursor-pointer shrink-0"
-              title="Select Ready Only"
-            >
-              Ready Only
-            </button>
-          </div>
+          <button
+            type="button"
+            data-testid="roster-select-all-btn"
+            onClick={allVisibleSelected ? onClearAll : onSelectAll}
+            className="h-7 px-3 rounded-full text-xs font-bold transition cursor-pointer bg-white dark:bg-[#1E2623] hover:bg-stone-100 dark:hover:bg-[#282A2C] border border-black/10 dark:border-white/10 text-[#0D5C3A] dark:text-[#34D399] shadow-2xs shrink-0"
+          >
+            {allVisibleSelected ? 'Clear All' : 'Select All'}
+          </button>
         </div>
       </div>
 
@@ -262,11 +265,19 @@ export function StudentRosterSidebar({
 
                 {/* Right: Division/Grade Badge or Completion Status */}
                 <div className="shrink-0 flex items-center gap-1">
-                  {rep?.division ? (
-                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#0D5C3A]/10 text-[#0D5C3A] dark:bg-[#10B981]/15 dark:text-[#34D399]">
-                      {rep.division.startsWith('Div') ? rep.division : `Div ${rep.division}`}
+                  {rep?.badgeText || rep?.division ? (
+                    <span
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                        rep.badgeType === 'theology'
+                          ? 'bg-amber-100/80 text-amber-900 dark:bg-amber-950/40 dark:text-amber-300 font-serif'
+                          : rep.badgeType === 'nursery'
+                          ? 'bg-sky-100/80 text-sky-900 dark:bg-sky-950/40 dark:text-sky-300'
+                          : 'bg-[#0D5C3A]/10 text-[#0D5C3A] dark:bg-[#10B981]/15 dark:text-[#34D399]'
+                      }`}
+                    >
+                      {rep.badgeText}
                     </span>
-                  ) : (typeof rep?.total === 'number' && rep.total > 0) || completion === 'complete' ? (
+                  ) : completion === 'complete' ? (
                     <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
                       Ready
                     </span>

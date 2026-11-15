@@ -511,6 +511,7 @@ export default function PrimaryEOTReport({ reportData, studioFormatting }: any) 
 
         @media print {
           .landscape-page {
+            page: landscape-sheet !important;
             width: 297mm !important;
             min-width: 297mm !important;
             max-width: 297mm !important;
@@ -536,7 +537,7 @@ export default function PrimaryEOTReport({ reportData, studioFormatting }: any) 
       />
 
       <div className="print-wrapper">
-        <div className="landscape-page">
+        <div className="landscape-page" data-report-orientation="landscape">
           <div className="outer-border">
             <div className="inner-border">
               <div className="content-layer">

@@ -30,7 +30,7 @@ interface ReportPreviewCellProps {
   className?: string
 }
 
-export function ReportPreviewCell({
+function ReportPreviewCellComponent({
   children,
   reportType,
   zoom = 1,
@@ -130,3 +130,5 @@ export function ReportPreviewCell({
     </div>
   )
 }
+
+export const ReportPreviewCell = React.memo(ReportPreviewCellComponent)

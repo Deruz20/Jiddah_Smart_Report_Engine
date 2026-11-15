@@ -163,8 +163,8 @@ export function extractCleanSignaturePixels(
   }
   borderSamples.sort((a, b) => a - b);
   const bgLum = borderSamples.length > 0
-    ? Math.max(95, borderSamples[Math.min(borderSamples.length - 1, Math.floor(borderSamples.length * 0.85))])
-    : 240;
+    ? Math.max(85, borderSamples[Math.min(borderSamples.length - 1, Math.floor(borderSamples.length * 0.65))])
+    : 220;
 
   const rawAlpha = new Uint8ClampedArray(totalPixels);
 
@@ -335,7 +335,8 @@ export function extractCleanSignaturePixels(
 // ---------------------------------------------------------------------------
 
 const MAX_PROCESSING_DIM = 900;
-const cleanedUrlCache = new Map<string, string>();
+export const processedSignatureCache = new Map<string, string>();
+const cleanedUrlCache = processedSignatureCache;
 
 function loadBrowserImage(src: string, crossOrigin?: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {

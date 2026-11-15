@@ -1381,8 +1381,8 @@ describe('Workstream 23: Authentic Jiddah Vector Stamp, Clean Signature Ink Filt
     assert.match(clientSrc, /onPrintCurrent=\{handlePrintCurrent\}/);
 
     const rosterSrc = fs.readFileSync(path.join(rootDir, 'src/components/figma-ui/StudentRosterSidebar.tsx'), 'utf8');
-    assert.match(rosterSrc, /Invert Selection/);
-    assert.match(rosterSrc, /Ready Only/);
+    assert.match(rosterSrc, /data-testid="roster-select-all-btn"/);
+    assert.match(rosterSrc, /selectedIds\.length\} selected/);
   });
 });
 
@@ -1443,6 +1443,93 @@ describe('Workstream 24: Landscape Print Lock, Blank Page 1 Fix, Iconic Studio T
     assert.match(inkSrc, /localBg - 28/);
   });
 });
+
+describe('Workstream 25: CSS Named Pages for Mixed Print, P7 Portrait Parity, White-Clipped Signatures, Authentic Badge Stamp & Branded Loader', () => {
+  const rootDir = process.cwd();
+
+  it('1. configures CSS named pages (@page landscape-sheet & @page portrait-sheet) for mixed-orientation batch printing', () => {
+    const printCssSrc = fs.readFileSync(path.join(rootDir, 'src/styles/reports/print-system.css'), 'utf8');
+    assert.match(printCssSrc, /@page landscape-sheet\s*\{\s*size:\s*A4 landscape;/);
+    assert.match(printCssSrc, /@page portrait-sheet\s*\{\s*size:\s*A4 portrait;/);
+    assert.match(printCssSrc, /page:\s*landscape-sheet\s*!important;/);
+    assert.match(printCssSrc, /page:\s*portrait-sheet\s*!important;/);
+
+    const primaryEotSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/PrimaryEOTReport.tsx'), 'utf8');
+    assert.match(primaryEotSrc, /page:\s*landscape-sheet\s*!important;/);
+    assert.match(primaryEotSrc, /data-report-orientation="landscape"/);
+  });
+
+  it('2. enforces P7EOTReport design parity with PrimaryEOTReport (double gold/emerald border, maroon header, centered crest, inside stamp, bold pupil line)', () => {
+    const p7Src = fs.readFileSync(path.join(rootDir, 'src/components/reports/P7EOTReport.tsx'), 'utf8');
+    assert.match(p7Src, /page:\s*portrait-sheet\s*!important;/);
+    assert.match(p7Src, /data-report-orientation="portrait"/);
+    assert.match(p7Src, /#7F1D1D/); // Maroon title
+    assert.match(p7Src, /\/logo-512h\.png/); // Centered crest
+    assert.match(p7Src, /getSecularPortraitReportTitle/);
+    assert.match(p7Src, /<OfficialReportStamp/);
+    assert.match(p7Src, /\.p7-eot-report \.line\.pupil-name[\s\S]*?font-size:\s*16px;[\s\S]*?font-weight:\s*900;/);
+    assert.match(p7Src, /border:\s*4px solid var\(--report-border-color,\s*#c2994c\)/);
+    assert.match(p7Src, /border:\s*1\.5px solid var\(--report-primary-color,\s*#0f4d25\)/);
+  });
+
+  it('3. white-clips signatures instantly with CSS multiply + grayscale/brightness/contrast and caches processed canvas data', () => {
+    const sigImgSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/CleanSignatureImage.tsx'), 'utf8');
+    assert.match(sigImgSrc, /mixBlendMode:\s*'multiply'/);
+    assert.match(sigImgSrc, /grayscale\(1\) brightness\(1\.48\) contrast\(3\.8\)/);
+
+    const procSrc = fs.readFileSync(path.join(rootDir, 'src/lib/signature-ink-processor.ts'), 'utf8');
+    assert.match(procSrc, /processedSignatureCache/);
+    assert.match(procSrc, /borderSamples\[Math\.min\(borderSamples\.length - 1, Math\.floor\(borderSamples\.length \* 0\.65\)\)\]/);
+  });
+
+  it('4. renders authentic Jiddah badge image with ink filter in StampGenerator', () => {
+    const stampSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/StampGenerator.tsx'), 'utf8');
+    assert.match(stampSrc, /id="jiddah-stamp-ink-filter"/);
+    assert.match(stampSrc, /href="\/logo-512h\.png"/);
+  });
+
+  it('5. provides pearl-on-dark tooltips in dark mode without sluggish animations', () => {
+    const tooltipSrc = fs.readFileSync(path.join(rootDir, 'src/components/figma-ui/ui/tooltip.tsx'), 'utf8');
+    assert.match(tooltipSrc, /dark:bg-\[#F1F5F2\]/);
+    assert.match(tooltipSrc, /dark:text-\[#093D26\]/);
+    assert.match(tooltipSrc, /transition-none/);
+  });
+
+  it('6. provides clean 2-item roster bar and eliminates false Div I on Nursery and Theology', () => {
+    const rosterSrc = fs.readFileSync(path.join(rootDir, 'src/components/figma-ui/StudentRosterSidebar.tsx'), 'utf8');
+    assert.match(rosterSrc, /data-testid="roster-select-all-btn"/);
+    assert.match(rosterSrc, /isNursery/);
+    assert.match(rosterSrc, /isTheology/);
+    assert.match(rosterSrc, /ممتاز/);
+    assert.match(rosterSrc, /getNurseryGrade/);
+  });
+
+  it('7. wires branded JiddahLoader with dual-orbiting rings across Report Canvas, Login, Marks Entry, and Hubs', () => {
+    const loaderSrc = fs.readFileSync(path.join(rootDir, 'src/components/ui/jiddah-loader.tsx'), 'utf8');
+    assert.match(loaderSrc, /JiddahLoader/);
+    assert.match(loaderSrc, /#0D5C3A/); // Forest emerald
+    assert.match(loaderSrc, /#D97706/); // Warm gold
+
+    const canvasSrc = fs.readFileSync(path.join(rootDir, 'src/components/figma-ui/DocumentCanvas.tsx'), 'utf8');
+    assert.match(canvasSrc, /<JiddahLoader/);
+
+    const loginSrc = fs.readFileSync(path.join(rootDir, 'src/app/login/page.tsx'), 'utf8');
+    assert.match(loginSrc, /<JiddahLoader/);
+
+    const sharedMarksSrc = fs.readFileSync(path.join(rootDir, 'src/components/shared-marks-entry.tsx'), 'utf8');
+    assert.match(sharedMarksSrc, /<JiddahLoader/);
+
+    const secularHubSrc = fs.readFileSync(path.join(rootDir, 'src/components/secular-hub/SecularHubClient.tsx'), 'utf8');
+    assert.match(secularHubSrc, /<JiddahLoader/);
+
+    const theologyHubSrc = fs.readFileSync(path.join(rootDir, 'src/components/theology-hub/TheologyHubClient.tsx'), 'utf8');
+    assert.match(theologyHubSrc, /<JiddahLoader/);
+
+    const previewCellSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/ReportPreviewCell.tsx'), 'utf8');
+    assert.match(previewCellSrc, /React\.memo\(ReportPreviewCellComponent\)/);
+  });
+});
+
 
 
 

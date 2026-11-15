@@ -8,6 +8,7 @@ import { TheologyHubEmptyState } from './TheologyHubEmptyState'
 import { TopToolbar } from '../figma-ui/TopToolbar'
 import { OfficialPrintLetterhead, OfficialPrintSignaturesFooter } from '@/components/print/OfficialPrintLetterhead'
 import { CustomPillSelect } from '@/components/ui/custom-pill-select'
+import { JiddahLoader } from '@/components/ui/jiddah-loader'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { generateAssessmentCSV, generateAnalysisCSV, generateTopStudentsCSV } from '@/utils/csvExport'
 import { computeStandardRankings } from '@/lib/ranking'
@@ -530,9 +531,12 @@ export default function TheologyHubClient({
       {/* Main Content Area */}
       <div className="flex-1 p-3 sm:p-5 print:p-0">
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center h-full print:hidden">
-            <Loader2 className="w-8 h-8 animate-spin text-[#059669] mb-3" />
-            <p className="text-stone-600 text-sm font-medium">Loading theology data…</p>
+          <div className="flex flex-col items-center justify-center h-full min-h-[360px] print:hidden">
+            <JiddahLoader
+              variant="stage"
+              label="Loading Theology Assessment Data..."
+              sublabel="Fetching Quranic, Hadith, Fiqh & Arabic records..."
+            />
           </div>
         ) : !data || (!activeClassId && activeTab === 'assessment') || (!activeLevel && (activeTab === 'analysis' || activeTab === 'top_students')) ? (
           <TheologyHubEmptyState />

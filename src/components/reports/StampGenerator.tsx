@@ -116,6 +116,11 @@ export function VectorStamp({
   const opacity = Number(merged.opacity ?? 0.9);
   const [headerLine1, headerLine2] = splitStampSchoolHeader(merged.school_name);
 
+  const inkHex = (merged.ink_color || "#1B3B8B").replace("#", "");
+  const inkR = Number(((parseInt(inkHex.slice(0, 2), 16) || 27) / 255).toFixed(3));
+  const inkG = Number(((parseInt(inkHex.slice(2, 4), 16) || 59) / 255).toFixed(3));
+  const inkB = Number(((parseInt(inkHex.slice(4, 6), 16) || 139) / 255).toFixed(3));
+
   const baseW = merged.shape === "circle" ? 136 : merged.shape === "oval" ? 182 : 380;
   const baseH = merged.shape === "circle" ? 136 : merged.shape === "oval" ? 124 : 220;
 
@@ -169,6 +174,18 @@ export function VectorStamp({
               xChannelSelector="R"
               yChannelSelector="G"
             />
+          </filter>
+          <filter id="jiddah-stamp-ink-filter" colorInterpolationFilters="sRGB">
+            <feColorMatrix
+              type="matrix"
+              values="0.33 0.33 0.33 0 0  0.33 0.33 0.33 0 0  0.33 0.33 0.33 0 0  0 0 0 1 0"
+            />
+            <feComponentTransfer>
+              <feFuncR type="linear" slope="0" intercept={inkR} />
+              <feFuncG type="linear" slope="0" intercept={inkG} />
+              <feFuncB type="linear" slope="0" intercept={inkB} />
+              <feFuncA type="linear" slope="-4.0" intercept="3.6" />
+            </feComponentTransfer>
           </filter>
           <path id={pathTopId} d="M 18,68 A 50,50 0 1,1 118,68" fill="none" />
           <path id={pathBottomId} d="M 118,68 A 50,50 0 0,1 18,68" fill="none" />
@@ -250,107 +267,18 @@ export function VectorStamp({
             </text>
 
             {/* Middle 3-Column Row (y=68 to 142) */}
-            {/* Column 1: Left Jiddah Shield Crest (x=28 to 102) */}
+            {/* Column 1: Left Jiddah Authentic School Crest Badge (x=24 to 100, y=66 to 140) */}
             <g transform="translate(0, 0)">
-              {/* Top Banner Box */}
-              <rect
-                x="34"
-                y="68"
-                width="62"
-                height="15"
-                rx="2"
-                fill="none"
-                stroke={merged.ink_color}
-                strokeWidth="1.6"
+              <desc>DAY AND BOARDING - STRIVE FOR LIFE &amp; HERE AFTER</desc>
+              <image
+                href="/logo-512h.png"
+                x="24"
+                y="66"
+                width="76"
+                height="74"
+                filter="url(#jiddah-stamp-ink-filter)"
+                preserveAspectRatio="xMidYMid meet"
               />
-              <text
-                x="65"
-                y="74.5"
-                textAnchor="middle"
-                fontSize="5.2"
-                fontWeight="800"
-                fill={merged.ink_color}
-                stroke="none"
-                fontFamily="Arial, sans-serif"
-              >
-                JIDDAH ISLAMIC
-              </text>
-              <text
-                x="65"
-                y="80.5"
-                textAnchor="middle"
-                fontSize="4.8"
-                fontWeight="800"
-                fill={merged.ink_color}
-                stroke="none"
-                fontFamily="Arial, sans-serif"
-              >
-                NUR &amp; PRI
-              </text>
-
-              {/* Shield Outline */}
-              <path
-                d="M 38 85 L 92 85 C 92 108 65 125 65 129 C 65 125 38 108 38 85 Z"
-                fill="none"
-                stroke={merged.ink_color}
-                strokeWidth="1.6"
-              />
-
-              {/* Diagonal Sash/Band */}
-              <line x1="39" y1="94" x2="91" y2="108" stroke={merged.ink_color} strokeWidth="1.2" />
-              <line x1="39" y1="100" x2="91" y2="114" stroke={merged.ink_color} strokeWidth="1.2" />
-              <text
-                transform="translate(65, 104) rotate(15)"
-                textAnchor="middle"
-                fontSize="3.5"
-                fontWeight="900"
-                fill={merged.ink_color}
-                stroke="none"
-                fontFamily="Arial, sans-serif"
-              >
-                DAY AND BOARDING
-              </text>
-
-              {/* Inner Crescent & Star inside Shield */}
-              <path
-                d="M 52 90 A 4 4 0 1 0 57 93 A 3 3 0 1 1 52 90 Z"
-                fill={merged.ink_color}
-                stroke="none"
-              />
-              <polygon
-                points="60,89 61,91.5 63.5,91.5 61.5,93 62,95.5 60,94 58,95.5 58.5,93 56.5,91.5 59,91.5"
-                fill={merged.ink_color}
-                stroke="none"
-              />
-
-              {/* Open Book / Minaret */}
-              <path
-                d="M 57 119 Q 65 116 73 119 L 73 123 Q 65 120 57 123 Z"
-                fill={merged.ink_color}
-                stroke="none"
-              />
-              <line x1="65" y1="117" x2="65" y2="122" stroke="#ffffff" strokeWidth="0.8" />
-
-              {/* Bottom Curved Scroll Ribbon */}
-              <path
-                d="M 30 130 Q 65 137 100 130 L 98 138 Q 65 145 32 138 Z"
-                fill="none"
-                stroke={merged.ink_color}
-                strokeWidth="1.4"
-              />
-              <text
-                x="65"
-                y="136"
-                textAnchor="middle"
-                fontSize="3.6"
-                fontWeight="900"
-                fill={merged.ink_color}
-                stroke="none"
-                fontFamily="Arial, sans-serif"
-                letterSpacing="0.2px"
-              >
-                STRIVE FOR LIFE &amp; HERE AFTER
-              </text>
             </g>
 
             {/* Column 2: Center Crimson Red Dater-Stamp Date (#D92626) */}

@@ -15,6 +15,7 @@ import {
 import * as Tooltip from '@radix-ui/react-tooltip';
 import type { ReportData, FilterState } from './types';
 import { EmptyState } from './EmptyState';
+import { JiddahLoader } from '@/components/ui/jiddah-loader';
 
 interface DocumentCanvasProps {
   reports: ReportData[];
@@ -30,6 +31,7 @@ interface DocumentCanvasProps {
   renderReport: (report: any, isActive: boolean) => React.ReactNode;
   printScope?: 'current' | 'all' | string[];
   cardsPerRow?: 1 | 2 | 3;
+  isGenerating?: boolean;
   // Visual Card Selection Mode
   visualSelectMode?: boolean;
   selectedIds?: string[];
@@ -52,6 +54,7 @@ export function DocumentCanvas({
   onFitScreen,
   onSearchOpen,
   renderReport,
+  isGenerating = false,
   visualSelectMode = false,
   selectedIds = [],
   onToggleSelectCard,
@@ -252,7 +255,15 @@ export function DocumentCanvas({
             scrollbarColor: 'rgba(0,0,0,0.15) transparent',
           }}
         >
-          {reports.length === 0 ? (
+          {isGenerating ? (
+            <div className="flex items-center justify-center h-full min-h-96">
+              <JiddahLoader
+                label="Preparing Official Report Cards..."
+                sublabel="Loading pupil evaluations, stamps & marks..."
+                variant="stage"
+              />
+            </div>
+          ) : reports.length === 0 ? (
             <div className="flex items-center justify-center h-full min-h-96">
               <EmptyState onSearchOpen={onSearchOpen || (() => {})} />
             </div>

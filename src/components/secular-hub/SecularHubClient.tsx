@@ -11,6 +11,7 @@ import { isGradableSubject, getSubjectGradeNumber, calculateAggregate, getDivisi
 import { TopToolbar } from '../figma-ui/TopToolbar'
 import { OfficialPrintLetterhead, OfficialPrintSignaturesFooter } from '@/components/print/OfficialPrintLetterhead'
 import { CustomPillSelect } from '@/components/ui/custom-pill-select'
+import { JiddahLoader } from '@/components/ui/jiddah-loader'
 
 const THEME = {
   gold: 'text-amber-800 bg-amber-50 border-amber-200',
@@ -631,9 +632,12 @@ export default function SecularHubClient({
       {/* Main Content Area */}
       <div className="flex-1 p-3 sm:p-5 print:p-0">
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center h-full print:hidden">
-            <Loader2 className="w-8 h-8 animate-spin text-[#059669] mb-3" />
-            <p className="text-stone-600 text-sm font-medium">Loading secular assessment data…</p>
+          <div className="flex flex-col items-center justify-center h-full min-h-[360px] print:hidden">
+            <JiddahLoader
+              variant="stage"
+              label="Loading Secular Assessment Data..."
+              sublabel="Calculating student rankings, divisions & marks..."
+            />
           </div>
         ) : (!data || (!activeClassId && activeTab === 'assessment') || (!activeLevel && (activeTab === 'analysis' || activeTab === 'top_students'))) ? (
           <div className="flex flex-col items-center justify-center h-full text-center p-6 max-w-md mx-auto">

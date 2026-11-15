@@ -3,6 +3,7 @@
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { toast } from 'sonner'
+import { JiddahLoader } from '@/components/ui/jiddah-loader'
 import {
   Check,
   RefreshCw,
@@ -1616,8 +1617,11 @@ export function SharedMarksEntry({
             </div>
           ) : isFetching || isLoading ? (
             <div className="flex flex-col items-center justify-center py-16 px-4 text-center rounded-2xl border border-[#0D5C3A]/10 dark:border-[#F59E0B]/12 bg-[var(--bg-card)]">
-              <RefreshCw className="w-6 h-6 animate-spin text-emerald-600 mb-2.5" />
-              <p className="text-[var(--text-primary)] text-xs font-bold">Loading student assessment sheet...</p>
+              <JiddahLoader
+                variant="stage"
+                label="Loading Student Assessment Sheet..."
+                sublabel="Fetching academic marks & evaluation records..."
+              />
             </div>
           ) : selectedEnrollment ? (
             <div className="space-y-2 w-full min-w-0 flex-1 min-h-0 flex flex-col justify-between">

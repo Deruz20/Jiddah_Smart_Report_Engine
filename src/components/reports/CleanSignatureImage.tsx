@@ -109,7 +109,7 @@ export function CleanSignatureImage({
           backgroundColor: 'transparent',
           objectFit: 'contain',
           filter: cleanEnabled
-            ? 'url(#jiddah-clean-ink) contrast(1.4) brightness(1.05)'
+            ? 'grayscale(1) brightness(1.48) contrast(3.8) url(#jiddah-clean-ink)'
             : undefined,
           ...style,
         }}

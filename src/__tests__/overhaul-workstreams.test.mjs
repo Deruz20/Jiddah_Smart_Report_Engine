@@ -154,11 +154,12 @@ describe('Workstream 2: Signature Ink Extractor & Paper Removal', () => {
 });
 
 describe('Workstream 3: Jiddah Stamp Configuration & Date Formatting', () => {
-  it('defaults to official Jiddah stamp geometry, navy blue ink, and P.O. BOX line', () => {
+  it('defaults to official Jiddah stamp geometry, royal stamp blue ink, and Nsaggu P.O.Box line', () => {
     assert.equal(DEFAULT_STAMP_CONFIG.school_name, 'JIDDAH ISLAMIC NURSERY & PRIMARY SCHOOL');
     assert.equal(DEFAULT_STAMP_CONFIG.title, 'HEADTEACHER');
-    assert.equal(DEFAULT_STAMP_CONFIG.po_box, 'P.O. BOX 34008, KAMPALA - UGANDA');
-    assert.equal(DEFAULT_STAMP_CONFIG.ink_color, '#1B3678');
+    assert.equal(DEFAULT_STAMP_CONFIG.po_box, 'P.O.Box 34008, Nsaggu');
+    assert.equal(DEFAULT_STAMP_CONFIG.phone, 'Nakawuka Rd, Wakiso District');
+    assert.equal(DEFAULT_STAMP_CONFIG.ink_color, '#1B3B8B');
     assert.equal(DEFAULT_STAMP_CONFIG.date, '26 OCT 2026');
   });
 
@@ -1038,7 +1039,7 @@ describe('Workstream 15: Report Center Smart Defaults, Zone 1 Bar & Split-Pane A
     const topToolbarPath = path.join(rootDir, 'src/components/figma-ui/TopToolbar.tsx');
     const topToolbarSrc = fs.readFileSync(topToolbarPath, 'utf8');
     assert.match(topToolbarSrc, /data-testid="reports-zone-1-bar"/);
-    assert.match(topToolbarSrc, /bg-white dark:bg-\[#151D1A\] rounded-2xl px-3 py-2 border border-\[#0D5C3A\]\/15 dark:border-\[#F59E0B\]\/20/);
+    assert.match(topToolbarSrc, /bg-white dark:bg-\[#151D1A\] rounded-2xl px-2\.5 sm:px-3 py-1\.5 border border-\[#0D5C3A\]\/15 dark:border-\[#F59E0B\]\/20/);
     assert.doesNotMatch(topToolbarSrc, /<div className="text-xs font-bold text-stone-700 dark:text-stone-200 truncate">\s*Report Center\s*<\/div>/);
 
     // ReportPreviewCell paper styling
@@ -1257,6 +1258,135 @@ describe('Workstream 22: Universal Marks Reconciliation, Form Collision Fix, Sta
     assert.match(reconcilerSrc, /\.from\('enrollments'\)[\s\S]*?\.select\('id, student_id'\)[\s\S]*?\.in\('student_id', chunk\)/);
   });
 });
+
+describe('Workstream 23: Authentic Jiddah Vector Stamp, Clean Signature Ink Filter, Multi-Page Print, Bold Pupil Profiles & MS Word Toolbar', () => {
+  const rootDir = process.cwd();
+
+  it('1. renders authentic Jiddah Headteacher digital vector stamp SVG with exact physical geometry and defaults across all 8 templates', () => {
+    const stampPath = path.join(rootDir, 'src/components/reports/StampGenerator.tsx');
+    const stampSrc = fs.readFileSync(stampPath, 'utf8');
+
+    // Exact outer U-bracket frame paths in Royal Stamp Blue (#1B3B8B)
+    assert.match(stampSrc, /M 14 52 L 14 18 Q 14 10 22 10 L 358 10 Q 366 10 366 18 L 366 52/);
+    assert.match(stampSrc, /M 14 168 L 14 202 Q 14 210 22 210 L 358 210 Q 366 210 366 202 L 366 168/);
+    assert.match(stampSrc, /strokeWidth="4\.5"/);
+
+    // Rotated vertical wall texts
+    assert.match(stampSrc, /transform="translate\(14, 110\) rotate\(90\)"/);
+    assert.match(stampSrc, /transform="translate\(366, 110\) rotate\(-90\)"/);
+    assert.match(stampSrc, /HEADTEACHER&apos;S OFFICE/);
+
+    // Top 2 Header Lines
+    assert.match(stampSrc, /JIDDAH ISLAMIC NURSERY &amp;/);
+    assert.match(stampSrc, /PRIMARY SCHOOL/);
+
+    // Middle 3-Column Row: Shield Crest, Red Dater Stamp, Crescent & Star
+    assert.match(stampSrc, /DAY AND BOARDING/);
+    assert.match(stampSrc, /STRIVE FOR LIFE &amp; HERE AFTER/);
+    assert.match(stampSrc, /fill="#D92626"/);
+
+    // Bottom 3 Footer Lines
+    assert.match(stampSrc, /HEADTEACHER/);
+    assert.match(stampSrc, /P\.O\.Box 34008, Nsaggu/);
+    assert.match(stampSrc, /Nakawuka Rd, Wakiso District/);
+
+    // Digital vector stamp is primary default across all 8 templates (no direct uploaded image ternary bypass)
+    const templates = [
+      'PrimaryEOTReport.tsx',
+      'P7EOTReport.tsx',
+      'PrimaryMOTReport.tsx',
+      'PrimaryBOTReport.tsx',
+      'NurseryEOTReport.tsx',
+      'NurseryMOTReport.tsx',
+      'NurseryTheologyEOTReport.tsx',
+      'TheologyMOTReport.tsx',
+    ];
+
+    for (const t of templates) {
+      const tSrc = fs.readFileSync(path.join(rootDir, `src/components/reports/${t}`), 'utf8');
+      assert.doesNotMatch(tSrc, /reportData\?\.signatures\?\.\['school-stamp'\]\s*\?\s*\(\s*<img/);
+      assert.match(tSrc, /<OfficialReportStamp\s+reportData=\{reportData\}\s+studioFormatting=\{studioFormatting\}/);
+    }
+  });
+
+  it('2. strips grey camera paper backgrounds from teacher signatures via CleanSignatureImage and #jiddah-clean-ink SVG filter', () => {
+    const sigCompPath = path.join(rootDir, 'src/components/reports/CleanSignatureImage.tsx');
+    const sigCompSrc = fs.readFileSync(sigCompPath, 'utf8');
+
+    assert.match(sigCompSrc, /export function CleanSignatureImage/);
+    assert.match(sigCompSrc, /export const extractSignatureInk/);
+    assert.match(sigCompSrc, /id="jiddah-clean-ink"/);
+    assert.match(sigCompSrc, /<feColorMatrix/);
+    assert.match(sigCompSrc, /<feComponentTransfer>/);
+    assert.match(sigCompSrc, /slope="3\.2"\s+intercept="-1\.45"/);
+    assert.match(sigCompSrc, /url\(#jiddah-clean-ink\)/);
+  });
+
+  it('3. unconstrains layout wrappers during @media print so multi-page batch printing outputs all N sheets', () => {
+    const layoutPath = path.join(rootDir, 'src/app/admin/layout.tsx');
+    const layoutSrc = fs.readFileSync(layoutPath, 'utf8');
+    assert.match(layoutSrc, /print:!h-auto print:!min-h-0 print:!max-h-none print:!overflow-visible print:!block print:!static/);
+
+    const printCssPath = path.join(rootDir, 'src/styles/reports/print-system.css');
+    const printCssSrc = fs.readFileSync(printCssPath, 'utf8');
+    assert.match(printCssSrc, /\[data-slot="sidebar-wrapper"\]/);
+    assert.match(printCssSrc, /\[data-slot="sidebar-inset"\]/);
+    assert.match(printCssSrc, /\.report-card-sheet,\s*#print-portal \.report-container\s*\{[\s\S]*?page-break-after:\s*always\s*!important;[\s\S]*?break-after:\s*page\s*!important;/);
+
+    const eotPath = path.join(rootDir, 'src/components/reports/PrimaryEOTReport.tsx');
+    const eotSrc = fs.readFileSync(eotPath, 'utf8');
+    // Verify tightened vertical padding so bottom validity banner never clips
+    assert.match(eotSrc, /\.landscape-page\s*\{[^}]*padding:\s*3mm;/);
+  });
+
+  it('4. enforces big and bold pupil profile typography across all 8 report templates', () => {
+    const eotSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/PrimaryEOTReport.tsx'), 'utf8');
+    assert.match(eotSrc, /font-size:\s*15\.5px;\s*font-weight:\s*900;/);
+    assert.match(eotSrc, /font-size:\s*17px;\s*font-weight:\s*900;/);
+
+    const p7Src = fs.readFileSync(path.join(rootDir, 'src/components/reports/P7EOTReport.tsx'), 'utf8');
+    assert.match(p7Src, /\.p7-eot-report \.line\.pupil-name\s*\{[^}]*font-size:\s*16px;\s*font-weight:\s*900;/);
+
+    const motSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/PrimaryMOTReport.tsx'), 'utf8');
+    assert.match(motSrc, /fontSize:\s*'16px',\s*fontWeight:\s*900,\s*textTransform:\s*'uppercase'/);
+
+    const botSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/PrimaryBOTReport.tsx'), 'utf8');
+    assert.match(botSrc, /fontSize:\s*'16px',\s*fontWeight:\s*900,\s*textTransform:\s*'uppercase'/);
+
+    const nurseryEotSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/NurseryEOTReport.tsx'), 'utf8');
+    assert.match(nurseryEotSrc, /fontSize:\s*'16px',\s*fontWeight:\s*900,\s*textTransform:\s*'uppercase'/);
+
+    const nurseryMotSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/NurseryMOTReport.tsx'), 'utf8');
+    assert.match(nurseryMotSrc, /fontSize:\s*'16px',\s*fontWeight:\s*900,\s*textTransform:\s*'uppercase'/);
+
+    const nurseryTheoSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/NurseryTheologyEOTReport.tsx'), 'utf8');
+    assert.match(nurseryTheoSrc, /font-weight:\s*900;\s*font-size:\s*17px;/);
+
+    const theoMotSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/TheologyMOTReport.tsx'), 'utf8');
+    assert.match(theoMotSrc, /font-weight:\s*900;\s*font-size:\s*17px;/);
+  });
+
+  it('5. makes Desktop TopToolbar hidden md:flex with MS Word 1|2|3 card switcher and consolidates mobile into a single h-11 header', () => {
+    const toolbarSrc = fs.readFileSync(path.join(rootDir, 'src/components/figma-ui/TopToolbar.tsx'), 'utf8');
+    assert.match(toolbarSrc, /hidden md:flex items-center justify-between gap-1\.5/);
+    assert.match(toolbarSrc, /data-testid="cards-per-row-switcher"/);
+    assert.match(toolbarSrc, /1▢/);
+    assert.match(toolbarSrc, /2▢▢/);
+    assert.match(toolbarSrc, /3▢▢▢/);
+    assert.match(toolbarSrc, /1 Sheet/);
+
+    const clientSrc = fs.readFileSync(path.join(rootDir, 'src/components/ReportGeneratorClient.tsx'), 'utf8');
+    assert.match(clientSrc, /h-11 px-2 flex md:hidden items-center justify-between gap-1 bg-white dark:bg-\[#151D1A\]/);
+    assert.match(clientSrc, /cardsPerRow=\{cardsPerRow\}/);
+    assert.match(clientSrc, /onCardsPerRowChange=\{/);
+    assert.match(clientSrc, /onPrintCurrent=\{handlePrintCurrent\}/);
+
+    const rosterSrc = fs.readFileSync(path.join(rootDir, 'src/components/figma-ui/StudentRosterSidebar.tsx'), 'utf8');
+    assert.match(rosterSrc, /Invert Selection/);
+    assert.match(rosterSrc, /Ready Only/);
+  });
+});
+
 
 
 

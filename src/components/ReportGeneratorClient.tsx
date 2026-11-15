@@ -4,7 +4,7 @@ import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { toast } from 'sonner'
 import { motion, AnimatePresence } from 'motion/react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { FileSpreadsheet, Printer, Users, FileText, Sliders, Settings, History, ChevronDown, LayoutGrid } from 'lucide-react'
+import { FileSpreadsheet, Printer, Users, FileText, Sliders, Settings, History, ChevronDown, LayoutGrid, Menu, Palette } from 'lucide-react'
 import { generateReportBroadsheetCSV } from '@/utils/csvExport'
 import { TopToolbar, StudioFormattingState, DEFAULT_STUDIO_FORMATTING } from './figma-ui/TopToolbar'
 import { isNonMuslimStudent, shouldUseSecularPortraitTemplate } from '@/lib/student-religion'
@@ -13,6 +13,7 @@ import { StudentRosterSidebar } from './figma-ui/StudentRosterSidebar'
 import { PrintDialog } from './figma-ui/PrintDialog'
 import { Popover, PopoverTrigger, PopoverContent } from './figma-ui/ui/popover'
 import { CustomPillSelect } from '@/components/ui/custom-pill-select'
+import { useSidebar } from '@/components/figma-ui/ui/sidebar'
 import type { FilterState, ReportData, ClassGroup, EnrollmentItem } from './figma-ui/types'
 
 // Jiddah Templates
@@ -86,6 +87,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
   const [rawReports, setRawReports] = useState<ReportData[]>([])
   const [activeReportId, setActiveReportId] = useState<string | null>(null)
   const [zoom, setZoom] = useState(0.75)
+  const [cardsPerRow, setCardsPerRow] = useState<1 | 2 | 3>(1)
   const [printScope, setPrintScope] = useState<'current' | 'all' | string[]>('current')
   const [printRequest, setPrintRequest] = useState<{ title: string } | null>(null)
   const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false)
@@ -503,6 +505,44 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
     window.addEventListener('afterprint', restoreTitle)
   }, [selectedStudentIds, activeReportId, rawReports, executeGeneration, filterState.term])
 
+  let sidebar: { toggleSidebar: () => void } | null = null
+  try {
+    sidebar = useSidebar()
+  } catch {
+    sidebar = null
+  }
+
+  // Single sheet print action
+  const handlePrintCurrent = useCallback(() => {
+    if (!activeReportId) {
+      toast.error('Please select a student report to print.')
+      return
+    }
+    setPrintScope([activeReportId])
+    const currentRep = rawReports.find((r) => r.id === activeReportId)
+    const isLandscape = (() => {
+      if (!currentRep) return false
+      const isP7 = (currentRep.student?.class_name || '').toLowerCase().includes('p.7')
+      const isPrim =
+        (currentRep.section_type || '').includes('primary') ||
+        (currentRep.student?.class_name || '').toLowerCase().includes('p.')
+      const isNonMuslim = isNonMuslimStudent(currentRep.student, currentRep)
+      return isPrim && currentRep.score_type === 'eot' && !isP7 && !isNonMuslim
+    })()
+
+    let styleEl = document.getElementById('dynamic-print-page-style') as HTMLStyleElement | null
+    if (!styleEl) {
+      styleEl = document.createElement('style')
+      styleEl.id = 'dynamic-print-page-style'
+      document.head.appendChild(styleEl)
+    }
+    styleEl.textContent = `@media print { @page { size: A4 ${isLandscape ? 'landscape' : 'portrait'} !important; margin: 0mm !important; } }`
+
+    setTimeout(() => {
+      window.print()
+    }, 280)
+  }, [activeReportId, rawReports])
+
   const handleDownload = useCallback(() => {
     if (rawReports.length === 0) {
       toast.error('No reports loaded. Generate reports first.')
@@ -595,29 +635,33 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
       if (format === 'combined' || format === 'circular') {
         if (isPrim && report.score_type === 'eot') {
           const useSecularPortrait = isP7 || shouldUseSecularPortraitTemplate(report.student, report)
-          component = useSecularPortrait ? <P7EOTReport reportData={enhancedReport} /> : <PrimaryEOTReport reportData={enhancedReport} />
+          component = useSecularPortrait ? (
+            <P7EOTReport reportData={enhancedReport} studioFormatting={studioFormatting} />
+          ) : (
+            <PrimaryEOTReport reportData={enhancedReport} studioFormatting={studioFormatting} />
+          )
           type = useSecularPortrait ? 'P7EOTReport' : 'PrimaryEOTReport'
         } else if (report.section_type === 'nursery') {
           if (report.score_type === 'mot') {
-            component = <NurseryMOTReport reportData={enhancedReport} />
+            component = <NurseryMOTReport reportData={enhancedReport} studioFormatting={studioFormatting} />
             type = 'NurseryMOTReport'
           } else {
-            component = <NurseryEOTReport reportData={enhancedReport} />
+            component = <NurseryEOTReport reportData={enhancedReport} studioFormatting={studioFormatting} />
             type = 'NurseryEOTReport'
           }
         } else if (report.score_type === 'bot') {
-          component = <PrimaryBOTReport reportData={enhancedReport} />
+          component = <PrimaryBOTReport reportData={enhancedReport} studioFormatting={studioFormatting} />
           type = 'PrimaryBOTReport'
         } else {
-          component = <PrimaryMOTReport reportData={enhancedReport} />
+          component = <PrimaryMOTReport reportData={enhancedReport} studioFormatting={studioFormatting} />
           type = 'PrimaryMOTReport'
         }
       } else if (format === 'theology') {
         if (report.section_type === 'nursery' && report.score_type === 'eot') {
-          component = <NurseryTheologyEOTReport reportData={enhancedReport} />
+          component = <NurseryTheologyEOTReport reportData={enhancedReport} studioFormatting={studioFormatting} />
           type = 'NurseryTheologyEOTReport'
         } else {
-          component = <TheologyMOTReport reportData={enhancedReport} />
+          component = <TheologyMOTReport reportData={enhancedReport} studioFormatting={studioFormatting} />
           type = 'TheologyMOTReport'
         }
       }
@@ -778,6 +822,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
                   onToggleSelect={handleToggleSelect}
                   onSelectAll={handleSelectAll}
                   onClearAll={handleClearAll}
+                  onSetSelectedIds={setSelectedStudentIds}
                   activeReportId={activeReportId}
                   onSelectStudent={(id) => {
                     setActiveReportId(id)
@@ -910,14 +955,30 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
               layout: prev.layout === 'grid' ? 'single' : 'grid',
             }))
           }
+          cardsPerRow={cardsPerRow}
+          onCardsPerRowChange={setCardsPerRow}
+          onPrintCurrent={handlePrintCurrent}
           isGenerating={isGenerating}
         />
       </div>
 
-      {/* Dedicated Mobile Controls (< lg) */}
-      <div className="lg:hidden flex flex-col gap-1.5 shrink-0 print:hidden">
-        {/* Row 1: Class + Term/Phase */}
-        <div className="grid grid-cols-2 gap-1.5 p-2 bg-white dark:bg-[#151D1A] rounded-2xl border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20">
+      {/* Sleek Single 44px Mobile Action Header (< md) */}
+      <div className="h-11 px-2 flex md:hidden items-center justify-between gap-1 bg-white dark:bg-[#151D1A] rounded-2xl border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 shrink-0 print:hidden shadow-2xs">
+        {/* 1. Hamburger to open main sidebar */}
+        {sidebar && (
+          <button
+            type="button"
+            onClick={sidebar.toggleSidebar}
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-stone-700 dark:text-stone-200 hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer shrink-0"
+            title="Open Navigation"
+            aria-label="Open Navigation"
+          >
+            <Menu size={16} />
+          </button>
+        )}
+
+        {/* 2. Compact Class Pill */}
+        <div className="shrink-0 max-w-[90px]">
           <CustomPillSelect
             id="reports-mobile-class-select"
             ariaLabel="Class"
@@ -930,85 +991,143 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
             }}
             options={figmaClasses.map((c) => ({
               value: c.id,
-              label: `${c.name} (${c.enrollmentIds.length})`,
+              label: c.name,
             }))}
             className="w-full"
-            triggerClassName="w-full h-8 px-2.5 text-xs font-semibold"
+            triggerClassName="h-8 px-2 text-[11px] font-bold rounded-lg bg-emerald-500/10 dark:bg-emerald-400/15 text-emerald-800 dark:text-emerald-200 border-0"
           />
-          <div className="flex items-center justify-between gap-1 px-2.5 py-1 rounded-full bg-[#F0F4F9] dark:bg-[#1E2623] border border-black/[0.04] dark:border-white/[0.06]">
-            <span className="text-[10px] font-bold text-[#0D5C3A] dark:text-[#34D399] truncate">
-              ● Term {activeTermNumber}
-            </span>
-            <div className="flex items-center gap-0.5">
+        </div>
+
+        {/* 3. Student & Custom Batch Selection Pill */}
+        <Popover open={isMobileRosterOpen} onOpenChange={setIsMobileRosterOpen}>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className="h-8 px-2 rounded-full bg-[#F0F4F9] dark:bg-[#1E2623] border border-black/[0.04] dark:border-white/[0.06] text-[11px] font-bold text-[#111827] dark:text-[#F3F7F5] flex items-center gap-1 cursor-pointer max-w-[125px] sm:max-w-[150px] truncate shrink-0"
+            >
+              <Users size={12} className="text-[#0D5C3A] dark:text-[#34D399] shrink-0" />
+              <span className="truncate tabular-nums">
+                {selectedStudentIds.length}/{activeClassEnrollments.length} • {activeStudent?.name?.split(' ')[0] || 'All'}
+              </span>
+              <ChevronDown size={11} className="text-stone-400 shrink-0" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent
+            align="center"
+            sideOffset={6}
+            className="w-[calc(100vw-24px)] max-w-[360px] p-0 rounded-2xl border border-[#0D5C3A]/20 dark:border-[#F59E0B]/25 shadow-2xl overflow-hidden bg-white dark:bg-[#151D1A] z-50 max-h-[75dvh] flex flex-col"
+          >
+            <StudentRosterSidebar
+              enrollments={activeClassEnrollments}
+              selectedIds={selectedStudentIds}
+              onToggleSelect={handleToggleSelect}
+              onSelectAll={handleSelectAll}
+              onClearAll={handleClearAll}
+              onSetSelectedIds={setSelectedStudentIds}
+              activeReportId={activeReportId}
+              onSelectStudent={(id) => {
+                setActiveReportId(id)
+                setIsMobileRosterOpen(false)
+              }}
+              completionByEnrollment={completionByEnrollment}
+              reports={rawReports}
+              className="w-full h-full border-0 rounded-none shadow-none"
+            />
+          </PopoverContent>
+        </Popover>
+
+        {/* 4. Phase & Curriculum Popover */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className="h-8 px-2 rounded-lg bg-stone-100 dark:bg-stone-800 text-[11px] font-bold text-stone-800 dark:text-stone-200 flex items-center gap-1 shrink-0 cursor-pointer"
+              title="Phase & Curriculum"
+            >
+              <span>
+                {filterState.phase.toUpperCase()} •{' '}
+                {filterState.curriculum === 'combined'
+                  ? 'Both'
+                  : filterState.curriculum === 'secular'
+                  ? 'Sec'
+                  : 'Theo'}
+              </span>
+              <ChevronDown size={11} className="text-stone-400" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent
+            align="center"
+            sideOffset={6}
+            className="w-56 p-2 rounded-xl bg-white dark:bg-[#151D1A] border border-[#0D5C3A]/20 shadow-xl flex flex-col gap-2 z-50 text-xs"
+          >
+            <span className="text-[10px] font-bold uppercase text-stone-500">Assessment Phase</span>
+            <div className="grid grid-cols-3 gap-1">
               {(['BOT', 'MOT', 'EOT'] as const).map((p) => (
                 <button
                   key={p}
                   type="button"
                   onClick={() => setFilterState((prev) => ({ ...prev, phase: p }))}
-                  className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                  className={`h-7 rounded text-xs font-bold transition cursor-pointer ${
                     filterState.phase.toUpperCase() === p
                       ? 'bg-[#0D5C3A] text-white'
-                      : 'text-stone-500 dark:text-stone-400'
+                      : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300'
                   }`}
                 >
                   {p}
                 </button>
               ))}
             </div>
-          </div>
-        </div>
+            <span className="text-[10px] font-bold uppercase text-stone-500 mt-1">Curriculum Track</span>
+            <div className="grid grid-cols-3 gap-1">
+              {[
+                { id: 'both', label: 'Both' },
+                { id: 'secular', label: 'Secular' },
+                { id: 'theology', label: 'Theology' },
+              ].map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => setFilterState((prev) => ({ ...prev, curriculum: c.id as any }))}
+                  className={`h-7 rounded text-xs font-bold transition cursor-pointer ${
+                    filterState.curriculum === c.id
+                      ? 'bg-[#0D5C3A] text-white'
+                      : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300'
+                  }`}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
 
-        {/* Row 2: Interactive Student & Batch Popover + Compact Print CTA */}
-        <div className="flex items-center justify-between gap-2 p-1.5 bg-white dark:bg-[#151D1A] rounded-2xl border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20">
-          <Popover open={isMobileRosterOpen} onOpenChange={setIsMobileRosterOpen}>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                className="flex-1 h-8 px-3 rounded-full bg-[#F0F4F9] dark:bg-[#1E2623] border border-black/[0.04] dark:border-white/[0.06] text-xs font-semibold text-[#111827] dark:text-[#F3F7F5] flex items-center justify-between gap-1.5 cursor-pointer min-w-0"
-              >
-                <div className="flex items-center gap-1.5 min-w-0 truncate">
-                  <Users size={13} className="text-[#0D5C3A] dark:text-[#34D399] shrink-0" />
-                  <span className="truncate tabular-nums">
-                    👥 {selectedStudentIds.length} Selected • {activeStudent?.name || 'All'}
-                  </span>
-                </div>
-                <ChevronDown size={13} className="text-stone-400 shrink-0" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent
-              align="center"
-              sideOffset={6}
-              className="w-[calc(100vw-24px)] max-w-[360px] p-0 rounded-2xl border border-[#0D5C3A]/20 dark:border-[#F59E0B]/25 shadow-2xl overflow-hidden bg-white dark:bg-[#151D1A] z-50 max-h-[75dvh] flex flex-col"
-            >
-              <StudentRosterSidebar
-                enrollments={activeClassEnrollments}
-                selectedIds={selectedStudentIds}
-                onToggleSelect={handleToggleSelect}
-                onSelectAll={handleSelectAll}
-                onClearAll={handleClearAll}
-                activeReportId={activeReportId}
-                onSelectStudent={(id) => {
-                  setActiveReportId(id)
-                  setIsMobileRosterOpen(false)
-                }}
-                completionByEnrollment={completionByEnrollment}
-                reports={rawReports}
-                className="w-full h-full border-0 rounded-none shadow-none"
-              />
-            </PopoverContent>
-          </Popover>
+        {/* 5. Studio Format icon button */}
+        <button
+          type="button"
+          onClick={() => {
+            const studioTrigger = document.querySelector(
+              '[data-testid="studio-popover-trigger"]'
+            ) as HTMLButtonElement | null
+            studioTrigger?.click()
+          }}
+          className="w-8 h-8 rounded-full bg-[#F0F4F9] dark:bg-[#1E2623] flex items-center justify-center text-stone-700 dark:text-stone-200 cursor-pointer shrink-0"
+          title="Studio Format"
+        >
+          <Palette size={14} className="text-[#0D5C3A] dark:text-[#34D399]" />
+        </button>
 
-          <motion.button
-            type="button"
-            onClick={handlePrintSelected}
-            disabled={selectedStudentIds.length === 0 || isGenerating}
-            whileTap={{ scale: 0.96 }}
-            className="h-8 px-3.5 rounded-full btn-jiddah-cta text-xs font-bold inline-flex items-center gap-1.5 shrink-0 disabled:opacity-40"
-          >
-            <Printer size={13} />
-            <span>Print ({selectedStudentIds.length})</span>
-          </motion.button>
-        </div>
+        {/* 6. Primary Print pill button */}
+        <motion.button
+          type="button"
+          onClick={handlePrintSelected}
+          disabled={selectedStudentIds.length === 0 || isGenerating}
+          whileTap={{ scale: 0.96 }}
+          className="h-8 px-2.5 rounded-full btn-jiddah-cta text-[11px] font-bold inline-flex items-center gap-1 shrink-0 disabled:opacity-40"
+          title={`Print ${selectedStudentIds.length} Reports`}
+        >
+          <Printer size={12} />
+          <span>{selectedStudentIds.length}</span>
+        </motion.button>
       </div>
 
       {/* 100% Full-Width Document Preview Canvas */}
@@ -1019,6 +1138,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
           onSelectReport={setActiveReportId}
           renderReport={renderJiddahReport}
           zoom={zoom}
+          cardsPerRow={cardsPerRow}
           layout={filterState.layout}
           onZoomIn={handleZoomIn}
           onZoomOut={handleZoomOut}
@@ -1079,6 +1199,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
                         key={`theology-sheet-${topReport.id}-${nextReport.id}`}
                         topReport={topReport}
                         bottomReport={nextReport}
+                        studioFormatting={studioFormatting}
                       />
                     )
                     i += 2
@@ -1087,15 +1208,16 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
                       <Theology2UpPrintSheet
                         key={`theology-sheet-${topReport.id}`}
                         topReport={topReport}
+                        studioFormatting={studioFormatting}
                       />
                     )
                     i += 1
                   }
                 } else {
                   nodes.push(
-                    <React.Fragment key={report.id}>
+                    <div key={report.id} className="report-card-sheet">
                       {resolved.component}
-                    </React.Fragment>
+                    </div>
                   )
                   i++
                 }

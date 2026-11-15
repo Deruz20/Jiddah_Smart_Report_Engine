@@ -4,12 +4,12 @@ import {
   getConductRemark,
 } from "@/lib/grading";
 import { ReportContainer } from "@/components/reports/shared/ReportContainer";
-import { CleanSignatureImg } from "@/components/reports/shared/CleanSignatureImg";
+import { CleanSignatureImage } from "@/components/reports/CleanSignatureImage";
 import { OfficialReportStamp } from "@/components/reports/StampGenerator";
 import { resolveReportBranding, resolveReportGradingBands } from "@/lib/school-settings-helper";
 import { getClassTeacherSignatureKey } from "@/utils/signatures";
 
-export default function PrimaryMOTReport({ reportData }: any) {
+export default function PrimaryMOTReport({ reportData, studioFormatting }: any) {
   const branding = resolveReportBranding(reportData);
   const gradingBands = resolveReportGradingBands(reportData);
 
@@ -329,24 +329,24 @@ export default function PrimaryMOTReport({ reportData }: any) {
         <div className="mot-info">
           <div className="mot-info-row">
             <div className="mot-field" style={{ flex: 1.2 }}>
-              Class: <div className="mot-line" style={{ fontWeight: 800, textAlign: 'center' }}>{className}</div>
+              Class: <div className="mot-line" style={{ fontWeight: 800, fontSize: '14.5px', textAlign: 'center', color: '#0F172A' }}>{className}</div>
             </div>
             <div className="mot-field" style={{ flex: 1 }}>
-              Term: <div className="mot-line" style={{ fontWeight: 800, textAlign: 'center' }}>{reportData?.term?.term_number ?? "--"}</div>
+              Term: <div className="mot-line" style={{ fontWeight: 800, fontSize: '14.5px', textAlign: 'center', color: '#0F172A' }}>{reportData?.term?.term_number ?? "--"}</div>
             </div>
             <div className="mot-field" style={{ flex: 1 }}>
-              Year: <div className="mot-line" style={{ fontWeight: 800, textAlign: 'center' }}>{reportData?.term?.academic_year ?? "--"}</div>
+              Year: <div className="mot-line" style={{ fontWeight: 800, fontSize: '14.5px', textAlign: 'center', color: '#0F172A' }}>{reportData?.term?.academic_year ?? "--"}</div>
             </div>
             <div className="mot-field" style={{ flex: 1.2 }}>
-              Division: <div className="mot-line" style={{ fontWeight: 900, textAlign: 'center', color: '#b10000' }}>{reportData?.circular?.division ?? "_________"}</div>
+              Division: <div className="mot-line" style={{ fontWeight: 900, fontSize: '14.5px', textAlign: 'center', color: '#b10000' }}>{reportData?.circular?.division ?? "_________"}</div>
             </div>
             <div className="mot-field" style={{ flex: 1 }}>
-              AGG: <div className="mot-line" style={{ fontWeight: 900, textAlign: 'center', color: '#b10000' }}>{reportData?.circular?.mot_aggregate ?? "_________"}</div>
+              AGG: <div className="mot-line" style={{ fontWeight: 900, fontSize: '14.5px', textAlign: 'center', color: '#b10000' }}>{reportData?.circular?.mot_aggregate ?? "_________"}</div>
             </div>
           </div>
           <div className="mot-info-row" style={{ marginBottom: 0 }}>
             <div className="mot-field" style={{ width: '100%' }}>
-              Pupil&apos;s Name: <div className="mot-line" style={{ width: '100%', fontSize: '18px', fontWeight: 900, textTransform: 'uppercase', textAlign: 'center', letterSpacing: '0.5px' }}>{reportData?.student?.name}</div>
+              Pupil&apos;s Name: <div className="mot-line" style={{ width: '100%', fontSize: '16px', fontWeight: 900, textTransform: 'uppercase', textAlign: 'center', letterSpacing: '0.5px', color: '#0F172A' }}>{reportData?.student?.name}</div>
             </div>
           </div>
         </div>
@@ -412,7 +412,7 @@ export default function PrimaryMOTReport({ reportData }: any) {
             <span className="mot-sig-label">Signature:</span>
             <div className="mot-sig-line">
               {includeSignatures && classTeacherSig && (
-                <CleanSignatureImg src={classTeacherSig} alt="Class Teacher Signature" style={{ maxHeight: '34px' }} />
+                <CleanSignatureImage src={classTeacherSig} alt="Class Teacher Signature" style={{ maxHeight: '34px' }} studioFormatting={studioFormatting} />
               )}
             </div>
           </div>
@@ -423,7 +423,7 @@ export default function PrimaryMOTReport({ reportData }: any) {
             <span className="mot-sig-label">Signature:</span>
             <div className="mot-sig-line">
               {includeSignatures && headTeacherSig && (
-                <CleanSignatureImg src={headTeacherSig} alt="Head Teacher Signature" style={{ maxHeight: '34px' }} />
+                <CleanSignatureImage src={headTeacherSig} alt="Head Teacher Signature" style={{ maxHeight: '34px' }} studioFormatting={studioFormatting} />
               )}
             </div>
           </div>
@@ -431,11 +431,7 @@ export default function PrimaryMOTReport({ reportData }: any) {
           <div className="mot-footer-stamp">
             <div className="mot-stamp" style={{ width: '135px', height: '68px', maxWidth: '135px', maxHeight: '68px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: '2px' }}>
               {includeStamp ? (
-                reportData?.signatures?.['school-stamp'] ? (
-                  <img src={reportData.signatures['school-stamp']} alt="Official school stamp" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', mixBlendMode: 'multiply', filter: 'contrast(1.65) brightness(1.12)' }} />
-                ) : (
-                  <OfficialReportStamp reportData={reportData} maxWidth={135} maxHeight={68} />
-                )
+                <OfficialReportStamp reportData={reportData} studioFormatting={studioFormatting} maxWidth={135} maxHeight={68} />
               ) : null}
             </div>
           </div>

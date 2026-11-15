@@ -1,13 +1,13 @@
 import { getNurseryGrade, getNurseryTeacherComment, getConductRemark } from '@/lib/grading'
 import { ReportContainer } from '@/components/reports/shared/ReportContainer'
-import { CleanSignatureImg } from '@/components/reports/shared/CleanSignatureImg'
+import { CleanSignatureImage } from '@/components/reports/CleanSignatureImage'
 import { OfficialReportStamp } from '@/components/reports/StampGenerator'
 import { resolveReportBranding } from '@/lib/school-settings-helper'
 import { formatDateWithOrdinal } from '@/utils/dateHelpers';
 
 import { getClassTeacherSignatureKey } from "@/utils/signatures";
 
-export default function NurseryEOTReport({ reportData }: any) {
+export default function NurseryEOTReport({ reportData, studioFormatting }: any) {
   const branding = resolveReportBranding(reportData)
   const printPrefs = reportData?.settings?.print_preferences
   const includeSignatures = printPrefs?.includeSignatures !== undefined ? Boolean(printPrefs.includeSignatures) : true
@@ -330,13 +330,13 @@ export default function NurseryEOTReport({ reportData }: any) {
           {/* INFO BOXES */}
           <div className="info-container">
             <div className="info-box">
-              <div className="info-row"><span className="label">Student Name</span><div className="line">{reportData?.student?.name}</div></div>
-              <div className="info-row"><span className="label">Student ID</span><div className="line">{reportData?.student?.admission_number}</div></div>
-              <div className="info-row"><span className="label">Pay Code</span><div className="line">--</div></div>
+              <div className="info-row"><span className="label">Student Name</span><div className="line pupil-name" style={{ fontSize: '16px', fontWeight: 900, textTransform: 'uppercase', color: '#0F172A' }}>{reportData?.student?.name}</div></div>
+              <div className="info-row"><span className="label">Student ID</span><div className="line" style={{ fontSize: '13.5px', fontWeight: 800, color: '#0F172A' }}>{reportData?.student?.admission_number}</div></div>
+              <div className="info-row"><span className="label">Pay Code</span><div className="line" style={{ fontSize: '13.5px', fontWeight: 800, color: '#0F172A' }}>--</div></div>
             </div>
             <div className="info-box">
-              <div className="info-row"><span className="label">Class</span><div className="line">{reportData?.student?.class_name}</div></div>
-              <div className="info-row"><span className="label">Date</span><div className="line">{reportData?.term?.end_date ? formatDate(reportData.term.end_date) : '_________________'}</div></div>
+              <div className="info-row"><span className="label">Class</span><div className="line" style={{ fontSize: '14.5px', fontWeight: 800, color: '#0F172A' }}>{reportData?.student?.class_name}</div></div>
+              <div className="info-row"><span className="label">Date</span><div className="line" style={{ fontSize: '13.5px', fontWeight: 800, color: '#0F172A' }}>{reportData?.term?.end_date ? formatDate(reportData.term.end_date) : '_________________'}</div></div>
             </div>
           </div>
 
@@ -434,7 +434,7 @@ export default function NurseryEOTReport({ reportData }: any) {
                 <div className="line" style={{ position: 'relative' }}>
                   {getNurseryTeacherComment(grades)}
                   {includeSignatures && reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.class_name) ?? ''] && (
-                    <CleanSignatureImg src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} alt="Signature" style={{ position: 'absolute', bottom: 0, height: '40px', right: 0 }} />
+                    <CleanSignatureImage src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} alt="Signature" style={{ position: 'absolute', bottom: 0, height: '40px', right: 0 }} studioFormatting={studioFormatting} />
                   )}
                 </div>
               </div>
@@ -443,7 +443,7 @@ export default function NurseryEOTReport({ reportData }: any) {
                 <div className="line" style={{ position: 'relative' }}>
                   {getNurseryTeacherComment(grades)}
                   {includeSignatures && reportData?.signatures?.['head-teacher'] && (
-                    <CleanSignatureImg src={reportData.signatures['head-teacher']} alt="Signature" style={{ position: 'absolute', bottom: 0, height: '40px', right: 0 }} />
+                    <CleanSignatureImage src={reportData.signatures['head-teacher']} alt="Signature" style={{ position: 'absolute', bottom: 0, height: '40px', right: 0 }} studioFormatting={studioFormatting} />
                   )}
                 </div>
               </div>
@@ -456,11 +456,7 @@ export default function NurseryEOTReport({ reportData }: any) {
 
             <div className="stamp-box" style={{ width: '135px', height: '68px', maxWidth: '135px', maxHeight: '68px', overflow: 'hidden', padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               {includeStamp ? (
-                reportData?.signatures?.['school-stamp'] ? (
-                  <img src={reportData.signatures['school-stamp']} alt="Official school stamp" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', mixBlendMode: 'multiply', filter: 'contrast(1.65) brightness(1.12)' }} />
-                ) : (
-                  <OfficialReportStamp reportData={reportData} maxWidth={135} maxHeight={68} />
-                )
+                <OfficialReportStamp reportData={reportData} studioFormatting={studioFormatting} maxWidth={135} maxHeight={68} />
               ) : null}
             </div>
           </div>

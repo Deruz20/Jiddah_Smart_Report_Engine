@@ -1,13 +1,13 @@
 import { getClassTeacherComment, getHeadTeacherComment, getConductRemark, getTheologyComment } from '@/lib/grading'
 import { ReportContainer } from '@/components/reports/shared/ReportContainer'
-import { CleanSignatureImg } from '@/components/reports/shared/CleanSignatureImg'
+import { CleanSignatureImage } from '@/components/reports/CleanSignatureImage'
 import { OfficialReportStamp } from '@/components/reports/StampGenerator'
 import { resolveReportBranding, resolveReportGradingBands } from '@/lib/school-settings-helper'
 import { getSecularPortraitReportTitle } from '@/lib/student-religion'
 
 import { getClassTeacherSignatureKey } from '@/utils/signatures'
 
-export default function P7EOTReport({ reportData }: any) {
+export default function P7EOTReport({ reportData, studioFormatting }: any) {
   const branding = resolveReportBranding(reportData)
   const gradingBands = resolveReportGradingBands(reportData)
   const printPrefs = reportData?.settings?.print_preferences
@@ -250,9 +250,16 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  color: var(--data-navy);
+  color: #0F172A;
   font-weight: 800;
-  font-size: 15px;
+  font-size: 14px;
+}
+
+.p7-eot-report .line.pupil-name {
+  font-size: 16px;
+  font-weight: 900;
+  text-transform: uppercase;
+  color: #0F172A;
 }
 
 /* ================= TABLE ================= */
@@ -536,7 +543,7 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
           <section className="info-box">
             <div className="info-row">
               <span className="label">Pupil's Name:</span>
-              <div className="line">{reportData?.student?.name}</div>
+              <div className="line pupil-name">{reportData?.student?.name}</div>
             </div>
 
             <div className="info-row">
@@ -745,7 +752,7 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
                     <span>Signature:</span>
                     <div className="w-line" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end' }}>
                       {includeSignatures && reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.class_name) ?? ''] && (
-                        <CleanSignatureImg src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} alt="Signature" style={{ maxHeight: '28px' }} />
+                        <CleanSignatureImage src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} alt="Signature" style={{ maxHeight: '28px' }} studioFormatting={studioFormatting} />
                       )}
                     </div>
                   </div>
@@ -762,7 +769,7 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
                     <span>Signature:</span>
                     <div className="w-line" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end' }}>
                       {includeSignatures && reportData?.signatures?.['head-teacher'] && (
-                        <CleanSignatureImg src={reportData.signatures['head-teacher']} alt="Signature" style={{ maxHeight: '28px' }} />
+                        <CleanSignatureImage src={reportData.signatures['head-teacher']} alt="Signature" style={{ maxHeight: '28px' }} studioFormatting={studioFormatting} />
                       )}
                     </div>
                   </div>
@@ -809,11 +816,7 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
 
             <div className="stamp-box" style={{ width: '135px', height: '68px', maxWidth: '135px', maxHeight: '68px', overflow: 'hidden', padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               {includeStamp ? (
-                reportData?.signatures?.['school-stamp'] ? (
-                  <img src={reportData.signatures['school-stamp']} alt="Official school stamp" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', mixBlendMode: 'multiply', filter: 'contrast(1.65) brightness(1.12)' }} />
-                ) : (
-                  <OfficialReportStamp reportData={reportData} maxWidth={135} maxHeight={68} />
-                )
+                <OfficialReportStamp reportData={reportData} studioFormatting={studioFormatting} maxWidth={135} maxHeight={68} />
               ) : null}
             </div>
           </footer>

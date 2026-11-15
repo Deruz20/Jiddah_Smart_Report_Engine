@@ -11,6 +11,7 @@ interface StudentRosterSidebarProps {
   onToggleSelect: (id: string, shiftKey: boolean) => void;
   onSelectAll: () => void;
   onClearAll: () => void;
+  onSetSelectedIds?: (ids: string[]) => void;
   activeReportId: string | null;
   onSelectStudent: (enrollmentId: string) => void;
   completionByEnrollment?: Record<string, StudentCompletionStatus>;
@@ -24,6 +25,7 @@ export function StudentRosterSidebar({
   onToggleSelect,
   onSelectAll,
   onClearAll,
+  onSetSelectedIds,
   activeReportId,
   onSelectStudent,
   completionByEnrollment = {},
@@ -155,13 +157,51 @@ export function StudentRosterSidebar({
             )}
           </div>
 
-          <button
-            type="button"
-            onClick={allVisibleSelected ? onClearAll : onSelectAll}
-            className="text-[10.5px] font-bold text-[#0D5C3A] dark:text-[#34D399] hover:underline cursor-pointer shrink-0"
-          >
-            {allVisibleSelected ? 'Clear' : 'Select All'}
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={allVisibleSelected ? onClearAll : onSelectAll}
+              className="text-[10.5px] font-bold text-[#0D5C3A] dark:text-[#34D399] hover:underline cursor-pointer shrink-0"
+            >
+              {allVisibleSelected ? 'Clear' : `Select All (${enrollments.length})`}
+            </button>
+            <span className="text-stone-300 dark:text-stone-600">•</span>
+            <button
+              type="button"
+              onClick={() => {
+                const inverted = enrollments
+                  .map((e) => e.enrollment_id)
+                  .filter((id) => !selectedIds.includes(id));
+                if (onSetSelectedIds) {
+                  onSetSelectedIds(inverted);
+                } else {
+                  for (const e of enrollments) {
+                    onToggleSelect(e.enrollment_id, false);
+                  }
+                }
+              }}
+              className="text-[10.5px] font-semibold text-stone-600 dark:text-stone-300 hover:underline cursor-pointer shrink-0"
+              title="Invert Selection"
+            >
+              Invert Selection
+            </button>
+            <span className="text-stone-300 dark:text-stone-600">•</span>
+            <button
+              type="button"
+              onClick={() => {
+                const readyIds = enrollments
+                  .filter((e) => isStudentReady(e.enrollment_id))
+                  .map((e) => e.enrollment_id);
+                if (onSetSelectedIds) {
+                  onSetSelectedIds(readyIds);
+                }
+              }}
+              className="text-[10.5px] font-semibold text-emerald-700 dark:text-emerald-300 hover:underline cursor-pointer shrink-0"
+              title="Select Ready Only"
+            >
+              Ready Only
+            </button>
+          </div>
         </div>
       </div>
 

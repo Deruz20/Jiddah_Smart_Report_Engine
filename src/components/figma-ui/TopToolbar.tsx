@@ -38,6 +38,7 @@ export interface StudioFormattingState {
   isBold: boolean
   colorTheme: string
   stampEnabled: boolean
+  stampMode?: 'digital' | 'uploaded'
   stampInkColor: string
   stampDate?: string
   signaturesEnabled: boolean
@@ -50,7 +51,8 @@ export const DEFAULT_STUDIO_FORMATTING: StudioFormattingState = {
   isBold: false,
   colorTheme: 'jiddah-classic',
   stampEnabled: true,
-  stampInkColor: '#1D4ED8',
+  stampMode: 'digital',
+  stampInkColor: '#1B3B8B',
   stampDate: '',
   signaturesEnabled: true,
   watermarkOpacity: 4,
@@ -111,6 +113,9 @@ interface TopToolbarProps {
   }[]
   studioFormatting?: StudioFormattingState
   onStudioFormattingChange?: (updater: (prev: StudioFormattingState) => StudioFormattingState) => void
+  cardsPerRow?: 1 | 2 | 3
+  onCardsPerRowChange?: (count: 1 | 2 | 3) => void
+  onPrintCurrent?: () => void
 }
 
 export function TopToolbar({
@@ -137,6 +142,9 @@ export function TopToolbar({
   moreActionsItems,
   studioFormatting = DEFAULT_STUDIO_FORMATTING,
   onStudioFormattingChange,
+  cardsPerRow = 1,
+  onCardsPerRowChange,
+  onPrintCurrent,
 }: TopToolbarProps) {
   let sidebar: { toggleSidebar: () => void } | null = null
   try {
@@ -303,25 +311,64 @@ export function TopToolbar({
           </button>
         </div>
 
-        {/* Stamp Ink Colors */}
+        {/* Stamp Mode & Ink Colors */}
         {studioFormatting.stampEnabled && (
-          <div className="flex items-center gap-1.5 pl-2">
-            <span className="text-[10px] text-stone-500">Ink Color:</span>
-            <div className="flex items-center gap-1">
-              {STAMP_INK_COLORS.map((ink) => (
+          <div className="flex flex-col gap-2 pl-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[10px] text-stone-500">Stamp Mode:</span>
+              <div className="flex items-center bg-[#F0F4F9] dark:bg-[#1E2623] rounded-lg p-0.5 border border-black/[0.06] dark:border-white/[0.08]">
                 <button
-                  key={ink.id}
                   type="button"
-                  onClick={() => updateFormatting({ stampInkColor: ink.id })}
-                  className={`w-4 h-4 rounded-full border transition cursor-pointer ${
-                    studioFormatting.stampInkColor === ink.id
-                      ? 'ring-2 ring-[#0D5C3A] scale-110'
-                      : 'border-white/50'
+                  onClick={() => updateFormatting({ stampMode: 'digital' })}
+                  className={`px-2 py-0.5 rounded text-[10px] font-bold cursor-pointer ${
+                    (studioFormatting.stampMode || 'digital') === 'digital'
+                      ? 'bg-[#0D5C3A] text-white'
+                      : 'text-stone-600 dark:text-stone-300'
                   }`}
-                  style={{ backgroundColor: ink.id }}
-                  title={ink.label}
-                />
-              ))}
+                >
+                  Digital Vector
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateFormatting({ stampMode: 'uploaded' })}
+                  className={`px-2 py-0.5 rounded text-[10px] font-bold cursor-pointer ${
+                    studioFormatting.stampMode === 'uploaded'
+                      ? 'bg-[#0D5C3A] text-white'
+                      : 'text-stone-600 dark:text-stone-300'
+                  }`}
+                >
+                  Uploaded Image Backup
+                </button>
+              </div>
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[10px] text-stone-500">Ink Color:</span>
+              <div className="flex items-center gap-1">
+                {STAMP_INK_COLORS.map((ink) => (
+                  <button
+                    key={ink.id}
+                    type="button"
+                    onClick={() => updateFormatting({ stampInkColor: ink.id })}
+                    className={`w-4 h-4 rounded-full border transition cursor-pointer ${
+                      studioFormatting.stampInkColor === ink.id
+                        ? 'ring-2 ring-[#0D5C3A] scale-110'
+                        : 'border-white/50'
+                    }`}
+                    style={{ backgroundColor: ink.id }}
+                    title={ink.label}
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[10px] text-stone-500">Stamp Date:</span>
+              <input
+                type="text"
+                value={studioFormatting.stampDate || ''}
+                onChange={(e) => updateFormatting({ stampDate: e.target.value.toUpperCase() })}
+                placeholder="24 OCT 2026"
+                className="h-6 px-2 w-32 rounded bg-[#F0F4F9] dark:bg-[#1E2623] border border-black/[0.08] dark:border-white/[0.08] text-[10px] font-bold text-stone-800 dark:text-stone-100"
+              />
             </div>
           </div>
         )}
@@ -373,23 +420,10 @@ export function TopToolbar({
       <Tooltip.Provider delayDuration={150}>
         <div
           data-testid="reports-zone-1-bar"
-          className="w-full bg-white dark:bg-[#151D1A] rounded-2xl px-3 py-2 border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2 shadow-2xs z-20 print:hidden"
+          className="w-full bg-white dark:bg-[#151D1A] rounded-2xl px-2.5 sm:px-3 py-1.5 border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 hidden md:flex items-center justify-between gap-1.5 shadow-2xs z-20 print:hidden overflow-hidden max-w-full"
         >
-          {/* Top/Left Row: Nav triggers, Class Cohort, Student Roster, Term */}
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 min-w-0">
-            {/* Mobile Menu Trigger */}
-            {sidebar && (
-              <button
-                type="button"
-                onClick={sidebar.toggleSidebar}
-                className="md:hidden p-1.5 rounded-lg text-stone-600 dark:text-stone-300 hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer shrink-0"
-                title="Open Navigation Menu"
-                aria-label="Open Navigation Menu"
-              >
-                <Menu size={16} />
-              </button>
-            )}
-
+          {/* Left: Back Arrow, Class Cohort, Student Selection Pill, Active Term */}
+          <div className="flex items-center gap-1.5 shrink-0 min-w-0">
             {/* Back to Dashboard Button */}
             <Link
               href="/admin"
@@ -407,39 +441,72 @@ export function TopToolbar({
             {studentSelectorPill}
 
             {/* Active Term Pill */}
-            <div className="hidden sm:block">{activeTermPill}</div>
+            <div className="hidden xl:block shrink-0">{activeTermPill}</div>
           </div>
 
-          {/* Center Controls (Desktop): Phase Track + Curriculum Track + Layout Toggle Track */}
-          <div className="hidden lg:flex items-center gap-2 shrink-0">
+          {/* Center: Phase Track + Curriculum Track + MS Word Multi-Card Switcher */}
+          <div className="flex items-center gap-1.5 shrink-0">
             {phaseTrack}
             {curriculumTrack}
-            {layoutTrack}
-          </div>
 
-          {/* Mobile Secondary Row: Active Term + Phase Track + Curriculum Track */}
-          <div className="flex lg:hidden items-center justify-between gap-1.5 overflow-x-auto py-0.5 shrink-0 scrollbar-none">
-            <div className="sm:hidden">{activeTermPill}</div>
-            <div className="flex items-center gap-1.5 shrink-0">
-              {phaseTrack}
-              {curriculumTrack}
-              {layoutTrack}
+            {/* MS Word Multi-Card Preview Switcher: 1 | 2 | 3 cards per row */}
+            <div
+              data-testid="cards-per-row-switcher"
+              className="flex items-center bg-[#F0F4F9] dark:bg-[#1E2623] rounded-lg p-0.5 border border-black/[0.04] dark:border-white/[0.06] shrink-0"
+              title="MS Word Multi-Card View"
+            >
+              <button
+                type="button"
+                onClick={() => onCardsPerRowChange?.(1)}
+                className={`px-1.5 py-0.5 rounded text-[10.5px] font-bold transition cursor-pointer ${
+                  cardsPerRow === 1
+                    ? 'bg-[#0D5C3A] text-white shadow-xs'
+                    : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white'
+                }`}
+                title="1 Card per Row (Large Focus)"
+              >
+                1▢
+              </button>
+              <button
+                type="button"
+                onClick={() => onCardsPerRowChange?.(2)}
+                className={`px-1.5 py-0.5 rounded text-[10.5px] font-bold transition cursor-pointer ${
+                  cardsPerRow === 2
+                    ? 'bg-[#0D5C3A] text-white shadow-xs'
+                    : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white'
+                }`}
+                title="2 Cards Side-by-Side (MS Word 2-Up)"
+              >
+                2▢▢
+              </button>
+              <button
+                type="button"
+                onClick={() => onCardsPerRowChange?.(3)}
+                className={`px-1.5 py-0.5 rounded text-[10.5px] font-bold transition cursor-pointer ${
+                  cardsPerRow === 3
+                    ? 'bg-[#0D5C3A] text-white shadow-xs'
+                    : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white'
+                }`}
+                title="3 Cards Side-by-Side (MS Word 3-Up)"
+              >
+                3▢▢▢
+              </button>
             </div>
           </div>
 
-          {/* Right Actions: Studio Formatting Popover + Theme Mode + Primary Print CTA + More Actions */}
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto justify-end">
+          {/* Right Actions: Studio Formatting + Theme Mode + Dual-Mode Print CTA + More Actions */}
+          <div className="flex items-center gap-1.5 shrink-0 ml-auto justify-end">
             {/* 🎨 Studio Formatting Popover */}
             <Popover>
               <PopoverTrigger asChild>
                 <button
                   type="button"
                   data-testid="studio-popover-trigger"
-                  className="h-8.5 px-2.5 rounded-full bg-[#F0F4F9] dark:bg-[#1E2623] hover:bg-[#E4EAE6] dark:hover:bg-[#282A2C] border border-black/[0.04] dark:border-white/[0.06] text-xs font-semibold text-stone-800 dark:text-stone-200 inline-flex items-center gap-1.5 cursor-pointer transition shrink-0"
+                  className="h-8 px-2.5 rounded-full bg-[#F0F4F9] dark:bg-[#1E2623] hover:bg-[#E4EAE6] dark:hover:bg-[#282A2C] border border-black/[0.04] dark:border-white/[0.06] text-xs font-semibold text-stone-800 dark:text-stone-200 inline-flex items-center gap-1.5 cursor-pointer transition shrink-0"
                   title="Document Studio Formatting & Themes"
                 >
                   <Palette className="size-3.5 text-[#0D5C3A] dark:text-[#34D399] shrink-0" />
-                  <span className="hidden sm:inline font-bold">Studio</span>
+                  <span className="font-bold">Studio</span>
                 </button>
               </PopoverTrigger>
               <PopoverContent
@@ -456,41 +523,36 @@ export function TopToolbar({
               type="button"
               onClick={toggleTheme}
               aria-label={`Switch to ${themeMode === 'dark' ? 'light' : 'dark'} mode`}
-              className="w-8.5 h-8.5 rounded-full flex items-center justify-center bg-[#F0F4F9] dark:bg-[#1E2623] text-stone-700 dark:text-stone-200 hover:bg-[#E4EAE6] dark:hover:bg-[#282A2C] transition cursor-pointer border-0 shrink-0"
+              className="w-8 h-8 rounded-full flex items-center justify-center bg-[#F0F4F9] dark:bg-[#1E2623] text-stone-700 dark:text-stone-200 hover:bg-[#E4EAE6] dark:hover:bg-[#282A2C] transition cursor-pointer border-0 shrink-0"
               title={`Switch to ${themeMode === 'dark' ? 'light' : 'dark'} mode`}
             >
-              {themeMode === 'dark' ? <Sun size={15} className="text-amber-400" /> : <Moon size={15} />}
+              {themeMode === 'dark' ? <Sun size={14} className="text-amber-400" /> : <Moon size={14} />}
             </button>
 
-            {/* Grid vs Single Layout View (Desktop) */}
-            {layout && onLayoutToggle && (
-              <Tooltip.Root>
-                <Tooltip.Trigger asChild>
-                  <motion.button
-                    onClick={onLayoutToggle}
-                    aria-label={layout === 'grid' ? 'Single scroll view' : 'Grid view'}
-                    className="hidden sm:inline-flex items-center justify-center rounded-full w-8.5 h-8.5 bg-[#F0F4F9] dark:bg-[#1E2623] text-stone-700 dark:text-stone-200 hover:bg-[#E4EAE6] dark:hover:bg-[#282A2C] hover:text-[#0D5C3A] dark:hover:text-emerald-300 cursor-pointer border-0 shrink-0"
-                    whileTap={{ scale: 0.92 }}
-                  >
-                    {layout === 'grid' ? <List size={15} /> : <LayoutGrid size={15} />}
-                  </motion.button>
-                </Tooltip.Trigger>
-                <TooltipContent>{layout === 'grid' ? 'Single scroll view' : 'Grid view'}</TooltipContent>
-              </Tooltip.Root>
-            )}
-
-            {/* Primary Print CTA Button */}
+            {/* Dual-Mode Print CTA Button */}
             {primaryPrintAction && (
-              <motion.button
-                type="button"
-                onClick={primaryPrintAction.onClick}
-                disabled={primaryPrintAction.disabled}
-                whileTap={{ scale: 0.97 }}
-                className="h-8.5 px-3.5 sm:px-4 rounded-full btn-jiddah-cta text-xs font-bold inline-flex items-center gap-1.5 sm:gap-2 cursor-pointer disabled:opacity-40 shrink-0"
-              >
-                <Printer className="size-3.5 shrink-0" />
-                <span className="truncate tabular-nums">{primaryPrintAction.label}</span>
-              </motion.button>
+              <div className="flex items-center bg-[#0D5C3A] dark:bg-[#10B981] rounded-full overflow-hidden p-0.5 shadow-xs shrink-0">
+                <button
+                  type="button"
+                  onClick={primaryPrintAction.onClick}
+                  disabled={primaryPrintAction.disabled}
+                  className="h-7 px-2.5 sm:px-3 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-40 hover:bg-black/10 transition shrink-0"
+                  title={primaryPrintAction.label}
+                >
+                  <Printer className="size-3.5 shrink-0" />
+                  <span className="truncate tabular-nums">{primaryPrintAction.label}</span>
+                </button>
+                {onPrintCurrent && (
+                  <button
+                    type="button"
+                    onClick={onPrintCurrent}
+                    className="h-7 px-2 text-[10.5px] font-bold text-white/90 hover:text-white hover:bg-black/15 transition border-l border-white/20 shrink-0 cursor-pointer"
+                    title="Print only the single active report sheet (1)"
+                  >
+                    1 Sheet
+                  </button>
+                )}
+              </div>
             )}
 
             {/* More Actions Menu */}

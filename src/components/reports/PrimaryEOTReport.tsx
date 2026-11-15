@@ -7,13 +7,13 @@ import {
   getSubjectGradeNumber,
 } from '@/lib/grading'
 import { ReportContainer } from '@/components/reports/shared/ReportContainer'
-import { CleanSignatureImg } from '@/components/reports/shared/CleanSignatureImg'
+import { CleanSignatureImage } from '@/components/reports/CleanSignatureImage'
 import { OfficialReportStamp } from '@/components/reports/StampGenerator'
 import { resolveReportBranding, resolveReportGradingBands } from '@/lib/school-settings-helper'
 import { getClassTeacherSignatureKey } from '@/utils/signatures'
 import { transliterateEnglishToArabic } from '@/lib/transliterate'
 
-export default function PrimaryEOTReport({ reportData }: any) {
+export default function PrimaryEOTReport({ reportData, studioFormatting }: any) {
   const branding = resolveReportBranding(reportData)
   const gradingBands = resolveReportGradingBands(reportData)
 
@@ -128,7 +128,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
           width: 100%;
           height: 100%;
           background: white;
-          padding: 4mm;
+          padding: 3mm;
           margin: 0;
           position: relative;
           display: flex;
@@ -151,7 +151,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
         
         .inner-border {
           border: 1.5px solid var(--report-primary-color, #0f4d25);
-          padding: 6px 16px;
+          padding: 4px 14px;
           flex: 1; 
           position: relative;
           display: flex;
@@ -178,7 +178,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
           flex-direction: column;
           height: 100%;
           justify-content: space-between;
-          gap: 6px;
+          gap: 4px;
         }
 
         /* ── HEADER SECTION ── */
@@ -249,25 +249,25 @@ export default function PrimaryEOTReport({ reportData }: any) {
 
         .header-divider {
           border-top: 1.5px solid var(--report-primary-color, #0f4d25);
-          margin: 6px 0;
+          margin: 4px 0;
           flex-shrink: 0;
         }
 
         /* ── PUPIL INFO SECTION ── */
         .info-section {
           display: flex;
-          gap: 16px;
+          gap: 12px;
           flex-shrink: 0;
         }
         .info-box {
           border: 1.5px dashed var(--report-border-color, #c2994c);
           border-radius: 8px;
-          padding: 8px 16px; 
+          padding: 5px 12px; 
           flex: 1;
           display: flex;
           flex-direction: column;
           justify-content: space-around;
-          gap: 6px; 
+          gap: 4px; 
           background: #fdfaf3;
         }
         .info-row {
@@ -284,19 +284,25 @@ export default function PrimaryEOTReport({ reportData }: any) {
         .info-value {
           border-bottom: 1.5px dashed #94a3b8;
           flex: 1;
-          font-size: 11px;
+          font-size: 13.5px;
           font-weight: 800;
           color: #0f172a;
           padding-bottom: 1px;
           min-width: 40px;
           text-align: center;
         }
+        .info-value.pupil-name {
+          font-size: 15.5px;
+          font-weight: 900;
+          letter-spacing: 0.3px;
+        }
         .info-box.arabic {
           direction: rtl;
           font-family: 'Amiri', serif;
         }
-        .info-box.arabic .info-label { font-size: 14px; font-weight: 700; }
-        .info-box.arabic .info-value { font-size: 15px; border-bottom: 1.5px dotted #94a3b8; }
+        .info-box.arabic .info-label { font-size: 13.5px; font-weight: 700; }
+        .info-box.arabic .info-value { font-size: 14.5px; font-weight: 800; border-bottom: 1.5px dotted #94a3b8; }
+        .info-box.arabic .info-value.arabic-pupil-name { font-size: 17px; font-weight: 900; }
 
         /* ── TABLES SECTION (DYNAMIC EXPANSION) ── */
         .tables-wrapper {
@@ -338,7 +344,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
 
         .table-container th, .table-container td {
           border: 1px solid #cbd5e1;
-          padding: 3px 4px;
+          padding: 2.5px 3.5px;
           text-align: center;
           font-size: 10px;
           vertical-align: middle;
@@ -414,9 +420,9 @@ export default function PrimaryEOTReport({ reportData }: any) {
           flex: 1;
           display: flex;
           flex-direction: column;
-          gap: 6px; 
+          gap: 4px; 
           border: 1.5px dashed #cbd5e1;
-          padding: 8px 12px; 
+          padding: 5px 10px; 
           border-radius: 8px;
           background: #ffffff;
         }
@@ -468,16 +474,16 @@ export default function PrimaryEOTReport({ reportData }: any) {
         /* ── DATES (Centered) & VALIDITY BAR ── */
         .dates-row {
           display: flex;
-          gap: 20px;
+          gap: 16px;
         }
         .date-box {
           flex: 1;
           border-radius: 6px;
-          padding: 8px 16px; 
+          padding: 4px 12px; 
           display: flex;
           justify-content: center;
           align-items: center;
-          gap: 16px; 
+          gap: 12px; 
           font-size: 11px;
           font-weight: 800;
         }
@@ -496,10 +502,10 @@ export default function PrimaryEOTReport({ reportData }: any) {
           background-color: #8b0000;
           color: white;
           text-align: center;
-          padding: 8px; 
-          font-size: 12px;
+          padding: 5px; 
+          font-size: 11px;
           font-weight: 800;
-          letter-spacing: 1px;
+          letter-spacing: 0.8px;
           border-radius: 4px;
         }
         `
@@ -555,7 +561,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
                   <div className="info-box">
                     <div className="info-row">
                       <span className="info-label">PUPIL&apos;S NAME:</span>
-                      <div className="info-value" style={{ textTransform: 'uppercase' }}>{reportData?.student?.name}</div>
+                      <div className="info-value pupil-name" style={{ textTransform: 'uppercase' }}>{reportData?.student?.name}</div>
                     </div>
                     <div className="info-row">
                       <span className="info-label">CLASS:</span>
@@ -575,7 +581,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
                     <div className="info-box arabic">
                       <div className="info-row">
                         <span className="info-label">اسم التلميذ/ة :</span>
-                        <div className="info-value">
+                        <div className="info-value arabic-pupil-name">
                           {reportData?.student?.arabic_name || transliterateEnglishToArabic(reportData?.student?.name || '')}
                         </div>
                       </div>
@@ -745,7 +751,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
                         <span className="c-label">SIGNATURE:</span>
                         <div className="c-sig" style={{ display: 'flex', justifyContent: 'center' }}>
                           {includeSignatures && reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.class_name) ?? ''] ? (
-                            <CleanSignatureImg src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} style={{ maxHeight: '28px' }} alt="Class Teacher Signature" />
+                            <CleanSignatureImage src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} style={{ maxHeight: '28px' }} alt="Class Teacher Signature" studioFormatting={studioFormatting} />
                           ) : null}
                         </div>
                       </div>
@@ -755,7 +761,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
                         <span className="c-label">SIGNATURE:</span>
                         <div className="c-sig" style={{ display: 'flex', justifyContent: 'center' }}>
                           {includeSignatures && reportData?.signatures?.['head-teacher'] ? (
-                            <CleanSignatureImg src={reportData.signatures['head-teacher']} style={{ maxHeight: '28px' }} alt="Head Teacher Signature" />
+                            <CleanSignatureImage src={reportData.signatures['head-teacher']} style={{ maxHeight: '28px' }} alt="Head Teacher Signature" studioFormatting={studioFormatting} />
                           ) : null}
                         </div>
                       </div>
@@ -763,11 +769,7 @@ export default function PrimaryEOTReport({ reportData }: any) {
 
                     <div className="stamp-wrapper" style={{ width: '135px', height: '68px', maxWidth: '135px', maxHeight: '68px', overflow: 'hidden', flexShrink: 0, padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent' }}>
                       {includeStamp ? (
-                        reportData?.signatures?.['school-stamp'] ? (
-                          <img src={reportData.signatures['school-stamp']} alt="Official school stamp" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', mixBlendMode: 'multiply', filter: 'contrast(1.65) brightness(1.12)' }} />
-                        ) : (
-                          <OfficialReportStamp reportData={reportData} maxWidth={135} maxHeight={68} />
-                        )
+                        <OfficialReportStamp reportData={reportData} studioFormatting={studioFormatting} maxWidth={135} maxHeight={68} />
                       ) : null}
                     </div>
                   </div>

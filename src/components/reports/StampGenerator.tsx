@@ -29,9 +29,9 @@ export const DEFAULT_STAMP_CONFIG: StampConfig = {
   shape: "rectangle",
   school_name: "JIDDAH ISLAMIC NURSERY & PRIMARY SCHOOL",
   title: "HEADTEACHER",
-  po_box: "P.O. BOX 34008, KAMPALA - UGANDA",
-  phone: "",
-  ink_color: "#1B3678",
+  po_box: "P.O.Box 34008, Nsaggu",
+  phone: "Nakawuka Rd, Wakiso District",
+  ink_color: "#1B3B8B",
   size_scale: 1,
   rotation: -2,
   opacity: 0.9,
@@ -45,10 +45,10 @@ export const DEFAULT_STAMP_CONFIG: StampConfig = {
 };
 
 const STAMP_COLOR_PRESETS = [
-  { label: "Official Stamp Blue", hex: "#1B3678" },
-  { label: "Royal Violet", hex: "#5B21B6" },
+  { label: "Official Stamp Blue", hex: "#1B3B8B" },
+  { label: "Royal Blue", hex: "#1D4ED8" },
   { label: "Institutional Emerald", hex: "#0D5C3A" },
-  { label: "Archival Crimson", hex: "#991B1B" },
+  { label: "Archival Crimson", hex: "#D92626" },
   { label: "Jet Black", hex: "#0F172A" },
 ];
 
@@ -116,8 +116,8 @@ export function VectorStamp({
   const opacity = Number(merged.opacity ?? 0.9);
   const [headerLine1, headerLine2] = splitStampSchoolHeader(merged.school_name);
 
-  const baseW = merged.shape === "circle" ? 136 : merged.shape === "oval" ? 182 : 204;
-  const baseH = merged.shape === "circle" ? 136 : merged.shape === "oval" ? 124 : 108;
+  const baseW = merged.shape === "circle" ? 136 : merged.shape === "oval" ? 182 : 380;
+  const baseH = merged.shape === "circle" ? 136 : merged.shape === "oval" ? 124 : 220;
 
   const fitRatio =
     maxWidth && maxHeight
@@ -174,139 +174,256 @@ export function VectorStamp({
           <path id={pathBottomId} d="M 118,68 A 50,50 0 0,1 18,68" fill="none" />
         </defs>
 
-        {/* 1. JIDDAH RECTANGULAR RUBBER STAMP */}
+        {/* 1. JIDDAH RECTANGULAR RUBBER STAMP — AUTHENTIC DIGITAL VECTOR CLONE */}
         {merged.shape === "rectangle" && (
           <g stroke={merged.ink_color} fill={merged.ink_color}>
-            {/* Outer rounded stamp border */}
-            <rect
-              x="2.5"
-              y="2.5"
-              width="199"
-              height="103"
-              rx="7"
+            {/* Outer Bracket Frame (Royal Stamp Blue #1B3B8B, strokeWidth=4.5) */}
+            <path
+              d="M 14 52 L 14 18 Q 14 10 22 10 L 358 10 Q 366 10 366 18 L 366 52"
               fill="none"
-              strokeWidth="2.4"
+              stroke={merged.ink_color}
+              strokeWidth="4.5"
+              strokeLinecap="round"
             />
-            {/* Inner precision hairline border */}
-            <rect
-              x="6"
-              y="6"
-              width="192"
-              height="96"
-              rx="4.5"
+            <path
+              d="M 14 168 L 14 202 Q 14 210 22 210 L 358 210 Q 366 210 366 202 L 366 168"
               fill="none"
-              strokeWidth="0.9"
+              stroke={merged.ink_color}
+              strokeWidth="4.5"
+              strokeLinecap="round"
             />
 
-            {/* Header lines */}
+            {/* Left Vertical Wall Text: HEADTEACHER'S OFFICE */}
             <text
-              x="102"
-              y={headerLine2 ? "20" : "24"}
-              fontSize={headerLine2 ? "10" : "10.5"}
-              fontWeight="900"
-              fontFamily="Georgia, 'Times New Roman', serif"
+              transform="translate(14, 110) rotate(90)"
               textAnchor="middle"
-              letterSpacing="0.8px"
+              fontSize="9.5"
+              fontWeight="800"
+              letterSpacing="0.5px"
+              fill={merged.ink_color}
               stroke="none"
+              fontFamily="Arial, Helvetica, sans-serif"
             >
-              {headerLine1}
-            </text>
-            {headerLine2 ? (
-              <text
-                x="102"
-                y="31"
-                fontSize="8.3"
-                fontWeight="800"
-                fontFamily="Georgia, 'Times New Roman', serif"
-                textAnchor="middle"
-                letterSpacing="0.5px"
-                stroke="none"
-              >
-                {headerLine2}
-              </text>
-            ) : null}
-
-            {/* Upper rule above Date band */}
-            <line x1="12" y1="36.5" x2="192" y2="36.5" strokeWidth="1" />
-
-            {/* Decorative flanking stars */}
-            <text
-              x="26"
-              y="55"
-              fontSize="11"
-              textAnchor="middle"
-              stroke="none"
-            >
-              ★
-            </text>
-            <text
-              x="178"
-              y="55"
-              fontSize="11"
-              textAnchor="middle"
-              stroke="none"
-            >
-              ★
+              HEADTEACHER&apos;S OFFICE
             </text>
 
-            {/* Adjustable Date Line */}
+            {/* Right Vertical Wall Text: HEADTEACHER'S OFFICE */}
             <text
-              x={102 + dateOffsetX}
-              y={55 + dateOffsetY}
-              fontSize={dateFontSize}
-              fontWeight="900"
-              fontFamily="'Courier New', Courier, monospace"
+              transform="translate(366, 110) rotate(-90)"
               textAnchor="middle"
+              fontSize="9.5"
+              fontWeight="800"
+              letterSpacing="0.5px"
+              fill={merged.ink_color}
+              stroke="none"
+              fontFamily="Arial, Helvetica, sans-serif"
+            >
+              HEADTEACHER&apos;S OFFICE
+            </text>
+
+            {/* Top 2 Header Lines (Royal Stamp Blue #1B3B8B) */}
+            <text
+              x="190"
+              y="36"
+              textAnchor="middle"
+              fontSize="20.5"
+              fontWeight="800"
+              letterSpacing="0.6px"
+              fill={merged.ink_color}
+              stroke="none"
+              fontFamily="Arial, Helvetica, sans-serif"
+            >
+              JIDDAH ISLAMIC NURSERY &amp;
+            </text>
+            <text
+              x="190"
+              y="61"
+              textAnchor="middle"
+              fontSize="20.5"
+              fontWeight="800"
               letterSpacing="1.2px"
+              fill={merged.ink_color}
               stroke="none"
+              fontFamily="Arial, Helvetica, sans-serif"
+            >
+              PRIMARY SCHOOL
+            </text>
+
+            {/* Middle 3-Column Row (y=68 to 142) */}
+            {/* Column 1: Left Jiddah Shield Crest (x=28 to 102) */}
+            <g transform="translate(0, 0)">
+              {/* Top Banner Box */}
+              <rect
+                x="34"
+                y="68"
+                width="62"
+                height="15"
+                rx="2"
+                fill="none"
+                stroke={merged.ink_color}
+                strokeWidth="1.6"
+              />
+              <text
+                x="65"
+                y="74.5"
+                textAnchor="middle"
+                fontSize="5.2"
+                fontWeight="800"
+                fill={merged.ink_color}
+                stroke="none"
+                fontFamily="Arial, sans-serif"
+              >
+                JIDDAH ISLAMIC
+              </text>
+              <text
+                x="65"
+                y="80.5"
+                textAnchor="middle"
+                fontSize="4.8"
+                fontWeight="800"
+                fill={merged.ink_color}
+                stroke="none"
+                fontFamily="Arial, sans-serif"
+              >
+                NUR &amp; PRI
+              </text>
+
+              {/* Shield Outline */}
+              <path
+                d="M 38 85 L 92 85 C 92 108 65 125 65 129 C 65 125 38 108 38 85 Z"
+                fill="none"
+                stroke={merged.ink_color}
+                strokeWidth="1.6"
+              />
+
+              {/* Diagonal Sash/Band */}
+              <line x1="39" y1="94" x2="91" y2="108" stroke={merged.ink_color} strokeWidth="1.2" />
+              <line x1="39" y1="100" x2="91" y2="114" stroke={merged.ink_color} strokeWidth="1.2" />
+              <text
+                transform="translate(65, 104) rotate(15)"
+                textAnchor="middle"
+                fontSize="3.5"
+                fontWeight="900"
+                fill={merged.ink_color}
+                stroke="none"
+                fontFamily="Arial, sans-serif"
+              >
+                DAY AND BOARDING
+              </text>
+
+              {/* Inner Crescent & Star inside Shield */}
+              <path
+                d="M 52 90 A 4 4 0 1 0 57 93 A 3 3 0 1 1 52 90 Z"
+                fill={merged.ink_color}
+                stroke="none"
+              />
+              <polygon
+                points="60,89 61,91.5 63.5,91.5 61.5,93 62,95.5 60,94 58,95.5 58.5,93 56.5,91.5 59,91.5"
+                fill={merged.ink_color}
+                stroke="none"
+              />
+
+              {/* Open Book / Minaret */}
+              <path
+                d="M 57 119 Q 65 116 73 119 L 73 123 Q 65 120 57 123 Z"
+                fill={merged.ink_color}
+                stroke="none"
+              />
+              <line x1="65" y1="117" x2="65" y2="122" stroke="#ffffff" strokeWidth="0.8" />
+
+              {/* Bottom Curved Scroll Ribbon */}
+              <path
+                d="M 30 130 Q 65 137 100 130 L 98 138 Q 65 145 32 138 Z"
+                fill="none"
+                stroke={merged.ink_color}
+                strokeWidth="1.4"
+              />
+              <text
+                x="65"
+                y="136"
+                textAnchor="middle"
+                fontSize="3.6"
+                fontWeight="900"
+                fill={merged.ink_color}
+                stroke="none"
+                fontFamily="Arial, sans-serif"
+                letterSpacing="0.2px"
+              >
+                STRIVE FOR LIFE &amp; HERE AFTER
+              </text>
+            </g>
+
+            {/* Column 2: Center Crimson Red Dater-Stamp Date (#D92626) */}
+            <text
+              x={195 + dateOffsetX}
+              y={115 + dateOffsetY}
+              textAnchor="middle"
+              fill="#D92626"
+              stroke="none"
+              fontSize="22"
+              fontWeight="900"
+              fontFamily="'Impact', 'Arial Black', sans-serif"
+              letterSpacing="1.6px"
             >
               {displayDate}
             </text>
 
-            {/* Lower rule below Date band */}
-            <line x1="12" y1="63" x2="192" y2="63" strokeWidth="1" />
-
-            {/* Signatory Role (e.g. HEADTEACHER) */}
-            <text
-              x="102"
-              y="77.5"
-              fontSize="9.8"
-              fontWeight="900"
-              fontFamily="Georgia, 'Times New Roman', serif"
-              textAnchor="middle"
-              letterSpacing="1.4px"
-              stroke="none"
-            >
-              {merged.title.toUpperCase()}
-            </text>
-
-            {/* Footer Address / PO Box */}
-            <text
-              x="102"
-              y={merged.phone ? "89" : "93"}
-              fontSize="6.7"
-              fontWeight="800"
-              fontFamily="Arial, Helvetica, sans-serif"
-              textAnchor="middle"
-              letterSpacing="0.4px"
-              stroke="none"
-            >
-              {merged.po_box.toUpperCase()}
-            </text>
-
-            {merged.phone ? (
-              <text
-                x="102"
-                y="97.5"
-                fontSize="6.2"
-                fontWeight="700"
-                fontFamily="Arial, Helvetica, sans-serif"
-                textAnchor="middle"
+            {/* Column 3: Right Bold Crescent & 5-Pointed Star (x=285 to 348) */}
+            <g transform="translate(0, 0)">
+              {/* Crescent opening toward top-left */}
+              <path
+                d="M 306 86 C 330 86 344 98 344 110 C 344 124 330 132 312 132 C 304 132 296 130 290 126 C 314 124 326 114 326 104 C 326 94 316 88 306 86 Z"
+                fill={merged.ink_color}
                 stroke="none"
-              >
-                {merged.phone}
-              </text>
-            ) : null}
+              />
+              {/* 5-pointed star at upper-left */}
+              <polygon
+                points="300,90 302.5,95 308,95.5 304,99 305.5,104.5 300,101.5 294.5,104.5 296,99 292,95.5 297.5,95"
+                fill={merged.ink_color}
+                stroke="none"
+              />
+            </g>
+
+            {/* Bottom 3 Footer Lines */}
+            <text
+              x="190"
+              y="164"
+              textAnchor="middle"
+              fill={merged.ink_color}
+              stroke="none"
+              fontFamily="Georgia, 'Times New Roman', serif"
+              fontSize="22"
+              fontWeight="900"
+              letterSpacing="3.5px"
+            >
+              HEADTEACHER
+            </text>
+            <text
+              x="190"
+              y="184"
+              textAnchor="middle"
+              fill={merged.ink_color}
+              stroke="none"
+              fontFamily="Arial, Helvetica, sans-serif"
+              fontSize="16.5"
+              fontWeight="800"
+              letterSpacing="0.6px"
+            >
+              P.O.Box 34008, Nsaggu
+            </text>
+            <text
+              x="190"
+              y="203"
+              textAnchor="middle"
+              fill={merged.ink_color}
+              stroke="none"
+              fontFamily="Arial, Helvetica, sans-serif"
+              fontSize="16.5"
+              fontWeight="800"
+              letterSpacing="0.4px"
+            >
+              Nakawuka Rd, Wakiso District
+            </text>
           </g>
         )}
 
@@ -430,10 +547,12 @@ export function VectorStamp({
 
 export function OfficialReportStamp({
   reportData,
+  studioFormatting,
   maxWidth = 135,
   maxHeight = 68,
 }: {
   reportData: any;
+  studioFormatting?: any;
   maxWidth?: number;
   maxHeight?: number;
 }) {
@@ -445,16 +564,25 @@ export function OfficialReportStamp({
   const config: StampConfig = {
     ...DEFAULT_STAMP_CONFIG,
     ...savedStampConfig,
+    ink_color:
+      studioFormatting?.stampInkColor ||
+      savedStampConfig.ink_color ||
+      DEFAULT_STAMP_CONFIG.ink_color,
   };
 
   const resolvedDate =
+    studioFormatting?.stampDate ||
     reportData?.stamp_date ||
     reportData?.settings?.stamp_date ||
     config.date ||
     reportData?.term?.end_date ||
     DEFAULT_STAMP_CONFIG.date;
 
-  if (config.use_uploaded_image && reportData?.signatures?.["school-stamp"]) {
+  const isUploadedMode =
+    studioFormatting?.stampMode === "uploaded" ||
+    config.use_uploaded_image === true;
+
+  if (isUploadedMode && reportData?.signatures?.["school-stamp"]) {
     return (
       <div
         className="w-[135px] h-[68px] max-w-[135px] max-h-[68px] overflow-hidden flex items-center justify-center shrink-0"

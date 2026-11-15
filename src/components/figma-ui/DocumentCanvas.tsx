@@ -17,6 +17,7 @@ interface DocumentCanvasProps {
   onLayoutToggle?: () => void;
   renderReport: (report: any, isActive: boolean) => React.ReactNode;
   printScope?: 'current' | 'all' | string[];
+  cardsPerRow?: 1 | 2 | 3;
 }
 
 export function DocumentCanvas({
@@ -32,6 +33,7 @@ export function DocumentCanvas({
   onLayoutToggle,
   renderReport,
   printScope = 'all',
+  cardsPerRow = 1,
 }: DocumentCanvasProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const activeIndex = useMemo(() => {
@@ -171,8 +173,16 @@ export function DocumentCanvas({
             )}
           </div>
         ) : (
-          // Continuous View: Renders all loaded reports
-          <div className="flex flex-col items-center gap-8 py-2 w-full">
+          // Continuous View: Renders all loaded reports (supports MS Word 1, 2, or 3 cards per row)
+          <div
+            className={
+              cardsPerRow === 3
+                ? 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 py-2 w-full max-w-[2600px] justify-items-center'
+                : cardsPerRow === 2
+                ? 'grid grid-cols-1 lg:grid-cols-2 gap-6 py-2 w-full max-w-[1750px] justify-items-center'
+                : 'flex flex-col items-center gap-8 py-2 w-full max-w-[900px]'
+            }
+          >
             <AnimatePresence>
               {reports.map((report, index) => (
                 <motion.div
@@ -182,6 +192,7 @@ export function DocumentCanvas({
                   initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: Math.min(index * 0.04, 0.4), type: 'spring', stiffness: 280, damping: 28 }}
+                  className="flex justify-center"
                 >
                   {renderReport(report, report.id === activeReportId)}
                 </motion.div>

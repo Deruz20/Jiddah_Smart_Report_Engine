@@ -788,3 +788,56 @@ Exit code: 0
 
 
 
+---
+
+## Milestone 23: Authentic Jiddah Digital Vector Stamp, Clean Signature Ink Extraction, Multi-Page Batch Print Hardening, Bold Pupil Identity & Desktop/Mobile Toolbar Overhaul
+
+- **Files Modified / Created:**
+  - `src/components/StampGenerator.tsx` (top-level export wrapper)
+  - `src/components/reports/StampGenerator.tsx` (authentic Jiddah rubber stamp SVG clone)
+  - `src/components/reports/CleanSignatureImage.tsx` (transparent ink extraction + `#jiddah-clean-ink` SVG filter)
+  - `src/components/reports/shared/CleanSignatureImg.tsx`
+  - `src/components/reports/PrimaryEOTReport.tsx`
+  - `src/components/reports/P7EOTReport.tsx`
+  - `src/components/reports/PrimaryMOTReport.tsx`
+  - `src/components/reports/PrimaryBOTReport.tsx`
+  - `src/components/reports/NurseryEOTReport.tsx`
+  - `src/components/reports/NurseryMOTReport.tsx`
+  - `src/components/reports/NurseryTheologyEOTReport.tsx`
+  - `src/components/reports/TheologyMOTReport.tsx`
+  - `src/app/admin/layout.tsx`
+  - `src/styles/reports/print-system.css`
+  - `src/components/figma-ui/TopToolbar.tsx`
+  - `src/components/figma-ui/DocumentCanvas.tsx`
+  - `src/components/figma-ui/StudentRosterSidebar.tsx`
+  - `src/components/ReportGeneratorClient.tsx`
+  - `src/__tests__/overhaul-workstreams.test.mjs`
+  - `OVERNIGHT_PROGRESS_LEDGER.md`
+- **Scope & Workstreams Completed:**
+  1. **Workstream 1: Authentic Jiddah Digital Vector Rubber Stamp & Clean Signature Ink Extraction:**
+     - Rebuilt `<OfficialReportStamp />` and `<VectorStamp />` in `src/components/reports/StampGenerator.tsx` (`viewBox="0 0 380 220"`) replicating the physical Jiddah school rubber stamp:
+       - Royal Stamp Blue (`#1B3B8B`) outer top/bottom U-brackets (`strokeWidth="4.5"`).
+       - Rotated vertical side wall labels: `HEADTEACHER'S OFFICE` on left (`translate(14, 110) rotate(90)`) and right (`translate(366, 110) rotate(-90)`).
+       - Top 2 headers: `JIDDAH ISLAMIC NURSERY &` and `PRIMARY SCHOOL`.
+       - Middle 3-column row: Left vector recreation of the Jiddah Shield Crest (`JIDDAH ISLAMIC / NUR & PRI`, `DAY AND BOARDING`, crescent & star, open book, `STRIVE FOR LIFE & HERE AFTER` scroll), Center Crimson Red (`#D92626`) dynamic dater-stamp date, Right bold Crescent & 5-Pointed Star.
+       - Bottom 3 footer lines: `HEADTEACHER` (`Georgia`, bold serif), `P.O.Box 34008, Nsaggu`, and `Nakawuka Rd, Wakiso District`.
+     - Made the digital vector `<OfficialReportStamp />` the primary default across all 8 report templates (`PrimaryEOTReport`, `P7EOTReport`, `PrimaryMOTReport`, `PrimaryBOTReport`, `NurseryEOTReport`, `NurseryMOTReport`, `NurseryTheologyEOTReport`, `TheologyMOTReport`), eliminating the raw `signatures['school-stamp']` photo bypass unless `stampMode === 'uploaded'` is explicitly selected in Studio/Settings.
+     - Built `<CleanSignatureImage />` in `src/components/reports/CleanSignatureImage.tsx` combining `extractSignatureInk()` canvas pixel luminance/chrominance thresholding with an inline SVG `<filter id="jiddah-clean-ink">` (`feColorMatrix` + steep `feComponentTransfer` slope `3.2` intercept `-1.45`) so photographed grey camera backgrounds are stripped to pure transparency across all 8 templates.
+  2. **Workstream 2: Multi-Page Batch Print Unconstraining & Bottom Margin Clipping Fix:**
+     - Fixed the Chromium `1 sheet of paper` batch print clipping bug by adding `print:!h-auto print:!min-h-0 print:!max-h-none print:!overflow-visible print:!block print:!static` to `SidebarProvider`, `SidebarInset`, and `<main>` in `src/app/admin/layout.tsx`, and enforcing unconstrained `@media print` rules on `html, body, #__next, [data-slot="sidebar-wrapper"], [data-slot="sidebar-inset"], main, .report-studio-root, .document-canvas-root, .document-canvas-scroll` in `src/styles/reports/print-system.css`.
+     - Wrapped printed report sheets in `.report-card-sheet` with `page-break-after: always !important; break-after: page !important;` (`:last-child` set to `auto`).
+     - Tightened vertical spacing across `PrimaryEOTReport.tsx` (`landscape-page` padding `3mm`, `inner-border` `4px 14px`, `content-layer` gap `4px`, table cell padding `2.5px 3.5px`, `validity-bar` padding `5px`) so the bottom maroon validity banner and outer Forest-Green/Gold border never clip on screen or in print.
+  3. **Workstream 3: Big & Bold Pupil Profile Identity Typography:**
+     - Upgraded Pupil Profile fields across all 8 report templates:
+       - Pupil's English Name: `15.5px–16px font-black uppercase tracking-wide text-[#0F172A]`.
+       - Pupil's Arabic Name (`اسم التلميذ/ة`): `16px–17px font-black text-[#0F172A]`.
+       - Class, Term, Year, Division / Position / Aggregate values: `13.5px–14.5px font-extrabold text-[#0F172A]`.
+  4. **Workstream 4: Desktop Toolbar Overflow Fix, MS Word Multi-Card Switcher (`1 | 2 | 3`) & Single 44px Mobile Header:**
+     - Added `hidden md:flex` and compact spacing to Desktop `TopToolbar.tsx` (`gap-1.5 px-2.5 sm:px-3 py-1.5 w-full max-w-full overflow-hidden`) so all controls fit cleanly on `1024px–1366px` viewports without right-edge spilling.
+     - Added the MS Word Multi-Card Preview Switcher `[ 1▢ | 2▢▢ | 3▢▢▢ ]` (`data-testid="cards-per-row-switcher"`) wired to `DocumentCanvas.tsx` (`cardsPerRow: 1 | 2 | 3`) to view 1 large card, 2 cards side-by-side (`lg:grid-cols-2`), or 3 cards side-by-side (`xl:grid-cols-3`).
+     - Added Dual-Mode Print CTA (`🖨️ Print N` batch print + `1 Sheet` single focused report print) and enhanced `StudentRosterSidebar.tsx` with `Select All`, `Clear`, `Invert Selection`, and `Ready Only`.
+     - Consolidated mobile controls in `ReportGeneratorClient.tsx` into a single `44px` (`h-11 flex md:hidden`) horizontal bar containing Hamburger `☰`, Class Pill, Roster & Batch Selection Pill, Phase & Curriculum Popover, Studio Format icon, and Primary Print CTA.
+  5. **Workstream 5: Verification Gate:**
+     - Added automated test suite `Workstream 23` in `src/__tests__/overhaul-workstreams.test.mjs` (67/67 total tests passing across 19 suites).
+     - TypeScript check (`npm run typecheck`): 0 errors.
+     - Next.js production build (`npm run build`): 68/68 routes compiled cleanly.

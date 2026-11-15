@@ -1,13 +1,13 @@
 import { getTheologyComment } from '@/lib/grading'
 import { ReportContainer } from '@/components/reports/shared/ReportContainer'
-import { CleanSignatureImg } from '@/components/reports/shared/CleanSignatureImg'
+import { CleanSignatureImage } from '@/components/reports/CleanSignatureImage'
 import { OfficialReportStamp } from '@/components/reports/StampGenerator'
 import { normalizeSchoolLogoUrl } from '@/lib/school-settings-helper'
 import { transliterateEnglishToArabic } from '@/lib/transliterate'
 
 import { getClassTeacherSignatureKey } from '@/utils/signatures'
 
-export default function NurseryTheologyEOTReport({ reportData }: any) {
+export default function NurseryTheologyEOTReport({ reportData, studioFormatting }: any) {
   const printPrefs = reportData?.settings?.print_preferences
   const includeSignatures = printPrefs?.includeSignatures !== undefined ? Boolean(printPrefs.includeSignatures) : true
   const includeStamp = Boolean(printPrefs?.includeStamp)
@@ -404,26 +404,26 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
         <div className="info-grid">
           <div className="info-item" style={{ gridColumn: 'span 2' }}>
             <span>اسم الطفل/ة:</span>
-            <div className="dot-line">{reportData?.student?.arabic_name || "___"}</div>
+            <div className="dot-line pupil-name" style={{ fontSize: '17px', fontWeight: 900, color: '#0F172A' }}>{reportData?.student?.arabic_name || "___"}</div>
           </div>
           <div className="info-item">
             <span>الروضة:</span>
-            <div className="dot-line">{reportData?.student?.theology_class_arabic ?? reportData?.student?.class_name}</div>
+            <div className="dot-line" style={{ fontSize: '14.5px', fontWeight: 800, color: '#0F172A' }}>{reportData?.student?.theology_class_arabic ?? reportData?.student?.class_name}</div>
           </div>
           <div className="info-item">
             <span>الفترة:</span>
-            <div className="dot-line">{toAr(reportData?.term?.term_number)}</div>
+            <div className="dot-line" style={{ fontSize: '14.5px', fontWeight: 800, color: '#0F172A' }}>{toAr(reportData?.term?.term_number)}</div>
           </div>
           <div className="info-item">
             <span>السنة:</span>
-            <div className="dot-line medium">{toAr(toHijri(Number(reportData?.term?.academic_year)))}</div>
+            <div className="dot-line medium" style={{ fontSize: '14px', fontWeight: 800, color: '#0F172A' }}>{toAr(toHijri(Number(reportData?.term?.academic_year)))}</div>
             <span>هـ</span>
-            <div className="dot-line medium">{toAr(reportData?.term?.academic_year)}</div>
+            <div className="dot-line medium" style={{ fontSize: '14px', fontWeight: 800, color: '#0F172A' }}>{toAr(reportData?.term?.academic_year)}</div>
             <span>م</span>
           </div>
           <div className="info-item">
             <span>عدد الأطفال:</span>
-            <div className="dot-line">{toAr(reportData?.meta?.total_students)}</div>
+            <div className="dot-line" style={{ fontSize: '14px', fontWeight: 800, color: '#0F172A' }}>{toAr(reportData?.meta?.total_students)}</div>
           </div>
         </div>
 
@@ -475,24 +475,20 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
             <div>تقرير مرب الفصل</div>
             <div className="sign-line" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', height: '40px' }}>
               {includeSignatures && reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.class_name) ?? ''] && (
-                <CleanSignatureImg src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} alt="Signature" style={{ maxHeight: '30px' }} />
+                <CleanSignatureImage src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} alt="Signature" style={{ maxHeight: '30px' }} studioFormatting={studioFormatting} />
               )}
             </div>
           </div>
           <div className="footer-stamp" style={{ width: '135px', height: '68px', maxWidth: '135px', maxHeight: '68px', overflow: 'hidden', padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             {includeStamp ? (
-              reportData?.signatures?.['school-stamp'] ? (
-                <img src={reportData.signatures['school-stamp']} alt="Official school stamp" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', mixBlendMode: 'multiply', filter: 'contrast(1.65) brightness(1.12)' }} />
-              ) : (
-                <OfficialReportStamp reportData={reportData} maxWidth={135} maxHeight={68} />
-              )
+              <OfficialReportStamp reportData={reportData} studioFormatting={studioFormatting} maxWidth={135} maxHeight={68} />
             ) : null}
           </div>
           <div className="sign-field">
             <div>تقرير مدير المدرسة</div>
             <div className="sign-line" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', height: '40px' }}>
               {includeSignatures && reportData?.signatures?.['head-teacher'] && (
-                <CleanSignatureImg src={reportData.signatures['head-teacher']} alt="Signature" style={{ maxHeight: '30px' }} />
+                <CleanSignatureImage src={reportData.signatures['head-teacher']} alt="Signature" style={{ maxHeight: '30px' }} studioFormatting={studioFormatting} />
               )}
             </div>
           </div>

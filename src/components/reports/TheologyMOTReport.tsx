@@ -339,7 +339,13 @@ const theologyCSS = `
 }
 `
 
-export function TheologyCard({ reportData }: { reportData: any }) {
+export function TheologyCard({
+  reportData,
+  studioFormatting,
+}: {
+  reportData: any
+  studioFormatting?: any
+}) {
   const toAr = (val: number | string | null | undefined): string => {
     if (val == null) return '--'
     return String(val).replace(/[0-9]/g, (d) => '٠١٢٣٤٥٦٧٨٩'[+d])
@@ -405,17 +411,17 @@ export function TheologyCard({ reportData }: { reportData: any }) {
             <div className="tc-info">
               <div className="tc-row">
                 <span className="tc-label">اسم الطالب/ة :</span>
-                <div className="tc-field" style={{ fontWeight: 800, fontSize: '15px' }}>{reportData?.student?.arabic_name || reportData?.student?.name || '___'}</div>
+                <div className="tc-field pupil-name" style={{ fontWeight: 900, fontSize: '17px', color: '#0F172A' }}>{reportData?.student?.arabic_name || reportData?.student?.name || '___'}</div>
               </div>
               <div className="tc-row tc-row-sub">
                 <span className="tc-label">الفترة:</span>
-                <div className="tc-field tc-term">{toAr(reportData?.term?.term_number)}</div>
+                <div className="tc-field tc-term" style={{ fontWeight: 800, fontSize: '14.5px', color: '#0F172A' }}>{toAr(reportData?.term?.term_number)}</div>
                 <span className="tc-label">الفصل:</span>
-                <div className="tc-field tc-class">{reportData?.student?.theology_class_arabic ?? '--'}</div>
+                <div className="tc-field tc-class" style={{ fontWeight: 800, fontSize: '14.5px', color: '#0F172A' }}>{reportData?.student?.theology_class_arabic ?? '--'}</div>
                 <span className="tc-label">السنة :</span>
-                <div className="tc-field tc-year">{toAr(toHijri(Number(reportData?.term?.academic_year)))}</div>
+                <div className="tc-field tc-year" style={{ fontWeight: 800, fontSize: '14.5px', color: '#0F172A' }}>{toAr(toHijri(Number(reportData?.term?.academic_year)))}</div>
                 <span className="tc-label">هـ</span>
-                <div className="tc-field tc-year">{toAr(reportData?.term?.academic_year)}</div>
+                <div className="tc-field tc-year" style={{ fontWeight: 800, fontSize: '14.5px', color: '#0F172A' }}>{toAr(reportData?.term?.academic_year)}</div>
                 <span className="tc-label">م</span>
               </div>
             </div>
@@ -460,11 +466,7 @@ export function TheologyCard({ reportData }: { reportData: any }) {
               </div>
               <div className="tc-stamp" style={{ width: '135px', height: '68px', maxWidth: '135px', maxHeight: '68px', overflow: 'hidden', padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 {includeStamp ? (
-                  reportData?.signatures?.['school-stamp'] ? (
-                    <img src={reportData.signatures['school-stamp']} alt="Official school stamp" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', mixBlendMode: 'multiply', filter: 'contrast(1.65) brightness(1.12)' }} />
-                  ) : (
-                    <OfficialReportStamp reportData={reportData} maxWidth={135} maxHeight={68} />
-                  )
+                  <OfficialReportStamp reportData={reportData} studioFormatting={studioFormatting} maxWidth={135} maxHeight={68} />
                 ) : null}
               </div>
             </div>
@@ -484,9 +486,11 @@ export function TheologyCard({ reportData }: { reportData: any }) {
 export function Theology2UpPrintSheet({
   topReport,
   bottomReport,
+  studioFormatting,
 }: {
   topReport: any
   bottomReport?: any
+  studioFormatting?: any
 }) {
   return (
     <div
@@ -524,7 +528,7 @@ export function Theology2UpPrintSheet({
           boxSizing: 'border-box',
         }}
       >
-        <TheologyCard reportData={topReport} />
+        <TheologyCard reportData={topReport} studioFormatting={studioFormatting} />
       </div>
 
       {/* CUT LINE — 7px */}
@@ -572,7 +576,7 @@ export function Theology2UpPrintSheet({
         }}
       >
         {bottomReport ? (
-          <TheologyCard reportData={bottomReport} />
+          <TheologyCard reportData={bottomReport} studioFormatting={studioFormatting} />
         ) : (
           <div style={{ width: '794px', height: '558px', background: '#ffffff' }} />
         )}
@@ -581,11 +585,11 @@ export function Theology2UpPrintSheet({
   )
 }
 
-export default function TheologyMOTReport({ reportData }: any) {
+export default function TheologyMOTReport({ reportData, studioFormatting }: any) {
   return (
     <ReportContainer reportType="TheologyMOTReport">
       <style dangerouslySetInnerHTML={{ __html: theologyCSS }} />
-      <TheologyCard reportData={reportData} />
+      <TheologyCard reportData={reportData} studioFormatting={studioFormatting} />
     </ReportContainer>
   )
 }

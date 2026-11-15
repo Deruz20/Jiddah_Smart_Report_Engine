@@ -92,6 +92,26 @@
    ============================================================================ */
 
 @media print {
+  /* 0. Multi-Page Batch Print: Unconstrain all ancestors so Chrome prints all N sheets */
+  html,
+  body,
+  #__next,
+  [data-slot="sidebar-wrapper"],
+  [data-slot="sidebar-inset"],
+  main,
+  .report-studio-root,
+  .document-canvas-root,
+  .document-canvas-scroll,
+  [data-testid="report-center-workspace"],
+  [data-testid="report-preview-stage"] {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    display: block !important;
+    position: static !important;
+  }
+
   /* 1. Hide EVERYTHING on the main page */
   html body {
     visibility: hidden !important;
@@ -104,10 +124,10 @@
 
   /* 2. Reveal ONLY the print portal */
   #print-portal {
-    position: absolute !important;
+    position: static !important;
     top: 0 !important;
     left: 0 !important;
-    width: auto !important;
+    width: 100% !important;
     height: auto !important;
     overflow: visible !important;
     visibility: visible !important;
@@ -119,6 +139,20 @@
   #print-portal,
   #print-portal * {
     visibility: visible !important;
+  }
+
+  .report-card-sheet,
+  #print-portal .report-container {
+    page-break-after: always !important;
+    break-after: page !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .report-card-sheet:last-child,
+  #print-portal .report-container:last-child {
+    page-break-after: auto !important;
+    break-after: auto !important;
   }
 
   #secular-hub-print-root,

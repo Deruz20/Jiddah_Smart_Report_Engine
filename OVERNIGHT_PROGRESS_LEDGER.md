@@ -774,9 +774,11 @@ Exit code: 0
      - Hid global `AppTopbar` on `/admin/reports` to grant 100% of vertical screen height to Document Studio.
      - Equipped `TopToolbar.tsx` with mobile sidebar trigger (`☰`), `←` back navigation button, Sun/Moon theme toggle, `StudioFormattingState` (5 canonical themes from `src/lib/themes.ts`, typography font selector and scaling, bold weight toggle), and `✒️ Stamp & Sign` popover controls.
      - Built responsive 2-row mobile Studio header with dynamic auto-scaled preview fitting 100% mobile viewport width.
-  5. **Workstream 5: Verification Gate:**
+  5. **Workstream 5: Verification Gate & Runtime Hardening:**
+     - Fixed React Hook Count mismatch in `src/components/layout/app-topbar.tsx` by relocating the Document Studio early return below all `React.useEffect` hook declarations.
+     - Fixed PostgreSQL column error in `src/lib/marks-reconciliation.ts` by translating `studentIds` into corresponding `enrollment_id`s through `enrollments` table, ensuring `circular_marks` and `theology_marks` are queried strictly by `enrollment_id`.
      - TypeScript check (`npm run typecheck`): 0 errors across entire repository.
-     - Automated test suite (`src/__tests__/overhaul-workstreams.test.mjs`): 61/61 tests across 18 suites pass (100% pass rate).
+     - Automated test suite (`src/__tests__/overhaul-workstreams.test.mjs`): 62/62 tests across 18 suites pass (100% pass rate).
      - Next.js webpack production build (`npm run build`): 68/68 routes compiled cleanly with zero build errors.
 
 

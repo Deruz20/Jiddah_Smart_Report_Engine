@@ -1232,6 +1232,10 @@ describe('Workstream 22: Universal Marks Reconciliation, Form Collision Fix, Sta
     const topbarPath = path.join(rootDir, 'src/components/layout/app-topbar.tsx');
     const topbarSrc = fs.readFileSync(topbarPath, 'utf8');
     assert.match(topbarSrc, /pathname\?\.startsWith\('\/admin\/reports'\)/);
+    // Verifies Rule of Hooks: early return occurs AFTER all useEffect declarations
+    const effectIndex = topbarSrc.lastIndexOf('React.useEffect');
+    const returnIndex = topbarSrc.indexOf("if (pathname?.startsWith('/admin/reports'))");
+    assert.ok(returnIndex > effectIndex, 'Early return for /admin/reports must occur after all useEffect hooks to prevent hook count mismatch');
 
     const toolbarPath = path.join(rootDir, 'src/components/figma-ui/TopToolbar.tsx');
     const toolbarSrc = fs.readFileSync(toolbarPath, 'utf8');
@@ -1239,6 +1243,18 @@ describe('Workstream 22: Universal Marks Reconciliation, Form Collision Fix, Sta
     assert.match(toolbarSrc, /Template Color Themes/);
     assert.match(toolbarSrc, /Stamps, Signatures & Watermarks/);
     assert.match(toolbarSrc, /data-testid="studio-popover-trigger"/);
+  });
+
+  it('guarantees marks-reconciliation resolves student IDs through enrollments table without invalid column lookups', () => {
+    const reconcilerPath = path.join(rootDir, 'src/lib/marks-reconciliation.ts');
+    const reconcilerSrc = fs.readFileSync(reconcilerPath, 'utf8');
+
+    // circular_marks and theology_marks query by enrollment_id, not student_id
+    assert.match(reconcilerSrc, /\.from\('circular_marks'\)[\s\S]*?\.in\('enrollment_id', chunk\)/);
+    assert.match(reconcilerSrc, /\.from\('theology_marks'\)[\s\S]*?\.in\('enrollment_id', chunk\)/);
+
+    // Resolves student_ids via enrollments table
+    assert.match(reconcilerSrc, /\.from\('enrollments'\)[\s\S]*?\.select\('id, student_id'\)[\s\S]*?\.in\('student_id', chunk\)/);
   });
 });
 

@@ -427,11 +427,6 @@ export function AppTopbar({ breadcrumbs, currentPage }: AppTopbarProps) {
   const [diagnosticsOpen, setDiagnosticsOpen] = React.useState(false);
   const [hidden, setHidden] = React.useState(false);
 
-  // Reclaim full vertical viewport for Report Center Document Studio
-  if (pathname?.startsWith('/admin/reports')) {
-    return null;
-  }
-
   const handleLogout = async () => {
     const supabase = createClient();
     invalidateClientCache();
@@ -477,6 +472,11 @@ export function AppTopbar({ breadcrumbs, currentPage }: AppTopbarProps) {
     });
     return () => subscription?.unsubscribe();
   }, []);
+
+  // Reclaim full vertical viewport for Report Center Document Studio
+  if (pathname?.startsWith('/admin/reports')) {
+    return null;
+  }
 
   return (
     <>

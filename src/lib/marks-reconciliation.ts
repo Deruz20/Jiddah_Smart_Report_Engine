@@ -215,11 +215,35 @@ export async function fetchAndReconcileSecularMarks(
   if (termIds.length === 0) return []
 
   const marksList: any[] = []
+  const allEnrollmentIds = new Set<string>(enrollmentIds.filter(Boolean))
+  const enrollmentToStudentMap = new Map<string, string>()
 
-  // 1. Fetch from circular_marks by enrollment_id
-  if (enrollmentIds.length > 0) {
-    for (let i = 0; i < enrollmentIds.length; i += 100) {
-      const chunk = enrollmentIds.slice(i, i + 100)
+  // Resolve any student_ids to corresponding enrollment_ids
+  if (studentIds.length > 0) {
+    for (let i = 0; i < studentIds.length; i += 100) {
+      const chunk = studentIds.slice(i, i + 100)
+      const { data: matchedEnrollments, error: enrollErr } = await supabase
+        .from('enrollments')
+        .select('id, student_id')
+        .in('student_id', chunk)
+      if (!enrollErr && matchedEnrollments) {
+        for (const e of matchedEnrollments) {
+          if (e.id) {
+            allEnrollmentIds.add(e.id)
+            if (e.student_id) {
+              enrollmentToStudentMap.set(e.id, e.student_id)
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // 1. Fetch from circular_marks by enrollment_id (circular_marks table does not have student_id column)
+  const targetEnrollmentList = Array.from(allEnrollmentIds)
+  if (targetEnrollmentList.length > 0) {
+    for (let i = 0; i < targetEnrollmentList.length; i += 100) {
+      const chunk = targetEnrollmentList.slice(i, i + 100)
       const rows = await fetchAllSupabaseRows(() =>
         supabase
           .from('circular_marks')
@@ -231,22 +255,7 @@ export async function fetchAndReconcileSecularMarks(
     }
   }
 
-  // Also query by student_id if provided
-  if (studentIds.length > 0) {
-    for (let i = 0; i < studentIds.length; i += 100) {
-      const chunk = studentIds.slice(i, i + 100)
-      const rows = await fetchAllSupabaseRows(() =>
-        supabase
-          .from('circular_marks')
-          .select('*')
-          .in('student_id', chunk)
-          .in('term_id', termIds)
-      )
-      marksList.push(...rows.map((r) => ({ ...r, _source: 'circular_marks' })))
-    }
-  }
-
-  // 2. Fetch from legacy marks table if it exists
+  // 2. Fetch from legacy marks table if it exists (legacy marks has student_id column)
   try {
     if (studentIds.length > 0) {
       for (let i = 0; i < studentIds.length; i += 100) {
@@ -260,9 +269,9 @@ export async function fetchAndReconcileSecularMarks(
         )
         marksList.push(...rows.map((r) => ({ ...r, _source: 'marks' })))
       }
-    } else if (enrollmentIds.length > 0) {
-      for (let i = 0; i < enrollmentIds.length; i += 100) {
-        const chunk = enrollmentIds.slice(i, i + 100)
+    } else if (targetEnrollmentList.length > 0) {
+      for (let i = 0; i < targetEnrollmentList.length; i += 100) {
+        const chunk = targetEnrollmentList.slice(i, i + 100)
         const rows = await fetchAllSupabaseRows(() =>
           supabase
             .from('marks')
@@ -289,7 +298,7 @@ export async function fetchAndReconcileSecularMarks(
 
   for (const raw of marksList) {
     const targetEnrollmentId = raw.enrollment_id || null
-    const targetStudentId = raw.student_id || null
+    const targetStudentId = raw.student_id || (targetEnrollmentId ? enrollmentToStudentMap.get(targetEnrollmentId) : null) || null
     const targetSubjectId = raw.subject_id || ''
 
     if (!targetSubjectId) continue
@@ -340,10 +349,35 @@ export async function fetchAndReconcileTheologyMarks(
   if (termIds.length === 0) return []
 
   const marksList: any[] = []
+  const allEnrollmentIds = new Set<string>(enrollmentIds.filter(Boolean))
+  const enrollmentToStudentMap = new Map<string, string>()
 
-  if (enrollmentIds.length > 0) {
-    for (let i = 0; i < enrollmentIds.length; i += 100) {
-      const chunk = enrollmentIds.slice(i, i + 100)
+  // Resolve any student_ids to corresponding enrollment_ids
+  if (studentIds.length > 0) {
+    for (let i = 0; i < studentIds.length; i += 100) {
+      const chunk = studentIds.slice(i, i + 100)
+      const { data: matchedEnrollments, error: enrollErr } = await supabase
+        .from('enrollments')
+        .select('id, student_id')
+        .in('student_id', chunk)
+      if (!enrollErr && matchedEnrollments) {
+        for (const e of matchedEnrollments) {
+          if (e.id) {
+            allEnrollmentIds.add(e.id)
+            if (e.student_id) {
+              enrollmentToStudentMap.set(e.id, e.student_id)
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Fetch from theology_marks by enrollment_id (theology_marks table does not have student_id column)
+  const targetEnrollmentList = Array.from(allEnrollmentIds)
+  if (targetEnrollmentList.length > 0) {
+    for (let i = 0; i < targetEnrollmentList.length; i += 100) {
+      const chunk = targetEnrollmentList.slice(i, i + 100)
       const rows = await fetchAllSupabaseRows(() =>
         supabase
           .from('theology_marks')
@@ -355,25 +389,11 @@ export async function fetchAndReconcileTheologyMarks(
     }
   }
 
-  if (studentIds.length > 0) {
-    for (let i = 0; i < studentIds.length; i += 100) {
-      const chunk = studentIds.slice(i, i + 100)
-      const rows = await fetchAllSupabaseRows(() =>
-        supabase
-          .from('theology_marks')
-          .select('*')
-          .in('student_id', chunk)
-          .in('term_id', termIds)
-      )
-      marksList.push(...rows.map((r) => ({ ...r, _source: 'theology_marks' })))
-    }
-  }
-
   const reconciledMap = new Map<string, ReconciledMarkEntry>()
 
   for (const raw of marksList) {
     const targetEnrollmentId = raw.enrollment_id || null
-    const targetStudentId = raw.student_id || null
+    const targetStudentId = raw.student_id || (targetEnrollmentId ? enrollmentToStudentMap.get(targetEnrollmentId) : null) || null
     const targetSubjectId = raw.theology_subject_id || raw.subject_id || ''
 
     if (!targetSubjectId) continue

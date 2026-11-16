@@ -222,17 +222,17 @@ describe('Hubs & Broadsheet Suite: Workstream 3 - Senior UI/UX Standards & Jidda
     const theoPath = path.resolve('src/components/theology-hub/TheologyHubClient.tsx');
     const theoSrc = fs.readFileSync(theoPath, 'utf8');
 
+    // Single-row Report Center-style toolbar (h-12 rounded-2xl white card)
+    assert.match(theoSrc, /h-12/);
+    assert.match(theoSrc, /rounded-2xl/);
+    assert.match(theoSrc, /ArrowLeft/);
+
     // English Toolbar Controls & Buttons (Report Center Parity)
-    assert.match(theoSrc, /Theology Academic Hub/);
-    assert.match(theoSrc, /Print Broadsheet/);
-    assert.match(theoSrc, /Export CSV/);
-    assert.match(theoSrc, /Academic Term/);
-    assert.match(theoSrc, /Theology Class \/ الصف/);
-    assert.match(theoSrc, /View Mode/);
+    assert.match(theoSrc, /Theology Hub/);
+    assert.match(theoSrc, /Print/);
     assert.match(theoSrc, />Sheet</);
     assert.match(theoSrc, />Analysis</);
     assert.match(theoSrc, />Top 10</);
-    assert.match(theoSrc, /Exam Phase/);
 
     // RTL direction on assessment sheet container and table
     assert.match(theoSrc, /dir="rtl"/);
@@ -241,10 +241,8 @@ describe('Hubs & Broadsheet Suite: Workstream 3 - Senior UI/UX Standards & Jidda
     assert.match(theoSrc, />\s*م\s*<\/th>/);
     assert.match(theoSrc, /اسم التلميذ\/ة/);
     assert.match(theoSrc, /المجموع/);
-    assert.match(theoSrc, /المعدل/);
-    assert.match(theoSrc, /التقدير/);
     assert.match(theoSrc, /الترتيب/);
-    assert.match(theoSrc, /التقرير/);
+    assert.match(theoSrc, /الملاحظات/);
 
     // Authentic Arabic Performance Badges
     assert.match(theoSrc, /ممتاز/);
@@ -279,14 +277,15 @@ describe('Hubs & Broadsheet Suite: Workstream 3 - Senior UI/UX Standards & Jidda
     assert.match(theoSrc, /<OfficialReportStamp[\s\S]*?maxWidth=\{110\}[\s\S]*?maxHeight=\{52\}/);
   });
 
-  it('both hubs implement streamlined, compact top toolbars matching Report Center (h-8.5 controls)', () => {
+  it('both hubs implement streamlined, compact top toolbars matching Report Center (h-12 single bar)', () => {
     const theoPath = path.resolve('src/components/theology-hub/TheologyHubClient.tsx');
     const secPath = path.resolve('src/components/secular-hub/SecularHubClient.tsx');
     const theoSrc = fs.readFileSync(theoPath, 'utf8');
     const secSrc = fs.readFileSync(secPath, 'utf8');
 
-    assert.match(theoSrc, /h-8\.5/);
-    assert.match(secSrc, /h-8\.5/);
+    // Both hubs use the h-12 single-row toolbar matching Report Center
+    assert.match(theoSrc, /h-12/);
+    assert.match(secSrc, /h-12/);
     assert.match(theoSrc, /id="theology-hub-term-select"/);
     assert.match(theoSrc, /id="theology-hub-class-select"/);
     assert.match(secSrc, /id="secular-hub-term-select"/);

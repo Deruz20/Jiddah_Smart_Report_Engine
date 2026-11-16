@@ -24,7 +24,9 @@ import {
   Sparkles,
   ExternalLink,
   Layers,
+  ArrowLeft,
 } from 'lucide-react'
+import Link from 'next/link'
 import { toast } from 'sonner'
 import { SecularHubEmptyState } from './SecularHubEmptyState'
 import { OfficialPrintLetterhead, OfficialPrintSignaturesFooter } from '@/components/print/OfficialPrintLetterhead'
@@ -558,160 +560,140 @@ export default function SecularHubClient({
   return (
     <div className="flex flex-col min-h-[100dvh] bg-[#F8F9FA] dark:bg-[#0D1411] text-stone-900 dark:text-stone-100 font-sans tabular-nums selection:bg-[#0D5C3A] selection:text-white">
       {/* ======================================================== */}
-      {/* 1. COMMANDING FOREST EMERALD + WARM MARIGOLD HEADER BANNER (STREAMLINED) */}
+      {/* 1. REPORT-CENTER-STYLE SINGLE-ROW TOOLBAR */}
       {/* ======================================================== */}
-      <div className="print:hidden p-2 sm:p-3 max-w-7xl mx-auto w-full shrink-0">
+      <div className="print:hidden shrink-0 px-2 sm:px-3 pt-2 pb-0 max-w-7xl mx-auto w-full">
         <div
           data-testid="secular-hub-banner"
-          className="rounded-2xl p-2.5 sm:p-3.5 bg-[linear-gradient(135deg_in_oklch,oklch(0.38_0.12_155)_0%,oklch(0.28_0.09_160)_100%)] text-white shadow-xl border border-white/10"
+          className="w-full h-12 bg-white dark:bg-[#151D1A] rounded-2xl px-3 border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 flex items-center justify-between gap-2 shadow-2xs overflow-hidden"
         >
-          {/* Top Title & Quick Actions Row */}
-          <div className="flex flex-wrap items-center justify-between gap-2.5">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-9 h-9 rounded-xl bg-[#0D5C3A]/10 backdrop-blur-md flex items-center justify-center text-emerald-300 border border-white/15 shadow-inner shrink-0">
-                <LayoutDashboard className="w-4.5 h-4.5" strokeWidth={2.25} />
+          {/* LEFT: Back + Title + Term + Class */}
+          <div className="flex items-center gap-1.5 min-w-0 shrink">
+            <Link
+              href="/admin"
+              className="w-8 h-8 rounded-full flex items-center justify-center text-stone-500 dark:text-stone-400 hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer shrink-0"
+              aria-label="Back to Dashboard"
+            >
+              <ArrowLeft size={16} />
+            </Link>
+
+            {/* Title pill */}
+            <div className="flex items-center gap-1.5 shrink-0 bg-[#0D5C3A]/10 dark:bg-[#0D5C3A]/20 rounded-lg px-1.5 py-0.5">
+              <div className="w-6 h-6 rounded-lg bg-[#0D5C3A] flex items-center justify-center shrink-0">
+                <LayoutDashboard className="w-3.5 h-3.5 text-white" strokeWidth={2.25} />
               </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <h1 className="text-base sm:text-lg font-black tracking-tight text-white">
-                    Secular Academic Hub
-                  </h1>
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-[#EA580C]/30 text-[#FED7AA] border border-[#EA580C]/40 shrink-0">
-                    Uganda UNEB Standards
-                  </span>
-                </div>
-                <p className="text-[10.5px] font-medium text-emerald-200/80 line-clamp-1">
-                  Institutional Performance Broadsheets, Cohort Analytics &amp; Academic Merit Roll
-                </p>
-              </div>
+              <span className="hidden sm:inline text-xs font-black text-stone-800 dark:text-stone-100 tracking-tight whitespace-nowrap">
+                Secular Hub
+              </span>
             </div>
 
-            {/* Print & CSV Action Buttons */}
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={handlePrintBroadsheet}
-                disabled={isLoading || !assessmentData.students.length}
-                title="Print Official Performance Broadsheet"
-                className="inline-flex items-center gap-1.5 h-8.5 px-3 rounded-[10px] text-xs font-bold bg-white/15 hover:bg-white/25 active:scale-95 text-white border border-white/20 transition-all duration-150 backdrop-blur-md shadow-xs disabled:opacity-50 cursor-pointer"
-              >
-                <Printer className="w-3.5 h-3.5 text-emerald-300" strokeWidth={2.25} />
-                <span>Print Broadsheet</span>
-              </button>
+            <div className="w-px h-5 bg-stone-200 dark:bg-white/10 mx-0.5 shrink-0" />
 
+            {/* Term Selector */}
+            <CustomPillSelect
+              id="secular-hub-term-select"
+              ariaLabel="Academic Term"
+              value={activeTermId}
+              onChange={(val) => setActiveTermId(val)}
+              options={termOptions}
+              className="h-8 w-32 sm:w-40 rounded-xl bg-stone-50 dark:bg-white/5 border border-stone-200 dark:border-white/10 text-xs font-semibold text-stone-800 dark:text-stone-100"
+            />
+
+            {/* Class Selector */}
+            <CustomPillSelect
+              id="secular-hub-class-select"
+              ariaLabel="Class Cohort"
+              value={activeClassId}
+              onChange={(val) => setActiveClassId(val)}
+              options={classOptions}
+              placeholder="Select Class..."
+              className="h-8 w-36 sm:w-44 rounded-xl bg-stone-50 dark:bg-white/5 border border-stone-200 dark:border-white/10 text-xs font-semibold text-stone-800 dark:text-stone-100"
+            />
+          </div>
+
+          {/* CENTER: Exam Phase + View Mode */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/* Exam Phase — inline pill group */}
+            <div className="flex items-center bg-stone-100 dark:bg-white/5 rounded-full p-0.5 border border-stone-200/80 dark:border-white/10 gap-0.5">
+              {(['bot', 'mot', 'eot'] as const).map((phase) => (
+                <button
+                  key={phase}
+                  type="button"
+                  onClick={() => setExamPhase(phase)}
+                  className={`h-7 px-2.5 rounded-full text-[11px] font-bold uppercase tracking-wide transition-all cursor-pointer ${
+                    examPhase === phase
+                      ? phase === 'eot'
+                        ? 'bg-[#0D5C3A] text-white shadow-xs'
+                        : 'bg-stone-700 text-white shadow-xs'
+                      : 'text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-white'
+                  }`}
+                >
+                  {phase.toUpperCase()}
+                </button>
+              ))}
+            </div>
+
+            {/* View Mode — Sheet / Analysis / Top 10 */}
+            <div className="flex items-center bg-stone-100 dark:bg-white/5 rounded-full p-0.5 border border-stone-200/80 dark:border-white/10 gap-0.5">
               <button
-                onClick={handleExportCSV}
-                disabled={isLoading || !assessmentData.students.length}
-                title="Export Broadsheet CSV"
-                className="inline-flex items-center gap-1.5 h-8.5 px-3 rounded-[10px] text-xs font-bold bg-[linear-gradient(135deg_in_oklch,oklch(0.68_0.19_48),oklch(0.60_0.17_44))] hover:brightness-110 active:scale-95 text-white border border-amber-300/30 transition-all duration-150 shadow-md disabled:opacity-50 cursor-pointer"
+                type="button"
+                onClick={() => setActiveTab('assessment')}
+                className={`h-7 px-2.5 rounded-full flex items-center gap-1 text-[11px] font-bold transition-all cursor-pointer ${
+                  activeTab === 'assessment'
+                    ? 'bg-[#D97706] text-white shadow-xs'
+                    : 'text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-white'
+                }`}
               >
-                <FileSpreadsheet className="w-3.5 h-3.5 text-amber-100" strokeWidth={2.25} />
-                <span>Export CSV</span>
+                <ScrollText className="w-3 h-3" strokeWidth={2.25} />
+                <span>Sheet</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('analysis')}
+                className={`h-7 px-2.5 rounded-full flex items-center gap-1 text-[11px] font-bold transition-all cursor-pointer ${
+                  activeTab === 'analysis'
+                    ? 'bg-[#D97706] text-white shadow-xs'
+                    : 'text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-white'
+                }`}
+              >
+                <BarChart3 className="w-3 h-3" strokeWidth={2.25} />
+                <span>Analysis</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('top_students')}
+                className={`h-7 px-2.5 rounded-full flex items-center gap-1 text-[11px] font-bold transition-all cursor-pointer ${
+                  activeTab === 'top_students'
+                    ? 'bg-[#D97706] text-white shadow-xs'
+                    : 'text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-white'
+                }`}
+              >
+                <Award className="w-3 h-3" strokeWidth={2.25} />
+                <span>Top 10</span>
               </button>
             </div>
           </div>
 
-          {/* Controls Bar Row: Concentric Radius + OKLCH Hierarchy */}
-          <div className="pt-2.5 mt-2.5 border-t border-white/10 grid grid-cols-2 lg:grid-cols-4 gap-2 items-center">
-            {/* Academic Term */}
-            <div>
-              <label className="block text-[9.5px] font-extrabold uppercase tracking-wider text-emerald-200/90 mb-0.5">
-                Academic Term
-              </label>
-              <CustomPillSelect
-                id="secular-hub-term-select"
-                ariaLabel="Academic Term"
-                value={activeTermId}
-                onChange={(val) => setActiveTermId(val)}
-                options={termOptions}
-                className="w-full h-8.5 rounded-[10px] bg-black/20 hover:bg-black/30 text-white border border-white/15 text-xs font-semibold"
-              />
-            </div>
+          {/* RIGHT: Export CSV + Print Broadsheet */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={handleExportCSV}
+              disabled={isLoading || !assessmentData.students.length}
+              title="Export Broadsheet CSV"
+              className="w-8 h-8 rounded-full flex items-center justify-center bg-stone-100 dark:bg-white/5 text-stone-600 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-white/10 border border-stone-200 dark:border-white/10 transition cursor-pointer disabled:opacity-40 shrink-0"
+            >
+              <FileSpreadsheet className="w-4 h-4" strokeWidth={2.25} />
+            </button>
 
-            {/* Class Cohort */}
-            <div>
-              <label className="block text-[9.5px] font-extrabold uppercase tracking-wider text-emerald-200/90 mb-0.5">
-                Class Cohort
-              </label>
-              <CustomPillSelect
-                id="secular-hub-class-select"
-                ariaLabel="Class Cohort"
-                value={activeClassId}
-                onChange={(val) => setActiveClassId(val)}
-                options={classOptions}
-                placeholder="Select Class..."
-                className="w-full h-8.5 rounded-[10px] bg-black/20 hover:bg-black/30 text-white border border-white/15 text-xs font-semibold"
-              />
-            </div>
-
-            {/* Dashboard View Mode Toggle */}
-            <div>
-              <label className="block text-[9.5px] font-extrabold uppercase tracking-wider text-emerald-200/90 mb-0.5">
-                View Mode
-              </label>
-              <div className="h-8.5 rounded-xl p-0.5 bg-black/25 backdrop-blur-md border border-white/15 flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('assessment')}
-                  className={`flex-1 h-full rounded-[8px] flex items-center justify-center gap-1 text-[11px] font-bold transition-all duration-200 cursor-pointer ${
-                    activeTab === 'assessment'
-                      ? 'bg-[linear-gradient(135deg_in_oklch,oklch(0.68_0.19_48),oklch(0.60_0.17_44))] text-white shadow-xs'
-                      : 'text-white/80 hover:text-white hover:bg-white/10'
-                  }`}
-                >
-                  <ScrollText className="w-3.5 h-3.5" strokeWidth={2.25} />
-                  <span>Sheet</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('analysis')}
-                  className={`flex-1 h-full rounded-[8px] flex items-center justify-center gap-1 text-[11px] font-bold transition-all duration-200 cursor-pointer ${
-                    activeTab === 'analysis'
-                      ? 'bg-[linear-gradient(135deg_in_oklch,oklch(0.68_0.19_48),oklch(0.60_0.17_44))] text-white shadow-xs'
-                      : 'text-white/80 hover:text-white hover:bg-white/10'
-                  }`}
-                >
-                  <BarChart3 className="w-3.5 h-3.5" strokeWidth={2.25} />
-                  <span>Analysis</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('top_students')}
-                  className={`flex-1 h-full rounded-[8px] flex items-center justify-center gap-1 text-[11px] font-bold transition-all duration-200 cursor-pointer ${
-                    activeTab === 'top_students'
-                      ? 'bg-[linear-gradient(135deg_in_oklch,oklch(0.68_0.19_48),oklch(0.60_0.17_44))] text-white shadow-xs'
-                      : 'text-white/80 hover:text-white hover:bg-white/10'
-                  }`}
-                >
-                  <Award className="w-3.5 h-3.5" strokeWidth={2.25} />
-                  <span>Top 10</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Exam Phase Toggle */}
-            <div>
-              <label className="block text-[9.5px] font-extrabold uppercase tracking-wider text-emerald-200/90 mb-0.5">
-                Exam Phase
-              </label>
-              <div className="h-8.5 rounded-xl p-0.5 bg-black/25 backdrop-blur-md border border-white/15 flex items-center gap-1">
-                {(['bot', 'mot', 'eot'] as const).map((phase) => (
-                  <button
-                    key={phase}
-                    type="button"
-                    onClick={() => setExamPhase(phase)}
-                    className={`flex-1 h-full rounded-[8px] flex items-center justify-center text-[10.5px] font-bold uppercase transition-all duration-200 cursor-pointer ${
-                      examPhase === phase
-                        ? phase === 'eot'
-                          ? 'bg-emerald-500/90 text-white shadow-xs'
-                          : 'bg-white/25 text-white shadow-xs'
-                        : 'text-white/70 hover:text-white hover:bg-white/10'
-                    }`}
-                  >
-                    {phase}
-                  </button>
-                ))}
-              </div>
-            </div>
+            <button
+              onClick={handlePrintBroadsheet}
+              disabled={isLoading || !assessmentData.students.length}
+              title="Print Official Broadsheet"
+              className="h-8 px-3 rounded-full bg-gradient-to-r from-[#0D5C3A] to-[#117A4D] hover:from-[#09472C] hover:to-[#0D5C3A] text-white ring-1 ring-[#D97706]/50 shadow-md text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-40 transition shrink-0"
+            >
+              <Printer className="w-3.5 h-3.5" strokeWidth={2.25} />
+              <span>Print</span>
+            </button>
           </div>
         </div>
       </div>
@@ -754,7 +736,7 @@ export default function SecularHubClient({
                         placeholder="Search student by name or admission #..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-9 pr-3 py-1.5 rounded-lg text-xs bg-stone-50 dark:bg-black/20 border border-stone-200 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-[#0D5C3A]"
+                        className="w-full pl-9 pr-3 py-1.5 rounded-[10px] text-xs bg-stone-50 dark:bg-black/20 border border-stone-200 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-[#0D5C3A]"
                       />
                     </div>
                   </div>

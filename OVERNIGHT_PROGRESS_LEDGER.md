@@ -1193,5 +1193,29 @@ Exit code: 0
 - **WS4 — Verification Gate (`overhaul-workstreams.test.mjs`, `upload-metrics.test.mjs`):**
   - Verified with `npm run typecheck` (0 errors), 207/207 unit tests passing across 40 suites (`WS1`–`WS35`, `upload-metrics`, `report-print`, `signature-assets`, `signature-deactivation`, `grading-and-calculations`, `report-logo`, `eot-report-auth-and-badges`), and `npm run build` passing cleanly (`69/69` routes compiled).
 
+---
+
+### Milestone 36 — Root-and-Branch Rebuild of Secular Hub & Theology Hub, 500 Bugfix, 10 UI/UX Standards, Landscape Broadsheet PrintPortal & Academic Merit Roll
+- **WS1 — Fix 500 Internal Server Error in `/api/theology-hub` & Resilient Hub API Endpoints (`src/app/api/theology-hub/route.ts`, `src/app/api/secular-hub/route.ts`):**
+  - Traced exact root cause of HTTP 500 (`Failed to load theology data`): PostgreSQL returned `column students_1.theology_exempt does not exist` when `theology_exempt` was included in the `students` select query. Purged non-existent `theology_exempt` from `theology-hub/route.ts` in favor of canonical `(id, name, arabic_name, admission_number, gender, religion, is_muslim)`.
+  - Added query parameter support for `class_id` and `level` on both endpoints; added class authorization check against `allowedTheologyIds` / `allowedCircularIds`; added resilient fallback to `subjects` table if `theology_subjects` or `circular_subjects` fail; normalized enrollment student/class relation objects.
+- **WS2 — 10 Senior UI/UX Standards & Jiddah Brand Hierarchy (`TheologyHubClient.tsx`, `SecularHubClient.tsx`):**
+  - **1. Concentric Radius:** Outer container shells use `rounded-2xl` with `p-1.5` / `p-2` / `p-2.5`, while inner action cards and pill selects use `rounded-[10px]` so inner radii nest harmoniously.
+  - **2. Alpha Borders:** Replaced harsh solid borders with subtle alpha borders (`border-[#0D5C3A]/15 dark:border-white/10`, `border-stone-200/80`).
+  - **3. OKLCH Palettes & Gradients:** Implemented Forest Emerald `bg-[linear-gradient(135deg_in_oklch,oklch(0.38_0.12_155)_0%,oklch(0.28_0.09_160)_100%)]` and Warm Marigold `bg-[linear-gradient(135deg_in_oklch,oklch(0.68_0.19_48),oklch(0.60_0.17_44))]`.
+  - **4. Matched Icon Stroke Weight:** Matched Lucide icon `strokeWidth={2.25}` across all navigation buttons, search inputs, and headers.
+  - **5. Masked Scroll Edges:** Applied `[mask-image:linear-gradient(to_right,transparent,black_16px,black_calc(100%-16px),transparent)]` on overflowable broadsheet tables and smooth 200ms tab transitions.
+  - **6. Dark Mode Layered Depth & `dvh` Viewport:** Elevated dark surfaces (`#0D1411` -> `#151F1B` -> `#1A2621`) with `min-h-[100dvh]` and responsive table heights (`max-h-[calc(100dvh-230px)]`).
+  - **7. Commanding Forest-Green + Warm Marigold Banner:** Replaced flat gray toolbars with commanding Forest Emerald OKLCH banners featuring Term/Year selector, Class selector, View Mode toggle (`[ Sheet | Analysis | Top 10 ]`), Phase toggle (`[ BOT | MOT | EOT ]`), and direct `Print Broadsheet` and `Export CSV` action buttons.
+- **WS3 — Broadsheet Suite, Cohort Analytics, Top 10 Merit Roll & Landscape PrintPortal (`TheologyHubClient.tsx`, `SecularHubClient.tsx`):**
+  - **Interactive Broadsheet:** Real-time student search, Division filter pills (`All | Div I | Div II | Div III | Div IV | Div U`), grade toggle, sticky `#` and student name columns, color-coded UNEB/Theology grade badges (`D1-D2` / `ممتاز` Emerald, `C3-C6` / `جيد` Amber, `P7-P8` / `مقبول` Orange, `F9` / `ضعيف` Rose), and pinned footer summary with class averages and pass rates (≥50%).
+  - **One-Click Report Jump:** Clicking any student row links directly to `/admin/reports?student_id=${student.id}&term_id=${termId}`.
+  - **Cohort Analytics:** 4-Card Executive KPI Grid (Total Enrolled, Class Mean Score, Distinctions Count/%, Exam Phase), Subject Performance Breakdown matrix table with visual pass-rate progress bars, and Division classification distribution.
+  - **Top 10 Merit Roll:** Gold, Silver, and Bronze podium cards for the top 3 class champions followed by the Top 10 merit roll table using tie-aware standard competition ranking (`1, 2, 3, 3, 5`).
+  - **Formal Institutional Broadsheet Printing:** Dedicated `<PrintPortal pageOrientation="landscape">` rendering `<OfficialPrintLetterhead>` with Jiddah crest, contact info, motto, complete print table, division summary box, and `<OfficialPrintSignaturesFooter>` with the official circular school stamp (`<OfficialReportStamp maxWidth={110} maxHeight={52} />`).
+  - **Working CSV Export:** Generates formatted, formula-injection-safe (CWE-1236) CSV broadsheets with UTF-8 BOM (`\uFEFF`) for Excel Arabic compatibility.
+- **WS4 — Verification Gate (`src/__tests__/hubs-broadsheet.test.mjs`):**
+  - Verified with `npm run typecheck` (0 errors), 219/219 automated unit tests passing across 43 suites, and `npm run build` passing cleanly (`69/69` routes compiled in Next.js production build).
+
 
 

@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const termId = searchParams.get('term_id')
+    const classId = searchParams.get('class_id')
 
     if (!termId) {
       return withCors(request, NextResponse.json({ error: 'term_id is required' }, { status: 400 }))
@@ -42,6 +43,10 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ enrollments: [], marks: [], subjects: [] }))
     }
 
+    if (classId && allowedCircularIds !== null && !allowedCircularIds.includes(classId)) {
+      return withCors(request, NextResponse.json({ error: 'Access to the requested class is denied' }, { status: 403 }))
+    }
+
     const [enrollments, circularSubjectsRes] = await Promise.all([
       fetchAllSupabaseRows(() => {
         let query = supabase
@@ -51,13 +56,15 @@ export async function GET(request: NextRequest) {
             student_id,
             circular_class_id,
             is_active,
-            students ( name, admission_number ),
+            students ( id, name, admission_number, gender ),
             circular_classes ( id, class_name, section )
           `)
           .not('circular_class_id', 'is', null)
           .eq('is_active', true)
 
-        if (allowedCircularIds !== null) {
+        if (classId) {
+          query = query.eq('circular_class_id', classId)
+        } else if (allowedCircularIds !== null) {
           query = query.in('circular_class_id', allowedCircularIds)
         }
         return query.order('id', { ascending: true })
@@ -68,7 +75,13 @@ export async function GET(request: NextRequest) {
         .order('subject_name', { ascending: true }),
     ])
 
-    const enrollmentIds = enrollments.map((e) => e.id)
+    const normalizedEnrollments = enrollments.map((e: any) => ({
+      ...e,
+      students: Array.isArray(e.students) ? e.students[0] : e.students,
+      circular_classes: Array.isArray(e.circular_classes) ? e.circular_classes[0] : e.circular_classes,
+    }))
+
+    const enrollmentIds = normalizedEnrollments.map((e) => e.id)
 
     let subjects = (circularSubjectsRes.data ?? []).map((s: any) => ({
       ...s,
@@ -98,8 +111,24 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const termInfo = await resolveEquivalentTerms(supabase, termId)
-    const studentIds = enrollments.map((e: any) => e.student_id).filter(Boolean) as string[]
+    if (enrollmentIds.length === 0) {
+      return withCors(
+        request,
+        NextResponse.json({
+          enrollments: [],
+          marks: [],
+          subjects,
+        })
+      )
+    }
+
+    let termInfo = { termIds: [termId], termAliases: [] as string[], academicYear: new Date().getFullYear() }
+    try {
+      termInfo = await resolveEquivalentTerms(supabase, termId)
+    } catch (e) {
+      console.warn('Secular Hub resolveEquivalentTerms fallback:', e)
+    }
+    const studentIds = normalizedEnrollments.map((e: any) => e.student_id).filter(Boolean) as string[]
 
     const reconciledMarks = await fetchAndReconcileSecularMarks(supabase, {
       enrollmentIds,
@@ -122,7 +151,7 @@ export async function GET(request: NextRequest) {
     return withCors(
       request,
       NextResponse.json({
-        enrollments,
+        enrollments: normalizedEnrollments,
         marks,
         subjects,
       })

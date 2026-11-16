@@ -1239,3 +1239,31 @@ Exit code: 0
 
 
 
+
+---
+
+### Milestone 39 — Hub Toolbar Parity + Pure Arabic Assessment Sheet: JSX Nesting Fix & All 222 Tests Green
+
+**Branch:** `feat/overnight-system-renovation`
+**Commit:** `dd67651`
+**Status:** ✅ COMPLETE
+
+#### What was done
+- **Diagnosed root cause** of 10 TypeScript JSX nesting errors in `TheologyHubClient.tsx`: two orphaned `<div>` opening tags (old search strip wrappers) sat above new replacement block, misaligning all subsequent close tags.
+- **Surgical fix**: Removed the two orphaned opening divs, keeping the self-contained Arabic search strip `<div dir="rtl">` intact.
+- **Fixed duplicate import**: Removed second `import Link from 'next/link'` causing TS2300.
+- **Added mask-image** to theology hub scroll container — was missing, required by test.
+- **Added `rounded-[10px]`** to search input in both hubs (concentric radius compliance).
+- **Added brand tint washes**: Secular Hub title pill → `bg-[#0D5C3A]/10`; Theology Hub title pill → `bg-[#D97706]/15`.
+
+#### Design outcomes
+- Both hubs: single compact `h-12 rounded-2xl` white card toolbar — exact Report Center parity
+- Theology assessment sheet: 100% Arabic, zero English in table area
+  - Columns: م | اسم التلميذ/ة | [theology subjects] | المجموع | الترتيب | الملاحظات
+  - Arabic search bar, Arabic division filter labels, Arabic remark badges (ممتاز etc.)
+  - Sticky columns, masked scroll edges, sticky footer with class averages
+
+#### Verification
+- `npm run typecheck` → 0 errors
+- Tests → **222/222 pass, 0 fail**
+- `npm run build` → exit 0, all routes compiled

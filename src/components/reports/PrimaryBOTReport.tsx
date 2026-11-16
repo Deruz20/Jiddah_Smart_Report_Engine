@@ -13,7 +13,8 @@ import { NurseryEducativeWatermark } from "@/components/reports/NurseryEducative
 
 export default function PrimaryBOTReport({ reportData, studioFormatting: studioFormattingProp }: any) {
   const studioFormatting = useStudioFormatting(studioFormattingProp, reportData?.settings?.report_studio_config);
-  const effective = resolveEffectiveStudioStyle(studioFormatting, reportData);
+  const effective = resolveEffectiveStudioStyle(studioFormatting, reportData, 'primary-bot');
+  const effectiveStudioPass = { ...studioFormatting, ...effective, stampInkColor: effective.stampColor };
   const branding = resolveReportBranding(reportData);
   const gradingBands = resolveReportGradingBands(reportData);
 
@@ -301,8 +302,9 @@ export default function PrimaryBOTReport({ reportData, studioFormatting: studioF
       />
       <div className="bot-report-page">
         <NurseryEducativeWatermark
+          templateId="primary-bot"
           logoUrl={branding.logoUrl || "/logo-512h.png"}
-          studioFormatting={studioFormatting}
+          studioFormatting={effectiveStudioPass}
           includeEducativeArt={false}
         />
         <div className="bot-top-arabic">بِسْمِ ٱللَّٰهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</div>
@@ -420,7 +422,7 @@ export default function PrimaryBOTReport({ reportData, studioFormatting: studioF
             <span className="bot-sig-label">Signature:</span>
             <div className="bot-sig-line" style={{ position: 'relative', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', height: '36px', minWidth: '120px', borderBottom: '1.5px dotted #334155' }}>
               {includeSignatures && classTeacherSig && (
-                <CleanSignatureImage src={classTeacherSig} alt="Class Teacher Signature" style={{ height: '36px', width: '112px', objectFit: 'contain', marginBottom: '-6px' }} studioFormatting={studioFormatting} />
+                <CleanSignatureImage src={classTeacherSig} alt="Class Teacher Signature" style={{ height: '36px', width: '112px', objectFit: 'contain', marginBottom: '-6px' }} studioFormatting={effectiveStudioPass} />
               )}
             </div>
           </div>
@@ -431,15 +433,15 @@ export default function PrimaryBOTReport({ reportData, studioFormatting: studioF
             <span className="bot-sig-label">Signature:</span>
             <div className="bot-sig-line" style={{ position: 'relative', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', height: '36px', minWidth: '120px', borderBottom: '1.5px dotted #334155' }}>
               {includeSignatures && headTeacherSig && (
-                <CleanSignatureImage src={headTeacherSig} alt="Head Teacher Signature" style={{ height: '36px', width: '112px', objectFit: 'contain', marginBottom: '-6px' }} studioFormatting={studioFormatting} />
+                <CleanSignatureImage src={headTeacherSig} alt="Head Teacher Signature" style={{ height: '36px', width: '112px', objectFit: 'contain', marginBottom: '-6px' }} studioFormatting={effectiveStudioPass} />
               )}
             </div>
           </div>
 
           <div className="bot-footer-stamp">
-            <div className="bot-stamp" style={{ width: '135px', height: '68px', maxWidth: '135px', maxHeight: '68px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: '2px' }}>
+            <div className="bot-stamp" style={{ width: '135px', height: '64px', minWidth: '135px', minHeight: '64px', position: 'relative', overflow: 'visible', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               {includeStamp ? (
-                <OfficialReportStamp reportData={reportData} studioFormatting={studioFormatting} maxWidth={135} maxHeight={68} />
+                <OfficialReportStamp reportData={reportData} studioFormatting={effectiveStudioPass} maxWidth={135} maxHeight={64} />
               ) : null}
             </div>
           </div>

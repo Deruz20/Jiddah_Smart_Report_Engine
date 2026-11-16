@@ -129,6 +129,50 @@ export const CLASS_ORDER: Record<string, number> = {
   'الصف السابع': 10,
 }
 
+function isLandscapeReportData(rep: any, curriculumFilter: string): boolean {
+  if (!rep) return false
+  const isPrim =
+    rep.section_type === 'lower_primary' ||
+    rep.section_type === 'upper_primary' ||
+    (rep.section_type || '').includes('primary')
+  const isP7 = (rep.student?.class_name || '').toLowerCase().includes('p.7')
+  const isNonMuslim = isNonMuslimStudent(rep.student, rep)
+  const hasCirc = Boolean(rep.circular && rep.circular.subjects?.length > 0)
+  const hasTheo = Boolean(rep.theology)
+
+  let format = 'circular'
+  if (curriculumFilter === 'theology') {
+    if (hasTheo) format = 'theology'
+  } else if (curriculumFilter === 'secular') {
+    if (hasCirc) format = 'circular'
+  } else if ((curriculumFilter === 'combined' || curriculumFilter === 'both') && hasCirc && hasTheo && isPrim && rep.score_type === 'eot') {
+    format = 'combined'
+  } else if (!hasCirc && hasTheo) {
+    format = 'theology'
+  }
+
+  return (format === 'combined' || format === 'circular') && isPrim && rep.score_type === 'eot' && !isP7 && !isNonMuslim
+}
+
+function applyDynamicPrintPageRule(reportsList: any[], curriculumFilter: string): HTMLStyleElement {
+  const hasLandscape = reportsList.some((rep) => isLandscapeReportData(rep, curriculumFilter))
+  const hasPortrait = reportsList.some((rep) => !isLandscapeReportData(rep, curriculumFilter))
+  let styleEl = document.getElementById('jiddah-print-page-rule') as HTMLStyleElement | null
+  if (!styleEl) {
+    styleEl = document.createElement('style')
+    styleEl.id = 'jiddah-print-page-rule'
+    document.head.appendChild(styleEl)
+  }
+  if (hasLandscape && !hasPortrait) {
+    styleEl.textContent = `@media print { @page { size: 297mm 210mm !important; margin: 0mm !important; } }`
+  } else if (hasPortrait && !hasLandscape) {
+    styleEl.textContent = `@media print { @page { size: 210mm 297mm !important; margin: 0mm !important; } }`
+  } else {
+    styleEl.textContent = ''
+  }
+  return styleEl
+}
+
 export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
   const router = useRouter()
   const pathname = usePathname()
@@ -581,40 +625,11 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
         : `Selected_${targets.length}_Reports${termSuffix}.pdf`
     document.title = baseName.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_')
 
-    // Dynamically inject exact @page orientation so Chrome Print Preview never clips Landscape onto Portrait
-    const hasLandscape = targets.some((targetId) => {
-      const rep = (reportsForPrint || rawReports).find((r) => r.id === targetId)
-      if (!rep) return false
-      const isP7 = (rep.student?.class_name || '').toLowerCase().includes('p.7')
-      const isPrim = (rep.section_type || '').includes('primary') || (rep.student?.class_name || '').toLowerCase().includes('p.')
-      const isNonMuslim = isNonMuslimStudent(rep.student, rep)
-      return isPrim && rep.score_type === 'eot' && !isP7 && !isNonMuslim
-    })
-
-    const hasPortrait = targets.some((targetId) => {
-      const rep = (reportsForPrint || rawReports).find((r) => r.id === targetId)
-      if (!rep) return true
-      const isP7 = (rep.student?.class_name || '').toLowerCase().includes('p.7')
-      const isPrim = (rep.section_type || '').includes('primary') || (rep.student?.class_name || '').toLowerCase().includes('p.')
-      const isNonMuslim = isNonMuslimStudent(rep.student, rep)
-      const isLandscapeCard = isPrim && rep.score_type === 'eot' && !isP7 && !isNonMuslim
-      return !isLandscapeCard
-    })
-
-    let styleEl = document.getElementById('dynamic-print-page-style') as HTMLStyleElement | null
-    if (!styleEl) {
-      styleEl = document.createElement('style')
-      styleEl.id = 'dynamic-print-page-style'
-      document.head.appendChild(styleEl)
-    }
-    if (hasLandscape && !hasPortrait) {
-      styleEl.textContent = `@media print { @page { size: A4 landscape; margin: 0mm; } }`
-    } else if (hasPortrait && !hasLandscape) {
-      styleEl.textContent = `@media print { @page { size: A4 portrait; margin: 0mm; } }`
-    } else {
-      // Mixed orientation batch: do NOT inject unnamed @page so Chromium uses @page landscape-sheet & portrait-sheet
-      styleEl.textContent = ''
-    }
+    // Dynamically inject exact @page dimensions so Chrome Print Preview locks Landscape or Portrait cleanly
+    const targetReports = targets
+      .map((targetId) => (reportsForPrint || rawReports).find((r) => r.id === targetId))
+      .filter(Boolean)
+    const styleEl = applyDynamicPrintPageRule(targetReports, filterState.curriculum)
 
     setTimeout(() => {
       window.print()
@@ -626,7 +641,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
       window.removeEventListener('afterprint', restoreTitle)
     }
     window.addEventListener('afterprint', restoreTitle)
-  }, [selectedStudentIds, activeReportId, rawReports, executeGeneration, filterState.term])
+  }, [selectedStudentIds, activeReportId, rawReports, executeGeneration, filterState.term, filterState.curriculum])
 
   let sidebar: { toggleSidebar: () => void } | null = null
   try {
@@ -643,28 +658,12 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
     }
     setPrintScope([activeReportId])
     const currentRep = rawReports.find((r) => r.id === activeReportId)
-    const isLandscape = (() => {
-      if (!currentRep) return false
-      const isP7 = (currentRep.student?.class_name || '').toLowerCase().includes('p.7')
-      const isPrim =
-        (currentRep.section_type || '').includes('primary') ||
-        (currentRep.student?.class_name || '').toLowerCase().includes('p.')
-      const isNonMuslim = isNonMuslimStudent(currentRep.student, currentRep)
-      return isPrim && currentRep.score_type === 'eot' && !isP7 && !isNonMuslim
-    })()
-
-    let styleEl = document.getElementById('dynamic-print-page-style') as HTMLStyleElement | null
-    if (!styleEl) {
-      styleEl = document.createElement('style')
-      styleEl.id = 'dynamic-print-page-style'
-      document.head.appendChild(styleEl)
-    }
-    styleEl.textContent = `@media print { @page { size: A4 ${isLandscape ? 'landscape' : 'portrait'}; margin: 0mm; } }`
+    applyDynamicPrintPageRule(currentRep ? [currentRep] : [], filterState.curriculum)
 
     setTimeout(() => {
       window.print()
     }, 280)
-  }, [activeReportId, rawReports])
+  }, [activeReportId, rawReports, filterState.curriculum])
 
   const handleDownload = useCallback(() => {
     if (rawReports.length === 0) {
@@ -868,38 +867,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
     const originalTitle = document.title
     document.title = printRequest.title
 
-    const hasLandscape = printableReports.some((rep) => {
-      const isP7 = (rep.student?.class_name || '').toLowerCase().includes('p.7')
-      const isPrim =
-        (rep.section_type || '').includes('primary') ||
-        (rep.student?.class_name || '').toLowerCase().includes('p.')
-      const isNonMuslim = isNonMuslimStudent(rep.student, rep)
-      return isPrim && rep.score_type === 'eot' && !isP7 && !isNonMuslim
-    })
-
-    const hasPortrait = printableReports.some((rep) => {
-      const isP7 = (rep.student?.class_name || '').toLowerCase().includes('p.7')
-      const isPrim =
-        (rep.section_type || '').includes('primary') ||
-        (rep.student?.class_name || '').toLowerCase().includes('p.')
-      const isNonMuslim = isNonMuslimStudent(rep.student, rep)
-      const isLandscapeCard = isPrim && rep.score_type === 'eot' && !isP7 && !isNonMuslim
-      return !isLandscapeCard
-    })
-
-    let styleEl = document.getElementById('dynamic-print-page-style') as HTMLStyleElement | null
-    if (!styleEl) {
-      styleEl = document.createElement('style')
-      styleEl.id = 'dynamic-print-page-style'
-      document.head.appendChild(styleEl)
-    }
-    if (hasLandscape && !hasPortrait) {
-      styleEl.textContent = `@media print { @page { size: A4 landscape; margin: 0mm; } }`
-    } else if (hasPortrait && !hasLandscape) {
-      styleEl.textContent = `@media print { @page { size: A4 portrait; margin: 0mm; } }`
-    } else {
-      styleEl.textContent = ''
-    }
+    const styleEl = applyDynamicPrintPageRule(printableReports, filterState.curriculum)
 
     const restoreTitle = () => {
       document.title = originalTitle

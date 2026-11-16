@@ -13,6 +13,7 @@ export interface StampConfig {
   po_box: string;
   phone: string;
   ink_color: string;
+  date_ink_color?: string;
   size_scale: number;
   rotation: number;
   opacity: number;
@@ -32,9 +33,10 @@ export const DEFAULT_STAMP_CONFIG: StampConfig = {
   po_box: "P.O.Box 34008, Nsaggu",
   phone: "Nakawuka Rd, Wakiso District",
   ink_color: "#1B3B8B",
+  date_ink_color: "#C81E1E",
   size_scale: 1,
   rotation: -2,
-  opacity: 0.9,
+  opacity: 0.92,
   grain_realism: true,
   grunge_intensity: 35,
   date: "26 OCT 2026",
@@ -379,12 +381,12 @@ export function VectorStamp({
               />
             </g>
 
-            {/* Column 2: Center Crimson Red Dater-Stamp Date (#D92626) */}
+            {/* Column 2: Center Crimson Red Dater-Stamp Date (#C81E1E) */}
             <text
               x={195 + dateOffsetX}
               y={115 + dateOffsetY}
               textAnchor="middle"
-              fill="#D92626"
+              fill={merged.date_ink_color || "#C81E1E"}
               stroke="none"
               fontSize="22"
               fontWeight="900"
@@ -581,7 +583,7 @@ export function OfficialReportStamp({
   reportData,
   studioFormatting,
   maxWidth = 135,
-  maxHeight = 68,
+  maxHeight = 64,
 }: {
   reportData: any;
   studioFormatting?: any;
@@ -597,15 +599,37 @@ export function OfficialReportStamp({
     typeof studioFormatting?.stampScale === "number" && studioFormatting.stampScale > 0
       ? studioFormatting.stampScale / 100
       : 1;
+  const studioRotation =
+    typeof studioFormatting?.stampRotation === "number"
+      ? studioFormatting.stampRotation
+      : savedStampConfig.rotation ?? DEFAULT_STAMP_CONFIG.rotation;
+  const studioOpacity =
+    typeof studioFormatting?.stampOpacity === "number"
+      ? Math.max(0.5, Math.min(1, studioFormatting.stampOpacity / 100))
+      : savedStampConfig.opacity ?? DEFAULT_STAMP_CONFIG.opacity;
+  const stampOffsetX = Number(studioFormatting?.stampOffsetX ?? 0);
+  const stampOffsetY = Number(studioFormatting?.stampOffsetY ?? 0);
 
   const config: StampConfig = {
     ...DEFAULT_STAMP_CONFIG,
     ...savedStampConfig,
     ink_color:
       studioFormatting?.stampInkColor ||
+      studioFormatting?.stampColor ||
       savedStampConfig.ink_color ||
       DEFAULT_STAMP_CONFIG.ink_color,
-    size_scale: (savedStampConfig.size_scale ?? DEFAULT_STAMP_CONFIG.size_scale ?? 1) * studioScaleMultiplier,
+    date_ink_color:
+      studioFormatting?.stampDateInkColor ||
+      savedStampConfig.date_ink_color ||
+      DEFAULT_STAMP_CONFIG.date_ink_color,
+    grain_realism:
+      studioFormatting?.stampNaturalRealism !== undefined
+        ? Boolean(studioFormatting.stampNaturalRealism)
+        : savedStampConfig.grain_realism ?? DEFAULT_STAMP_CONFIG.grain_realism,
+    opacity: studioOpacity,
+    // Outer position:absolute transform-layer handles scale/rotation/translation with zero layout shift
+    rotation: 0,
+    size_scale: 1,
   };
 
   const resolvedDate =
@@ -620,39 +644,60 @@ export function OfficialReportStamp({
     studioFormatting?.stampMode === "uploaded" ||
     config.use_uploaded_image === true;
 
-  if (isUploadedMode && reportData?.signatures?.["school-stamp"]) {
-    return (
-      <div
-        className="w-[135px] h-[68px] max-w-[135px] max-h-[68px] overflow-hidden flex items-center justify-center shrink-0"
-        style={{ width: `${maxWidth}px`, height: `${maxHeight}px`, maxWidth: `${maxWidth}px`, maxHeight: `${maxHeight}px` }}
-      >
-        <img
-          src={reportData.signatures["school-stamp"]}
-          alt="Official School Stamp"
-          style={{
-            maxWidth: "100%",
-            maxHeight: "100%",
-            objectFit: "contain",
-            mixBlendMode: "multiply",
-            filter: "contrast(1.65) brightness(1.12)",
-            backgroundColor: "transparent",
-          }}
-        />
-      </div>
-    );
-  }
+  const totalScale = (savedStampConfig.size_scale ?? DEFAULT_STAMP_CONFIG.size_scale ?? 1) * studioScaleMultiplier;
 
   return (
     <div
-      className="w-[135px] h-[68px] max-w-[135px] max-h-[68px] overflow-hidden flex items-center justify-center shrink-0"
-      style={{ width: `${maxWidth}px`, height: `${maxHeight}px`, maxWidth: `${maxWidth}px`, maxHeight: `${maxHeight}px` }}
+      data-testid="official-stamp-anchor-slot"
+      style={{
+        width: `${maxWidth}px`,
+        height: `${maxHeight}px`,
+        minWidth: `${maxWidth}px`,
+        minHeight: `${maxHeight}px`,
+        position: "relative",
+        overflow: "visible",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
+      }}
     >
-      <VectorStamp
-        config={config}
-        date={resolvedDate}
-        maxWidth={maxWidth}
-        maxHeight={maxHeight}
-      />
+      <div
+        data-testid="official-stamp-transform-layer"
+        style={{
+          position: "absolute",
+          inset: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          pointerEvents: "auto",
+          transform: `translate(${stampOffsetX}px, ${stampOffsetY}px) rotate(${studioRotation}deg) scale(${totalScale})`,
+          transformOrigin: "center center",
+        }}
+      >
+        {isUploadedMode && reportData?.signatures?.["school-stamp"] ? (
+          <img
+            src={reportData.signatures["school-stamp"]}
+            alt="Official School Stamp"
+            style={{
+              maxWidth: "100%",
+              maxHeight: "100%",
+              objectFit: "contain",
+              mixBlendMode: "multiply",
+              opacity: studioOpacity,
+              filter: "contrast(1.65) brightness(1.12)",
+              backgroundColor: "transparent",
+            }}
+          />
+        ) : (
+          <VectorStamp
+            config={config}
+            date={resolvedDate}
+            maxWidth={maxWidth}
+            maxHeight={maxHeight}
+          />
+        )}
+      </div>
     </div>
   );
 }

@@ -13,10 +13,16 @@ import { resolveReportBranding, resolveReportGradingBands } from '@/lib/school-s
 import { getClassTeacherSignatureKey } from '@/utils/signatures'
 import { transliterateEnglishToArabic } from '@/lib/transliterate'
 import { useStudioFormatting, resolveEffectiveStudioStyle } from '@/lib/studio-config-store'
+import { NurseryEducativeWatermark } from '@/components/reports/NurseryEducativeWatermark'
 
 export default function PrimaryEOTReport({ reportData, studioFormatting: studioFormattingProp }: any) {
   const studioFormatting = useStudioFormatting(studioFormattingProp, reportData?.settings?.report_studio_config)
-  const effective = resolveEffectiveStudioStyle(studioFormatting, reportData)
+  const effective = resolveEffectiveStudioStyle(studioFormatting, reportData, 'primary-eot')
+  const effectiveStudioPass = {
+    ...studioFormatting,
+    ...effective,
+    stampInkColor: effective.stampColor,
+  }
   const branding = resolveReportBranding(reportData)
   const gradingBands = resolveReportGradingBands(reportData)
 
@@ -199,7 +205,7 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
           inset: 0;
           background: url('${branding.logoUrl}') center center no-repeat;
           background-size: 420px;
-          opacity: ${effective.watermarkOpacity};
+          opacity: 0;
           pointer-events: none;
           z-index: 0;
         }
@@ -277,11 +283,19 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
         }
         .header-right h2 {
           color: ${effective.headerAccentColor};
-          font-family: 'Amiri', serif;
-          font-size: 25px;
+          font-family: ${effective.arabicFontFamilyCss} !important;
+          font-size: ${Math.round(23 * effective.arabicFontScaleMultiplier)}px;
           font-weight: 900;
           margin: 0;
+          line-height: 1.2;
+        }
+        .header-right .arabic-subline {
+          color: ${effective.headerAccentColor};
+          font-family: ${effective.arabicFontFamilyCss} !important;
+          font-size: ${Math.round(20 * effective.arabicFontScaleMultiplier)}px;
+          font-weight: 800;
           line-height: 1.25;
+          margin-top: 2px;
         }
 
         .header-divider {
@@ -335,11 +349,11 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
         }
         .info-box.arabic {
           direction: rtl;
-          font-family: 'Amiri', serif;
+          font-family: ${effective.arabicFontFamilyCss} !important;
         }
-        .info-box.arabic .info-label { font-size: 13.5px; font-weight: 700; }
-        .info-box.arabic .info-value { font-size: 16.5px; font-weight: 900; color: #0F172A; border-bottom: 1.5px dotted #94a3b8; }
-        .info-box.arabic .info-value.arabic-pupil-name { font-size: 21px; font-weight: 900; color: #0F172A; }
+        .info-box.arabic .info-label { font-size: ${Math.round(13.5 * effective.arabicFontScaleMultiplier)}px; font-weight: 700; }
+        .info-box.arabic .info-value { font-size: ${Math.round(16.5 * effective.arabicFontScaleMultiplier)}px; font-weight: 900; color: #0F172A; border-bottom: 1.5px dotted #94a3b8; }
+        .info-box.arabic .info-value.arabic-pupil-name { font-size: ${Math.round(21 * effective.arabicFontScaleMultiplier)}px; font-weight: 900; color: #0F172A; }
 
         /* ── TABLES SECTION (DYNAMIC EXPANSION) ── */
         .tables-wrapper {
@@ -427,13 +441,13 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
         .grade-val { background-color: #f1f5f9; font-weight: 700; }
 
         /* Theology Specifics */
-        .theology-table th { font-family: 'Amiri', serif; font-size: 14px; }
-        .theology-table td { font-family: 'Amiri', serif; font-size: 14px; font-weight: ${effective.scoreFontWeight}; }
+        .theology-table th { font-family: ${effective.arabicFontFamilyCss} !important; font-size: ${Math.round(14 * effective.arabicFontScaleMultiplier)}px; }
+        .theology-table td { font-family: ${effective.arabicFontFamilyCss} !important; font-size: ${Math.round(14 * effective.arabicFontScaleMultiplier)}px; font-weight: ${effective.scoreFontWeight}; }
         .theology-subj { text-align: right; font-weight: 700; padding-right: 12px !important; color: ${effective.primaryColor}; }
         
         .theology-notes {
-          font-family: 'Amiri', serif;
-          font-size: 15px;
+          font-family: ${effective.arabicFontFamilyCss} !important;
+          font-size: ${Math.round(15 * effective.arabicFontScaleMultiplier)}px;
           flex-shrink: 0;
         }
         .t-note-row { display: flex; align-items: flex-end; gap: 8px; margin-bottom: 6px; }
@@ -576,6 +590,12 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
         <div className="landscape-page" data-report-orientation="landscape">
           <div className="outer-border">
             <div className="inner-border">
+              <NurseryEducativeWatermark
+                templateId="primary-eot"
+                logoUrl={branding.logoUrl || '/logo-512h.png'}
+                studioFormatting={effectiveStudioPass}
+                includeEducativeArt={false}
+              />
               <div className="content-layer">
 
                 {/* ── HEADER ── */}
@@ -610,7 +630,10 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
                   </div>
 
                   <div className="header-right">
-                    <h2>{effective.schoolHeader.nameArabic}</h2>
+                    <h2 style={{ whiteSpace: 'nowrap' }}>{effective.schoolHeader.nameArabicLine1}</h2>
+                    {effective.schoolHeader.nameArabicLine2 ? (
+                      <div className="arabic-subline">{effective.schoolHeader.nameArabicLine2}</div>
+                    ) : null}
                   </div>
                 </header>
 
@@ -827,7 +850,7 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
                         <span className="c-label">SIGNATURE:</span>
                         <div className="c-sig" style={{ position: 'relative', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', height: '36px', borderBottom: '1.5px dotted #334155' }}>
                           {includeSignatures && reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.class_name) ?? ''] ? (
-                            <CleanSignatureImage src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} style={{ height: '36px', width: '112px', objectFit: 'contain', marginBottom: '-6px' }} alt="Class Teacher Signature" studioFormatting={studioFormatting} />
+                            <CleanSignatureImage src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} style={{ height: '36px', width: '112px', objectFit: 'contain', marginBottom: '-6px' }} alt="Class Teacher Signature" studioFormatting={effectiveStudioPass} />
                           ) : null}
                         </div>
                       </div>
@@ -837,15 +860,15 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
                         <span className="c-label">SIGNATURE:</span>
                         <div className="c-sig" style={{ position: 'relative', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', height: '36px', borderBottom: '1.5px dotted #334155' }}>
                           {includeSignatures && reportData?.signatures?.['head-teacher'] ? (
-                            <CleanSignatureImage src={reportData.signatures['head-teacher']} style={{ height: '36px', width: '112px', objectFit: 'contain', marginBottom: '-6px' }} alt="Head Teacher Signature" studioFormatting={studioFormatting} />
+                            <CleanSignatureImage src={reportData.signatures['head-teacher']} style={{ height: '36px', width: '112px', objectFit: 'contain', marginBottom: '-6px' }} alt="Head Teacher Signature" studioFormatting={effectiveStudioPass} />
                           ) : null}
                         </div>
                       </div>
                     </div>
 
-                    <div className="stamp-wrapper" style={{ width: '132px', height: '62px', maxWidth: '132px', maxHeight: '62px', marginBottom: '2px', overflow: 'hidden', flexShrink: 0, padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent' }}>
+                    <div className="stamp-wrapper" style={{ width: '135px', height: '64px', minWidth: '135px', minHeight: '64px', position: 'relative', marginBottom: '2px', overflow: 'visible', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent' }}>
                       {includeStamp ? (
-                        <OfficialReportStamp reportData={reportData} studioFormatting={studioFormatting} maxWidth={128} maxHeight={60} />
+                        <OfficialReportStamp reportData={reportData} studioFormatting={effectiveStudioPass} maxWidth={135} maxHeight={64} />
                       ) : null}
                     </div>
                   </div>

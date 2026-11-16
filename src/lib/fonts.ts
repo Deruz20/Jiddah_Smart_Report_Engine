@@ -23,14 +23,19 @@ const createFontDef = (
 
 // Primary Interface Fonts
 const defaultAcademic = createFontDef(
-  'Default Academic',
+  'Default Academic (Plus Jakarta)',
   'primary',
-  "'Montserrat', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+  "'Plus Jakarta Sans', 'Montserrat', system-ui, -apple-system, sans-serif"
 )
 const interSans = createFontDef(
-  'Inter Sans',
+  'Inter (Modern Sans)',
   'primary',
   "'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+)
+const merriweatherSerif = createFontDef(
+  'Merriweather (Academic Serif)',
+  'primary',
+  "'Merriweather', Georgia, serif"
 )
 const timesSerif = createFontDef(
   'Times Serif',
@@ -38,9 +43,19 @@ const timesSerif = createFontDef(
   "'Times New Roman', Times, Georgia, serif"
 )
 const cinzelPrestige = createFontDef(
-  'Cinzel Prestige',
+  'Cinzel (Institutional Prestige)',
   'primary',
   "'Cinzel', Georgia, serif"
+)
+const loraSerif = createFontDef(
+  'Lora (Calligraphic Serif)',
+  'primary',
+  "'Lora', Georgia, serif"
+)
+const jetbrainsMono = createFontDef(
+  'JetBrains Mono (Tabular)',
+  'primary',
+  "'JetBrains Mono', ui-monospace, SFMono-Regular, monospace"
 )
 const montserrat = createFontDef(
   'Montserrat',
@@ -64,34 +79,71 @@ const roboto = createFontDef(
 )
 
 // Arabic Fonts
-const amiri = createFontDef('Amiri', 'arabic', "'Amiri', 'Cairo', serif")
-const amiriArabic = createFontDef('Amiri Arabic', 'arabic', "'Amiri', 'Cairo', serif")
-const cairo = createFontDef('Cairo', 'arabic', "'Cairo', 'Amiri', sans-serif")
-const tajawal = createFontDef('Tajawal', 'arabic', "'Tajawal', 'Cairo', sans-serif")
-const almarai = createFontDef('Almarai', 'arabic', "'Almarai', 'Cairo', sans-serif")
+const amiri = createFontDef(
+  'Default Quranic Naskh (Amiri)',
+  'arabic',
+  "'Amiri', 'Noto Naskh Arabic', serif"
+)
+const amiriArabic = createFontDef('Amiri Arabic', 'arabic', "'Amiri', 'Noto Naskh Arabic', serif")
+const cairo = createFontDef('Cairo (Modern Geometric Arabic)', 'arabic', "'Cairo', 'Amiri', sans-serif")
+const tajawal = createFontDef('Tajawal (Clean Contemporary Arabic)', 'arabic', "'Tajawal', 'Cairo', sans-serif")
+const notoNaskh = createFontDef('Noto Naskh Arabic (Classic Academic)', 'arabic', "'Noto Naskh Arabic', 'Amiri', serif")
+const scheherazade = createFontDef('Scheherazade New (Traditional Calligraphic)', 'arabic', "'Scheherazade New', 'Amiri', serif")
+const almarai = createFontDef('Almarai (Crisp Arabic Print)', 'arabic', "'Almarai', 'Cairo', sans-serif")
 const changa = createFontDef('Changa', 'arabic', "'Changa', 'Cairo', sans-serif")
 const kufam = createFontDef('Kufam', 'arabic', "'Kufam', 'Amiri', serif")
 
+export const ENGLISH_FONT_OPTIONS: FontDefinition[] = [
+  defaultAcademic,
+  interSans,
+  merriweatherSerif,
+  cinzelPrestige,
+  loraSerif,
+  jetbrainsMono,
+]
+
+export const ARABIC_FONT_OPTIONS: FontDefinition[] = [
+  amiri,
+  cairo,
+  tajawal,
+  notoNaskh,
+  scheherazade,
+  almarai,
+]
+
 export const primaryFonts: Record<string, FontDefinition> = {
   'Default Academic': defaultAcademic,
+  'Default Academic (Plus Jakarta)': defaultAcademic,
+  default: defaultAcademic,
   'Inter Sans': interSans,
+  'Inter (Modern Sans)': interSans,
+  'Merriweather (Academic Serif)': merriweatherSerif,
   'Times Serif': timesSerif,
   'Cinzel Prestige': cinzelPrestige,
+  'Cinzel (Institutional Prestige)': cinzelPrestige,
+  'Lora (Calligraphic Serif)': loraSerif,
+  'JetBrains Mono (Tabular)': jetbrainsMono,
   'Amiri Arabic': amiriArabic,
-  'Montserrat': montserrat,
-  'Inter': inter,
-  'Poppins': poppins,
-  'Roboto': roboto,
+  Montserrat: montserrat,
+  Inter: inter,
+  Poppins: poppins,
+  Roboto: roboto,
 }
 
 export const arabicFonts: Record<string, FontDefinition> = {
-  'Amiri': amiri,
+  Amiri: amiri,
+  'Default Quranic Naskh (Amiri)': amiri,
   'Amiri Arabic': amiriArabic,
-  'Cairo': cairo,
-  'Tajawal': tajawal,
-  'Almarai': almarai,
-  'Changa': changa,
-  'Kufam': kufam,
+  Cairo: cairo,
+  'Cairo (Modern Geometric Arabic)': cairo,
+  Tajawal: tajawal,
+  'Tajawal (Clean Contemporary Arabic)': tajawal,
+  'Noto Naskh Arabic (Classic Academic)': notoNaskh,
+  'Scheherazade New (Traditional Calligraphic)': scheherazade,
+  Almarai: almarai,
+  'Almarai (Crisp Arabic Print)': almarai,
+  Changa: changa,
+  Kufam: kufam,
 }
 
 function resolveFontPair(primaryName?: string, arabicName?: string) {

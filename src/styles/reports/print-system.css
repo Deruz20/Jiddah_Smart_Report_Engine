@@ -106,13 +106,14 @@
    ============================================================================ */
 
 @media print {
+
   /* 0. Multi-Page Batch Print: Unconstrain all ancestors so Chrome prints all N sheets */
   html,
   body,
   #__next,
   [data-slot="sidebar-wrapper"],
   [data-slot="sidebar-inset"],
-  [data-slot="sidebar-inset"] > main,
+  [data-slot="sidebar-inset"]>main,
   .report-studio-root,
   .document-canvas-root,
   .document-canvas-scroll,
@@ -196,11 +197,13 @@
     min-width: 294mm !important;
     max-width: 294mm !important;
     height: 206mm !important;
+    min-height: 206mm !important;
     max-height: 206mm !important;
     padding: 4mm 6mm !important;
     box-sizing: border-box !important;
     overflow: hidden !important;
     break-inside: avoid !important;
+    page-break-inside: avoid !important;
   }
 
   .landscape-page .tables-wrapper,
@@ -220,8 +223,8 @@
     width: 210mm !important;
     min-width: 210mm !important;
     max-width: 210mm !important;
-    height: 292mm !important;
-    max-height: 292mm !important;
+    height: 286mm !important;
+    max-height: 286mm !important;
     margin: 0 auto !important;
     box-sizing: border-box !important;
     overflow: hidden !important;
@@ -284,6 +287,7 @@
   #class-roster-print-root .print\:flex {
     display: flex !important;
   }
+
   /* 3. Report containers inside the portal print true A4 */
   #print-portal .report-container {
     transform: none !important;
@@ -299,8 +303,9 @@
 
   #print-portal .report-container[data-report-orientation='portrait']:not(.theology-2up-sheet):not([data-report-type='TheologyMOTReport']) {
     width: 210mm !important;
-    height: 292mm !important;
-    max-height: 292mm !important;
+    height: 286mm !important;
+    max-height: 286mm !important;
+    overflow: hidden !important;
   }
 
   #print-portal .report-container[data-report-orientation='landscape'] {
@@ -448,7 +453,7 @@
   /* 9. Hide preview-only UI chrome */
   .print-hide,
   .no-print,
-  .report-preview-shell > :not(.report-scale-origin) {
+  .report-preview-shell> :not(.report-scale-origin) {
     display: none !important;
   }
 }
@@ -529,13 +534,13 @@
   color: #0F172A !important;
 }
 
-/* Assign named @page to report containers by orientation attribute */
+/* Assign named @page to report containers matching outer .report-card-sheet */
 #print-portal .report-container[data-report-orientation='portrait'] {
-  page: portrait-page;
+  page: portrait-sheet;
 }
 
 #print-portal .report-container[data-report-orientation='landscape'] {
-  page: landscape-page;
+  page: landscape-sheet;
 }
 
 #secular-hub-print-root[data-report-orientation='portrait'],

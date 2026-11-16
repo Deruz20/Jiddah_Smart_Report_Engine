@@ -1139,3 +1139,27 @@ Exit code: 0
 - **WS4 & WS5 — Lucide Vector Iconography & Verification Gate (`src/components/reports/ReportStudioClient.tsx`, `src/components/figma-ui/TopToolbar.tsx`, `src/__tests__/overhaul-workstreams.test.mjs`):**
   - Replaced all leftover raw emojis (`🎨`, `🔤`, `🖼️`, `✒️`, `✨`, `💾`, `🚀`) in `ReportStudioClient.tsx` and `TopToolbar.tsx` with Lucide vector icons inside emerald/amber tinted icon badges.
   - Verified with `npm run typecheck` (0 errors), 172/172 automated tests passing across 33 suites, and `npm run build`.
+
+---
+
+### Milestone 33 — Template & Print Engine Stabilization, Scoped Report Studio 2.0, Stamp/Signature/Watermark Controls & Upload Center Overhaul
+- **WS1 — Dual EOT & Portrait Template Stabilization (`PrimaryEOTReport.tsx`, `P7EOTReport.tsx`, `studio-config-store.ts`):**
+  - Standardized 2-line Arabic school name splitting (`splitArabicSchoolName`) in `studio-config-store.ts` so `nameArabicLine1` / `nameArabicLine2` render without dangling hyphens across `PrimaryEOTReport.tsx` and `P7EOTReport.tsx`.
+  - Removed the uncomputed `AVERAGE` row in `P7EOTReport.tsx`, enforced single-sheet `286mm !important` height/max-height, wired `<NurseryEducativeWatermark />`, and anchored `<OfficialReportStamp />` inside a fixed `135px × 64px` `position: relative; overflow: visible` slot across all 8 report templates so stamp scaling/rotation/offsets never shift adjacent layout rows.
+- **WS2 — Print Engine Orientation & Single-Sheet Lock (`PrintPortal.tsx`, `print-system.css`, `ReportGeneratorClient.tsx`):**
+  - Implemented `isLandscapeReportData` and `applyDynamicPrintPageRule` in `ReportGeneratorClient.tsx`, injecting `#jiddah-print-page-rule` with exact `@page { size: 297mm 210mm !important; margin: 0mm !important; }` for Landscape reports and `size: 210mm 297mm !important; margin: 0mm !important;` for Portrait reports.
+  - Resolved conflicting named `@page` rules in `print-system.css` and locked `.report-sheet-landscape` (`min-height: 206mm !important`) and `.report-sheet-portrait` (`height: 286mm !important`) to eliminate blank overflow sheets and clipped edges.
+- **WS3 — Scoped Studio Save, Reset Defaults, Split Dual Fonts & Expanded Palettes (`studio-config-store.ts`, `ReportStudioClient.tsx`, `TopToolbar.tsx`, `src/lib/fonts.ts`, `src/app/globals.css`):**
+  - Replaced all native `<select>` elements across `ReportStudioClient.tsx` and `TopToolbar.tsx` with accessible `<CustomPillSelect />` components.
+  - Added per-template `templateOverrides`, `getCurriculumGroupTemplates`, Scoped Save Popover (`save-scope-template`, `save-scope-group`, `save-scope-all`), per-section `Reset Default` actions, independent `englishFontFamily`/`englishFontScale` + `arabicFontFamily`/`arabicFontScale`, 4-channel palettes (`badgeHighlightColor`, `nursery-cobalt-sunshine` default for Nursery, `madinah-emerald-gold` default for Theology).
+- **WS4 — Color Wheel Picker, Watermark Gallery & Physical Stamp/Signature Transform Controls (`color-wheel-picker.tsx`, `NurseryEducativeWatermark.tsx`, `StampGenerator.tsx`, `CleanSignatureImage.tsx`):**
+  - Created `<ColorWheelPicker />` with a 360° conic Hue wheel, 2D S/V box, Hex input, institutional swatches, and default reset.
+  - Expanded `<NurseryEducativeWatermark />` across all 8 templates with `watermarkStyle` (`crest`, `crest-star`, `laurel-seal`, `none`), `watermarkScale`, and 7 vector `artPreset` themes (`safari`, `abc-literacy`, `stem-explorers`, `islamic-arabesque`, `certificate-filigree`, `none`).
+  - Upgraded `StampGenerator.tsx` with dual-ink `date_ink_color` (`#C81E1E`) and `official-stamp-anchor-slot` + `official-stamp-transform-layer`, and `CleanSignatureImage.tsx` with SVG `feColorMatrix` ink tinting, scale/rotation/X-Y offsets, and contrast threshold modes.
+- **WS5 — Upload & Assets Center Overhaul (`src/utils/signatures.ts`, `src/app/api/signatures/route.ts`, `src/app/admin/upload/page.tsx`, `src/components/layout/upload-client.tsx`):**
+  - Excluded `theology-teacher-p7` from `getDynamicSignatureSlots()` UI discovery (`!isP7Class`, while preserving `getReportSignatureKeys()` contract) and canonically sorted slots (`head-teacher` -> Secular `Baby..P.7` -> Theology `Baby..P.6`).
+  - Wired `getUploadMetrics()` + `GET /api/signatures` metadata `size` + SSR `initialSignatureSlots` + client `HEAD` byte fallback into `upload-client.tsx` so telemetry (`Total Files`, `Storage Used`, `Signatures`, `Official Stamps`, `Asset Categories`, `Storage Quota`) renders accurate counts and byte totals with distinct Lucide icons (`FolderKanban`, `HardDrive`, `FileSignature`, `Stamp`).
+  - Added `<CustomPillSelect id="upload-signature-role-select" />`, 2-mode signature capture (`Upload & Auto-Clean Photo` with `<SignatureInkReviewCard />` and interactive `<DigitalSignaturePad />` pointer canvas), `<OfficialReportStamp />` live preview on the `Stamps` tab, and Live Signature Assets visual gallery (`Replace`, `Re-Clean Ink`, `Delete`).
+- **WS6 — Verification Gate (`overhaul-workstreams.test.mjs`, `upload-metrics.test.mjs`, `eot-report-auth-and-badges.test.mjs`):**
+  - Verified with `npm run typecheck` (0 errors), 200/200 automated unit tests passing across 38 suites (`WS1`–`WS33`, `upload-metrics`, `report-print`, `signature-assets`, `signature-deactivation`, `grading-and-calculations`, `report-logo`, `eot-report-auth-and-badges`), and `npm run build` passing cleanly (`69/69` static pages generated).
+

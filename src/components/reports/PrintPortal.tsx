@@ -5,13 +5,6 @@
  *
  * Renders all printable report containers into a hidden #print-portal div.
  * On @media print, ONLY #print-portal is visible (see print-system.css).
- *
- * This complete isolation means:
- * - Screen preview can use transforms/scaling without affecting print
- * - Print always renders true A4 dimensions (no scaling artifacts)
- * - Template authors never touch print CSS — it just works
- *
- * Usage: Mount in ReportGeneratorClient, pass in the reports to print.
  */
 
 import React from 'react'
@@ -25,7 +18,11 @@ export function PrintPortal({ children, pageOrientation = 'portrait' }: PrintPor
   return (
     <div id="print-portal" aria-hidden="true" inert={true}>
       {pageOrientation !== 'mixed' && (
-        <style>{`@page { size: A4 ${pageOrientation}; margin: 0; }`}</style>
+        <style>
+          {pageOrientation === 'landscape'
+            ? `@page { size: 297mm 210mm !important; margin: 0mm !important; }`
+            : `@page { size: 210mm 297mm !important; margin: 0mm !important; }`}
+        </style>
       )}
       {children}
     </div>

@@ -2,6 +2,7 @@ import { getTheologyComment } from '@/lib/grading'
 import { ReportContainer } from '@/components/reports/shared/ReportContainer'
 import { OfficialReportStamp } from '@/components/reports/StampGenerator'
 import { useStudioFormatting, resolveEffectiveStudioStyle } from '@/lib/studio-config-store'
+import { NurseryEducativeWatermark } from '@/components/reports/NurseryEducativeWatermark'
 
 const theologyCSS = `
 @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
@@ -359,7 +360,8 @@ export function TheologyCard({
   studioFormatting?: any
 }) {
   const studioFormatting = useStudioFormatting(studioFormattingProp, reportData?.settings?.report_studio_config)
-  const effective = resolveEffectiveStudioStyle(studioFormatting, reportData)
+  const effective = resolveEffectiveStudioStyle(studioFormatting, reportData, 'theology-mot')
+  const effectiveStudioPass = { ...studioFormatting, ...effective, stampInkColor: effective.stampColor }
   const toAr = (val: number | string | null | undefined): string => {
     if (val == null) return '--'
     return String(val).replace(/[0-9]/g, (d) => '٠١٢٣٤٥٦٧٨٩'[+d])
@@ -416,7 +418,13 @@ export function TheologyCard({
     >
       <div className="theology-card-outer">
         <div className="theology-card-inner">
-          <div className="theology-card" style={{ fontFamily: effective.fontFamilyCss, zoom: effective.fontScaleMultiplier }}>
+          <NurseryEducativeWatermark
+            templateId="theology-mot"
+            logoUrl={effective.schoolHeader.logoUrl || "/logo-512h.png"}
+            studioFormatting={effectiveStudioPass}
+            includeEducativeArt={false}
+          />
+          <div className="theology-card" style={{ fontFamily: effective.arabicFontFamilyCss, zoom: effective.arabicFontScaleMultiplier }}>
 
             {/* HEADER */}
             <div className="tc-header">
@@ -502,9 +510,9 @@ export function TheologyCard({
                   {getTheologyComment(totalScore, reportData?.student?.gender, reportData?.settings?.theology_remarks)}
                 </div>
               </div>
-              <div className="tc-stamp" style={{ width: '132px', height: '64px', maxWidth: '132px', maxHeight: '64px', overflow: 'hidden', padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <div className="tc-stamp" style={{ width: '135px', height: '64px', minWidth: '135px', minHeight: '64px', position: 'relative', overflow: 'visible', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 {includeStamp ? (
-                  <OfficialReportStamp reportData={reportData} studioFormatting={studioFormatting} maxWidth={128} maxHeight={60} />
+                  <OfficialReportStamp reportData={reportData} studioFormatting={effectiveStudioPass} maxWidth={135} maxHeight={64} />
                 ) : null}
               </div>
             </div>

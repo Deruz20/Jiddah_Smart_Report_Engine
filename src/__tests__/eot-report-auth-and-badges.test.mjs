@@ -95,7 +95,12 @@ describe('Report Badge Styling & Shape Preservation', () => {
     const theo = fs.readFileSync('src/components/reports/TheologyMOTReport.tsx', 'utf8');
     assert.equal(theo.includes('.tc-badge'), true, 'TheologyMOTReport must have .tc-badge style');
     assert.equal(theo.includes('className="tc-badge"'), true, 'TheologyMOTReport must render tc-badge element in header');
-    assert.equal(theo.includes('src={reportData?.settings?.logo_url || "/logo-512h.png"}') || theo.includes('src={reportData?.settings?.logo_url || "/school_budge.jpeg"}'), true);
+    assert.equal(
+      theo.includes('src={effective.schoolHeader.logoUrl || "/logo-512h.png"}') ||
+      theo.includes('src={reportData?.settings?.logo_url || "/logo-512h.png"}') ||
+      theo.includes('src={reportData?.settings?.logo_url || "/school_budge.jpeg"}'),
+      true
+    );
   });
 
   test('NurseryTheologyEOTReport renders badge in header', () => {

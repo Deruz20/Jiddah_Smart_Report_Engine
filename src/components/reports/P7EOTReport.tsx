@@ -15,10 +15,16 @@ import { resolveReportBranding, resolveReportGradingBands } from '@/lib/school-s
 import { getSecularPortraitReportTitle, isMuslimStudent } from '@/lib/student-religion'
 import { getClassTeacherSignatureKey } from '@/utils/signatures'
 import { useStudioFormatting, resolveEffectiveStudioStyle } from '@/lib/studio-config-store'
+import { NurseryEducativeWatermark } from '@/components/reports/NurseryEducativeWatermark'
 
 export default function P7EOTReport({ reportData, studioFormatting }: any) {
   const { formatting } = useStudioFormatting(studioFormatting, reportData?.settings?.report_studio_config)
-  const effective = resolveEffectiveStudioStyle(formatting, reportData)
+  const effective = resolveEffectiveStudioStyle(formatting, reportData, 'p7-eot')
+  const effectiveStudioPass = {
+    ...formatting,
+    ...effective,
+    stampInkColor: effective.stampColor,
+  }
   const branding = resolveReportBranding(reportData)
   const gradingBands = resolveReportGradingBands(reportData)
   const printPrefs = reportData?.settings?.print_preferences
@@ -196,7 +202,7 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
           inset: 0;
           background: url('${branding.logoUrl || '/logo-512h.png'}') center center no-repeat;
           background-size: 320px;
-          opacity: ${watermarkOpacity};
+          opacity: 0;
           pointer-events: none;
           z-index: 0;
         }
@@ -540,8 +546,8 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
             width: 210mm !important;
             min-width: 210mm !important;
             max-width: 210mm !important;
-            height: 296mm !important;
-            max-height: 296mm !important;
+            height: 286mm !important;
+            max-height: 286mm !important;
             padding: 3mm 4mm !important;
             box-sizing: border-box !important;
             overflow: hidden !important;
@@ -557,6 +563,12 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
         <div className="portrait-page p7-eot-report" data-report-orientation="portrait">
           <div className="outer-border">
             <div className="inner-border">
+              <NurseryEducativeWatermark
+                templateId="p7-eot"
+                logoUrl={branding.logoUrl || '/logo-512h.png'}
+                studioFormatting={effectiveStudioPass}
+                includeEducativeArt={false}
+              />
               <div className="content-layer">
 
                 {/* ── HEADER ── */}
@@ -616,14 +628,28 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
                   >
                     <h2
                       style={{
-                        fontSize: '18.5px',
+                        fontFamily: effective.arabicFontFamilyCss,
+                        fontSize: `${Math.round(18.5 * effective.arabicFontScaleMultiplier)}px`,
                         fontWeight: 900,
                         lineHeight: 1.25,
                         color: effective.headerAccentColor,
                       }}
                     >
-                      {effective.schoolHeader.nameArabic || 'مدرسة جدة الإسلامية للروضة والإبتدائية - انساغي'}
+                      {effective.schoolHeader.nameArabicLine1 || 'مدرسة جدة الإسلامية للروضة والإبتدائية'}
                     </h2>
+                    {effective.schoolHeader.nameArabicLine2 ? (
+                      <div
+                        style={{
+                          fontFamily: effective.arabicFontFamilyCss,
+                          fontSize: `${Math.round(16 * effective.arabicFontScaleMultiplier)}px`,
+                          fontWeight: 800,
+                          lineHeight: 1.2,
+                          color: effective.headerAccentColor,
+                        }}
+                      >
+                        {effective.schoolHeader.nameArabicLine2}
+                      </div>
+                    ) : null}
                   </div>
                 </header>
 
@@ -717,16 +743,6 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
                           <td className="grade-cell">{reportData?.circular?.mot_aggregate ?? '--'}</td>
                           <td className="score-cell">{reportData?.circular?.eot_total ?? '--'}</td>
                           <td className="grade-cell">{reportData?.circular?.aggregate ?? '--'}</td>
-                          <td colSpan={2} />
-                        </tr>
-                        <tr className="total-row">
-                          <td className="subj-name" style={{ color: '#0F172A' }}>AVERAGE</td>
-                          <td className="score-cell">{reportData?.circular?.bot_average != null ? `${reportData.circular.bot_average}%` : '--'}</td>
-                          <td>--</td>
-                          <td className="score-cell">{reportData?.circular?.mot_average != null ? `${reportData.circular.mot_average}%` : '--'}</td>
-                          <td>--</td>
-                          <td className="score-cell">{reportData?.circular?.eot_average != null ? `${reportData.circular.eot_average}%` : (reportData?.circular?.average ? `${reportData.circular.average}%` : '--')}</td>
-                          <td>--</td>
                           <td colSpan={2} />
                         </tr>
                       </tbody>
@@ -830,7 +846,7 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
                                 src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]}
                                 alt="Class Teacher Signature"
                                 style={{ maxHeight: '38px', marginBottom: '-6px' }}
-                                studioFormatting={studioFormatting}
+                                studioFormatting={effectiveStudioPass}
                               />
                             )}
                         </div>
@@ -848,7 +864,7 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
                               src={reportData.signatures['head-teacher']}
                               alt="Head Teacher Signature"
                               style={{ maxHeight: '38px', marginBottom: '-6px' }}
-                              studioFormatting={studioFormatting}
+                              studioFormatting={effectiveStudioPass}
                             />
                           )}
                         </div>
@@ -872,11 +888,11 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
                     <div
                       style={{
                         width: '135px',
-                        height: '68px',
-                        maxWidth: '135px',
-                        maxHeight: '68px',
-                        overflow: 'hidden',
-                        padding: '2px',
+                        height: '64px',
+                        minWidth: '135px',
+                        minHeight: '64px',
+                        position: 'relative',
+                        overflow: 'visible',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -886,9 +902,9 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
                       {includeStamp ? (
                         <OfficialReportStamp
                           reportData={reportData}
-                          studioFormatting={studioFormatting}
+                          studioFormatting={effectiveStudioPass}
                           maxWidth={135}
-                          maxHeight={68}
+                          maxHeight={64}
                         />
                       ) : null}
                     </div>

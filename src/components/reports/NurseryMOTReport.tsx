@@ -11,7 +11,8 @@ import { useStudioFormatting, resolveEffectiveStudioStyle } from "@/lib/studio-c
 
 export default function NurseryMOTReport({ reportData, studioFormatting: studioFormattingProp }: any) {
   const studioFormatting = useStudioFormatting(studioFormattingProp, reportData?.settings?.report_studio_config)
-  const effective = resolveEffectiveStudioStyle(studioFormatting, reportData)
+  const effective = resolveEffectiveStudioStyle(studioFormatting, reportData, 'nursery-mot')
+  const effectiveStudioPass = { ...studioFormatting, ...effective, stampInkColor: effective.stampColor }
   const branding = resolveReportBranding(reportData)
   const printPrefs = reportData?.settings?.print_preferences
   const includeSignatures =
@@ -341,8 +342,9 @@ export default function NurseryMOTReport({ reportData, studioFormatting: studioF
 
         <div className="report-body" style={{ position: 'relative' }}>
           <NurseryEducativeWatermark
+            templateId="nursery-mot"
             logoUrl={branding.logoUrl || '/logo-512h.png'}
-            studioFormatting={studioFormatting}
+            studioFormatting={effectiveStudioPass}
             includeEducativeArt={true}
           />
           {/* INFO BOXES */}
@@ -420,7 +422,7 @@ export default function NurseryMOTReport({ reportData, studioFormatting: studioF
                 <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#475569', flexShrink: 0, paddingBottom: '2px' }}>SIG:</span>
                 <div style={{ borderBottom: '1.5px dotted #334155', minWidth: '95px', width: '108px', height: '28px', display: 'inline-flex', alignItems: 'flex-end', justifyContent: 'center', position: 'relative', flexShrink: 0 }}>
                   {includeSignatures && classTeacherSignatureUrl && (
-                    <CleanSignatureImage src={classTeacherSignatureUrl} alt="Signature" style={{ maxHeight: '34px', width: '104px', objectFit: 'contain', marginBottom: '-6px' }} studioFormatting={studioFormatting} />
+                    <CleanSignatureImage src={classTeacherSignatureUrl} alt="Signature" style={{ maxHeight: '34px', width: '104px', objectFit: 'contain', marginBottom: '-6px' }} studioFormatting={effectiveStudioPass} />
                   )}
                 </div>
               </div>
@@ -432,7 +434,7 @@ export default function NurseryMOTReport({ reportData, studioFormatting: studioF
                 <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#475569', flexShrink: 0, paddingBottom: '2px' }}>SIG:</span>
                 <div style={{ borderBottom: '1.5px dotted #334155', minWidth: '95px', width: '108px', height: '28px', display: 'inline-flex', alignItems: 'flex-end', justifyContent: 'center', position: 'relative', flexShrink: 0 }}>
                   {includeSignatures && reportData?.signatures?.['head-teacher'] && (
-                    <CleanSignatureImage src={reportData.signatures['head-teacher']} alt="Signature" style={{ maxHeight: '34px', width: '104px', objectFit: 'contain', marginBottom: '-6px' }} studioFormatting={studioFormatting} />
+                    <CleanSignatureImage src={reportData.signatures['head-teacher']} alt="Signature" style={{ maxHeight: '34px', width: '104px', objectFit: 'contain', marginBottom: '-6px' }} studioFormatting={effectiveStudioPass} />
                   )}
                 </div>
               </div>
@@ -443,9 +445,9 @@ export default function NurseryMOTReport({ reportData, studioFormatting: studioF
               </div>
             </div>
 
-            <div className="stamp-box" style={{ width: '135px', height: '68px', maxWidth: '135px', maxHeight: '68px', overflow: 'hidden', padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <div className="stamp-box" style={{ width: '135px', height: '64px', minWidth: '135px', minHeight: '64px', position: 'relative', overflow: 'visible', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               {includeStamp ? (
-                <OfficialReportStamp reportData={reportData} studioFormatting={studioFormatting} maxWidth={135} maxHeight={68} />
+                <OfficialReportStamp reportData={reportData} studioFormatting={effectiveStudioPass} maxWidth={135} maxHeight={64} />
               ) : null}
             </div>
           </div>

@@ -265,13 +265,6 @@ export async function getReportSignatures(supabase: SupabaseClient) {
 export async function getDynamicSignatureSlots(supabase: SupabaseClient) {
   const slots = [
     {
-      slot_key: 'school-stamp',
-      label: 'Official School Stamp',
-      role: 'School',
-      description: 'Official circular or rectangular school stamp rendered on terminal report cards.',
-      required: true,
-    },
-    {
       slot_key: 'head-teacher',
       label: 'Headteacher Signature',
       role: 'Head Teacher',
@@ -290,6 +283,13 @@ export async function getDynamicSignatureSlots(supabase: SupabaseClient) {
       label: 'Theology Head Signature',
       role: 'DOS Theology',
       description: 'Authorized signature for the Head of Theology / Islamic Studies.',
+      required: true,
+    },
+    {
+      slot_key: 'school-stamp',
+      label: 'Official School Stamp',
+      role: 'School',
+      description: 'Official circular or rectangular school stamp rendered on terminal report cards.',
       required: true,
     },
     {
@@ -328,10 +328,27 @@ export async function getDynamicSignatureSlots(supabase: SupabaseClient) {
     if (theologyClass?.class_name_english) theologyClassNames.add(theologyClass.class_name_english);
   }
 
+  const getClassSortWeight = (name: string) => {
+    const normalized = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (normalized.includes('baby')) return 1;
+    if (normalized.includes('middle')) return 2;
+    if (normalized.includes('top')) return 3;
+    const pMatch = normalized.match(/^p(\d+)$/) || normalized.match(/(\d+)/);
+    if (pMatch) return 10 + Number(pMatch[1]);
+    return 999;
+  };
+
   const addTeacherSlots = (classNames: Set<string>, isTheology: boolean) => {
-    for (const name of classNames) {
+    const sortedNames = Array.from(classNames).sort((a, b) => {
+      const weightDiff = getClassSortWeight(a) - getClassSortWeight(b);
+      return weightDiff !== 0 ? weightDiff : a.localeCompare(b);
+    });
+
+    for (const name of sortedNames) {
       const key = getClassTeacherSignatureKey(name, isTheology);
       if (!key || slots.some((slot) => slot.slot_key === key)) continue;
+      // P.7 sits PLE only under the Secular curriculum; Theology stops at P.6.
+      if (isTheology && key === 'theology-teacher-p7') continue;
       const prettyName = name.trim();
       slots.push({
         slot_key: key,

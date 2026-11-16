@@ -33,7 +33,8 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover
 import { MoreActionsMenu } from '@/components/ui/more-actions-menu'
 import { useSidebar } from '@/components/figma-ui/ui/sidebar'
 import { getStoredThemeMode, setStoredThemeMode, type ThemeMode } from '@/lib/client-cache'
-import { persistStudioConfigGlobally, saveStudioConfigToStorage, normalizeStudioConfig } from '@/lib/studio-config-store'
+import { persistStudioConfigGlobally, saveStudioConfigToStorage, normalizeStudioConfig, STUDIO_ENGLISH_FONT_FAMILIES } from '@/lib/studio-config-store'
+import { CustomPillSelect } from '@/components/ui/custom-pill-select'
 import { toast } from 'sonner'
 
 export interface StudioFormattingState {
@@ -78,13 +79,7 @@ const COLOR_THEMES = [
   { id: 'monochrome', label: 'Monochrome Ink-Saver', primary: '#18181B', secondary: '#71717A' },
 ]
 
-const FONT_FAMILIES = [
-  'Default Academic',
-  'Inter Sans',
-  'Times Serif',
-  'Cinzel Prestige',
-  'Amiri Arabic',
-]
+const FONT_FAMILIES = [...STUDIO_ENGLISH_FONT_FAMILIES]
 
 const STAMP_INK_COLORS = [
   { id: '#1D4ED8', label: 'Royal Blue' },
@@ -215,17 +210,13 @@ export function TopToolbar({
         </span>
         <div className="flex items-center gap-2">
           {/* Font Family */}
-          <select
+          <CustomPillSelect
+            ariaLabel="Typography Font Family"
             value={studioFormatting.fontFamily}
-            onChange={(e) => updateFormatting({ fontFamily: e.target.value })}
-            className="flex-1 h-7 px-2 rounded-lg bg-[#F0F4F9] dark:bg-[#1E2623] border border-black/[0.06] dark:border-white/[0.08] text-[11px] font-semibold text-stone-800 dark:text-stone-200 cursor-pointer"
-          >
-            {FONT_FAMILIES.map((f) => (
-              <option key={f} value={f}>
-                {f}
-              </option>
-            ))}
-          </select>
+            onChange={(val) => updateFormatting({ fontFamily: val })}
+            options={FONT_FAMILIES.map((f) => ({ value: f, label: f }))}
+            triggerClassName="flex-1 h-7 px-2.5 rounded-lg text-[11px] font-semibold"
+          />
 
           {/* Size Stepper: A- / 100% / A+ */}
           <div className="flex items-center bg-[#F0F4F9] dark:bg-[#1E2623] rounded-lg border border-black/[0.06] dark:border-white/[0.08] p-0.5">

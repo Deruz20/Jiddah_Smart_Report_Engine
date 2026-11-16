@@ -11,7 +11,8 @@ import { useStudioFormatting, resolveEffectiveStudioStyle } from '@/lib/studio-c
 
 export default function NurseryTheologyEOTReport({ reportData, studioFormatting: studioFormattingProp }: any) {
   const studioFormatting = useStudioFormatting(studioFormattingProp, reportData?.settings?.report_studio_config)
-  const effective = resolveEffectiveStudioStyle(studioFormatting, reportData)
+  const effective = resolveEffectiveStudioStyle(studioFormatting, reportData, 'nursery-theology-eot')
+  const effectiveStudioPass = { ...studioFormatting, ...effective, stampInkColor: effective.stampColor }
   const includeSignatures = effective.showSignatures
   const includeStamp = effective.showStamp
 
@@ -116,8 +117,8 @@ export default function NurseryTheologyEOTReport({ reportData, studioFormatting:
     direction: rtl;
     padding: 5mm 10mm;
     margin: 0 auto;
-    font-family: ${effective.fontFamilyCss} !important;
-    zoom: ${effective.fontScaleMultiplier};
+    font-family: ${effective.arabicFontFamilyCss} !important;
+    zoom: ${effective.arabicFontScaleMultiplier};
     color: var(--nursery-text);
 }
 
@@ -409,8 +410,9 @@ export default function NurseryTheologyEOTReport({ reportData, studioFormatting:
       <div className="nursery-theology-eot-report font-cairo" dir="rtl" style={{ position: 'relative' }}>
         <div className="watermark-bg"></div>
         <NurseryEducativeWatermark
+          templateId="nursery-theology-eot"
           logoUrl={normalizeSchoolLogoUrl(reportData?.settings?.logo_url)}
-          studioFormatting={studioFormatting}
+          studioFormatting={effectiveStudioPass}
           includeEducativeArt={false}
         />
         <div className="header">
@@ -513,20 +515,20 @@ export default function NurseryTheologyEOTReport({ reportData, studioFormatting:
             <div>تقرير مرب الفصل</div>
             <div className="sign-line" style={{ position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'flex-end', height: '36px', minWidth: '130px', borderBottom: '1.5px dotted #334155' }}>
               {includeSignatures && classTeacherSignatureUrl && (
-                <CleanSignatureImage src={classTeacherSignatureUrl} alt="Signature" style={{ height: '36px', width: '112px', objectFit: 'contain', marginBottom: '-6px' }} studioFormatting={studioFormatting} />
+                <CleanSignatureImage src={classTeacherSignatureUrl} alt="Signature" style={{ height: '36px', width: '112px', objectFit: 'contain', marginBottom: '-6px' }} studioFormatting={effectiveStudioPass} />
               )}
             </div>
           </div>
-          <div className="footer-stamp" style={{ width: '135px', height: '68px', maxWidth: '135px', maxHeight: '68px', overflow: 'hidden', padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <div className="footer-stamp" style={{ width: '135px', height: '64px', minWidth: '135px', minHeight: '64px', position: 'relative', overflow: 'visible', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             {includeStamp ? (
-              <OfficialReportStamp reportData={reportData} studioFormatting={studioFormatting} maxWidth={135} maxHeight={68} />
+              <OfficialReportStamp reportData={reportData} studioFormatting={effectiveStudioPass} maxWidth={135} maxHeight={64} />
             ) : null}
           </div>
           <div className="sign-field">
             <div>تقرير مدير المدرسة</div>
             <div className="sign-line" style={{ position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'flex-end', height: '36px', minWidth: '130px', borderBottom: '1.5px dotted #334155' }}>
               {includeSignatures && reportData?.signatures?.['head-teacher'] && (
-                <CleanSignatureImage src={reportData.signatures['head-teacher']} alt="Signature" style={{ height: '36px', width: '112px', objectFit: 'contain', marginBottom: '-6px' }} studioFormatting={studioFormatting} />
+                <CleanSignatureImage src={reportData.signatures['head-teacher']} alt="Signature" style={{ height: '36px', width: '112px', objectFit: 'contain', marginBottom: '-6px' }} studioFormatting={effectiveStudioPass} />
               )}
             </div>
           </div>

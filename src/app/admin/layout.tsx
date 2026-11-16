@@ -25,7 +25,11 @@ export default function AdminLayout({
   const [subject, setSubject] = useState<string | null>(null);
   const [, setWorkspaceDark] = useState(false);
   const pathname = usePathname();
-  const isReportsPage = pathname === "/admin/reports";
+  const isFullViewportPage =
+    pathname === "/admin/reports" ||
+    pathname?.startsWith("/admin/reports") ||
+    pathname?.startsWith("/admin/theology-hub") ||
+    pathname?.startsWith("/admin/secular-hub");
 
   useEffect(() => {
     applyDeviceTierToDom();
@@ -106,7 +110,7 @@ export default function AdminLayout({
         <main
           className={cn(
             "flex-1 min-h-0 min-w-0 w-full overflow-x-hidden relative print:!h-auto print:!min-h-0 print:!max-h-none print:!overflow-visible print:!static",
-            isReportsPage ? "overflow-y-hidden" : "overflow-y-auto"
+            isFullViewportPage ? "overflow-y-hidden" : "overflow-y-auto"
           )}
         >
           {children}

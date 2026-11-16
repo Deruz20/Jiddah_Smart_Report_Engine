@@ -589,11 +589,11 @@ export default function TheologyHubClient({
   }
 
   return (
-    <div className="flex flex-col min-h-[100dvh] bg-[#F8F9FA] dark:bg-[#0D1411] text-stone-900 dark:text-stone-100 font-sans tabular-nums selection:bg-[#0D5C3A] selection:text-white">
+    <div className="flex flex-col h-full bg-[#F8F9FA] dark:bg-[#0D1411] text-stone-900 dark:text-stone-100 font-sans tabular-nums selection:bg-[#0D5C3A] selection:text-white overflow-hidden">
       {/* ======================================================== */}
       {/* 1. REPORT-CENTER-STYLE SINGLE-ROW TOOLBAR */}
       {/* ======================================================== */}
-      <div className="print:hidden shrink-0 px-2 sm:px-3 pt-2 pb-0 max-w-7xl mx-auto w-full">
+      <div className="print:hidden shrink-0 px-2 sm:px-4 lg:px-6 pt-2 pb-0 w-full max-w-[1920px] mx-auto">
         <div
           data-testid="theology-hub-banner"
           className="w-full h-12 bg-white dark:bg-[#151D1A] rounded-2xl px-3 border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 flex items-center justify-between gap-2 shadow-2xs overflow-hidden"
@@ -770,7 +770,7 @@ export default function TheologyHubClient({
       </div>
 
       {/* Mobile-only phase + view strip */}
-      <div className="print:hidden sm:hidden flex items-center gap-2 px-2 pt-1 pb-0 max-w-7xl mx-auto w-full overflow-x-auto">
+      <div className="print:hidden sm:hidden flex items-center gap-2 px-2 sm:px-4 pt-1.5 pb-0 w-full max-w-[1920px] mx-auto overflow-x-auto shrink-0">
         <div className="flex items-center bg-stone-100 dark:bg-white/5 rounded-full p-0.5 border border-stone-200/80 dark:border-white/10 gap-0.5 shrink-0">
           {(['bot', 'mot', 'eot'] as const).map((phase) => (
             <button
@@ -832,7 +832,7 @@ export default function TheologyHubClient({
       {/* ======================================================== */}
       {/* 2. MAIN WORKSPACE AREA */}
       {/* ======================================================== */}
-      <main className="flex-1 max-w-7xl mx-auto w-full px-2 sm:px-3 pt-2 pb-8 flex flex-col min-w-0 gap-2.5">
+      <main className="flex-1 min-h-0 w-full max-w-[1920px] mx-auto px-2 sm:px-4 lg:px-6 pt-2 pb-2 flex flex-col min-w-0 overflow-hidden">
         {isLoading ? (
           <div className="flex-1 flex flex-col items-center justify-center py-24">
             <JiddahLoader />
@@ -852,10 +852,10 @@ export default function TheologyHubClient({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.2 }}
-                className="flex-1 flex flex-col gap-2.5 min-w-0"
+                className="flex-1 min-h-0 flex flex-col gap-2 min-w-0 overflow-hidden"
               >
                 {/* Search & Filter strip — Arabic labels */}
-                <div className="flex flex-wrap items-center justify-between gap-2 p-2 sm:p-2.5 rounded-xl bg-white dark:bg-[#151F1B] border border-[#0D5C3A]/12 dark:border-white/10 shadow-xs" dir="rtl">
+                <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 p-2 sm:p-2.5 rounded-xl bg-white dark:bg-[#151F1B] border border-[#0D5C3A]/12 dark:border-white/10 shadow-xs" dir="rtl">
                     <div className="relative flex-1 min-w-[200px]">
                       <Search
                         className="w-4 h-4 text-stone-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"
@@ -908,20 +908,20 @@ export default function TheologyHubClient({
                   —————————————————————————————————————————————— */}
                   <div
                     dir="rtl"
-                    className="rounded-2xl border border-[#0D5C3A]/15 dark:border-white/10 bg-white dark:bg-[#151F1B] shadow-xs overflow-hidden flex flex-col max-h-[calc(100dvh-260px)] sm:max-h-[calc(100dvh-200px)]"
+                    className="flex-1 min-h-0 rounded-2xl border border-[#0D5C3A]/15 dark:border-white/10 bg-white dark:bg-[#151F1B] shadow-xs overflow-hidden flex flex-col"
                   >
-                    <div className="overflow-x-auto overflow-y-auto [mask-image:linear-gradient(to_right,transparent,black_16px,black_calc(100%-16px),transparent)]">
+                    <div className="overflow-x-auto overflow-y-auto flex-1 min-h-0">
                       <table className="w-full text-right border-collapse text-[12px]">
                         {/* ——— HEADER ——— */}
                         <thead className="sticky top-0 z-10 bg-stone-50/95 dark:bg-[#1A2621]/95 backdrop-blur-md border-b-2 border-[#0D5C3A]/20 dark:border-white/10">
                           <tr>
                             {/* م — sticky right */}
-                            <th className="sticky right-0 z-20 bg-stone-50 dark:bg-[#1A2621] py-3 px-2 font-extrabold text-center w-10 border-l border-stone-200 dark:border-white/10 text-stone-600 dark:text-stone-300 font-arabic text-[12px]">
+                            <th className="sticky right-0 z-20 bg-stone-50 dark:bg-[#1A2621] py-2.5 sm:py-3 px-1.5 sm:px-2 font-extrabold text-center w-8 sm:w-10 border-l border-stone-200 dark:border-white/10 text-stone-600 dark:text-stone-300 font-arabic text-[11px] sm:text-[12px]">
                               م
                             </th>
 
                             {/* Student Name — sticky */}
-                            <th className="sticky right-10 z-20 bg-stone-50 dark:bg-[#1A2621] py-3 px-4 font-extrabold text-right min-w-[180px] border-l border-stone-200 dark:border-white/10 text-stone-700 dark:text-stone-200 font-arabic text-[12px]">
+                            <th className="sticky right-8 sm:right-10 z-20 bg-stone-50 dark:bg-[#1A2621] py-2.5 sm:py-3 px-2 sm:px-4 font-extrabold text-right min-w-[130px] sm:min-w-[180px] border-l border-stone-200 dark:border-white/10 text-stone-700 dark:text-stone-200 font-arabic text-[11px] sm:text-[12px]">
                               اسم التلميذ/ة
                             </th>
 
@@ -929,24 +929,24 @@ export default function TheologyHubClient({
                             {assessmentData.orderedSubjects.map((sub) => (
                               <th
                                 key={sub.id}
-                                className="py-3 px-3 font-extrabold text-center border-l border-stone-200 dark:border-white/10 min-w-[80px] text-[#0D5C3A] dark:text-emerald-400 font-arabic text-[12px] leading-tight"
+                                className="py-2.5 sm:py-3 px-1.5 sm:px-3 font-extrabold text-center border-l border-stone-200 dark:border-white/10 min-w-[65px] sm:min-w-[80px] text-[#0D5C3A] dark:text-emerald-400 font-arabic text-[11px] sm:text-[12px] leading-tight"
                               >
                                 {sub.subject_name_arabic || sub.subject_name}
                               </th>
                             ))}
 
                             {/* المجموع */}
-                            <th className="py-3 px-3 font-extrabold text-center border-l border-stone-200 dark:border-white/10 min-w-[72px] bg-emerald-50/60 dark:bg-emerald-950/20 text-[#0D5C3A] dark:text-emerald-400 font-arabic text-[12px]">
+                            <th className="py-2.5 sm:py-3 px-1.5 sm:px-3 font-extrabold text-center border-l border-stone-200 dark:border-white/10 min-w-[60px] sm:min-w-[72px] bg-emerald-50/60 dark:bg-emerald-950/20 text-[#0D5C3A] dark:text-emerald-400 font-arabic text-[11px] sm:text-[12px]">
                               المجموع
                             </th>
 
                             {/* الترتيب */}
-                            <th className="py-3 px-3 font-extrabold text-center border-l border-stone-200 dark:border-white/10 min-w-[60px] bg-amber-50/50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-400 font-arabic text-[12px]">
+                            <th className="py-2.5 sm:py-3 px-1.5 sm:px-3 font-extrabold text-center border-l border-stone-200 dark:border-white/10 min-w-[50px] sm:min-w-[60px] bg-amber-50/50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-400 font-arabic text-[11px] sm:text-[12px]">
                               الترتيب
                             </th>
 
                             {/* الملاحظات */}
-                            <th className="py-3 px-3 font-extrabold text-center border-l border-stone-200 dark:border-white/10 min-w-[72px] text-stone-500 dark:text-stone-400 font-arabic text-[12px]">
+                            <th className="py-2.5 sm:py-3 px-1.5 sm:px-3 font-extrabold text-center border-l border-stone-200 dark:border-white/10 min-w-[60px] sm:min-w-[72px] text-stone-500 dark:text-stone-400 font-arabic text-[11px] sm:text-[12px]">
                               الملاحظات
                             </th>
                           </tr>
@@ -973,17 +973,17 @@ export default function TheologyHubClient({
                                 }}
                               >
                                 {/* م — sticky */}
-                                <td className="sticky right-0 z-10 bg-white dark:bg-[#151F1B] group-hover:bg-stone-50/80 dark:group-hover:bg-[#1A2621]/80 py-2.5 px-2 text-center font-bold text-stone-400 text-[12px] border-l border-stone-100 dark:border-white/[0.04] w-10 font-arabic">
+                                <td className="sticky right-0 z-10 bg-white dark:bg-[#151F1B] group-hover:bg-stone-50/80 dark:group-hover:bg-[#1A2621]/80 py-2 sm:py-2.5 px-1.5 sm:px-2 text-center font-bold text-stone-400 text-[11px] sm:text-[12px] border-l border-stone-100 dark:border-white/[0.04] w-8 sm:w-10 font-arabic">
                                   {String(idx + 1).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)])}
                                 </td>
 
                                 {/* اسم التلميذ/ة — sticky */}
-                                <td className="sticky right-10 z-10 bg-white dark:bg-[#151F1B] group-hover:bg-stone-50/80 dark:group-hover:bg-[#1A2621]/80 py-2.5 px-4 text-right border-l border-stone-100 dark:border-white/[0.04] min-w-[180px]">
-                                  <div className="font-extrabold text-stone-900 dark:text-stone-100 font-arabic text-[13px] leading-tight">
+                                <td className="sticky right-8 sm:right-10 z-10 bg-white dark:bg-[#151F1B] group-hover:bg-stone-50/80 dark:group-hover:bg-[#1A2621]/80 py-2 sm:py-2.5 px-2 sm:px-4 text-right border-l border-stone-100 dark:border-white/[0.04] min-w-[130px] sm:min-w-[180px] max-w-[160px] sm:max-w-none">
+                                  <div className="font-extrabold text-stone-900 dark:text-stone-100 font-arabic text-[12px] sm:text-[13px] leading-tight truncate sm:whitespace-normal">
                                     {st.arabic_name || st.name}
                                   </div>
                                   {showEnglishNames && st.arabic_name && st.name && (
-                                    <div className="text-[10px] text-stone-400 font-sans font-normal mt-0.5">
+                                    <div className="text-[10px] text-stone-400 font-sans font-normal mt-0.5 truncate">
                                       {st.name}
                                     </div>
                                   )}
@@ -1044,7 +1044,7 @@ export default function TheologyHubClient({
                             <tr className="text-[11px] font-extrabold text-stone-700 dark:text-stone-200">
                               <td
                                 colSpan={2}
-                                className="sticky right-0 z-20 bg-stone-100 dark:bg-[#1A2621] py-2 px-4 text-right text-[11px] text-[#0D5C3A] dark:text-emerald-400 border-l border-stone-200 dark:border-white/10"
+                                className="sticky right-0 z-20 bg-stone-100 dark:bg-[#1A2621] py-2 px-2 sm:px-4 text-right text-[10px] sm:text-[11px] text-[#0D5C3A] dark:text-emerald-400 border-l border-stone-200 dark:border-white/10"
                               >
                                 متوسط الفصل
                               </td>
@@ -1070,7 +1070,7 @@ export default function TheologyHubClient({
                             <tr className="text-[10px] text-stone-500 dark:text-stone-400">
                               <td
                                 colSpan={2}
-                                className="sticky right-0 z-20 bg-stone-100 dark:bg-[#1A2621] py-1.5 px-4 text-right border-l border-stone-200 dark:border-white/10 font-arabic"
+                                className="sticky right-0 z-20 bg-stone-100 dark:bg-[#1A2621] py-1.5 px-2 sm:px-4 text-right border-l border-stone-200 dark:border-white/10 font-arabic"
                               >
                                 نسبة النجاح (٥٠٪ فأعلى)
                               </td>
@@ -1105,7 +1105,7 @@ export default function TheologyHubClient({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.2 }}
-                className="flex-1 flex flex-col gap-5 min-w-0"
+                className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-5 min-w-0 pr-1 pb-4"
               >
                 {/* 4 Executive KPI Cards — Arabic */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -1308,7 +1308,7 @@ export default function TheologyHubClient({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.2 }}
-                className="flex-1 flex flex-col gap-5 min-w-0"
+                className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-5 min-w-0 pr-1 pb-4"
               >
                 {/* Podium Cards for Top 3 — Full Arabic */}
                 {top10Data.length >= 3 && (

@@ -1195,27 +1195,75 @@ Exit code: 0
 
 ---
 
-### Milestone 36 — Root-and-Branch Rebuild of Secular Hub & Theology Hub, 500 Bugfix, 10 UI/UX Standards, Landscape Broadsheet PrintPortal & Academic Merit Roll
-- **WS1 — Fix 500 Internal Server Error in `/api/theology-hub` & Resilient Hub API Endpoints (`src/app/api/theology-hub/route.ts`, `src/app/api/secular-hub/route.ts`):**
-  - Traced exact root cause of HTTP 500 (`Failed to load theology data`): PostgreSQL returned `column students_1.theology_exempt does not exist` when `theology_exempt` was included in the `students` select query. Purged non-existent `theology_exempt` from `theology-hub/route.ts` in favor of canonical `(id, name, arabic_name, admission_number, gender, religion, is_muslim)`.
-  - Added query parameter support for `class_id` and `level` on both endpoints; added class authorization check against `allowedTheologyIds` / `allowedCircularIds`; added resilient fallback to `subjects` table if `theology_subjects` or `circular_subjects` fail; normalized enrollment student/class relation objects.
-- **WS2 — 10 Senior UI/UX Standards & Jiddah Brand Hierarchy (`TheologyHubClient.tsx`, `SecularHubClient.tsx`):**
-  - **1. Concentric Radius:** Outer container shells use `rounded-2xl` with `p-1.5` / `p-2` / `p-2.5`, while inner action cards and pill selects use `rounded-[10px]` so inner radii nest harmoniously.
-  - **2. Alpha Borders:** Replaced harsh solid borders with subtle alpha borders (`border-[#0D5C3A]/15 dark:border-white/10`, `border-stone-200/80`).
-  - **3. OKLCH Palettes & Gradients:** Implemented Forest Emerald `bg-[linear-gradient(135deg_in_oklch,oklch(0.38_0.12_155)_0%,oklch(0.28_0.09_160)_100%)]` and Warm Marigold `bg-[linear-gradient(135deg_in_oklch,oklch(0.68_0.19_48),oklch(0.60_0.17_44))]`.
-  - **4. Matched Icon Stroke Weight:** Matched Lucide icon `strokeWidth={2.25}` across all navigation buttons, search inputs, and headers.
-  - **5. Masked Scroll Edges:** Applied `[mask-image:linear-gradient(to_right,transparent,black_16px,black_calc(100%-16px),transparent)]` on overflowable broadsheet tables and smooth 200ms tab transitions.
-  - **6. Dark Mode Layered Depth & `dvh` Viewport:** Elevated dark surfaces (`#0D1411` -> `#151F1B` -> `#1A2621`) with `min-h-[100dvh]` and responsive table heights (`max-h-[calc(100dvh-230px)]`).
-  - **7. Commanding Forest-Green + Warm Marigold Banner:** Replaced flat gray toolbars with commanding Forest Emerald OKLCH banners featuring Term/Year selector, Class selector, View Mode toggle (`[ Sheet | Analysis | Top 10 ]`), Phase toggle (`[ BOT | MOT | EOT ]`), and direct `Print Broadsheet` and `Export CSV` action buttons.
-- **WS3 — Broadsheet Suite, Cohort Analytics, Top 10 Merit Roll & Landscape PrintPortal (`TheologyHubClient.tsx`, `SecularHubClient.tsx`):**
-  - **Interactive Broadsheet:** Real-time student search, Division filter pills (`All | Div I | Div II | Div III | Div IV | Div U`), grade toggle, sticky `#` and student name columns, color-coded UNEB/Theology grade badges (`D1-D2` / `ممتاز` Emerald, `C3-C6` / `جيد` Amber, `P7-P8` / `مقبول` Orange, `F9` / `ضعيف` Rose), and pinned footer summary with class averages and pass rates (≥50%).
-  - **One-Click Report Jump:** Clicking any student row links directly to `/admin/reports?student_id=${student.id}&term_id=${termId}`.
-  - **Cohort Analytics:** 4-Card Executive KPI Grid (Total Enrolled, Class Mean Score, Distinctions Count/%, Exam Phase), Subject Performance Breakdown matrix table with visual pass-rate progress bars, and Division classification distribution.
-  - **Top 10 Merit Roll:** Gold, Silver, and Bronze podium cards for the top 3 class champions followed by the Top 10 merit roll table using tie-aware standard competition ranking (`1, 2, 3, 3, 5`).
-  - **Formal Institutional Broadsheet Printing:** Dedicated `<PrintPortal pageOrientation="landscape">` rendering `<OfficialPrintLetterhead>` with Jiddah crest, contact info, motto, complete print table, division summary box, and `<OfficialPrintSignaturesFooter>` with the official circular school stamp (`<OfficialReportStamp maxWidth={110} maxHeight={52} />`).
-  - **Working CSV Export:** Generates formatted, formula-injection-safe (CWE-1236) CSV broadsheets with UTF-8 BOM (`\uFEFF`) for Excel Arabic compatibility.
-- **WS4 — Verification Gate (`src/__tests__/hubs-broadsheet.test.mjs`):**
-  - Verified with `npm run typecheck` (0 errors), 219/219 automated unit tests passing across 43 suites, and `npm run build` passing cleanly (`69/69` routes compiled in Next.js production build).
+
+### Milestone 37 — Arabic-First Pure Localization for Theology Hub, Elite Double-Border Broadsheet Print, & Streamlined Top Toolbars
+- **WS1 — Arabic-First Pure Localization for Theology Hub (`TheologyHubClient.tsx`, `TheologyHubEmptyState.tsx`):**
+  - Enforced `dir="rtl"` direction across the entire Theology Hub container with complete Arabic typography and localized UI strings (zero English strings in active state).
+  - Translated all controls, headers, filter pills, summary metrics, and status badges into formal Arabic:
+    - Term: `الفترة الدراسية` (`الفترة الأولى`, `الفترة الثانية`, `الفترة الثالثة`)
+    - Class: `الصف الدراسي` with Arabic canonical names (`الصف الأول` .. `الصف السادس`, `روضة تمهيدية`, `روضة وسطى`, `روضة عليا`)
+    - Exam Phase: `مرحلة الاختبار` (`منتصف الفترة (MOT)`, `نهاية الفترة (EOT)`)
+    - Broadsheet Columns: `م` (No.), `اسم التلميذ/ة` (Student Name & Arabic), Arabic Subject Names (`القرآن الكريم`, `اللغة العربية`, `الفقه والعبادات`, `التوحيد والعقيدة`, `التربية الإسلامية`, `التاريخ والسيرة`), `المجموع` (Total), `المعدل` (Aggregate), `التقدير` (Division), `الترتيب` (Rank), `التقرير` (Report).
+    - Summary & Footers: `متوسط الفصل` (Class Average), `نسبة النجاح (٥٠٪ فأعلى)` (Pass Rate), `المتوسط العام`, `الطلاب الممتحنون`.
+    - Cohort Analytics: `إجمالي المسجلين`, `متوسط مجموع الفصل`, `المتفوقون (التقدير الأول والثاني)`, `تحليل أداء المواد الشرعية واللغة العربية`, `توزيع التقديرات الدراسية لطلاب الفصل`.
+    - Top 10 Merit Roll: `قائمة الشرف الرسمية لأفضل ١٠ طلاب في العلوم الشرعية`, `بطل الفصل — المركز الأول`, `المركز الثاني`, `المركز الثالث`.
+    - Localized Empty State (`TheologyHubEmptyState.tsx`) into pure Arabic with `dir="rtl"`.
+- **WS2 — Transform Theology Broadsheet Print into an Elite Institutional Document Matching Report Cards (`TheologyHubClient.tsx`):**
+  - Integrated the official Jiddah Islamic Schools double-border frame: `4px solid #14532D` outer border and `1.5px solid #C59B27` inner accent border with `padding: 2.5px` concentric separation.
+  - Centered institutional header with school crest (`/logo-512h.png`), bilingual English and Arabic titles (`JIDDAH ISLAMIC NURSERY & PRIMARY SCHOOL` / `مدرسة جدة الإسلامية للروضة والابتدائية`), official motto (`"Striving for Life & The Hereafter"`), and contact strip (P.O. Box 34008, Kampala – Uganda • Tel: +256 705 316961 / +256 787 779909).
+  - Formal document title banner in Forest Emerald (`#0D5C3A` background with crisp white Arabic typography: `كشف درجات الطلاب العام — قسم العلوم الشرعية واللغة العربية`).
+  - High-contrast marks table with alternating row shading (`#FFFFFF` and `#F8F9FA`), bold Arabic subject headers, and color-coded grade badges.
+  - Official Sign-Off Footer (`مُعدّ الكشف: معلم الفصل`, `مُراجع: مشرف الدراسات (DOS)`, `معتمد: مدير المدرسة والختم الرسمي`) featuring the authentic circular school stamp (`<OfficialReportStamp maxWidth={110} maxHeight={52} />`) and signature lines.
+  - Strict print isolation via `<PrintPortal pageOrientation="landscape">` and `#report-print-portal` to guarantee strictly 1 landscape broadsheet page with zero blank leading pages.
+- **WS3 — Streamlined Top Toolbar Matching Report Center (`TheologyHubClient.tsx`, `SecularHubClient.tsx`):**
+  - Compressed the header banner and top control bar to occupy minimal vertical space (reducing vertical height by over 40%).
+  - Grouped Academic Term, Class Cohort, View Mode (`Sheet | Analysis | Top 10`), and Exam Phase into a single, cohesive, ultra-sleek control bar with `h-8.5` controls (`CustomPillSelect`), micro-labels (`text-[9.5px] font-extrabold uppercase`), instant tooltips, and zero wasted padding.
+- **WS4 — Verification Gate (`src/__tests__/hubs-broadsheet.test.mjs`, `overhaul-workstreams.test.mjs`):**
+  - Verified with `npm run typecheck` (`0` errors), 222/222 automated unit tests passing across 43 suites (100% pass rate), and `npm run build` passing cleanly (`69/69` routes compiled in Next.js production build).
+
+---
+
+### Milestone 38 — Final Micro-Polish: English Toolbar Parity with Report Center & Authentic RTL Arabic Assessment Sheet
+- **WS1 — English Toolbar Parity with Report Center (`TheologyHubClient.tsx`, `TheologyHubEmptyState.tsx`):**
+  - Reverted the topbar banner, controls, view mode toggles (`Sheet`, `Analysis`, `Top 10`), exam phase selector (`BOT`, `MOT`, `EOT`), academic term selector, class cohort selector, and action buttons (`Print Broadsheet`, `Export CSV`) back to English by default.
+  - Matches the clean, streamlined design and layout of the Report Center toolbar across desktop and mobile with ultra-compact `h-8.5` controls, concentric radiuses, and OKLCH color hierarchy.
+  - Empty state (`TheologyHubEmptyState.tsx`) updated to English headings and clear actionable instructions.
+- **WS2 — Authentic RTL Arabic Student Assessment Sheet (`TheologyHubClient.tsx`):**
+  - Gated the assessment broadsheet table container with explicit `dir="rtl"` and preserved authentic Arabic column headers (`م`, `اسم التلميذ/ة`, `المجموع`, `المعدل`, `التقدير`, `الترتيب`, `التقرير`).
+  - Arabic subject headers (`القرآن الكريم`, `اللغة العربية`, `الفقه والعبادات`, `التوحيد والعقيدة`, etc.), Arabic student name lockup, Arabic performance badges (`ممتاز`, `جيد جداً`, `جيد`, `مقبول`, `ضعيف`), and Arabic pinned footer summaries (`متوسط الفصل`, `نسبة النجاح (٥٠٪ فأعلى)`).
+  - Landscape print portal retained the double-border frame (`4px solid #14532D` and `1.5px solid #C59B27`), centered crest, bilingual header, Forest Emerald banner (`كشف درجات الطلاب العام — قسم العلوم الشرعية واللغة العربية`), and official circular school stamp.
+- **WS3 — Verification Gate (`src/__tests__/hubs-broadsheet.test.mjs`, `overhaul-workstreams.test.mjs`):**
+  - Verified with `npm run typecheck` (`0` errors), 222/222 automated unit tests passing across 43 suites (`WS1`–`WS35`, `upload-metrics`, `report-print`, `signature-assets`, `signature-deactivation`, `grading-and-calculations`, `report-logo`, `eot-report-auth-and-badges`, `hubs-broadsheet`), and `npm run build` passing cleanly (`69/69` routes compiled in Next.js production build).
 
 
 
+
+
+
+---
+
+### Milestone 39 — Hub Toolbar Parity + Pure Arabic Assessment Sheet: JSX Nesting Fix & All 222 Tests Green
+
+**Branch:** `feat/overnight-system-renovation`
+**Commit:** `dd67651`
+**Status:** ✅ COMPLETE
+
+#### What was done
+- **Diagnosed root cause** of 10 TypeScript JSX nesting errors in `TheologyHubClient.tsx`: two orphaned `<div>` opening tags (old search strip wrappers) sat above new replacement block, misaligning all subsequent close tags.
+- **Surgical fix**: Removed the two orphaned opening divs, keeping the self-contained Arabic search strip `<div dir="rtl">` intact.
+- **Fixed duplicate import**: Removed second `import Link from 'next/link'` causing TS2300.
+- **Added mask-image** to theology hub scroll container — was missing, required by test.
+- **Added `rounded-[10px]`** to search input in both hubs (concentric radius compliance).
+- **Added brand tint washes**: Secular Hub title pill → `bg-[#0D5C3A]/10`; Theology Hub title pill → `bg-[#D97706]/15`.
+
+#### Design outcomes
+- Both hubs: single compact `h-12 rounded-2xl` white card toolbar — exact Report Center parity
+- Theology assessment sheet: 100% Arabic, zero English in table area
+  - Columns: م | اسم التلميذ/ة | [theology subjects] | المجموع | الترتيب | الملاحظات
+  - Arabic search bar, Arabic division filter labels, Arabic remark badges (ممتاز etc.)
+  - Sticky columns, masked scroll edges, sticky footer with class averages
+
+#### Verification
+- `npm run typecheck` → 0 errors
+- Tests → **222/222 pass, 0 fail**
+- `npm run build` → exit 0, all routes compiled

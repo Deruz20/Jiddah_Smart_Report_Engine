@@ -217,4 +217,71 @@ describe('Hubs & Broadsheet Suite: Workstream 3 - Senior UI/UX Standards & Jidda
     assert.match(theoSrc, /\/admin\/reports\?student_id=/);
     assert.match(secSrc, /\/admin\/reports\?student_id=/);
   });
+
+  it('TheologyHubClient implements Arabic-first pure localization with RTL direction and zero English UI labels', () => {
+    const theoPath = path.resolve('src/components/theology-hub/TheologyHubClient.tsx');
+    const theoSrc = fs.readFileSync(theoPath, 'utf8');
+
+    // RTL direction
+    assert.match(theoSrc, /dir="rtl"/);
+
+    // Arabic UI strings
+    assert.match(theoSrc, /مركز العلوم الشرعية/);
+    assert.match(theoSrc, /كشف الدرجات/);
+    assert.match(theoSrc, /قائمة الشرف/);
+    assert.match(theoSrc, /طباعة الكشف/);
+    assert.match(theoSrc, /تصدير CSV/);
+    assert.match(theoSrc, /الفترة الدراسية/);
+    assert.match(theoSrc, /الصف الدراسي/);
+    assert.match(theoSrc, /نوع العرض/);
+    assert.match(theoSrc, /مرحلة الاختبار/);
+
+    // Table Column Headers in Arabic
+    assert.match(theoSrc, />\s*م\s*<\/th>/);
+    assert.match(theoSrc, /اسم التلميذ\/ة/);
+    assert.match(theoSrc, /المجموع/);
+    assert.match(theoSrc, /المعدل/);
+    assert.match(theoSrc, /التقدير/);
+    assert.match(theoSrc, /الترتيب/);
+    assert.match(theoSrc, /التقرير/);
+
+    // Footer in Arabic
+    assert.match(theoSrc, /متوسط الفصل/);
+    assert.match(theoSrc, /نسبة النجاح/);
+  });
+
+  it('Theology Broadsheet print renderer features official double-border frame (4px #14532D and 1.5px #C59B27) with official stamp', () => {
+    const theoPath = path.resolve('src/components/theology-hub/TheologyHubClient.tsx');
+    const theoSrc = fs.readFileSync(theoPath, 'utf8');
+
+    // Official double-border frame
+    assert.match(theoSrc, /border:\s*['"]4px solid #14532D['"]/);
+    assert.match(theoSrc, /border:\s*['"]1\.5px solid #C59B27['"]/);
+
+    // Document title banner in Forest Emerald
+    assert.match(theoSrc, /كشف درجات الطلاب العام — قسم العلوم الشرعية واللغة العربية/);
+    assert.match(theoSrc, /#0D5C3A/);
+
+    // Official Sign-Off Footer
+    assert.match(theoSrc, /مُعدّ الكشف: معلم الفصل/);
+    assert.match(theoSrc, /مُراجع: مشرف الدراسات/);
+    assert.match(theoSrc, /معتمد: مدير المدرسة والختم الرسمي/);
+
+    // Official circular report stamp inside print portal
+    assert.match(theoSrc, /<OfficialReportStamp[\s\S]*?maxWidth=\{110\}[\s\S]*?maxHeight=\{52\}/);
+  });
+
+  it('both hubs implement streamlined, compact top toolbars matching Report Center (h-8.5 controls)', () => {
+    const theoPath = path.resolve('src/components/theology-hub/TheologyHubClient.tsx');
+    const secPath = path.resolve('src/components/secular-hub/SecularHubClient.tsx');
+    const theoSrc = fs.readFileSync(theoPath, 'utf8');
+    const secSrc = fs.readFileSync(secPath, 'utf8');
+
+    assert.match(theoSrc, /h-8\.5/);
+    assert.match(secSrc, /h-8\.5/);
+    assert.match(theoSrc, /id="theology-hub-term-select"/);
+    assert.match(theoSrc, /id="theology-hub-class-select"/);
+    assert.match(secSrc, /id="secular-hub-term-select"/);
+    assert.match(secSrc, /id="secular-hub-class-select"/);
+  });
 });

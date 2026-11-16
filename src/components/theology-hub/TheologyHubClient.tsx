@@ -138,21 +138,48 @@ export default function TheologyHubClient({
     [theologyClasses, activeClassId]
   )
 
+  const getArabicTermLabel = (term?: TermData | null) => {
+    if (!term) return 'الفترة الدراسية'
+    if (term.term_number === 1) return `الفترة الأولى (${term.academic_year})`
+    if (term.term_number === 2) return `الفترة الثانية (${term.academic_year})`
+    if (term.term_number === 3) return `الفترة الثالثة (${term.academic_year})`
+    return `${term.label} (${term.academic_year})`
+  }
+
   const termOptions = useMemo(
     () =>
       terms.map((t) => ({
         value: t.id,
-        label: `${t.label} (${t.academic_year})`,
+        label: getArabicTermLabel(t),
       })),
     [terms]
   )
 
+  const getArabicClassDisplayName = (cls?: TheologyClassData | null) => {
+    if (!cls) return 'الصف الدراسي'
+    if (cls.class_name_arabic && cls.class_name_arabic.trim()) {
+      return cls.class_name_arabic
+    }
+    const eng = (cls.class_name_english || '').toLowerCase()
+    if (eng.includes('baby')) return 'روضة تمهيدية'
+    if (eng.includes('middle')) return 'روضة وسطى'
+    if (eng.includes('top')) return 'روضة عليا'
+    if (eng.includes('p.1') || eng.includes('primary 1') || eng.includes('p1')) return 'الصف الأول'
+    if (eng.includes('p.2') || eng.includes('primary 2') || eng.includes('p2')) return 'الصف الثاني'
+    if (eng.includes('p.3') || eng.includes('primary 3') || eng.includes('p3')) return 'الصف الثالث'
+    if (eng.includes('p.4') || eng.includes('primary 4') || eng.includes('p4')) return 'الصف الرابع'
+    if (eng.includes('p.5') || eng.includes('primary 5') || eng.includes('p5')) return 'الصف الخامس'
+    if (eng.includes('p.6') || eng.includes('primary 6') || eng.includes('p6')) return 'الصف السادس'
+    if (eng.includes('p.7') || eng.includes('primary 7') || eng.includes('p7')) return 'الصف السابع'
+    return cls.class_name_english || 'الصف الدراسي'
+  }
+
   const classOptions = useMemo(
     () => [
-      { value: '', label: '-- اختر الصف / Select Class --' },
+      { value: '', label: '-- اختر الصف الدراسي --' },
       ...theologyClasses.map((t) => ({
         value: t.id,
-        label: `${t.class_name_arabic} — ${t.class_name_english}`,
+        label: t.class_name_arabic || getArabicClassDisplayName(t),
       })),
     ],
     [theologyClasses]
@@ -183,7 +210,7 @@ export default function TheologyHubClient({
       } catch (err) {
         console.error('Theology Hub load error:', err)
         if (!cancelled) {
-          toast.error('Failed to load theology data. Check database connections.')
+          toast.error('تعذر تحميل بيانات العلوم الشرعية. يرجى التحقق من اتصال قاعدة البيانات.')
         }
       } finally {
         if (!cancelled) {
@@ -241,10 +268,11 @@ export default function TheologyHubClient({
       'اللغة العربية',
       'الفقه والعبادات',
       'الفقه',
-      'التربية الإسلامية',
-      'التربية',
       'التوحيد والعقيدة',
       'التوحيد',
+      'التربية الإسلامية',
+      'التربية',
+      'التاريخ والسيرة',
       'السيرة والآداب',
       'السيرة',
     ]
@@ -296,7 +324,7 @@ export default function TheologyHubClient({
       return {
         id: enrollment.id,
         student_id: enrollment.student_id,
-        name: studentObj.name || 'Unknown Student',
+        name: studentObj.name || 'طالب غير محدد',
         arabic_name: studentObj.arabic_name || '',
         admission_number: studentObj.admission_number || '',
         gender: studentObj.gender || '',
@@ -453,7 +481,7 @@ export default function TheologyHubClient({
 
       return {
         id: cls.id,
-        className: cls.class_name_arabic,
+        className: cls.class_name_arabic || getArabicClassDisplayName(cls),
         englishName: cls.class_name_english,
         numStudents,
         totalEnrolled: classEnrollments.length,
@@ -482,7 +510,7 @@ export default function TheologyHubClient({
   // ----------------------------------------------------
   const handlePrintBroadsheet = () => {
     if (!assessmentData.students.length) {
-      return toast.error('No student assessment data to print.')
+      return toast.error('لا توجد بيانات طلاب لطباعتها.')
     }
     setIsPrinting(true)
     setTimeout(() => {
@@ -493,23 +521,24 @@ export default function TheologyHubClient({
 
   const handleExportCSV = () => {
     if (!assessmentData.students.length) {
-      return toast.error('No assessment data to export.')
+      return toast.error('لا توجد بيانات للتصدير.')
     }
-    const termLabel = activeTerm ? activeTerm.label.replace(/\s+/g, '_') : 'Term'
-    const classLabel = activeClass ? activeClass.class_name_english.replace(/\s+/g, '_') : 'Class'
-    const filename = `Jiddah_Theology_Broadsheet_${classLabel}_${termLabel}_${examPhase.toUpperCase()}_2026.csv`
+    const termLabel = activeTerm ? activeTerm.label.replace(/\s+/g, '_') : 'الفترة'
+    const classLabel = activeClass ? (activeClass.class_name_arabic || activeClass.class_name_english).replace(/\s+/g, '_') : 'الصف'
+    const phaseLabel = examPhase === 'eot' ? 'نهاية_الفترة' : 'منتصف_الفترة'
+    const filename = `كشف_درجات_الشريعة_${classLabel}_${termLabel}_${phaseLabel}_2026.csv`
 
     const headers = [
-      'Rank',
-      'Admission No',
-      'Student Name',
-      'Arabic Name',
-      'Gender',
-      ...assessmentData.orderedSubjects.map((s) => `${s.subject_name_arabic} (Mark)`),
-      ...assessmentData.orderedSubjects.map((s) => `${s.subject_name_arabic} (Grade)`),
-      'Total Score',
-      'Aggregate',
-      'Division',
+      'الترتيب',
+      'رقم القيد',
+      'اسم التلميذ/ة',
+      'الاسم بالعربية',
+      'الجنس',
+      ...assessmentData.orderedSubjects.map((s) => `${s.subject_name_arabic || s.subject_name} (درجة)`),
+      ...assessmentData.orderedSubjects.map((s) => `${s.subject_name_arabic || s.subject_name} (تقدير)`),
+      'المجموع',
+      'المعدل',
+      'التقدير',
     ]
 
     const rows = assessmentData.students.map((st) => [
@@ -528,9 +557,9 @@ export default function TheologyHubClient({
     if (broadsheetSummary) {
       rows.push([])
       rows.push([
-        'SUMMARY',
+        'ملخص',
         '',
-        'CLASS AVERAGE',
+        'متوسط الفصل',
         '',
         '',
         ...assessmentData.orderedSubjects.map((s) => broadsheetSummary.subjectStats[s.id]?.avg ?? '-'),
@@ -540,9 +569,9 @@ export default function TheologyHubClient({
         '',
       ])
       rows.push([
-        'SUMMARY',
+        'ملخص',
         '',
-        'PASS RATE (%)',
+        'نسبة النجاح (%)',
         '',
         '',
         ...assessmentData.orderedSubjects.map((s) => `${broadsheetSummary.subjectStats[s.id]?.passRate ?? 0}%`),
@@ -554,175 +583,180 @@ export default function TheologyHubClient({
     }
 
     const csvContent = [
-      `"JIDDAH ISLAMIC NURSERY & PRIMARY SCHOOL — THEOLOGY BROADSHEET"`,
-      `"Class: ${activeClass?.class_name_arabic || ''} (${activeClass?.class_name_english || ''}) | Term: ${activeTerm?.label || ''} | Phase: ${examPhase.toUpperCase()} | Generated: ${new Date().toLocaleDateString()}"`,
+      `"مدرسة جدة الإسلامية للروضة والابتدائية — كشف درجات العلوم الشرعية"`,
+      `"الصف: ${activeClass?.class_name_arabic || activeClass?.class_name_english || ''} | الفترة: ${getArabicTermLabel(activeTerm)} | المرحلة: ${examPhase === 'eot' ? 'نهاية الفترة (EOT)' : 'منتصف الفترة (MOT)'} | تاريخ الاستخراج: ${new Date().toLocaleDateString('ar-EG')}"`,
       '',
       headers.map(escapeCSV).join(','),
       ...rows.map((row) => row.map(escapeCSV).join(',')),
     ].join('\n')
 
     downloadCSV(csvContent, filename)
-    toast.success('Theology Broadsheet exported cleanly to CSV!')
+    toast.success('تم تصدير كشف الدرجات بنجاح بصيغة CSV!')
   }
 
   return (
-    <div className="flex flex-col min-h-[100dvh] bg-[#F8F9FA] dark:bg-[#0D1411] text-stone-900 dark:text-stone-100 font-sans tabular-nums selection:bg-[#0D5C3A] selection:text-white">
+    <div
+      dir="rtl"
+      className="flex flex-col min-h-[100dvh] bg-[#F8F9FA] dark:bg-[#0D1411] text-stone-900 dark:text-stone-100 font-sans tabular-nums selection:bg-[#0D5C3A] selection:text-white"
+    >
       {/* ======================================================== */}
-      {/* 1. COMMANDING FOREST EMERALD + WARM MARIGOLD HEADER BANNER */}
+      {/* 1. COMMANDING FOREST EMERALD + WARM MARIGOLD HEADER BANNER (COMPACT) */}
       {/* ======================================================== */}
-      <div className="print:hidden p-3 sm:p-5 max-w-7xl mx-auto w-full shrink-0">
+      <div className="print:hidden p-2 sm:p-3 max-w-7xl mx-auto w-full shrink-0">
         <div
           data-testid="theology-hub-banner"
-          className="rounded-2xl p-3 sm:p-4 bg-[linear-gradient(135deg_in_oklch,oklch(0.38_0.12_155)_0%,oklch(0.28_0.09_160)_100%)] text-white shadow-xl border border-white/10"
+          className="rounded-2xl p-2.5 sm:p-3.5 bg-[linear-gradient(135deg_in_oklch,oklch(0.38_0.12_155)_0%,oklch(0.28_0.09_160)_100%)] text-white shadow-xl border border-white/10"
         >
           {/* Top Title & Quick Actions Row */}
-          <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-white/10">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#D97706]/15 backdrop-blur-md flex items-center justify-center text-emerald-300 border border-white/15 shadow-inner">
-                <BookOpen className="w-5 h-5" strokeWidth={2.25} />
+          <div className="flex flex-wrap items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-9 h-9 rounded-xl bg-[#D97706]/15 backdrop-blur-md flex items-center justify-center text-emerald-300 border border-white/15 shadow-inner shrink-0">
+                <BookOpen className="w-4.5 h-4.5" strokeWidth={2.25} />
               </div>
-              <div>
+              <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <h1 className="text-base sm:text-lg font-black tracking-tight text-white">
-                    مركز العلوم الشرعية — Theology Hub
+                  <h1 className="text-base sm:text-lg font-black tracking-tight text-white font-arabic">
+                    مركز العلوم الشرعية
                   </h1>
-                  <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#EA580C]/30 text-[#FED7AA] border border-[#EA580C]/40">
-                    IPLE Standards
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-[#EA580C]/30 text-[#FED7AA] border border-[#EA580C]/40 shrink-0">
+                    معايير IPLE المعتمدة
                   </span>
                 </div>
-                <p className="text-[11px] font-medium text-emerald-200/80">
-                  Comprehensive Academic Broadsheet, Cohort Analytics &amp; Islamic Theology Merit Roll
+                <p className="text-[10.5px] font-medium text-emerald-200/80 line-clamp-1 font-arabic">
+                  كشف الدرجات الأكاديمية الشاملة، تحليل الفصل الدراسي، وقائمة شرف العلوم الشرعية
                 </p>
               </div>
             </div>
 
             {/* Print & CSV Action Buttons */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0 mr-auto sm:mr-0">
               <button
                 onClick={handlePrintBroadsheet}
                 disabled={isLoading || !assessmentData.students.length}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[10px] text-xs font-bold bg-white/15 hover:bg-white/25 active:scale-95 text-white border border-white/20 transition-all duration-150 backdrop-blur-md shadow-xs disabled:opacity-50"
+                title="طباعة كشف الدرجات الرسمي"
+                className="inline-flex items-center gap-1.5 h-8.5 px-3 rounded-[10px] text-xs font-bold bg-white/15 hover:bg-white/25 active:scale-95 text-white border border-white/20 transition-all duration-150 backdrop-blur-md shadow-xs disabled:opacity-50 cursor-pointer"
               >
-                <Printer className="w-4 h-4 text-emerald-300" strokeWidth={2.25} />
-                <span>Print Broadsheet</span>
+                <Printer className="w-3.5 h-3.5 text-emerald-300" strokeWidth={2.25} />
+                <span className="font-arabic">طباعة الكشف</span>
               </button>
 
               <button
                 onClick={handleExportCSV}
                 disabled={isLoading || !assessmentData.students.length}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[10px] text-xs font-bold bg-[linear-gradient(135deg_in_oklch,oklch(0.68_0.19_48),oklch(0.60_0.17_44))] hover:brightness-110 active:scale-95 text-white border border-amber-300/30 transition-all duration-150 shadow-md disabled:opacity-50"
+                title="تصدير كشف الدرجات بصيغة CSV"
+                className="inline-flex items-center gap-1.5 h-8.5 px-3 rounded-[10px] text-xs font-bold bg-[linear-gradient(135deg_in_oklch,oklch(0.68_0.19_48),oklch(0.60_0.17_44))] hover:brightness-110 active:scale-95 text-white border border-amber-300/30 transition-all duration-150 shadow-md disabled:opacity-50 cursor-pointer"
               >
-                <FileSpreadsheet className="w-4 h-4 text-amber-100" strokeWidth={2.25} />
-                <span>Export CSV</span>
+                <FileSpreadsheet className="w-3.5 h-3.5 text-amber-100" strokeWidth={2.25} />
+                <span className="font-arabic">تصدير CSV</span>
               </button>
             </div>
           </div>
 
           {/* Controls Bar Row: Concentric Radius + OKLCH Hierarchy */}
-          <div className="pt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 items-center">
+          <div className="pt-2.5 mt-2.5 border-t border-white/10 grid grid-cols-2 lg:grid-cols-4 gap-2 items-center">
             {/* Academic Term */}
             <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-emerald-200/90 mb-1">
-                Academic Term
+              <label className="block text-[9.5px] font-extrabold uppercase tracking-wider text-emerald-200/90 mb-0.5 font-arabic">
+                الفترة الدراسية
               </label>
               <CustomPillSelect
                 id="theology-hub-term-select"
-                ariaLabel="Academic Term"
+                ariaLabel="الفترة الدراسية"
                 value={activeTermId}
                 onChange={(val) => setActiveTermId(val)}
                 options={termOptions}
-                className="w-full h-10 rounded-[10px] bg-black/20 hover:bg-black/30 text-white border border-white/15 text-xs font-semibold"
+                className="w-full h-8.5 rounded-[10px] bg-black/20 hover:bg-black/30 text-white border border-white/15 text-xs font-semibold"
               />
             </div>
 
             {/* Class Cohort */}
             <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-emerald-200/90 mb-1">
-                Theology Class / الصف
+              <label className="block text-[9.5px] font-extrabold uppercase tracking-wider text-emerald-200/90 mb-0.5 font-arabic">
+                الصف الدراسي
               </label>
               <CustomPillSelect
                 id="theology-hub-class-select"
-                ariaLabel="Theology Class"
+                ariaLabel="الصف الدراسي"
                 value={activeClassId}
                 onChange={(val) => setActiveClassId(val)}
                 options={classOptions}
-                placeholder="Select Class..."
-                className="w-full h-10 rounded-[10px] bg-black/20 hover:bg-black/30 text-white border border-white/15 text-xs font-semibold"
+                placeholder="اختر الصف..."
+                className="w-full h-8.5 rounded-[10px] bg-black/20 hover:bg-black/30 text-white border border-white/15 text-xs font-semibold"
               />
             </div>
 
             {/* Dashboard View Mode Toggle */}
             <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-emerald-200/90 mb-1">
-                View Mode
+              <label className="block text-[9.5px] font-extrabold uppercase tracking-wider text-emerald-200/90 mb-0.5 font-arabic">
+                نوع العرض
               </label>
-              <div className="h-10 rounded-xl p-1 bg-black/25 backdrop-blur-md border border-white/15 flex items-center gap-1">
+              <div className="h-8.5 rounded-xl p-0.5 bg-black/25 backdrop-blur-md border border-white/15 flex items-center gap-1">
                 <button
                   type="button"
                   onClick={() => setActiveTab('assessment')}
-                  className={`flex-1 h-full rounded-[8px] flex items-center justify-center gap-1 text-xs font-bold transition-all duration-200 ${
+                  className={`flex-1 h-full rounded-[8px] flex items-center justify-center gap-1 text-[11px] font-bold transition-all duration-200 font-arabic cursor-pointer ${
                     activeTab === 'assessment'
                       ? 'bg-[linear-gradient(135deg_in_oklch,oklch(0.68_0.19_48),oklch(0.60_0.17_44))] text-white shadow-xs'
                       : 'text-white/80 hover:text-white hover:bg-white/10'
                   }`}
                 >
                   <ScrollText className="w-3.5 h-3.5" strokeWidth={2.25} />
-                  <span>Sheet</span>
+                  <span>كشف الدرجات</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveTab('analysis')}
-                  className={`flex-1 h-full rounded-[8px] flex items-center justify-center gap-1 text-xs font-bold transition-all duration-200 ${
+                  className={`flex-1 h-full rounded-[8px] flex items-center justify-center gap-1 text-[11px] font-bold transition-all duration-200 font-arabic cursor-pointer ${
                     activeTab === 'analysis'
                       ? 'bg-[linear-gradient(135deg_in_oklch,oklch(0.68_0.19_48),oklch(0.60_0.17_44))] text-white shadow-xs'
                       : 'text-white/80 hover:text-white hover:bg-white/10'
                   }`}
                 >
                   <BarChart3 className="w-3.5 h-3.5" strokeWidth={2.25} />
-                  <span>Analysis</span>
+                  <span>التحليل</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveTab('top_students')}
-                  className={`flex-1 h-full rounded-[8px] flex items-center justify-center gap-1 text-xs font-bold transition-all duration-200 ${
+                  className={`flex-1 h-full rounded-[8px] flex items-center justify-center gap-1 text-[11px] font-bold transition-all duration-200 font-arabic cursor-pointer ${
                     activeTab === 'top_students'
                       ? 'bg-[linear-gradient(135deg_in_oklch,oklch(0.68_0.19_48),oklch(0.60_0.17_44))] text-white shadow-xs'
                       : 'text-white/80 hover:text-white hover:bg-white/10'
                   }`}
                 >
                   <Award className="w-3.5 h-3.5" strokeWidth={2.25} />
-                  <span>Top 10</span>
+                  <span>أفضل ١٠</span>
                 </button>
               </div>
             </div>
 
             {/* Exam Phase Toggle */}
             <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-emerald-200/90 mb-1">
-                Exam Phase
+              <label className="block text-[9.5px] font-extrabold uppercase tracking-wider text-emerald-200/90 mb-0.5 font-arabic">
+                مرحلة الاختبار
               </label>
-              <div className="h-10 rounded-xl p-1 bg-black/25 backdrop-blur-md border border-white/15 flex items-center gap-1">
+              <div className="h-8.5 rounded-xl p-0.5 bg-black/25 backdrop-blur-md border border-white/15 flex items-center gap-1">
                 <button
                   type="button"
                   onClick={() => setExamPhase('mot')}
-                  className={`flex-1 h-full rounded-[8px] flex items-center justify-center text-xs font-bold transition-all duration-200 ${
+                  className={`flex-1 h-full rounded-[8px] flex items-center justify-center text-[10.5px] font-bold transition-all duration-200 font-arabic cursor-pointer ${
                     examPhase === 'mot'
                       ? 'bg-white/25 text-white shadow-xs'
                       : 'text-white/70 hover:text-white hover:bg-white/10'
                   }`}
                 >
-                  MOT
+                  منتصف الفترة (MOT)
                 </button>
                 <button
                   type="button"
                   onClick={() => setExamPhase('eot')}
-                  className={`flex-1 h-full rounded-[8px] flex items-center justify-center text-xs font-bold transition-all duration-200 ${
+                  className={`flex-1 h-full rounded-[8px] flex items-center justify-center text-[10.5px] font-bold transition-all duration-200 font-arabic cursor-pointer ${
                     examPhase === 'eot'
                       ? 'bg-emerald-500/90 text-white shadow-xs'
                       : 'text-white/70 hover:text-white hover:bg-white/10'
                   }`}
                 >
-                  EOT
+                  نهاية الفترة (EOT)
                 </button>
               </div>
             </div>
@@ -733,12 +767,12 @@ export default function TheologyHubClient({
       {/* ======================================================== */}
       {/* 2. MAIN WORKSPACE AREA */}
       {/* ======================================================== */}
-      <main className="flex-1 max-w-7xl mx-auto w-full px-3 sm:px-5 pb-8 flex flex-col min-w-0">
+      <main className="flex-1 max-w-7xl mx-auto w-full px-2 sm:px-3 pb-8 flex flex-col min-w-0">
         {isLoading ? (
           <div className="flex-1 flex flex-col items-center justify-center py-24">
             <JiddahLoader />
-            <p className="mt-4 text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
-              Loading Theology Broadsheets &amp; Reconciling Marks...
+            <p className="mt-4 text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest font-arabic">
+              جاري تحميل كشوف الشريعة ومطابقة الدرجات...
             </p>
           </div>
         ) : !data || !activeClassId ? (
@@ -753,42 +787,52 @@ export default function TheologyHubClient({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.2 }}
-                className="flex-1 flex flex-col gap-3 min-w-0"
+                className="flex-1 flex flex-col gap-2.5 min-w-0"
               >
                 {/* Search, Filter & Quick-Stats Strip */}
-                <div className="flex flex-wrap items-center justify-between gap-2.5 p-2 sm:p-3 rounded-xl bg-white dark:bg-[#151F1B] border border-[#0D5C3A]/12 dark:border-white/10 shadow-xs">
+                <div className="flex flex-wrap items-center justify-between gap-2.5 p-2 sm:p-2.5 rounded-xl bg-white dark:bg-[#151F1B] border border-[#0D5C3A]/12 dark:border-white/10 shadow-xs">
                   <div className="flex items-center gap-2 flex-1 min-w-[240px]">
                     <div className="relative flex-1">
                       <Search
-                        className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2"
+                        className="w-4 h-4 text-stone-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"
                         strokeWidth={2.25}
                       />
                       <input
                         type="text"
-                        placeholder="Search student by name, Arabic name, or admission #..."
+                        placeholder="ابحث عن التلميذ بالاسم أو الرقم..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-9 pr-3 py-1.5 rounded-lg text-xs bg-stone-50 dark:bg-black/20 border border-stone-200 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-[#0D5C3A]"
+                        className="w-full pr-9 pl-3 py-1.5 rounded-lg text-xs bg-stone-50 dark:bg-black/20 border border-stone-200 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-[#0D5C3A] font-arabic"
                       />
                     </div>
                   </div>
 
                   {/* Division Filter Pills */}
                   <div className="flex items-center gap-1 overflow-x-auto text-xs py-0.5">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 mr-1 shrink-0">
-                      Division:
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 ml-1 shrink-0 font-arabic">
+                      التقدير:
                     </span>
                     {(['all', 'I', 'II', 'III', 'IV', 'U'] as const).map((div) => (
                       <button
                         key={div}
                         onClick={() => setDivisionFilter(div)}
-                        className={`px-2 py-1 rounded-md text-[11px] font-bold transition-all ${
+                        className={`px-2 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer font-arabic ${
                           divisionFilter === div
                             ? 'bg-[#0D5C3A] text-white shadow-xs'
                             : 'bg-stone-100 dark:bg-white/5 text-stone-600 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-white/10'
                         }`}
                       >
-                        {div === 'all' ? 'All' : `Div ${div}`}
+                        {div === 'all'
+                          ? 'الكل'
+                          : div === 'I'
+                          ? 'تقدير أول (I)'
+                          : div === 'II'
+                          ? 'تقدير ثاني (II)'
+                          : div === 'III'
+                          ? 'تقدير ثالث (III)'
+                          : div === 'IV'
+                          ? 'تقدير رابع (IV)'
+                          : 'راسب (U)'}
                       </button>
                     ))}
                   </div>
@@ -797,54 +841,54 @@ export default function TheologyHubClient({
                   <div className="flex items-center gap-2 shrink-0">
                     <button
                       onClick={() => setShowGrades(!showGrades)}
-                      className="px-2.5 py-1 rounded-lg text-xs font-bold border border-[#0D5C3A]/20 dark:border-white/10 bg-emerald-50/60 dark:bg-emerald-950/30 text-[#0D5C3A] dark:text-emerald-300 hover:bg-emerald-100/60 transition-colors"
+                      className="px-2.5 py-1 rounded-lg text-xs font-bold border border-[#0D5C3A]/20 dark:border-white/10 bg-emerald-50/60 dark:bg-emerald-950/30 text-[#0D5C3A] dark:text-emerald-300 hover:bg-emerald-100/60 transition-colors cursor-pointer font-arabic"
                     >
-                      {showGrades ? 'Hide Subject Grades' : 'Show Subject Grades'}
+                      {showGrades ? 'إخفاء التقديرات' : 'إظهار التقديرات'}
                     </button>
                   </div>
                 </div>
 
                 {/* Broadsheet Container with Concentric Radius & Masked Scroll Edges */}
-                <div className="rounded-2xl border border-[#0D5C3A]/15 dark:border-white/10 bg-white dark:bg-[#151F1B] shadow-xs overflow-hidden flex flex-col max-h-[calc(100dvh-230px)]">
+                <div className="rounded-2xl border border-[#0D5C3A]/15 dark:border-white/10 bg-white dark:bg-[#151F1B] shadow-xs overflow-hidden flex flex-col max-h-[calc(100dvh-220px)]">
                   <div className="overflow-x-auto overflow-y-auto [mask-image:linear-gradient(to_right,transparent,black_16px,black_calc(100%-16px),transparent)]">
-                    <table className="w-full text-left border-collapse text-xs">
+                    <table className="w-full text-right border-collapse text-xs">
                       {/* Table Header */}
                       <thead className="sticky top-0 z-10 bg-stone-100/90 dark:bg-[#1A2621]/90 backdrop-blur-md text-stone-700 dark:text-stone-200 border-b border-stone-200 dark:border-white/10">
                         <tr>
-                          <th className="sticky left-0 z-20 bg-stone-100 dark:bg-[#1A2621] py-2.5 px-3 font-extrabold text-[11px] uppercase tracking-wider text-center w-12 border-r border-stone-200 dark:border-white/10">
-                            #
+                          <th className="sticky right-0 z-20 bg-stone-100 dark:bg-[#1A2621] py-2.5 px-3 font-extrabold text-[11px] uppercase tracking-wider text-center w-12 border-l border-stone-200 dark:border-white/10">
+                            م
                           </th>
-                          <th className="sticky left-12 z-20 bg-stone-100 dark:bg-[#1A2621] py-2.5 px-3 font-extrabold text-[11px] uppercase tracking-wider min-w-[200px] border-r border-stone-200 dark:border-white/10">
-                            Student Name &amp; Arabic
+                          <th className="sticky right-12 z-20 bg-stone-100 dark:bg-[#1A2621] py-2.5 px-3 font-extrabold text-[11px] uppercase tracking-wider min-w-[200px] border-l border-stone-200 dark:border-white/10 font-arabic">
+                            اسم التلميذ/ة
                           </th>
                           {assessmentData.orderedSubjects.map((sub) => (
                             <th
                               key={sub.id}
                               colSpan={showGrades ? 2 : 1}
-                              className="py-2.5 px-2 font-bold text-[11px] text-center border-r border-stone-200 dark:border-white/10 min-w-[90px]"
+                              className="py-2.5 px-2 font-bold text-[11px] text-center border-l border-stone-200 dark:border-white/10 min-w-[90px]"
                             >
                               <div className="font-arabic font-extrabold text-[12px] text-[#0D5C3A] dark:text-emerald-400">
                                 {sub.subject_name_arabic || sub.subject_name}
                               </div>
-                              <div className="text-[9px] uppercase tracking-tight text-stone-400 dark:text-stone-500 font-sans">
-                                {examPhase.toUpperCase()} Mark
+                              <div className="text-[9px] uppercase tracking-tight text-stone-400 dark:text-stone-500 font-arabic">
+                                درجة {examPhase === 'eot' ? 'نهاية الفترة' : 'منتصف الفترة'}
                               </div>
                             </th>
                           ))}
-                          <th className="py-2.5 px-2.5 font-black text-[11px] text-center bg-stone-200/50 dark:bg-white/5 border-r border-stone-200 dark:border-white/10 min-w-[70px]">
-                            Total
+                          <th className="py-2.5 px-2.5 font-black text-[11px] text-center bg-stone-200/50 dark:bg-white/5 border-l border-stone-200 dark:border-white/10 min-w-[70px] font-arabic">
+                            المجموع
                           </th>
-                          <th className="py-2.5 px-2 font-black text-[11px] text-center bg-stone-200/50 dark:bg-white/5 border-r border-stone-200 dark:border-white/10 min-w-[60px]">
-                            Agg
+                          <th className="py-2.5 px-2 font-black text-[11px] text-center bg-stone-200/50 dark:bg-white/5 border-l border-stone-200 dark:border-white/10 min-w-[60px] font-arabic">
+                            المعدل
                           </th>
-                          <th className="py-2.5 px-2 font-black text-[11px] text-center bg-stone-200/50 dark:bg-white/5 border-r border-stone-200 dark:border-white/10 min-w-[60px]">
-                            Div
+                          <th className="py-2.5 px-2 font-black text-[11px] text-center bg-stone-200/50 dark:bg-white/5 border-l border-stone-200 dark:border-white/10 min-w-[60px] font-arabic">
+                            التقدير
                           </th>
-                          <th className="py-2.5 px-2.5 font-black text-[11px] text-center bg-amber-500/10 dark:bg-amber-400/10 text-amber-800 dark:text-amber-300 min-w-[55px]">
-                            Rank
+                          <th className="py-2.5 px-2.5 font-black text-[11px] text-center bg-amber-500/10 dark:bg-amber-400/10 text-amber-800 dark:text-amber-300 min-w-[55px] font-arabic">
+                            الترتيب
                           </th>
-                          <th className="py-2.5 px-2 text-center text-[10px] uppercase font-bold text-stone-400 min-w-[60px]">
-                            Report
+                          <th className="py-2.5 px-2 text-center text-[10px] uppercase font-bold text-stone-400 min-w-[60px] font-arabic">
+                            التقرير
                           </th>
                         </tr>
                       </thead>
@@ -855,9 +899,9 @@ export default function TheologyHubClient({
                           <tr>
                             <td
                               colSpan={assessmentData.orderedSubjects.length * (showGrades ? 2 : 1) + 6}
-                              className="text-center py-12 text-stone-400 font-medium text-xs"
+                              className="text-center py-12 text-stone-400 font-medium text-xs font-arabic"
                             >
-                              No students found matching current filters.
+                              لم يتم العثور على تلاميذ يطابقون خيارات البحث والتصفية.
                             </td>
                           </tr>
                         ) : (
@@ -870,22 +914,24 @@ export default function TheologyHubClient({
                               }}
                             >
                               {/* Sticky Index */}
-                              <td className="sticky left-0 z-10 bg-white dark:bg-[#151F1B] group-hover:bg-stone-50 dark:group-hover:bg-[#1A2621] py-2 px-3 text-center font-bold text-stone-400 text-xs border-r border-stone-100 dark:border-white/5">
+                              <td className="sticky right-0 z-10 bg-white dark:bg-[#151F1B] group-hover:bg-stone-50 dark:group-hover:bg-[#1A2621] py-2 px-3 text-center font-bold text-stone-400 text-xs border-l border-stone-100 dark:border-white/5">
                                 {idx + 1}
                               </td>
 
                               {/* Sticky Student Name & Arabic */}
-                              <td className="sticky left-12 z-10 bg-white dark:bg-[#151F1B] group-hover:bg-stone-50 dark:group-hover:bg-[#1A2621] py-2 px-3 border-r border-stone-100 dark:border-white/5 min-w-[200px]">
+                              <td className="sticky right-12 z-10 bg-white dark:bg-[#151F1B] group-hover:bg-stone-50 dark:group-hover:bg-[#1A2621] py-2 px-3 border-l border-stone-100 dark:border-white/5 min-w-[200px]">
                                 <div className="font-bold text-stone-900 dark:text-stone-100 text-xs flex items-center justify-between">
-                                  <span>{st.name}</span>
-                                  {st.arabic_name && (
-                                    <span className="font-arabic font-bold text-[#0D5C3A] dark:text-emerald-400 text-xs ml-2" dir="rtl">
-                                      {st.arabic_name}
+                                  <span className="font-arabic font-extrabold text-[#0D5C3A] dark:text-emerald-400 text-xs">
+                                    {st.arabic_name || st.name}
+                                  </span>
+                                  {st.arabic_name && st.name && (
+                                    <span className="text-[10px] text-stone-400 mr-2 font-sans font-normal">
+                                      {st.name}
                                     </span>
                                   )}
                                 </div>
                                 <div className="text-[10px] text-stone-400 font-mono">
-                                  {st.admission_number || 'No ID'}
+                                  {st.admission_number || 'بدون رقم'}
                                 </div>
                               </td>
 
@@ -894,11 +940,11 @@ export default function TheologyHubClient({
                                 const score = st.subjectScores[sub.id]
                                 return (
                                   <React.Fragment key={sub.id}>
-                                    <td className="py-2 px-2 text-center font-mono font-bold text-xs text-stone-800 dark:text-stone-200 border-r border-stone-100 dark:border-white/5">
+                                    <td className="py-2 px-2 text-center font-mono font-bold text-xs text-stone-800 dark:text-stone-200 border-l border-stone-100 dark:border-white/5">
                                       {score != null ? score : '-'}
                                     </td>
                                     {showGrades && (
-                                      <td className="py-2 px-1 text-center border-r border-stone-100 dark:border-white/5">
+                                      <td className="py-2 px-1 text-center border-l border-stone-100 dark:border-white/5">
                                         <RemarkBadge score={score} />
                                       </td>
                                     )}
@@ -907,17 +953,17 @@ export default function TheologyHubClient({
                               })}
 
                               {/* Total */}
-                              <td className="py-2 px-2.5 text-center font-mono font-black text-xs text-stone-900 dark:text-white bg-stone-50/50 dark:bg-white/[0.02] border-r border-stone-100 dark:border-white/5">
+                              <td className="py-2 px-2.5 text-center font-mono font-black text-xs text-stone-900 dark:text-white bg-stone-50/50 dark:bg-white/[0.02] border-l border-stone-100 dark:border-white/5">
                                 {st.total ? st.total : '-'}
                               </td>
 
                               {/* Aggregate */}
-                              <td className="py-2 px-2 text-center font-mono font-extrabold text-xs text-[#0D5C3A] dark:text-emerald-400 bg-stone-50/50 dark:bg-white/[0.02] border-r border-stone-100 dark:border-white/5">
+                              <td className="py-2 px-2 text-center font-mono font-extrabold text-xs text-[#0D5C3A] dark:text-emerald-400 bg-stone-50/50 dark:bg-white/[0.02] border-l border-stone-100 dark:border-white/5">
                                 {st.aggregate ?? '-'}
                               </td>
 
                               {/* Division */}
-                              <td className="py-2 px-2 text-center font-bold text-xs border-r border-stone-100 dark:border-white/5">
+                              <td className="py-2 px-2 text-center font-bold text-xs border-l border-stone-100 dark:border-white/5">
                                 <span
                                   className={`inline-flex items-center justify-center w-6 h-6 rounded-md text-xs font-black ${
                                     st.division === 'I'
@@ -951,7 +997,7 @@ export default function TheologyHubClient({
                                     )
                                   }}
                                   className="p-1 rounded-md text-stone-400 hover:text-[#0D5C3A] hover:bg-emerald-50 dark:hover:bg-emerald-950/50 transition-colors"
-                                  title="View Report Card"
+                                  title="عرض بطاقة تقرير التلميذ"
                                 >
                                   <ExternalLink className="w-3.5 h-3.5" strokeWidth={2.25} />
                                 </button>
@@ -968,30 +1014,30 @@ export default function TheologyHubClient({
                           <tr>
                             <td
                               colSpan={2}
-                              className="sticky left-0 z-20 bg-stone-100 dark:bg-[#1A2621] py-2 px-3 text-right text-[11px] uppercase tracking-wider font-extrabold text-[#0D5C3A] dark:text-emerald-400 border-r border-stone-200 dark:border-white/10"
+                              className="sticky right-0 z-20 bg-stone-100 dark:bg-[#1A2621] py-2 px-3 text-right text-[11px] uppercase tracking-wider font-extrabold text-[#0D5C3A] dark:text-emerald-400 border-l border-stone-200 dark:border-white/10 font-arabic"
                             >
-                              Class Average
+                              متوسط الفصل
                             </td>
                             {assessmentData.orderedSubjects.map((sub) => {
                               const stat = broadsheetSummary.subjectStats[sub.id]
                               return (
                                 <React.Fragment key={sub.id}>
-                                  <td className="py-2 px-2 text-center font-mono font-extrabold text-xs border-r border-stone-200 dark:border-white/10">
+                                  <td className="py-2 px-2 text-center font-mono font-extrabold text-xs border-l border-stone-200 dark:border-white/10">
                                     {stat ? stat.avg : '-'}
                                   </td>
                                   {showGrades && (
-                                    <td className="py-2 px-1 text-center border-r border-stone-200 dark:border-white/10">
+                                    <td className="py-2 px-1 text-center border-l border-stone-200 dark:border-white/10">
                                       <RemarkBadge score={stat?.avg} />
                                     </td>
                                   )}
                                 </React.Fragment>
                               )
                             })}
-                            <td className="py-2 px-2.5 text-center font-mono font-black text-xs text-[#0D5C3A] dark:text-emerald-400 border-r border-stone-200 dark:border-white/10">
+                            <td className="py-2 px-2.5 text-center font-mono font-black text-xs text-[#0D5C3A] dark:text-emerald-400 border-l border-stone-200 dark:border-white/10">
                               {broadsheetSummary.classAverageTotal}
                             </td>
-                            <td colSpan={3} className="py-2 px-2 text-center text-[10px] text-stone-400">
-                              Mean: {broadsheetSummary.classAverageTotal}
+                            <td colSpan={3} className="py-2 px-2 text-center text-[10px] text-stone-400 font-arabic">
+                              المتوسط العام: {broadsheetSummary.classAverageTotal}
                             </td>
                           </tr>
 
@@ -999,9 +1045,9 @@ export default function TheologyHubClient({
                           <tr className="text-stone-600 dark:text-stone-400 text-[10px]">
                             <td
                               colSpan={2}
-                              className="sticky left-0 z-20 bg-stone-100 dark:bg-[#1A2621] py-1.5 px-3 text-right uppercase tracking-wider font-bold border-r border-stone-200 dark:border-white/10"
+                              className="sticky right-0 z-20 bg-stone-100 dark:bg-[#1A2621] py-1.5 px-3 text-right uppercase tracking-wider font-bold border-l border-stone-200 dark:border-white/10 font-arabic"
                             >
-                              Pass Rate (≥50%)
+                              نسبة النجاح (٥٠٪ فأعلى)
                             </td>
                             {assessmentData.orderedSubjects.map((sub) => {
                               const stat = broadsheetSummary.subjectStats[sub.id]
@@ -1009,7 +1055,7 @@ export default function TheologyHubClient({
                                 <React.Fragment key={sub.id}>
                                   <td
                                     colSpan={showGrades ? 2 : 1}
-                                    className="py-1.5 px-1 text-center font-mono font-bold text-[10px] border-r border-stone-200 dark:border-white/10 text-emerald-700 dark:text-emerald-400"
+                                    className="py-1.5 px-1 text-center font-mono font-bold text-[10px] border-l border-stone-200 dark:border-white/10 text-emerald-700 dark:text-emerald-400"
                                   >
                                     {stat ? `${stat.passRate}%` : '-'}
                                   </td>
@@ -1018,9 +1064,9 @@ export default function TheologyHubClient({
                             })}
                             <td
                               colSpan={4}
-                              className="py-1.5 px-2 text-center text-[10px] text-stone-500"
+                              className="py-1.5 px-2 text-center text-[10px] text-stone-500 font-arabic"
                             >
-                              Candidates Sat: {broadsheetSummary.satCandidates} / {broadsheetSummary.totalCandidates}
+                              الطلاب الممتحنون: {broadsheetSummary.satCandidates} من إجمالي {broadsheetSummary.totalCandidates}
                             </td>
                           </tr>
                         </tfoot>
@@ -1045,11 +1091,13 @@ export default function TheologyHubClient({
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                   <div className="rounded-2xl p-4 bg-white dark:bg-[#151F1B] border border-[#0D5C3A]/12 dark:border-white/10 shadow-xs flex items-center justify-between">
                     <div>
-                      <p className="text-[10px] font-extrabold uppercase tracking-wider text-stone-400">Total Enrolled</p>
+                      <p className="text-[10px] font-extrabold uppercase tracking-wider text-stone-400 font-arabic">
+                        إجمالي المسجلين
+                      </p>
                       <h3 className="text-2xl font-black text-stone-900 dark:text-white mt-1">
                         {broadsheetSummary ? broadsheetSummary.totalCandidates : 0}
                       </h3>
-                      <p className="text-[10px] text-stone-500 mt-0.5">Muslim Cohort</p>
+                      <p className="text-[10px] text-stone-500 mt-0.5 font-arabic">طلاب العلوم الشرعية</p>
                     </div>
                     <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center text-[#0D5C3A] dark:text-emerald-400">
                       <Users className="w-5 h-5" strokeWidth={2.25} />
@@ -1058,11 +1106,15 @@ export default function TheologyHubClient({
 
                   <div className="rounded-2xl p-4 bg-white dark:bg-[#151F1B] border border-[#0D5C3A]/12 dark:border-white/10 shadow-xs flex items-center justify-between">
                     <div>
-                      <p className="text-[10px] font-extrabold uppercase tracking-wider text-stone-400">Class Mean Total</p>
+                      <p className="text-[10px] font-extrabold uppercase tracking-wider text-stone-400 font-arabic">
+                        متوسط مجموع الفصل
+                      </p>
                       <h3 className="text-2xl font-black text-stone-900 dark:text-white mt-1">
                         {broadsheetSummary ? broadsheetSummary.classAverageTotal : 0}
                       </h3>
-                      <p className="text-[10px] text-stone-500 mt-0.5">High: {broadsheetSummary?.highestTotal || 0}</p>
+                      <p className="text-[10px] text-stone-500 mt-0.5 font-arabic">
+                        أعلى مجموع: {broadsheetSummary?.highestTotal || 0}
+                      </p>
                     </div>
                     <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/50 flex items-center justify-center text-amber-600 dark:text-amber-400">
                       <TrendingUp className="w-5 h-5" strokeWidth={2.25} />
@@ -1071,11 +1123,13 @@ export default function TheologyHubClient({
 
                   <div className="rounded-2xl p-4 bg-white dark:bg-[#151F1B] border border-[#0D5C3A]/12 dark:border-white/10 shadow-xs flex items-center justify-between">
                     <div>
-                      <p className="text-[10px] font-extrabold uppercase tracking-wider text-stone-400">Div I &amp; II Distinction</p>
+                      <p className="text-[10px] font-extrabold uppercase tracking-wider text-stone-400 font-arabic">
+                        المتفوقون (التقدير الأول والثاني)
+                      </p>
                       <h3 className="text-2xl font-black text-[#0D5C3A] dark:text-emerald-400 mt-1">
                         {(broadsheetSummary?.divCounts.I || 0) + (broadsheetSummary?.divCounts.II || 0)}
                       </h3>
-                      <p className="text-[10px] text-stone-500 mt-0.5">
+                      <p className="text-[10px] text-stone-500 mt-0.5 font-arabic">
                         {broadsheetSummary && broadsheetSummary.totalCandidates > 0
                           ? Math.round(
                               (((broadsheetSummary.divCounts.I || 0) + (broadsheetSummary.divCounts.II || 0)) /
@@ -1083,7 +1137,7 @@ export default function TheologyHubClient({
                                 100
                             )
                           : 0}
-                        % of class
+                        % من طلاب الفصل
                       </p>
                     </div>
                     <div className="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-950/50 flex items-center justify-center text-teal-600 dark:text-teal-400">
@@ -1093,11 +1147,15 @@ export default function TheologyHubClient({
 
                   <div className="rounded-2xl p-4 bg-white dark:bg-[#151F1B] border border-[#0D5C3A]/12 dark:border-white/10 shadow-xs flex items-center justify-between">
                     <div>
-                      <p className="text-[10px] font-extrabold uppercase tracking-wider text-stone-400">Exam Phase</p>
-                      <h3 className="text-2xl font-black text-amber-600 dark:text-amber-400 mt-1">
-                        {examPhase.toUpperCase()}
+                      <p className="text-[10px] font-extrabold uppercase tracking-wider text-stone-400 font-arabic">
+                        مرحلة الاختبار
+                      </p>
+                      <h3 className="text-2xl font-black text-amber-600 dark:text-amber-400 mt-1 font-arabic">
+                        {examPhase === 'eot' ? 'نهاية الفترة (EOT)' : 'منتصف الفترة (MOT)'}
                       </h3>
-                      <p className="text-[10px] text-stone-500 mt-0.5">{activeClass?.class_name_arabic || 'Theology'}</p>
+                      <p className="text-[10px] text-stone-500 mt-0.5 font-arabic">
+                        {activeClass?.class_name_arabic || getArabicClassDisplayName(activeClass)}
+                      </p>
                     </div>
                     <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950/50 flex items-center justify-center text-rose-600 dark:text-rose-400">
                       <Sparkles className="w-5 h-5" strokeWidth={2.25} />
@@ -1107,21 +1165,21 @@ export default function TheologyHubClient({
 
                 {/* Subject Performance Matrix Table */}
                 <div className="rounded-2xl border border-[#0D5C3A]/12 dark:border-white/10 bg-white dark:bg-[#151F1B] shadow-xs p-5">
-                  <h3 className="text-sm font-extrabold text-stone-900 dark:text-white uppercase tracking-wider mb-4 flex items-center gap-2">
+                  <h3 className="text-sm font-extrabold text-stone-900 dark:text-white uppercase tracking-wider mb-4 flex items-center gap-2 font-arabic">
                     <BarChart3 className="w-4 h-4 text-[#0D5C3A]" strokeWidth={2.25} />
-                    <span>Theology Subject Performance Breakdown</span>
+                    <span>تحليل أداء المواد الشرعية واللغة العربية</span>
                   </h3>
 
                   <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse text-xs">
+                    <table className="w-full text-right border-collapse text-xs">
                       <thead>
-                        <tr className="border-b border-stone-200 dark:border-white/10 text-stone-400 text-[10px] font-extrabold uppercase tracking-wider">
-                          <th className="py-2 px-3">Subject Name</th>
-                          <th className="py-2 px-3 text-center">Mean Score</th>
-                          <th className="py-2 px-3 text-center">Highest Mark</th>
-                          <th className="py-2 px-3 text-center">Lowest Mark</th>
-                          <th className="py-2 px-3 text-center">Pass Rate (≥50%)</th>
-                          <th className="py-2 px-3 min-w-[140px]">Performance Bar</th>
+                        <tr className="border-b border-stone-200 dark:border-white/10 text-stone-400 text-[10px] font-extrabold uppercase tracking-wider font-arabic">
+                          <th className="py-2 px-3">اسم المادة</th>
+                          <th className="py-2 px-3 text-center">متوسط الدرجة</th>
+                          <th className="py-2 px-3 text-center">أعلى درجة</th>
+                          <th className="py-2 px-3 text-center">أدنى درجة</th>
+                          <th className="py-2 px-3 text-center">نسبة النجاح (≥٥٠٪)</th>
+                          <th className="py-2 px-3 min-w-[140px]">شريط الأداء</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-stone-100 dark:divide-white/5 font-medium">
@@ -1135,7 +1193,7 @@ export default function TheologyHubClient({
                                 <div className="font-arabic font-extrabold text-stone-900 dark:text-stone-100 text-sm">
                                   {sub.subject_name_arabic || sub.subject_name}
                                 </div>
-                                <div className="text-[10px] text-stone-400">{sub.level || activeLevel}</div>
+                                <div className="text-[10px] text-stone-400 font-arabic">{sub.level || activeLevel}</div>
                               </td>
                               <td className="py-3 px-3 text-center font-mono font-bold text-xs">{avg}</td>
                               <td className="py-3 px-3 text-center font-mono font-bold text-xs text-emerald-600">
@@ -1168,8 +1226,8 @@ export default function TheologyHubClient({
                 {/* Division Distribution Breakdown */}
                 {broadsheetSummary && (
                   <div className="rounded-2xl border border-[#0D5C3A]/12 dark:border-white/10 bg-white dark:bg-[#151F1B] shadow-xs p-5">
-                    <h3 className="text-sm font-extrabold text-stone-900 dark:text-white uppercase tracking-wider mb-3">
-                      Division Classification Cohort
+                    <h3 className="text-sm font-extrabold text-stone-900 dark:text-white uppercase tracking-wider mb-3 font-arabic">
+                      توزيع التقديرات الدراسية لطلاب الفصل
                     </h3>
                     <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-2">
                       {(['I', 'II', 'III', 'IV', 'U'] as const).map((div) => {
@@ -1183,8 +1241,8 @@ export default function TheologyHubClient({
                             key={div}
                             className="p-3 rounded-xl border border-stone-200/80 dark:border-white/10 bg-stone-50/50 dark:bg-white/[0.02] text-center"
                           >
-                            <span className="text-[10px] font-black uppercase tracking-wider text-stone-400">
-                              Division {div}
+                            <span className="text-[10px] font-black uppercase tracking-wider text-stone-400 font-arabic">
+                              {div === 'U' ? 'راسب (U)' : `التقدير ${div}`}
                             </span>
                             <div className="text-xl font-black text-stone-900 dark:text-white mt-1">{count}</div>
                             <div className="text-[10px] font-bold text-[#0D5C3A] dark:text-emerald-400">{pct}%</div>
@@ -1215,11 +1273,17 @@ export default function TheologyHubClient({
                       <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 flex items-center justify-center shadow-inner mb-2">
                         <Medal className="w-6 h-6" strokeWidth={2.25} />
                       </div>
-                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">2nd Place</span>
-                      <h4 className="font-bold text-stone-900 dark:text-white text-sm mt-1">{top10Data[1].name}</h4>
-                      <p className="font-arabic text-xs text-[#0D5C3A] font-bold mt-0.5">{top10Data[1].arabic_name}</p>
-                      <div className="mt-2 text-xs font-mono font-black text-slate-700 dark:text-slate-300">
-                        {top10Data[1].total} pts • Div {top10Data[1].division}
+                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 font-arabic">
+                        المركز الثاني
+                      </span>
+                      <h4 className="font-bold text-stone-900 dark:text-white text-sm mt-1 font-arabic">
+                        {top10Data[1].arabic_name || top10Data[1].name}
+                      </h4>
+                      {top10Data[1].arabic_name && (
+                        <p className="font-sans text-xs text-stone-400 mt-0.5">{top10Data[1].name}</p>
+                      )}
+                      <div className="mt-2 text-xs font-mono font-black text-slate-700 dark:text-slate-300 font-arabic">
+                        {top10Data[1].total} نقطة • التقدير {top10Data[1].division}
                       </div>
                     </div>
 
@@ -1228,15 +1292,19 @@ export default function TheologyHubClient({
                       <div className="w-14 h-14 rounded-full bg-amber-400 text-white flex items-center justify-center shadow-md mb-2">
                         <Trophy className="w-7 h-7" strokeWidth={2.25} />
                       </div>
-                      <span className="text-[11px] font-black uppercase tracking-wider text-amber-900 dark:text-amber-200">
-                        Class Champion — 1st Place
+                      <span className="text-[11px] font-black uppercase tracking-wider text-amber-900 dark:text-amber-200 font-arabic">
+                        بطل الفصل — المركز الأول
                       </span>
-                      <h3 className="font-black text-stone-900 dark:text-white text-base mt-1">{top10Data[0].name}</h3>
-                      <p className="font-arabic text-sm text-[#0D5C3A] dark:text-emerald-300 font-extrabold mt-0.5">
-                        {top10Data[0].arabic_name}
-                      </p>
-                      <div className="mt-2.5 px-3 py-1 rounded-full bg-amber-500/20 text-amber-950 dark:text-amber-200 text-xs font-mono font-black">
-                        {top10Data[0].total} pts • Div {top10Data[0].division} (Agg {top10Data[0].aggregate ?? '-'})
+                      <h3 className="font-black text-stone-900 dark:text-white text-base mt-1 font-arabic">
+                        {top10Data[0].arabic_name || top10Data[0].name}
+                      </h3>
+                      {top10Data[0].arabic_name && (
+                        <p className="font-sans text-xs text-amber-900/70 dark:text-amber-200/70 mt-0.5">
+                          {top10Data[0].name}
+                        </p>
+                      )}
+                      <div className="mt-2.5 px-3 py-1 rounded-full bg-amber-500/20 text-amber-950 dark:text-amber-200 text-xs font-mono font-black font-arabic">
+                        {top10Data[0].total} نقطة • التقدير {top10Data[0].division} (المعدل {top10Data[0].aggregate ?? '-'})
                       </div>
                     </div>
 
@@ -1245,11 +1313,17 @@ export default function TheologyHubClient({
                       <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-400 flex items-center justify-center shadow-inner mb-2">
                         <Award className="w-6 h-6" strokeWidth={2.25} />
                       </div>
-                      <span className="text-[10px] font-black uppercase tracking-wider text-amber-700">3rd Place</span>
-                      <h4 className="font-bold text-stone-900 dark:text-white text-sm mt-1">{top10Data[2].name}</h4>
-                      <p className="font-arabic text-xs text-[#0D5C3A] font-bold mt-0.5">{top10Data[2].arabic_name}</p>
-                      <div className="mt-2 text-xs font-mono font-black text-amber-800 dark:text-amber-400">
-                        {top10Data[2].total} pts • Div {top10Data[2].division}
+                      <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 font-arabic">
+                        المركز الثالث
+                      </span>
+                      <h4 className="font-bold text-stone-900 dark:text-white text-sm mt-1 font-arabic">
+                        {top10Data[2].arabic_name || top10Data[2].name}
+                      </h4>
+                      {top10Data[2].arabic_name && (
+                        <p className="font-sans text-xs text-stone-400 mt-0.5">{top10Data[2].name}</p>
+                      )}
+                      <div className="mt-2 text-xs font-mono font-black text-amber-800 dark:text-amber-400 font-arabic">
+                        {top10Data[2].total} نقطة • التقدير {top10Data[2].division}
                       </div>
                     </div>
                   </div>
@@ -1258,26 +1332,24 @@ export default function TheologyHubClient({
                 {/* Top 10 Table */}
                 <div className="rounded-2xl border border-[#0D5C3A]/15 dark:border-white/10 bg-white dark:bg-[#151F1B] shadow-xs overflow-hidden">
                   <div className="p-4 border-b border-stone-200 dark:border-white/10 flex items-center justify-between">
-                    <h3 className="text-sm font-extrabold uppercase tracking-wider text-stone-900 dark:text-white flex items-center gap-2">
+                    <h3 className="text-sm font-extrabold uppercase tracking-wider text-stone-900 dark:text-white flex items-center gap-2 font-arabic">
                       <Award className="w-4 h-4 text-amber-500" strokeWidth={2.25} />
-                      <span>Official Top 10 Islamic Theology Merit Roll</span>
+                      <span>قائمة الشرف الرسمية لأفضل ١٠ طلاب في العلوم الشرعية</span>
                     </h3>
                   </div>
 
                   <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse text-xs">
+                    <table className="w-full text-right border-collapse text-xs">
                       <thead>
-                        <tr className="border-b border-stone-200 dark:border-white/10 text-stone-400 text-[10px] font-extrabold uppercase tracking-wider bg-stone-50 dark:bg-white/[0.02]">
-                          <th className="py-2.5 px-3 text-center w-12">Rank</th>
-                          <th className="py-2.5 px-3">Student Name</th>
-                          <th className="py-2.5 px-3 font-arabic" dir="rtl">
-                            الاسم بالعربية
-                          </th>
-                          <th className="py-2.5 px-3 text-center">Admission #</th>
-                          <th className="py-2.5 px-3 text-center">Total Marks</th>
-                          <th className="py-2.5 px-3 text-center">Aggregate</th>
-                          <th className="py-2.5 px-3 text-center">Division</th>
-                          <th className="py-2.5 px-3 text-center">Report</th>
+                        <tr className="border-b border-stone-200 dark:border-white/10 text-stone-400 text-[10px] font-extrabold uppercase tracking-wider bg-stone-50 dark:bg-white/[0.02] font-arabic">
+                          <th className="py-2.5 px-3 text-center w-12">الترتيب</th>
+                          <th className="py-2.5 px-3">اسم التلميذ/ة</th>
+                          <th className="py-2.5 px-3">الاسم بالعربية</th>
+                          <th className="py-2.5 px-3 text-center">رقم القيد</th>
+                          <th className="py-2.5 px-3 text-center">مجموع الدرجات</th>
+                          <th className="py-2.5 px-3 text-center">المعدل</th>
+                          <th className="py-2.5 px-3 text-center">التقدير</th>
+                          <th className="py-2.5 px-3 text-center">التقرير</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-stone-100 dark:divide-white/5 font-medium">
@@ -1295,7 +1367,7 @@ export default function TheologyHubClient({
                               {st.position}
                             </td>
                             <td className="py-2.5 px-3 font-bold text-stone-900 dark:text-white">{st.name}</td>
-                            <td className="py-2.5 px-3 font-arabic font-bold text-[#0D5C3A] dark:text-emerald-400" dir="rtl">
+                            <td className="py-2.5 px-3 font-arabic font-bold text-[#0D5C3A] dark:text-emerald-400">
                               {st.arabic_name || '-'}
                             </td>
                             <td className="py-2.5 px-3 text-center font-mono text-stone-400">{st.admission_number || '-'}</td>
@@ -1306,8 +1378,8 @@ export default function TheologyHubClient({
                               {st.aggregate ?? '-'}
                             </td>
                             <td className="py-2.5 px-3 text-center">
-                              <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-md text-[10px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                                Div {st.division}
+                              <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-md text-[10px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-arabic">
+                                التقدير {st.division}
                               </span>
                             </td>
                             <td className="py-2.5 px-3 text-center">
@@ -1328,126 +1400,408 @@ export default function TheologyHubClient({
       {/* ======================================================== */}
       {/* 3. FORMAL INSTITUTIONAL LANDSCAPE PRINT BROADSHEET */}
       {/* Mounted via <PrintPortal pageOrientation="landscape"> */}
+      {/* Features double-border frame: 4px solid #14532D outer, 1.5px solid #C59B27 inner */}
       {/* ======================================================== */}
       <PrintPortal pageOrientation="landscape">
-        <div className="p-8 bg-white text-black font-sans text-xs w-full min-h-screen">
-          {/* Institutional Letterhead Header */}
-          <OfficialPrintLetterhead
-            documentTitle="ACADEMIC PERFORMANCE BROADSHEET — ISLAMIC THEOLOGY"
-            arabicDocumentTitle="كشف درجات الطلاب العام — قسم العلوم الشرعية"
-            metadata={[
-              { label: 'Term', value: activeTerm?.label || 'Term 3' },
-              { label: 'Class', value: `${activeClass?.class_name_arabic || ''} — ${activeClass?.class_name_english || ''}` },
-              { label: 'Phase', value: examPhase.toUpperCase() },
-              { label: 'Year', value: activeTerm?.academic_year || 2026 },
-              { label: 'Total Candidates', value: assessmentData.students.length },
-              { label: 'Date Printed', value: new Date().toLocaleDateString('en-GB') },
-            ]}
-          />
+        <div
+          dir="rtl"
+          className="theology-broadsheet-print report-sheet-landscape bg-white text-black font-sans text-xs w-full min-h-screen"
+          style={{
+            boxSizing: 'border-box',
+            padding: '4px',
+            backgroundColor: '#ffffff',
+            color: '#000000',
+            pageBreakInside: 'avoid',
+            breakInside: 'avoid',
+          }}
+        >
+          {/* Compatibility Anchor */}
+          <div className="hidden" style={{ display: 'none' }}>
+            <OfficialPrintLetterhead
+              documentTitle="ACADEMIC PERFORMANCE BROADSHEET — ISLAMIC THEOLOGY"
+              arabicDocumentTitle="كشف درجات الطلاب العام — قسم العلوم الشرعية"
+            />
+            <OfficialPrintSignaturesFooter rtl />
+          </div>
 
-          {/* Complete Institutional Broadsheet Table */}
-          <table className="w-full border-collapse border border-black text-[9px] mt-4">
-            <thead>
-              <tr className="bg-stone-100 text-black border-b border-black font-extrabold">
-                <th className="border border-black p-1 text-center w-6">#</th>
-                <th className="border border-black p-1 text-center min-w-[50px]">Adm No</th>
-                <th className="border border-black p-1 text-left min-w-[140px]">Student Full Name</th>
-                <th className="border border-black p-1 text-right font-arabic min-w-[100px]" dir="rtl">
-                  الاسم بالعربية
-                </th>
-                {assessmentData.orderedSubjects.map((sub) => (
-                  <th key={sub.id} colSpan={2} className="border border-black p-1 text-center">
-                    <div className="font-arabic font-bold text-[9.5px]">
-                      {sub.subject_name_arabic || sub.subject_name}
-                    </div>
-                    <div className="text-[7.5px] uppercase">Mark / Grade</div>
-                  </th>
-                ))}
-                <th className="border border-black p-1 text-center font-black min-w-[40px]">Total</th>
-                <th className="border border-black p-1 text-center font-black min-w-[32px]">Agg</th>
-                <th className="border border-black p-1 text-center font-black min-w-[30px]">Div</th>
-                <th className="border border-black p-1 text-center font-black min-w-[32px]">Rank</th>
-              </tr>
-            </thead>
-            <tbody>
-              {assessmentData.students.map((st, idx) => (
-                <tr key={st.id} className="border-b border-stone-300">
-                  <td className="border border-black p-1 text-center font-bold">{idx + 1}</td>
-                  <td className="border border-black p-1 text-center font-mono">{st.admission_number || '-'}</td>
-                  <td className="border border-black p-1 font-bold">{st.name}</td>
-                  <td className="border border-black p-1 text-right font-arabic" dir="rtl">
-                    {st.arabic_name || '-'}
-                  </td>
-                  {assessmentData.orderedSubjects.map((sub) => {
-                    const score = st.subjectScores[sub.id]
-                    const grade = st.subjectGrades[sub.id]
-                    return (
-                      <React.Fragment key={sub.id}>
-                        <td className="border border-black p-1 text-center font-mono font-bold">
-                          {score != null ? score : '-'}
-                        </td>
-                        <td className="border border-black p-1 text-center font-bold text-[8px]">
-                          {grade || '-'}
-                        </td>
-                      </React.Fragment>
-                    )
-                  })}
-                  <td className="border border-black p-1 text-center font-mono font-black">{st.total || '-'}</td>
-                  <td className="border border-black p-1 text-center font-mono font-black">{st.aggregate ?? '-'}</td>
-                  <td className="border border-black p-1 text-center font-black">Div {st.division}</td>
-                  <td className="border border-black p-1 text-center font-mono font-black">{st.position}</td>
-                </tr>
-              ))}
-            </tbody>
-            {broadsheetSummary && (
-              <tfoot>
-                <tr className="bg-stone-100 font-black border-t-2 border-black">
-                  <td colSpan={4} className="border border-black p-1.5 text-right uppercase tracking-wider">
-                    Class Average
-                  </td>
-                  {assessmentData.orderedSubjects.map((sub) => (
-                    <td key={sub.id} colSpan={2} className="border border-black p-1.5 text-center font-mono">
-                      {broadsheetSummary.subjectStats[sub.id]?.avg ?? '-'}
-                    </td>
-                  ))}
-                  <td className="border border-black p-1.5 text-center font-mono">
-                    {broadsheetSummary.classAverageTotal}
-                  </td>
-                  <td colSpan={3} className="border border-black p-1.5 text-center text-[8px] text-stone-600">
-                    Mean Total: {broadsheetSummary.classAverageTotal}
-                  </td>
-                </tr>
-              </tfoot>
-            )}
-          </table>
-
-          {/* Division Summary Box */}
-          {broadsheetSummary && (
-            <div className="mt-4 p-2.5 border border-black flex items-center justify-between text-[9px] bg-stone-50">
-              <span className="font-bold uppercase tracking-wider">Official Cohort Summary:</span>
-              <span>Div I: <strong>{broadsheetSummary.divCounts.I}</strong></span>
-              <span>Div II: <strong>{broadsheetSummary.divCounts.II}</strong></span>
-              <span>Div III: <strong>{broadsheetSummary.divCounts.III}</strong></span>
-              <span>Div IV: <strong>{broadsheetSummary.divCounts.IV}</strong></span>
-              <span>Div U: <strong>{broadsheetSummary.divCounts.U}</strong></span>
-              <span>Total Sat: <strong>{broadsheetSummary.satCandidates}</strong></span>
-            </div>
-          )}
-
-          {/* Signatures & Official Stamp Footer */}
-          <div className="mt-8 relative">
-            <OfficialPrintSignaturesFooter />
-            <div className="absolute right-12 -top-4 pointer-events-none">
-              <OfficialReportStamp
-                reportData={{
-                  stamp_config: {
-                    ink_color: '#0D5C3A',
-                    scale: 85,
-                  },
+          {/* Official Jiddah Islamic Schools Double-Border Frame */}
+          <div
+            style={{
+              border: '4px solid #14532D',
+              padding: '2.5px',
+              boxSizing: 'border-box',
+              display: 'flex',
+              flexDirection: 'column',
+              backgroundColor: '#ffffff',
+            }}
+          >
+            <div
+              style={{
+                border: '1.5px solid #C59B27',
+                padding: '6px 10px',
+                boxSizing: 'border-box',
+                display: 'flex',
+                flexDirection: 'column',
+                backgroundColor: '#ffffff',
+                position: 'relative',
+              }}
+            >
+              {/* Header: Centered Crest, Bilingual Identity & Motto */}
+              <header
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '12px',
+                  paddingBottom: '5px',
+                  borderBottom: '2px solid #0D5C3A',
                 }}
-                maxWidth={110}
-                maxHeight={52}
-              />
+              >
+                <img
+                  src="/logo-512h.png"
+                  alt="Jiddah Crest"
+                  style={{ width: '50px', height: '50px', objectFit: 'contain', flexShrink: 0 }}
+                />
+                <div style={{ textAlign: 'center', flex: 1, minWidth: 0 }}>
+                  <h1
+                    style={{
+                      fontSize: '15px',
+                      fontWeight: 900,
+                      color: '#0D5C3A',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px',
+                      margin: 0,
+                      lineHeight: 1.15,
+                    }}
+                  >
+                    JIDDAH ISLAMIC NURSERY &amp; PRIMARY SCHOOL
+                  </h1>
+                  <p
+                    style={{
+                      fontSize: '14px',
+                      fontWeight: 800,
+                      color: '#0D5C3A',
+                      margin: '2px 0 0',
+                      fontFamily: "'Amiri', 'Cairo', serif",
+                    }}
+                  >
+                    مدرسة جدة الإسلامية للروضة والابتدائية
+                  </p>
+                  <p
+                    style={{
+                      fontSize: '9px',
+                      fontStyle: 'italic',
+                      color: '#8A6D1B',
+                      margin: '1px 0 0',
+                      fontWeight: 700,
+                    }}
+                  >
+                    &ldquo;Striving for Life &amp; The Hereafter&rdquo;
+                  </p>
+                  <p style={{ fontSize: '8px', color: '#444444', margin: '1px 0 0' }}>
+                    P.O. Box 34008, Kampala – Uganda • Tel: +256 705 316961 / +256 787 779909
+                  </p>
+                </div>
+                <div style={{ width: '50px', height: '50px', flexShrink: 0 }} />
+              </header>
+
+              {/* Formal Document Title Banner in Forest Emerald (#0D5C3A) */}
+              <div
+                style={{
+                  backgroundColor: '#0D5C3A',
+                  color: '#ffffff',
+                  textAlign: 'center',
+                  padding: '3px 8px',
+                  margin: '5px 0 4px',
+                  borderRadius: '3px',
+                }}
+              >
+                <h2
+                  style={{
+                    fontSize: '11.5px',
+                    fontWeight: 900,
+                    margin: 0,
+                    letterSpacing: '0.5px',
+                    fontFamily: "'Amiri', 'Cairo', serif",
+                  }}
+                >
+                  كشف درجات الطلاب العام — قسم العلوم الشرعية واللغة العربية
+                </h2>
+              </div>
+
+              {/* Clean Metadata Strip */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  fontSize: '8.5px',
+                  fontWeight: 700,
+                  padding: '3px 8px',
+                  backgroundColor: '#F0F9F4',
+                  border: '1px solid #C8E6D4',
+                  borderRadius: '3px',
+                  marginBottom: '5px',
+                  color: '#0B3D26',
+                  fontFamily: "'Amiri', 'Cairo', serif",
+                }}
+              >
+                <span>الفترة: {getArabicTermLabel(activeTerm)}</span>
+                <span>الصف: {activeClass?.class_name_arabic || getArabicClassDisplayName(activeClass)}</span>
+                <span>السنة الدراسية: {activeTerm?.academic_year || 2026}</span>
+                <span>الاختبار: {examPhase === 'eot' ? 'نهاية الفترة (EOT)' : 'منتصف الفترة (MOT)'}</span>
+                <span>عدد الطلاب: {assessmentData.students.length}</span>
+              </div>
+
+              {/* Perfectly Aligned, High-Contrast Marks Table with Alternating Shading */}
+              <table
+                style={{
+                  width: '100%',
+                  borderCollapse: 'collapse',
+                  fontSize: '8px',
+                  lineHeight: 1.2,
+                  border: '1px solid #14532D',
+                }}
+              >
+                <thead>
+                  <tr style={{ backgroundColor: '#0D5C3A', color: '#ffffff', fontWeight: 900 }}>
+                    <th style={{ border: '1px solid #0B3D26', padding: '2px 3px', textAlign: 'center', width: '22px' }}>م</th>
+                    <th style={{ border: '1px solid #0B3D26', padding: '2px 4px', textAlign: 'center', width: '50px' }}>رقم القيد</th>
+                    <th style={{ border: '1px solid #0B3D26', padding: '2px 5px', textAlign: 'right', minWidth: '130px' }}>اسم التلميذ/ة</th>
+                    {assessmentData.orderedSubjects.map((sub) => (
+                      <th key={sub.id} colSpan={2} style={{ border: '1px solid #0B3D26', padding: '2px 3px', textAlign: 'center', minWidth: '55px' }}>
+                        <div style={{ fontSize: '8.5px', fontWeight: 900 }}>{sub.subject_name_arabic || sub.subject_name}</div>
+                        <div style={{ fontSize: '6.5px', opacity: 0.9 }}>درجة / تقدير</div>
+                      </th>
+                    ))}
+                    <th style={{ border: '1px solid #0B3D26', padding: '2px 3px', textAlign: 'center', width: '34px' }}>المجموع</th>
+                    <th style={{ border: '1px solid #0B3D26', padding: '2px 3px', textAlign: 'center', width: '28px' }}>المعدل</th>
+                    <th style={{ border: '1px solid #0B3D26', padding: '2px 3px', textAlign: 'center', width: '28px' }}>التقدير</th>
+                    <th style={{ border: '1px solid #0B3D26', padding: '2px 3px', textAlign: 'center', width: '28px' }}>الترتيب</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {assessmentData.students.map((st, idx) => (
+                    <tr
+                      key={st.id}
+                      style={{
+                        backgroundColor: idx % 2 === 1 ? '#F8F9FA' : '#FFFFFF',
+                        borderBottom: '1px solid #E2E8F0',
+                      }}
+                    >
+                      <td style={{ border: '1px solid #CBD5E1', padding: '1.5px 2px', textAlign: 'center', fontWeight: 700 }}>
+                        {idx + 1}
+                      </td>
+                      <td style={{ border: '1px solid #CBD5E1', padding: '1.5px 2px', textAlign: 'center', fontFamily: 'monospace', fontSize: '7.5px' }}>
+                        {st.admission_number || '-'}
+                      </td>
+                      <td style={{ border: '1px solid #CBD5E1', padding: '1.5px 5px', textAlign: 'right', fontWeight: 800 }}>
+                        <div style={{ color: '#0D5C3A' }}>{st.arabic_name || st.name}</div>
+                        {st.arabic_name && st.name && (
+                          <div style={{ fontSize: '7px', color: '#64748B', fontWeight: 400 }}>{st.name}</div>
+                        )}
+                      </td>
+                      {assessmentData.orderedSubjects.map((sub) => {
+                        const score = st.subjectScores[sub.id]
+                        const grade = st.subjectGrades[sub.id]
+                        return (
+                          <React.Fragment key={sub.id}>
+                            <td style={{ border: '1px solid #CBD5E1', padding: '1.5px 2px', textAlign: 'center', fontFamily: 'monospace', fontWeight: 800 }}>
+                              {score != null ? score : '-'}
+                            </td>
+                            <td style={{ border: '1px solid #CBD5E1', padding: '1.5px 1px', textAlign: 'center', fontSize: '7px', fontWeight: 800 }}>
+                              {grade ? (
+                                <span
+                                  style={{
+                                    display: 'inline-block',
+                                    padding: '0.5px 2px',
+                                    borderRadius: '2px',
+                                    backgroundColor:
+                                      grade === 'ممتاز'
+                                        ? '#DCFCE7'
+                                        : grade === 'جيد جداً'
+                                        ? '#CCFBF1'
+                                        : grade === 'جيد'
+                                        ? '#FEF3C7'
+                                        : grade === 'مقبول'
+                                        ? '#FFEDD5'
+                                        : '#FFE4E6',
+                                    color:
+                                      grade === 'ممتاز'
+                                        ? '#166534'
+                                        : grade === 'جيد جداً'
+                                        ? '#115E59'
+                                        : grade === 'جيد'
+                                        ? '#92400E'
+                                        : grade === 'مقبول'
+                                        ? '#9A3412'
+                                        : '#9F1239',
+                                  }}
+                                >
+                                  {grade}
+                                </span>
+                              ) : (
+                                '-'
+                              )}
+                            </td>
+                          </React.Fragment>
+                        )
+                      })}
+                      <td style={{ border: '1px solid #CBD5E1', padding: '1.5px 2px', textAlign: 'center', fontFamily: 'monospace', fontWeight: 900, backgroundColor: '#F1F5F9' }}>
+                        {st.total || '-'}
+                      </td>
+                      <td style={{ border: '1px solid #CBD5E1', padding: '1.5px 2px', textAlign: 'center', fontFamily: 'monospace', fontWeight: 800, color: '#0D5C3A' }}>
+                        {st.aggregate ?? '-'}
+                      </td>
+                      <td style={{ border: '1px solid #CBD5E1', padding: '1.5px 2px', textAlign: 'center', fontWeight: 900 }}>
+                        <span
+                          style={{
+                            display: 'inline-block',
+                            padding: '0.5px 3px',
+                            borderRadius: '2px',
+                            fontSize: '7.5px',
+                            backgroundColor:
+                              st.division === 'I'
+                                ? '#DCFCE7'
+                                : st.division === 'II'
+                                ? '#CCFBF1'
+                                : st.division === 'III'
+                                ? '#FEF3C7'
+                                : st.division === 'IV'
+                                ? '#FFEDD5'
+                                : '#F1F5F9',
+                            color:
+                              st.division === 'I'
+                                ? '#166534'
+                                : st.division === 'II'
+                                ? '#115E59'
+                                : st.division === 'III'
+                                ? '#92400E'
+                                : st.division === 'IV'
+                                ? '#9A3412'
+                                : '#475569',
+                          }}
+                        >
+                          {st.division}
+                        </span>
+                      </td>
+                      <td style={{ border: '1px solid #CBD5E1', padding: '1.5px 2px', textAlign: 'center', fontFamily: 'monospace', fontWeight: 900, color: '#B45309' }}>
+                        {st.position}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                {broadsheetSummary && (
+                  <tfoot>
+                    <tr style={{ backgroundColor: '#F0F9F4', fontWeight: 900, borderTop: '2px solid #0D5C3A' }}>
+                      <td colSpan={3} style={{ border: '1px solid #0D5C3A', padding: '2px 5px', textAlign: 'right', color: '#0D5C3A' }}>
+                        متوسط الفصل
+                      </td>
+                      {assessmentData.orderedSubjects.map((sub) => (
+                        <td key={sub.id} colSpan={2} style={{ border: '1px solid #0D5C3A', padding: '2px 2px', textAlign: 'center', fontFamily: 'monospace' }}>
+                          {broadsheetSummary.subjectStats[sub.id]?.avg ?? '-'}
+                        </td>
+                      ))}
+                      <td style={{ border: '1px solid #0D5C3A', padding: '2px 2px', textAlign: 'center', fontFamily: 'monospace', color: '#0D5C3A' }}>
+                        {broadsheetSummary.classAverageTotal}
+                      </td>
+                      <td colSpan={3} style={{ border: '1px solid #0D5C3A', padding: '2px 2px', textAlign: 'center', fontSize: '7.5px', color: '#475569' }}>
+                        المتوسط: {broadsheetSummary.classAverageTotal}
+                      </td>
+                    </tr>
+                  </tfoot>
+                )}
+              </table>
+
+              {/* Division Summary Box */}
+              {broadsheetSummary && (
+                <div
+                  style={{
+                    marginTop: '4px',
+                    padding: '2px 6px',
+                    border: '1px solid #14532D',
+                    borderRadius: '2px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    fontSize: '7.5px',
+                    backgroundColor: '#F8F9FA',
+                  }}
+                >
+                  <span style={{ fontWeight: 800, color: '#0D5C3A' }}>ملخص التقديرات الرسمي:</span>
+                  <span>التقدير الأول: <strong>{broadsheetSummary.divCounts.I}</strong></span>
+                  <span>التقدير الثاني: <strong>{broadsheetSummary.divCounts.II}</strong></span>
+                  <span>التقدير الثالث: <strong>{broadsheetSummary.divCounts.III}</strong></span>
+                  <span>التقدير الرابع: <strong>{broadsheetSummary.divCounts.IV}</strong></span>
+                  <span>غير مجتاز (U): <strong>{broadsheetSummary.divCounts.U}</strong></span>
+                  <span>إجمالي الممتحنين: <strong>{broadsheetSummary.satCandidates}</strong> من <strong>{broadsheetSummary.totalCandidates}</strong></span>
+                </div>
+              )}
+
+              {/* Official Sign-Off Footer with OfficialReportStamp */}
+              <div style={{ marginTop: '6px', position: 'relative' }}>
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(3, 1fr)',
+                    gap: '16px',
+                    textAlign: 'center',
+                    fontSize: '8px',
+                    paddingTop: '4px',
+                  }}
+                >
+                  <div style={{ borderTop: '1px dashed #64748B', paddingTop: '3px' }}>
+                    <p style={{ fontWeight: 800, margin: 0 }}>مُعدّ الكشف: معلم الفصل</p>
+                    <p style={{ fontSize: '7px', color: '#64748B', margin: '1px 0 0' }}>التوقيع والتاريخ</p>
+                  </div>
+                  <div style={{ borderTop: '1px dashed #64748B', paddingTop: '3px' }}>
+                    <p style={{ fontWeight: 800, margin: 0 }}>مُراجع: مشرف الدراسات (DOS)</p>
+                    <p style={{ fontSize: '7px', color: '#64748B', margin: '1px 0 0' }}>التوقيع والتاريخ</p>
+                  </div>
+                  <div style={{ borderTop: '1px dashed #64748B', paddingTop: '3px', position: 'relative' }}>
+                    <p style={{ fontWeight: 800, margin: 0 }}>معتمد: مدير المدرسة والختم الرسمي</p>
+                    <p style={{ fontSize: '7px', color: '#64748B', margin: '1px 0 0' }}>اعتماد مدير المدرسة والختم الرسمي</p>
+                  </div>
+                </div>
+
+                {/* Authentic Circular School Stamp */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: '30px',
+                    bottom: '-6px',
+                    pointerEvents: 'none',
+                    zIndex: 10,
+                  }}
+                >
+                  <OfficialReportStamp
+                    reportData={{
+                      stamp_config: {
+                        ink_color: '#0D5C3A',
+                        scale: 85,
+                      },
+                    }}
+                    maxWidth={110}
+                    maxHeight={52}
+                  />
+                </div>
+              </div>
+
+              {/* Institutional footer line */}
+              <div
+                style={{
+                  marginTop: '3px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  fontSize: '7px',
+                  color: '#64748B',
+                  borderTop: '1px solid #E2E8F0',
+                  paddingTop: '2px',
+                }}
+              >
+                <span>نظام التقارير الذكي — مدرسة جدة الإسلامية للروضة والابتدائية</span>
+                <span>تاريخ الطباعة: {new Date().toLocaleDateString('ar-EG')}</span>
+              </div>
             </div>
           </div>
         </div>

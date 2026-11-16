@@ -558,61 +558,63 @@ export default function SecularHubClient({
   return (
     <div className="flex flex-col min-h-[100dvh] bg-[#F8F9FA] dark:bg-[#0D1411] text-stone-900 dark:text-stone-100 font-sans tabular-nums selection:bg-[#0D5C3A] selection:text-white">
       {/* ======================================================== */}
-      {/* 1. COMMANDING FOREST EMERALD + WARM MARIGOLD HEADER BANNER */}
+      {/* 1. COMMANDING FOREST EMERALD + WARM MARIGOLD HEADER BANNER (STREAMLINED) */}
       {/* ======================================================== */}
-      <div className="print:hidden p-3 sm:p-5 max-w-7xl mx-auto w-full shrink-0">
+      <div className="print:hidden p-2 sm:p-3 max-w-7xl mx-auto w-full shrink-0">
         <div
           data-testid="secular-hub-banner"
-          className="rounded-2xl p-3 sm:p-4 bg-[linear-gradient(135deg_in_oklch,oklch(0.38_0.12_155)_0%,oklch(0.28_0.09_160)_100%)] text-white shadow-xl border border-white/10"
+          className="rounded-2xl p-2.5 sm:p-3.5 bg-[linear-gradient(135deg_in_oklch,oklch(0.38_0.12_155)_0%,oklch(0.28_0.09_160)_100%)] text-white shadow-xl border border-white/10"
         >
           {/* Top Title & Quick Actions Row */}
-          <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-white/10">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#0D5C3A]/10 backdrop-blur-md flex items-center justify-center text-emerald-300 border border-white/15 shadow-inner">
-                <LayoutDashboard className="w-5 h-5" strokeWidth={2.25} />
+          <div className="flex flex-wrap items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-9 h-9 rounded-xl bg-[#0D5C3A]/10 backdrop-blur-md flex items-center justify-center text-emerald-300 border border-white/15 shadow-inner shrink-0">
+                <LayoutDashboard className="w-4.5 h-4.5" strokeWidth={2.25} />
               </div>
-              <div>
+              <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <h1 className="text-base sm:text-lg font-black tracking-tight text-white">
                     Secular Academic Hub
                   </h1>
-                  <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#EA580C]/30 text-[#FED7AA] border border-[#EA580C]/40">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-[#EA580C]/30 text-[#FED7AA] border border-[#EA580C]/40 shrink-0">
                     Uganda UNEB Standards
                   </span>
                 </div>
-                <p className="text-[11px] font-medium text-emerald-200/80">
+                <p className="text-[10.5px] font-medium text-emerald-200/80 line-clamp-1">
                   Institutional Performance Broadsheets, Cohort Analytics &amp; Academic Merit Roll
                 </p>
               </div>
             </div>
 
             {/* Print & CSV Action Buttons */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <button
                 onClick={handlePrintBroadsheet}
                 disabled={isLoading || !assessmentData.students.length}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[10px] text-xs font-bold bg-white/15 hover:bg-white/25 active:scale-95 text-white border border-white/20 transition-all duration-150 backdrop-blur-md shadow-xs disabled:opacity-50"
+                title="Print Official Performance Broadsheet"
+                className="inline-flex items-center gap-1.5 h-8.5 px-3 rounded-[10px] text-xs font-bold bg-white/15 hover:bg-white/25 active:scale-95 text-white border border-white/20 transition-all duration-150 backdrop-blur-md shadow-xs disabled:opacity-50 cursor-pointer"
               >
-                <Printer className="w-4 h-4 text-emerald-300" strokeWidth={2.25} />
+                <Printer className="w-3.5 h-3.5 text-emerald-300" strokeWidth={2.25} />
                 <span>Print Broadsheet</span>
               </button>
 
               <button
                 onClick={handleExportCSV}
                 disabled={isLoading || !assessmentData.students.length}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[10px] text-xs font-bold bg-[linear-gradient(135deg_in_oklch,oklch(0.68_0.19_48),oklch(0.60_0.17_44))] hover:brightness-110 active:scale-95 text-white border border-amber-300/30 transition-all duration-150 shadow-md disabled:opacity-50"
+                title="Export Broadsheet CSV"
+                className="inline-flex items-center gap-1.5 h-8.5 px-3 rounded-[10px] text-xs font-bold bg-[linear-gradient(135deg_in_oklch,oklch(0.68_0.19_48),oklch(0.60_0.17_44))] hover:brightness-110 active:scale-95 text-white border border-amber-300/30 transition-all duration-150 shadow-md disabled:opacity-50 cursor-pointer"
               >
-                <FileSpreadsheet className="w-4 h-4 text-amber-100" strokeWidth={2.25} />
+                <FileSpreadsheet className="w-3.5 h-3.5 text-amber-100" strokeWidth={2.25} />
                 <span>Export CSV</span>
               </button>
             </div>
           </div>
 
           {/* Controls Bar Row: Concentric Radius + OKLCH Hierarchy */}
-          <div className="pt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 items-center">
+          <div className="pt-2.5 mt-2.5 border-t border-white/10 grid grid-cols-2 lg:grid-cols-4 gap-2 items-center">
             {/* Academic Term */}
             <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-emerald-200/90 mb-1">
+              <label className="block text-[9.5px] font-extrabold uppercase tracking-wider text-emerald-200/90 mb-0.5">
                 Academic Term
               </label>
               <CustomPillSelect
@@ -621,13 +623,13 @@ export default function SecularHubClient({
                 value={activeTermId}
                 onChange={(val) => setActiveTermId(val)}
                 options={termOptions}
-                className="w-full h-10 rounded-[10px] bg-black/20 hover:bg-black/30 text-white border border-white/15 text-xs font-semibold"
+                className="w-full h-8.5 rounded-[10px] bg-black/20 hover:bg-black/30 text-white border border-white/15 text-xs font-semibold"
               />
             </div>
 
             {/* Class Cohort */}
             <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-emerald-200/90 mb-1">
+              <label className="block text-[9.5px] font-extrabold uppercase tracking-wider text-emerald-200/90 mb-0.5">
                 Class Cohort
               </label>
               <CustomPillSelect
@@ -637,20 +639,20 @@ export default function SecularHubClient({
                 onChange={(val) => setActiveClassId(val)}
                 options={classOptions}
                 placeholder="Select Class..."
-                className="w-full h-10 rounded-[10px] bg-black/20 hover:bg-black/30 text-white border border-white/15 text-xs font-semibold"
+                className="w-full h-8.5 rounded-[10px] bg-black/20 hover:bg-black/30 text-white border border-white/15 text-xs font-semibold"
               />
             </div>
 
             {/* Dashboard View Mode Toggle */}
             <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-emerald-200/90 mb-1">
+              <label className="block text-[9.5px] font-extrabold uppercase tracking-wider text-emerald-200/90 mb-0.5">
                 View Mode
               </label>
-              <div className="h-10 rounded-xl p-1 bg-black/25 backdrop-blur-md border border-white/15 flex items-center gap-1">
+              <div className="h-8.5 rounded-xl p-0.5 bg-black/25 backdrop-blur-md border border-white/15 flex items-center gap-1">
                 <button
                   type="button"
                   onClick={() => setActiveTab('assessment')}
-                  className={`flex-1 h-full rounded-[8px] flex items-center justify-center gap-1 text-xs font-bold transition-all duration-200 ${
+                  className={`flex-1 h-full rounded-[8px] flex items-center justify-center gap-1 text-[11px] font-bold transition-all duration-200 cursor-pointer ${
                     activeTab === 'assessment'
                       ? 'bg-[linear-gradient(135deg_in_oklch,oklch(0.68_0.19_48),oklch(0.60_0.17_44))] text-white shadow-xs'
                       : 'text-white/80 hover:text-white hover:bg-white/10'
@@ -662,7 +664,7 @@ export default function SecularHubClient({
                 <button
                   type="button"
                   onClick={() => setActiveTab('analysis')}
-                  className={`flex-1 h-full rounded-[8px] flex items-center justify-center gap-1 text-xs font-bold transition-all duration-200 ${
+                  className={`flex-1 h-full rounded-[8px] flex items-center justify-center gap-1 text-[11px] font-bold transition-all duration-200 cursor-pointer ${
                     activeTab === 'analysis'
                       ? 'bg-[linear-gradient(135deg_in_oklch,oklch(0.68_0.19_48),oklch(0.60_0.17_44))] text-white shadow-xs'
                       : 'text-white/80 hover:text-white hover:bg-white/10'
@@ -674,7 +676,7 @@ export default function SecularHubClient({
                 <button
                   type="button"
                   onClick={() => setActiveTab('top_students')}
-                  className={`flex-1 h-full rounded-[8px] flex items-center justify-center gap-1 text-xs font-bold transition-all duration-200 ${
+                  className={`flex-1 h-full rounded-[8px] flex items-center justify-center gap-1 text-[11px] font-bold transition-all duration-200 cursor-pointer ${
                     activeTab === 'top_students'
                       ? 'bg-[linear-gradient(135deg_in_oklch,oklch(0.68_0.19_48),oklch(0.60_0.17_44))] text-white shadow-xs'
                       : 'text-white/80 hover:text-white hover:bg-white/10'
@@ -688,16 +690,16 @@ export default function SecularHubClient({
 
             {/* Exam Phase Toggle */}
             <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-emerald-200/90 mb-1">
+              <label className="block text-[9.5px] font-extrabold uppercase tracking-wider text-emerald-200/90 mb-0.5">
                 Exam Phase
               </label>
-              <div className="h-10 rounded-xl p-1 bg-black/25 backdrop-blur-md border border-white/15 flex items-center gap-1">
+              <div className="h-8.5 rounded-xl p-0.5 bg-black/25 backdrop-blur-md border border-white/15 flex items-center gap-1">
                 {(['bot', 'mot', 'eot'] as const).map((phase) => (
                   <button
                     key={phase}
                     type="button"
                     onClick={() => setExamPhase(phase)}
-                    className={`flex-1 h-full rounded-[8px] flex items-center justify-center text-xs font-bold uppercase transition-all duration-200 ${
+                    className={`flex-1 h-full rounded-[8px] flex items-center justify-center text-[10.5px] font-bold uppercase transition-all duration-200 cursor-pointer ${
                       examPhase === phase
                         ? phase === 'eot'
                           ? 'bg-emerald-500/90 text-white shadow-xs'

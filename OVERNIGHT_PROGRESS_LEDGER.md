@@ -1221,6 +1221,21 @@ Exit code: 0
 - **WS4 — Verification Gate (`src/__tests__/hubs-broadsheet.test.mjs`, `overhaul-workstreams.test.mjs`):**
   - Verified with `npm run typecheck` (`0` errors), 222/222 automated unit tests passing across 43 suites (100% pass rate), and `npm run build` passing cleanly (`69/69` routes compiled in Next.js production build).
 
+---
+
+### Milestone 38 — Final Micro-Polish: English Toolbar Parity with Report Center & Authentic RTL Arabic Assessment Sheet
+- **WS1 — English Toolbar Parity with Report Center (`TheologyHubClient.tsx`, `TheologyHubEmptyState.tsx`):**
+  - Reverted the topbar banner, controls, view mode toggles (`Sheet`, `Analysis`, `Top 10`), exam phase selector (`BOT`, `MOT`, `EOT`), academic term selector, class cohort selector, and action buttons (`Print Broadsheet`, `Export CSV`) back to English by default.
+  - Matches the clean, streamlined design and layout of the Report Center toolbar across desktop and mobile with ultra-compact `h-8.5` controls, concentric radiuses, and OKLCH color hierarchy.
+  - Empty state (`TheologyHubEmptyState.tsx`) updated to English headings and clear actionable instructions.
+- **WS2 — Authentic RTL Arabic Student Assessment Sheet (`TheologyHubClient.tsx`):**
+  - Gated the assessment broadsheet table container with explicit `dir="rtl"` and preserved authentic Arabic column headers (`م`, `اسم التلميذ/ة`, `المجموع`, `المعدل`, `التقدير`, `الترتيب`, `التقرير`).
+  - Arabic subject headers (`القرآن الكريم`, `اللغة العربية`, `الفقه والعبادات`, `التوحيد والعقيدة`, etc.), Arabic student name lockup, Arabic performance badges (`ممتاز`, `جيد جداً`, `جيد`, `مقبول`, `ضعيف`), and Arabic pinned footer summaries (`متوسط الفصل`, `نسبة النجاح (٥٠٪ فأعلى)`).
+  - Landscape print portal retained the double-border frame (`4px solid #14532D` and `1.5px solid #C59B27`), centered crest, bilingual header, Forest Emerald banner (`كشف درجات الطلاب العام — قسم العلوم الشرعية واللغة العربية`), and official circular school stamp.
+- **WS3 — Verification Gate (`src/__tests__/hubs-broadsheet.test.mjs`, `overhaul-workstreams.test.mjs`):**
+  - Verified with `npm run typecheck` (`0` errors), 222/222 automated unit tests passing across 43 suites (`WS1`–`WS35`, `upload-metrics`, `report-print`, `signature-assets`, `signature-deactivation`, `grading-and-calculations`, `report-logo`, `eot-report-auth-and-badges`, `hubs-broadsheet`), and `npm run build` passing cleanly (`69/69` routes compiled in Next.js production build).
+
+
 
 
 

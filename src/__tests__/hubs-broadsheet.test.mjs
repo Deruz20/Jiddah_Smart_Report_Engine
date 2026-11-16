@@ -218,23 +218,24 @@ describe('Hubs & Broadsheet Suite: Workstream 3 - Senior UI/UX Standards & Jidda
     assert.match(secSrc, /\/admin\/reports\?student_id=/);
   });
 
-  it('TheologyHubClient implements Arabic-first pure localization with RTL direction and zero English UI labels', () => {
+  it('TheologyHubClient implements English toolbar parity with Report Center and authentic RTL Arabic assessment sheet', () => {
     const theoPath = path.resolve('src/components/theology-hub/TheologyHubClient.tsx');
     const theoSrc = fs.readFileSync(theoPath, 'utf8');
 
-    // RTL direction
-    assert.match(theoSrc, /dir="rtl"/);
+    // English Toolbar Controls & Buttons (Report Center Parity)
+    assert.match(theoSrc, /Theology Academic Hub/);
+    assert.match(theoSrc, /Print Broadsheet/);
+    assert.match(theoSrc, /Export CSV/);
+    assert.match(theoSrc, /Academic Term/);
+    assert.match(theoSrc, /Theology Class \/ الصف/);
+    assert.match(theoSrc, /View Mode/);
+    assert.match(theoSrc, />Sheet</);
+    assert.match(theoSrc, />Analysis</);
+    assert.match(theoSrc, />Top 10</);
+    assert.match(theoSrc, /Exam Phase/);
 
-    // Arabic UI strings
-    assert.match(theoSrc, /مركز العلوم الشرعية/);
-    assert.match(theoSrc, /كشف الدرجات/);
-    assert.match(theoSrc, /قائمة الشرف/);
-    assert.match(theoSrc, /طباعة الكشف/);
-    assert.match(theoSrc, /تصدير CSV/);
-    assert.match(theoSrc, /الفترة الدراسية/);
-    assert.match(theoSrc, /الصف الدراسي/);
-    assert.match(theoSrc, /نوع العرض/);
-    assert.match(theoSrc, /مرحلة الاختبار/);
+    // RTL direction on assessment sheet container and table
+    assert.match(theoSrc, /dir="rtl"/);
 
     // Table Column Headers in Arabic
     assert.match(theoSrc, />\s*م\s*<\/th>/);
@@ -244,6 +245,13 @@ describe('Hubs & Broadsheet Suite: Workstream 3 - Senior UI/UX Standards & Jidda
     assert.match(theoSrc, /التقدير/);
     assert.match(theoSrc, /الترتيب/);
     assert.match(theoSrc, /التقرير/);
+
+    // Authentic Arabic Performance Badges
+    assert.match(theoSrc, /ممتاز/);
+    assert.match(theoSrc, /جيد جداً/);
+    assert.match(theoSrc, /جيد/);
+    assert.match(theoSrc, /مقبول/);
+    assert.match(theoSrc, /ضعيف/);
 
     // Footer in Arabic
     assert.match(theoSrc, /متوسط الفصل/);

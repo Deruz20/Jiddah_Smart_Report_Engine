@@ -473,10 +473,9 @@ export function AppTopbar({ breadcrumbs, currentPage }: AppTopbarProps) {
     return () => subscription?.unsubscribe();
   }, []);
 
-  // Reclaim full vertical viewport for Report Center Document Studio
-  if (pathname?.startsWith('/admin/reports')) {
-    return null;
-  }
+  // Reclaim full vertical viewport for Report Center Document Studio & Academic Hubs
+  if (pathname?.startsWith('/admin/reports')) return null;
+  if (pathname?.startsWith('/admin/theology-hub') || pathname?.startsWith('/admin/secular-hub')) return null;
 
   return (
     <>

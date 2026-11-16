@@ -611,8 +611,8 @@ export default function SecularHubClient({
             />
           </div>
 
-          {/* CENTER: Exam Phase + View Mode */}
-          <div className="flex items-center gap-1.5 shrink-0">
+          {/* CENTER: Exam Phase + View Mode — hidden on mobile, shown sm+ */}
+          <div className="hidden sm:flex items-center gap-1.5 shrink-0">
             {/* Exam Phase — inline pill group */}
             <div className="flex items-center bg-stone-100 dark:bg-white/5 rounded-full p-0.5 border border-stone-200/80 dark:border-white/10 gap-0.5">
               {(['bot', 'mot', 'eot'] as const).map((phase) => (
@@ -695,6 +695,66 @@ export default function SecularHubClient({
               <span>Print</span>
             </button>
           </div>
+        </div>
+      </div>
+
+      {/* Mobile-only phase + view strip */}
+      <div className="print:hidden sm:hidden flex items-center gap-2 px-3 pt-1 pb-0 max-w-7xl mx-auto w-full overflow-x-auto">
+        <div className="flex items-center bg-stone-100 dark:bg-white/5 rounded-full p-0.5 border border-stone-200/80 dark:border-white/10 gap-0.5 shrink-0">
+          {(['bot', 'mot', 'eot'] as const).map((phase) => (
+            <button
+              key={phase}
+              type="button"
+              onClick={() => setExamPhase(phase)}
+              className={`h-7 px-2.5 rounded-full text-[11px] font-bold uppercase tracking-wide transition-all cursor-pointer ${
+                examPhase === phase
+                  ? phase === 'eot'
+                    ? 'bg-[#0D5C3A] text-white shadow-xs'
+                    : 'bg-stone-700 text-white shadow-xs'
+                  : 'text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-white'
+              }`}
+            >
+              {phase.toUpperCase()}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center bg-stone-100 dark:bg-white/5 rounded-full p-0.5 border border-stone-200/80 dark:border-white/10 gap-0.5 shrink-0">
+          <button
+            type="button"
+            onClick={() => setActiveTab('assessment')}
+            className={`h-7 px-2.5 rounded-full flex items-center gap-1 text-[11px] font-bold transition-all cursor-pointer ${
+              activeTab === 'assessment'
+                ? 'bg-[#D97706] text-white shadow-xs'
+                : 'text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-white'
+            }`}
+          >
+            <ScrollText className="w-3 h-3" strokeWidth={2.25} />
+            <span>Sheet</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('analysis')}
+            className={`h-7 px-2.5 rounded-full flex items-center gap-1 text-[11px] font-bold transition-all cursor-pointer ${
+              activeTab === 'analysis'
+                ? 'bg-[#D97706] text-white shadow-xs'
+                : 'text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-white'
+            }`}
+          >
+            <BarChart3 className="w-3 h-3" strokeWidth={2.25} />
+            <span>Analysis</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('top_students')}
+            className={`h-7 px-2.5 rounded-full flex items-center gap-1 text-[11px] font-bold transition-all cursor-pointer ${
+              activeTab === 'top_students'
+                ? 'bg-[#D97706] text-white shadow-xs'
+                : 'text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-white'
+            }`}
+          >
+            <Award className="w-3 h-3" strokeWidth={2.25} />
+            <span>Top 10</span>
+          </button>
         </div>
       </div>
 

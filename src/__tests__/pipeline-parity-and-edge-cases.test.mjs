@@ -285,7 +285,7 @@ describe('Defect G-2 Regression: Score Type Resolution Parity (BOT vs MOT vs EOT
     const gradeNum = getSubjectGradeNumber(score);
     assert.equal(gradeNum, 5);
     assert.equal(getGradeDisplay(gradeNum), 'C5');
-    assert.equal(getSubjectRemark(gradeNum), 'Fair');
+    assert.equal(getSubjectRemark(gradeNum), 'Fairly Good');
   });
 
   test('null or missing marks fall back to null safely across all score types', () => {

@@ -154,12 +154,12 @@ describe('Wave 3: Independent Grading & Calculation Oracle', () => {
       assert.equal(getSubjectRemark(1), 'Excellent');
       assert.equal(getSubjectRemark(2), 'Very Good');
       assert.equal(getSubjectRemark(3), 'Good');
-      assert.equal(getSubjectRemark(4), 'Fairly Good');
-      assert.equal(getSubjectRemark(5), 'Fair');
-      assert.equal(getSubjectRemark(6), 'Average');
-      assert.equal(getSubjectRemark(7), 'Below Average');
-      assert.equal(getSubjectRemark(8), 'Poor');
-      assert.equal(getSubjectRemark(9), 'Failed');
+      assert.equal(getSubjectRemark(4), 'Quite Good');
+      assert.equal(getSubjectRemark(5), 'Fairly Good');
+      assert.equal(getSubjectRemark(6), 'Fair');
+      assert.equal(getSubjectRemark(7), 'More Effort');
+      assert.equal(getSubjectRemark(8), 'Work Harder');
+      assert.equal(getSubjectRemark(9), 'Poor / Pull Up');
     });
 
     it('generates authentic Arabic remarks for Islamic theology', () => {

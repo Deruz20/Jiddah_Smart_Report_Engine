@@ -305,28 +305,32 @@ export function computeNurseryBadge(score: number | null | undefined): {
 }
 
 // Subject remarks for secular (primary)
+// Falls back to DEFAULT_GRADING_BANDS when no customBands are supplied,
+// so the remark always matches what is configured in the Settings page.
 export function getSubjectRemark(gradeNum: number, customBands?: GradingBand[]): string {
-  if (customBands && customBands.length > 0) {
-    const match = customBands.find((b) => {
-      const num = parseInt(String(b.grade).replace(/\D/g, ''), 10)
-      return num === gradeNum
-    })
-    if (match && match.remark && match.remark.trim()) {
-      return match.remark.trim()
-    }
+  // Use supplied custom bands, or fall back to the canonical UNEB defaults.
+  const bands = (customBands && customBands.length > 0) ? customBands : DEFAULT_GRADING_BANDS
+
+  const match = bands.find((b) => {
+    const num = parseInt(String(b.grade).replace(/\D/g, ''), 10)
+    return num === gradeNum
+  })
+  if (match && match.remark && match.remark.trim()) {
+    return match.remark.trim()
   }
 
+  // Hard fallback that is exactly aligned with DEFAULT_UNEB_GRADING_BANDS
   switch (gradeNum) {
     case 1: return 'Excellent'
     case 2: return 'Very Good'
     case 3: return 'Good'
-    case 4: return 'Fairly Good'
-    case 5: return 'Fair'
-    case 6: return 'Average'
-    case 7: return 'Below Average'
-    case 8: return 'Poor'
-    case 9: return 'Failed'
-    default: return 'Failed'
+    case 4: return 'Quite Good'
+    case 5: return 'Fairly Good'
+    case 6: return 'Fair'
+    case 7: return 'More Effort'
+    case 8: return 'Work Harder'
+    case 9: return 'Poor / Pull Up'
+    default: return 'Poor / Pull Up'
   }
 }
 

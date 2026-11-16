@@ -100,11 +100,10 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
       <td className="score-cell">{subject.eot_score ?? '--'}</td>
       <td className="grade-cell">{subject.eot_grade_display ?? subject.eot_agg ?? subject.grade ?? '--'}</td>
       <td className="remark-cell" style={{ color: remarkColor(subject.remark) }}>
-        {subject.remark ||
-          (subject.eot_score != null
-            ? getSubjectRemark(getSubjectGradeNumber(subject.eot_score))
+        {subject.remark || (subject.eot_score != null
+            ? getSubjectRemark(getSubjectGradeNumber(subject.eot_score, gradingBands), gradingBands)
             : subject.mot_score != null
-              ? getSubjectRemark(getSubjectGradeNumber(subject.mot_score))
+              ? getSubjectRemark(getSubjectGradeNumber(subject.mot_score, gradingBands), gradingBands)
               : '')}
       </td>
       <td

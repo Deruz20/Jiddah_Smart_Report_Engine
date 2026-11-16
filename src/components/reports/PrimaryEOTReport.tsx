@@ -128,7 +128,7 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
       <td style={{ fontWeight: effective.scoreFontWeight }}>{subject.eot_score ?? "--"}</td>
       <td className="grade-cell">{subject.eot_grade_display ?? subject.eot_agg ?? subject.grade ?? "--"}</td>
       <td className="remark-cell" style={{ color: remarkColor(subject.remark) }}>
-        {subject.remark || (subject.eot_score != null ? getSubjectRemark(getSubjectGradeNumber(subject.eot_score)) : subject.mot_score != null ? getSubjectRemark(getSubjectGradeNumber(subject.mot_score)) : "")}
+        {subject.remark || (subject.eot_score != null ? getSubjectRemark(getSubjectGradeNumber(subject.eot_score, gradingBands), gradingBands) : subject.mot_score != null ? getSubjectRemark(getSubjectGradeNumber(subject.mot_score, gradingBands), gradingBands) : "")}
       </td>
       <td style={{ textTransform: 'uppercase', fontFamily: '"Caveat", cursive', fontWeight: 'bold', fontSize: '1.2em', color: effective.primaryColor }}>{(subject.teacher_initials || '').toUpperCase()}</td>
     </tr>

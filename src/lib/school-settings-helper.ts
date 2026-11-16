@@ -409,6 +409,25 @@ export async function fetchMergedSchoolSettings(supabase: any, gradingCriteria: 
       ...(rawSchoolSettings?.fee_structure || {}),
       ...(customConfig?.fee_structure || {}),
     },
+    // Grading scales — always guarantee a non-empty array so API routes never fall back to stale legacy logic.
+    grading_scale:
+      Array.isArray(customConfig?.grading_scale) && customConfig.grading_scale.length > 0
+        ? customConfig.grading_scale
+        : Array.isArray(rawSchoolSettings?.grading_scale) && rawSchoolSettings.grading_scale.length > 0
+        ? rawSchoolSettings.grading_scale
+        : DEFAULT_UNEB_GRADING_BANDS,
+    theology_grading_scale:
+      Array.isArray(customConfig?.theology_grading_scale) && customConfig.theology_grading_scale.length > 0
+        ? customConfig.theology_grading_scale
+        : Array.isArray(rawSchoolSettings?.theology_grading_scale) && rawSchoolSettings.theology_grading_scale.length > 0
+        ? rawSchoolSettings.theology_grading_scale
+        : DEFAULT_THEOLOGY_GRADING_BANDS,
+    theology_remarks:
+      Array.isArray(customConfig?.theology_remarks) && customConfig.theology_remarks.length > 0
+        ? customConfig.theology_remarks
+        : Array.isArray(rawSchoolSettings?.theology_remarks) && rawSchoolSettings.theology_remarks.length > 0
+        ? rawSchoolSettings.theology_remarks
+        : DEFAULT_THEOLOGY_REMARKS,
     ...(rawSchoolSettings?.name ? { name: rawSchoolSettings.name, school_name: rawSchoolSettings.name } : {}),
     ...(rawSchoolSettings?.school_name ? { name: rawSchoolSettings.school_name, school_name: rawSchoolSettings.school_name } : {}),
     ...(customConfig?.school_name ? { name: customConfig.school_name, school_name: customConfig.school_name } : {}),

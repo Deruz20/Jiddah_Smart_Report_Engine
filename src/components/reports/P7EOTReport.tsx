@@ -48,11 +48,11 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
 
   const teacherComment =
     reportData?.circular?.class_teacher_comment ??
-    getClassTeacherComment(reportData?.circular?.division ?? null, undefined, reportData?.settings?.grading_scale)
+    getClassTeacherComment(reportData?.circular?.division ?? null, undefined, reportData?.settings?.grading_scale, reportData?.settings?.division_boundaries)
 
   const headComment =
     reportData?.circular?.head_teacher_comment ??
-    getHeadTeacherComment(reportData?.circular?.division ?? null, undefined, reportData?.settings?.grading_scale)
+    getHeadTeacherComment(reportData?.circular?.division ?? null, undefined, reportData?.settings?.grading_scale, reportData?.settings?.division_boundaries)
 
   const conductRemark =
     reportData?.circular?.conduct_remark ??

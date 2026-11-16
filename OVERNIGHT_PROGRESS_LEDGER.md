@@ -1301,3 +1301,63 @@ Exit code: 0
 - `npx tsc --noEmit` → **0 errors**
 - Tests → **222/222 pass, 0 fail** across 43 test suites
 - `npm run build` → **exit 0**, all 69 static/dynamic routes compiled cleanly
+
+---
+
+### Milestone 41 — Settings Remarks Wire-Up: Report Card Subject Remarks Now Use School-Configured Grading Scale
+
+**Branch:** `feat/overnight-system-renovation`
+**Commit:** `288e5dc`
+**Status:** ✅ COMPLETE
+
+#### Problem
+Subject remarks on report cards showed stale legacy values (`"Average"`, `"Below Average"`, `"Fairly Good"`, `"Failed"`) despite correct remarks being configured in `/admin/settings` → Grading & Remarks. The Settings page correctly stored `C6: "Fair"`, `P7: "More Effort"`, `C5: "Fairly Good"`, `P8: "Work Harder"`, `F9: "Poor / Pull Up"` but report cards ignored them.
+
+#### Root Causes (3 layers)
+
+| Layer | File | Bug |
+| --- | --- | --- |
+| Core grading lib | `src/lib/grading.ts` | `getSubjectRemark()` switch fallback emitted wrong legacy strings (`'Average'`, `'Below Average'`, `'Failed'`) instead of matching `DEFAULT_UNEB_GRADING_BANDS` |
+| Settings merge | `src/lib/school-settings-helper.ts` | `fetchMergedSchoolSettings()` omitted `grading_scale`, `theology_grading_scale`, and `theology_remarks` from guaranteed-fallback merge block → API routes received `undefined` bands |
+| Report components | `PrimaryEOTReport.tsx`, `P7EOTReport.tsx` | JSX remark-cell fallback called `getSubjectRemark(getSubjectGradeNumber(score))` with **no `customBands`** argument, bypassing the resolved school settings |
+
+#### Fixes Applied
+
+1. **`src/lib/grading.ts`** — `getSubjectRemark()` now resolves against `DEFAULT_GRADING_BANDS` when no `customBands` supplied. Hard fallback switch updated to exactly mirror `DEFAULT_UNEB_GRADING_BANDS`:
+   - `4 → 'Quite Good'` | `5 → 'Fairly Good'` | `6 → 'Fair'` | `7 → 'More Effort'` | `8 → 'Work Harder'` | `9 → 'Poor / Pull Up'`
+
+2. **`src/lib/school-settings-helper.ts`** — `fetchMergedSchoolSettings()` now guarantees all three grading arrays always fall back to canonical defaults, so API routes always receive a populated `grading_scale`:
+   ```ts
+   grading_scale: customConfig.grading_scale ?? rawSchoolSettings.grading_scale ?? DEFAULT_UNEB_GRADING_BANDS
+   theology_grading_scale: ... ?? DEFAULT_THEOLOGY_GRADING_BANDS
+   theology_remarks: ... ?? DEFAULT_THEOLOGY_REMARKS
+   ```
+
+3. **`PrimaryEOTReport.tsx` (line 131)** — remark-cell JSX fallback now passes `gradingBands` (resolved from `reportData.settings.grading_scale`) into both `getSubjectGradeNumber()` and `getSubjectRemark()`.
+
+4. **`P7EOTReport.tsx` (lines 103–107)** — same fix applied.
+
+5. **Test assertions aligned** — `independent-grading-oracle.test.mjs` and `pipeline-parity-and-edge-cases.test.mjs` updated to expect canonical UNEB defaults (`C5 → 'Fairly Good'`, `C6 → 'Fair'`, `P7 → 'More Effort'`, etc.).
+
+#### Data Flow (after fix)
+
+```
+Settings Page (save)
+  → PATCH /api/settings/school
+  → activity_logs { grading_scale: [...custom bands...] }
+
+Report Request
+  → fetchMergedSchoolSettings()
+  → merged.grading_scale = custom OR DEFAULT_UNEB_GRADING_BANDS  ← guaranteed non-undefined
+  → schoolSettings.grading_scale passed to getSubjectRemark(gradeNum, bands)
+  → remark = band.remark from Settings  ✓
+
+Report Card JSX (remark fallback)
+  → gradingBands = resolveReportGradingBands(reportData)  ← reads reportData.settings.grading_scale
+  → getSubjectRemark(getSubjectGradeNumber(score, gradingBands), gradingBands)  ✓
+```
+
+#### Verification Gate
+- `npx tsc --noEmit` → **0 errors**
+- Tests → **376/376 pass, 0 fail** across 66 suites
+- `npm run build` → **exit 0**, all routes compiled cleanly

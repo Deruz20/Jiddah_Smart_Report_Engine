@@ -1267,3 +1267,37 @@ Exit code: 0
 - `npm run typecheck` → 0 errors
 - Tests → **222/222 pass, 0 fail**
 - `npm run build` → exit 0, all routes compiled
+
+---
+
+### Milestone 40 — Academic Hubs Final Institutional Polish: Arabic-Indic Numerals, Dynamic Toggles, Pure Arabic Analytics & Mobile-First Excellence
+
+**Branch:** `feat/overnight-system-renovation`
+**Commit:** `b06a665`
+**Status:** ✅ COMPLETE
+
+#### What was done
+1. **Arabic-Indic Numerals Throughout Theology Assessment Sheet & Broadsheet:**
+   - Every digit in the assessment sheet data area converted to authentic Eastern Arabic-Indic numerals (`٠١٢٣٤٥٦٧٨٩`) via `toArabicNumerals()`: row serial numbers, subject marks, total scores (`المجموع`), student ranks (`الترتيب`), footer subject averages, class mean total, and pass rates.
+   - Print Broadsheet renderer updated with Arabic-Indic digits on row indexes, marks, totals, aggregates, and ranks.
+2. **Dynamic English Name Toggle (`showEnglishNames`, default: `false`):**
+   - Implemented a toggle in the top toolbar's `Customize` popover controlling the display of Latin transliterated names below Arabic names across the assessment sheet, Top 10 cards, and print broadsheets.
+3. **Print Customization Popover (Stamp & Signatures Toggles):**
+   - Added `Customize` popover button to the right toolbar group matching the Report Center pattern, enabling real-time toggling of `OfficialReportStamp` and `OfficialPrintSignaturesFooter`.
+4. **AppTopbar Redundancy Elimination:**
+   - Added path exclusion in `src/components/layout/app-topbar.tsx` for `/admin/theology-hub` and `/admin/secular-hub`, reclaiming full vertical viewport space.
+5. **Pure Arabic Analysis Tab (`VIEW 2`):**
+   - Translated all 4 KPI cards to Arabic (`إجمالي المسجلين`, `متوسط مجموع الفصل`, `ممتاز + جيد جداً`, `مرحلة الاختبار`) with Arabic-Indic numerals.
+   - Replaced UNEB Division I–U metrics with authentic theology grade counts (`ممتاز`, `جيد جداً`, `جيد`, `مقبول`, `ضعيف`) calculated from student subject averages.
+   - Translated subject performance breakdown table headers (`المادة`, `المتوسط`, `الأعلى`, `الأدنى`, `نسبة النجاح (٥٠٪+)`, `الأداء`) and converted all values to Arabic-Indic.
+6. **Pure Arabic Top 10 Merit Roll (`VIEW 3`):**
+   - Re-styled podium cards with Arabic titles (`المركز الأول / بطل الفصل`, `المركز الثاني`, `المركز الثالث`), Arabic-first names, Arabic-Indic score displays, and `<RemarkBadge>` theology grades.
+   - Translated Top 10 table headers (`الترتيب`, `الاسم`, `رقم القيد`, `المجموع`, `المعدل`, `التقدير`, `التقرير`) with `dir="rtl"` layout.
+7. **Mobile-First Responsive Toolbar & Dark Theme Polish:**
+   - Added compact mobile-only phase and view switcher strips beneath toolbars on mobile devices, hiding desktop center groups to eliminate horizontal stretching.
+   - Ensured seamless dark theme support (`dark:bg-[#151D1A]`, `dark:bg-[#151F1B]`) across all cards, tables, popovers, and inputs.
+
+#### Verification Gate
+- `npx tsc --noEmit` → **0 errors**
+- Tests → **222/222 pass, 0 fail** across 43 test suites
+- `npm run build` → **exit 0**, all 69 static/dynamic routes compiled cleanly

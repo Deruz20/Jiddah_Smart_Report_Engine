@@ -272,33 +272,12 @@ export async function getDynamicSignatureSlots(supabase: SupabaseClient) {
       required: true,
     },
     {
-      slot_key: 'dos-signature',
-      label: 'Director of Studies (DOS) Signature',
-      role: 'DOS',
-      description: 'Authorized signature for the Director of Studies (Secular Curriculum).',
-      required: true,
-    },
-    {
-      slot_key: 'theology-head',
-      label: 'Theology Head Signature',
-      role: 'DOS Theology',
-      description: 'Authorized signature for the Head of Theology / Islamic Studies.',
-      required: true,
-    },
-    {
       slot_key: 'school-stamp',
       label: 'Official School Stamp',
       role: 'School',
       description: 'Official circular or rectangular school stamp rendered on terminal report cards.',
       required: true,
     },
-    {
-      slot_key: 'principal',
-      label: 'Principal Signature',
-      role: 'Principal',
-      description: 'Authority signature for official transcripts and school certificates.',
-      required: false,
-    }
   ];
 
   const { data: enrollments, error } = await supabase
@@ -338,6 +317,21 @@ export async function getDynamicSignatureSlots(supabase: SupabaseClient) {
     return 999;
   };
 
+  const getTheologyArabicSuffix = (key: string) => {
+    const map: Record<string, string> = {
+      'theology-teacher-baby': 'الروضة السفلى',
+      'theology-teacher-middle': 'الروضة الوسطى',
+      'theology-teacher-top': 'الروضة العليا',
+      'theology-teacher-p1': 'الصف الأول',
+      'theology-teacher-p2': 'الصف الثاني',
+      'theology-teacher-p3': 'الصف الثالث',
+      'theology-teacher-p4': 'الصف الرابع',
+      'theology-teacher-p5': 'الصف الخامس',
+      'theology-teacher-p6': 'الصف السادس',
+    };
+    return map[key] ? ` (${map[key]})` : '';
+  };
+
   const addTeacherSlots = (classNames: Set<string>, isTheology: boolean) => {
     const sortedNames = Array.from(classNames).sort((a, b) => {
       const weightDiff = getClassSortWeight(a) - getClassSortWeight(b);
@@ -350,9 +344,10 @@ export async function getDynamicSignatureSlots(supabase: SupabaseClient) {
       // P.7 sits PLE only under the Secular curriculum; Theology stops at P.6.
       if (isTheology && key === 'theology-teacher-p7') continue;
       const prettyName = name.trim();
+      const arabicSuffix = isTheology ? getTheologyArabicSuffix(key) : '';
       slots.push({
         slot_key: key,
-        label: `${isTheology ? 'Theology Teacher' : 'Class Teacher'} — ${prettyName}`,
+        label: `${isTheology ? 'Theology Teacher' : 'Class Teacher'} — ${prettyName}${arabicSuffix}`,
         role: isTheology ? 'Theology Teacher' : 'Class Teacher',
         description: `Signature for ${prettyName}${isTheology ? ' Theology' : ''} reports.`,
         required: true,

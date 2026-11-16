@@ -138,10 +138,19 @@
     display: none !important;
   }
 
-  /* 1. Hide ALL non-portal direct body children so zero ghost height triggers blank pages */
-  body:has(#report-print-portal) > *:not(#report-print-portal):not(style):not(script) {
+  /* 1. Completely collapse screen app tree when #report-print-portal is present so Page 1 is NEVER blank */
+  html:has(#report-print-portal) body > *:not(#report-print-portal):not(style):not(script),
+  body:has(#report-print-portal) [data-slot="sidebar-wrapper"],
+  body:has(#report-print-portal) [data-slot="sidebar-inset"],
+  body:has(#report-print-portal) main,
+  .report-studio-root {
     display: none !important;
     height: 0 !important;
+    min-height: 0 !important;
+    max-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
     overflow: hidden !important;
   }
 
@@ -149,25 +158,25 @@
   body,
   #report-print-portal,
   #print-portal {
-    margin: 0 !important;
-    padding: 0 !important;
+    display: block !important;
+    position: static !important;
     width: 100% !important;
     height: auto !important;
     min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    left: 0 !important;
+    top: 0 !important;
     background: #ffffff !important;
   }
 
   /* 2. Reveal ONLY the print portal */
   #report-print-portal,
   #print-portal {
-    position: static !important;
-    top: 0 !important;
-    left: 0 !important;
     overflow: visible !important;
     visibility: visible !important;
     z-index: 9999 !important;
     pointer-events: none !important;
-    display: block !important;
   }
 
   #report-print-portal *,
@@ -185,6 +194,8 @@
   #print-portal .report-container {
     margin: 0 !important;
     padding: 0 !important;
+    left: 0 !important;
+    transform: none !important;
     page-break-after: avoid !important;
     break-after: avoid !important;
     page-break-inside: avoid !important;
@@ -211,19 +222,44 @@
     break-after: avoid !important;
   }
 
-  /* Lock landscape & portrait page boxes in print with CSS Named Pages */
-  .report-sheet-landscape,
-  .report-sheet-landscape .landscape-page,
-  .landscape-page,
-  [data-report-orientation="landscape"] {
+  /* Named pages ONLY for mixed-orientation batches so uniform jobs avoid page:auto -> named transitions */
+  #report-print-portal[data-mixed-orientation="true"] .report-sheet-landscape,
+  #report-print-portal[data-mixed-orientation="true"] .landscape-page {
     page: landscape-sheet !important;
+  }
+
+  #report-print-portal[data-mixed-orientation="true"] .report-sheet-portrait,
+  #report-print-portal[data-mixed-orientation="true"] .portrait-page {
+    page: portrait-sheet !important;
+  }
+
+  /* Lock landscape & portrait page boxes flush at 0,0 without pushing right or overflowing */
+  .report-sheet-landscape {
     width: 297mm !important;
     min-width: 297mm !important;
     max-width: 297mm !important;
     height: 209mm !important;
     min-height: 0 !important;
     max-height: 209mm !important;
-    padding: 2.5mm 4mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    left: 0 !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .landscape-page,
+  [data-report-orientation="landscape"] {
+    width: 297mm !important;
+    min-width: 297mm !important;
+    max-width: 297mm !important;
+    height: 209mm !important;
+    min-height: 0 !important;
+    max-height: 209mm !important;
+    margin: 0 !important;
+    left: 0 !important;
     box-sizing: border-box !important;
     overflow: hidden !important;
     break-inside: avoid !important;
@@ -239,19 +275,18 @@
   }
 
   .report-sheet-portrait,
-  .report-sheet-portrait .portrait-page,
   .portrait-page,
   .a4-portrait-page,
   .a4-two-up-page,
   [data-report-orientation="portrait"] {
-    page: portrait-sheet !important;
     width: 210mm !important;
     min-width: 210mm !important;
     max-width: 210mm !important;
     height: 295mm !important;
     min-height: 0 !important;
     max-height: 295mm !important;
-    margin: 0 auto !important;
+    margin: 0 !important;
+    left: 0 !important;
     box-sizing: border-box !important;
     overflow: hidden !important;
     break-inside: avoid !important;
@@ -562,12 +597,12 @@
   color: #0F172A !important;
 }
 
-/* Assign named @page to report containers matching outer .report-card-sheet */
-#print-portal .report-container[data-report-orientation='portrait'] {
+/* Assign named @page ONLY for mixed-orientation batches matching outer .report-card-sheet */
+#report-print-portal[data-mixed-orientation="true"] #print-portal .report-container[data-report-orientation='portrait'] {
   page: portrait-sheet;
 }
 
-#print-portal .report-container[data-report-orientation='landscape'] {
+#report-print-portal[data-mixed-orientation="true"] #print-portal .report-container[data-report-orientation='landscape'] {
   page: landscape-sheet;
 }
 

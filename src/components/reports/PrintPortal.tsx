@@ -31,6 +31,7 @@ export function PrintPortal({ children, pageOrientation = 'portrait' }: PrintPor
     <div
       id="report-print-portal"
       data-print-portal="active"
+      data-mixed-orientation={pageOrientation === 'mixed' ? 'true' : 'false'}
       aria-hidden="true"
       inert={true}
     >

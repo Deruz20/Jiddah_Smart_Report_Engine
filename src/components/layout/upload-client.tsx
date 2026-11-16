@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
   Upload,
+  UploadCloud,
   FileText,
   Image as ImageIcon,
   Check,
@@ -21,7 +22,9 @@ import {
   Eraser,
   ExternalLink,
   Search,
-  RotateCw,
+  Sparkles,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react'
 import { MoreActionsMenu } from '@/components/ui/more-actions-menu'
 import { CustomPillSelect } from '@/components/ui/custom-pill-select'
@@ -30,6 +33,7 @@ import { toast } from 'sonner'
 import { ConfirmDestructiveDialog } from '@/components/ConfirmDestructiveDialog'
 import { SignatureInkReviewCard } from '@/components/SignatureInkReviewCard'
 import { OfficialReportStamp } from '@/components/reports/StampGenerator'
+import { CleanSignatureImage } from '@/components/reports/CleanSignatureImage'
 import {
   getUploadMetrics,
   getUploadProgressPercent,
@@ -67,6 +71,13 @@ const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'application/pd
 const MAX_FILE_SIZE = 10 * 1024 * 1024
 const STORAGE_QUOTA_BYTES = 1024 * 1024 * 1024 // 1 GB
 const CATEGORIES = ['Signatures', 'Stamps', 'Branding', 'Documents', 'Other'] as const
+const UNUSED_SIGNATURE_SLOTS = new Set([
+  'school-stamp',
+  'theology-teacher-p7',
+  'dos-signature',
+  'theology-head',
+  'principal',
+])
 
 const DRAW_INK_OPTIONS = [
   { label: 'Official Ink Navy', hex: '#1B3B8B' },
@@ -79,6 +90,17 @@ function formatSize(bytes: number) {
   if (bytes < 1024) return `${Math.round(bytes)} B`
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
   return `${(bytes / 1024 / 1024).toFixed(2)} MB`
+}
+
+function getSlotBadgeInitials(slotKey?: string) {
+  if (!slotKey) return 'HT'
+  if (slotKey === 'head-teacher') return 'HT'
+  const clean = slotKey.replace(/^(class|theology)-teacher-/, '')
+  const prefix = slotKey.startsWith('theology-') ? 'T' : ''
+  if (clean.startsWith('baby')) return `${prefix}B`
+  if (clean.startsWith('middle')) return `${prefix}M`
+  if (clean.startsWith('top')) return `${prefix}T`
+  return `${prefix}${clean.toUpperCase()}`.slice(0, 3)
 }
 
 function DigitalSignaturePad({
@@ -182,17 +204,17 @@ function DigitalSignaturePad({
   }
 
   return (
-    <div className="rounded-xl border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 bg-[var(--bg-sunken)]/50 p-3.5 space-y-3">
+    <div className="rounded-xl border border-[#0D5C3A]/15 dark:border-white/10 bg-[#F8FAF9] dark:bg-[#111916] p-3 space-y-2.5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0">
           <h3 className="text-[11px] font-extrabold uppercase tracking-wider text-[var(--text-primary)] flex items-center gap-1.5 truncate">
-            <PenTool className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <PenTool className="w-3.5 h-3.5 text-[#0D5C3A] dark:text-emerald-400 shrink-0" />
             <span className="truncate">{targetLabel}</span>
           </h3>
         </div>
 
         <div className="flex flex-wrap items-center gap-1.5">
-          <div className="flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-1.5 py-1">
+          <div className="flex items-center gap-1 rounded-lg border border-[#0D5C3A]/15 bg-white dark:bg-[#151D1A] px-1.5 py-1">
             {DRAW_INK_OPTIONS.map((opt) => (
               <Tooltip key={opt.hex}>
                 <TooltipTrigger asChild>
@@ -201,7 +223,7 @@ function DigitalSignaturePad({
                     aria-label={opt.label}
                     onClick={() => setInkColor(opt.hex)}
                     className={`w-4 h-4 rounded-full border-2 transition-transform cursor-pointer ${
-                      inkColor === opt.hex ? 'scale-110 border-amber-400 shadow-2xs' : 'border-white/70 opacity-80'
+                      inkColor === opt.hex ? 'scale-110 border-[#D97706] shadow-2xs' : 'border-white/70 opacity-80'
                     }`}
                     style={{ backgroundColor: opt.hex }}
                   />
@@ -211,7 +233,7 @@ function DigitalSignaturePad({
             ))}
           </div>
 
-          <div className="flex items-center gap-0.5 rounded-lg border border-[var(--border)] bg-[var(--bg-card)] p-0.5 text-[10px] font-bold">
+          <div className="flex items-center gap-0.5 rounded-lg border border-[#0D5C3A]/15 bg-white dark:bg-[#151D1A] p-0.5 text-[10px] font-bold">
             {[
               { label: 'Fine', width: 2.4 },
               { label: 'Med', width: 3.5 },
@@ -223,7 +245,7 @@ function DigitalSignaturePad({
                 onClick={() => setStrokeWidth(item.width)}
                 className={`px-1.5 py-0.5 rounded-md cursor-pointer transition-colors ${
                   strokeWidth === item.width
-                    ? 'bg-emerald-600 text-white'
+                    ? 'bg-[#0D5C3A] text-white'
                     : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                 }`}
               >
@@ -234,7 +256,7 @@ function DigitalSignaturePad({
         </div>
       </div>
 
-      <div className="relative rounded-xl border border-dashed border-slate-300 bg-white overflow-hidden">
+      <div className="relative rounded-xl border border-dashed border-[#0D5C3A]/25 bg-white overflow-hidden">
         <canvas
           ref={canvasRef}
           width={920}
@@ -243,11 +265,11 @@ function DigitalSignaturePad({
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerUp}
-          className="w-full h-40 block cursor-crosshair select-none"
+          className="w-full h-36 block cursor-crosshair select-none"
           style={{ touchAction: 'none' }}
           aria-label="Digital signature drawing canvas"
         />
-        <div className="pointer-events-none absolute inset-x-8 bottom-8 border-b border-dotted border-slate-300" />
+        <div className="pointer-events-none absolute inset-x-8 bottom-7 border-b border-dotted border-slate-300" />
         {!hasStrokes && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <span className="text-[11px] font-semibold text-slate-400 select-none">
@@ -262,7 +284,7 @@ function DigitalSignaturePad({
           type="button"
           onClick={handleClear}
           disabled={!hasStrokes || saving}
-          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] disabled:opacity-45 cursor-pointer"
+          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold border border-[#0D5C3A]/15 text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] disabled:opacity-45 cursor-pointer"
         >
           <Eraser className="w-3.5 h-3.5" />
           Clear
@@ -272,7 +294,7 @@ function DigitalSignaturePad({
           type="button"
           onClick={handleSave}
           disabled={!hasStrokes || saving}
-          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-extrabold bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 shadow-xs cursor-pointer"
+          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-extrabold bg-[#0D5C3A] text-white hover:bg-[#093D26] disabled:opacity-50 shadow-xs cursor-pointer"
         >
           <Check className="w-3.5 h-3.5" />
           {saving ? 'Saving...' : 'Save Signature'}
@@ -303,11 +325,12 @@ export default function UploadClient({
   const [signatureMode, setSignatureMode] = useState<'upload' | 'draw'>('upload')
   const [mobilePane, setMobilePane] = useState<'capture' | 'gallery'>('capture')
   const [roleSearch, setRoleSearch] = useState('')
+  const [curriculumFilter, setCurriculumFilter] = useState<'all' | 'secular' | 'theology'>('all')
   const [roleFilter, setRoleFilter] = useState<'all' | 'uploaded' | 'missing'>('all')
   const [signatureSlots, setSignatureSlots] = useState<SignatureSlotAsset[]>(initialSignatureSlots)
   const [selectedSlot, setSelectedSlot] = useState<string>(() => {
-    const firstNonStamp = initialSignatureSlots.find((s) => s.slot_key !== 'school-stamp')
-    return firstNonStamp?.slot_key || initialSignatureSlots[0]?.slot_key || 'head-teacher'
+    const firstValid = initialSignatureSlots.find((s) => !UNUSED_SIGNATURE_SLOTS.has(s.slot_key))
+    return firstValid?.slot_key || 'head-teacher'
   })
   const [fileToDelete, setFileToDelete] = useState<{ id: string; name: string } | null>(null)
   const [slotToDelete, setSlotToDelete] = useState<SignatureSlotAsset | null>(null)
@@ -324,13 +347,13 @@ export default function UploadClient({
         setSelectedSlot((current) => {
           if (
             current &&
-            current !== 'school-stamp' &&
+            !UNUSED_SIGNATURE_SLOTS.has(current) &&
             res.data.some((s: SignatureSlotAsset) => s.slot_key === current)
           ) {
             return current
           }
-          const firstNonStamp = res.data.find((s: SignatureSlotAsset) => s.slot_key !== 'school-stamp')
-          return firstNonStamp?.slot_key || res.data[0]?.slot_key || ''
+          const firstValid = res.data.find((s: SignatureSlotAsset) => !UNUSED_SIGNATURE_SLOTS.has(s.slot_key))
+          return firstValid?.slot_key || res.data[0]?.slot_key || 'head-teacher'
         })
       }
     } catch (err) {
@@ -444,7 +467,7 @@ export default function UploadClient({
         try {
           const body = JSON.parse(xhr.responseText)
           if (body?.error) errorMessage = body.error
-        } catch {}
+        } catch { }
 
         setFiles((current) =>
           current.map((item) => (item.id === localId ? { ...item, status: 'error', progress: 0 } : item))
@@ -582,6 +605,11 @@ export default function UploadClient({
     }
   }
 
+  const signatureRoleSlots = useMemo(
+    () => signatureSlots.filter((slot) => !UNUSED_SIGNATURE_SLOTS.has(slot.slot_key)),
+    [signatureSlots]
+  )
+
   const metrics = useMemo(() => getUploadMetrics(files, signatureSlots), [files, signatureSlots])
   const visibleQuotaPercent = getVisibleStoragePercent(metrics.totalBytes, STORAGE_QUOTA_BYTES)
   const quotaPercentDisplay = useMemo(
@@ -589,22 +617,26 @@ export default function UploadClient({
     [metrics.totalBytes]
   )
 
-  const signatureRoleSlots = useMemo(
-    () =>
-      signatureSlots.filter(
-        (slot) => slot.slot_key !== 'school-stamp' && slot.slot_key !== 'theology-teacher-p7'
-      ),
-    [signatureSlots]
+  const secularSlots = useMemo(
+    () => signatureRoleSlots.filter((slot) => !slot.slot_key.startsWith('theology-teacher-')),
+    [signatureRoleSlots]
   )
-
+  const theologySlots = useMemo(
+    () => signatureRoleSlots.filter((slot) => slot.slot_key.startsWith('theology-teacher-')),
+    [signatureRoleSlots]
+  )
   const uploadedSignatureAssets = useMemo(
     () => signatureRoleSlots.filter((slot) => slot.uploaded && slot.public_url),
     [signatureRoleSlots]
   )
+  const missingSignatureCount = signatureRoleSlots.length - uploadedSignatureAssets.length
 
   const filteredRoleSlots = useMemo(() => {
     const q = roleSearch.trim().toLowerCase()
     return signatureRoleSlots.filter((slot) => {
+      const isTheology = slot.slot_key.startsWith('theology-teacher-')
+      if (curriculumFilter === 'secular' && isTheology) return false
+      if (curriculumFilter === 'theology' && !isTheology) return false
       if (roleFilter === 'uploaded' && !slot.uploaded) return false
       if (roleFilter === 'missing' && slot.uploaded) return false
       if (!q) return true
@@ -614,7 +646,7 @@ export default function UploadClient({
         slot.role.toLowerCase().includes(q)
       )
     })
-  }, [signatureRoleSlots, roleFilter, roleSearch])
+  }, [signatureRoleSlots, curriculumFilter, roleFilter, roleSearch])
 
   const schoolStampSlot = useMemo(
     () => signatureSlots.find((slot) => slot.slot_key === 'school-stamp') || null,
@@ -626,6 +658,13 @@ export default function UploadClient({
     [signatureRoleSlots, selectedSlot]
   )
 
+  const handleStepRole = (dir: -1 | 1) => {
+    if (signatureRoleSlots.length === 0) return
+    const idx = signatureRoleSlots.findIndex((s) => s.slot_key === selectedSlot)
+    const nextIdx = (Math.max(idx, 0) + dir + signatureRoleSlots.length) % signatureRoleSlots.length
+    setSelectedSlot(signatureRoleSlots[nextIdx].slot_key)
+  }
+
   const filteredRepositoryFiles = useMemo(() => {
     if (category === 'Signatures' || category === 'Stamps') {
       return files.filter((file) => file.status === 'uploading' || file.category === category)
@@ -634,20 +673,22 @@ export default function UploadClient({
   }, [files, category])
 
   return (
-    <div className="max-w-[1600px] mx-auto px-3 sm:px-5 py-3 w-full min-w-0 space-y-3.5 pb-10">
-      {/* Zone 1: Compact Single-Row Control & Telemetry Bar */}
+    <div className="max-w-[1600px] mx-auto px-3 sm:px-5 py-3 w-full min-w-0 space-y-3 pb-10">
+      {/* Zone 1: Top Studio Control & Telemetry Bar */}
       <div
         data-testid="upload-telemetry-bar"
-        className="rounded-2xl border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 bg-[var(--bg-card)] px-3 py-2.5 shadow-xs flex flex-wrap items-center justify-between gap-2.5"
+        className="rounded-2xl border border-[#0D5C3A]/12 dark:border-white/10 bg-white dark:bg-[#151D1A] px-3 py-2 shadow-xs flex flex-wrap items-center justify-between gap-2.5"
       >
-        {/* Left: Segmented Category Pill Track */}
         <div
           role="tablist"
           aria-label="Asset category filter"
-          className="inline-flex items-center gap-1 rounded-full bg-[#F0F4F9] dark:bg-[#1E2623] p-1 overflow-x-auto max-w-full"
+          className="inline-flex items-center gap-1 rounded-full bg-[#F0F4F5] dark:bg-[#1A2420] p-1 border border-[#0D5C3A]/10 overflow-x-auto max-w-full"
         >
           {CATEGORIES.map((cat) => {
-            const count = metrics.categoryCounts[cat as keyof typeof metrics.categoryCounts] ?? 0
+            const count =
+              cat === 'Signatures'
+                ? uploadedSignatureAssets.length
+                : metrics.categoryCounts[cat as keyof typeof metrics.categoryCounts] ?? 0
             const active = category === cat
             return (
               <button
@@ -658,14 +699,14 @@ export default function UploadClient({
                 onClick={() => setCategory(cat)}
                 className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-colors cursor-pointer inline-flex items-center gap-1.5 ${
                   active
-                    ? 'bg-[#0D5C3A] text-white shadow-2xs'
-                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                    ? 'bg-[#0D5C3A] text-white shadow-xs'
+                    : 'text-[var(--text-secondary)] hover:text-[#0D5C3A] dark:hover:text-white'
                 }`}
               >
                 <span>{cat}</span>
                 <span
-                  className={`text-[10.5px] font-extrabold tabular-nums px-1.5 py-0.2 rounded-full ${
-                    active ? 'bg-white/20 text-white' : 'bg-black/5 dark:bg-white/10'
+                  className={`text-[10px] font-extrabold tabular-nums px-1.5 py-0.2 rounded-full ${
+                    active ? 'bg-[#D97706] text-white' : 'bg-[#0D5C3A]/10 text-[#0D5C3A] dark:bg-white/10 dark:text-stone-200'
                   }`}
                 >
                   {count}
@@ -675,35 +716,34 @@ export default function UploadClient({
           })}
         </div>
 
-        {/* Right: Compact Inline Telemetry Pills */}
         <div className="flex flex-wrap items-center gap-2 text-xs">
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 font-bold">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#0D5C3A]/10 text-[#0D5C3A] dark:bg-emerald-500/15 dark:text-emerald-300 font-bold">
             <FolderKanban className="w-3.5 h-3.5" />
             <span className="tabular-nums">{metrics.totalFiles} Files</span>
           </div>
 
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-800 dark:text-amber-300 font-bold">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#EA580C]/12 text-[#EA580C] dark:bg-amber-500/15 dark:text-amber-300 font-bold">
             <FileSignature className="w-3.5 h-3.5" />
             <span className="tabular-nums">
-              {metrics.signatureCount}/{signatureRoleSlots.length || 22} Signatures
+              {uploadedSignatureAssets.length}/{signatureRoleSlots.length || 20} Signatures
             </span>
           </div>
 
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-purple-500/10 text-purple-800 dark:text-purple-300 font-bold">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 font-bold">
             <Stamp className="w-3.5 h-3.5" />
             <span className="tabular-nums">
-              {metrics.categoryCounts.Stamps} {metrics.categoryCounts.Stamps === 1 ? 'Stamp' : 'Stamps'}
+              {metrics.categoryCounts.Stamps} {metrics.categoryCounts.Stamps === 1 ? 'Official Stamp' : 'Official Stamps'}
             </span>
           </div>
 
-          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-sky-500/10 text-sky-900 dark:text-sky-200 font-bold">
-            <HardDrive className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
+          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-[#F0F4F5] dark:bg-white/5 text-[var(--text-primary)] border border-[#0D5C3A]/10 font-bold">
+            <HardDrive className="w-3.5 h-3.5 text-[#0D5C3A] dark:text-emerald-400" />
             <span className="tabular-nums whitespace-nowrap">
               {formatSize(metrics.totalBytes)} / 1 GB ({quotaPercentDisplay})
             </span>
-            <span className="w-14 h-1.5 rounded-full bg-sky-950/15 dark:bg-white/15 overflow-hidden shrink-0">
+            <span className="w-12 h-1.5 rounded-full bg-slate-200 dark:bg-white/15 overflow-hidden shrink-0">
               <span
-                className="block h-full rounded-full bg-emerald-500 transition-all duration-300"
+                className="block h-full rounded-full bg-[#0D5C3A] transition-all duration-300"
                 style={{ width: `${visibleQuotaPercent}%` }}
               />
             </span>
@@ -711,18 +751,125 @@ export default function UploadClient({
         </div>
       </div>
 
+      {/* Zone 2: Commanding Forest-Green Active Role Banner (Signatures Mode) */}
+      {category === 'Signatures' && (
+        <div
+          data-testid="upload-role-banner"
+          className="bg-gradient-to-r from-[#0D5C3A] via-[#116943] to-[#14532D] text-white rounded-2xl px-4 py-2.5 shadow-sm flex flex-wrap items-center justify-between gap-3"
+        >
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <span className="w-8 h-8 rounded-xl bg-white/15 border border-white/25 flex items-center justify-center text-xs font-black tracking-tight shrink-0">
+              {getSlotBadgeInitials(selectedSlotInfo?.slot_key)}
+            </span>
+
+            <div className="min-w-0 w-full max-w-sm">
+              <CustomPillSelect
+                id="upload-signature-role-select"
+                dataTestId="upload-signature-role-select"
+                ariaLabel="Select Signature Role"
+                value={selectedSlot}
+                onChange={setSelectedSlot}
+                placeholder="Choose signatory role..."
+                options={signatureRoleSlots.map((slot) => ({
+                  value: slot.slot_key,
+                  label: slot.label,
+                  badge: slot.uploaded ? '✓ Uploaded' : 'Missing',
+                }))}
+                triggerClassName="w-full justify-between bg-white/12 hover:bg-white/20 border-white/25 text-white py-1.5 px-3 text-xs font-bold backdrop-blur-xs"
+              />
+            </div>
+
+            <div className="hidden sm:flex items-center gap-1 shrink-0">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="Previous role"
+                    onClick={() => handleStepRole(-1)}
+                    className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 inline-flex items-center justify-center cursor-pointer transition-colors"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">Previous Role</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="Next role"
+                    onClick={() => handleStepRole(1)}
+                    className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 inline-flex items-center justify-center cursor-pointer transition-colors"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">Next Role</TooltipContent>
+              </Tooltip>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <span
+              className={`px-2.5 py-1 rounded-full text-[11px] font-bold inline-flex items-center gap-1.5 ${
+                selectedSlotInfo?.uploaded
+                  ? 'bg-emerald-400/20 text-emerald-100 border border-emerald-300/35'
+                  : 'bg-[#D97706]/25 text-amber-100 border border-amber-300/35'
+              }`}
+            >
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  selectedSlotInfo?.uploaded ? 'bg-emerald-300' : 'bg-amber-300'
+                }`}
+              />
+              {selectedSlotInfo?.uploaded
+                ? `Signed & Active${selectedSlotInfo?.size ? ` • ${formatSize(selectedSlotInfo.size)}` : ''}`
+                : 'Awaiting Signature'}
+            </span>
+          </div>
+
+          <div className="inline-flex rounded-xl bg-black/20 border border-white/15 p-0.5 gap-1 shrink-0">
+            <button
+              type="button"
+              onClick={() => setSignatureMode('upload')}
+              aria-label="Upload and Auto-Clean Photo"
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                signatureMode === 'upload'
+                  ? 'bg-gradient-to-r from-[#D97706] to-[#EA580C] text-white shadow-xs'
+                  : 'text-white/80 hover:text-white'
+              }`}
+            >
+              <Upload className="w-3.5 h-3.5" />
+              <span>Upload Photo</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSignatureMode('draw')}
+              aria-label="Draw Digital Signature"
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                signatureMode === 'draw'
+                  ? 'bg-gradient-to-r from-[#D97706] to-[#EA580C] text-white shadow-xs'
+                  : 'text-white/80 hover:text-white'
+              }`}
+            >
+              <PenTool className="w-3.5 h-3.5" />
+              <span>Draw Signature</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Mobile View Switcher (< lg) */}
       <div
         data-testid="upload-mobile-view-switcher"
-        className="lg:hidden grid grid-cols-2 gap-1.5 rounded-xl bg-[#F0F4F9] dark:bg-[#1E2623] p-1 border border-[var(--border)]"
+        className="lg:hidden grid grid-cols-2 gap-1.5 rounded-xl bg-[#F0F4F5] dark:bg-[#1E2623] p-1 border border-[#0D5C3A]/15"
       >
         <button
           type="button"
           onClick={() => setMobilePane('capture')}
           className={`py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
-            mobilePane === 'capture'
-              ? 'bg-[#0D5C3A] text-white shadow-xs'
-              : 'text-[var(--text-secondary)]'
+            mobilePane === 'capture' ? 'bg-[#0D5C3A] text-white shadow-xs' : 'text-[var(--text-secondary)]'
           }`}
         >
           Upload / Draw
@@ -731,100 +878,62 @@ export default function UploadClient({
           type="button"
           onClick={() => setMobilePane('gallery')}
           className={`py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
-            mobilePane === 'gallery'
-              ? 'bg-[#0D5C3A] text-white shadow-xs'
-              : 'text-[var(--text-secondary)]'
+            mobilePane === 'gallery' ? 'bg-[#0D5C3A] text-white shadow-xs' : 'text-[var(--text-secondary)]'
           }`}
         >
           {category === 'Signatures'
-            ? `Assigned Assets (${uploadedSignatureAssets.length})`
+            ? `Roster (${uploadedSignatureAssets.length})`
             : `Files (${filteredRepositoryFiles.length})`}
         </button>
       </div>
 
-      {/* Zone 2: Above-the-Fold 12-Column Split Workspace */}
+      {/* Zone 3: 2-Pane Split Workspace (lg:col-span-4 Left Studio + lg:col-span-8 Right Roster Matrix) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
-        {/* Left Pane (lg:col-span-5 — Target Role & Capture Dock) */}
         <section
-          className={`lg:col-span-5 rounded-2xl border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 bg-[var(--bg-card)] p-4 shadow-xs space-y-3.5 ${
+          className={`lg:col-span-4 rounded-2xl border border-[#0D5C3A]/15 dark:border-white/10 bg-white dark:bg-[#151D1A] p-4 shadow-xs space-y-3 ${
             mobilePane === 'capture' ? 'block' : 'hidden lg:block'
           }`}
         >
-          {category === 'Signatures' && (
-            <div className="space-y-3">
-              <div>
-                <label
-                  htmlFor="upload-signature-role-select"
-                  className="block text-[10.5px] font-extrabold uppercase tracking-wider text-[var(--text-secondary)] mb-1.5"
-                >
-                  Target Signature Role
-                </label>
-                <CustomPillSelect
-                  id="upload-signature-role-select"
-                  dataTestId="upload-signature-role-select"
-                  ariaLabel="Select Signature Role"
-                  value={selectedSlot}
-                  onChange={setSelectedSlot}
-                  placeholder="Choose signatory role..."
-                  options={signatureRoleSlots.map((slot) => ({
-                    value: slot.slot_key,
-                    label: slot.label,
-                    badge: slot.uploaded ? '✓ Uploaded' : 'Missing',
-                  }))}
-                  triggerClassName="w-full justify-between bg-[var(--bg-sunken)] border-[#0D5C3A]/20 text-[var(--text-primary)] py-2 px-3 text-xs font-semibold"
-                />
+          {/* Live Active Role Transparent Preview */}
+          {category === 'Signatures' && selectedSlotInfo?.uploaded && selectedSlotInfo?.public_url && (
+            <div className="rounded-xl border border-[#0D5C3A]/20 bg-[#F4FBF7] dark:bg-[#111C17] p-3 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[11px] font-extrabold text-[#0D5C3A] dark:text-emerald-300 truncate">
+                  Active: {selectedSlotInfo.label}
+                </span>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => void reCleanSlot(selectedSlotInfo)}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10.5px] font-bold bg-[#D97706]/15 text-[#B45309] hover:bg-[#D97706] hover:text-white transition-colors cursor-pointer"
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    <span>Re-Clean Ink</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSlotToDelete(selectedSlotInfo)}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10.5px] font-bold bg-rose-500/10 text-rose-600 hover:bg-rose-600 hover:text-white transition-colors cursor-pointer"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    <span>Remove</span>
+                  </button>
+                </div>
               </div>
 
-              {/* Compact Mode Switcher */}
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-[10.5px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
-                  Capture Method
-                </span>
-                <div className="inline-flex rounded-xl border border-[#0D5C3A]/15 dark:border-white/10 bg-[#F0F4F9] dark:bg-[#1E2623] p-0.5 gap-0.5">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        onClick={() => setSignatureMode('upload')}
-                        aria-label="Upload and Auto-Clean Photo"
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
-                          signatureMode === 'upload'
-                            ? 'bg-[#0D5C3A] text-white shadow-2xs'
-                            : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                        }`}
-                      >
-                        <Upload className="w-3.5 h-3.5" />
-                        <span>Upload Photo</span>
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="top">Upload &amp; Auto-Clean Photo</TooltipContent>
-                  </Tooltip>
-
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        onClick={() => setSignatureMode('draw')}
-                        aria-label="Draw Digital Signature"
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
-                          signatureMode === 'draw'
-                            ? 'bg-[#0D5C3A] text-white shadow-2xs'
-                            : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                        }`}
-                      >
-                        <PenTool className="w-3.5 h-3.5" />
-                        <span>Draw Digital Signature</span>
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="top">Sign directly on touch canvas</TooltipContent>
-                  </Tooltip>
-                </div>
+              <div className="relative h-16 rounded-lg bg-white border border-[#0D5C3A]/12 flex items-center justify-center px-3 overflow-hidden">
+                <div className="pointer-events-none absolute inset-x-4 bottom-2.5 border-b border-dotted border-slate-300" />
+                <CleanSignatureImage
+                  src={selectedSlotInfo.public_url}
+                  alt={selectedSlotInfo.label}
+                  style={{ maxHeight: '46px', width: 'auto', maxWidth: '100%' }}
+                />
               </div>
             </div>
           )}
 
           {category === 'Stamps' && (
-            <div className="rounded-xl border border-indigo-500/20 bg-[var(--bg-sunken)]/50 p-3.5 space-y-3">
+            <div className="rounded-xl border border-indigo-500/20 bg-[#F8FAF9] dark:bg-[#111916] p-3.5 space-y-3">
               <div className="flex items-center justify-between gap-2">
                 <h3 className="text-xs font-extrabold uppercase tracking-wider text-[var(--text-primary)] flex items-center gap-1.5">
                   <Stamp className="w-4 h-4 text-indigo-500" />
@@ -832,13 +941,13 @@ export default function UploadClient({
                 </h3>
                 <Link
                   href="/admin/reports/studio"
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-600 text-white text-[11px] font-bold hover:bg-indigo-700 transition-colors"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#0D5C3A] text-white text-[11px] font-bold hover:bg-[#093D26] transition-colors"
                 >
                   Studio
                   <ExternalLink className="w-3 h-3" />
                 </Link>
               </div>
-              <div className="rounded-lg border border-slate-200 bg-white p-3 flex flex-col items-center justify-center min-h-[110px]">
+              <div className="rounded-xl border border-[#0D5C3A]/12 bg-white p-3 flex flex-col items-center justify-center min-h-[112px]">
                 <OfficialReportStamp
                   reportData={{ settings: { school_name: 'Jiddah Islamic Nursery & Primary School' } }}
                   maxWidth={185}
@@ -875,10 +984,10 @@ export default function UploadClient({
             />
           ) : (
             <div
-              className={`rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all p-5 sm:p-7 ${
+              className={`rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all p-5 sm:p-6 ${
                 dragOver
-                  ? 'border-emerald-500 bg-emerald-500/15'
-                  : 'border-[#0D5C3A]/20 dark:border-white/15 bg-[var(--bg-sunken)]/60 hover:bg-[var(--bg-hover)]'
+                  ? 'border-[#0D5C3A] bg-[#0D5C3A]/10'
+                  : 'border-[#0D5C3A]/20 dark:border-white/15 bg-[#F8FAF9] dark:bg-[#111916] hover:border-[#0D5C3A]/45'
               }`}
               onDragOver={(event) => {
                 event.preventDefault()
@@ -894,25 +1003,21 @@ export default function UploadClient({
               }}
               onClick={() => fileRef.current?.click()}
             >
-              <div
-                className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2.5 ${
-                  dragOver ? 'bg-emerald-500/20' : 'bg-emerald-500/10'
-                }`}
-              >
-                <Upload className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+              <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#0D5C3A]/15 to-[#D97706]/20 flex items-center justify-center mb-2.5">
+                <UploadCloud className="w-5 h-5 text-[#0D5C3A] dark:text-emerald-400" />
               </div>
               <p className="text-xs sm:text-sm font-bold text-[var(--text-primary)] text-center">
                 Drop {category === 'Signatures' ? 'signature photo' : 'files'} here or{' '}
-                <span className="text-emerald-600 dark:text-emerald-400 underline underline-offset-2">
-                  click to browse
+                <span className="text-[#0D5C3A] dark:text-emerald-400 underline underline-offset-2">
+                  browse device
                 </span>
               </p>
               <p className="text-[11px] text-[var(--text-muted)] mt-1 text-center">
-                PNG, JPG, WebP{category === 'Documents' || category === 'Other' ? ', PDF' : ''} &bull; Max 10MB
+                PNG, JPG, WebP{category === 'Documents' || category === 'Other' ? ', PDF' : ''} &bull; Auto-cleaned ink
               </p>
               {category === 'Signatures' && selectedSlotInfo && (
-                <p className="text-[11px] text-[var(--text-secondary)] mt-1.5 text-center">
-                  Target: <strong>{selectedSlotInfo.label}</strong>
+                <p className="text-[11px] text-[#0D5C3A] dark:text-emerald-300 mt-1.5 font-semibold text-center">
+                  Assigning to: <strong>{selectedSlotInfo.label}</strong>
                 </p>
               )}
               <input
@@ -939,57 +1044,93 @@ export default function UploadClient({
           )}
         </section>
 
-        {/* Right Pane (lg:col-span-7 — Live Visual Asset Gallery Visible Immediately Above the Fold) */}
+        {/* Right Pane (lg:col-span-8 — School Signature Roster Matrix / Repository) */}
         <section
-          className={`lg:col-span-7 rounded-2xl border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 bg-[var(--bg-card)] shadow-xs overflow-hidden ${
+          className={`lg:col-span-8 rounded-2xl border border-[#0D5C3A]/15 dark:border-white/10 bg-white dark:bg-[#151D1A] shadow-xs overflow-hidden ${
             mobilePane === 'gallery' ? 'block' : 'hidden lg:block'
           }`}
         >
           {category === 'Signatures' ? (
             <>
-              <div className="px-4 py-3 bg-[var(--bg-sunken)]/80 border-b border-[var(--border)] flex flex-wrap items-center justify-between gap-2.5">
-                <div>
-                  <h2 className="text-xs font-extrabold uppercase tracking-wider text-[var(--text-primary)]">
-                    Live Signature Assets ({uploadedSignatureAssets.length} / {signatureRoleSlots.length} Assigned)
+              <div className="px-4 py-2.5 bg-[#F8FAF9] dark:bg-[#1A221F] border-b border-[#0D5C3A]/10 flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="text-xs font-extrabold uppercase tracking-wider text-[var(--text-primary)] mr-1">
+                    Roster
                   </h2>
-                  <p className="text-[10.5px] text-[var(--text-secondary)]">
-                    Canonical roles (Leadership &rarr; Secular Baby–P.7 &rarr; Theology Baby–P.6)
-                  </p>
+                  <div className="inline-flex rounded-full bg-white dark:bg-[#111815] border border-[#0D5C3A]/12 p-0.5 text-[11px] font-bold">
+                    {[
+                      { id: 'all', label: `All (${signatureRoleSlots.length})` },
+                      { id: 'secular', label: `Secular (${secularSlots.length})` },
+                      { id: 'theology', label: `Theology (${theologySlots.length})` },
+                    ].map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => setCurriculumFilter(item.id as 'all' | 'secular' | 'theology')}
+                        className={`px-2.5 py-0.5 rounded-full cursor-pointer transition-colors ${
+                          curriculumFilter === item.id
+                            ? 'bg-[#0D5C3A] text-white'
+                            : 'text-[var(--text-secondary)] hover:text-[#0D5C3A] dark:hover:text-white'
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
+                  <div className="inline-flex rounded-full bg-white dark:bg-[#111815] border border-[#0D5C3A]/12 p-0.5 text-[11px] font-bold">
+                    <button
+                      type="button"
+                      onClick={() => setRoleFilter('all')}
+                      className={`px-2.5 py-0.5 rounded-full cursor-pointer transition-colors ${
+                        roleFilter === 'all'
+                          ? 'bg-slate-800 text-white dark:bg-white dark:text-slate-900'
+                          : 'text-[var(--text-secondary)]'
+                      }`}
+                    >
+                      All
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRoleFilter('uploaded')}
+                      className={`px-2.5 py-0.5 rounded-full cursor-pointer transition-colors ${
+                        roleFilter === 'uploaded'
+                          ? 'bg-[#0D5C3A] text-white'
+                          : 'text-[#0D5C3A] dark:text-emerald-300'
+                      }`}
+                    >
+                      Signed ({uploadedSignatureAssets.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRoleFilter('missing')}
+                      className={`px-2.5 py-0.5 rounded-full cursor-pointer transition-colors ${
+                        roleFilter === 'missing'
+                          ? 'bg-[#EA580C] text-white'
+                          : 'text-[#EA580C] dark:text-amber-300'
+                      }`}
+                    >
+                      Missing ({missingSignatureCount})
+                    </button>
+                  </div>
+
                   <div className="relative">
-                    <Search className="w-3.5 h-3.5 text-[var(--text-muted)] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <Search className="w-3.5 h-3.5 text-[#0D5C3A]/50 dark:text-stone-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                     <input
                       type="text"
                       value={roleSearch}
                       onChange={(e) => setRoleSearch(e.target.value)}
                       placeholder="Filter roles..."
                       aria-label="Filter signature roles"
-                      className="pl-7 pr-2.5 py-1 text-xs rounded-lg border border-[var(--border)] bg-[var(--bg-card)] text-[var(--text-primary)] w-36 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                      className="pl-7 pr-3 py-1 text-xs rounded-full border border-[#0D5C3A]/15 dark:border-white/10 bg-white dark:bg-[#111815] text-[var(--text-primary)] w-36 focus:outline-none focus:ring-2 focus:ring-[#0D5C3A]/30"
                     />
-                  </div>
-
-                  <div className="inline-flex rounded-lg border border-[var(--border)] bg-[var(--bg-card)] p-0.5 text-[11px] font-bold">
-                    {(['all', 'uploaded', 'missing'] as const).map((status) => (
-                      <button
-                        key={status}
-                        type="button"
-                        onClick={() => setRoleFilter(status)}
-                        className={`px-2 py-0.5 rounded-md capitalize cursor-pointer transition-colors ${
-                          roleFilter === status
-                            ? 'bg-[#0D5C3A] text-white'
-                            : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                        }`}
-                      >
-                        {status}
-                      </button>
-                    ))}
                   </div>
                 </div>
               </div>
 
-              <div className="p-3.5 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 max-h-[calc(100dvh-165px)] overflow-y-auto">
+              <div className="p-3.5 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 max-h-[calc(100dvh-215px)] overflow-y-auto">
                 {filteredRoleSlots.length === 0 ? (
                   <div className="col-span-full py-10 text-center text-xs text-[var(--text-muted)]">
                     No matching signature roles found.
@@ -997,13 +1138,108 @@ export default function UploadClient({
                 ) : (
                   filteredRoleSlots.map((slot) => {
                     const isSelected = selectedSlot === slot.slot_key
+                    if (slot.uploaded && slot.public_url) {
+                      return (
+                        <div
+                          key={slot.slot_key}
+                          onClick={() => setSelectedSlot(slot.slot_key)}
+                          className={`rounded-2xl p-3 border transition-all flex flex-col justify-between gap-2 cursor-pointer ${
+                            isSelected
+                              ? 'border-[#0D5C3A] ring-2 ring-[#0D5C3A]/20 bg-gradient-to-b from-white to-[#F4FBF7] dark:from-[#151D1A] dark:to-[#111C17] shadow-sm'
+                              : 'border-[#0D5C3A]/25 bg-gradient-to-b from-white to-[#F4FBF7] dark:from-[#151D1A] dark:to-[#111C17] shadow-2xs hover:shadow-md'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-1.5">
+                            <div className="min-w-0">
+                              <p className="text-[11.5px] font-bold text-[var(--text-primary)] truncate">
+                                {slot.label}
+                              </p>
+                              <p className="text-[10px] text-[var(--text-muted)] font-mono truncate">
+                                {slot.size ? formatSize(slot.size) : 'Stored'}
+                              </p>
+                            </div>
+                            <span
+                              className={`shrink-0 rounded-full px-2 py-0.5 text-[9.5px] font-extrabold inline-flex items-center gap-1 ${
+                                slot.active
+                                  ? 'bg-[#0D5C3A]/12 text-[#0D5C3A] dark:text-emerald-300'
+                                  : 'bg-amber-500/15 text-amber-700 dark:text-amber-300'
+                              }`}
+                            >
+                              <span
+                                className={`w-1.5 h-1.5 rounded-full ${
+                                  slot.active ? 'bg-[#0D5C3A] dark:bg-emerald-400' : 'bg-amber-500'
+                                }`}
+                              />
+                              {slot.active ? 'Active' : 'Hidden'}
+                            </span>
+                          </div>
+
+                          <div className="relative h-16 rounded-xl border border-[#0D5C3A]/10 bg-white flex items-center justify-center px-3 overflow-hidden">
+                            <div className="pointer-events-none absolute inset-x-3 bottom-2.5 border-b border-dotted border-slate-300" />
+                            <CleanSignatureImage
+                              src={slot.public_url}
+                              alt={slot.label}
+                              style={{ maxHeight: '46px', width: 'auto', maxWidth: '100%' }}
+                            />
+                          </div>
+
+                          <div
+                            className="flex items-center justify-between gap-1.5 pt-1"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                aria-label={`Replace ${slot.label}`}
+                                onClick={() => {
+                                  setSelectedSlot(slot.slot_key)
+                                  setSignatureMode('upload')
+                                  setMobilePane('capture')
+                                  fileRef.current?.click()
+                                }}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-[#0D5C3A]/10 text-[#0D5C3A] dark:text-emerald-300 hover:bg-[#0D5C3A] hover:text-white transition-colors cursor-pointer"
+                              >
+                                <Upload className="w-3.5 h-3.5" />
+                                <span>Replace</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                aria-label={`Re-Clean Ink for ${slot.label}`}
+                                onClick={() => void reCleanSlot(slot)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-[#D97706]/15 text-[#B45309] dark:text-amber-300 hover:bg-[#D97706] hover:text-white transition-colors cursor-pointer"
+                              >
+                                <Wand2 className="w-3.5 h-3.5" />
+                                <span>Clean Ink</span>
+                              </button>
+                            </div>
+
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
+                                  onClick={() => setSlotToDelete(slot)}
+                                  aria-label={`Delete ${slot.label}`}
+                                  className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-500/12 cursor-pointer transition-colors"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">Delete Signature</TooltipContent>
+                            </Tooltip>
+                          </div>
+                        </div>
+                      )
+                    }
+
                     return (
                       <div
                         key={slot.slot_key}
-                        className={`rounded-xl border p-2.5 flex flex-col justify-between gap-2 transition-colors ${
+                        onClick={() => setSelectedSlot(slot.slot_key)}
+                        className={`rounded-2xl p-3 border border-dashed transition-all flex flex-col justify-between gap-3 cursor-pointer ${
                           isSelected
-                            ? 'border-emerald-600/60 bg-emerald-500/5 dark:bg-emerald-500/10'
-                            : 'border-[var(--border)] bg-[var(--bg-sunken)]/40 hover:border-[#0D5C3A]/30'
+                            ? 'border-[#EA580C] bg-[#FFF7ED] dark:bg-[#1D1814]'
+                            : 'border-slate-300 dark:border-white/15 hover:border-[#EA580C] bg-[#FAFBFB] dark:bg-[#141A18]'
                         }`}
                       >
                         <div className="flex items-start justify-between gap-1.5">
@@ -1011,98 +1247,47 @@ export default function UploadClient({
                             <p className="text-[11.5px] font-bold text-[var(--text-primary)] truncate">
                               {slot.label}
                             </p>
-                            <p className="text-[10px] text-[var(--text-muted)] font-mono truncate">
-                              {slot.uploaded && slot.size ? formatSize(slot.size) : slot.slot_key}
+                            <p className="text-[10px] text-[var(--text-muted)] truncate">
+                              {slot.role}
                             </p>
                           </div>
-                          <span
-                            className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9.5px] font-extrabold ${
-                              slot.uploaded
-                                ? slot.active
-                                  ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
-                                  : 'bg-amber-500/15 text-amber-700 dark:text-amber-300'
-                                : 'bg-stone-500/15 text-[var(--text-muted)]'
-                            }`}
-                          >
-                            {slot.uploaded ? (slot.active ? 'Active' : 'Hidden') : 'Missing'}
+                          <span className="shrink-0 rounded-full px-2 py-0.5 text-[9.5px] font-extrabold bg-[#EA580C]/12 text-[#EA580C] dark:text-amber-300">
+                            Missing
                           </span>
                         </div>
 
                         <div
-                          onClick={() => {
-                            setSelectedSlot(slot.slot_key)
-                            setMobilePane('capture')
-                          }}
-                          className="relative h-16 rounded-lg border border-slate-200 bg-white flex items-center justify-center px-2.5 overflow-hidden cursor-pointer"
+                          className="grid grid-cols-2 gap-2 pt-1"
+                          onClick={(e) => e.stopPropagation()}
                         >
-                          <div className="pointer-events-none absolute inset-x-3 bottom-2.5 border-b border-dotted border-slate-300" />
-                          {slot.uploaded && slot.public_url ? (
-                            <img
-                              src={slot.public_url}
-                              alt={slot.label}
-                              className="relative max-h-12 max-w-full object-contain"
-                            />
-                          ) : (
-                            <span className="text-[10px] font-semibold text-slate-400">
-                              Click to assign
-                            </span>
-                          )}
-                        </div>
+                          <button
+                            type="button"
+                            aria-label={`Upload ${slot.label}`}
+                            onClick={() => {
+                              setSelectedSlot(slot.slot_key)
+                              setSignatureMode('upload')
+                              setMobilePane('capture')
+                              fileRef.current?.click()
+                            }}
+                            className="inline-flex items-center justify-center gap-1.5 bg-[#0D5C3A] text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow-2xs hover:bg-[#093D26] transition-colors cursor-pointer"
+                          >
+                            <Upload className="w-3.5 h-3.5" />
+                            <span>Upload</span>
+                          </button>
 
-                        <div className="flex items-center justify-end gap-1">
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <button
-                                type="button"
-                                aria-label={slot.uploaded ? `Replace ${slot.label}` : `Upload ${slot.label}`}
-                                onClick={() => {
-                                  setSelectedSlot(slot.slot_key)
-                                  setSignatureMode('upload')
-                                  setMobilePane('capture')
-                                  fileRef.current?.click()
-                                }}
-                                className="p-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-card)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] cursor-pointer"
-                              >
-                                <RotateCw className="w-3 h-3" />
-                              </button>
-                            </TooltipTrigger>
-                            <TooltipContent side="top">
-                              {slot.uploaded ? 'Replace' : 'Upload Photo'}
-                            </TooltipContent>
-                          </Tooltip>
-
-                          {slot.uploaded && slot.public_url && (
-                            <>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <button
-                                    type="button"
-                                    aria-label={`Re-Clean Ink for ${slot.label}`}
-                                    onClick={() => void reCleanSlot(slot)}
-                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10.5px] font-bold border border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 cursor-pointer"
-                                  >
-                                    <Wand2 className="w-3 h-3" />
-                                    <span>Re-Clean Ink</span>
-                                  </button>
-                                </TooltipTrigger>
-                                <TooltipContent side="top">Re-Clean Ink Background</TooltipContent>
-                              </Tooltip>
-
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <button
-                                    type="button"
-                                    onClick={() => setSlotToDelete(slot)}
-                                    aria-label={`Delete ${slot.label}`}
-                                    className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-500/10 cursor-pointer"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                </TooltipTrigger>
-                                <TooltipContent side="top">Delete Signature</TooltipContent>
-                              </Tooltip>
-                            </>
-                          )}
+                          <button
+                            type="button"
+                            aria-label={`Draw ${slot.label}`}
+                            onClick={() => {
+                              setSelectedSlot(slot.slot_key)
+                              setSignatureMode('draw')
+                              setMobilePane('capture')
+                            }}
+                            className="inline-flex items-center justify-center gap-1.5 bg-[#EA580C]/12 text-[#EA580C] border border-[#EA580C]/30 px-3 py-1.5 rounded-xl text-xs font-bold hover:bg-[#EA580C] hover:text-white transition-colors cursor-pointer"
+                          >
+                            <PenTool className="w-3.5 h-3.5" />
+                            <span>Draw</span>
+                          </button>
                         </div>
                       </div>
                     )
@@ -1112,7 +1297,7 @@ export default function UploadClient({
             </>
           ) : category === 'Stamps' ? (
             <div className="p-4 space-y-4">
-              <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
+              <div className="flex items-center justify-between border-b border-[#0D5C3A]/10 pb-3">
                 <div>
                   <h2 className="text-xs font-extrabold uppercase tracking-wider text-[var(--text-primary)]">
                     School Stamp Assets
@@ -1124,8 +1309,8 @@ export default function UploadClient({
               </div>
 
               {schoolStampSlot?.uploaded && schoolStampSlot.public_url ? (
-                <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-sunken)]/50 p-4 flex items-center justify-between gap-4">
-                  <div className="h-24 w-44 rounded-lg border border-slate-200 bg-white flex items-center justify-center p-2">
+                <div className="rounded-xl border border-[#0D5C3A]/15 bg-[#F8FAF9] dark:bg-[#111916] p-4 flex items-center justify-between gap-4">
+                  <div className="h-24 w-44 rounded-xl border border-[#0D5C3A]/12 bg-white flex items-center justify-center p-2">
                     <img
                       src={schoolStampSlot.public_url}
                       alt="Uploaded physical school stamp"
@@ -1154,7 +1339,7 @@ export default function UploadClient({
             </div>
           ) : (
             <div>
-              <div className="px-4 py-3 bg-[var(--bg-sunken)]/80 border-b border-[var(--border)] flex items-center justify-between">
+              <div className="px-4 py-3 bg-[#F8FAF9] dark:bg-[#1A221F] border-b border-[#0D5C3A]/10 flex items-center justify-between">
                 <h2 className="text-xs font-extrabold uppercase tracking-wider text-[var(--text-primary)]">
                   Repository Files ({filteredRepositoryFiles.length})
                 </h2>
@@ -1172,11 +1357,10 @@ export default function UploadClient({
                       className="flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--bg-hover)] transition-colors"
                     >
                       <div
-                        className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                          file.type.startsWith('image')
-                            ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
-                            : 'bg-blue-500/15 text-blue-700 dark:text-blue-300'
-                        }`}
+                        className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${file.type.startsWith('image')
+                          ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                          : 'bg-blue-500/15 text-blue-700 dark:text-blue-300'
+                          }`}
                       >
                         {file.type.startsWith('image') ? (
                           <ImageIcon className="w-4 h-4" />
@@ -1200,7 +1384,7 @@ export default function UploadClient({
                           <div className="flex items-center gap-2 mt-1.5">
                             <div className="flex-1 h-1.5 rounded-full overflow-hidden bg-[var(--bg-sunken)]">
                               <div
-                                className="h-full rounded-full bg-emerald-500 transition-all duration-300"
+                                className="h-full rounded-full bg-[#0D5C3A] transition-all duration-300"
                                 style={{ width: `${file.progress}%` }}
                               />
                             </div>
@@ -1217,44 +1401,44 @@ export default function UploadClient({
                           items={[
                             ...(file.public_url
                               ? [
-                                  {
-                                    label: 'Preview',
-                                    icon: Eye,
-                                    onClick: () => window.open(file.public_url!, '_blank'),
+                                {
+                                  label: 'Preview',
+                                  icon: Eye,
+                                  onClick: () => window.open(file.public_url!, '_blank'),
+                                },
+                                {
+                                  label: 'Download',
+                                  icon: Download,
+                                  onClick: () => {
+                                    const a = document.createElement('a')
+                                    a.href = file.public_url!
+                                    a.download = file.name
+                                    a.click()
                                   },
-                                  {
-                                    label: 'Download',
-                                    icon: Download,
-                                    onClick: () => {
-                                      const a = document.createElement('a')
-                                      a.href = file.public_url!
-                                      a.download = file.name
-                                      a.click()
-                                    },
-                                  },
-                                ]
+                                },
+                              ]
                               : []),
                             ...(file.type.startsWith('image')
                               ? [
-                                  {
-                                    label: 'Clean Signature Ink',
-                                    icon: Wand2,
-                                    onClick: () => {
-                                      toast.info(`Preparing ink cleaning for ${file.name}...`)
-                                      if (file.public_url) {
-                                        fetch(file.public_url)
-                                          .then((res) => res.blob())
-                                          .then((blob) => {
-                                            const f = new File([blob], file.name, { type: file.type })
-                                            setPendingSignatureFile(f)
-                                            setCategory('Signatures')
-                                            setSignatureMode('upload')
-                                          })
-                                          .catch(() => toast.error('Unable to fetch file for cleaning.'))
-                                      }
-                                    },
+                                {
+                                  label: 'Clean Signature Ink',
+                                  icon: Wand2,
+                                  onClick: () => {
+                                    toast.info(`Preparing ink cleaning for ${file.name}...`)
+                                    if (file.public_url) {
+                                      fetch(file.public_url)
+                                        .then((res) => res.blob())
+                                        .then((blob) => {
+                                          const f = new File([blob], file.name, { type: file.type })
+                                          setPendingSignatureFile(f)
+                                          setCategory('Signatures')
+                                          setSignatureMode('upload')
+                                        })
+                                        .catch(() => toast.error('Unable to fetch file for cleaning.'))
+                                    }
                                   },
-                                ]
+                                },
+                              ]
                               : []),
                             {
                               label: 'Delete',

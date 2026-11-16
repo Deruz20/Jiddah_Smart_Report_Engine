@@ -569,13 +569,14 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
 
         @media print {
           .landscape-page {
-            page: landscape-sheet !important;
             width: 297mm !important;
             min-width: 297mm !important;
             max-width: 297mm !important;
             height: 209mm !important;
             min-height: 0 !important;
             max-height: 209mm !important;
+            margin: 0 !important;
+            left: 0 !important;
             padding: 2.5mm 4mm !important;
             box-sizing: border-box !important;
             overflow: hidden !important;

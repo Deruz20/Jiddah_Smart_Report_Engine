@@ -185,8 +185,8 @@ export default function NurseryEOTReport({ reportData, studioFormatting: studioF
         padding: 14px 24px;
         display: flex;
         flex-direction: column;
-        justify-content: space-between;
-        gap: 8px;
+        justify-content: flex-start;
+        gap: 10px;
         flex: 1 1 auto;
     }
 
@@ -228,10 +228,10 @@ export default function NurseryEOTReport({ reportData, studioFormatting: studioF
 
     /* TABLES */
     .nursery-eot-report .tables-container {
-        flex: 1 1 auto;
+        flex: 0 0 auto;
         display: flex;
         flex-direction: column;
-        justify-content: space-between;
+        justify-content: flex-start;
         gap: 10px;
     }
     
@@ -259,9 +259,18 @@ export default function NurseryEOTReport({ reportData, studioFormatting: studioF
     .nursery-eot-report td {
         border-bottom: 1px solid var(--border-light);
         border-right: 1px solid var(--border-light);
-        padding: ${effective.densityPadding};
+        padding: 9px 12px;
         font-size: 12.5px;
         color: #334155;
+    }
+    .nursery-eot-report .learning-area-table td {
+        padding: 10px 12px;
+    }
+    .nursery-eot-report .competence-table td {
+        padding: 9px 12px;
+    }
+    .nursery-eot-report .grading-scale-table td {
+        padding: 8px 10px;
     }
     .nursery-eot-report td:last-child { border-right: none; }
     .nursery-eot-report tbody tr:last-child td { border-bottom: none; }
@@ -293,8 +302,8 @@ export default function NurseryEOTReport({ reportData, studioFormatting: studioF
 
     /* FOOTER */
     .nursery-eot-report .report-footer {
-        flex: 0 0 auto;
-        margin-top: 4px;
+        flex: 1 1 auto;
+        margin-top: 2px;
         display: flex;
         justify-content: space-between;
         align-items: flex-end;
@@ -304,7 +313,7 @@ export default function NurseryEOTReport({ reportData, studioFormatting: studioF
         margin-right: 20px;
         background: #f8fafc;
         border-radius: 12px;
-        padding: 12px 16px;
+        padding: 12px 14px;
         border: 1.5px solid ${effective.secondaryColor};
     }
     .nursery-eot-report .stamp-box {
@@ -376,7 +385,7 @@ export default function NurseryEOTReport({ reportData, studioFormatting: studioF
           {/* TABLES */}
           <div className="tables-container">
 
-            <table>
+            <table className="learning-area-table">
               <thead>
                 <tr>
                   <th style={{ textAlign: 'left', width: '40%' }}>Learning Area</th>
@@ -403,7 +412,7 @@ export default function NurseryEOTReport({ reportData, studioFormatting: studioF
               </tbody>
             </table>
 
-            <table>
+            <table className="competence-table">
               <thead>
                 <tr>
                   <th colSpan={reportData?.student?.class_name?.toLowerCase().includes('top') ? 6 : 7} style={{ background: '#0f172a', textAlign: 'left', letterSpacing: '0.1em' }}>Learner's Competence (Progressive Records)</th>
@@ -437,7 +446,7 @@ export default function NurseryEOTReport({ reportData, studioFormatting: studioF
               </tbody>
             </table>
 
-            <table>
+            <table className="grading-scale-table">
               <thead>
                 <tr>
                   <th colSpan={6} style={{ background: '#1e40af', textAlign: 'center' }}>OFFICIAL GRADING SCALE</th>

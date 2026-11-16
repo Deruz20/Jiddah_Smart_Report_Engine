@@ -77,7 +77,7 @@ export const ReportContainer: React.FC<ReportContainerProps> = ({
       data-theme-preset={themePreset || 'default'}
       data-primary-font={primaryFont || 'default'}
       style={containerStyle}
-      className={`report-container ${fontVars} ${className}`}
+      className={`report-container report-container-root ${fontVars} ${className}`}
     >
       {children}
     </div>

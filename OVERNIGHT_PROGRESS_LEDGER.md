@@ -1178,4 +1178,20 @@ Exit code: 0
   - Removed `<HeroSection />`, removed duplicate `ASSET CATEGORIES` sidebar card, fixed the `"used consumed"` quota typo, added a single-row segmented category + telemetry bar (`data-testid="upload-telemetry-bar"`), mobile pane switcher (`data-testid="upload-mobile-view-switcher"`), and an above-the-fold 12-column split workspace (`lg:col-span-5` capture dock + `lg:col-span-7` searchable/filterable Live Visual Asset Gallery).
   - Verified with `npm run typecheck` (0 errors), 204/204 automated unit tests passing across 39 suites, and `npm run build` passing cleanly (`69/69` static pages generated).
 
+---
+
+### Milestone 35 — Zero Blank Page 1 Print Portal, Mixed-Only Named Pages, P7 & Nursery Gap Elimination & Jiddah Emerald/Marigold Upload Center Redesign
+- **WS1 — Zero Blank Page 1 & Right-Edge Flush Reset (`src/app/admin/layout.tsx`, `ReportGeneratorClient.tsx`, `PrintPortal.tsx`, `print-system.css`, `ReportContainer.tsx`, `PrimaryEOTReport.tsx`, `P7EOTReport.tsx`):**
+  - Removed `print:!block` from `SidebarProvider`, `SidebarInset`, and `main` in `src/app/admin/layout.tsx`, changed `[data-testid="report-center-workspace"]` in `ReportGeneratorClient.tsx` to `report-studio-root ... print:!hidden`, and enforced `html:has(#report-print-portal) body > *:not(#report-print-portal):not(style):not(script)` collapse in `print-system.css` so the screen app chrome occupies `0px` when printing via `#report-print-portal` (eliminating Blank Page 1).
+  - Scoped CSS Named Pages (`page: landscape-sheet !important` / `page: portrait-sheet !important`) strictly to `#report-print-portal[data-mixed-orientation="true"]`, preventing Chromium `page: auto -> named` blank page transitions on single/uniform jobs, and enforced `margin: 0 !important; left: 0 !important;` flush geometry on Dual EOT & Portrait sheets.
+- **WS2 — P7 & Nursery Spacing Balance (`P7EOTReport.tsx`, `NurseryEOTReport.tsx`):**
+  - Changed `.p7-eot-report .table-section` and `.p7-eot-report .table-container` from `flex: 1` to `flex: 0 0 auto` so zero bordered white gap stretches beneath the `TOTAL` row, and redistributed generous breathing room across `.info-grid`, `.marks-table` cells (`11px 8px`), `.grading-container` / `.uneb-strip`, and `.comments-box` (`justify-content: space-evenly`, `min-height: 34px`).
+  - Changed `.nursery-eot-report .tables-container` to `flex: 0 0 auto; justify-content: flex-start; gap: 10px;` and balanced table cell paddings (`10px 12px` Learning Area, `9px 12px` Learner Competence, `8px 10px` Grading Scale, `12px 14px` remarks box).
+- **WS3 — Senior UI/UX Upload Center Redesign (`src/utils/signatures.ts`, `src/components/layout/upload-client.tsx`):**
+  - Removed unused `dos-signature`, `theology-head`, and `principal` slots from `getDynamicSignatureSlots()` (`signatures.ts`) and `upload-client.tsx`, formatted Theology slots with Arabic suffixes, and filtered to the canonical 20 report card slots (`head-teacher` + Secular `Baby..P.7` + Theology `Baby..P.6`).
+  - Replaced raw `<img>` tags on signature gallery cards with transparent ink `<CleanSignatureImage />`, eliminated `<RefreshCw />` buttons on signature cards in favor of `<Upload />`, `<PenTool />`, and `<Wand2 />`, added the Forest Green (`#0D5C3A`) Active Role Banner (`data-testid="upload-role-banner"`) with Warm Marigold/Amber (`#EA580C` / `#D97706`) capture CTAs, curriculum filters (`All | Secular | Theology`), and status filters (`All | Signed | Missing`).
+- **WS4 — Verification Gate (`overhaul-workstreams.test.mjs`, `upload-metrics.test.mjs`):**
+  - Verified with `npm run typecheck` (0 errors), 207/207 unit tests passing across 40 suites (`WS1`–`WS35`, `upload-metrics`, `report-print`, `signature-assets`, `signature-deactivation`, `grading-and-calculations`, `report-logo`, `eot-report-auth-and-badges`), and `npm run build` passing cleanly (`69/69` routes compiled).
+
+
 

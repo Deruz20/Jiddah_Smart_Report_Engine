@@ -227,8 +227,8 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
           gap: 8px;
           width: 100%;
           box-sizing: border-box;
-          padding: 2px 6px;
-          min-height: 36mm;
+          padding: 4px 6px;
+          min-height: 38mm;
           overflow: visible;
         }
 
@@ -262,7 +262,7 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
           margin-bottom: 2px;
         }
         .p7-eot-report .school-logo {
-          height: 64px;
+          height: 60px;
           margin-bottom: 2px;
         }
         .p7-eot-report .report-badge {
@@ -306,10 +306,10 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
         .p7-eot-report .info-grid {
           display: flex;
           flex-direction: column;
-          gap: 4px;
+          gap: 8px;
           background-color: #FAF6EE;
           border: 1.5px dashed ${effective.secondaryColor};
-          padding: 6px 10px;
+          padding: 10px 14px;
           border-radius: 6px;
         }
 
@@ -349,44 +349,50 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
           color: #0F172A;
         }
 
-        /* ── COMPARATIVE PERFORMANCE TABLE (~108mm) ── */
+        /* ── COMPARATIVE PERFORMANCE TABLE (Natural height, ZERO white desert below TOTAL) ── */
+        .p7-eot-report .table-section {
+          flex: 0 0 auto;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
         .p7-eot-report .table-container {
           border: 1.5px solid ${effective.secondaryColor};
           border-radius: 6px;
           overflow: hidden;
           background: white;
-          flex: 1 1 auto;
+          flex: 0 0 auto;
           display: flex;
           flex-direction: column;
         }
         .p7-eot-report table {
           width: 100%;
           border-collapse: collapse;
-          font-size: calc(13px * var(--report-font-scale, 1));
+          font-size: calc(13.5px * var(--report-font-scale, 1));
           text-align: center;
           height: auto;
         }
         .p7-eot-report th,
         .p7-eot-report td {
           border: 1px solid #cbd5e1;
-          padding: 3.5px 4px;
+          padding: 11px 8px;
           line-height: 1.2;
         }
         .p7-eot-report .th-banner {
           background-color: ${effective.secondaryColor} !important;
           color: #ffffff;
           font-weight: 900;
-          font-size: 11.5px;
+          font-size: 12px;
           letter-spacing: 0.8px;
-          padding: 4px 0;
+          padding: 6px 0;
         }
         .p7-eot-report th {
           background-color: ${effective.primaryColor};
           color: white;
           font-weight: 800;
           letter-spacing: 0.2px;
-          font-size: 10.5px;
-          padding: 4.5px 4px;
+          font-size: 11px;
+          padding: 8px 6px;
         }
 
         .p7-eot-report .row-even { background-color: #ffffff; }
@@ -397,7 +403,7 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
           font-weight: ${effective.headingFontWeight};
           font-size: 13.5px;
           color: ${effective.primaryColor};
-          padding-left: 8px !important;
+          padding-left: 10px !important;
         }
         .p7-eot-report td.score-cell,
         .p7-eot-report .grade-cell {
@@ -406,18 +412,21 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
           color: #0F172A;
         }
         .p7-eot-report .remark-cell { font-style: italic; font-weight: 800; font-size: 11.5px; }
-        .p7-eot-report .total-row td { background-color: #f1f5f9; font-weight: 800; font-size: 13.5px; }
+        .p7-eot-report .total-row td { background-color: #f1f5f9; font-weight: 800; font-size: 14px; padding: 10px 8px; }
 
-        /* Grading Table + UNEB Strip (~28mm) */
+        /* Grading Table + UNEB Strip */
         .p7-eot-report .grading-container {
           flex-shrink: 0;
-          margin-top: 4px;
+          padding: 4px 0;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
         }
         .p7-eot-report .grading-container table {
           height: auto;
         }
         .p7-eot-report .grading-container td {
-          padding: 6px 6px;
+          padding: 7px 6px;
         }
         .p7-eot-report .grade-head { background-color: ${effective.primaryColor}; color: white; font-weight: 800; font-size: 9.5px; }
         .p7-eot-report .marks-head { background-color: #475569; color: white; font-weight: 800; font-size: 9.5px; }
@@ -430,38 +439,41 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
           background: #f8fafc;
           border: 1px solid #cbd5e1;
           border-radius: 4px;
-          padding: 3.5px 10px;
+          padding: 7px 12px;
           font-size: 9.5px;
           color: #334155;
-          margin-top: 4px;
         }
         .p7-eot-report .uneb-label {
           font-weight: 800;
           color: ${effective.primaryColor};
         }
 
-        /* ── FOOTER SECTION (~56mm + ~20mm) ── */
+        /* ── FOOTER SECTION (Balanced proportional spacing) ── */
         .p7-eot-report .footer-section {
           display: flex;
           flex-direction: column;
-          gap: 5px;
-          flex-shrink: 0;
+          justify-content: space-between;
+          gap: 6px;
+          flex: 1 1 auto;
         }
 
         .p7-eot-report .comments-box {
-          background-color: #faf8f5;
-          border: 1px solid #e2d8b8;
-          border-radius: 6px;
-          padding: 8px 12px;
+          flex: 1 1 auto;
+          background-color: rgba(250, 246, 238, 0.45);
+          border: 1.5px dashed ${effective.secondaryColor};
+          border-radius: 8px;
+          padding: 12px 14px;
           display: flex;
           flex-direction: column;
-          gap: 5px;
+          justify-content: space-evenly;
+          gap: 6px;
         }
 
         .p7-eot-report .comment-row {
           display: flex;
           align-items: center;
           gap: 6px;
+          min-height: 34px;
           font-size: 10.5px;
         }
         .p7-eot-report .comment-lbl {
@@ -492,6 +504,7 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
           display: flex;
           align-items: center;
           gap: 8px;
+          margin-top: 4px;
           justify-content: space-between;
         }
 
@@ -534,13 +547,14 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
 
         @media print {
           .portrait-page.p7-eot-report {
-            page: portrait-sheet !important;
             width: 210mm !important;
             min-width: 210mm !important;
             max-width: 210mm !important;
             height: 295mm !important;
             min-height: 0 !important;
             max-height: 295mm !important;
+            margin: 0 !important;
+            left: 0 !important;
             padding: 2.5mm 4mm !important;
             box-sizing: border-box !important;
             overflow: hidden !important;
@@ -700,9 +714,9 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
                 </div>
 
                 {/* ── SECULAR MARKS TABLE ── */}
-                <div style={{ flex: '1 1 auto', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                <div className="table-section" style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <div className="table-container">
-                    <table>
+                    <table className="marks-table">
                       <thead>
                         <tr>
                           <th colSpan={9} className="th-banner">

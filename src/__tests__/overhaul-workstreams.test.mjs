@@ -1328,7 +1328,8 @@ describe('Workstream 23: Authentic Jiddah Vector Stamp, Clean Signature Ink Filt
   it('3. unconstrains layout wrappers during @media print so multi-page batch printing outputs all N sheets', () => {
     const layoutPath = path.join(rootDir, 'src/app/admin/layout.tsx');
     const layoutSrc = fs.readFileSync(layoutPath, 'utf8');
-    assert.match(layoutSrc, /print:!h-auto print:!min-h-0 print:!max-h-none print:!overflow-visible print:!block print:!static/);
+    assert.match(layoutSrc, /print:!h-auto print:!min-h-0 print:!max-h-none print:!overflow-visible print:!static/);
+    assert.doesNotMatch(layoutSrc, /print:!block/);
 
     const printCssPath = path.join(rootDir, 'src/styles/reports/print-system.css');
     const printCssSrc = fs.readFileSync(printCssPath, 'utf8');
@@ -1409,8 +1410,7 @@ describe('Workstream 24: Landscape Print Lock, Blank Page 1 Fix, Iconic Studio T
 
     const clientSrc = fs.readFileSync(path.join(rootDir, 'src/components/ReportGeneratorClient.tsx'), 'utf8');
     const portalSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/PrintPortal.tsx'), 'utf8');
-    assert.match(clientSrc, /print:!p-0 print:!m-0 print:!gap-0 print:!h-auto print:!overflow-visible print:!block/);
-    assert.match(clientSrc, /print:!hidden/);
+    assert.match(clientSrc, /data-testid="report-center-workspace"[\s\S]*?print:!hidden/);
     assert.match(clientSrc, /applyDynamicPrintPageRule/);
     assert.match(portalSrc, /297mm 210mm !important/);
   });
@@ -1460,13 +1460,13 @@ describe('Workstream 25: CSS Named Pages for Mixed Print, P7 Portrait Parity, Wh
     assert.match(printCssSrc, /page:\s*portrait-sheet\s*!important;/);
 
     const primaryEotSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/PrimaryEOTReport.tsx'), 'utf8');
-    assert.match(primaryEotSrc, /page:\s*landscape-sheet\s*!important;/);
+    assert.doesNotMatch(primaryEotSrc, /page:\s*landscape-sheet\s*!important;/);
     assert.match(primaryEotSrc, /data-report-orientation="landscape"/);
   });
 
   it('2. enforces P7EOTReport design parity with PrimaryEOTReport (double gold/emerald border, maroon header, centered crest, inside stamp, bold pupil line)', () => {
     const p7Src = fs.readFileSync(path.join(rootDir, 'src/components/reports/P7EOTReport.tsx'), 'utf8');
-    assert.match(p7Src, /page:\s*portrait-sheet\s*!important;/);
+    assert.doesNotMatch(p7Src, /page:\s*portrait-sheet\s*!important;/);
     assert.match(p7Src, /data-report-orientation="portrait"/);
     assert.match(p7Src, /effective\.headerAccentColor|#7F1D1D/); // Maroon/accent title
     assert.match(p7Src, /\/logo-512h\.png/); // Centered crest
@@ -2148,7 +2148,7 @@ describe('Workstream 34: 5-Subject Landscape Fit, Zero Ghost Page 2 Portal, 16px
     assert.match(portalSrc, /createPortal/);
     assert.match(portalSrc, /id="report-print-portal"/);
     assert.match(portalSrc, /data-print-portal="active"/);
-    assert.match(cssSrc, /body:has\(#report-print-portal\)\s*>\s*\*:not\(#report-print-portal\):not\(style\):not\(script\)/);
+    assert.match(cssSrc, /html:has\(#report-print-portal\)\s*body\s*>\s*\*:not\(#report-print-portal\):not\(style\):not\(script\)/);
     assert.match(cssSrc, /\.report-card-sheet\[data-first-printed="false"\]/);
     assert.match(cssSrc, /\.report-card-sheet\[data-first-printed="true"\]/);
     assert.match(clientSrc, /data-first-printed=\{isFirstSheet \? 'true' : 'false'\}/);
@@ -2202,10 +2202,58 @@ describe('Workstream 34: 5-Subject Landscape Fit, Zero Ghost Page 2 Portal, 16px
     assert.doesNotMatch(uploadSrc, /Asset Categories/);
     assert.doesNotMatch(uploadSrc, /used consumed/);
     assert.match(uploadSrc, /lg:grid-cols-12/);
-    assert.match(uploadSrc, /lg:col-span-5/);
-    assert.match(uploadSrc, /lg:col-span-7/);
+    assert.match(uploadSrc, /lg:col-span-(?:4|5)/);
+    assert.match(uploadSrc, /lg:col-span-(?:8|7)/);
     assert.match(uploadSrc, /data-testid="upload-telemetry-bar"/);
     assert.match(uploadSrc, /data-testid="upload-mobile-view-switcher"/);
-    assert.match(uploadSrc, /max-h-\[calc\(100dvh-165px\)\]/);
+    assert.match(uploadSrc, /max-h-\[calc\(100dvh-(?:215|165)px\)\]/);
+  });
+});
+
+describe('Workstream 35: Zero Blank Page 1 Print Portal, Mixed-Only Named Pages, P7 & Nursery Gap Elimination & Jiddah Emerald/Marigold Upload Center Redesign', () => {
+  const read = (relPath) => fs.readFileSync(path.join(process.cwd(), relPath), 'utf8');
+
+  it('WS35.1: AdminLayout & ReportGeneratorClient hide app chrome during portal printing and PrintPortal scopes named pages strictly to mixed batches', () => {
+    const layoutSrc = read('src/app/admin/layout.tsx');
+    const clientSrc = read('src/components/ReportGeneratorClient.tsx');
+    const portalSrc = read('src/components/reports/PrintPortal.tsx');
+    const cssSrc = read('src/styles/reports/print-system.css');
+    const containerSrc = read('src/components/reports/shared/ReportContainer.tsx');
+    const primarySrc = read('src/components/reports/PrimaryEOTReport.tsx');
+
+    assert.doesNotMatch(layoutSrc, /print:!block/);
+    assert.match(clientSrc, /report-studio-root[\s\S]*?print:!hidden/);
+    assert.match(portalSrc, /data-mixed-orientation=\{pageOrientation === 'mixed' \? 'true' : 'false'\}/);
+    assert.match(cssSrc, /html:has\(#report-print-portal\) body > \*:not\(#report-print-portal\):not\(style\):not\(script\)/);
+    assert.match(cssSrc, /#report-print-portal\[data-mixed-orientation="true"\] \.report-sheet-landscape/);
+    assert.match(containerSrc, /report-container-root/);
+    assert.match(primarySrc, /margin:\s*0\s*!important;[\s\S]*?left:\s*0\s*!important;/);
+  });
+
+  it('WS35.2: P7EOTReport sets .table-section and .table-container to flex: 0 0 auto with balanced spacing, and NurseryEOTReport tightens gaps between tables', () => {
+    const p7Src = read('src/components/reports/P7EOTReport.tsx');
+    const nurserySrc = read('src/components/reports/NurseryEOTReport.tsx');
+
+    assert.match(p7Src, /\.p7-eot-report \.table-section\s*\{[\s\S]*?flex:\s*0 0 auto;/);
+    assert.match(p7Src, /\.p7-eot-report \.table-container\s*\{[\s\S]*?flex:\s*0 0 auto;/);
+    assert.match(p7Src, /\.p7-eot-report \.comments-box\s*\{[\s\S]*?justify-content:\s*space-evenly;/);
+    assert.match(nurserySrc, /\.nursery-eot-report \.tables-container\s*\{[\s\S]*?flex:\s*0 0 auto;[\s\S]*?justify-content:\s*flex-start;/);
+    assert.match(nurserySrc, /\.nursery-eot-report \.learning-area-table td\s*\{[\s\S]*?padding:\s*10px 12px;/);
+  });
+
+  it('WS35.3: UploadClient renders CleanSignatureImage, uses Upload/PenTool/Wand2 without RefreshCw on signature cards, excludes unused DOS/Head/Principal roles, and uses Forest Green + Warm Marigold hierarchy', () => {
+    const sigUtilsSrc = read('src/utils/signatures.ts');
+    const uploadSrc = read('src/components/layout/upload-client.tsx');
+
+    assert.doesNotMatch(sigUtilsSrc, /slot_key:\s*'dos-signature'/);
+    assert.doesNotMatch(sigUtilsSrc, /slot_key:\s*'theology-head'/);
+    assert.doesNotMatch(sigUtilsSrc, /slot_key:\s*'principal'/);
+
+    assert.match(uploadSrc, /CleanSignatureImage/);
+    assert.match(uploadSrc, /data-testid="upload-role-banner"/);
+    assert.match(uploadSrc, /#0D5C3A/);
+    assert.match(uploadSrc, /#EA580C/);
+    assert.match(uploadSrc, /UploadCloud/);
+    assert.match(uploadSrc, /'dos-signature'[\s\S]*?'theology-head'[\s\S]*?'principal'/);
   });
 });

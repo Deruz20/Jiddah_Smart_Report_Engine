@@ -88,6 +88,9 @@ test('getDynamicSignatureSlots excludes theology-teacher-p7 and sorts secular an
   const keys = slots.map((s) => s.slot_key);
 
   assert.equal(keys.includes('theology-teacher-p7'), false);
+  assert.equal(keys.includes('dos-signature'), false);
+  assert.equal(keys.includes('theology-head'), false);
+  assert.equal(keys.includes('principal'), false);
   assert.equal(keys[0], 'head-teacher');
 
   const secularIdxBaby = keys.indexOf('class-teacher-baby');

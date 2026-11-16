@@ -890,7 +890,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
   return (
     <div
       data-testid="report-center-workspace"
-      className="h-full bg-[#EEF3F0] dark:bg-[#0B110E] font-sans flex flex-col relative overflow-hidden text-stone-800 dark:text-stone-100 p-2 sm:p-3 gap-2 sm:gap-2.5 print:!p-0 print:!m-0 print:!gap-0 print:!h-auto print:!overflow-visible print:!block"
+      className="report-studio-root h-full bg-[#EEF3F0] dark:bg-[#0B110E] font-sans flex flex-col relative overflow-hidden text-stone-800 dark:text-stone-100 p-2 sm:p-3 gap-2 sm:gap-2.5 print:!hidden"
     >
       <PrintDialog
         open={isPrintDialogOpen}

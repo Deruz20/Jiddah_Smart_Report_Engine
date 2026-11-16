@@ -628,7 +628,8 @@ export async function POST(request: NextRequest) {
           division,
           conduct_remark: score_type === 'mot'
             ? ''
-            : evaluateCriteria(reportAggregate ?? null, 'aggregate', 'secular', enrollment.circular_class_id, gradingCriteria, 'comment') || getConductRemark(division),
+            : evaluateCriteria(reportAggregate ?? null, 'aggregate', 'secular', enrollment.circular_class_id, gradingCriteria, 'comment') ||
+              getConductRemark(division, schoolSettings?.division_boundaries, schoolSettings?.promotion_comments?.default_conduct),
           class_teacher_comment: getClassTeacherReportComment({
             scoreType: score_type,
             termNumber: term.term_number,
@@ -638,6 +639,7 @@ export async function POST(request: NextRequest) {
             scores: sortedCircularSubjects.filter(row => row.is_core).map(row => row.score),
             gradingBands: schoolSettings?.grading_scale,
             divisionBoundaries: schoolSettings?.division_boundaries,
+            promotionComments: schoolSettings?.promotion_comments,
           }),
           head_teacher_comment: score_type === 'mot'
             ? evaluateCriteria(reportAggregate ?? null, 'aggregate', 'secular', enrollment.circular_class_id, gradingCriteria, 'comment') || getGradingRemarkForScores(sortedCircularSubjects.filter(row => row.is_core).map(row => row.score), schoolSettings?.grading_scale)

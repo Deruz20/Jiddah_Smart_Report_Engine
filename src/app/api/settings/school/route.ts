@@ -50,6 +50,7 @@ const allowedJsonKeys = [
   'division_boundaries',
   'fee_structure',
   'marks_locks',
+  'promotion_comments',
 ]
 
 export async function OPTIONS(request: NextRequest) {

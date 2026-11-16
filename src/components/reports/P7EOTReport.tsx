@@ -56,7 +56,7 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
 
   const conductRemark =
     reportData?.circular?.conduct_remark ??
-    getConductRemark(reportData?.circular?.division ?? null)
+    getConductRemark(reportData?.circular?.division ?? null, reportData?.settings?.division_boundaries, reportData?.settings?.promotion_comments?.default_conduct)
 
   const hasTheology =
     isMuslim &&

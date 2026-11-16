@@ -1,7 +1,9 @@
 import {
   DEFAULT_GRADING_BANDS,
+  DEFAULT_PROMOTION_COMMENTS,
   type GradingBand,
   type DivisionBoundaryItem,
+  type PromotionCommentsConfig,
 } from './school-settings-helper'
 
 export type GradeCode = 'D1' | 'D2' | 'C3' | 'C4' | 'C5' | 'C6' | 'P7' | 'P8' | 'F9'
@@ -484,6 +486,7 @@ export function getClassTeacherReportComment({
   scores,
   gradingBands,
   divisionBoundaries,
+  promotionComments,
 }: {
   scoreType: 'bot' | 'mot' | 'eot'
   termNumber: number
@@ -493,11 +496,23 @@ export function getClassTeacherReportComment({
   scores?: (number | null | undefined)[]
   gradingBands?: ReportCommentBands
   divisionBoundaries?: DivisionBoundaryItem[]
+  promotionComments?: PromotionCommentsConfig
 }): string {
   if (scoreType === 'eot' && termNumber === 3 && promotionStatus) {
-    if (promotionStatus === 'Promote') return 'Promoted to the next class.'
-    if (promotionStatus === 'Repeat') return 'Advised to repeat the class.'
-    return 'Try next class.'
+    const pCfg = promotionComments || DEFAULT_PROMOTION_COMMENTS
+    let promoText = pCfg.try_next_class || 'Try next class.'
+    if (promotionStatus === 'Promote') promoText = pCfg.promoted || 'Promoted to the next class.'
+    else if (promotionStatus === 'Repeat') promoText = pCfg.repeat || 'Advised to repeat the class.'
+    else if (promotionStatus === 'Probation') promoText = pCfg.promoted_probation || 'Promoted on probation.'
+    else if (promotionStatus === 'Try Next Class') promoText = pCfg.try_next_class || 'Try next class.'
+
+    if (pCfg.append_division_comment) {
+      const divComment = getClassTeacherComment(division, scores, gradingBands, divisionBoundaries)
+      if (divComment) {
+        return `${promoText} ${divComment}`
+      }
+    }
+    return promoText
   }
 
   if (gradingComment) return gradingComment
@@ -507,14 +522,25 @@ export function getClassTeacherReportComment({
   return getClassTeacherComment(division, scores, gradingBands, divisionBoundaries)
 }
 
-export function getConductRemark(division: string | null): string {
+export function getConductRemark(
+  division: string | null,
+  divisionBoundaries?: DivisionBoundaryItem[],
+  defaultConduct?: string
+): string {
+  if (division && Array.isArray(divisionBoundaries) && divisionBoundaries.length > 0) {
+    const matched = divisionBoundaries.find((b) => b.division === division)
+    if (matched?.conductRemark?.trim()) {
+      return matched.conductRemark.trim()
+    }
+  }
+
   switch (division) {
     case 'I': return 'Excellent conduct. Very impressive!'
     case 'II': return 'Very good conduct. Well done!'
     case 'III': return 'Good conduct. Keep it up.'
     case 'IV': return 'Fair conduct. Be more disciplined.'
     case 'U': return 'Needs to improve on general conduct.'
-    default: return 'Good conduct.'
+    default: return defaultConduct?.trim() || 'Good conduct.'
   }
 }
 

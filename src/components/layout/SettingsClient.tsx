@@ -30,6 +30,7 @@ import {
   DEFAULT_THEOLOGY_GRADING_SCALE,
   DEFAULT_THEOLOGY_REMARKS,
   DEFAULT_DIVISION_BOUNDARIES,
+  DEFAULT_PROMOTION_COMMENTS,
   DEFAULT_FEE_STRUCTURE,
   DEFAULT_MARKS_LOCKS,
   DEFAULT_PRINT_PREFERENCES,
@@ -38,6 +39,7 @@ import {
   type GradingBandItem,
   type TheologyRemarkItem,
   type DivisionBoundaryItem,
+  type PromotionCommentsConfig,
   type FeeStructureConfig,
   type MarksLocksConfig,
   type PrintPreferencesConfig,
@@ -293,6 +295,15 @@ export default function SettingsClient({
     initialSettings?.division_boundaries || DEFAULT_DIVISION_BOUNDARIES
   );
   const [savingDivisionBoundaries, setSavingDivisionBoundaries] = useState(false);
+
+  // 4. Term 3 Promotion & Conduct Remarks State
+  const [promotionComments, setPromotionComments] = useState<PromotionCommentsConfig>(
+    initialSettings?.promotion_comments || DEFAULT_PROMOTION_COMMENTS
+  );
+  const [savedPromotionComments, setSavedPromotionComments] = useState<PromotionCommentsConfig>(
+    initialSettings?.promotion_comments || DEFAULT_PROMOTION_COMMENTS
+  );
+  const [savingPromotionComments, setSavingPromotionComments] = useState(false);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [resettingDefaults, setResettingDefaults] = useState(false);
 
@@ -350,6 +361,10 @@ export default function SettingsClient({
             setDivisionBoundaries(d.division_boundaries);
             setSavedDivisionBoundaries(d.division_boundaries);
           }
+          if (d.promotion_comments) {
+            setPromotionComments({ ...DEFAULT_PROMOTION_COMMENTS, ...d.promotion_comments });
+            setSavedPromotionComments({ ...DEFAULT_PROMOTION_COMMENTS, ...d.promotion_comments });
+          }
           if (d.print_preferences) {
             setPrintPrefs({ ...DEFAULT_PRINT_PREFERENCES, ...d.print_preferences });
           }
@@ -375,6 +390,8 @@ export default function SettingsClient({
     JSON.stringify(theologyRemarks) !== JSON.stringify(savedTheologyRemarks);
   const isDivisionDirty =
     JSON.stringify(divisionBoundaries) !== JSON.stringify(savedDivisionBoundaries);
+  const isPromotionCommentsDirty =
+    JSON.stringify(promotionComments) !== JSON.stringify(savedPromotionComments);
 
   // Live Grading Validation
   const secularValidation = useMemo(
@@ -542,6 +559,30 @@ export default function SettingsClient({
     }
   };
 
+  // Save Promotion & Conduct Comments Settings
+  const handleSavePromotionComments = async () => {
+    setSavingPromotionComments(true);
+    try {
+      const res = await fetch("/api/settings/school", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ promotion_comments: promotionComments }),
+      });
+      const payload = await res.json();
+      if (!res.ok) {
+        throw new Error(payload?.error || "Failed to save promotion comments and conduct settings");
+      }
+
+      setSavedPromotionComments(promotionComments);
+      toast.success("Promotion comments and conduct settings saved.");
+      router.refresh();
+    } catch (err: any) {
+      toast.error(err.message || "Unable to save promotion comments");
+    } finally {
+      setSavingPromotionComments(false);
+    }
+  };
+
   // One-Click Reset to UNEB / Jiddah Defaults
   const handleConfirmResetGradingDefaults = async () => {
     setResettingDefaults(true);
@@ -554,6 +595,7 @@ export default function SettingsClient({
           theology_grading_scale: DEFAULT_THEOLOGY_GRADING_SCALE,
           theology_remarks: DEFAULT_THEOLOGY_REMARKS,
           division_boundaries: DEFAULT_DIVISION_BOUNDARIES,
+          promotion_comments: DEFAULT_PROMOTION_COMMENTS,
         }),
       });
       const payload = await res.json();
@@ -569,6 +611,8 @@ export default function SettingsClient({
       setSavedTheologyRemarks(DEFAULT_THEOLOGY_REMARKS);
       setDivisionBoundaries(DEFAULT_DIVISION_BOUNDARIES);
       setSavedDivisionBoundaries(DEFAULT_DIVISION_BOUNDARIES);
+      setPromotionComments(DEFAULT_PROMOTION_COMMENTS);
+      setSavedPromotionComments(DEFAULT_PROMOTION_COMMENTS);
       setResetDialogOpen(false);
       toast.success("Grading scales and division rules restored to UNEB / Jiddah defaults.");
       router.refresh();
@@ -1449,9 +1493,9 @@ export default function SettingsClient({
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                         <div>
-                          <label className="block text-[11px] font-semibold text-[#6B7280] mb-1">
+                          <label className="block text-[11px] font-semibold text-[#6B7280] dark:text-[#9AA7A0] mb-1">
                             Class Teacher Comment Template
                           </label>
                           <input
@@ -1466,7 +1510,7 @@ export default function SettingsClient({
                           />
                         </div>
                         <div>
-                          <label className="block text-[11px] font-semibold text-[#6B7280] mb-1">
+                          <label className="block text-[11px] font-semibold text-[#6B7280] dark:text-[#9AA7A0] mb-1">
                             Headteacher Comment Template
                           </label>
                           <input
@@ -1475,6 +1519,22 @@ export default function SettingsClient({
                             onChange={(e) => {
                               const next = [...divisionBoundaries];
                               next[idx] = { ...div, headTeacherComment: e.target.value };
+                              setDivisionBoundaries(next);
+                            }}
+                            className="w-full h-9 rounded-lg border border-[#D5DFD5] dark:border-[#2A3B35] bg-white dark:bg-[#0D1412] px-2.5 text-xs text-[#111827] dark:text-[#F4F7F5]"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-semibold text-[#6B7280] dark:text-[#9AA7A0] mb-1">
+                            Conduct Remark Template
+                          </label>
+                          <input
+                            type="text"
+                            value={div.conductRemark || ""}
+                            placeholder="e.g. Good conduct. Keep it up."
+                            onChange={(e) => {
+                              const next = [...divisionBoundaries];
+                              next[idx] = { ...div, conductRemark: e.target.value };
                               setDivisionBoundaries(next);
                             }}
                             className="w-full h-9 rounded-lg border border-[#D5DFD5] dark:border-[#2A3B35] bg-white dark:bg-[#0D1412] px-2.5 text-xs text-[#111827] dark:text-[#F4F7F5]"
@@ -1503,6 +1563,148 @@ export default function SettingsClient({
                       <Check className="w-3.5 h-3.5" />
                     )}
                     <span>{savingDivisionBoundaries ? "Saving..." : "Save Changes"}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Card 3D: Term 3 Promotion & General Conduct Settings */}
+              <div className="bg-white dark:bg-[#131A16] rounded-2xl border border-[#E3E8E3] dark:border-[#24332E] shadow-[0_1px_3px_rgba(15,41,30,0.04)] p-6">
+                <div className="mb-4">
+                  <h2 className="text-[15px] font-semibold text-[#111827] dark:text-[#F4F7F5]">
+                    Term 3 Promotion Remarks & General Conduct
+                  </h2>
+                  <p className="text-xs text-[#6B7280] dark:text-[#9AA7A0] mt-0.5">
+                    Automated Class Teacher comments applied during end-of-year promotion decisions and fallback conduct remarks.
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-[#6B7280] dark:text-[#9AA7A0] mb-1">
+                        Promoted Remark (Division I, II, III)
+                      </label>
+                      <input
+                        type="text"
+                        value={promotionComments.promoted}
+                        onChange={(e) =>
+                          setPromotionComments({ ...promotionComments, promoted: e.target.value })
+                        }
+                        className="w-full h-9 rounded-lg border border-[#D5DFD5] dark:border-[#2A3B35] bg-white dark:bg-[#0D1412] px-2.5 text-xs text-[#111827] dark:text-[#F4F7F5]"
+                        placeholder="Promoted to the next class."
+                      />
+                      <p className="text-[10px] text-[#9AA7A0] mt-0.5">Printed under Class Teacher's Comment for passing candidates.</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-[#6B7280] dark:text-[#9AA7A0] mb-1">
+                        Promoted on Probation Remark (Division IV)
+                      </label>
+                      <input
+                        type="text"
+                        value={promotionComments.promoted_probation}
+                        onChange={(e) =>
+                          setPromotionComments({ ...promotionComments, promoted_probation: e.target.value })
+                        }
+                        className="w-full h-9 rounded-lg border border-[#D5DFD5] dark:border-[#2A3B35] bg-white dark:bg-[#0D1412] px-2.5 text-xs text-[#111827] dark:text-[#F4F7F5]"
+                        placeholder="Promoted on probation."
+                      />
+                      <p className="text-[10px] text-[#9AA7A0] mt-0.5">Printed when pupil is promoted with academic conditions.</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-[#6B7280] dark:text-[#9AA7A0] mb-1">
+                        Repeat Class Remark (Ungraded U)
+                      </label>
+                      <input
+                        type="text"
+                        value={promotionComments.repeat}
+                        onChange={(e) =>
+                          setPromotionComments({ ...promotionComments, repeat: e.target.value })
+                        }
+                        className="w-full h-9 rounded-lg border border-[#D5DFD5] dark:border-[#2A3B35] bg-white dark:bg-[#0D1412] px-2.5 text-xs text-[#111827] dark:text-[#F4F7F5]"
+                        placeholder="Advised to repeat the class."
+                      />
+                      <p className="text-[10px] text-[#9AA7A0] mt-0.5">Printed when student does not qualify for promotion.</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-[#6B7280] dark:text-[#9AA7A0] mb-1">
+                        Try Next Class Remark (Manual Override)
+                      </label>
+                      <input
+                        type="text"
+                        value={promotionComments.try_next_class}
+                        onChange={(e) =>
+                          setPromotionComments({ ...promotionComments, try_next_class: e.target.value })
+                        }
+                        className="w-full h-9 rounded-lg border border-[#D5DFD5] dark:border-[#2A3B35] bg-white dark:bg-[#0D1412] px-2.5 text-xs text-[#111827] dark:text-[#F4F7F5]"
+                        placeholder="Try next class."
+                      />
+                      <p className="text-[10px] text-[#9AA7A0] mt-0.5">Printed when teachers assign manual probation promotion.</p>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-[#F1F5F1] dark:border-[#24332E]">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-[#6B7280] dark:text-[#9AA7A0] mb-1">
+                          Default General Conduct Remark (Nursery / Unclassified)
+                        </label>
+                        <input
+                          type="text"
+                          value={promotionComments.default_conduct}
+                          onChange={(e) =>
+                            setPromotionComments({ ...promotionComments, default_conduct: e.target.value })
+                          }
+                          className="w-full h-9 rounded-lg border border-[#D5DFD5] dark:border-[#2A3B35] bg-white dark:bg-[#0D1412] px-2.5 text-xs text-[#111827] dark:text-[#F4F7F5]"
+                          placeholder="Good conduct."
+                        />
+                        <p className="text-[10px] text-[#9AA7A0] mt-0.5">Fallback conduct remark when student has no division assigned.</p>
+                      </div>
+
+                      <div className="flex items-center gap-2 pt-2 sm:pt-0">
+                        <input
+                          type="checkbox"
+                          id="append_division_comment"
+                          checked={promotionComments.append_division_comment || false}
+                          onChange={(e) =>
+                            setPromotionComments({
+                              ...promotionComments,
+                              append_division_comment: e.target.checked,
+                            })
+                          }
+                          className="w-4 h-4 rounded text-[#0D5C3A] focus:ring-[#0D5C3A] border-[#D5DFD5]"
+                        />
+                        <label
+                          htmlFor="append_division_comment"
+                          className="text-xs font-medium text-[#374151] dark:text-[#E2E8F0] cursor-pointer"
+                        >
+                          Append Division Academic Remark to Promotion Status
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-4 mt-4 border-t border-[#F1F5F1] dark:border-[#24332E]">
+                  <span className="text-xs text-[#6B7280]">
+                    {isPromotionCommentsDirty
+                      ? "Unsaved promotion or conduct settings"
+                      : "Promotion remarks and conduct templates synced"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleSavePromotionComments}
+                    disabled={!isPromotionCommentsDirty || savingPromotionComments}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-[#0D5C3A] hover:bg-[#0A472C] px-4 py-2 text-xs font-semibold text-white transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {savingPromotionComments ? (
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Check className="w-3.5 h-3.5" />
+                    )}
+                    <span>{savingPromotionComments ? "Saving..." : "Save Changes"}</span>
                   </button>
                 </div>
               </div>

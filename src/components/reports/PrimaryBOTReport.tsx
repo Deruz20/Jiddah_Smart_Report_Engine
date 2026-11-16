@@ -40,7 +40,7 @@ export default function PrimaryBOTReport({ reportData, studioFormatting: studioF
     getHeadTeacherComment(reportData?.circular?.division ?? null, undefined, reportData?.settings?.grading_scale, reportData?.settings?.division_boundaries);
   const conductRemark =
     reportData?.circular?.conduct_remark ??
-    getConductRemark(reportData?.circular?.division ?? null);
+    getConductRemark(reportData?.circular?.division ?? null, reportData?.settings?.division_boundaries, reportData?.settings?.promotion_comments?.default_conduct);
 
   const classTeacherSigKey = reportData?.student?.class_name
     ? getClassTeacherSignatureKey(reportData.student.class_name) ?? ''

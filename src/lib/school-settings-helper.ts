@@ -119,7 +119,26 @@ export interface DivisionBoundaryItem {
   max: number;
   classTeacherComment: string;
   headTeacherComment: string;
+  conductRemark?: string;
 }
+
+export interface PromotionCommentsConfig {
+  promoted: string;
+  promoted_probation: string;
+  repeat: string;
+  try_next_class: string;
+  default_conduct: string;
+  append_division_comment?: boolean;
+}
+
+export const DEFAULT_PROMOTION_COMMENTS: PromotionCommentsConfig = {
+  promoted: 'Promoted to the next class.',
+  promoted_probation: 'Promoted on probation.',
+  repeat: 'Advised to repeat the class.',
+  try_next_class: 'Try next class.',
+  default_conduct: 'Good conduct.',
+  append_division_comment: false,
+};
 
 export interface FeeStructureConfig {
   nursery_day: string;
@@ -177,6 +196,7 @@ export const DEFAULT_DIVISION_BOUNDARIES: DivisionBoundaryItem[] = [
     max: 12,
     classTeacherComment: 'Outstanding performance. Keep it up!',
     headTeacherComment: 'Excellent achievement. Keep up the high standard.',
+    conductRemark: 'Excellent conduct. Very impressive!',
   },
   {
     division: 'II',
@@ -185,6 +205,7 @@ export const DEFAULT_DIVISION_BOUNDARIES: DivisionBoundaryItem[] = [
     max: 23,
     classTeacherComment: 'Very good performance. Keep it up.',
     headTeacherComment: 'Very good result. Continue working toward excellence.',
+    conductRemark: 'Very good conduct. Well done!',
   },
   {
     division: 'III',
@@ -193,6 +214,7 @@ export const DEFAULT_DIVISION_BOUNDARIES: DivisionBoundaryItem[] = [
     max: 29,
     classTeacherComment: 'Average performance. Keep practising to improve.',
     headTeacherComment: 'Fair result. Consistent practice will help you improve.',
+    conductRemark: 'Good conduct. Keep it up.',
   },
   {
     division: 'IV',
@@ -201,6 +223,7 @@ export const DEFAULT_DIVISION_BOUNDARIES: DivisionBoundaryItem[] = [
     max: 34,
     classTeacherComment: 'Promising result. More effort will bring progress.',
     headTeacherComment: 'Promising result. Work harder to make stronger progress.',
+    conductRemark: 'Fair conduct. Be more disciplined.',
   },
   {
     division: 'U',
@@ -209,6 +232,7 @@ export const DEFAULT_DIVISION_BOUNDARIES: DivisionBoundaryItem[] = [
     max: 36,
     classTeacherComment: 'Strive harder. Practise regularly and ask for help.',
     headTeacherComment: 'Strive harder. Seek support from your teachers.',
+    conductRemark: 'Needs to improve on general conduct.',
   },
 ];
 
@@ -398,12 +422,29 @@ export async function fetchMergedSchoolSettings(supabase: any, gradingCriteria: 
       ...(rawSchoolSettings?.marks_locks || {}),
       ...(customConfig?.marks_locks || {}),
     },
-    division_boundaries:
+    division_boundaries: (
       Array.isArray(customConfig?.division_boundaries) && customConfig.division_boundaries.length > 0
         ? customConfig.division_boundaries
         : Array.isArray(rawSchoolSettings?.division_boundaries) && rawSchoolSettings.division_boundaries.length > 0
-        ? rawSchoolSettings.division_boundaries
-        : DEFAULT_DIVISION_BOUNDARIES,
+          ? rawSchoolSettings.division_boundaries
+          : DEFAULT_DIVISION_BOUNDARIES
+    ).map((b: any) => {
+      const def = DEFAULT_DIVISION_BOUNDARIES.find((d) => d.division === b.division);
+      return {
+        division: b.division,
+        label: b.label || def?.label || `Division ${b.division}`,
+        min: Number(b.min ?? def?.min ?? 0),
+        max: Number(b.max ?? def?.max ?? 36),
+        classTeacherComment: b.classTeacherComment ?? def?.classTeacherComment ?? '',
+        headTeacherComment: b.headTeacherComment ?? def?.headTeacherComment ?? '',
+        conductRemark: b.conductRemark ?? def?.conductRemark ?? 'Good conduct.',
+      };
+    }),
+    promotion_comments: {
+      ...DEFAULT_PROMOTION_COMMENTS,
+      ...(rawSchoolSettings?.promotion_comments || {}),
+      ...(customConfig?.promotion_comments || {}),
+    },
     fee_structure: {
       ...DEFAULT_FEE_STRUCTURE,
       ...(rawSchoolSettings?.fee_structure || {}),
@@ -414,20 +455,20 @@ export async function fetchMergedSchoolSettings(supabase: any, gradingCriteria: 
       Array.isArray(customConfig?.grading_scale) && customConfig.grading_scale.length > 0
         ? customConfig.grading_scale
         : Array.isArray(rawSchoolSettings?.grading_scale) && rawSchoolSettings.grading_scale.length > 0
-        ? rawSchoolSettings.grading_scale
-        : DEFAULT_UNEB_GRADING_BANDS,
+          ? rawSchoolSettings.grading_scale
+          : DEFAULT_UNEB_GRADING_BANDS,
     theology_grading_scale:
       Array.isArray(customConfig?.theology_grading_scale) && customConfig.theology_grading_scale.length > 0
         ? customConfig.theology_grading_scale
         : Array.isArray(rawSchoolSettings?.theology_grading_scale) && rawSchoolSettings.theology_grading_scale.length > 0
-        ? rawSchoolSettings.theology_grading_scale
-        : DEFAULT_THEOLOGY_GRADING_BANDS,
+          ? rawSchoolSettings.theology_grading_scale
+          : DEFAULT_THEOLOGY_GRADING_BANDS,
     theology_remarks:
       Array.isArray(customConfig?.theology_remarks) && customConfig.theology_remarks.length > 0
         ? customConfig.theology_remarks
         : Array.isArray(rawSchoolSettings?.theology_remarks) && rawSchoolSettings.theology_remarks.length > 0
-        ? rawSchoolSettings.theology_remarks
-        : DEFAULT_THEOLOGY_REMARKS,
+          ? rawSchoolSettings.theology_remarks
+          : DEFAULT_THEOLOGY_REMARKS,
     ...(rawSchoolSettings?.name ? { name: rawSchoolSettings.name, school_name: rawSchoolSettings.name } : {}),
     ...(rawSchoolSettings?.school_name ? { name: rawSchoolSettings.school_name, school_name: rawSchoolSettings.school_name } : {}),
     ...(customConfig?.school_name ? { name: customConfig.school_name, school_name: customConfig.school_name } : {}),

@@ -1334,12 +1334,12 @@ describe('Workstream 23: Authentic Jiddah Vector Stamp, Clean Signature Ink Filt
     const printCssSrc = fs.readFileSync(printCssPath, 'utf8');
     assert.match(printCssSrc, /\[data-slot="sidebar-wrapper"\]/);
     assert.match(printCssSrc, /\[data-slot="sidebar-inset"\]/);
-    assert.match(printCssSrc, /\.report-card-sheet,\s*#print-portal \.report-container\s*\{[\s\S]*?page-break-after:\s*always\s*!important;[\s\S]*?break-after:\s*page\s*!important;/);
+    assert.match(printCssSrc, /\.report-card-sheet,\s*[\s\S]*?#print-portal \.report-container\s*\{[\s\S]*?page-break-after:\s*avoid\s*!important;[\s\S]*?break-after:\s*avoid\s*!important;/);
 
     const eotPath = path.join(rootDir, 'src/components/reports/PrimaryEOTReport.tsx');
     const eotSrc = fs.readFileSync(eotPath, 'utf8');
     // Verify tightened vertical padding so bottom validity banner never clips
-    assert.match(eotSrc, /\.landscape-page\s*\{[\s\S]*?padding:\s*3mm;/);
+    assert.match(eotSrc, /\.landscape-page\s*\{[\s\S]*?padding:\s*2\.5mm 4mm;/);
   });
 
   it('4. enforces big and bold pupil profile typography across all 8 report templates', () => {
@@ -1716,13 +1716,13 @@ describe('Workstream 28: Adaptive Signature Extractor, Portrait Single-Sheet Loc
     const p7Src = fs.readFileSync(path.join(rootDir, 'src/components/reports/P7EOTReport.tsx'), 'utf8');
     assert.doesNotMatch(p7Src, /LIN \/ ADM/);
     assert.doesNotMatch(p7Src, />GENDER</);
-    assert.match(p7Src, /height:\s*(?:286|292)mm\s*!important/);
+    assert.match(p7Src, /height:\s*(?:286|292|295)mm\s*!important/);
 
     const primaryEotSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/PrimaryEOTReport.tsx'), 'utf8');
     assert.match(primaryEotSrc, /font-size:\s*22px/);
 
     const printCssSrc = fs.readFileSync(path.join(rootDir, 'src/styles/reports/print-system.css'), 'utf8');
-    assert.match(printCssSrc, /height:\s*(?:286|292)mm\s*!important/);
+    assert.match(printCssSrc, /height:\s*(?:286|292|295)mm\s*!important/);
     assert.match(printCssSrc, /data-last-printed="true"/);
 
     const canvasSrc = fs.readFileSync(path.join(rootDir, 'src/components/figma-ui/DocumentCanvas.tsx'), 'utf8');
@@ -1871,21 +1871,21 @@ describe('Workstream 29: Mobile-First 6-Item Studio Bar, Slot-Relative 100% Fit 
     assert.match(p7Src, /font-size:\s*22px/);
     assert.match(p7Src, /font-size:\s*18\.5px/);
     assert.match(canvasSrc, /data-last-printed=/);
-    assert.match(cssSrc, /max-height:\s*(?:286|292)mm\s*!important/);
+    assert.match(cssSrc, /max-height:\s*(?:286|292|295)mm\s*!important/);
   });
 });
 
 describe('Workstream 30: Portrait Arabic Header Fit, Theology Position/Out-Of, Nursery Educative Watermark & Comments, Instant Selection, and Report Studio 2.0', () => {
   const read = (relPath) => fs.readFileSync(path.join(process.cwd(), relPath), 'utf8');
 
-  it('WS30.1: P7EOTReport constrains Arabic header inside 3-column grid (18.5px, rtl, padding-right: 6px, overflow: hidden) and print-system.css enforces 286mm portrait cap with break-after: avoid on data-last-printed="true"', () => {
+  it('WS30.1: P7EOTReport constrains Arabic header inside 3-column grid (18.5px, rtl, padding-right: 6px, overflow: hidden) and print-system.css enforces 295mm portrait cap with break-after: avoid on data-last-printed="true"', () => {
     const p7Src = read('src/components/reports/P7EOTReport.tsx');
     const cssSrc = read('src/styles/reports/print-system.css');
 
     assert.match(p7Src, /grid-template-columns:\s*1fr auto 1fr/);
     assert.match(p7Src, /font-size:\s*18\.5px/);
     assert.match(p7Src, /paddingRight:\s*'6px'/);
-    assert.match(p7Src, /max-height:\s*(?:286|292)mm\s*!important/);
+    assert.match(p7Src, /max-height:\s*(?:286|292|295)mm\s*!important/);
     assert.match(cssSrc, /\.report-card-sheet\.print-excluded\s*\{\s*display:\s*none\s*!important;/);
     assert.match(cssSrc, /\.report-card-sheet\[data-last-printed="true"\][\s\S]*?break-after:\s*avoid\s*!important/);
   });
@@ -2046,7 +2046,7 @@ describe('Workstream 33: Template & Print Engine Stabilization, Scoped Report St
     const primarySrc = read('src/components/reports/PrimaryEOTReport.tsx');
 
     assert.doesNotMatch(p7Src, />AVERAGE</);
-    assert.match(p7Src, /height:\s*286mm\s*!important/);
+    assert.match(p7Src, /height:\s*295mm\s*!important/);
     assert.match(p7Src, /nameArabicLine1/);
     assert.match(p7Src, /nameArabicLine2/);
     assert.match(p7Src, /<NurseryEducativeWatermark/);
@@ -2070,8 +2070,8 @@ describe('Workstream 33: Template & Print Engine Stabilization, Scoped Report St
     assert.match(clientSrc, /size: 210mm 297mm !important; margin: 0mm !important;/);
     assert.match(portalSrc, /297mm 210mm !important; margin: 0mm !important;/);
     assert.match(portalSrc, /210mm 297mm !important; margin: 0mm !important;/);
-    assert.match(cssSrc, /min-height:\s*206mm\s*!important/);
-    assert.match(cssSrc, /height:\s*286mm\s*!important/);
+    assert.match(cssSrc, /height:\s*209mm\s*!important/);
+    assert.match(cssSrc, /height:\s*295mm\s*!important/);
   });
 
   it('WS33.3: studio-config-store supports scoped template overrides, dual fonts, expanded palettes, ColorWheelPicker, Watermark art presets, and Stamp/Signature transform controls', () => {
@@ -2126,5 +2126,86 @@ describe('Workstream 33: Template & Print Engine Stabilization, Scoped Report St
     assert.match(uploadClientSrc, /touchAction:\s*'none'/);
     assert.match(uploadClientSrc, /OfficialReportStamp/);
     assert.match(uploadClientSrc, /Re-Clean Ink/);
+  });
+});
+
+describe('Workstream 34: 5-Subject Landscape Fit, Zero Ghost Page 2 Portal, 16px Deadband Anti-Shake, Conic Icon Buttons & Split Upload Workspace', () => {
+  const read = (relPath) => fs.readFileSync(path.join(process.cwd(), relPath), 'utf8');
+
+  it('WS34.1: PrimaryEOTReport tightens 5-subject vertical spacing inside 209mm, and PrintPortal + print-system.css hide body siblings cleanly and break strictly via data-first-printed="false"', () => {
+    const primarySrc = read('src/components/reports/PrimaryEOTReport.tsx');
+    const p7Src = read('src/components/reports/P7EOTReport.tsx');
+    const portalSrc = read('src/components/reports/PrintPortal.tsx');
+    const cssSrc = read('src/styles/reports/print-system.css');
+    const clientSrc = read('src/components/ReportGeneratorClient.tsx');
+
+    assert.match(primarySrc, /padding:\s*2\.5mm 4mm;/);
+    assert.match(primarySrc, /\.school-logo\s*\{[\s\S]*?height:\s*48px;/);
+    assert.match(primarySrc, /\.validity-bar\s*\{[\s\S]*?padding:\s*3\.5px 6px;/);
+    assert.match(p7Src, /height:\s*295mm\s*!important/);
+    assert.match(p7Src, /max-height:\s*295mm\s*!important/);
+
+    assert.match(portalSrc, /createPortal/);
+    assert.match(portalSrc, /id="report-print-portal"/);
+    assert.match(portalSrc, /data-print-portal="active"/);
+    assert.match(cssSrc, /body:has\(#report-print-portal\)\s*>\s*\*:not\(#report-print-portal\):not\(style\):not\(script\)/);
+    assert.match(cssSrc, /\.report-card-sheet\[data-first-printed="false"\]/);
+    assert.match(cssSrc, /\.report-card-sheet\[data-first-printed="true"\]/);
+    assert.match(clientSrc, /data-first-printed=\{isFirstSheet \? 'true' : 'false'\}/);
+  });
+
+  it('WS34.2: ReportStudioClient includes 5 sample primary subjects, uses 16px ResizeObserver deadband hysteresis on overflow-hidden wrapper, and eliminates CSS zoom across all 8 templates', () => {
+    const studioSrc = read('src/components/reports/ReportStudioClient.tsx');
+    const previewCellSrc = read('src/components/reports/ReportPreviewCell.tsx');
+    const docCanvasSrc = read('src/components/figma-ui/DocumentCanvas.tsx');
+
+    assert.match(studioSrc, /subject_name:\s*'COMP'/);
+    assert.match(studioSrc, /previewStageOuterRef/);
+    assert.match(studioSrc, /Math\.abs\(newWidth - prev\.width\)\s*<\s*16/);
+    assert.match(studioSrc, /requestAnimationFrame/);
+    assert.match(previewCellSrc, /Math\.abs\(roundedW - lastWidthRef\.current\)\s*<\s*16/);
+    assert.match(docCanvasSrc, /Math\.abs\(w - prev\)\s*>=\s*16/);
+
+    const templates = [
+      'src/components/reports/PrimaryEOTReport.tsx',
+      'src/components/reports/P7EOTReport.tsx',
+      'src/components/reports/PrimaryMOTReport.tsx',
+      'src/components/reports/PrimaryBOTReport.tsx',
+      'src/components/reports/NurseryEOTReport.tsx',
+      'src/components/reports/NurseryMOTReport.tsx',
+      'src/components/reports/NurseryTheologyEOTReport.tsx',
+      'src/components/reports/TheologyMOTReport.tsx',
+    ];
+    for (const tpl of templates) {
+      const src = read(tpl);
+      assert.doesNotMatch(src, /\bzoom:\s*\$\{effective\.(?:fontScaleMultiplier|arabicFontScaleMultiplier)\}/, `${tpl} must use CSS variables instead of zoom:`);
+    }
+  });
+
+  it('WS34.3: ColorWheelPicker and SectionHeaderWithReset use crisp conic-wheel & RotateCcw icon buttons inside Tooltips', () => {
+    const colorPickerSrc = read('src/components/ui/color-wheel-picker.tsx');
+    const studioSrc = read('src/components/reports/ReportStudioClient.tsx');
+
+    assert.doesNotMatch(colorPickerSrc, />\s*Wheel\s*</);
+    assert.doesNotMatch(colorPickerSrc, />\s*Default\s*</);
+    assert.match(colorPickerSrc, /conic-gradient\(/);
+    assert.match(colorPickerSrc, /<Tooltip>/);
+    assert.match(colorPickerSrc, /aria-label="Reset Default"/);
+    assert.match(studioSrc, /<TooltipContent side="top">/);
+    assert.match(studioSrc, /aria-label="Reset Default"/);
+  });
+
+  it('WS34.4: UploadClient removes HeroSection & duplicate ASSET CATEGORIES sidebar, fixes quota typo, and renders 12-column side-by-side workspace above the fold', () => {
+    const uploadSrc = read('src/components/layout/upload-client.tsx');
+
+    assert.doesNotMatch(uploadSrc, /HeroSection/);
+    assert.doesNotMatch(uploadSrc, /Asset Categories/);
+    assert.doesNotMatch(uploadSrc, /used consumed/);
+    assert.match(uploadSrc, /lg:grid-cols-12/);
+    assert.match(uploadSrc, /lg:col-span-5/);
+    assert.match(uploadSrc, /lg:col-span-7/);
+    assert.match(uploadSrc, /data-testid="upload-telemetry-bar"/);
+    assert.match(uploadSrc, /data-testid="upload-mobile-view-switcher"/);
+    assert.match(uploadSrc, /max-h-\[calc\(100dvh-165px\)\]/);
   });
 });

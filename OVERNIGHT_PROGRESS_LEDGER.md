@@ -1163,3 +1163,19 @@ Exit code: 0
 - **WS6 — Verification Gate (`overhaul-workstreams.test.mjs`, `upload-metrics.test.mjs`, `eot-report-auth-and-badges.test.mjs`):**
   - Verified with `npm run typecheck` (0 errors), 200/200 automated unit tests passing across 38 suites (`WS1`–`WS33`, `upload-metrics`, `report-print`, `signature-assets`, `signature-deactivation`, `grading-and-calculations`, `report-logo`, `eot-report-auth-and-badges`), and `npm run build` passing cleanly (`69/69` static pages generated).
 
+---
+
+### Milestone 34 — 5-Subject Landscape Fit, Zero Ghost Page 2 Print Portal, 16px Anti-Shake ResizeObserver, Conic Icon Buttons & Split Upload Workspace
+- **WS1 — 5-Subject Vertical Fit & Zero Ghost Sheet (`PrimaryEOTReport.tsx`, `P7EOTReport.tsx`, `PrintPortal.tsx`, `print-system.css`, `ReportGeneratorClient.tsx`, `DocumentCanvas.tsx`):**
+  - Tightened `PrimaryEOTReport.tsx` vertical spacing (`.landscape-page` `padding: 2.5mm 4mm`, `.inner-border` `padding: 3px 12px`, `.content-layer` `gap: 2.5px`, `.school-logo` `height: 48px`, `.info-box` `padding: 3px 8px; gap: 2px`, `.table-container th/td` `padding: 2px 3.5px; line-height: 1.15`, `.grading-container th/td` `padding: 1.5px 3px`, `.comments-area` `padding: 3px 8px; gap: 2px`, `.validity-bar` `padding: 3.5px 6px`) and added a 5th `COMP` subject to `primarySubjects` in `ReportStudioClient.tsx` so Studio matches real 5-subject Report Center cards.
+  - Updated `PrintPortal.tsx` to mount `#report-print-portal` (`data-print-portal="active"`) directly into `document.body` via `createPortal`, wrapping `#print-portal` inside it; updated `print-system.css` to hide `body:has(#report-print-portal) > *:not(#report-print-portal):not(style):not(script)`, enforce `break-after: avoid !important` globally on sheets, break strictly BEFORE `data-first-printed="false"` sheets (`i > 0`), and lock Landscape (`297mm × 209mm`) and Portrait (`210mm × 295mm`) bounds without trailing blank Page 2.
+- **WS2 — Anti-Shake ResizeObserver & Cross-Browser Font Scale Variables (`ReportStudioClient.tsx`, `ReportPreviewCell.tsx`, `DocumentCanvas.tsx`, All 8 Templates):**
+  - Added an `overflow-hidden` outer stage wrapper (`previewStageOuterRef`) in `ReportStudioClient.tsx` with `ResizeObserver` wrapped in `requestAnimationFrame` + `16px` hysteresis deadband, passing computed `studioPreviewScale` directly into `<ReportPreviewCell scale={...} />`; also added `16px` deadband hysteresis in `ReportPreviewCell.tsx` and `DocumentCanvas.tsx`.
+  - Replaced CSS `zoom:` across all 8 report templates with `--report-font-scale` / CSS custom properties for consistent cross-browser print dimensions in Chrome, Edge, Firefox, and Safari.
+- **WS3 — Conic Color Wheel Icon & Tooltip Reset Controls (`color-wheel-picker.tsx`, `ReportStudioClient.tsx`):**
+  - Replaced `Wheel` / `Hide Wheel` and `Default` / `Reset Default` text buttons in `color-wheel-picker.tsx` and `SectionHeaderWithReset` (`ReportStudioClient.tsx`) with compact icon buttons featuring a 360° conic-gradient color wheel icon and `<RotateCcw />` icon wrapped in `<Tooltip>`s while preserving `aria-label="Reset Default"`.
+- **WS4 & WS5 — Fit-on-Screen 12-Column Upload Workspace & Verification (`upload-client.tsx`, `overhaul-workstreams.test.mjs`):**
+  - Removed `<HeroSection />`, removed duplicate `ASSET CATEGORIES` sidebar card, fixed the `"used consumed"` quota typo, added a single-row segmented category + telemetry bar (`data-testid="upload-telemetry-bar"`), mobile pane switcher (`data-testid="upload-mobile-view-switcher"`), and an above-the-fold 12-column split workspace (`lg:col-span-5` capture dock + `lg:col-span-7` searchable/filterable Live Visual Asset Gallery).
+  - Verified with `npm run typecheck` (0 errors), 204/204 automated unit tests passing across 39 suites, and `npm run build` passing cleanly (`69/69` static pages generated).
+
+

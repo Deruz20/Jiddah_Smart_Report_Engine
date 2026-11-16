@@ -118,7 +118,8 @@ export default function NurseryTheologyEOTReport({ reportData, studioFormatting:
     padding: 5mm 10mm;
     margin: 0 auto;
     font-family: ${effective.arabicFontFamilyCss} !important;
-    zoom: ${effective.arabicFontScaleMultiplier};
+    --report-font-scale: ${effective.arabicFontScaleMultiplier};
+    font-size: calc(100% * var(--report-font-scale, 1));
     color: var(--nursery-text);
 }
 

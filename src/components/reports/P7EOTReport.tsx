@@ -214,9 +214,9 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
           flex-direction: column;
           height: 100%;
           justify-content: flex-start;
-          gap: 6px;
+          gap: 4px;
           font-family: ${effective.fontFamilyCss} !important;
-          zoom: ${effective.fontScaleMultiplier};
+          --report-font-scale: ${effective.fontScaleMultiplier};
         }
 
         /* ── HEADER (3-Column Grid Preventing Right Arabic Overflow) ── */
@@ -294,15 +294,6 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
           line-height: 1.25;
           margin: 0;
         }
-        @media print {
-          .portrait-page.p7-eot-report {
-            height: 292mm !important;
-            max-height: 292mm !important;
-            overflow: hidden !important;
-            margin: 0 auto !important;
-            box-sizing: border-box !important;
-          }
-        }
 
         .p7-eot-report .header-divider {
           height: 1.5px;
@@ -371,30 +362,31 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
         .p7-eot-report table {
           width: 100%;
           border-collapse: collapse;
-          font-size: 13.5px;
+          font-size: calc(13px * var(--report-font-scale, 1));
           text-align: center;
-          height: 100%;
+          height: auto;
         }
         .p7-eot-report th,
         .p7-eot-report td {
           border: 1px solid #cbd5e1;
-          padding: ${effective.densityPadding};
+          padding: 3.5px 4px;
+          line-height: 1.2;
         }
         .p7-eot-report .th-banner {
           background-color: ${effective.secondaryColor} !important;
           color: #ffffff;
           font-weight: 900;
-          font-size: 12px;
+          font-size: 11.5px;
           letter-spacing: 0.8px;
-          padding: 5px 0;
+          padding: 4px 0;
         }
         .p7-eot-report th {
           background-color: ${effective.primaryColor};
           color: white;
           font-weight: 800;
           letter-spacing: 0.2px;
-          font-size: 11px;
-          padding: 6px 4px;
+          font-size: 10.5px;
+          padding: 4.5px 4px;
         }
 
         .p7-eot-report .row-even { background-color: #ffffff; }
@@ -546,9 +538,10 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
             width: 210mm !important;
             min-width: 210mm !important;
             max-width: 210mm !important;
-            height: 286mm !important;
-            max-height: 286mm !important;
-            padding: 3mm 4mm !important;
+            height: 295mm !important;
+            min-height: 0 !important;
+            max-height: 295mm !important;
+            padding: 2.5mm 4mm !important;
             box-sizing: border-box !important;
             overflow: hidden !important;
             break-inside: avoid !important;

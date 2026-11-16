@@ -424,7 +424,7 @@ export function TheologyCard({
             studioFormatting={effectiveStudioPass}
             includeEducativeArt={false}
           />
-          <div className="theology-card" style={{ fontFamily: effective.arabicFontFamilyCss, zoom: effective.arabicFontScaleMultiplier }}>
+          <div className="theology-card" style={{ fontFamily: effective.arabicFontFamilyCss, ['--report-font-scale' as any]: effective.arabicFontScaleMultiplier, fontSize: `calc(100% * ${effective.arabicFontScaleMultiplier})` }}>
 
             {/* HEADER */}
             <div className="tc-header">

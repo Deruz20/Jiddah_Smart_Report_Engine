@@ -95,7 +95,8 @@ export default function PrimaryMOTReport({ reportData, studioFormatting: studioF
             overflow: hidden;
             padding: 20px 25px 40px;
             font-family: ${effective.fontFamilyCss} !important;
-            zoom: ${effective.fontScaleMultiplier};
+            --report-font-scale: ${effective.fontScaleMultiplier};
+            font-size: calc(100% * var(--report-font-scale, 1));
             color: #000;
         }
 

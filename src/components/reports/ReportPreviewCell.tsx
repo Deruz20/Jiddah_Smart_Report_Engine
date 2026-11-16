@@ -57,12 +57,19 @@ function ReportPreviewCellComponent({
   const reportW = nativeWidthPx
   const reportH = nativeHeightPx
 
+  const lastWidthRef = useRef<number>(0)
+
   const updateFit = useCallback((availableW: number) => {
-    const isMobile = availableW < 768
+    const roundedW = Math.round(availableW)
+    if (lastWidthRef.current > 0 && Math.abs(roundedW - lastWidthRef.current) < 16) {
+      return
+    }
+    lastWidthRef.current = roundedW
+    const isMobile = roundedW < 768
     const effectiveCols = columns > 1 && !isMobile ? columns : 1
     const slotWidth = effectiveCols > 1
-      ? Math.floor((availableW - 72) / effectiveCols)
-      : Math.floor(availableW - (isMobile ? 16 : 48))
+      ? Math.floor((roundedW - 72) / effectiveCols)
+      : Math.floor(roundedW - (isMobile ? 16 : 48))
     const usable = Math.max(slotWidth, 200)
     const fit = Math.min(usable / nativeWidthPx, 1)
     setFitScale(Math.max(fit, 0.2))
@@ -75,13 +82,21 @@ function ReportPreviewCellComponent({
     // Watch the nearest scroll container, not the shell itself
     const scrollEl = sentinel.closest('[data-canvas-scroll]') as HTMLElement | null
     const target = scrollEl ?? sentinel.parentElement ?? sentinel
+    let rAF: number | null = null
 
     const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) updateFit(entry.contentRect.width)
+      const latest = entries[entries.length - 1]
+      if (!latest) return
+      const width = latest.contentRect.width
+      if (rAF) cancelAnimationFrame(rAF)
+      rAF = requestAnimationFrame(() => updateFit(width))
     })
     observer.observe(target)
     updateFit(target.clientWidth)
-    return () => observer.disconnect()
+    return () => {
+      if (rAF) cancelAnimationFrame(rAF)
+      observer.disconnect()
+    }
   }, [updateFit, externalScale])
 
   const clampedZoom = Math.min(1.5, Math.max(0.5, zoom))
@@ -113,7 +128,7 @@ function ReportPreviewCellComponent({
           : undefined,
         cursor: 'pointer',
         flexShrink: 0,
-        transition: 'box-shadow 0.15s, transform 0.15s',
+        transition: 'box-shadow 0.15s',
       }}
     >
       {/* Decorative watermark — screen only, zero layout impact */}

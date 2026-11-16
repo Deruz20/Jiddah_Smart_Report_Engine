@@ -1445,6 +1445,8 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
                   continue
                 }
 
+                const isFirstSheet = nodes.length === 0
+
                 if (resolved.type === 'TheologyMOTReport') {
                   const topReport = report
                   const nextReport = reportsToPrint[i + 1]
@@ -1453,13 +1455,20 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
                   const isLastSheet = i + advance >= reportsToPrint.length
 
                   nodes.push(
-                    <Theology2UpPrintSheet
+                    <div
                       key={advance === 2 ? `theology-sheet-${topReport.id}-${nextReport.id}` : `theology-sheet-${topReport.id}`}
-                      topReport={topReport}
-                      bottomReport={advance === 2 ? nextReport : undefined}
-                      studioFormatting={studioFormatting}
-                      isLastPrinted={isLastSheet}
-                    />
+                      data-first-printed={isFirstSheet ? 'true' : 'false'}
+                      data-last-printed={isLastSheet ? 'true' : 'false'}
+                      className="report-card-sheet report-sheet-portrait"
+                      data-report-orientation="portrait"
+                    >
+                      <Theology2UpPrintSheet
+                        topReport={topReport}
+                        bottomReport={advance === 2 ? nextReport : undefined}
+                        studioFormatting={studioFormatting}
+                        isLastPrinted={isLastSheet}
+                      />
+                    </div>
                   )
                   i += advance
                 } else {
@@ -1469,6 +1478,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
                   nodes.push(
                     <div
                       key={report.id}
+                      data-first-printed={isFirstSheet ? 'true' : 'false'}
                       data-last-printed={isLastSheet ? 'true' : 'false'}
                       className={`report-card-sheet ${isCardLandscape ? 'report-sheet-landscape' : 'report-sheet-portrait'}`}
                       data-report-orientation={isCardLandscape ? 'landscape' : 'portrait'}

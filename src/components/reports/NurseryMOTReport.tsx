@@ -95,7 +95,8 @@ export default function NurseryMOTReport({ reportData, studioFormatting: studioF
         flex-direction: column;
         background: transparent;
         font-family: ${effective.fontFamilyCss} !important;
-        zoom: ${effective.fontScaleMultiplier};
+        --report-font-scale: ${effective.fontScaleMultiplier};
+        font-size: calc(100% * var(--report-font-scale, 1));
         position: relative;
         overflow: hidden;
         border: none;

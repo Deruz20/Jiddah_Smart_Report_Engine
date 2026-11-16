@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { RotateCcw } from 'lucide-react'
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 
 function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n))
@@ -177,22 +178,47 @@ export function ColorWheelPicker({
         </button>
 
         <div className="flex items-center gap-1 shrink-0">
-          <button
-            type="button"
-            onClick={() => setExpanded((e) => !e)}
-            className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-white dark:bg-[#151D1A] border border-stone-200 dark:border-white/10 text-stone-700 dark:text-stone-200 hover:bg-stone-100 cursor-pointer"
-          >
-            {expanded ? 'Hide Wheel' : 'Wheel'}
-          </button>
-          <button
-            type="button"
-            onClick={() => onChange(defaultValue)}
-            title={`Reset to ${defaultValue}`}
-            className="px-1.5 py-0.5 rounded-md text-[10px] font-bold text-stone-500 hover:text-[#0D5C3A] dark:hover:text-emerald-300 inline-flex items-center gap-0.5 cursor-pointer"
-          >
-            <RotateCcw className="w-2.5 h-2.5" />
-            <span>Default</span>
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => setExpanded((e) => !e)}
+                aria-label={expanded ? 'Hide Color Wheel' : 'Open Color Wheel'}
+                className={`w-7 h-7 rounded-lg inline-flex items-center justify-center border transition-colors cursor-pointer ${
+                  expanded
+                    ? 'bg-emerald-500/15 border-emerald-500/40'
+                    : 'bg-white dark:bg-[#151D1A] border-stone-200 dark:border-white/10 hover:bg-stone-100 dark:hover:bg-white/10'
+                }`}
+              >
+                <span
+                  className="w-4 h-4 rounded-full shadow-2xs border border-white/80"
+                  style={{
+                    background:
+                      'conic-gradient(#ef4444, #f59e0b, #10b981, #3b82f6, #8b5cf6, #ec4899, #ef4444)',
+                  }}
+                />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              {expanded ? 'Hide Color Wheel' : 'Open Color Wheel'}
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => onChange(defaultValue)}
+                aria-label="Reset Default"
+                className="w-7 h-7 rounded-lg inline-flex items-center justify-center text-stone-500 hover:text-[#0D5C3A] dark:hover:text-emerald-300 hover:bg-stone-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              {`Reset to Default (${defaultValue})`}
+            </TooltipContent>
+          </Tooltip>
         </div>
       </div>
 

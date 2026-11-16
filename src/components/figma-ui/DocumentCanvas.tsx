@@ -141,15 +141,15 @@ export function DocumentCanvas({
     let rAF: number | null = null;
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        const w = entry.contentRect.width;
+        const w = Math.round(entry.contentRect.width);
         if (rAF) cancelAnimationFrame(rAF);
         rAF = requestAnimationFrame(() => {
-          setContainerWidth(w);
+          setContainerWidth((prev) => (prev === 0 || Math.abs(w - prev) >= 16 ? w : prev));
         });
       }
     });
     observer.observe(el);
-    setContainerWidth(el.clientWidth);
+    setContainerWidth(Math.round(el.clientWidth));
     return () => {
       if (rAF) cancelAnimationFrame(rAF);
       observer.disconnect();
@@ -373,7 +373,7 @@ export function DocumentCanvas({
                   : 'flex flex-col items-center justify-start gap-8 py-2 w-full max-w-[1200px]'
               }`}
             >
-              {visibleReports.map((report) => {
+              {visibleReports.map((report, index) => {
                 const isSelected = selectedIdSet.has(report.id);
                 const isActive = report.id === activeReportId;
                 return (
@@ -383,6 +383,7 @@ export function DocumentCanvas({
                     isSelected={isSelected}
                     isActive={isActive}
                     visualSelectMode={visualSelectMode}
+                    isFirstPrinted={index === 0}
                     isLastPrinted={report.id === lastPrintedId}
                     landscapeScale={landscapeScale}
                     portraitScale={portraitScale}
@@ -406,6 +407,7 @@ const MemoizedCanvasCard = React.memo(
     isSelected,
     isActive,
     visualSelectMode,
+    isFirstPrinted,
     isLastPrinted,
     landscapeScale,
     portraitScale,
@@ -417,6 +419,7 @@ const MemoizedCanvasCard = React.memo(
     isSelected: boolean;
     isActive: boolean;
     visualSelectMode: boolean;
+    isFirstPrinted?: boolean;
     isLastPrinted: boolean;
     landscapeScale: number;
     portraitScale: number;
@@ -427,6 +430,7 @@ const MemoizedCanvasCard = React.memo(
     return (
       <div
         data-report-id={report.id}
+        data-first-printed={isFirstPrinted ? 'true' : 'false'}
         data-last-printed={isLastPrinted ? 'true' : 'false'}
         onClick={() => {
           onSelectReport(report.id);

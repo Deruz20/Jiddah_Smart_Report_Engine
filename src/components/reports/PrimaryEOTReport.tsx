@@ -166,7 +166,7 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
           width: 100%;
           height: 100%;
           background: white;
-          padding: 3mm;
+          padding: 2.5mm 4mm;
           margin: 0;
           position: relative;
           display: flex;
@@ -190,7 +190,7 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
         
         .inner-border {
           border: 1.5px solid ${effective.primaryColor};
-          padding: 4px 14px;
+          padding: 3px 12px;
           flex: 1; 
           position: relative;
           display: flex;
@@ -217,9 +217,9 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
           flex-direction: column;
           height: 100%;
           justify-content: space-between;
-          gap: 4px;
+          gap: 2.5px;
           font-family: ${effective.fontFamilyCss} !important;
-          zoom: ${effective.fontScaleMultiplier};
+          --report-font-scale: ${effective.fontScaleMultiplier};
         }
 
         /* ── HEADER SECTION ── */
@@ -228,6 +228,7 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
           justify-content: space-between;
           align-items: flex-start;
           flex-shrink: 0;
+          padding-bottom: 2px;
           overflow: visible;
         }
         
@@ -256,14 +257,14 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
         }
         .bismillah {
           font-family: 'Amiri', serif;
-          font-size: 24px;
+          font-size: 22px;
           color: ${effective.primaryColor};
           line-height: 1;
           margin-bottom: 2px;
         }
         .school-logo {
-          height: 52px; 
-          margin-bottom: 4px;
+          height: 48px; 
+          margin-bottom: 2px;
         }
         .report-badge {
           background-color: ${effective.primaryColor};
@@ -300,7 +301,7 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
 
         .header-divider {
           border-top: 1.5px solid ${effective.primaryColor};
-          margin: 4px 0;
+          margin: 2px 0;
           flex-shrink: 0;
         }
 
@@ -313,12 +314,12 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
         .info-box {
           border: 1.5px dashed ${effective.secondaryColor};
           border-radius: 8px;
-          padding: 5px 12px; 
+          padding: 3px 8px; 
           flex: 1;
           display: flex;
           flex-direction: column;
           justify-content: space-around;
-          gap: 4px; 
+          gap: 2px; 
           background: #fdfaf3;
         }
         .info-row {
@@ -395,9 +396,10 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
 
         .table-container th, .table-container td {
           border: 1px solid #cbd5e1;
-          padding: ${effective.densityPadding};
+          padding: ${studioFormatting?.pageDensity === 'spacious' ? effective.densityPadding : '2px 3.5px'};
           text-align: center;
-          font-size: 10px;
+          font-size: calc(10px * var(--report-font-scale, 1));
+          line-height: 1.15;
           vertical-align: middle;
         }
         
@@ -436,44 +438,48 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
         .grading-container {
           flex-shrink: 0;
         }
+        .grading-container th, .grading-container td {
+          padding: 1.5px 3px !important;
+          line-height: 1.1;
+        }
         .grade-head { background-color: ${effective.primaryColor}; color: white; font-weight: 800; } 
         .marks-head { background-color: #475569; color: white; font-weight: 800; }
         .grade-val { background-color: #f1f5f9; font-weight: 700; }
 
         /* Theology Specifics */
-        .theology-table th { font-family: ${effective.arabicFontFamilyCss} !important; font-size: ${Math.round(14 * effective.arabicFontScaleMultiplier)}px; }
-        .theology-table td { font-family: ${effective.arabicFontFamilyCss} !important; font-size: ${Math.round(14 * effective.arabicFontScaleMultiplier)}px; font-weight: ${effective.scoreFontWeight}; }
+        .theology-table th { font-family: ${effective.arabicFontFamilyCss} !important; font-size: ${Math.round(13.5 * effective.arabicFontScaleMultiplier)}px; }
+        .theology-table td { font-family: ${effective.arabicFontFamilyCss} !important; font-size: ${Math.round(13.5 * effective.arabicFontScaleMultiplier)}px; font-weight: ${effective.scoreFontWeight}; }
         .theology-subj { text-align: right; font-weight: 700; padding-right: 12px !important; color: ${effective.primaryColor}; }
         
         .theology-notes {
           font-family: ${effective.arabicFontFamilyCss} !important;
-          font-size: ${Math.round(15 * effective.arabicFontScaleMultiplier)}px;
+          font-size: ${Math.round(14.5 * effective.arabicFontScaleMultiplier)}px;
           flex-shrink: 0;
         }
-        .t-note-row { display: flex; align-items: flex-end; gap: 8px; margin-bottom: 6px; }
+        .t-note-row { display: flex; align-items: flex-end; gap: 8px; margin-bottom: 2px; }
         .t-note-lbl { font-weight: 700; white-space: nowrap; }
-        .t-note-val { border-bottom: 1.5px dotted #94a3b8; flex: 1; min-width: 50px; font-style: italic; font-weight: 700; color: #ea580c; text-align: right; padding-bottom: 2px; font-size: ${effective.arabicCommentFontSizePx}px; }
+        .t-note-val { border-bottom: 1.5px dotted #94a3b8; flex: 1; min-width: 50px; font-style: italic; font-weight: 700; color: #ea580c; text-align: right; padding-bottom: 1px; font-size: ${effective.arabicCommentFontSizePx}px; }
 
         /* ── FOOTER SECTION ── */
         .footer-section {
           display: flex;
           flex-direction: column;
-          gap: 6px;
+          gap: 3px;
           flex-shrink: 0;
         }
         
         .comments-and-stamp {
           display: flex;
-          gap: 20px; 
+          gap: 16px; 
           align-items: flex-end;
         }
         .comments-area {
           flex: 1;
           display: flex;
           flex-direction: column;
-          gap: 4px; 
+          gap: 2px; 
           border: 1.5px dashed #cbd5e1;
-          padding: 5px 10px; 
+          padding: 3px 8px; 
           border-radius: 8px;
           background: #ffffff;
         }
@@ -525,17 +531,18 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
         /* ── DATES (Centered) & VALIDITY BAR ── */
         .dates-row {
           display: flex;
-          gap: 16px;
+          gap: 12px;
+          margin-top: 1px;
         }
         .date-box {
           flex: 1;
           border-radius: 6px;
-          padding: 4px 12px; 
+          padding: 2.5px 6px; 
           display: flex;
           justify-content: center;
           align-items: center;
-          gap: 12px; 
-          font-size: 11px;
+          gap: 10px; 
+          font-size: 10.5px;
           font-weight: 800;
         }
         .date-red {
@@ -553,22 +560,23 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
           background-color: ${effective.headerAccentColor};
           color: white;
           text-align: center;
-          padding: 5px; 
-          font-size: 11px;
+          padding: 3.5px 6px; 
+          font-size: 10.5px;
           font-weight: 800;
-          letter-spacing: 0.8px;
+          letter-spacing: 0.7px;
           border-radius: 4px;
         }
 
         @media print {
           .landscape-page {
             page: landscape-sheet !important;
-            width: 296mm !important;
-            min-width: 296mm !important;
-            max-width: 296mm !important;
+            width: 297mm !important;
+            min-width: 297mm !important;
+            max-width: 297mm !important;
             height: 209mm !important;
+            min-height: 0 !important;
             max-height: 209mm !important;
-            padding: 4mm 6mm !important;
+            padding: 2.5mm 4mm !important;
             box-sizing: border-box !important;
             overflow: hidden !important;
             break-inside: avoid !important;

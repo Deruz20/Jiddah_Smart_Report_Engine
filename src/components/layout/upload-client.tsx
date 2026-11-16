@@ -9,7 +9,6 @@ import {
   Image as ImageIcon,
   Check,
   RefreshCw,
-  Folder,
   FolderKanban,
   HardDrive,
   FileSignature,
@@ -21,11 +20,13 @@ import {
   PenTool,
   Eraser,
   ExternalLink,
+  Search,
+  RotateCw,
 } from 'lucide-react'
 import { MoreActionsMenu } from '@/components/ui/more-actions-menu'
 import { CustomPillSelect } from '@/components/ui/custom-pill-select'
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { toast } from 'sonner'
-import { HeroSection } from '@/components/HeroSection'
 import { ConfirmDestructiveDialog } from '@/components/ConfirmDestructiveDialog'
 import { SignatureInkReviewCard } from '@/components/SignatureInkReviewCard'
 import { OfficialReportStamp } from '@/components/reports/StampGenerator'
@@ -181,46 +182,46 @@ function DigitalSignaturePad({
   }
 
   return (
-    <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] p-4 sm:p-5 space-y-3.5 shadow-xs">
+    <div className="rounded-xl border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 bg-[var(--bg-sunken)]/50 p-3.5 space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h3 className="text-xs font-extrabold uppercase tracking-wider text-[var(--text-primary)] flex items-center gap-1.5">
-            <PenTool className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-            Digital Signature Pad — {targetLabel}
+        <div className="min-w-0">
+          <h3 className="text-[11px] font-extrabold uppercase tracking-wider text-[var(--text-primary)] flex items-center gap-1.5 truncate">
+            <PenTool className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <span className="truncate">{targetLabel}</span>
           </h3>
-          <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
-            Sign smoothly with mouse, stylus, or finger. Background is saved transparent cleanly.
-          </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--bg-sunken)] px-2 py-1">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <div className="flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-1.5 py-1">
             {DRAW_INK_OPTIONS.map((opt) => (
-              <button
-                key={opt.hex}
-                type="button"
-                title={opt.label}
-                aria-label={opt.label}
-                onClick={() => setInkColor(opt.hex)}
-                className={`w-5 h-5 rounded-full border-2 transition-transform cursor-pointer ${
-                  inkColor === opt.hex ? 'scale-110 border-amber-400 shadow-xs' : 'border-white/70 opacity-80'
-                }`}
-                style={{ backgroundColor: opt.hex }}
-              />
+              <Tooltip key={opt.hex}>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label={opt.label}
+                    onClick={() => setInkColor(opt.hex)}
+                    className={`w-4 h-4 rounded-full border-2 transition-transform cursor-pointer ${
+                      inkColor === opt.hex ? 'scale-110 border-amber-400 shadow-2xs' : 'border-white/70 opacity-80'
+                    }`}
+                    style={{ backgroundColor: opt.hex }}
+                  />
+                </TooltipTrigger>
+                <TooltipContent side="top">{opt.label}</TooltipContent>
+              </Tooltip>
             ))}
           </div>
 
-          <div className="flex items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--bg-sunken)] p-1 text-[10px] font-bold">
+          <div className="flex items-center gap-0.5 rounded-lg border border-[var(--border)] bg-[var(--bg-card)] p-0.5 text-[10px] font-bold">
             {[
               { label: 'Fine', width: 2.4 },
-              { label: 'Medium', width: 3.5 },
+              { label: 'Med', width: 3.5 },
               { label: 'Bold', width: 5.0 },
             ].map((item) => (
               <button
                 key={item.label}
                 type="button"
                 onClick={() => setStrokeWidth(item.width)}
-                className={`px-2 py-0.5 rounded-lg cursor-pointer transition-colors ${
+                className={`px-1.5 py-0.5 rounded-md cursor-pointer transition-colors ${
                   strokeWidth === item.width
                     ? 'bg-emerald-600 text-white'
                     : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
@@ -233,7 +234,7 @@ function DigitalSignaturePad({
         </div>
       </div>
 
-      <div className="relative rounded-xl border-2 border-dashed border-slate-300 bg-white overflow-hidden">
+      <div className="relative rounded-xl border border-dashed border-slate-300 bg-white overflow-hidden">
         <canvas
           ref={canvasRef}
           width={920}
@@ -242,39 +243,39 @@ function DigitalSignaturePad({
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerUp}
-          className="w-full h-44 sm:h-52 block cursor-crosshair select-none"
+          className="w-full h-40 block cursor-crosshair select-none"
           style={{ touchAction: 'none' }}
           aria-label="Digital signature drawing canvas"
         />
-        <div className="pointer-events-none absolute inset-x-10 bottom-10 border-b border-dotted border-slate-300" />
+        <div className="pointer-events-none absolute inset-x-8 bottom-8 border-b border-dotted border-slate-300" />
         {!hasStrokes && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <span className="text-xs font-semibold text-slate-400 select-none">
+            <span className="text-[11px] font-semibold text-slate-400 select-none">
               Sign neatly above the dotted baseline
             </span>
           </div>
         )}
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="flex items-center justify-between gap-2">
         <button
           type="button"
           onClick={handleClear}
           disabled={!hasStrokes || saving}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] disabled:opacity-45 cursor-pointer"
+          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] disabled:opacity-45 cursor-pointer"
         >
           <Eraser className="w-3.5 h-3.5" />
-          Clear Canvas
+          Clear
         </button>
 
         <button
           type="button"
           onClick={handleSave}
           disabled={!hasStrokes || saving}
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-extrabold bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 shadow-xs cursor-pointer"
+          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-extrabold bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 shadow-xs cursor-pointer"
         >
           <Check className="w-3.5 h-3.5" />
-          {saving ? 'Saving Signature...' : 'Save Drawn Signature'}
+          {saving ? 'Saving...' : 'Save Signature'}
         </button>
       </div>
     </div>
@@ -300,6 +301,9 @@ export default function UploadClient({
   const [dragOver, setDragOver] = useState(false)
   const [category, setCategory] = useState<string>('Signatures')
   const [signatureMode, setSignatureMode] = useState<'upload' | 'draw'>('upload')
+  const [mobilePane, setMobilePane] = useState<'capture' | 'gallery'>('capture')
+  const [roleSearch, setRoleSearch] = useState('')
+  const [roleFilter, setRoleFilter] = useState<'all' | 'uploaded' | 'missing'>('all')
   const [signatureSlots, setSignatureSlots] = useState<SignatureSlotAsset[]>(initialSignatureSlots)
   const [selectedSlot, setSelectedSlot] = useState<string>(() => {
     const firstNonStamp = initialSignatureSlots.find((s) => s.slot_key !== 'school-stamp')
@@ -550,7 +554,7 @@ export default function UploadClient({
       if (!response.ok) {
         throw new Error(data?.error || 'Failed to delete signature slot.')
       }
-      toast.success(`${slotToDelete.label} deleted cleanly`)
+      toast.success(`${slotToDelete.label} removed cleanly`)
       setSlotToDelete(null)
       await refreshSignatureSlots()
       router.refresh()
@@ -566,6 +570,7 @@ export default function UploadClient({
     setSelectedSlot(slot.slot_key)
     setCategory('Signatures')
     setSignatureMode('upload')
+    setMobilePane('capture')
     toast.info(`Loading ${slot.label} into Smart Ink Cleaner...`)
     try {
       const res = await fetch(slot.public_url)
@@ -579,7 +584,10 @@ export default function UploadClient({
 
   const metrics = useMemo(() => getUploadMetrics(files, signatureSlots), [files, signatureSlots])
   const visibleQuotaPercent = getVisibleStoragePercent(metrics.totalBytes, STORAGE_QUOTA_BYTES)
-  const quotaPercentText = formatStoragePercent(metrics.totalBytes, STORAGE_QUOTA_BYTES)
+  const quotaPercentDisplay = useMemo(
+    () => formatStoragePercent(metrics.totalBytes, STORAGE_QUOTA_BYTES).replace(/\s*used$/i, ''),
+    [metrics.totalBytes]
+  )
 
   const signatureRoleSlots = useMemo(
     () =>
@@ -593,6 +601,20 @@ export default function UploadClient({
     () => signatureRoleSlots.filter((slot) => slot.uploaded && slot.public_url),
     [signatureRoleSlots]
   )
+
+  const filteredRoleSlots = useMemo(() => {
+    const q = roleSearch.trim().toLowerCase()
+    return signatureRoleSlots.filter((slot) => {
+      if (roleFilter === 'uploaded' && !slot.uploaded) return false
+      if (roleFilter === 'missing' && slot.uploaded) return false
+      if (!q) return true
+      return (
+        slot.label.toLowerCase().includes(q) ||
+        slot.slot_key.toLowerCase().includes(q) ||
+        slot.role.toLowerCase().includes(q)
+      )
+    })
+  }, [signatureRoleSlots, roleFilter, roleSearch])
 
   const schoolStampSlot = useMemo(
     () => signatureSlots.find((slot) => slot.slot_key === 'school-stamp') || null,
@@ -612,218 +634,216 @@ export default function UploadClient({
   }, [files, category])
 
   return (
-    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-4 w-full min-w-0 space-y-5 pb-14">
-      <HeroSection
-        title="Upload Center"
-        subtitle="Manage official signatures, digital ink stamps, branding assets, and school documents."
-        label="Storage & Assets"
-      />
-
-      {/* Unified Telemetry Strip */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {[
-          {
-            label: 'Total Files',
-            value: metrics.totalFiles,
-            color: '#10B981',
-            bg: 'rgba(16,185,129,0.12)',
-            Icon: FolderKanban,
-          },
-          {
-            label: 'Storage Used',
-            value: formatSize(metrics.totalBytes),
-            color: '#38BDF8',
-            bg: 'rgba(56,189,248,0.12)',
-            Icon: HardDrive,
-          },
-          {
-            label: 'Signatures',
-            value: metrics.signatureCount,
-            color: '#F59E0B',
-            bg: 'rgba(245,158,11,0.12)',
-            Icon: FileSignature,
-          },
-          {
-            label: 'Official Stamps',
-            value: metrics.categoryCounts.Stamps,
-            color: '#A855F7',
-            bg: 'rgba(168,85,247,0.12)',
-            Icon: Stamp,
-          },
-        ].map(({ label, value, color, bg, Icon }) => (
-          <div
-            key={label}
-            className="card-jiddah h-20 rounded-2xl px-4 flex items-center gap-3.5 transition-all"
-          >
-            <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-              style={{ background: bg }}
-            >
-              <Icon className="w-4 h-4" style={{ color }} />
-            </div>
-            <div className="min-w-0">
-              <p className="text-lg font-extrabold tracking-tight text-[var(--text-primary)] leading-none tabular-nums">
-                {value}
-              </p>
-              <p className="text-[11px] text-[var(--text-secondary)] mt-1 font-medium truncate">
-                {label}
-              </p>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-        <div className="lg:col-span-2 space-y-5">
-          {/* Category Filter Pills */}
-          <div className="flex gap-2 overflow-x-auto pb-1" aria-label="Asset category filter">
-            {CATEGORIES.map((cat) => (
+    <div className="max-w-[1600px] mx-auto px-3 sm:px-5 py-3 w-full min-w-0 space-y-3.5 pb-10">
+      {/* Zone 1: Compact Single-Row Control & Telemetry Bar */}
+      <div
+        data-testid="upload-telemetry-bar"
+        className="rounded-2xl border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 bg-[var(--bg-card)] px-3 py-2.5 shadow-xs flex flex-wrap items-center justify-between gap-2.5"
+      >
+        {/* Left: Segmented Category Pill Track */}
+        <div
+          role="tablist"
+          aria-label="Asset category filter"
+          className="inline-flex items-center gap-1 rounded-full bg-[#F0F4F9] dark:bg-[#1E2623] p-1 overflow-x-auto max-w-full"
+        >
+          {CATEGORIES.map((cat) => {
+            const count = metrics.categoryCounts[cat as keyof typeof metrics.categoryCounts] ?? 0
+            const active = category === cat
+            return (
               <button
                 key={cat}
                 type="button"
+                role="tab"
+                aria-selected={active}
                 onClick={() => setCategory(cat)}
-                className={`px-3.5 py-1.5 rounded-xl transition-all whitespace-nowrap text-xs font-bold cursor-pointer inline-flex items-center gap-1.5 ${
-                  category === cat
-                    ? 'pill-jiddah-gold shadow-xs'
-                    : 'bg-[var(--bg-card)] text-[var(--text-secondary)] border border-[var(--border)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+                className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-colors cursor-pointer inline-flex items-center gap-1.5 ${
+                  active
+                    ? 'bg-[#0D5C3A] text-white shadow-2xs'
+                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                 }`}
               >
                 <span>{cat}</span>
-                <span className="opacity-75 tabular-nums">
-                  ({metrics.categoryCounts[cat as keyof typeof metrics.categoryCounts] ?? 0})
+                <span
+                  className={`text-[10.5px] font-extrabold tabular-nums px-1.5 py-0.2 rounded-full ${
+                    active ? 'bg-white/20 text-white' : 'bg-black/5 dark:bg-white/10'
+                  }`}
+                >
+                  {count}
                 </span>
               </button>
-            ))}
+            )
+          })}
+        </div>
+
+        {/* Right: Compact Inline Telemetry Pills */}
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 font-bold">
+            <FolderKanban className="w-3.5 h-3.5" />
+            <span className="tabular-nums">{metrics.totalFiles} Files</span>
           </div>
 
-          {category === 'Signatures' && (
-            <div className="rounded-2xl border border-amber-500/30 bg-amber-500/8 p-4 space-y-3.5">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <label
-                    htmlFor="upload-signature-role-select"
-                    className="block text-xs font-extrabold uppercase tracking-wider text-amber-900 dark:text-amber-200 mb-1.5"
-                  >
-                    Target Signature Role
-                  </label>
-                  <CustomPillSelect
-                    id="upload-signature-role-select"
-                    dataTestId="upload-signature-role-select"
-                    ariaLabel="Select Signature Role"
-                    value={selectedSlot}
-                    onChange={setSelectedSlot}
-                    placeholder="Choose signatory role..."
-                    options={signatureRoleSlots.map((slot) => ({
-                      value: slot.slot_key,
-                      label: slot.label,
-                      badge: slot.uploaded ? '✓ Uploaded' : 'Missing',
-                    }))}
-                    triggerClassName="w-full justify-between bg-[var(--bg-card)] border-amber-500/35 text-[var(--text-primary)] py-2.5 px-3 text-xs font-semibold"
-                  />
-                </div>
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-800 dark:text-amber-300 font-bold">
+            <FileSignature className="w-3.5 h-3.5" />
+            <span className="tabular-nums">
+              {metrics.signatureCount}/{signatureRoleSlots.length || 22} Signatures
+            </span>
+          </div>
 
-                {/* 2-Mode Switcher */}
-                <div className="shrink-0">
-                  <span className="block text-[10px] font-bold uppercase tracking-wider text-amber-900/70 dark:text-amber-200/70 mb-1.5">
-                    Capture Method
-                  </span>
-                  <div className="inline-flex rounded-xl border border-amber-500/30 bg-[var(--bg-card)] p-1 gap-1">
-                    <button
-                      type="button"
-                      onClick={() => setSignatureMode('upload')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
-                        signatureMode === 'upload'
-                          ? 'bg-emerald-600 text-white shadow-xs'
-                          : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                      }`}
-                    >
-                      Upload &amp; Auto-Clean Photo
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSignatureMode('draw')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
-                        signatureMode === 'draw'
-                          ? 'bg-emerald-600 text-white shadow-xs'
-                          : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                      }`}
-                    >
-                      Draw Digital Signature
-                    </button>
-                  </div>
-                </div>
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-purple-500/10 text-purple-800 dark:text-purple-300 font-bold">
+            <Stamp className="w-3.5 h-3.5" />
+            <span className="tabular-nums">
+              {metrics.categoryCounts.Stamps} {metrics.categoryCounts.Stamps === 1 ? 'Stamp' : 'Stamps'}
+            </span>
+          </div>
+
+          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-sky-500/10 text-sky-900 dark:text-sky-200 font-bold">
+            <HardDrive className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
+            <span className="tabular-nums whitespace-nowrap">
+              {formatSize(metrics.totalBytes)} / 1 GB ({quotaPercentDisplay})
+            </span>
+            <span className="w-14 h-1.5 rounded-full bg-sky-950/15 dark:bg-white/15 overflow-hidden shrink-0">
+              <span
+                className="block h-full rounded-full bg-emerald-500 transition-all duration-300"
+                style={{ width: `${visibleQuotaPercent}%` }}
+              />
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile View Switcher (< lg) */}
+      <div
+        data-testid="upload-mobile-view-switcher"
+        className="lg:hidden grid grid-cols-2 gap-1.5 rounded-xl bg-[#F0F4F9] dark:bg-[#1E2623] p-1 border border-[var(--border)]"
+      >
+        <button
+          type="button"
+          onClick={() => setMobilePane('capture')}
+          className={`py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+            mobilePane === 'capture'
+              ? 'bg-[#0D5C3A] text-white shadow-xs'
+              : 'text-[var(--text-secondary)]'
+          }`}
+        >
+          Upload / Draw
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobilePane('gallery')}
+          className={`py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+            mobilePane === 'gallery'
+              ? 'bg-[#0D5C3A] text-white shadow-xs'
+              : 'text-[var(--text-secondary)]'
+          }`}
+        >
+          {category === 'Signatures'
+            ? `Assigned Assets (${uploadedSignatureAssets.length})`
+            : `Files (${filteredRepositoryFiles.length})`}
+        </button>
+      </div>
+
+      {/* Zone 2: Above-the-Fold 12-Column Split Workspace */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+        {/* Left Pane (lg:col-span-5 — Target Role & Capture Dock) */}
+        <section
+          className={`lg:col-span-5 rounded-2xl border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 bg-[var(--bg-card)] p-4 shadow-xs space-y-3.5 ${
+            mobilePane === 'capture' ? 'block' : 'hidden lg:block'
+          }`}
+        >
+          {category === 'Signatures' && (
+            <div className="space-y-3">
+              <div>
+                <label
+                  htmlFor="upload-signature-role-select"
+                  className="block text-[10.5px] font-extrabold uppercase tracking-wider text-[var(--text-secondary)] mb-1.5"
+                >
+                  Target Signature Role
+                </label>
+                <CustomPillSelect
+                  id="upload-signature-role-select"
+                  dataTestId="upload-signature-role-select"
+                  ariaLabel="Select Signature Role"
+                  value={selectedSlot}
+                  onChange={setSelectedSlot}
+                  placeholder="Choose signatory role..."
+                  options={signatureRoleSlots.map((slot) => ({
+                    value: slot.slot_key,
+                    label: slot.label,
+                    badge: slot.uploaded ? '✓ Uploaded' : 'Missing',
+                  }))}
+                  triggerClassName="w-full justify-between bg-[var(--bg-sunken)] border-[#0D5C3A]/20 text-[var(--text-primary)] py-2 px-3 text-xs font-semibold"
+                />
               </div>
 
-              <p className="text-[11px] text-amber-900/80 dark:text-amber-200/85">
-                {selectedSlotInfo?.description ||
-                  'Any uploaded or drawn signature below binds immediately to corresponding student report cards.'}
-              </p>
+              {/* Compact Mode Switcher */}
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[10.5px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+                  Capture Method
+                </span>
+                <div className="inline-flex rounded-xl border border-[#0D5C3A]/15 dark:border-white/10 bg-[#F0F4F9] dark:bg-[#1E2623] p-0.5 gap-0.5">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={() => setSignatureMode('upload')}
+                        aria-label="Upload and Auto-Clean Photo"
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                          signatureMode === 'upload'
+                            ? 'bg-[#0D5C3A] text-white shadow-2xs'
+                            : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                        }`}
+                      >
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>Upload Photo</span>
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">Upload &amp; Auto-Clean Photo</TooltipContent>
+                  </Tooltip>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={() => setSignatureMode('draw')}
+                        aria-label="Draw Digital Signature"
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                          signatureMode === 'draw'
+                            ? 'bg-[#0D5C3A] text-white shadow-2xs'
+                            : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                        }`}
+                      >
+                        <PenTool className="w-3.5 h-3.5" />
+                        <span>Draw Digital Signature</span>
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">Sign directly on touch canvas</TooltipContent>
+                  </Tooltip>
+                </div>
+              </div>
             </div>
           )}
 
           {category === 'Stamps' && (
-            <div className="rounded-2xl border border-indigo-500/25 bg-[var(--bg-card)] p-4 sm:p-5 space-y-4 shadow-xs">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h3 className="text-xs font-extrabold uppercase tracking-wider text-[var(--text-primary)] flex items-center gap-1.5">
-                    <Stamp className="w-4 h-4 text-indigo-500" />
-                    Official Dynamic Stamp Engine Preview
-                  </h3>
-                  <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
-                    Crisp dual-ink vector rubber stamp rendered natively across all 8 report templates.
-                  </p>
-                </div>
+            <div className="rounded-xl border border-indigo-500/20 bg-[var(--bg-sunken)]/50 p-3.5 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-xs font-extrabold uppercase tracking-wider text-[var(--text-primary)] flex items-center gap-1.5">
+                  <Stamp className="w-4 h-4 text-indigo-500" />
+                  <span>Dynamic Stamp Preview</span>
+                </h3>
                 <Link
                   href="/admin/reports/studio"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 transition-colors"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-600 text-white text-[11px] font-bold hover:bg-indigo-700 transition-colors"
                 >
-                  Configure in Studio
-                  <ExternalLink className="w-3.5 h-3.5" />
+                  Studio
+                  <ExternalLink className="w-3 h-3" />
                 </Link>
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
-                <div className="rounded-xl border border-slate-200 bg-white p-4 flex flex-col items-center justify-center min-h-[128px]">
-                  <OfficialReportStamp
-                    reportData={{
-                      settings: {
-                        school_name: 'Jiddah Islamic Nursery & Primary School',
-                      },
-                    }}
-                    maxWidth={190}
-                    maxHeight={92}
-                  />
-                  <span className="mt-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Vector Rubber Stamp Output
-                  </span>
-                </div>
-
-                <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-sunken)] p-4 flex flex-col justify-between min-h-[128px]">
-                  <div>
-                    <p className="text-xs font-bold text-[var(--text-primary)]">
-                      Scanned Image Backup ({schoolStampSlot?.uploaded ? 'Uploaded' : 'Optional'})
-                    </p>
-                    <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
-                      Upload a cleaned PNG/WebP scan if an external physical stamp image is preferred for `school-stamp`.
-                    </p>
-                  </div>
-                  {schoolStampSlot?.uploaded && schoolStampSlot.public_url ? (
-                    <div className="mt-3 flex items-center justify-between gap-2 bg-white rounded-lg p-2 border border-slate-200">
-                      <img
-                        src={schoolStampSlot.public_url}
-                        alt="Uploaded physical school stamp"
-                        className="h-10 object-contain"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setSlotToDelete(schoolStampSlot)}
-                        className="px-2 py-1 rounded-lg text-[11px] font-bold text-rose-600 hover:bg-rose-50 cursor-pointer"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ) : null}
-                </div>
+              <div className="rounded-lg border border-slate-200 bg-white p-3 flex flex-col items-center justify-center min-h-[110px]">
+                <OfficialReportStamp
+                  reportData={{ settings: { school_name: 'Jiddah Islamic Nursery & Primary School' } }}
+                  maxWidth={185}
+                  maxHeight={88}
+                />
               </div>
             </div>
           )}
@@ -854,12 +874,11 @@ export default function UploadClient({
               }}
             />
           ) : (
-            /* High-Contrast Responsive Dropzone */
             <div
-              className={`rounded-2xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all p-6 sm:p-9 ${
+              className={`rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all p-5 sm:p-7 ${
                 dragOver
                   ? 'border-emerald-500 bg-emerald-500/15'
-                  : 'border-[var(--border)] bg-[var(--bg-sunken)] hover:bg-[var(--bg-hover)]'
+                  : 'border-[#0D5C3A]/20 dark:border-white/15 bg-[var(--bg-sunken)]/60 hover:bg-[var(--bg-hover)]'
               }`}
               onDragOver={(event) => {
                 event.preventDefault()
@@ -876,28 +895,26 @@ export default function UploadClient({
               onClick={() => fileRef.current?.click()}
             >
               <div
-                className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-3 ${
+                className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2.5 ${
                   dragOver ? 'bg-emerald-500/20' : 'bg-emerald-500/10'
                 }`}
               >
-                <Upload className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                <Upload className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
               </div>
-              <p className="text-sm font-bold text-[var(--text-primary)] text-center">
+              <p className="text-xs sm:text-sm font-bold text-[var(--text-primary)] text-center">
                 Drop {category === 'Signatures' ? 'signature photo' : 'files'} here or{' '}
                 <span className="text-emerald-600 dark:text-emerald-400 underline underline-offset-2">
                   click to browse
                 </span>
               </p>
-              <p className="text-xs text-[var(--text-muted)] mt-1 text-center">
-                PNG, JPG, WebP{category === 'Documents' || category === 'Other' ? ', PDF' : ''} &bull; Max 10MB per file
+              <p className="text-[11px] text-[var(--text-muted)] mt-1 text-center">
+                PNG, JPG, WebP{category === 'Documents' || category === 'Other' ? ', PDF' : ''} &bull; Max 10MB
               </p>
-              <p className="text-xs text-[var(--text-secondary)] mt-2">
-                Target category:{' '}
-                <strong className="text-emerald-700 dark:text-emerald-300 font-bold">{category}</strong>
-                {category === 'Signatures' && selectedSlotInfo ? (
-                  <span> &bull; Role: <strong>{selectedSlotInfo.label}</strong></span>
-                ) : null}
-              </p>
+              {category === 'Signatures' && selectedSlotInfo && (
+                <p className="text-[11px] text-[var(--text-secondary)] mt-1.5 text-center">
+                  Target: <strong>{selectedSlotInfo.label}</strong>
+                </p>
+              )}
               <input
                 ref={fileRef}
                 type="file"
@@ -915,84 +932,339 @@ export default function UploadClient({
             </div>
           )}
 
-          {/* Live Visual Signature Asset Gallery */}
-          {category === 'Signatures' && (
-            <div className="rounded-2xl overflow-hidden bg-[var(--bg-card)] shadow-xs border border-[var(--border)]">
-              <div className="px-5 py-3.5 bg-[var(--bg-sunken)] border-b border-[var(--border)] flex items-center justify-between">
-                <h3 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">
-                  Live Signature Assets ({uploadedSignatureAssets.length} / {signatureRoleSlots.length} Assigned)
-                </h3>
-                <span className="text-[11px] font-semibold text-[var(--text-secondary)]">
-                  Theology stops at P.6 (PLE is Secular)
-                </span>
+          {selectedSlotInfo?.description && category === 'Signatures' && (
+            <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
+              {selectedSlotInfo.description}
+            </p>
+          )}
+        </section>
+
+        {/* Right Pane (lg:col-span-7 — Live Visual Asset Gallery Visible Immediately Above the Fold) */}
+        <section
+          className={`lg:col-span-7 rounded-2xl border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 bg-[var(--bg-card)] shadow-xs overflow-hidden ${
+            mobilePane === 'gallery' ? 'block' : 'hidden lg:block'
+          }`}
+        >
+          {category === 'Signatures' ? (
+            <>
+              <div className="px-4 py-3 bg-[var(--bg-sunken)]/80 border-b border-[var(--border)] flex flex-wrap items-center justify-between gap-2.5">
+                <div>
+                  <h2 className="text-xs font-extrabold uppercase tracking-wider text-[var(--text-primary)]">
+                    Live Signature Assets ({uploadedSignatureAssets.length} / {signatureRoleSlots.length} Assigned)
+                  </h2>
+                  <p className="text-[10.5px] text-[var(--text-secondary)]">
+                    Canonical roles (Leadership &rarr; Secular Baby–P.7 &rarr; Theology Baby–P.6)
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 text-[var(--text-muted)] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
+                      type="text"
+                      value={roleSearch}
+                      onChange={(e) => setRoleSearch(e.target.value)}
+                      placeholder="Filter roles..."
+                      aria-label="Filter signature roles"
+                      className="pl-7 pr-2.5 py-1 text-xs rounded-lg border border-[var(--border)] bg-[var(--bg-card)] text-[var(--text-primary)] w-36 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                    />
+                  </div>
+
+                  <div className="inline-flex rounded-lg border border-[var(--border)] bg-[var(--bg-card)] p-0.5 text-[11px] font-bold">
+                    {(['all', 'uploaded', 'missing'] as const).map((status) => (
+                      <button
+                        key={status}
+                        type="button"
+                        onClick={() => setRoleFilter(status)}
+                        className={`px-2 py-0.5 rounded-md capitalize cursor-pointer transition-colors ${
+                          roleFilter === status
+                            ? 'bg-[#0D5C3A] text-white'
+                            : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                        }`}
+                      >
+                        {status}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
 
-              {uploadedSignatureAssets.length === 0 ? (
-                <div className="p-6 text-center text-xs text-[var(--text-muted)]">
-                  No signatures uploaded yet. Select a role above to upload or draw a crisp signature.
-                </div>
-              ) : (
-                <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  {uploadedSignatureAssets.map((slot) => (
-                    <div
-                      key={slot.slot_key}
-                      className="rounded-xl border border-[var(--border)] bg-[var(--bg-sunken)]/50 p-3 space-y-2.5 flex flex-col justify-between"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="text-xs font-bold text-[var(--text-primary)] truncate">{slot.label}</p>
-                          <p className="text-[10px] text-[var(--text-muted)] font-mono truncate">
-                            {slot.slot_key} &bull; {slot.size ? formatSize(slot.size) : 'Stored'}
-                          </p>
+              <div className="p-3.5 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 max-h-[calc(100dvh-165px)] overflow-y-auto">
+                {filteredRoleSlots.length === 0 ? (
+                  <div className="col-span-full py-10 text-center text-xs text-[var(--text-muted)]">
+                    No matching signature roles found.
+                  </div>
+                ) : (
+                  filteredRoleSlots.map((slot) => {
+                    const isSelected = selectedSlot === slot.slot_key
+                    return (
+                      <div
+                        key={slot.slot_key}
+                        className={`rounded-xl border p-2.5 flex flex-col justify-between gap-2 transition-colors ${
+                          isSelected
+                            ? 'border-emerald-600/60 bg-emerald-500/5 dark:bg-emerald-500/10'
+                            : 'border-[var(--border)] bg-[var(--bg-sunken)]/40 hover:border-[#0D5C3A]/30'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-1.5">
+                          <div className="min-w-0">
+                            <p className="text-[11.5px] font-bold text-[var(--text-primary)] truncate">
+                              {slot.label}
+                            </p>
+                            <p className="text-[10px] text-[var(--text-muted)] font-mono truncate">
+                              {slot.uploaded && slot.size ? formatSize(slot.size) : slot.slot_key}
+                            </p>
+                          </div>
+                          <span
+                            className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9.5px] font-extrabold ${
+                              slot.uploaded
+                                ? slot.active
+                                  ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                                  : 'bg-amber-500/15 text-amber-700 dark:text-amber-300'
+                                : 'bg-stone-500/15 text-[var(--text-muted)]'
+                            }`}
+                          >
+                            {slot.uploaded ? (slot.active ? 'Active' : 'Hidden') : 'Missing'}
+                          </span>
                         </div>
-                        <span
-                          className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                            slot.active
-                              ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/25'
-                              : 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/25'
-                          }`}
-                        >
-                          {slot.active ? 'Active' : 'Disabled'}
-                        </span>
-                      </div>
 
-                      <div className="relative h-20 rounded-lg border border-slate-200 bg-white flex items-center justify-center px-3 overflow-hidden">
-                        <div className="pointer-events-none absolute inset-x-4 bottom-3 border-b border-dotted border-slate-300" />
-                        <img
-                          src={slot.public_url!}
-                          alt={slot.label}
-                          className="relative max-h-14 max-w-full object-contain"
-                        />
-                      </div>
-
-                      <div className="flex items-center justify-end gap-1.5 pt-0.5">
-                        <button
-                          type="button"
+                        <div
                           onClick={() => {
                             setSelectedSlot(slot.slot_key)
-                            setSignatureMode('upload')
-                            fileRef.current?.click()
+                            setMobilePane('capture')
                           }}
-                          className="px-2.5 py-1 rounded-lg text-[11px] font-bold border border-[var(--border)] bg-[var(--bg-card)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] cursor-pointer"
+                          className="relative h-16 rounded-lg border border-slate-200 bg-white flex items-center justify-center px-2.5 overflow-hidden cursor-pointer"
                         >
-                          Replace
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => void reCleanSlot(slot)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold border border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 cursor-pointer"
-                        >
-                          <Wand2 className="w-3 h-3" />
-                          Re-Clean Ink
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setSlotToDelete(slot)}
-                          aria-label={`Delete ${slot.label}`}
-                          className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-500/10 cursor-pointer"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                          <div className="pointer-events-none absolute inset-x-3 bottom-2.5 border-b border-dotted border-slate-300" />
+                          {slot.uploaded && slot.public_url ? (
+                            <img
+                              src={slot.public_url}
+                              alt={slot.label}
+                              className="relative max-h-12 max-w-full object-contain"
+                            />
+                          ) : (
+                            <span className="text-[10px] font-semibold text-slate-400">
+                              Click to assign
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center justify-end gap-1">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                aria-label={slot.uploaded ? `Replace ${slot.label}` : `Upload ${slot.label}`}
+                                onClick={() => {
+                                  setSelectedSlot(slot.slot_key)
+                                  setSignatureMode('upload')
+                                  setMobilePane('capture')
+                                  fileRef.current?.click()
+                                }}
+                                className="p-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-card)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] cursor-pointer"
+                              >
+                                <RotateCw className="w-3 h-3" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                              {slot.uploaded ? 'Replace' : 'Upload Photo'}
+                            </TooltipContent>
+                          </Tooltip>
+
+                          {slot.uploaded && slot.public_url && (
+                            <>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button
+                                    type="button"
+                                    aria-label={`Re-Clean Ink for ${slot.label}`}
+                                    onClick={() => void reCleanSlot(slot)}
+                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10.5px] font-bold border border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 cursor-pointer"
+                                  >
+                                    <Wand2 className="w-3 h-3" />
+                                    <span>Re-Clean Ink</span>
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent side="top">Re-Clean Ink Background</TooltipContent>
+                              </Tooltip>
+
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button
+                                    type="button"
+                                    onClick={() => setSlotToDelete(slot)}
+                                    aria-label={`Delete ${slot.label}`}
+                                    className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-500/10 cursor-pointer"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent side="top">Delete Signature</TooltipContent>
+                              </Tooltip>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+            </>
+          ) : category === 'Stamps' ? (
+            <div className="p-4 space-y-4">
+              <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
+                <div>
+                  <h2 className="text-xs font-extrabold uppercase tracking-wider text-[var(--text-primary)]">
+                    School Stamp Assets
+                  </h2>
+                  <p className="text-[11px] text-[var(--text-secondary)]">
+                    Optional physical stamp scan backup (`school-stamp`) paired with dynamic vector engine.
+                  </p>
+                </div>
+              </div>
+
+              {schoolStampSlot?.uploaded && schoolStampSlot.public_url ? (
+                <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-sunken)]/50 p-4 flex items-center justify-between gap-4">
+                  <div className="h-24 w-44 rounded-lg border border-slate-200 bg-white flex items-center justify-center p-2">
+                    <img
+                      src={schoolStampSlot.public_url}
+                      alt="Uploaded physical school stamp"
+                      className="max-h-20 max-w-full object-contain"
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-[var(--text-primary)]">Physical School Stamp Scan</p>
+                    <p className="text-[11px] text-[var(--text-muted)]">
+                      Size: {schoolStampSlot.size ? formatSize(schoolStampSlot.size) : 'Stored'}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSlotToDelete(schoolStampSlot)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold text-rose-600 border border-rose-500/30 hover:bg-rose-500/10 cursor-pointer"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ) : (
+                <div className="py-10 text-center text-xs text-[var(--text-muted)]">
+                  Using dynamic crisp vector rubber stamp engine (recommended). Drop a stamp PNG on the left if a scanned image backup is required.
+                </div>
+              )}
+            </div>
+          ) : (
+            <div>
+              <div className="px-4 py-3 bg-[var(--bg-sunken)]/80 border-b border-[var(--border)] flex items-center justify-between">
+                <h2 className="text-xs font-extrabold uppercase tracking-wider text-[var(--text-primary)]">
+                  Repository Files ({filteredRepositoryFiles.length})
+                </h2>
+              </div>
+
+              {filteredRepositoryFiles.length === 0 ? (
+                <div className="py-12 text-center text-xs text-[var(--text-muted)]">
+                  No files uploaded under <strong>{category}</strong> yet. Use the dropzone on the left to upload.
+                </div>
+              ) : (
+                <div className="divide-y divide-[var(--border)] max-h-[calc(100dvh-165px)] overflow-y-auto">
+                  {filteredRepositoryFiles.map((file) => (
+                    <div
+                      key={file.id}
+                      className="flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--bg-hover)] transition-colors"
+                    >
+                      <div
+                        className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                          file.type.startsWith('image')
+                            ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                            : 'bg-blue-500/15 text-blue-700 dark:text-blue-300'
+                        }`}
+                      >
+                        {file.type.startsWith('image') ? (
+                          <ImageIcon className="w-4 h-4" />
+                        ) : (
+                          <FileText className="w-4 h-4" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="truncate text-xs font-semibold text-[var(--text-primary)]">
+                          {file.name}
+                        </p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="rounded px-1.5 py-0.5 text-[10px] font-bold bg-[var(--bg-sunken)] border border-[var(--border)] text-[var(--text-secondary)] uppercase tracking-wider">
+                            {file.category}
+                          </span>
+                          <span className="text-[11px] text-[var(--text-muted)]">
+                            {formatSize(file.size)} &bull; {file.updated_at ?? 'Uploaded'}
+                          </span>
+                        </div>
+                        {file.status === 'uploading' && (
+                          <div className="flex items-center gap-2 mt-1.5">
+                            <div className="flex-1 h-1.5 rounded-full overflow-hidden bg-[var(--bg-sunken)]">
+                              <div
+                                className="h-full rounded-full bg-emerald-500 transition-all duration-300"
+                                style={{ width: `${file.progress}%` }}
+                              />
+                            </div>
+                            <span className="text-[11px] font-medium text-[var(--text-secondary)]">
+                              {file.progress}%
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        {file.status === 'done' && <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />}
+                        {file.status === 'uploading' && <RefreshCw className="w-4 h-4 animate-spin text-amber-500" />}
+                        <MoreActionsMenu
+                          items={[
+                            ...(file.public_url
+                              ? [
+                                  {
+                                    label: 'Preview',
+                                    icon: Eye,
+                                    onClick: () => window.open(file.public_url!, '_blank'),
+                                  },
+                                  {
+                                    label: 'Download',
+                                    icon: Download,
+                                    onClick: () => {
+                                      const a = document.createElement('a')
+                                      a.href = file.public_url!
+                                      a.download = file.name
+                                      a.click()
+                                    },
+                                  },
+                                ]
+                              : []),
+                            ...(file.type.startsWith('image')
+                              ? [
+                                  {
+                                    label: 'Clean Signature Ink',
+                                    icon: Wand2,
+                                    onClick: () => {
+                                      toast.info(`Preparing ink cleaning for ${file.name}...`)
+                                      if (file.public_url) {
+                                        fetch(file.public_url)
+                                          .then((res) => res.blob())
+                                          .then((blob) => {
+                                            const f = new File([blob], file.name, { type: file.type })
+                                            setPendingSignatureFile(f)
+                                            setCategory('Signatures')
+                                            setSignatureMode('upload')
+                                          })
+                                          .catch(() => toast.error('Unable to fetch file for cleaning.'))
+                                      }
+                                    },
+                                  },
+                                ]
+                              : []),
+                            {
+                              label: 'Delete',
+                              icon: Trash2,
+                              destructive: true,
+                              onClick: () => removeFile(file.id, file.name),
+                            },
+                          ]}
+                          align="end"
+                        />
                       </div>
                     </div>
                   ))}
@@ -1000,179 +1272,7 @@ export default function UploadClient({
               )}
             </div>
           )}
-
-          {/* Uploaded Documents / Repository Files List */}
-          {filteredRepositoryFiles.length > 0 && (
-            <div className="rounded-2xl overflow-hidden bg-[var(--bg-card)] shadow-xs border border-[var(--border)]">
-              <div className="px-5 py-3.5 bg-[var(--bg-sunken)] border-b border-[var(--border)] flex items-center justify-between">
-                <h3 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">
-                  Repository Files ({filteredRepositoryFiles.length})
-                </h3>
-              </div>
-              <div className="divide-y divide-[var(--border)]">
-                {filteredRepositoryFiles.map((file) => (
-                  <div
-                    key={file.id}
-                    className="flex items-center gap-3.5 px-4 sm:px-5 py-3 hover:bg-[var(--bg-hover)] transition-colors"
-                  >
-                    <div
-                      className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                        file.type.startsWith('image')
-                          ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
-                          : 'bg-blue-500/15 text-blue-700 dark:text-blue-300'
-                      }`}
-                    >
-                      {file.type.startsWith('image') ? (
-                        <ImageIcon className="w-4 h-4" />
-                      ) : (
-                        <FileText className="w-4 h-4" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="truncate text-xs sm:text-sm font-semibold text-[var(--text-primary)]">
-                        {file.name}
-                      </p>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="rounded px-1.5 py-0.5 text-[10px] font-bold bg-[var(--bg-sunken)] border border-[var(--border)] text-[var(--text-secondary)] uppercase tracking-wider">
-                          {file.category}
-                        </span>
-                        <span className="text-xs text-[var(--text-muted)]">
-                          {formatSize(file.size)} &bull; {file.updated_at ?? 'Uploaded'}
-                        </span>
-                      </div>
-                      {file.status === 'uploading' && (
-                        <div className="flex items-center gap-2 mt-2">
-                          <div className="flex-1 h-1.5 rounded-full overflow-hidden bg-[var(--bg-sunken)]">
-                            <div
-                              className="h-full rounded-full bg-emerald-500 transition-all duration-300"
-                              style={{ width: `${file.progress}%` }}
-                            />
-                          </div>
-                          <span className="text-[11px] font-medium text-[var(--text-secondary)]">
-                            {file.progress}%
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {file.status === 'done' && <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />}
-                      {file.status === 'uploading' && <RefreshCw className="w-4 h-4 animate-spin text-amber-500" />}
-                      <MoreActionsMenu
-                        items={[
-                          ...(file.public_url
-                            ? [
-                                {
-                                  label: 'Preview',
-                                  icon: Eye,
-                                  onClick: () => window.open(file.public_url!, '_blank'),
-                                },
-                                {
-                                  label: 'Download',
-                                  icon: Download,
-                                  onClick: () => {
-                                    const a = document.createElement('a')
-                                    a.href = file.public_url!
-                                    a.download = file.name
-                                    a.click()
-                                  },
-                                },
-                              ]
-                            : []),
-                          ...(file.type.startsWith('image')
-                            ? [
-                                {
-                                  label: 'Clean Signature Ink',
-                                  icon: Wand2,
-                                  onClick: () => {
-                                    toast.info(`Preparing ink cleaning for ${file.name}...`)
-                                    if (file.public_url) {
-                                      fetch(file.public_url)
-                                        .then((res) => res.blob())
-                                        .then((blob) => {
-                                          const f = new File([blob], file.name, { type: file.type })
-                                          setPendingSignatureFile(f)
-                                          setCategory('Signatures')
-                                          setSignatureMode('upload')
-                                        })
-                                        .catch(() => toast.error('Unable to fetch file for cleaning.'))
-                                    }
-                                  },
-                                },
-                              ]
-                            : []),
-                          {
-                            label: 'Delete',
-                            icon: Trash2,
-                            destructive: true,
-                            onClick: () => removeFile(file.id, file.name),
-                          },
-                        ]}
-                        align="end"
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Sidebar Summary & Quota Cards */}
-        <aside className="space-y-4">
-          <div className="rounded-2xl p-4 sm:p-5 bg-[var(--bg-card)] border border-[var(--border)] shadow-xs">
-            <h3 className="mb-3 text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">
-              Asset Categories
-            </h3>
-            <div className="space-y-1">
-              {CATEGORIES.map((cat) => {
-                const count =
-                  metrics.categoryCounts[cat as keyof typeof metrics.categoryCounts] ?? 0
-                return (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => setCategory(cat)}
-                    className={`w-full flex items-center justify-between px-2 py-2 rounded-xl border-b border-[var(--border)] last:border-0 transition-colors cursor-pointer ${
-                      category === cat ? 'bg-amber-500/10' : 'hover:bg-[var(--bg-hover)]'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <Folder className="w-4 h-4 text-amber-500" />
-                      <span className="text-xs font-semibold text-[var(--text-primary)]">{cat}</span>
-                    </div>
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums ${
-                        count > 0
-                          ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/25'
-                          : 'bg-[var(--bg-sunken)] text-[var(--text-muted)] border border-[var(--border)]'
-                      }`}
-                    >
-                      {count}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          <div className="rounded-2xl p-5 bg-gradient-to-br from-emerald-900 to-emerald-950 text-white shadow-md border border-emerald-800/50">
-            <h3 className="text-xs font-bold tracking-wider uppercase text-emerald-300">
-              Storage Quota
-            </h3>
-            <p className="text-sm font-extrabold text-white mt-1 tabular-nums">
-              Used: {formatSize(metrics.totalBytes)} of 1 GB
-            </p>
-            <div className="h-2 rounded-full overflow-hidden bg-emerald-950/80 mt-3 border border-emerald-800/40">
-              <div
-                className="h-full rounded-full bg-emerald-400 transition-all duration-500"
-                style={{ width: `${visibleQuotaPercent}%` }}
-              />
-            </div>
-            <p className="text-[11px] text-emerald-200/90 mt-2 font-medium tabular-nums">
-              {quotaPercentText} consumed
-            </p>
-          </div>
-        </aside>
+        </section>
       </div>
 
       <ConfirmDestructiveDialog

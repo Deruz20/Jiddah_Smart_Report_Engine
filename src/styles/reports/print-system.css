@@ -75,6 +75,7 @@
    PRINT: PORTAL (completely hidden on screen, fully revealed on print)
    ============================================================================ */
 
+#report-print-portal,
 #print-portal {
   position: fixed;
   top: 0;
@@ -137,23 +138,31 @@
     display: none !important;
   }
 
-  /* 1. Hide EVERYTHING on the main page */
-  html body {
-    visibility: hidden !important;
-    overflow: visible !important;
+  /* 1. Hide ALL non-portal direct body children so zero ghost height triggers blank pages */
+  body:has(#report-print-portal) > *:not(#report-print-portal):not(style):not(script) {
+    display: none !important;
+    height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  html,
+  body,
+  #report-print-portal,
+  #print-portal {
     margin: 0 !important;
     padding: 0 !important;
+    width: 100% !important;
     height: auto !important;
+    min-height: 0 !important;
     background: #ffffff !important;
   }
 
   /* 2. Reveal ONLY the print portal */
+  #report-print-portal,
   #print-portal {
     position: static !important;
     top: 0 !important;
     left: 0 !important;
-    width: 100% !important;
-    height: auto !important;
     overflow: visible !important;
     visibility: visible !important;
     z-index: 9999 !important;
@@ -161,21 +170,35 @@
     display: block !important;
   }
 
+  #report-print-portal *,
   #print-portal,
   #print-portal * {
     visibility: visible !important;
   }
 
+  /* NEVER break after a sheet; ONLY break BEFORE sheets after the first sheet (i > 0) */
   .report-card-sheet,
+  .landscape-page,
+  .portrait-page,
+  .a4-portrait-page,
+  .a4-two-up-page,
   #print-portal .report-container {
     margin: 0 !important;
     padding: 0 !important;
-    page-break-after: always !important;
-    break-after: page !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
   }
 
+  .report-card-sheet[data-first-printed="false"],
+  .theology-2up-sheet[data-first-printed="false"] {
+    page-break-before: always !important;
+    break-before: page !important;
+  }
+
+  .report-card-sheet[data-first-printed="true"],
+  .theology-2up-sheet[data-first-printed="true"],
   .report-card-sheet:first-child,
   #print-portal .report-container:first-child {
     page-break-before: avoid !important;
@@ -190,16 +213,17 @@
 
   /* Lock landscape & portrait page boxes in print with CSS Named Pages */
   .report-sheet-landscape,
+  .report-sheet-landscape .landscape-page,
   .landscape-page,
   [data-report-orientation="landscape"] {
     page: landscape-sheet !important;
-    width: 294mm !important;
-    min-width: 294mm !important;
-    max-width: 294mm !important;
-    height: 206mm !important;
-    min-height: 206mm !important;
-    max-height: 206mm !important;
-    padding: 4mm 6mm !important;
+    width: 297mm !important;
+    min-width: 297mm !important;
+    max-width: 297mm !important;
+    height: 209mm !important;
+    min-height: 0 !important;
+    max-height: 209mm !important;
+    padding: 2.5mm 4mm !important;
     box-sizing: border-box !important;
     overflow: hidden !important;
     break-inside: avoid !important;
@@ -215,6 +239,7 @@
   }
 
   .report-sheet-portrait,
+  .report-sheet-portrait .portrait-page,
   .portrait-page,
   .a4-portrait-page,
   .a4-two-up-page,
@@ -223,8 +248,9 @@
     width: 210mm !important;
     min-width: 210mm !important;
     max-width: 210mm !important;
-    height: 286mm !important;
-    max-height: 286mm !important;
+    height: 295mm !important;
+    min-height: 0 !important;
+    max-height: 295mm !important;
     margin: 0 auto !important;
     box-sizing: border-box !important;
     overflow: hidden !important;
@@ -295,22 +321,24 @@
     margin: 0 !important;
     padding: 0 !important;
     overflow: visible !important;
-    page-break-after: always;
-    break-after: page;
-    page-break-inside: avoid;
-    break-inside: avoid;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 
   #print-portal .report-container[data-report-orientation='portrait']:not(.theology-2up-sheet):not([data-report-type='TheologyMOTReport']) {
     width: 210mm !important;
-    height: 286mm !important;
-    max-height: 286mm !important;
+    height: 295mm !important;
+    max-height: 295mm !important;
     overflow: hidden !important;
   }
 
   #print-portal .report-container[data-report-orientation='landscape'] {
-    width: 294mm !important;
-    height: 206mm !important;
+    width: 297mm !important;
+    height: 209mm !important;
+    max-height: 209mm !important;
+    overflow: hidden !important;
   }
 
   /* 3b. Theology 2-up sheet strictly constrains height to prevent spillover */
@@ -356,7 +384,7 @@
   }
 
   #print-portal .report-container[data-report-orientation='landscape'] {
-    max-height: 793px !important;
+    max-height: 209mm !important;
     overflow: hidden !important;
   }
 

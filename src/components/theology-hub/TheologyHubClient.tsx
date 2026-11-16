@@ -145,10 +145,10 @@ export default function TheologyHubClient({
 
   const classOptions = useMemo(
     () => [
-      { value: '', label: '-- Select Class / اختر الصف --' },
+      { value: '', label: '-- اختر الصف --' },
       ...theologyClasses.map((t) => ({
         value: t.id,
-        label: `${t.class_name_arabic} — ${t.class_name_english}`,
+        label: t.class_name_arabic || t.class_name_english,
       })),
     ],
     [theologyClasses]
@@ -319,7 +319,7 @@ export default function TheologyHubClient({
     }
   }, [data, activeClassId, theologyClasses, activeLevel, examPhase])
 
-  // Filtered students for search & division
+  // Filtered students for search & theology grade filter
   const filteredStudents = useMemo(() => {
     return assessmentData.students.filter((st) => {
       const q = searchQuery.toLowerCase().trim()
@@ -329,18 +329,28 @@ export default function TheologyHubClient({
         (st.arabic_name && st.arabic_name.toLowerCase().includes(q)) ||
         (st.admission_number && st.admission_number.toLowerCase().includes(q))
 
-      let matchesDiv = true
+      let matchesGrade = true
       if (divisionFilter !== 'all') {
-        if (divisionFilter === 'unranked') {
-          matchesDiv = st.position === '-' || st.division === '-'
-        } else {
-          matchesDiv = st.division === divisionFilter
+        // Compute theology Arabic grade from student's average score per subject
+        const numSubjects = assessmentData.orderedSubjects.length
+        const avg =
+          typeof st.total === 'number' && st.total > 0 && numSubjects > 0
+            ? st.total / numSubjects
+            : null
+        let studentGrade: string | null = null
+        if (avg !== null) {
+          if (avg >= 85) studentGrade = 'ممتاز'
+          else if (avg >= 75) studentGrade = 'جيد جداً'
+          else if (avg >= 65) studentGrade = 'جيد'
+          else if (avg >= 50) studentGrade = 'مقبول'
+          else studentGrade = 'ضعيف'
         }
+        matchesGrade = studentGrade === divisionFilter
       }
 
-      return matchesSearch && matchesDiv
+      return matchesSearch && matchesGrade
     })
-  }, [assessmentData.students, searchQuery, divisionFilter])
+  }, [assessmentData.students, assessmentData.orderedSubjects.length, searchQuery, divisionFilter])
 
   // Summary statistics for Broadsheet footer
   const broadsheetSummary = useMemo(() => {
@@ -745,22 +755,32 @@ export default function TheologyHubClient({
                       />
                     </div>
 
-                    {/* Division Filter Pills */}
+                    {/* الملاحظات Filter Pills — Arabic theology grades */}
                     <div className="flex items-center gap-1 overflow-x-auto text-xs py-0.5">
                       <span className="text-[10px] font-bold tracking-wider text-stone-400 ml-1 shrink-0 font-arabic">
-                        التقدير:
+                        الملاحظات:
                       </span>
-                      {(['all', 'I', 'II', 'III', 'IV', 'U'] as const).map((div) => (
+                      {(['all', 'ممتاز', 'جيد جداً', 'جيد', 'مقبول', 'ضعيف'] as const).map((grade) => (
                         <button
-                          key={div}
-                          onClick={() => setDivisionFilter(div)}
-                          className={`px-2 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer font-sans ${
-                            divisionFilter === div
-                              ? 'bg-[#0D5C3A] text-white shadow-xs'
+                          key={grade}
+                          onClick={() => setDivisionFilter(grade)}
+                          className={`px-2 py-1 rounded-[10px] text-[11px] font-bold transition-all cursor-pointer font-arabic ${
+                            divisionFilter === grade
+                              ? grade === 'ممتاز'
+                                ? 'bg-emerald-600 text-white shadow-xs'
+                                : grade === 'جيد جداً'
+                                ? 'bg-teal-600 text-white shadow-xs'
+                                : grade === 'جيد'
+                                ? 'bg-amber-600 text-white shadow-xs'
+                                : grade === 'مقبول'
+                                ? 'bg-orange-600 text-white shadow-xs'
+                                : grade === 'ضعيف'
+                                ? 'bg-rose-600 text-white shadow-xs'
+                                : 'bg-[#0D5C3A] text-white shadow-xs'
                               : 'bg-stone-100 dark:bg-white/5 text-stone-600 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-white/10'
                           }`}
                         >
-                          {div === 'all' ? 'الكل' : `Div ${div}`}
+                          {grade === 'all' ? 'الكل' : grade}
                         </button>
                       ))}
                     </div>
@@ -837,8 +857,8 @@ export default function TheologyHubClient({
                                 }}
                               >
                                 {/* م — sticky */}
-                                <td className="sticky right-0 z-10 bg-white dark:bg-[#151F1B] group-hover:bg-stone-50/80 dark:group-hover:bg-[#1A2621]/80 py-2.5 px-2 text-center font-bold text-stone-400 text-[12px] border-l border-stone-100 dark:border-white/[0.04] w-10">
-                                  {idx + 1}
+                                <td className="sticky right-0 z-10 bg-white dark:bg-[#151F1B] group-hover:bg-stone-50/80 dark:group-hover:bg-[#1A2621]/80 py-2.5 px-2 text-center font-bold text-stone-400 text-[12px] border-l border-stone-100 dark:border-white/[0.04] w-10 font-arabic">
+                                  {String(idx + 1).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)])}
                                 </td>
 
                                 {/* اسم التلميذ/ة — sticky */}
@@ -884,10 +904,12 @@ export default function TheologyHubClient({
                                   </span>
                                 </td>
 
-                                {/* الترتيب */}
+                                {/* الترتيب — Arabic-Indic numeral */}
                                 <td className="py-2.5 px-3 text-center border-l border-stone-100 dark:border-white/[0.04] bg-amber-50/30 dark:bg-amber-950/[0.06]">
                                   <span className="font-mono font-black text-[13px] text-amber-800 dark:text-amber-400">
-                                    {st.position !== '-' ? st.position : '—'}
+                                    {st.position !== '-' && st.position !== undefined && st.position !== null
+                                      ? String(st.position).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)])
+                                      : '—'}
                                   </span>
                                 </td>
 
@@ -925,8 +947,8 @@ export default function TheologyHubClient({
                                 {broadsheetSummary.classAverageTotal}
                               </td>
                               <td className="py-2 px-3 text-center border-l border-stone-200 dark:border-white/10">—</td>
-                              <td className="py-2 px-3 text-center text-[10px] text-stone-400 border-l border-stone-200 dark:border-white/10">
-                                {broadsheetSummary.satCandidates}/{broadsheetSummary.totalCandidates}
+                              <td className="py-2 px-3 text-center text-[10px] text-stone-400 border-l border-stone-200 dark:border-white/10 font-arabic">
+                                {String(broadsheetSummary.satCandidates).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)])}/{String(broadsheetSummary.totalCandidates).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)])}
                               </td>
                             </tr>
                             <tr className="text-[10px] text-stone-500 dark:text-stone-400">
@@ -943,12 +965,12 @@ export default function TheologyHubClient({
                                     key={sub.id}
                                     className="py-1.5 px-3 text-center font-mono text-emerald-700 dark:text-emerald-400 border-l border-stone-200 dark:border-white/10"
                                   >
-                                    {stat ? `${stat.passRate}%` : '—'}
+                                    {stat ? `${stat.passRate}٪` : '—'}
                                   </td>
                                 )
                               })}
                               <td colSpan={3} className="py-1.5 px-3 text-center text-[10px] border-l border-stone-200 dark:border-white/10 font-arabic">
-                                الممتحنون: {broadsheetSummary.satCandidates} من {broadsheetSummary.totalCandidates}
+                                الممتحنون: {String(broadsheetSummary.satCandidates).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)])} من {String(broadsheetSummary.totalCandidates).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)])}
                               </td>
                             </tr>
                           </tfoot>

@@ -21,20 +21,9 @@ export function EmptyState({ onSearchOpen }: EmptyStateProps) {
           Report Cards Ready to Generate
         </h2>
 
-        <p className="mb-6 text-center text-xs text-[#4B5563] dark:text-[#9CA3AF] max-w-sm">
+        <p className="text-center text-xs text-[#4B5563] dark:text-[#9CA3AF] max-w-sm">
           Select class, term, and exam phase from the control bar above to preview and batch print official report cards.
         </p>
-
-        {onSearchOpen && (
-          <motion.button
-            onClick={onSearchOpen}
-            className="flex items-center justify-center gap-2 h-9 px-5 rounded-full font-bold text-xs btn-jiddah-cta text-white shadow-xs cursor-pointer transition-transform"
-            whileTap={{ scale: 0.97 }}
-          >
-            <Search size={14} />
-            <span>Open Filters &amp; Roster</span>
-          </motion.button>
-        )}
       </div>
     </div>
   );

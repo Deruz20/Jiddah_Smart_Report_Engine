@@ -42,6 +42,7 @@ const allowedNumericKeys = ['current_year']
 const allowedJsonKeys = [
   'ranking_preferences',
   'report_overlays',
+  'report_studio_config',
   'grading_scale',
   'theology_grading_scale',
   'theology_remarks',

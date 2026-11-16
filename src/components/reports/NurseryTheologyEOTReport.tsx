@@ -1,16 +1,45 @@
 import { getTheologyComment } from '@/lib/grading'
 import { ReportContainer } from '@/components/reports/shared/ReportContainer'
-import { CleanSignatureImg } from '@/components/reports/shared/CleanSignatureImg'
+import { CleanSignatureImage } from '@/components/reports/CleanSignatureImage'
 import { OfficialReportStamp } from '@/components/reports/StampGenerator'
 import { normalizeSchoolLogoUrl } from '@/lib/school-settings-helper'
 import { transliterateEnglishToArabic } from '@/lib/transliterate'
 
 import { getClassTeacherSignatureKey } from '@/utils/signatures'
+import { NurseryEducativeWatermark } from '@/components/reports/NurseryEducativeWatermark'
+import { useStudioFormatting, resolveEffectiveStudioStyle } from '@/lib/studio-config-store'
 
-export default function NurseryTheologyEOTReport({ reportData }: any) {
-  const printPrefs = reportData?.settings?.print_preferences
-  const includeSignatures = printPrefs?.includeSignatures !== undefined ? Boolean(printPrefs.includeSignatures) : true
-  const includeStamp = Boolean(printPrefs?.includeStamp)
+export default function NurseryTheologyEOTReport({ reportData, studioFormatting: studioFormattingProp }: any) {
+  const studioFormatting = useStudioFormatting(studioFormattingProp, reportData?.settings?.report_studio_config)
+  const effective = resolveEffectiveStudioStyle(studioFormatting, reportData, 'nursery-theology-eot')
+  const effectiveStudioPass = { ...studioFormatting, ...effective, stampInkColor: effective.stampColor }
+  const includeSignatures = effective.showSignatures
+  const includeStamp = effective.showStamp
+
+  const rawClassName =
+    reportData?.student?.class_name ||
+    reportData?.student?.theology_class_english ||
+    reportData?.student?.theology_class_arabic ||
+    reportData?.class_name ||
+    ''
+  const theoTeacherKey = getClassTeacherSignatureKey(rawClassName, true)
+  const secTeacherKey = getClassTeacherSignatureKey(rawClassName, false)
+  const sigMap = reportData?.signatures || {}
+  const fallbackTeacherSig =
+    sigMap['class-teacher-baby'] ||
+    sigMap['class-teacher-middle'] ||
+    sigMap['class-teacher-top'] ||
+    sigMap['theology-teacher-baby'] ||
+    sigMap['theology-teacher-middle'] ||
+    sigMap['theology-teacher-top'] ||
+    Object.entries(sigMap).find(([k, v]) => (k.startsWith('class-teacher-') || k.startsWith('theology-teacher-')) && Boolean(v))?.[1] ||
+    null
+  const classTeacherSignatureUrl =
+    (theoTeacherKey && sigMap[theoTeacherKey]) ||
+    (secTeacherKey && sigMap[secTeacherKey]) ||
+    sigMap['theology-head'] ||
+    fallbackTeacherSig ||
+    null
 
   const getTheologyRemark = (score: number | null): string => {
     if (score == null) return '--'
@@ -70,10 +99,10 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
 .nursery-theology-eot-report {
     --nursery-blue: #e3f2fd;
     --nursery-mint: #e8f5e9;
-    --nursery-gold: #d4af37;
+    --nursery-gold: ${effective.secondaryColor};
     --nursery-text: #2c3e50;
-    --primary-green: #064e3b;
-    --secondary-green: #047857;
+    --primary-green: ${effective.primaryColor};
+    --secondary-green: ${effective.headerAccentColor};
     --data-navy: #0f172a;
     --data-indigo: #1e293b;
     --data-teal: #0369a1;
@@ -88,7 +117,9 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
     direction: rtl;
     padding: 5mm 10mm;
     margin: 0 auto;
-    font-family: 'Cairo', sans-serif;
+    font-family: ${effective.arabicFontFamilyCss} !important;
+    --report-font-scale: ${effective.arabicFontScaleMultiplier};
+    font-size: calc(100% * var(--report-font-scale, 1));
     color: var(--nursery-text);
 }
 
@@ -140,9 +171,9 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
 .nursery-theology-eot-report .watermark-bg {
     position: absolute;
     inset: 0;
-    background: url('/logo-512h.png') center center no-repeat;
+    background: url('${normalizeSchoolLogoUrl(effective.schoolHeader.logoUrl)}') center center no-repeat;
     background-size: contain;
-    opacity: 0.04;
+    opacity: ${effective.watermarkOpacity};
     pointer-events: none;
     z-index: 0;
 }
@@ -360,8 +391,8 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
 
 .nursery-theology-eot-report .sign-line {
     width: 180px;
-    border-top: 1.5px dashed var(--nursery-text);
-    margin-top: 35px;
+    border-top: none;
+    margin-top: 8px;
 }
 
 .nursery-theology-eot-report .footer-stamp {
@@ -377,8 +408,14 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
         `
       }} />
 
-      <div className="nursery-theology-eot-report font-cairo" dir="rtl">
+      <div className="nursery-theology-eot-report font-cairo" dir="rtl" style={{ position: 'relative' }}>
         <div className="watermark-bg"></div>
+        <NurseryEducativeWatermark
+          templateId="nursery-theology-eot"
+          logoUrl={normalizeSchoolLogoUrl(reportData?.settings?.logo_url)}
+          studioFormatting={effectiveStudioPass}
+          includeEducativeArt={false}
+        />
         <div className="header">
           <div className="header-badge">
             <img
@@ -393,7 +430,7 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
           </div>
           <div className="header-center">
             <div className="basmala">بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْم</div>
-            <div className="school-name">{reportData?.settings?.arabic_name || "مدرسة جدة الإسلامية للروضة والإبتدائية"}</div>
+            <div className="school-name">{effective.schoolHeader.nameArabic || reportData?.settings?.arabic_name || "مدرسة جدة الإسلامية للروضة والإبتدائية"}</div>
             <div className="report-badge">بطاقة تقرير للروضة</div>
           </div>
           <div className="header-badge" style={{ visibility: 'hidden' }}>
@@ -404,26 +441,26 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
         <div className="info-grid">
           <div className="info-item" style={{ gridColumn: 'span 2' }}>
             <span>اسم الطفل/ة:</span>
-            <div className="dot-line">{reportData?.student?.arabic_name || "___"}</div>
+            <div className="dot-line pupil-name" style={{ fontSize: '21px', fontWeight: 900, color: '#0F172A' }}>{reportData?.student?.arabic_name || "___"}</div>
           </div>
           <div className="info-item">
             <span>الروضة:</span>
-            <div className="dot-line">{reportData?.student?.theology_class_arabic ?? reportData?.student?.class_name}</div>
+            <div className="dot-line" style={{ fontSize: '16.5px', fontWeight: 900, color: '#0F172A' }}>{reportData?.student?.theology_class_arabic ?? reportData?.student?.class_name}</div>
           </div>
           <div className="info-item">
             <span>الفترة:</span>
-            <div className="dot-line">{toAr(reportData?.term?.term_number)}</div>
+            <div className="dot-line" style={{ fontSize: '16.5px', fontWeight: 900, color: '#0F172A' }}>{toAr(reportData?.term?.term_number)}</div>
           </div>
           <div className="info-item">
             <span>السنة:</span>
-            <div className="dot-line medium">{toAr(toHijri(Number(reportData?.term?.academic_year)))}</div>
+            <div className="dot-line medium" style={{ fontSize: '16.5px', fontWeight: 900, color: '#0F172A' }}>{toAr(toHijri(Number(reportData?.term?.academic_year)))}</div>
             <span>هـ</span>
-            <div className="dot-line medium">{toAr(reportData?.term?.academic_year)}</div>
+            <div className="dot-line medium" style={{ fontSize: '16.5px', fontWeight: 900, color: '#0F172A' }}>{toAr(reportData?.term?.academic_year)}</div>
             <span>م</span>
           </div>
           <div className="info-item">
             <span>عدد الأطفال:</span>
-            <div className="dot-line">{toAr(reportData?.meta?.total_students)}</div>
+            <div className="dot-line" style={{ fontSize: '16.5px', fontWeight: 900, color: '#0F172A' }}>{toAr(reportData?.meta?.total_students)}</div>
           </div>
         </div>
 
@@ -458,14 +495,18 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
         <div className="remarks-area">
           <div className="remark-box">
             <span className="remark-label">ملاحظات مرب الفصل</span>
-            <div style={{ height: '40px' }}>
-              <span style={{ color: 'var(--data-teal)', fontStyle: 'italic', fontWeight: 900, fontSize: '16px', direction: 'rtl' }}>{getTheologyComment(reportData?.theology?.total ?? null, reportData?.student?.gender, reportData?.settings?.theology_remarks)}</span>
+            <div style={{ minHeight: '42px', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', width: '100%' }}>
+              <span style={{ color: '#1E40AF', fontWeight: 800, fontSize: `${effective.arabicCommentFontSizePx}px`, lineHeight: 1.35, textAlign: 'center', direction: 'rtl' }}>
+                {getTheologyComment(reportData?.theology?.total ?? null, reportData?.student?.gender, reportData?.settings?.theology_remarks)}
+              </span>
             </div>
           </div>
           <div className="remark-box">
             <span className="remark-label">ملاحظات مدير المدرسة</span>
-            <div style={{ height: '40px' }}>
-              <span style={{ color: 'var(--data-teal)', fontStyle: 'italic', fontWeight: 900, fontSize: '16px', direction: 'rtl' }}>{getTheologyComment(reportData?.theology?.total ?? null, reportData?.student?.gender, reportData?.settings?.theology_remarks)}</span>
+            <div style={{ minHeight: '42px', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', width: '100%' }}>
+              <span style={{ color: '#1E40AF', fontWeight: 800, fontSize: `${effective.arabicCommentFontSizePx}px`, lineHeight: 1.35, textAlign: 'center', direction: 'rtl' }}>
+                {getTheologyComment(reportData?.theology?.total ?? null, reportData?.student?.gender, reportData?.settings?.theology_remarks)}
+              </span>
             </div>
           </div>
         </div>
@@ -473,26 +514,22 @@ export default function NurseryTheologyEOTReport({ reportData }: any) {
         <div className="signature-row">
           <div className="sign-field">
             <div>تقرير مرب الفصل</div>
-            <div className="sign-line" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', height: '40px' }}>
-              {includeSignatures && reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.class_name) ?? ''] && (
-                <CleanSignatureImg src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} alt="Signature" style={{ maxHeight: '30px' }} />
+            <div className="sign-line" style={{ position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'flex-end', height: '36px', minWidth: '130px', borderBottom: '1.5px dotted #334155' }}>
+              {includeSignatures && classTeacherSignatureUrl && (
+                <CleanSignatureImage src={classTeacherSignatureUrl} alt="Signature" style={{ height: '36px', width: '112px', objectFit: 'contain', marginBottom: '-6px' }} studioFormatting={effectiveStudioPass} />
               )}
             </div>
           </div>
-          <div className="footer-stamp" style={{ padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="footer-stamp" style={{ width: '135px', height: '64px', minWidth: '135px', minHeight: '64px', position: 'relative', overflow: 'visible', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             {includeStamp ? (
-              reportData?.signatures?.['school-stamp'] ? (
-                <img src={reportData.signatures['school-stamp']} alt="Official school stamp" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
-              ) : (
-                <OfficialReportStamp reportData={reportData} maxWidth={136} maxHeight={84} />
-              )
+              <OfficialReportStamp reportData={reportData} studioFormatting={effectiveStudioPass} maxWidth={135} maxHeight={64} />
             ) : null}
           </div>
           <div className="sign-field">
             <div>تقرير مدير المدرسة</div>
-            <div className="sign-line" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', height: '40px' }}>
+            <div className="sign-line" style={{ position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'flex-end', height: '36px', minWidth: '130px', borderBottom: '1.5px dotted #334155' }}>
               {includeSignatures && reportData?.signatures?.['head-teacher'] && (
-                <CleanSignatureImg src={reportData.signatures['head-teacher']} alt="Signature" style={{ maxHeight: '30px' }} />
+                <CleanSignatureImage src={reportData.signatures['head-teacher']} alt="Signature" style={{ height: '36px', width: '112px', objectFit: 'contain', marginBottom: '-6px' }} studioFormatting={effectiveStudioPass} />
               )}
             </div>
           </div>

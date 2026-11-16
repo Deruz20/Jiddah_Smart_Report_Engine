@@ -1,42 +1,47 @@
 'use client'
 
-import React, { useState, useEffect, useMemo, memo, useCallback } from 'react'
+import React, { useState, useEffect, useMemo, memo } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
-import { Loader2, ScrollText, BookOpen, Award, LayoutDashboard, SearchX, Printer, FileSpreadsheet, Download, Layers, ChevronDown } from 'lucide-react'
+import {
+  Loader2,
+  ScrollText,
+  LayoutDashboard,
+  Award,
+  Download,
+  Printer,
+  FileSpreadsheet,
+  ChevronDown,
+  Search,
+  Filter,
+  Eye,
+  Trophy,
+  Medal,
+  CheckCircle2,
+  BarChart3,
+  Users,
+  TrendingUp,
+  Percent,
+  Sparkles,
+  ExternalLink,
+  Layers,
+} from 'lucide-react'
 import { toast } from 'sonner'
-import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { generateSecularAssessmentCSV, generateSecularAnalysisCSV, generateSecularTopStudentsCSV } from '@/utils/csvExport'
-import { computeStandardRankings } from '@/lib/ranking'
-import { isGradableSubject, getSubjectGradeNumber, calculateAggregate, getDivision, getGradeDisplay, isCoreSubject, getNurseryGrade, isNurseryClass } from '@/lib/grading'
-import { TopToolbar } from '../figma-ui/TopToolbar'
+import { SecularHubEmptyState } from './SecularHubEmptyState'
 import { OfficialPrintLetterhead, OfficialPrintSignaturesFooter } from '@/components/print/OfficialPrintLetterhead'
+import { OfficialReportStamp } from '@/components/reports/StampGenerator'
+import { PrintPortal } from '@/components/reports/PrintPortal'
 import { CustomPillSelect } from '@/components/ui/custom-pill-select'
-
-const THEME = {
-  gold: 'text-amber-800 bg-amber-50 border-amber-200',
-  silver: 'text-emerald-800 bg-emerald-50 border-emerald-200',
-  bronze: 'text-orange-800 bg-orange-50 border-orange-200',
-  neutral: 'text-stone-700 bg-stone-100 border-stone-200',
-  danger: 'text-rose-800 bg-rose-50 border-rose-200',
-}
-
-const getAchievementTier = (val: string | null | undefined): keyof typeof THEME => {
-  if (!val || val === '-') return 'neutral'
-  if (val.startsWith('D') || val === 'I' || val === 'A') return 'gold'
-  if (val.startsWith('C') || val === 'II' || val === 'B') return 'silver'
-  if (val.startsWith('P') || val === 'III' || val === 'C') return 'bronze'
-  if (val === 'IV' || val === 'D') return 'neutral'
-  return 'danger'
-}
-
-const getBadgeStyles = (val: string | null | undefined) => THEME[getAchievementTier(val)]
-
-const getPositionStyles = (pos: number | string | null | undefined) => {
-  if (pos === 1 || pos === '1') return 'text-amber-600 font-extrabold text-[15px]'
-  if (pos === 2 || pos === '2') return 'text-stone-600 font-extrabold text-[15px]'
-  if (pos === 3 || pos === '3') return 'text-orange-700 font-extrabold text-[15px]'
-  return 'text-stone-700 font-bold text-[14px]'
-}
+import { JiddahLoader } from '@/components/ui/jiddah-loader'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
+import { downloadCSV, escapeCSV } from '@/utils/csvExport'
+import { computeStandardRankings } from '@/lib/ranking'
+import {
+  getSubjectGradeNumber,
+  getGradeDisplay,
+  calculateAggregate,
+  getDivision,
+  type GradeCode,
+} from '@/lib/grading'
 
 type TermData = {
   id: string
@@ -52,32 +57,44 @@ type CircularClassData = {
   section: string
 }
 
-const tableVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.03 }
+// Color-coded UNEB grade badge
+const SecularGradeBadge = memo(({ mark, grade }: { mark: number | null | undefined; grade?: string | null }) => {
+  if (mark == null || isNaN(Number(mark))) {
+    return <span className="text-stone-300 dark:text-stone-700 font-bold">-</span>
   }
-}
-
-const rowVariants = {
-  hidden: { opacity: 0, y: 10 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.2 } }
-}
-
-const RankBadge = memo(({ rank }: { rank: number | string }) => {
-  if (rank === '-') return <span className="text-stone-400 font-medium">-</span>
-  const numRank = Number(rank)
-  if (numRank === 1) return <span className="inline-flex items-center justify-center w-7 h-7 text-xs font-bold rounded-full bg-amber-100 text-amber-700 ring-2 ring-amber-200/50 shadow-xs print:ring-0 print:bg-transparent print:text-black">1</span>
-  if (numRank === 2) return <span className="inline-flex items-center justify-center w-7 h-7 text-xs font-bold rounded-full bg-stone-200 text-stone-700 ring-2 ring-stone-300/50 shadow-xs print:ring-0 print:bg-transparent print:text-black">2</span>
-  if (numRank === 3) return <span className="inline-flex items-center justify-center w-7 h-7 text-xs font-bold rounded-full bg-orange-100 text-orange-800 ring-2 ring-orange-200/50 shadow-xs print:ring-0 print:bg-transparent print:text-black">3</span>
-  return <span className="inline-flex items-center justify-center w-7 h-7 text-xs font-semibold rounded-full bg-stone-50 text-stone-700 border border-stone-200 print:border-none print:text-black">{rank}</span>
+  const g = grade || getGradeDisplay(getSubjectGradeNumber(Number(mark)))
+  if (g === 'D1' || g === 'D2' || g === 'A') {
+    return (
+      <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-black rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-300/40 print:border-none print:bg-transparent print:text-black">
+        {g}
+      </span>
+    )
+  }
+  if (g === 'C3' || g === 'C4' || g === 'C5' || g === 'C6' || g === 'B') {
+    return (
+      <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-black rounded-md bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-300/40 print:border-none print:bg-transparent print:text-black">
+        {g}
+      </span>
+    )
+  }
+  if (g === 'P7' || g === 'P8' || g === 'C' || g === 'D') {
+    return (
+      <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-black rounded-md bg-orange-100 text-orange-800 dark:bg-orange-950/70 dark:text-orange-300 border border-orange-300/40 print:border-none print:bg-transparent print:text-black">
+        {g}
+      </span>
+    )
+  }
+  return (
+    <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-black rounded-md bg-rose-100 text-rose-800 dark:bg-rose-950/70 dark:text-rose-300 border border-rose-300/40 print:border-none print:bg-transparent print:text-black">
+      {g}
+    </span>
+  )
 })
-RankBadge.displayName = 'RankBadge'
+SecularGradeBadge.displayName = 'SecularGradeBadge'
 
 export default function SecularHubClient({
   terms,
-  circularClasses
+  circularClasses,
 }: {
   terms: TermData[]
   circularClasses: CircularClassData[]
@@ -86,21 +103,40 @@ export default function SecularHubClient({
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
-  const [activeTermId, setActiveTermId] = useState<string>(searchParams.get('term_id') || terms.find(t => t.is_current)?.id || terms[0]?.id || '')
-  const [activeClassId, setActiveClassId] = useState<string>(searchParams.get('class_id') || circularClasses[0]?.id || '')
-  const [activeLevel, setActiveLevel] = useState<string>(searchParams.get('level') || circularClasses[0]?.section || 'nursery')
-  const [activeTab, setActiveTab] = useState<'assessment' | 'analysis' | 'top_students'>((searchParams.get('tab') as any) || 'assessment')
-  const [examPhase, setExamPhase] = useState<'bot' | 'mot' | 'eot'>((searchParams.get('exam_phase') as any) || 'eot')
+  const [activeTermId, setActiveTermId] = useState<string>(
+    searchParams.get('term_id') || terms.find((t) => t.is_current)?.id || terms[0]?.id || ''
+  )
+  const [activeClassId, setActiveClassId] = useState<string>(
+    searchParams.get('class_id') || circularClasses[0]?.id || ''
+  )
+  const [activeTab, setActiveTab] = useState<'assessment' | 'analysis' | 'top_students'>(
+    (searchParams.get('tab') as any) || 'assessment'
+  )
+  const [examPhase, setExamPhase] = useState<'bot' | 'mot' | 'eot'>(
+    (searchParams.get('exam_phase') as any) || 'eot'
+  )
 
-  const [filtersOpen, setFiltersOpen] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [divisionFilter, setDivisionFilter] = useState<string>('all')
+  const [showGrades, setShowGrades] = useState(true)
+
   const [isLoading, setIsLoading] = useState(false)
-  const [isDownloading, setIsDownloading] = useState(false)
-  const [isBatchPrinting, setIsBatchPrinting] = useState(false)
+  const [isPrinting, setIsPrinting] = useState(false)
   const [data, setData] = useState<{
     enrollments: any[]
     marks: any[]
     subjects: any[]
   } | null>(null)
+
+  const activeTerm = useMemo(() => terms.find((t) => t.id === activeTermId), [terms, activeTermId])
+  const activeClass = useMemo(
+    () => circularClasses.find((c) => c.id === activeClassId),
+    [circularClasses, activeClassId]
+  )
+
+  const isNursery = useMemo(() => {
+    return activeClass?.section?.toLowerCase() === 'nursery'
+  }, [activeClass])
 
   const termOptions = useMemo(
     () =>
@@ -119,118 +155,150 @@ export default function SecularHubClient({
     [circularClasses]
   )
 
-  const levelOptions = useMemo(
-    () => [
-      { value: 'nursery', label: 'Nursery Section' },
-      { value: 'lower_primary', label: 'Lower Primary' },
-      { value: 'upper_primary', label: 'Upper Primary' },
-    ],
-    []
-  )
-
+  // Fetch data cleanly
   useEffect(() => {
     if (!activeTermId) return
 
+    let cancelled = false
     const fetchData = async () => {
       setIsLoading(true)
       try {
-        const res = await fetch(`/api/secular-hub?term_id=${activeTermId}`)
+        const queryParams = new URLSearchParams({ term_id: activeTermId })
+        if (activeClassId) queryParams.set('class_id', activeClassId)
+
+        const res = await fetch(`/api/secular-hub?${queryParams.toString()}`)
         const ct = res.headers.get('content-type') || ''
-        if (!res.ok || !ct.includes('application/json')) throw new Error('Failed to fetch data')
+        if (!res.ok || !ct.includes('application/json')) {
+          const errText = await res.text()
+          throw new Error(errText || 'Failed to fetch secular data')
+        }
         const json = await res.json()
-        setData(json)
-      } catch {
-        toast.error('Failed to load secular data')
+        if (!cancelled) {
+          setData(json)
+        }
+      } catch (err) {
+        console.error('Secular Hub load error:', err)
+        if (!cancelled) {
+          toast.error('Failed to load secular data. Check database connections.')
+        }
       } finally {
-        setIsLoading(false)
+        if (!cancelled) {
+          setIsLoading(false)
+        }
       }
     }
 
     fetchData()
-  }, [activeTermId])
+    return () => {
+      cancelled = true
+    }
+  }, [activeTermId, activeClassId])
 
+  // Sync state to URL params
   useEffect(() => {
     const params = new URLSearchParams(searchParams.toString())
     if (activeTermId) params.set('term_id', activeTermId)
     if (activeClassId) params.set('class_id', activeClassId)
-    if (activeLevel) params.set('level', activeLevel)
     if (activeTab) params.set('tab', activeTab)
     if (examPhase) params.set('exam_phase', examPhase)
 
     router.replace(`${pathname}?${params.toString()}`, { scroll: false })
-  }, [activeTermId, activeClassId, activeLevel, activeTab, examPhase, pathname, router, searchParams])
+  }, [activeTermId, activeClassId, activeTab, examPhase, pathname, router, searchParams])
 
-  const computeAssessmentDataForClass = useCallback((classId: string) => {
-    if (!data || !classId) return { students: [], orderedSubjects: [] }
+  // ----------------------------------------------------
+  // Assessment Broadsheet Calculation
+  // ----------------------------------------------------
+  const assessmentData = useMemo(() => {
+    if (!data || !activeClassId) return { students: [], orderedSubjects: [] }
 
-    const classEnrollments = data.enrollments.filter(e => e.circular_class_id === classId)
-    const classInfo = circularClasses.find(c => c.id === classId)
+    const classEnrollments = data.enrollments.filter((e) => e.circular_class_id === activeClassId)
+    const classInfo = circularClasses.find((c) => c.id === activeClassId)
     if (!classInfo) return { students: [], orderedSubjects: [] }
 
-    const assessmentLevel = classInfo.section?.toLowerCase().replace(/\s+/g, '_') || ''
-    const levelSubjects = data.subjects.filter(s => s.section?.toLowerCase() === classInfo.section?.toLowerCase())
+    const assessmentSection = classInfo.section?.toLowerCase() || ''
+    const levelSubjects = (data.subjects || []).filter(
+      (s) => !s.section || s.section.toLowerCase() === assessmentSection
+    )
 
-    const filteredSubjects = levelSubjects.filter(sub => {
-      if (classInfo.class_name?.toLowerCase().includes('top') && sub.subject_name.toLowerCase().includes('writing')) {
-        return false
-      }
-      return true
+    // Sort subjects canonically: Core first
+    const primaryCanonical = [
+      'english',
+      'eng',
+      'mathematics',
+      'math',
+      'mtc',
+      'science',
+      'integrated science',
+      'sci',
+      'social studies',
+      'sst',
+      'literacy 1',
+      'lit i',
+      'lit 1',
+      'literacy 2',
+      'lit ii',
+      'lit 2',
+      'islamic religious education',
+      'ire',
+      'religious education',
+      're',
+    ]
+
+    const orderedSubjects = [...levelSubjects].sort((a, b) => {
+      const nameA = (a.subject_name || '').toLowerCase()
+      const nameB = (b.subject_name || '').toLowerCase()
+      let aIdx = primaryCanonical.findIndex((t) => nameA.includes(t))
+      let bIdx = primaryCanonical.findIndex((t) => nameB.includes(t))
+      if (aIdx === -1) aIdx = 999
+      if (bIdx === -1) bIdx = 999
+      return aIdx - bIdx
     })
 
-    const orderedSubjects = [...filteredSubjects].sort((a, b) => a.subject_name.localeCompare(b.subject_name))
-
-    const processed = classEnrollments.map(enrollment => {
-      const eMarks = data.marks.filter(m => m.enrollment_id === enrollment.id)
+    const processed = classEnrollments.map((enrollment) => {
+      const eMarks = (data.marks || []).filter(
+        (m) => m.enrollment_id === enrollment.id || (m.student_id && m.student_id === enrollment.student_id)
+      )
 
       let total = 0
+      let hasMarks = false
       const subjectScores: Record<string, number | null> = {}
-      const subjectAggregates: Record<string, number | null> = {}
       const subjectGrades: Record<string, string | null> = {}
       const scoresForAgg: { subject_name: string; score: number }[] = []
 
-      orderedSubjects.forEach(sub => {
-        const mark = eMarks.find(m => m.subject_id === sub.id)
+      orderedSubjects.forEach((sub) => {
+        const mark = eMarks.find((m) => m.subject_id === sub.id)
         const scoreKey = `${examPhase}_score` as 'bot_score' | 'mot_score' | 'eot_score'
-        const score = mark?.[scoreKey] != null ? mark[scoreKey] : null
+        const score = mark?.[scoreKey] != null && !isNaN(Number(mark[scoreKey])) ? Number(mark[scoreKey]) : null
         subjectScores[sub.id] = score
+
         if (score != null) {
-          if (isNurseryClass(assessmentLevel)) {
-            const nGrade = getNurseryGrade(score)
-            subjectGrades[sub.id] = nGrade.grade
-            subjectAggregates[sub.id] = nGrade.grade === 'A' ? 1 : nGrade.grade === 'B' ? 2 : nGrade.grade === 'C' ? 3 : nGrade.grade === 'D' ? 5 : 9
-            if (isGradableSubject(sub.subject_name, 'nursery')) {
-              total += score
-              scoresForAgg.push({ subject_name: sub.subject_name, score: score })
-            }
-          } else {
-            const gradeNum = getSubjectGradeNumber(score)
-            subjectAggregates[sub.id] = gradeNum
-            subjectGrades[sub.id] = getGradeDisplay(gradeNum)
-            if (isCoreSubject(sub.subject_name, assessmentLevel)) {
-              total += score
-              scoresForAgg.push({ subject_name: sub.subject_name, score: score })
-            }
-          }
+          total += score
+          hasMarks = true
+          const gradeNum = getSubjectGradeNumber(score)
+          subjectGrades[sub.id] = getGradeDisplay(gradeNum)
+          scoresForAgg.push({ subject_name: sub.subject_name, score })
         } else {
-          subjectAggregates[sub.id] = null
           subjectGrades[sub.id] = null
         }
       })
 
-      const agg = isNurseryClass(assessmentLevel) ? null : calculateAggregate(scoresForAgg, assessmentLevel)
-      const div = agg !== null ? getDivision(agg) : 'X'
+      const agg = isNursery ? null : calculateAggregate(scoresForAgg, assessmentSection)
+      const div = agg !== null ? getDivision(agg) : hasMarks ? 'U' : '-'
 
+      const studentObj = enrollment.students || {}
       return {
         id: enrollment.id,
-        name: enrollment.students?.name || 'Unknown Student',
-        total: total > 0 ? total : null,
-        subjectScores,
-        subjectAggregates,
-        subjectGrades,
-        totalAggregate: agg ?? 0,
+        student_id: enrollment.student_id,
+        name: studentObj.name || 'Unknown Student',
+        admission_number: studentObj.admission_number || '',
+        gender: studentObj.gender || '',
+        total: hasMarks ? total : null,
+        aggregate: agg,
         division: div,
-        rank: 0 as number | string,
-        position: '-' as number | string
+        subjectScores,
+        subjectGrades,
+        rank: '-' as number | string,
+        position: '-' as number | string,
       }
     })
 
@@ -241,706 +309,1118 @@ export default function SecularHubClient({
       students: ranked.map((p) => ({
         ...p,
         total: p.total ?? 0,
-        position: p.rank
-      }))
+        position: p.rank,
+      })),
     }
-  }, [data, circularClasses, examPhase])
+  }, [data, activeClassId, circularClasses, isNursery, examPhase])
 
-  const assessmentData = useMemo(() => computeAssessmentDataForClass(activeClassId), [computeAssessmentDataForClass, activeClassId])
+  // Filtered students for search & division
+  const filteredStudents = useMemo(() => {
+    return assessmentData.students.filter((st) => {
+      const q = searchQuery.toLowerCase().trim()
+      const matchesSearch =
+        !q ||
+        st.name.toLowerCase().includes(q) ||
+        (st.admission_number && st.admission_number.toLowerCase().includes(q))
 
+      let matchesDiv = true
+      if (divisionFilter !== 'all') {
+        if (divisionFilter === 'unranked') {
+          matchesDiv = st.position === '-' || st.division === '-'
+        } else {
+          matchesDiv = st.division === divisionFilter
+        }
+      }
+
+      return matchesSearch && matchesDiv
+    })
+  }, [assessmentData.students, searchQuery, divisionFilter])
+
+  // Summary statistics for Broadsheet footer
+  const broadsheetSummary = useMemo(() => {
+    const students = assessmentData.students
+    const subjects = assessmentData.orderedSubjects
+    if (students.length === 0 || subjects.length === 0) return null
+
+    const subjectStats: Record<
+      string,
+      { avg: number; highest: number; lowest: number; passRate: number; count: number }
+    > = {}
+
+    subjects.forEach((sub) => {
+      const scores = students
+        .map((st) => st.subjectScores[sub.id])
+        .filter((s): s is number => typeof s === 'number' && !isNaN(s))
+
+      if (scores.length > 0) {
+        const sum = scores.reduce((a, b) => a + b, 0)
+        const avg = Math.round(sum / scores.length)
+        const highest = Math.max(...scores)
+        const lowest = Math.min(...scores)
+        const passCount = scores.filter((s) => s >= 50).length
+        const passRate = Math.round((passCount / scores.length) * 100)
+        subjectStats[sub.id] = { avg, highest, lowest, passRate, count: scores.length }
+      } else {
+        subjectStats[sub.id] = { avg: 0, highest: 0, lowest: 0, passRate: 0, count: 0 }
+      }
+    })
+
+    const totalScores = students
+      .map((st) => (typeof st.total === 'number' && st.total > 0 ? st.total : null))
+      .filter((t): t is number => t !== null)
+
+    const classAverageTotal =
+      totalScores.length > 0 ? Math.round(totalScores.reduce((a, b) => a + b, 0) / totalScores.length) : 0
+    const highestTotal = totalScores.length > 0 ? Math.max(...totalScores) : 0
+    const lowestTotal = totalScores.length > 0 ? Math.min(...totalScores) : 0
+
+    const divCounts = {
+      I: students.filter((s) => s.division === 'I').length,
+      II: students.filter((s) => s.division === 'II').length,
+      III: students.filter((s) => s.division === 'III').length,
+      IV: students.filter((s) => s.division === 'IV').length,
+      U: students.filter((s) => s.division === 'U').length,
+      unranked: students.filter((s) => s.division === '-' || !s.total).length,
+    }
+
+    return {
+      subjectStats,
+      classAverageTotal,
+      highestTotal,
+      lowestTotal,
+      divCounts,
+      totalCandidates: students.length,
+      satCandidates: totalScores.length,
+    }
+  }, [assessmentData])
+
+  // ----------------------------------------------------
+  // Analysis View Calculation
+  // ----------------------------------------------------
   const analysisData = useMemo(() => {
-    if (!data || !activeLevel) return []
-    const classes = circularClasses.filter(c => c.section === activeLevel)
-    const levelSubjects = data.subjects.filter(s => s.section === activeLevel)
-    const orderedSubjects = [...levelSubjects].sort((a, b) => a.subject_name.localeCompare(b.subject_name))
+    if (!data || !activeClass) return []
+    const section = activeClass.section?.toLowerCase() || ''
+    const sectionClasses = circularClasses.filter((c) => c.section?.toLowerCase() === section)
+    const levelSubjects = (data.subjects || []).filter(
+      (s) => !s.section || s.section.toLowerCase() === section
+    )
 
-    return classes.map(cls => {
-      const classEnrollments = data.enrollments.filter(e => e.circular_class_id === cls.id)
+    return sectionClasses.map((cls) => {
+      const classEnrollments = (data.enrollments || []).filter((e) => e.circular_class_id === cls.id)
       let numStudents = 0
-      let totalAvgMarks = 0
-      let highestAvg = 0
-      let lowestAvg = 100
+      let divI = 0
+      let divII = 0
+      let divIII = 0
+      let divIV = 0
+      let divU = 0
 
-      const divCounts: Record<string, number> = { I: 0, II: 0, III: 0, IV: 0, U: 0, X: 0 }
-      const isNurseryLevel = isNurseryClass(activeLevel) || isNurseryClass(cls.section) || isNurseryClass(cls.class_name)
-      const gradeCounts: Record<string, number> = isNurseryLevel
-        ? { A: 0, B: 0, C: 0, D: 0, E: 0 }
-        : { D1: 0, D2: 0, C3: 0, C4: 0, C5: 0, C6: 0, P7: 0, P8: 0, F9: 0 }
+      classEnrollments.forEach((e) => {
+        const eMarks = (data.marks || []).filter(
+          (m) => m.enrollment_id === e.id || (m.student_id && m.student_id === e.student_id)
+        )
+        const scoresForAgg: { subject_name: string; score: number }[] = []
+        let hasMarks = false
 
-      const clsOrderedSubjects = orderedSubjects.filter(sub => {
-        if (cls.class_name?.toLowerCase().includes('top') && sub.subject_name.toLowerCase().includes('writing')) {
-          return false
-        }
-        return true
-      })
-
-      classEnrollments.forEach(e => {
-        const eMarks = data.marks.filter(m => m.enrollment_id === e.id)
-
-        const subjectScoresForAgg = clsOrderedSubjects.map(sub => {
-          const mark = eMarks.find(m => m.subject_id === sub.id)
-          const scoreKey = `${examPhase}_score` as 'bot_score' | 'mot_score' | 'eot_score'
-          const score = mark?.[scoreKey]
-          return { subject_name: sub.subject_name, score: score }
-        }).filter(s => s.score != null) as { subject_name: string; score: number }[]
-
-        if (subjectScoresForAgg.length > 0) {
-          numStudents++
-          let totalScore = 0
-
-          subjectScoresForAgg.forEach(s => {
-            totalScore += s.score
-            if (isNurseryLevel) {
-              const nGrade = getNurseryGrade(s.score).grade
-              if (gradeCounts[nGrade] !== undefined) {
-                gradeCounts[nGrade]++
-              }
-            } else {
-              const gradeNum = getSubjectGradeNumber(s.score)
-              if (gradeNum === 1) gradeCounts.D1++
-              else if (gradeNum === 2) gradeCounts.D2++
-              else if (gradeNum === 3) gradeCounts.C3++
-              else if (gradeNum === 4) gradeCounts.C4++
-              else if (gradeNum === 5) gradeCounts.C5++
-              else if (gradeNum === 6) gradeCounts.C6++
-              else if (gradeNum === 7) gradeCounts.P7++
-              else if (gradeNum === 8) gradeCounts.P8++
-              else if (gradeNum === 9) gradeCounts.F9++
-            }
-          })
-
-          const avgScore = totalScore / subjectScoresForAgg.length
-          totalAvgMarks += avgScore
-          if (avgScore > highestAvg) highestAvg = avgScore
-          if (avgScore < lowestAvg) lowestAvg = avgScore
-
-          const aggregate = calculateAggregate(subjectScoresForAgg, activeLevel)
-          if (aggregate !== null) {
-            const div = getDivision(aggregate)
-            divCounts[div] = (divCounts[div] || 0) + 1
-          } else {
-            divCounts['X'] = (divCounts['X'] || 0) + 1
+        levelSubjects.forEach((sub) => {
+          const mark = eMarks.find((m) => m.subject_id === sub.id)
+          const score = mark?.[`${examPhase}_score`] ?? null
+          if (score != null && !isNaN(Number(score))) {
+            hasMarks = true
+            scoresForAgg.push({ subject_name: sub.subject_name, score: Number(score) })
           }
+        })
+
+        if (hasMarks) {
+          numStudents++
+          const agg = calculateAggregate(scoresForAgg, section)
+          const div = agg !== null ? getDivision(agg) : 'U'
+          if (div === 'I') divI++
+          else if (div === 'II') divII++
+          else if (div === 'III') divIII++
+          else if (div === 'IV') divIV++
+          else divU++
         }
       })
 
-      if (lowestAvg === 100 && numStudents === 0) lowestAvg = 0
+      const passed = divI + divII + divIII + divIV
+      const passRate = numStudents > 0 ? Math.round((passed / numStudents) * 100) : 0
 
       return {
         id: cls.id,
         className: cls.class_name,
+        section: cls.section,
         numStudents,
-        highestAvg: highestAvg.toFixed(1),
-        lowestAvg: lowestAvg.toFixed(1),
-        classAvg: numStudents > 0 ? (totalAvgMarks / numStudents).toFixed(1) : 0,
-        divCounts,
-        gradeCounts
+        totalEnrolled: classEnrollments.length,
+        divI,
+        divII,
+        divIII,
+        divIV,
+        divU,
+        passRate,
       }
     })
-  }, [data, activeLevel, circularClasses, examPhase])
+  }, [data, activeClass, circularClasses, examPhase])
 
-  const topStudentsData = useMemo(() => {
-    if (!data || !activeLevel) return []
-    const classes = circularClasses.filter(c => c.section === activeLevel)
-    const levelSubjects = data.subjects.filter(s => s.section === activeLevel)
+  // ----------------------------------------------------
+  // Top 10 Merit Roll Calculation
+  // ----------------------------------------------------
+  const top10Data = useMemo(() => {
+    const valid = assessmentData.students.filter(
+      (st) => typeof st.total === 'number' && st.total > 0 && st.position !== '-'
+    )
+    return valid.slice(0, 10)
+  }, [assessmentData.students])
 
-    const orderedSubjects = [...levelSubjects].sort((a, b) => a.subject_name.localeCompare(b.subject_name))
-
-    return classes.map(cls => {
-      const clsOrderedSubjects = orderedSubjects.filter(sub => {
-        if (cls.class_name?.toLowerCase().includes('top') && sub.subject_name.toLowerCase().includes('writing')) {
-          return false
-        }
-        return true
-      })
-
-      const classEnrollments = data.enrollments.filter(e => e.circular_class_id === cls.id)
-      const students = classEnrollments.map(e => {
-        const eMarks = data.marks.filter(m => m.enrollment_id === e.id)
-        let total = 0
-        const subjectScores: Record<string, number> = {}
-        clsOrderedSubjects.forEach(sub => {
-          const mark = eMarks.find(m => m.subject_id === sub.id)
-          const scoreKey = `${examPhase}_score` as 'bot_score' | 'mot_score' | 'eot_score'
-          const score = mark?.[scoreKey]
-          if (score != null) {
-            if (activeLevel === 'nursery') {
-              if (isGradableSubject(sub.subject_name, 'nursery')) {
-                total += score
-              }
-            } else {
-              total += score
-            }
-            subjectScores[sub.id] = score
-          }
-        })
-        return {
-          id: e.id,
-          className: cls.class_name,
-          name: e.students?.name || 'Unknown Student',
-          total: total > 0 ? total : null,
-          subjectScores,
-          rank: 0 as number | string
-        }
-      })
-
-      const ranked = computeStandardRankings(students)
-      const topStudents = ranked
-        .filter(s => typeof s.rank === 'number')
-        .slice(0, 10)
-        .map(s => ({
-          id: s.id,
-          className: cls.class_name,
-          studentName: s.name,
-          total: s.total ?? 0,
-          avg: s.total ? parseFloat((s.total / Object.keys(s.subjectScores).length).toFixed(1)) : 0,
-          rank: s.rank as number
-        }))
-
-      return {
-        classId: cls.id,
-        className: cls.class_name,
-        students: topStudents
-      }
-    }).filter(group => group.students.length > 0)
-  }, [data, activeLevel, circularClasses, examPhase])
-
-  const handlePrint = () => {
-    if (isLoading || !data) {
-      toast.error('Assessment data is still loading.')
-      return
+  // ----------------------------------------------------
+  // Actions: Print & Export
+  // ----------------------------------------------------
+  const handlePrintBroadsheet = () => {
+    if (!assessmentData.students.length) {
+      return toast.error('No student assessment data to print.')
     }
-
-    if (
-      (activeTab === 'assessment' && !assessmentData.students.length) ||
-      (activeTab === 'analysis' && !analysisData.length) ||
-      (activeTab === 'top_students' && !topStudentsData.length)
-    ) {
-      toast.error('There is no data to print for this view.')
-      return
-    }
-
-    const originalTitle = document.title
-    document.title = `Secular_Hub_${activeLevel}_${activeTab}_${new Date().toISOString().split('T')[0]}`.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_')
-    window.print()
-    document.title = originalTitle
-  }
-
-  const handleBatchPrint = () => {
-    if (isLoading || !data || !circularClasses.some(cls => computeAssessmentDataForClass(cls.id).students.length > 0)) {
-      toast.error('There is no assessment data to print.')
-      return
-    }
-
-    setActiveTab('assessment')
-    setIsBatchPrinting(true)
+    setIsPrinting(true)
     setTimeout(() => {
-      const originalTitle = document.title
-      document.title = `Secular_Hub_${activeLevel}_Batch_${new Date().toISOString().split('T')[0]}`.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_')
       window.print()
-      document.title = originalTitle
-      setIsBatchPrinting(false)
-    }, 1000)
+      setIsPrinting(false)
+    }, 400)
   }
 
-  const handleShare = async () => {
-    try {
-      await navigator.clipboard.writeText(window.location.href)
-      toast.success("Link copied to clipboard!")
-    } catch {
-      toast.error("Failed to copy link.")
+  const handleExportCSV = () => {
+    if (!assessmentData.students.length) {
+      return toast.error('No assessment data to export.')
     }
-  }
+    const termLabel = activeTerm ? activeTerm.label.replace(/\s+/g, '_') : 'Term'
+    const classLabel = activeClass ? activeClass.class_name.replace(/\s+/g, '_') : 'Class'
+    const filename = `Jiddah_Secular_Broadsheet_${classLabel}_${termLabel}_${examPhase.toUpperCase()}_2026.csv`
 
-  const handleDownload = () => {
-    setIsDownloading(true)
-    const dateStr = new Date().toISOString().split('T')[0]
-    const filename = `secularhub-${activeTab}-${dateStr}.csv`
+    const headers = [
+      'Rank',
+      'Admission No',
+      'Student Full Name',
+      'Gender',
+      ...assessmentData.orderedSubjects.map((s) => `${s.subject_name} (Mark)`),
+      ...assessmentData.orderedSubjects.map((s) => `${s.subject_name} (Grade)`),
+      'Total Score',
+      'Aggregate',
+      'Division',
+    ]
 
-    setTimeout(() => {
-      try {
-        if (activeTab === 'assessment') {
-          if (!assessmentData.students?.length) return toast.error("No assessment data to download.")
-          generateSecularAssessmentCSV(assessmentData.students as any, assessmentData.orderedSubjects, filename, circularClasses.find(c => c.id === activeClassId)?.section === 'nursery')
-        } else if (activeTab === 'analysis') {
-          if (!analysisData.length) return toast.error("No analysis data to download.")
-          generateSecularAnalysisCSV(analysisData as any, filename, activeLevel === 'nursery')
-        } else if (activeTab === 'top_students') {
-          if (!topStudentsData.length) return toast.error("No top students data to download.")
-          generateSecularTopStudentsCSV(topStudentsData.flatMap(g => g.students), filename)
-        }
-        toast.success("Download generated successfully!")
-      } catch {
-        toast.error("Failed to generate CSV.")
-      } finally {
-        setIsDownloading(false)
-      }
-    }, 50)
+    const rows = assessmentData.students.map((st) => [
+      st.position,
+      st.admission_number || '-',
+      st.name,
+      st.gender || '-',
+      ...assessmentData.orderedSubjects.map((s) => st.subjectScores[s.id] ?? '-'),
+      ...assessmentData.orderedSubjects.map((s) => st.subjectGrades[s.id] ?? '-'),
+      st.total || '-',
+      st.aggregate ?? '-',
+      st.division || '-',
+    ])
+
+    if (broadsheetSummary) {
+      rows.push([])
+      rows.push([
+        'SUMMARY',
+        '',
+        'CLASS AVERAGE',
+        '',
+        ...assessmentData.orderedSubjects.map((s) => broadsheetSummary.subjectStats[s.id]?.avg ?? '-'),
+        ...assessmentData.orderedSubjects.map(() => ''),
+        broadsheetSummary.classAverageTotal,
+        '',
+        '',
+      ])
+      rows.push([
+        'SUMMARY',
+        '',
+        'PASS RATE (%)',
+        '',
+        ...assessmentData.orderedSubjects.map((s) => `${broadsheetSummary.subjectStats[s.id]?.passRate ?? 0}%`),
+        ...assessmentData.orderedSubjects.map(() => ''),
+        '',
+        '',
+        '',
+      ])
+    }
+
+    const csvContent = [
+      `"JIDDAH ISLAMIC NURSERY & PRIMARY SCHOOL — SECULAR ACADEMIC BROADSHEET"`,
+      `"Class: ${activeClass?.class_name || ''} | Section: ${activeClass?.section || ''} | Term: ${activeTerm?.label || ''} | Phase: ${examPhase.toUpperCase()} | Generated: ${new Date().toLocaleDateString()}"`,
+      '',
+      headers.map(escapeCSV).join(','),
+      ...rows.map((row) => row.map(escapeCSV).join(',')),
+    ].join('\n')
+
+    downloadCSV(csvContent, filename)
+    toast.success('Secular Broadsheet exported cleanly to CSV!')
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#F8FAFC] print:bg-white text-stone-900 font-sans tabular-nums">
-      <div className="print:hidden relative z-20 shrink-0">
-        <TopToolbar
-          printOptions={[
-            { label: 'Print Current View', onClick: handlePrint, icon: <Printer size={14} /> },
-            { label: 'Batch Print All Classes', onClick: handleBatchPrint, icon: <Layers size={14} /> }
-          ]}
-          downloadOptions={[
-            { label: 'Download Current View (CSV)', onClick: handleDownload, icon: <Download size={14} /> },
-            { label: 'Download Assessment Sheet (CSV)', onClick: () => {
-                const dateStr = new Date().toISOString().split('T')[0]
-                if (!assessmentData.students?.length) return toast.error("No assessment data to download.")
-                generateSecularAssessmentCSV(assessmentData.students as any, assessmentData.orderedSubjects, `secularhub-assessment-${dateStr}.csv`, circularClasses.find(c => c.id === activeClassId)?.section === 'nursery')
-                toast.success("Assessment CSV generated successfully!")
-            }, icon: <FileSpreadsheet size={14} /> },
-            { label: 'Download Subject Analysis (CSV)', onClick: () => {
-                const dateStr = new Date().toISOString().split('T')[0]
-                if (!analysisData.length) return toast.error("No analysis data to download.")
-                generateSecularAnalysisCSV(analysisData as any, `secularhub-analysis-${dateStr}.csv`, activeLevel === 'nursery')
-                toast.success("Analysis CSV generated successfully!")
-            }, icon: <FileSpreadsheet size={14} /> },
-            { label: 'Download Top Students (CSV)', onClick: () => {
-                const dateStr = new Date().toISOString().split('T')[0]
-                if (!topStudentsData.length) return toast.error("No top students data to download.")
-                generateSecularTopStudentsCSV(topStudentsData.flatMap(g => g.students), `secularhub-top_students-${dateStr}.csv`)
-                toast.success("Top Students CSV generated successfully!")
-            }, icon: <FileSpreadsheet size={14} /> },
-          ]}
-          onShare={handleShare}
-          isGenerating={isDownloading}
-          searchOpen={filtersOpen}
-          onSearchToggle={() => setFiltersOpen(!filtersOpen)}
-          title={
-            <div className="flex items-center gap-2 text-stone-900 dark:text-white">
-              <div className="p-1.5 bg-[#0D5C3A]/10 dark:bg-[#10B981]/20 rounded-lg text-[#0D5C3A] dark:text-[#34D399]">
-                <LayoutDashboard size={16} />
+    <div className="flex flex-col min-h-[100dvh] bg-[#F8F9FA] dark:bg-[#0D1411] text-stone-900 dark:text-stone-100 font-sans tabular-nums selection:bg-[#0D5C3A] selection:text-white">
+      {/* ======================================================== */}
+      {/* 1. COMMANDING FOREST EMERALD + WARM MARIGOLD HEADER BANNER */}
+      {/* ======================================================== */}
+      <div className="print:hidden p-3 sm:p-5 max-w-7xl mx-auto w-full shrink-0">
+        <div
+          data-testid="secular-hub-banner"
+          className="rounded-2xl p-3 sm:p-4 bg-[linear-gradient(135deg_in_oklch,oklch(0.38_0.12_155)_0%,oklch(0.28_0.09_160)_100%)] text-white shadow-xl border border-white/10"
+        >
+          {/* Top Title & Quick Actions Row */}
+          <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-white/10">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#0D5C3A]/10 backdrop-blur-md flex items-center justify-center text-emerald-300 border border-white/15 shadow-inner">
+                <LayoutDashboard className="w-5 h-5" strokeWidth={2.25} />
               </div>
-              <h1 className="text-sm sm:text-[15px] font-bold tracking-tight">Secular Hub</h1>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-base sm:text-lg font-black tracking-tight text-white">
+                    Secular Academic Hub
+                  </h1>
+                  <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#EA580C]/30 text-[#FED7AA] border border-[#EA580C]/40">
+                    Uganda UNEB Standards
+                  </span>
+                </div>
+                <p className="text-[11px] font-medium text-emerald-200/80">
+                  Institutional Performance Broadsheets, Cohort Analytics &amp; Academic Merit Roll
+                </p>
+              </div>
             </div>
-          }
-        />
+
+            {/* Print & CSV Action Buttons */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handlePrintBroadsheet}
+                disabled={isLoading || !assessmentData.students.length}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[10px] text-xs font-bold bg-white/15 hover:bg-white/25 active:scale-95 text-white border border-white/20 transition-all duration-150 backdrop-blur-md shadow-xs disabled:opacity-50"
+              >
+                <Printer className="w-4 h-4 text-emerald-300" strokeWidth={2.25} />
+                <span>Print Broadsheet</span>
+              </button>
+
+              <button
+                onClick={handleExportCSV}
+                disabled={isLoading || !assessmentData.students.length}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[10px] text-xs font-bold bg-[linear-gradient(135deg_in_oklch,oklch(0.68_0.19_48),oklch(0.60_0.17_44))] hover:brightness-110 active:scale-95 text-white border border-amber-300/30 transition-all duration-150 shadow-md disabled:opacity-50"
+              >
+                <FileSpreadsheet className="w-4 h-4 text-amber-100" strokeWidth={2.25} />
+                <span>Export CSV</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Controls Bar Row: Concentric Radius + OKLCH Hierarchy */}
+          <div className="pt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 items-center">
+            {/* Academic Term */}
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-emerald-200/90 mb-1">
+                Academic Term
+              </label>
+              <CustomPillSelect
+                id="secular-hub-term-select"
+                ariaLabel="Academic Term"
+                value={activeTermId}
+                onChange={(val) => setActiveTermId(val)}
+                options={termOptions}
+                className="w-full h-10 rounded-[10px] bg-black/20 hover:bg-black/30 text-white border border-white/15 text-xs font-semibold"
+              />
+            </div>
+
+            {/* Class Cohort */}
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-emerald-200/90 mb-1">
+                Class Cohort
+              </label>
+              <CustomPillSelect
+                id="secular-hub-class-select"
+                ariaLabel="Class Cohort"
+                value={activeClassId}
+                onChange={(val) => setActiveClassId(val)}
+                options={classOptions}
+                placeholder="Select Class..."
+                className="w-full h-10 rounded-[10px] bg-black/20 hover:bg-black/30 text-white border border-white/15 text-xs font-semibold"
+              />
+            </div>
+
+            {/* Dashboard View Mode Toggle */}
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-emerald-200/90 mb-1">
+                View Mode
+              </label>
+              <div className="h-10 rounded-xl p-1 bg-black/25 backdrop-blur-md border border-white/15 flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('assessment')}
+                  className={`flex-1 h-full rounded-[8px] flex items-center justify-center gap-1 text-xs font-bold transition-all duration-200 ${
+                    activeTab === 'assessment'
+                      ? 'bg-[linear-gradient(135deg_in_oklch,oklch(0.68_0.19_48),oklch(0.60_0.17_44))] text-white shadow-xs'
+                      : 'text-white/80 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  <ScrollText className="w-3.5 h-3.5" strokeWidth={2.25} />
+                  <span>Sheet</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('analysis')}
+                  className={`flex-1 h-full rounded-[8px] flex items-center justify-center gap-1 text-xs font-bold transition-all duration-200 ${
+                    activeTab === 'analysis'
+                      ? 'bg-[linear-gradient(135deg_in_oklch,oklch(0.68_0.19_48),oklch(0.60_0.17_44))] text-white shadow-xs'
+                      : 'text-white/80 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  <BarChart3 className="w-3.5 h-3.5" strokeWidth={2.25} />
+                  <span>Analysis</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('top_students')}
+                  className={`flex-1 h-full rounded-[8px] flex items-center justify-center gap-1 text-xs font-bold transition-all duration-200 ${
+                    activeTab === 'top_students'
+                      ? 'bg-[linear-gradient(135deg_in_oklch,oklch(0.68_0.19_48),oklch(0.60_0.17_44))] text-white shadow-xs'
+                      : 'text-white/80 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  <Award className="w-3.5 h-3.5" strokeWidth={2.25} />
+                  <span>Top 10</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Exam Phase Toggle */}
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-emerald-200/90 mb-1">
+                Exam Phase
+              </label>
+              <div className="h-10 rounded-xl p-1 bg-black/25 backdrop-blur-md border border-white/15 flex items-center gap-1">
+                {(['bot', 'mot', 'eot'] as const).map((phase) => (
+                  <button
+                    key={phase}
+                    type="button"
+                    onClick={() => setExamPhase(phase)}
+                    className={`flex-1 h-full rounded-[8px] flex items-center justify-center text-xs font-bold uppercase transition-all duration-200 ${
+                      examPhase === phase
+                        ? phase === 'eot'
+                          ? 'bg-emerald-500/90 text-white shadow-xs'
+                          : 'bg-white/25 text-white shadow-xs'
+                        : 'text-white/70 hover:text-white hover:bg-white/10'
+                    }`}
+                  >
+                    {phase}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Control Panel (Filters) */}
-      <AnimatePresence>
-        {filtersOpen && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden bg-white dark:bg-[#1E1F20] border-b border-black/[0.08] dark:border-white/[0.08] shadow-xs print:hidden shrink-0"
-          >
-            <div className="px-3 sm:px-5 py-3 max-w-7xl mx-auto">
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 items-end">
-                {/* Term Selector */}
-                <div>
-                  <label className="block text-[10px] font-bold text-stone-500 dark:text-[#A8ABA9] uppercase tracking-wider mb-1">Academic Term</label>
-                  <CustomPillSelect
-                    id="secular-hub-term-select"
-                    ariaLabel="Academic Term"
-                    value={activeTermId}
-                    onChange={(val) => setActiveTermId(val)}
-                    options={termOptions}
-                    className="w-full h-10 rounded-xl"
-                  />
+      {/* ======================================================== */}
+      {/* 2. MAIN WORKSPACE AREA */}
+      {/* ======================================================== */}
+      <main className="flex-1 max-w-7xl mx-auto w-full px-3 sm:px-5 pb-8 flex flex-col min-w-0">
+        {isLoading ? (
+          <div className="flex-1 flex flex-col items-center justify-center py-24">
+            <JiddahLoader />
+            <p className="mt-4 text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
+              Loading Secular Broadsheet &amp; Calculating UNEB Aggregates...
+            </p>
+          </div>
+        ) : !data || !activeClassId ? (
+          <SecularHubEmptyState />
+        ) : (
+          <AnimatePresence mode="wait">
+            {/* VIEW 1: BROADSHEET TABLE */}
+            {activeTab === 'assessment' && (
+              <motion.div
+                key="sheet"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.2 }}
+                className="flex-1 flex flex-col gap-3 min-w-0"
+              >
+                {/* Search, Filter & Quick-Stats Strip */}
+                <div className="flex flex-wrap items-center justify-between gap-2.5 p-2 sm:p-3 rounded-xl bg-white dark:bg-[#151F1B] border border-[#0D5C3A]/12 dark:border-white/10 shadow-xs">
+                  <div className="flex items-center gap-2 flex-1 min-w-[240px]">
+                    <div className="relative flex-1">
+                      <Search
+                        className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2"
+                        strokeWidth={2.25}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Search student by name or admission #..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full pl-9 pr-3 py-1.5 rounded-lg text-xs bg-stone-50 dark:bg-black/20 border border-stone-200 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-[#0D5C3A]"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Division Filter Pills */}
+                  <div className="flex items-center gap-1 overflow-x-auto text-xs py-0.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 mr-1 shrink-0">
+                      Division:
+                    </span>
+                    {(['all', 'I', 'II', 'III', 'IV', 'U'] as const).map((div) => (
+                      <button
+                        key={div}
+                        onClick={() => setDivisionFilter(div)}
+                        className={`px-2 py-1 rounded-md text-[11px] font-bold transition-all ${
+                          divisionFilter === div
+                            ? 'bg-[#0D5C3A] text-white shadow-xs'
+                            : 'bg-stone-100 dark:bg-white/5 text-stone-600 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-white/10'
+                        }`}
+                      >
+                        {div === 'all' ? 'All' : `Div ${div}`}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Toggle: Grades vs Scores Only */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => setShowGrades(!showGrades)}
+                      className="px-2.5 py-1 rounded-lg text-xs font-bold border border-[#0D5C3A]/20 dark:border-white/10 bg-emerald-50/60 dark:bg-emerald-950/30 text-[#0D5C3A] dark:text-emerald-300 hover:bg-emerald-100/60 transition-colors"
+                    >
+                      {showGrades ? 'Hide Subject Grades' : 'Show Subject Grades'}
+                    </button>
+                  </div>
                 </div>
 
-                {/* Contextual Selectors */}
-                {activeTab === 'assessment' ? (
-                  <div>
-                    <label className="block text-[10px] font-bold text-stone-500 dark:text-[#A8ABA9] uppercase tracking-wider mb-1">Class Cohort</label>
-                    <CustomPillSelect
-                      id="secular-hub-class-select"
-                      ariaLabel="Class Cohort"
-                      value={activeClassId}
-                      onChange={(val) => setActiveClassId(val)}
-                      options={classOptions}
-                      placeholder="Select Class..."
-                      className="w-full h-10 rounded-xl"
-                    />
+                {/* Broadsheet Container with Concentric Radius & Masked Scroll Edges */}
+                <div className="rounded-2xl border border-[#0D5C3A]/15 dark:border-white/10 bg-white dark:bg-[#151F1B] shadow-xs overflow-hidden flex flex-col max-h-[calc(100dvh-230px)]">
+                  <div className="overflow-x-auto overflow-y-auto [mask-image:linear-gradient(to_right,transparent,black_16px,black_calc(100%-16px),transparent)]">
+                    <table className="w-full text-left border-collapse text-xs">
+                      {/* Table Header */}
+                      <thead className="sticky top-0 z-10 bg-stone-100/90 dark:bg-[#1A2621]/90 backdrop-blur-md text-stone-700 dark:text-stone-200 border-b border-stone-200 dark:border-white/10">
+                        <tr>
+                          <th className="sticky left-0 z-20 bg-stone-100 dark:bg-[#1A2621] py-2.5 px-3 font-extrabold text-[11px] uppercase tracking-wider text-center w-12 border-r border-stone-200 dark:border-white/10">
+                            #
+                          </th>
+                          <th className="sticky left-12 z-20 bg-stone-100 dark:bg-[#1A2621] py-2.5 px-3 font-extrabold text-[11px] uppercase tracking-wider min-w-[200px] border-r border-stone-200 dark:border-white/10">
+                            Student Name &amp; ID
+                          </th>
+                          {assessmentData.orderedSubjects.map((sub) => (
+                            <th
+                              key={sub.id}
+                              colSpan={showGrades ? 2 : 1}
+                              className="py-2.5 px-2 font-bold text-[11px] text-center border-r border-stone-200 dark:border-white/10 min-w-[90px]"
+                            >
+                              <div className="font-extrabold text-[#0D5C3A] dark:text-emerald-400">
+                                {sub.subject_name}
+                              </div>
+                              <div className="text-[9px] uppercase tracking-tight text-stone-400 dark:text-stone-500 font-sans">
+                                {examPhase.toUpperCase()} Mark
+                              </div>
+                            </th>
+                          ))}
+                          <th className="py-2.5 px-2.5 font-black text-[11px] text-center bg-stone-200/50 dark:bg-white/5 border-r border-stone-200 dark:border-white/10 min-w-[70px]">
+                            Total
+                          </th>
+                          <th className="py-2.5 px-2 font-black text-[11px] text-center bg-stone-200/50 dark:bg-white/5 border-r border-stone-200 dark:border-white/10 min-w-[60px]">
+                            Agg
+                          </th>
+                          <th className="py-2.5 px-2 font-black text-[11px] text-center bg-stone-200/50 dark:bg-white/5 border-r border-stone-200 dark:border-white/10 min-w-[60px]">
+                            Div
+                          </th>
+                          <th className="py-2.5 px-2.5 font-black text-[11px] text-center bg-amber-500/10 dark:bg-amber-400/10 text-amber-800 dark:text-amber-300 min-w-[55px]">
+                            Rank
+                          </th>
+                          <th className="py-2.5 px-2 text-center text-[10px] uppercase font-bold text-stone-400 min-w-[60px]">
+                            Report
+                          </th>
+                        </tr>
+                      </thead>
+
+                      {/* Table Body */}
+                      <tbody className="divide-y divide-stone-100 dark:divide-white/5">
+                        {filteredStudents.length === 0 ? (
+                          <tr>
+                            <td
+                              colSpan={assessmentData.orderedSubjects.length * (showGrades ? 2 : 1) + 6}
+                              className="text-center py-12 text-stone-400 font-medium text-xs"
+                            >
+                              No students found matching current filters.
+                            </td>
+                          </tr>
+                        ) : (
+                          filteredStudents.map((st, idx) => (
+                            <tr
+                              key={st.id}
+                              className="hover:bg-[#0D5C3A]/[0.03] dark:hover:bg-white/[0.02] transition-colors group cursor-pointer"
+                              onClick={() => {
+                                router.push(`/admin/reports?student_id=${st.student_id}&term_id=${activeTermId}&curriculum=secular`)
+                              }}
+                            >
+                              {/* Sticky Index */}
+                              <td className="sticky left-0 z-10 bg-white dark:bg-[#151F1B] group-hover:bg-stone-50 dark:group-hover:bg-[#1A2621] py-2 px-3 text-center font-bold text-stone-400 text-xs border-r border-stone-100 dark:border-white/5">
+                                {idx + 1}
+                              </td>
+
+                              {/* Sticky Student Name & ID */}
+                              <td className="sticky left-12 z-10 bg-white dark:bg-[#151F1B] group-hover:bg-stone-50 dark:group-hover:bg-[#1A2621] py-2 px-3 border-r border-stone-100 dark:border-white/5 min-w-[200px]">
+                                <div className="font-bold text-stone-900 dark:text-stone-100 text-xs">
+                                  {st.name}
+                                </div>
+                                <div className="text-[10px] text-stone-400 font-mono">
+                                  {st.admission_number || 'No ID'}
+                                </div>
+                              </td>
+
+                              {/* Subject Columns */}
+                              {assessmentData.orderedSubjects.map((sub) => {
+                                const score = st.subjectScores[sub.id]
+                                return (
+                                  <React.Fragment key={sub.id}>
+                                    <td className="py-2 px-2 text-center font-mono font-bold text-xs text-stone-800 dark:text-stone-200 border-r border-stone-100 dark:border-white/5">
+                                      {score != null ? score : '-'}
+                                    </td>
+                                    {showGrades && (
+                                      <td className="py-2 px-1 text-center border-r border-stone-100 dark:border-white/5">
+                                        <SecularGradeBadge mark={score} grade={st.subjectGrades[sub.id]} />
+                                      </td>
+                                    )}
+                                  </React.Fragment>
+                                )
+                              })}
+
+                              {/* Total */}
+                              <td className="py-2 px-2.5 text-center font-mono font-black text-xs text-stone-900 dark:text-white bg-stone-50/50 dark:bg-white/[0.02] border-r border-stone-100 dark:border-white/5">
+                                {st.total ? st.total : '-'}
+                              </td>
+
+                              {/* Aggregate */}
+                              <td className="py-2 px-2 text-center font-mono font-extrabold text-xs text-[#0D5C3A] dark:text-emerald-400 bg-stone-50/50 dark:bg-white/[0.02] border-r border-stone-100 dark:border-white/5">
+                                {st.aggregate ?? '-'}
+                              </td>
+
+                              {/* Division */}
+                              <td className="py-2 px-2 text-center font-bold text-xs border-r border-stone-100 dark:border-white/5">
+                                <span
+                                  className={`inline-flex items-center justify-center w-6 h-6 rounded-md text-xs font-black ${
+                                    st.division === 'I'
+                                      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                                      : st.division === 'II'
+                                      ? 'bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300'
+                                      : st.division === 'III'
+                                      ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                                      : st.division === 'IV'
+                                      ? 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300'
+                                      : 'bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-400'
+                                  }`}
+                                >
+                                  {st.division}
+                                </span>
+                              </td>
+
+                              {/* Rank */}
+                              <td className="py-2 px-2.5 text-center font-mono font-black text-xs text-amber-800 dark:text-amber-400 bg-amber-50/30 dark:bg-amber-400/[0.03]">
+                                {st.position}
+                              </td>
+
+                              {/* Jump to Report Card */}
+                              <td className="py-2 px-2 text-center">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    router.push(
+                                      `/admin/reports?student_id=${st.student_id}&term_id=${activeTermId}&curriculum=secular`
+                                    )
+                                  }}
+                                  className="p-1 rounded-md text-stone-400 hover:text-[#0D5C3A] hover:bg-emerald-50 dark:hover:bg-emerald-950/50 transition-colors"
+                                  title="View Report Card"
+                                >
+                                  <ExternalLink className="w-3.5 h-3.5" strokeWidth={2.25} />
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+
+                      {/* Pinned Summary Statistics Footer */}
+                      {broadsheetSummary && (
+                        <tfoot className="sticky bottom-0 z-10 bg-stone-100 dark:bg-[#1A2621] font-bold text-stone-800 dark:text-stone-200 border-t-2 border-[#0D5C3A]/30">
+                          {/* Row 1: Class Averages */}
+                          <tr>
+                            <td
+                              colSpan={2}
+                              className="sticky left-0 z-20 bg-stone-100 dark:bg-[#1A2621] py-2 px-3 text-right text-[11px] uppercase tracking-wider font-extrabold text-[#0D5C3A] dark:text-emerald-400 border-r border-stone-200 dark:border-white/10"
+                            >
+                              Class Average
+                            </td>
+                            {assessmentData.orderedSubjects.map((sub) => {
+                              const stat = broadsheetSummary.subjectStats[sub.id]
+                              return (
+                                <React.Fragment key={sub.id}>
+                                  <td className="py-2 px-2 text-center font-mono font-extrabold text-xs border-r border-stone-200 dark:border-white/10">
+                                    {stat ? stat.avg : '-'}
+                                  </td>
+                                  {showGrades && (
+                                    <td className="py-2 px-1 text-center border-r border-stone-200 dark:border-white/10">
+                                      <SecularGradeBadge mark={stat?.avg} />
+                                    </td>
+                                  )}
+                                </React.Fragment>
+                              )
+                            })}
+                            <td className="py-2 px-2.5 text-center font-mono font-black text-xs text-[#0D5C3A] dark:text-emerald-400 border-r border-stone-200 dark:border-white/10">
+                              {broadsheetSummary.classAverageTotal}
+                            </td>
+                            <td colSpan={3} className="py-2 px-2 text-center text-[10px] text-stone-400">
+                              Mean: {broadsheetSummary.classAverageTotal}
+                            </td>
+                          </tr>
+
+                          {/* Row 2: Pass Rate */}
+                          <tr className="text-stone-600 dark:text-stone-400 text-[10px]">
+                            <td
+                              colSpan={2}
+                              className="sticky left-0 z-20 bg-stone-100 dark:bg-[#1A2621] py-1.5 px-3 text-right uppercase tracking-wider font-bold border-r border-stone-200 dark:border-white/10"
+                            >
+                              Pass Rate (≥50%)
+                            </td>
+                            {assessmentData.orderedSubjects.map((sub) => {
+                              const stat = broadsheetSummary.subjectStats[sub.id]
+                              return (
+                                <React.Fragment key={sub.id}>
+                                  <td
+                                    colSpan={showGrades ? 2 : 1}
+                                    className="py-1.5 px-1 text-center font-mono font-bold text-[10px] border-r border-stone-200 dark:border-white/10 text-emerald-700 dark:text-emerald-400"
+                                  >
+                                    {stat ? `${stat.passRate}%` : '-'}
+                                  </td>
+                                </React.Fragment>
+                              )
+                            })}
+                            <td
+                              colSpan={4}
+                              className="py-1.5 px-2 text-center text-[10px] text-stone-500"
+                            >
+                              Candidates Sat: {broadsheetSummary.satCandidates} / {broadsheetSummary.totalCandidates}
+                            </td>
+                          </tr>
+                        </tfoot>
+                      )}
+                    </table>
                   </div>
-                ) : (
-                  <div>
-                    <label className="block text-[10px] font-bold text-stone-500 dark:text-[#A8ABA9] uppercase tracking-wider mb-1">Academic Level</label>
-                    <CustomPillSelect
-                      id="secular-hub-level-select"
-                      ariaLabel="Academic Level"
-                      value={activeLevel}
-                      onChange={(val) => setActiveLevel(val)}
-                      options={levelOptions}
-                      className="w-full h-10 rounded-xl"
-                    />
+                </div>
+              </motion.div>
+            )}
+
+            {/* VIEW 2: COHORT ANALYTICS */}
+            {activeTab === 'analysis' && (
+              <motion.div
+                key="analysis"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.2 }}
+                className="flex-1 flex flex-col gap-5 min-w-0"
+              >
+                {/* 4 Executive KPI Cards */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                  <div className="rounded-2xl p-4 bg-white dark:bg-[#151F1B] border border-[#0D5C3A]/12 dark:border-white/10 shadow-xs flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] font-extrabold uppercase tracking-wider text-stone-400">Total Enrolled</p>
+                      <h3 className="text-2xl font-black text-stone-900 dark:text-white mt-1">
+                        {broadsheetSummary ? broadsheetSummary.totalCandidates : 0}
+                      </h3>
+                      <p className="text-[10px] text-stone-500 mt-0.5">{activeClass?.section || 'Secular'} Section</p>
+                    </div>
+                    <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center text-[#0D5C3A] dark:text-emerald-400">
+                      <Users className="w-5 h-5" strokeWidth={2.25} />
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl p-4 bg-white dark:bg-[#151F1B] border border-[#0D5C3A]/12 dark:border-white/10 shadow-xs flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] font-extrabold uppercase tracking-wider text-stone-400">Class Mean Total</p>
+                      <h3 className="text-2xl font-black text-stone-900 dark:text-white mt-1">
+                        {broadsheetSummary ? broadsheetSummary.classAverageTotal : 0}
+                      </h3>
+                      <p className="text-[10px] text-stone-500 mt-0.5">High: {broadsheetSummary?.highestTotal || 0}</p>
+                    </div>
+                    <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/50 flex items-center justify-center text-amber-600 dark:text-amber-400">
+                      <TrendingUp className="w-5 h-5" strokeWidth={2.25} />
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl p-4 bg-white dark:bg-[#151F1B] border border-[#0D5C3A]/12 dark:border-white/10 shadow-xs flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] font-extrabold uppercase tracking-wider text-stone-400">Div I &amp; II Distinction</p>
+                      <h3 className="text-2xl font-black text-[#0D5C3A] dark:text-emerald-400 mt-1">
+                        {(broadsheetSummary?.divCounts.I || 0) + (broadsheetSummary?.divCounts.II || 0)}
+                      </h3>
+                      <p className="text-[10px] text-stone-500 mt-0.5">
+                        {broadsheetSummary && broadsheetSummary.totalCandidates > 0
+                          ? Math.round(
+                              (((broadsheetSummary.divCounts.I || 0) + (broadsheetSummary.divCounts.II || 0)) /
+                                broadsheetSummary.totalCandidates) *
+                                100
+                            )
+                          : 0}
+                        % of class
+                      </p>
+                    </div>
+                    <div className="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-950/50 flex items-center justify-center text-teal-600 dark:text-teal-400">
+                      <Percent className="w-5 h-5" strokeWidth={2.25} />
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl p-4 bg-white dark:bg-[#151F1B] border border-[#0D5C3A]/12 dark:border-white/10 shadow-xs flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] font-extrabold uppercase tracking-wider text-stone-400">Exam Phase</p>
+                      <h3 className="text-2xl font-black text-amber-600 dark:text-amber-400 mt-1">
+                        {examPhase.toUpperCase()}
+                      </h3>
+                      <p className="text-[10px] text-stone-500 mt-0.5">{activeClass?.class_name || 'Class'}</p>
+                    </div>
+                    <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950/50 flex items-center justify-center text-rose-600 dark:text-rose-400">
+                      <Sparkles className="w-5 h-5" strokeWidth={2.25} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Subject Performance Matrix Table */}
+                <div className="rounded-2xl border border-[#0D5C3A]/12 dark:border-white/10 bg-white dark:bg-[#151F1B] shadow-xs p-5">
+                  <h3 className="text-sm font-extrabold text-stone-900 dark:text-white uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4 text-[#0D5C3A]" strokeWidth={2.25} />
+                    <span>Secular Subject Performance Breakdown</span>
+                  </h3>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="border-b border-stone-200 dark:border-white/10 text-stone-400 text-[10px] font-extrabold uppercase tracking-wider">
+                          <th className="py-2 px-3">Subject Name</th>
+                          <th className="py-2 px-3 text-center">Mean Score</th>
+                          <th className="py-2 px-3 text-center">Highest Mark</th>
+                          <th className="py-2 px-3 text-center">Lowest Mark</th>
+                          <th className="py-2 px-3 text-center">Pass Rate (≥50%)</th>
+                          <th className="py-2 px-3 min-w-[140px]">Performance Bar</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-stone-100 dark:divide-white/5 font-medium">
+                        {assessmentData.orderedSubjects.map((sub) => {
+                          const stat = broadsheetSummary?.subjectStats[sub.id]
+                          const avg = stat?.avg || 0
+                          const passRate = stat?.passRate || 0
+                          return (
+                            <tr key={sub.id} className="hover:bg-stone-50 dark:hover:bg-white/[0.02]">
+                              <td className="py-3 px-3">
+                                <div className="font-extrabold text-stone-900 dark:text-stone-100 text-sm">
+                                  {sub.subject_name}
+                                </div>
+                                <div className="text-[10px] text-stone-400">{sub.section || activeClass?.section}</div>
+                              </td>
+                              <td className="py-3 px-3 text-center font-mono font-bold text-xs">{avg}</td>
+                              <td className="py-3 px-3 text-center font-mono font-bold text-xs text-emerald-600">
+                                {stat?.highest || 0}
+                              </td>
+                              <td className="py-3 px-3 text-center font-mono font-bold text-xs text-rose-600">
+                                {stat?.lowest || 0}
+                              </td>
+                              <td className="py-3 px-3 text-center font-bold text-xs">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                  {passRate}%
+                                </span>
+                              </td>
+                              <td className="py-3 px-3">
+                                <div className="w-full h-2 rounded-full bg-stone-100 dark:bg-white/10 overflow-hidden">
+                                  <div
+                                    className="h-full bg-[linear-gradient(90deg_in_oklch,oklch(0.68_0.19_48),oklch(0.42_0.11_158))] rounded-full transition-all duration-500"
+                                    style={{ width: `${passRate}%` }}
+                                  />
+                                </div>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Division Distribution Breakdown */}
+                {broadsheetSummary && !isNursery && (
+                  <div className="rounded-2xl border border-[#0D5C3A]/12 dark:border-white/10 bg-white dark:bg-[#151F1B] shadow-xs p-5">
+                    <h3 className="text-sm font-extrabold text-stone-900 dark:text-white uppercase tracking-wider mb-3">
+                      UNEB Division Classification Cohort
+                    </h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-2">
+                      {(['I', 'II', 'III', 'IV', 'U'] as const).map((div) => {
+                        const count = broadsheetSummary.divCounts[div] || 0
+                        const pct =
+                          broadsheetSummary.totalCandidates > 0
+                            ? Math.round((count / broadsheetSummary.totalCandidates) * 100)
+                            : 0
+                        return (
+                          <div
+                            key={div}
+                            className="p-3 rounded-xl border border-stone-200/80 dark:border-white/10 bg-stone-50/50 dark:bg-white/[0.02] text-center"
+                          >
+                            <span className="text-[10px] font-black uppercase tracking-wider text-stone-400">
+                              Division {div}
+                            </span>
+                            <div className="text-xl font-black text-stone-900 dark:text-white mt-1">{count}</div>
+                            <div className="text-[10px] font-bold text-[#0D5C3A] dark:text-emerald-400">{pct}%</div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+              </motion.div>
+            )}
+
+            {/* VIEW 3: TOP 10 MERIT ROLL */}
+            {activeTab === 'top_students' && (
+              <motion.div
+                key="top"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.2 }}
+                className="flex-1 flex flex-col gap-5 min-w-0"
+              >
+                {/* Podium Cards for Top 3 */}
+                {top10Data.length >= 3 && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end pt-4">
+                    {/* 2nd Place Silver */}
+                    <div className="rounded-2xl p-4 bg-white dark:bg-[#151F1B] border border-slate-300/60 dark:border-white/10 shadow-md text-center flex flex-col items-center order-2 md:order-1">
+                      <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 flex items-center justify-center shadow-inner mb-2">
+                        <Medal className="w-6 h-6" strokeWidth={2.25} />
+                      </div>
+                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">2nd Place</span>
+                      <h4 className="font-bold text-stone-900 dark:text-white text-sm mt-1">{top10Data[1].name}</h4>
+                      <p className="text-xs text-stone-400 font-mono mt-0.5">{top10Data[1].admission_number || 'ID'}</p>
+                      <div className="mt-2 text-xs font-mono font-black text-slate-700 dark:text-slate-300">
+                        {top10Data[1].total} pts • Div {top10Data[1].division}
+                      </div>
+                    </div>
+
+                    {/* 1st Place Gold */}
+                    <div className="rounded-2xl p-5 bg-[linear-gradient(135deg_in_oklch,oklch(0.92_0.07_80)_0%,oklch(0.85_0.12_75)_100%)] dark:bg-[linear-gradient(135deg_in_oklch,oklch(0.40_0.10_80)_0%,oklch(0.30_0.08_75)_100%)] border border-amber-400 shadow-xl text-center flex flex-col items-center order-1 md:order-2 scale-105 z-10">
+                      <div className="w-14 h-14 rounded-full bg-amber-400 text-white flex items-center justify-center shadow-md mb-2">
+                        <Trophy className="w-7 h-7" strokeWidth={2.25} />
+                      </div>
+                      <span className="text-[11px] font-black uppercase tracking-wider text-amber-900 dark:text-amber-200">
+                        Class Champion — 1st Place
+                      </span>
+                      <h3 className="font-black text-stone-900 dark:text-white text-base mt-1">{top10Data[0].name}</h3>
+                      <p className="text-xs text-amber-800 dark:text-amber-300 font-mono mt-0.5">
+                        {top10Data[0].admission_number || 'ID'}
+                      </p>
+                      <div className="mt-2.5 px-3 py-1 rounded-full bg-amber-500/20 text-amber-950 dark:text-amber-200 text-xs font-mono font-black">
+                        {top10Data[0].total} pts • Div {top10Data[0].division} (Agg {top10Data[0].aggregate ?? '-'})
+                      </div>
+                    </div>
+
+                    {/* 3rd Place Bronze */}
+                    <div className="rounded-2xl p-4 bg-white dark:bg-[#151F1B] border border-amber-600/30 dark:border-white/10 shadow-md text-center flex flex-col items-center order-3">
+                      <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-400 flex items-center justify-center shadow-inner mb-2">
+                        <Award className="w-6 h-6" strokeWidth={2.25} />
+                      </div>
+                      <span className="text-[10px] font-black uppercase tracking-wider text-amber-700">3rd Place</span>
+                      <h4 className="font-bold text-stone-900 dark:text-white text-sm mt-1">{top10Data[2].name}</h4>
+                      <p className="text-xs text-stone-400 font-mono mt-0.5">{top10Data[2].admission_number || 'ID'}</p>
+                      <div className="mt-2 text-xs font-mono font-black text-amber-800 dark:text-amber-400">
+                        {top10Data[2].total} pts • Div {top10Data[2].division}
+                      </div>
+                    </div>
                   </div>
                 )}
 
-                {/* View Toggle */}
-                <div className="col-span-2 sm:col-span-1">
-                  <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1">Dashboard View</label>
-                  <div className="flex p-1 bg-[#F1F5F9] border border-stone-200/80 rounded-xl">
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('assessment')}
-                      className={`flex-1 min-h-[34px] px-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer ${activeTab === 'assessment' ? 'bg-[#059669] text-white shadow-xs' : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'}`}
-                    >
-                      <BookOpen size={12} /> Sheet
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('analysis')}
-                      className={`flex-1 min-h-[34px] px-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer ${activeTab === 'analysis' ? 'bg-[#059669] text-white shadow-xs' : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'}`}
-                    >
-                      <ScrollText size={12} /> Analysis
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('top_students')}
-                      className={`flex-1 min-h-[34px] px-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer ${activeTab === 'top_students' ? 'bg-[#059669] text-white shadow-xs' : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'}`}
-                    >
-                      <Award size={12} /> Top 10
-                    </button>
+                {/* Top 10 Table */}
+                <div className="rounded-2xl border border-[#0D5C3A]/15 dark:border-white/10 bg-white dark:bg-[#151F1B] shadow-xs overflow-hidden">
+                  <div className="p-4 border-b border-stone-200 dark:border-white/10 flex items-center justify-between">
+                    <h3 className="text-sm font-extrabold uppercase tracking-wider text-stone-900 dark:text-white flex items-center gap-2">
+                      <Award className="w-4 h-4 text-amber-500" strokeWidth={2.25} />
+                      <span>Official Top 10 Academic Merit Roll</span>
+                    </h3>
                   </div>
-                </div>
 
-                {/* Exam Phase Toggle */}
-                <div className="col-span-2 sm:col-span-1">
-                  <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1">Exam Phase</label>
-                  <div className="flex p-1 bg-[#F1F5F9] border border-stone-200/80 rounded-xl">
-                    {(['bot', 'mot', 'eot'] as const).map((phaseKey) => {
-                      const isActive = examPhase === phaseKey
-                      const activeColor = phaseKey === 'bot' ? 'bg-blue-600 text-white shadow-xs' : phaseKey === 'mot' ? 'bg-amber-500 text-stone-950 font-bold shadow-xs' : 'bg-[#059669] text-white font-bold shadow-xs'
-                      return (
-                        <button
-                          key={phaseKey}
-                          type="button"
-                          onClick={() => setExamPhase(phaseKey)}
-                          className={`flex-1 min-h-[34px] px-2 text-xs font-bold uppercase rounded-lg transition-all flex items-center justify-center cursor-pointer ${isActive ? activeColor : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'}`}
-                        >
-                          {phaseKey}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Main Content Area */}
-      <div className="flex-1 p-3 sm:p-5 print:p-0">
-        {isLoading ? (
-          <div className="flex flex-col items-center justify-center h-full print:hidden">
-            <Loader2 className="w-8 h-8 animate-spin text-[#059669] mb-3" />
-            <p className="text-stone-600 text-sm font-medium">Loading secular assessment data…</p>
-          </div>
-        ) : (!data || (!activeClassId && activeTab === 'assessment') || (!activeLevel && (activeTab === 'analysis' || activeTab === 'top_students'))) ? (
-          <div className="flex flex-col items-center justify-center h-full text-center p-6 max-w-md mx-auto">
-            <div className="w-16 h-16 bg-[#059669]/10 rounded-2xl flex items-center justify-center mb-4">
-              <SearchX className="w-8 h-8 text-[#059669]" />
-            </div>
-            <h3 className="text-lg font-bold text-stone-900 mb-1">No Cohort Selected</h3>
-            <p className="text-xs sm:text-sm text-stone-600">
-              Select {activeTab === 'assessment' ? 'a class' : 'an academic level'} above to load secular broadsheets.
-            </p>
-          </div>
-        ) : (
-          <div
-            id="secular-hub-print-root"
-            className="w-full max-w-7xl mx-auto print:max-w-none print:m-0"
-            data-report-orientation="landscape"
-          >
-            {activeTab === 'assessment' && (isBatchPrinting || activeClassId) && (
-              <>
-                {(isBatchPrinting ? circularClasses : circularClasses.filter(c => c.id === activeClassId)).map((cls, classIdx, arr) => {
-                  const currentAssessmentData = isBatchPrinting ? computeAssessmentDataForClass(cls.id) : assessmentData
-                  if (!currentAssessmentData || !currentAssessmentData.orderedSubjects) return null
-
-                  return (
-                    <div
-                      key={cls.id}
-                      className={`hub-sheet-page ${isBatchPrinting ? 'hidden print:block print:py-0 print:px-2 text-left' : 'print:py-0 print:px-2 text-left'}`}
-                      style={{
-                        pageBreakAfter: isBatchPrinting && classIdx < arr.length - 1 ? 'always' : 'auto',
-                        breakAfter: isBatchPrinting && classIdx < arr.length - 1 ? 'page' : 'auto',
-                      }}
-                    >
-                      <OfficialPrintLetterhead
-                        documentTitle={
-                          examPhase === 'bot'
-                            ? 'BEGINNING OF TERM ASSESSMENT BROADSHEET'
-                            : examPhase === 'eot'
-                              ? 'END OF TERM ASSESSMENT BROADSHEET'
-                              : 'MID-TERM ASSESSMENT BROADSHEET'
-                        }
-                        metadata={[
-                          { label: 'Term', value: terms.find(t => t.id === activeTermId)?.label },
-                          { label: 'Class', value: cls.class_name },
-                          { label: 'Phase', value: examPhase.toUpperCase() },
-                          { label: 'Year', value: terms.find(t => t.id === activeTermId)?.academic_year },
-                        ]}
-                      />
-
-                      <div className="flex print:hidden flex-wrap justify-between items-center gap-3 mb-6 font-semibold text-stone-700 bg-white px-4 py-3 rounded-xl border border-stone-200 shadow-xs text-xs">
-                        <div>
-                          <span className="uppercase text-[11px] tracking-wider text-stone-500 mr-2">Term:</span>
-                          <span className="text-[#059669] print:text-black font-bold">{terms.find(t => t.id === activeTermId)?.label}</span>
-                        </div>
-                        <div>
-                          <span className="uppercase text-[11px] tracking-wider text-stone-500 mr-2">Class:</span>
-                          <span className="text-[#059669] print:text-black font-bold">{cls.class_name}</span>
-                        </div>
-                        <div>
-                          <span className="uppercase text-[11px] tracking-wider text-stone-500 mr-2">Phase:</span>
-                          <span className="text-[#059669] print:text-black font-bold uppercase">{examPhase}</span>
-                        </div>
-                        <div>
-                          <span className="uppercase text-[11px] tracking-wider text-stone-500 mr-2">Year:</span>
-                          <span className="text-[#059669] print:text-black font-bold">{terms.find(t => t.id === activeTermId)?.academic_year}</span>
-                        </div>
-                      </div>
-
-                      <div className="bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden print:bg-transparent print:border-none print:shadow-none print:rounded-none print:overflow-visible relative">
-                        <div className="overflow-x-auto print:overflow-visible relative z-10">
-                          <table className="w-full text-left border-collapse">
-                            <thead className="bg-[#F8FAFC] sticky top-0 z-10 print:bg-transparent print:static border-b border-stone-200 print:border-b-[1.5px] print:border-black">
-                              <tr>
-                                <th className="px-2.5 py-2 text-stone-600 font-bold text-[10px] uppercase tracking-wider w-9 text-center">#</th>
-                                <th className="px-3 py-2 text-stone-600 font-bold text-[10px] uppercase tracking-wider min-w-[140px]">Student Name</th>
-                                {currentAssessmentData.orderedSubjects?.flatMap(s => [
-                                  <th key={`${s.id}-score`} className="px-1.5 py-2 text-stone-600 font-bold text-[10px] uppercase tracking-wider text-center">
-                                    {s.subject_name === 'MATH' ? 'MTC' : s.subject_name === 'SCI' ? 'SCIE' : s.subject_name}
-                                  </th>,
-                                  <th key={`${s.id}-agg`} className="px-1.5 py-2 text-stone-500 font-bold text-[10px] uppercase tracking-wider text-center">
-                                    {cls.section === 'nursery' ? 'GRD' : 'AGG'}
-                                  </th>
-                                ])}
-                                <th className="px-2.5 py-2 text-stone-600 font-bold text-[10px] uppercase tracking-wider text-center">TOTAL</th>
-                                {cls.section !== 'nursery' && (
-                                  <>
-                                    <th className="px-2.5 py-2 text-stone-600 font-bold text-[10px] uppercase tracking-wider text-center">T/L AGG.</th>
-                                    <th className="px-2.5 py-2 text-stone-600 font-bold text-[10px] uppercase tracking-wider text-center">DIV</th>
-                                  </>
-                                )}
-                                <th className="px-2.5 py-2 text-stone-600 font-bold text-[10px] uppercase tracking-wider text-center">PSN</th>
-                              </tr>
-                            </thead>
-                            <motion.tbody
-                              initial="hidden"
-                              animate="visible"
-                              variants={tableVariants}
-                              className="print:!opacity-100 print:!transform-none"
-                            >
-                              {currentAssessmentData.students?.map((student, idx) => (
-                                <motion.tr
-                                  variants={rowVariants}
-                                  key={student.id}
-                                  className="hover:bg-stone-50 transition-colors border-b border-stone-100 last:border-0"
-                                >
-                                  <td className="px-2.5 py-2 text-center text-stone-500 font-medium text-xs">{idx + 1}</td>
-                                  <td className="px-3 py-2 font-bold text-xs text-stone-900 whitespace-nowrap">{student.name}</td>
-                                  {currentAssessmentData.orderedSubjects?.flatMap(s => {
-                                    const gradeStr = student.subjectGrades?.[s.id] || '-'
-                                    return [
-                                      <td key={`${s.id}-score`} className="px-1.5 py-2 text-center font-bold text-xs text-stone-700">
-                                        {student.subjectScores[s.id] !== undefined && student.subjectScores[s.id] !== null ? student.subjectScores[s.id] : '-'}
-                                      </td>,
-                                      <td key={`${s.id}-agg`} className="px-1.5 py-2 text-center">
-                                        <span className={`inline-flex items-center justify-center min-w-[28px] h-[22px] px-1 rounded font-bold text-[10px] border ${getBadgeStyles(gradeStr)}`}>
-                                          {gradeStr}
-                                        </span>
-                                      </td>
-                                    ]
-                                  })}
-                                  <td className="px-2.5 py-2 text-center">
-                                    <div className="inline-flex items-center justify-center h-6 px-2 rounded-lg bg-stone-100 text-stone-900 font-extrabold text-xs border border-stone-200">
-                                      {student.total > 0 ? student.total : '-'}
-                                    </div>
-                                  </td>
-                                  {cls.section !== 'nursery' && (
-                                    <>
-                                      <td className="px-2.5 py-2 text-center">
-                                        <div className={`inline-flex items-center justify-center h-6 w-8 rounded-lg font-extrabold text-xs border ${getBadgeStyles(student.division)}`}>
-                                          {student.totalAggregate > 0 ? student.totalAggregate : '-'}
-                                        </div>
-                                      </td>
-                                      <td className="px-2.5 py-2 text-center">
-                                        <div className={`inline-flex items-center justify-center h-6 w-8 rounded-lg font-extrabold text-xs border ${getBadgeStyles(student.division)}`}>
-                                          {student.division}
-                                        </div>
-                                      </td>
-                                    </>
-                                  )}
-                                  <td className="px-2.5 py-2 text-center">
-                                    <span className={getPositionStyles(student.position)}>
-                                      {student.total > 0 ? student.position : '-'}
-                                    </span>
-                                  </td>
-                                </motion.tr>
-                              ))}
-                            </motion.tbody>
-                          </table>
-                        </div>
-                      </div>
-                      <OfficialPrintSignaturesFooter />
-                    </div>
-                  )
-                })}
-              </>
-            )}
-
-            {/* Analysis Tab */}
-            {activeTab === 'analysis' && activeLevel && (
-              <div className="hub-sheet-page print:py-0 print:px-2 text-left space-y-6">
-                <OfficialPrintLetterhead
-                  documentTitle="SECULAR COHORT PERFORMANCE ANALYSIS"
-                  metadata={[
-                    { label: 'Level', value: activeLevel.replace('_', ' ').toUpperCase() },
-                    { label: 'Term', value: terms.find(t => t.id === activeTermId)?.label },
-                    { label: 'Phase', value: examPhase.toUpperCase() },
-                    { label: 'Year', value: terms.find(t => t.id === activeTermId)?.academic_year },
-                  ]}
-                />
-                <div className="flex print:hidden flex-wrap justify-between items-center gap-3 font-semibold text-stone-700 bg-white px-4 py-3 rounded-xl border border-stone-200 shadow-xs text-xs">
-                  <div>
-                    <span className="uppercase text-[11px] tracking-wider text-stone-500 mr-2">Level:</span>
-                    <span className="text-[#059669] font-bold uppercase">{activeLevel.replace('_', ' ')}</span>
-                  </div>
-                  <div>
-                    <span className="uppercase text-[11px] tracking-wider text-stone-500 mr-2">Term:</span>
-                    <span className="text-[#059669] font-bold">{terms.find(t => t.id === activeTermId)?.label}</span>
-                  </div>
-                  <div>
-                    <span className="uppercase text-[11px] tracking-wider text-stone-500 mr-2">Phase:</span>
-                    <span className="text-[#059669] font-bold uppercase">{examPhase}</span>
-                  </div>
-                  <div>
-                    <span className="uppercase text-[11px] tracking-wider text-stone-500 mr-2">Year:</span>
-                    <span className="text-[#059669] font-bold">{terms.find(t => t.id === activeTermId)?.academic_year}</span>
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-2xl shadow-sm border border-stone-200 p-5 space-y-6">
-                  <div>
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-stone-600 mb-3">1. Exam Analysis</h4>
-                    <div className="overflow-x-auto border border-stone-200 rounded-xl">
-                      <table className="w-full text-left border-collapse">
-                        <thead className="bg-[#F8FAFC]">
-                          <tr>
-                            <th className="px-4 py-3 border-b border-stone-200 text-stone-600 font-bold text-xs uppercase tracking-wider">Class Segment</th>
-                            <th className="px-4 py-3 border-b border-stone-200 text-stone-600 font-bold text-xs uppercase tracking-wider text-center">Capacity</th>
-                            <th className="px-4 py-3 border-b border-stone-200 text-[#059669] font-bold text-xs uppercase tracking-wider text-center">Highest Avg</th>
-                            <th className="px-4 py-3 border-b border-stone-200 text-rose-700 font-bold text-xs uppercase tracking-wider text-center">Lowest Avg</th>
-                            <th className="px-4 py-3 border-b border-stone-200 text-amber-800 font-bold text-xs uppercase tracking-wider text-center">Class Avg</th>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="border-b border-stone-200 dark:border-white/10 text-stone-400 text-[10px] font-extrabold uppercase tracking-wider bg-stone-50 dark:bg-white/[0.02]">
+                          <th className="py-2.5 px-3 text-center w-12">Rank</th>
+                          <th className="py-2.5 px-3">Student Name</th>
+                          <th className="py-2.5 px-3 text-center">Admission #</th>
+                          <th className="py-2.5 px-3 text-center">Gender</th>
+                          <th className="py-2.5 px-3 text-center">Total Marks</th>
+                          <th className="py-2.5 px-3 text-center">Aggregate</th>
+                          <th className="py-2.5 px-3 text-center">Division</th>
+                          <th className="py-2.5 px-3 text-center">Report</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-stone-100 dark:divide-white/5 font-medium">
+                        {top10Data.map((st) => (
+                          <tr
+                            key={st.id}
+                            className="hover:bg-amber-50/40 dark:hover:bg-white/[0.02] cursor-pointer"
+                            onClick={() =>
+                              router.push(
+                                `/admin/reports?student_id=${st.student_id}&term_id=${activeTermId}&curriculum=secular`
+                              )
+                            }
+                          >
+                            <td className="py-2.5 px-3 text-center font-mono font-black text-amber-700 dark:text-amber-400 text-xs">
+                              {st.position}
+                            </td>
+                            <td className="py-2.5 px-3 font-bold text-stone-900 dark:text-white">{st.name}</td>
+                            <td className="py-2.5 px-3 text-center font-mono text-stone-400">{st.admission_number || '-'}</td>
+                            <td className="py-2.5 px-3 text-center text-stone-500">{st.gender || '-'}</td>
+                            <td className="py-2.5 px-3 text-center font-mono font-black text-stone-900 dark:text-white">
+                              {st.total}
+                            </td>
+                            <td className="py-2.5 px-3 text-center font-mono font-extrabold text-[#0D5C3A] dark:text-emerald-400">
+                              {st.aggregate ?? '-'}
+                            </td>
+                            <td className="py-2.5 px-3 text-center">
+                              <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-md text-[10px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                Div {st.division}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-3 text-center">
+                              <ExternalLink className="w-3.5 h-3.5 text-stone-400 inline-block" strokeWidth={2.25} />
+                            </td>
                           </tr>
-                        </thead>
-                        <tbody>
-                          {analysisData.map((cls) => (
-                            <tr key={`exam-${cls.id}`} className="hover:bg-stone-50 border-b border-stone-100 last:border-0">
-                              <td className="px-4 py-3 font-bold text-stone-900">{cls.className}</td>
-                              <td className="px-4 py-3 text-center font-medium text-stone-700">{cls.numStudents}</td>
-                              <td className="px-4 py-3 text-center font-bold text-[#059669]">{cls.highestAvg}</td>
-                              <td className="px-4 py-3 text-center font-bold text-rose-700">{cls.lowestAvg}</td>
-                              <td className="px-4 py-3 text-center font-extrabold text-amber-800">{cls.classAvg}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
-
-                  {activeLevel !== 'nursery' && (
-                    <div>
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-stone-600 mb-3">2. Division Breakdown</h4>
-                      <div className="overflow-x-auto border border-stone-200 rounded-xl">
-                        <table className="w-full text-left border-collapse">
-                          <thead className="bg-[#F8FAFC]">
-                            <tr>
-                              <th className="px-4 py-3 border-b border-stone-200 text-stone-600 font-bold text-xs uppercase tracking-wider">Class Segment</th>
-                              <th className="px-4 py-3 border-b border-stone-200 text-[#059669] font-bold text-xs uppercase tracking-wider text-center">Div I</th>
-                              <th className="px-4 py-3 border-b border-stone-200 text-emerald-700 font-bold text-xs uppercase tracking-wider text-center">Div II</th>
-                              <th className="px-4 py-3 border-b border-stone-200 text-amber-700 font-bold text-xs uppercase tracking-wider text-center">Div III</th>
-                              <th className="px-4 py-3 border-b border-stone-200 text-orange-700 font-bold text-xs uppercase tracking-wider text-center">Div IV</th>
-                              <th className="px-4 py-3 border-b border-stone-200 text-rose-700 font-bold text-xs uppercase tracking-wider text-center">Div U</th>
-                              <th className="px-4 py-3 border-b border-stone-200 text-stone-500 font-bold text-xs uppercase tracking-wider text-center">Div X</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {analysisData.map((cls) => (
-                              <tr key={`div-${cls.id}`} className="hover:bg-stone-50 border-b border-stone-100 last:border-0">
-                                <td className="px-4 py-3 font-bold text-stone-900">{cls.className}</td>
-                                <td className="px-4 py-3 text-center font-bold text-[#059669]">{cls.divCounts.I}</td>
-                                <td className="px-4 py-3 text-center font-bold text-emerald-700">{cls.divCounts.II}</td>
-                                <td className="px-4 py-3 text-center font-bold text-amber-700">{cls.divCounts.III}</td>
-                                <td className="px-4 py-3 text-center font-bold text-orange-700">{cls.divCounts.IV}</td>
-                                <td className="px-4 py-3 text-center font-bold text-rose-700">{cls.divCounts.U}</td>
-                                <td className="px-4 py-3 text-center font-bold text-stone-500">{cls.divCounts.X}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )}
                 </div>
-                <OfficialPrintSignaturesFooter />
-              </div>
+              </motion.div>
             )}
-
-            {/* Top Students Tab */}
-            {activeTab === 'top_students' && activeLevel && (
-              <div className="hub-sheet-page grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="col-span-full hidden print:block">
-                  <OfficialPrintLetterhead
-                    visibleOnScreen
-                    documentTitle="TOP PERFORMING STUDENTS SUMMARY"
-                    metadata={[
-                      { label: 'Level', value: activeLevel.replace('_', ' ').toUpperCase() },
-                      { label: 'Term', value: terms.find(t => t.id === activeTermId)?.label },
-                      { label: 'Phase', value: examPhase.toUpperCase() },
-                      { label: 'Year', value: terms.find(t => t.id === activeTermId)?.academic_year },
-                    ]}
-                  />
-                </div>
-                {topStudentsData.map((cls) => (
-                  <div
-                    key={cls.classId}
-                    className="bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden"
-                  >
-                    <div className="bg-[#F8FAFC] px-4 py-3 border-b border-stone-200 flex items-center justify-between">
-                      <h4 className="font-bold text-stone-900 text-sm">{cls.className} Rankings</h4>
-                      <span className="text-[10px] uppercase font-bold tracking-wider text-stone-500">Top {cls.students.length}</span>
-                    </div>
-                    <div className="overflow-x-auto p-2">
-                      <table className="w-full border-collapse">
-                        <tbody>
-                          {cls.students.map((student, idx) => (
-                            <tr key={student.id} className="hover:bg-stone-50 border-b border-stone-100 last:border-0">
-                              <td className="px-3 py-2.5 text-center w-12">
-                                <RankBadge rank={idx + 1} />
-                              </td>
-                              <td className="px-3 py-2.5 font-bold text-xs text-stone-900">
-                                {student.studentName}
-                              </td>
-                              <td className="px-3 py-2.5 text-right">
-                                <span className="font-extrabold text-[#059669] text-sm">{Math.round(student.avg)}</span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                ))}
-                <div className="col-span-full">
-                  <OfficialPrintSignaturesFooter />
-                </div>
-              </div>
-            )}
-          </div>
+          </AnimatePresence>
         )}
-      </div>
+      </main>
+
+      {/* ======================================================== */}
+      {/* 3. FORMAL INSTITUTIONAL LANDSCAPE PRINT BROADSHEET */}
+      {/* Mounted via <PrintPortal pageOrientation="landscape"> */}
+      {/* ======================================================== */}
+      <PrintPortal pageOrientation="landscape">
+        <div className="p-8 bg-white text-black font-sans text-xs w-full min-h-screen">
+          {/* Institutional Letterhead Header */}
+          <OfficialPrintLetterhead
+            documentTitle="ACADEMIC PERFORMANCE BROADSHEET — SECULAR CURRICULUM"
+            metadata={[
+              { label: 'Term', value: activeTerm?.label || 'Term 3' },
+              { label: 'Class', value: activeClass?.class_name || 'Class' },
+              { label: 'Section', value: activeClass?.section || 'Secular' },
+              { label: 'Phase', value: examPhase.toUpperCase() },
+              { label: 'Year', value: activeTerm?.academic_year || 2026 },
+              { label: 'Total Candidates', value: assessmentData.students.length },
+              { label: 'Date Printed', value: new Date().toLocaleDateString('en-GB') },
+            ]}
+          />
+
+          {/* Complete Institutional Broadsheet Table */}
+          <table className="w-full border-collapse border border-black text-[9px] mt-4">
+            <thead>
+              <tr className="bg-stone-100 text-black border-b border-black font-extrabold">
+                <th className="border border-black p-1 text-center w-6">#</th>
+                <th className="border border-black p-1 text-center min-w-[50px]">Adm No</th>
+                <th className="border border-black p-1 text-left min-w-[150px]">Student Full Name</th>
+                {assessmentData.orderedSubjects.map((sub) => (
+                  <th key={sub.id} colSpan={2} className="border border-black p-1 text-center">
+                    <div className="font-bold text-[9px] truncate max-w-[80px]">
+                      {sub.subject_name}
+                    </div>
+                    <div className="text-[7.5px] uppercase">Mark / Grd</div>
+                  </th>
+                ))}
+                <th className="border border-black p-1 text-center font-black min-w-[40px]">Total</th>
+                <th className="border border-black p-1 text-center font-black min-w-[32px]">Agg</th>
+                <th className="border border-black p-1 text-center font-black min-w-[30px]">Div</th>
+                <th className="border border-black p-1 text-center font-black min-w-[32px]">Rank</th>
+              </tr>
+            </thead>
+            <tbody>
+              {assessmentData.students.map((st, idx) => (
+                <tr key={st.id} className="border-b border-stone-300">
+                  <td className="border border-black p-1 text-center font-bold">{idx + 1}</td>
+                  <td className="border border-black p-1 text-center font-mono">{st.admission_number || '-'}</td>
+                  <td className="border border-black p-1 font-bold">{st.name}</td>
+                  {assessmentData.orderedSubjects.map((sub) => {
+                    const score = st.subjectScores[sub.id]
+                    const grade = st.subjectGrades[sub.id]
+                    return (
+                      <React.Fragment key={sub.id}>
+                        <td className="border border-black p-1 text-center font-mono font-bold">
+                          {score != null ? score : '-'}
+                        </td>
+                        <td className="border border-black p-1 text-center font-bold text-[8px]">
+                          {grade || '-'}
+                        </td>
+                      </React.Fragment>
+                    )
+                  })}
+                  <td className="border border-black p-1 text-center font-mono font-black">{st.total || '-'}</td>
+                  <td className="border border-black p-1 text-center font-mono font-black">{st.aggregate ?? '-'}</td>
+                  <td className="border border-black p-1 text-center font-black">Div {st.division}</td>
+                  <td className="border border-black p-1 text-center font-mono font-black">{st.position}</td>
+                </tr>
+              ))}
+            </tbody>
+            {broadsheetSummary && (
+              <tfoot>
+                <tr className="bg-stone-100 font-black border-t-2 border-black">
+                  <td colSpan={3} className="border border-black p-1.5 text-right uppercase tracking-wider">
+                    Class Average
+                  </td>
+                  {assessmentData.orderedSubjects.map((sub) => (
+                    <td key={sub.id} colSpan={2} className="border border-black p-1.5 text-center font-mono">
+                      {broadsheetSummary.subjectStats[sub.id]?.avg ?? '-'}
+                    </td>
+                  ))}
+                  <td className="border border-black p-1.5 text-center font-mono">
+                    {broadsheetSummary.classAverageTotal}
+                  </td>
+                  <td colSpan={3} className="border border-black p-1.5 text-center text-[8px] text-stone-600">
+                    Mean Total: {broadsheetSummary.classAverageTotal}
+                  </td>
+                </tr>
+              </tfoot>
+            )}
+          </table>
+
+          {/* Division Summary Box */}
+          {broadsheetSummary && !isNursery && (
+            <div className="mt-4 p-2.5 border border-black flex items-center justify-between text-[9px] bg-stone-50">
+              <span className="font-bold uppercase tracking-wider">Official Cohort Summary:</span>
+              <span>Div I: <strong>{broadsheetSummary.divCounts.I}</strong></span>
+              <span>Div II: <strong>{broadsheetSummary.divCounts.II}</strong></span>
+              <span>Div III: <strong>{broadsheetSummary.divCounts.III}</strong></span>
+              <span>Div IV: <strong>{broadsheetSummary.divCounts.IV}</strong></span>
+              <span>Div U: <strong>{broadsheetSummary.divCounts.U}</strong></span>
+              <span>Total Sat: <strong>{broadsheetSummary.satCandidates}</strong></span>
+            </div>
+          )}
+
+          {/* Signatures & Official Stamp Footer */}
+          <div className="mt-8 relative">
+            <OfficialPrintSignaturesFooter />
+            <div className="absolute right-12 -top-4 pointer-events-none">
+              <OfficialReportStamp
+                reportData={{
+                  stamp_config: {
+                    ink_color: '#0D5C3A',
+                    scale: 85,
+                  },
+                }}
+                maxWidth={110}
+                maxHeight={52}
+              />
+            </div>
+          </div>
+        </div>
+      </PrintPortal>
     </div>
   )
 }

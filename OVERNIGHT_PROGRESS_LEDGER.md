@@ -718,9 +718,504 @@ Exit code: 0
      - Automated test suite (`src/__tests__/overhaul-workstreams.test.mjs`): 56/56 tests across 17 suites pass (100% pass rate).
      - Next.js webpack production build (`npm run build`): 68/68 routes compiled cleanly with zero build errors.
 
+---
+
+## Milestone 22: Universal Marks & Term Reconciliation Engine, Stamp Hardening, Non-Muslim Portrait Routing & Document Studio
+
+- **Files Modified / Created:**
+  - `src/lib/marks-reconciliation.ts` (new universal reconciliation engine)
+  - `src/lib/student-religion.ts` (new religion & portrait template resolver)
+  - `src/lib/fonts.ts` (new canonical academic font definitions)
+  - `src/lib/themes.ts` (expanded 5 canonical studio report themes)
+  - `src/lib/client-cache.ts` (purges cached marks, hubs & reports on mutation)
+  - `src/lib/enrollment-shape.ts` (exposes `is_muslim`, `religion`, `theology_exempt`)
+  - `src/app/api/marks/route.ts`
+  - `src/app/api/circular-marks/route.ts`
+  - `src/app/api/theology-marks/route.ts`
+  - `src/app/api/secular-hub/route.ts`
+  - `src/app/api/theology-hub/route.ts`
+  - `src/app/api/report/route.ts`
+  - `src/app/api/report/batch/route.ts`
+  - `src/app/api/enrollments/route.ts`
+  - `src/components/shared-marks-entry.tsx`
+  - `src/components/ReportGeneratorClient.tsx`
+  - `src/components/figma-ui/TopToolbar.tsx`
+  - `src/components/layout/app-topbar.tsx`
+  - `src/components/reports/StampGenerator.tsx`
+  - `src/components/reports/ReportSchoolLogo.tsx`
+  - `src/components/reports/PrimaryEOTReport.tsx`
+  - `src/components/reports/P7EOTReport.tsx`
+  - `src/components/reports/PrimaryMOTReport.tsx`
+  - `src/components/reports/PrimaryBOTReport.tsx`
+  - `src/components/reports/NurseryEOTReport.tsx`
+  - `src/components/reports/NurseryMOTReport.tsx`
+  - `src/components/reports/NurseryTheologyEOTReport.tsx`
+  - `src/components/reports/TheologyMOTReport.tsx`
+  - `src/__tests__/overhaul-workstreams.test.mjs`
+  - `OVERNIGHT_PROGRESS_LEDGER.md`
+- **Scope & Workstreams Completed:**
+  1. **Workstream 1: Universal Marks & Term Reconciliation Engine (`src/lib/marks-reconciliation.ts`):**
+     - Sourced equivalent terms across academic years and term numbers via `resolveEquivalentTerms()`.
+     - Built `fetchAllSupabaseRows()` to safely bypass Supabase's default 1,000-row limit using deterministic chunked `.range()` queries.
+     - Implemented `fetchAndReconcileSecularMarks()` and `fetchAndReconcileTheologyMarks()` with canonical subject code normalization (`canonicalSecularSubjectCode()`, `canonicalTheologySubjectCode()`), resolving and merging identical subjects across equivalent term records.
+     - Integrated the universal reconciler into `Secular Hub`, `Theology Hub`, `Marks Entry` (`/api/marks`), `Circular Marks` (`/api/circular-marks`), `Theology Marks` (`/api/theology-marks`), and `Report APIs` (`/api/report`, `/api/report/batch`).
+     - Added `invalidateClientCache()` in `src/lib/client-cache.ts` to invalidate client `sessionStorage` and `localStorage` marks and report keys upon every mark save.
+  2. **Workstream 2: Marks Entry Layout Polish (`src/components/shared-marks-entry.tsx`):**
+     - Bound progress bar widths in `SecularMarkTableRow` and `TheologyMarkTableRow` to `max-w-[140px] pr-5 overflow-hidden`, eliminating score input collisions.
+     - Hidden duplicate desktop `● Term 3, 2026` pill in Zone 1 via `md:hidden` while preserving mobile badge.
+     - Formatted Theology summary numbers exclusively through `toArabicDigits()` with `whitespace-nowrap truncate` to prevent Western numeral mixing.
+  3. **Workstream 3: Stamp Hardening, School Crest & Non-Muslim Secular Portrait Routing:**
+     - Enforced strict 135px × 68px stamp boundaries (`w-[135px] h-[68px] max-w-[135px] max-h-[68px] overflow-hidden`) with `mix-blend-mode: multiply; filter: contrast(1.65) brightness(1.12)` across all 8 report templates (`PrimaryEOTReport`, `P7EOTReport`, `PrimaryMOTReport`, `PrimaryBOTReport`, `NurseryEOTReport`, `NurseryMOTReport`, `NurseryTheologyEOTReport`, `TheologyMOTReport`) and `StampGenerator.tsx`.
+     - Unclipped school crest in `ReportSchoolLogo.tsx` and `PrimaryEOTReport.tsx` with `w-14 h-14 overflow-visible flex items-center justify-center`.
+     - Built `src/lib/student-religion.ts` (`isNonMuslimStudent`, `isMuslimStudent`, `shouldUseSecularPortraitTemplate`, `getSecularPortraitReportTitle`) and routed non-Muslim Primary (`P.1–P.6`) and P.7 EOT students to `P7EOTReport.tsx` (A4 Portrait).
+     - Color-harmonized `P7EOTReport.tsx` with Forest Green (`#14532D`), Warm Gold (`#C59B27`), Warm Ivory (`#FAF6EE`), and Maroon (`#7F1D1D`).
+     - Enforced dynamic `@page` Landscape printing for Primary Muslim Dual EOT while keeping Portrait orientation for all other 7 templates.
+  4. **Workstream 4: Full-Screen Document Studio Transformation (`app-topbar.tsx`, `TopToolbar.tsx`, `ReportGeneratorClient.tsx`):**
+     - Hid global `AppTopbar` on `/admin/reports` to grant 100% of vertical screen height to Document Studio.
+     - Equipped `TopToolbar.tsx` with mobile sidebar trigger (`☰`), `←` back navigation button, Sun/Moon theme toggle, `StudioFormattingState` (5 canonical themes from `src/lib/themes.ts`, typography font selector and scaling, bold weight toggle), and `✒️ Stamp & Sign` popover controls.
+     - Built responsive 2-row mobile Studio header with dynamic auto-scaled preview fitting 100% mobile viewport width.
+  5. **Workstream 5: Verification Gate & Runtime Hardening:**
+     - Fixed React Hook Count mismatch in `src/components/layout/app-topbar.tsx` by relocating the Document Studio early return below all `React.useEffect` hook declarations.
+     - Fixed PostgreSQL column error in `src/lib/marks-reconciliation.ts` by translating `studentIds` into corresponding `enrollment_id`s through `enrollments` table, ensuring `circular_marks` and `theology_marks` are queried strictly by `enrollment_id`.
+     - TypeScript check (`npm run typecheck`): 0 errors across entire repository.
+     - Automated test suite (`src/__tests__/overhaul-workstreams.test.mjs`): 62/62 tests across 18 suites pass (100% pass rate).
+     - Next.js webpack production build (`npm run build`): 68/68 routes compiled cleanly with zero build errors.
 
 
 
+
+
+
+
+
+---
+
+## Milestone 23: Authentic Jiddah Digital Vector Stamp, Clean Signature Ink Extraction, Multi-Page Batch Print Hardening, Bold Pupil Identity & Desktop/Mobile Toolbar Overhaul
+
+- **Files Modified / Created:**
+  - `src/components/StampGenerator.tsx` (top-level export wrapper)
+  - `src/components/reports/StampGenerator.tsx` (authentic Jiddah rubber stamp SVG clone)
+  - `src/components/reports/CleanSignatureImage.tsx` (transparent ink extraction + `#jiddah-clean-ink` SVG filter)
+  - `src/components/reports/shared/CleanSignatureImg.tsx`
+  - `src/components/reports/PrimaryEOTReport.tsx`
+  - `src/components/reports/P7EOTReport.tsx`
+  - `src/components/reports/PrimaryMOTReport.tsx`
+  - `src/components/reports/PrimaryBOTReport.tsx`
+  - `src/components/reports/NurseryEOTReport.tsx`
+  - `src/components/reports/NurseryMOTReport.tsx`
+  - `src/components/reports/NurseryTheologyEOTReport.tsx`
+  - `src/components/reports/TheologyMOTReport.tsx`
+  - `src/app/admin/layout.tsx`
+  - `src/styles/reports/print-system.css`
+  - `src/components/figma-ui/TopToolbar.tsx`
+  - `src/components/figma-ui/DocumentCanvas.tsx`
+  - `src/components/figma-ui/StudentRosterSidebar.tsx`
+  - `src/components/ReportGeneratorClient.tsx`
+  - `src/__tests__/overhaul-workstreams.test.mjs`
+  - `OVERNIGHT_PROGRESS_LEDGER.md`
+- **Scope & Workstreams Completed:**
+  1. **Workstream 1: Authentic Jiddah Digital Vector Rubber Stamp & Clean Signature Ink Extraction:**
+     - Rebuilt `<OfficialReportStamp />` and `<VectorStamp />` in `src/components/reports/StampGenerator.tsx` (`viewBox="0 0 380 220"`) replicating the physical Jiddah school rubber stamp:
+       - Royal Stamp Blue (`#1B3B8B`) outer top/bottom U-brackets (`strokeWidth="4.5"`).
+       - Rotated vertical side wall labels: `HEADTEACHER'S OFFICE` on left (`translate(14, 110) rotate(90)`) and right (`translate(366, 110) rotate(-90)`).
+       - Top 2 headers: `JIDDAH ISLAMIC NURSERY &` and `PRIMARY SCHOOL`.
+       - Middle 3-column row: Left vector recreation of the Jiddah Shield Crest (`JIDDAH ISLAMIC / NUR & PRI`, `DAY AND BOARDING`, crescent & star, open book, `STRIVE FOR LIFE & HERE AFTER` scroll), Center Crimson Red (`#D92626`) dynamic dater-stamp date, Right bold Crescent & 5-Pointed Star.
+       - Bottom 3 footer lines: `HEADTEACHER` (`Georgia`, bold serif), `P.O.Box 34008, Nsaggu`, and `Nakawuka Rd, Wakiso District`.
+     - Made the digital vector `<OfficialReportStamp />` the primary default across all 8 report templates (`PrimaryEOTReport`, `P7EOTReport`, `PrimaryMOTReport`, `PrimaryBOTReport`, `NurseryEOTReport`, `NurseryMOTReport`, `NurseryTheologyEOTReport`, `TheologyMOTReport`), eliminating the raw `signatures['school-stamp']` photo bypass unless `stampMode === 'uploaded'` is explicitly selected in Studio/Settings.
+     - Built `<CleanSignatureImage />` in `src/components/reports/CleanSignatureImage.tsx` combining `extractSignatureInk()` canvas pixel luminance/chrominance thresholding with an inline SVG `<filter id="jiddah-clean-ink">` (`feColorMatrix` + steep `feComponentTransfer` slope `3.2` intercept `-1.45`) so photographed grey camera backgrounds are stripped to pure transparency across all 8 templates.
+  2. **Workstream 2: Multi-Page Batch Print Unconstraining & Bottom Margin Clipping Fix:**
+     - Fixed the Chromium `1 sheet of paper` batch print clipping bug by adding `print:!h-auto print:!min-h-0 print:!max-h-none print:!overflow-visible print:!block print:!static` to `SidebarProvider`, `SidebarInset`, and `<main>` in `src/app/admin/layout.tsx`, and enforcing unconstrained `@media print` rules on `html, body, #__next, [data-slot="sidebar-wrapper"], [data-slot="sidebar-inset"], main, .report-studio-root, .document-canvas-root, .document-canvas-scroll` in `src/styles/reports/print-system.css`.
+     - Wrapped printed report sheets in `.report-card-sheet` with `page-break-after: always !important; break-after: page !important;` (`:last-child` set to `auto`).
+     - Tightened vertical spacing across `PrimaryEOTReport.tsx` (`landscape-page` padding `3mm`, `inner-border` `4px 14px`, `content-layer` gap `4px`, table cell padding `2.5px 3.5px`, `validity-bar` padding `5px`) so the bottom maroon validity banner and outer Forest-Green/Gold border never clip on screen or in print.
+  3. **Workstream 3: Big & Bold Pupil Profile Identity Typography:**
+     - Upgraded Pupil Profile fields across all 8 report templates:
+       - Pupil's English Name: `15.5px–16px font-black uppercase tracking-wide text-[#0F172A]`.
+       - Pupil's Arabic Name (`اسم التلميذ/ة`): `16px–17px font-black text-[#0F172A]`.
+       - Class, Term, Year, Division / Position / Aggregate values: `13.5px–14.5px font-extrabold text-[#0F172A]`.
+  4. **Workstream 4: Desktop Toolbar Overflow Fix, MS Word Multi-Card Switcher (`1 | 2 | 3`) & Single 44px Mobile Header:**
+     - Added `hidden md:flex` and compact spacing to Desktop `TopToolbar.tsx` (`gap-1.5 px-2.5 sm:px-3 py-1.5 w-full max-w-full overflow-hidden`) so all controls fit cleanly on `1024px–1366px` viewports without right-edge spilling.
+     - Added the MS Word Multi-Card Preview Switcher `[ 1▢ | 2▢▢ | 3▢▢▢ ]` (`data-testid="cards-per-row-switcher"`) wired to `DocumentCanvas.tsx` (`cardsPerRow: 1 | 2 | 3`) to view 1 large card, 2 cards side-by-side (`lg:grid-cols-2`), or 3 cards side-by-side (`xl:grid-cols-3`).
+     - Added Dual-Mode Print CTA (`🖨️ Print N` batch print + `1 Sheet` single focused report print) and enhanced `StudentRosterSidebar.tsx` with `Select All`, `Clear`, `Invert Selection`, and `Ready Only`.
+     - Consolidated mobile controls in `ReportGeneratorClient.tsx` into a single `44px` (`h-11 flex md:hidden`) horizontal bar containing Hamburger `☰`, Class Pill, Roster & Batch Selection Pill, Phase & Curriculum Popover, Studio Format icon, and Primary Print CTA.
+  5. **Workstream 5: Verification Gate:**
+     - Added automated test suite `Workstream 23` in `src/__tests__/overhaul-workstreams.test.mjs` (67/67 total tests passing across 19 suites).
+     - TypeScript check (`npm run typecheck`): 0 errors.
+     - Next.js production build (`npm run build`): 68/68 routes compiled cleanly.
+
+---
+
+### Milestone 24: Landscape Print Lock, Blank Page 1 Fix, Iconic Studio Topbar & Visual Selection, Translucent Minimizable Dock, Zero-Blur Modals & Adaptive Dark-Grey Signature Removal (`feat/overnight-system-renovation`)
+- **Files Modified:**
+  - `src/styles/reports/print-system.css`
+  - `src/components/reports/PrimaryEOTReport.tsx`
+  - `src/components/ReportGeneratorClient.tsx`
+  - `src/components/figma-ui/TopToolbar.tsx`
+  - `src/components/figma-ui/PrintDialog.tsx`
+  - `src/components/figma-ui/DocumentCanvas.tsx`
+  - `src/components/reports/ReportPreviewCell.tsx`
+  - `src/app/globals.css`
+  - `src/components/figma-ui/ui/dialog.tsx`
+  - `src/components/figma-ui/ui/sheet.tsx`
+  - `src/lib/signature-ink-processor.ts`
+  - `src/components/reports/CleanSignatureImage.tsx`
+  - `src/__tests__/overhaul-workstreams.test.mjs`
+  - `OVERNIGHT_PROGRESS_LEDGER.md`
+- **Scope & Workstreams Completed:**
+  1. **Workstream 1: Print Preview Distortion & Top Screen Clipping Fix:**
+     - Removed static global `@page { size: A4 portrait; margin: 0mm; }` in `src/styles/reports/print-system.css` that overrode landscape Primary EOT reports, and injected dynamic `@page { size: A4 landscape|portrait !important; margin: 0mm !important; }` in `ReportGeneratorClient.tsx` for both direct prints and `PrintDialog` prints.
+     - Changed `<main className="tables-wrapper">` in `PrimaryEOTReport.tsx` to `<div className="tables-wrapper tables-row">` and scoped `print-system.css`'s `main { display: block !important; }` rule to `[data-slot="sidebar-inset"] > main`, locking `.landscape-page .tables-wrapper, .landscape-page .tables-row` to `display: flex !important; flex-direction: row !important;`.
+     - Zeroed margins/padding on unconstrained print ancestors, added `break-before: avoid !important` on `.report-card-sheet:first-child`, and hid the screen canvas (`print:!hidden`) to eliminate the blank Page 1 in Print Preview.
+     - Changed `DocumentCanvas.tsx` scroll container alignment to `justify-start` so top report cards are never clipped at the top edge.
+  2. **Workstream 2: Studio Top Bar Redesign, Download/Print Modal & On-Canvas Visual Card Selection:**
+     - Replaced the wide `[ 1▢ | 2▢▢ | 3▢▢▢ ]` switcher in `TopToolbar.tsx` with a single iconic `view-mode-toggle` (`Grid View` 2-up ↔ `Single Scroll View`), added `visual-select-toggle`, `toolbar-download-btn`, and `toolbar-print-btn`, and added Radix tooltips on all icon buttons.
+     - Upgraded `PrintDialog.tsx` with 3 clear scopes (`Current Report`, `Batch Print`, `Custom Visual Selection`) plus a `Select on Canvas` trigger that enters on-canvas visual card selection mode (`visual-selection-bar`, highlight ring, and clickable `✓ Selected` badges in `DocumentCanvas.tsx`).
+     - Tightened the 44px mobile header in `ReportGeneratorClient.tsx` (`flex-1 min-w-0` on student pill, `max-w-[74px]` on class pill, `onClick={handlePrint}`) so all controls fit cleanly inside `360px`.
+  3. **Workstream 3: Translucent, Minimizable Floating Magnifier & Page Bar:**
+     - Replaced the opaque vertical dock in `DocumentCanvas.tsx` with a compact, translucent bottom-right horizontal pill (`[ < ] 4 / 38 [ > ] | [ − ] 75% [ + ] [ ⤢ Fit ] | [ — ]`), defaulting to a minimized pill (`🔍 75% • 4/38`) on mobile `< md`, with `side="top"` Radix tooltips.
+  4. **Workstream 4: Zero-Blur Modals & Adaptive Dark-Grey Signature Removal:**
+     - Enforced `backdrop-filter: none !important` on Radix dialog/sheet overlays and popover surfaces in `globals.css`, reduced backdrop opacity to `bg-black/25` in `dialog.tsx` and `sheet.tsx`, and removed `backdropFilter: 'blur(4px)'` from `PrintDialog.tsx`.
+     - Lowered `hasOpaquePaperBackground()` luminance threshold from `145` to `85` in `signature-ink-processor.ts`, tuned adaptive local background subtraction (`lum >= localBg - 28` -> `alpha = 0`), and steepened `#jiddah-clean-ink` (`slope="4.5" intercept="-1.35"`) in `CleanSignatureImage.tsx` so dim dark-grey camera boxes (`RGB ~135`) strip to pure transparency while preserving uneven shadowed paper cropping.
+  5. **Workstream 5: Verification Gate:**
+     - Updated `Workstream 23` and added `Workstream 24` in `src/__tests__/overhaul-workstreams.test.mjs` (71/71 tests passing across 20 suites).
+     - TypeScript check (`npm run typecheck`): 0 errors.
+     - Next.js production build (`npm run build`): 68/68 static pages compiled cleanly.
+
+---
+
+### Milestone 25: CSS Named Pages for Mixed Print, P7 Portrait Parity, White-Clipped Signatures, Authentic Badge Stamp & Branded Jiddah Loader (`feat/overnight-system-renovation`)
+- **Files Modified:**
+  - `src/styles/reports/print-system.css`
+  - `src/components/reports/PrimaryEOTReport.tsx`
+  - `src/components/reports/P7EOTReport.tsx`
+  - `src/components/reports/ReportPreviewCell.tsx`
+  - `src/components/reports/CleanSignatureImage.tsx`
+  - `src/lib/signature-ink-processor.ts`
+  - `src/components/reports/StampGenerator.tsx`
+  - `src/components/ui/jiddah-loader.tsx` (new component)
+  - `src/components/figma-ui/ui/tooltip.tsx`
+  - `src/components/figma-ui/StudentRosterSidebar.tsx`
+  - `src/components/figma-ui/TopToolbar.tsx`
+  - `src/components/figma-ui/PrintDialog.tsx`
+  - `src/components/figma-ui/DocumentCanvas.tsx`
+  - `src/components/ReportGeneratorClient.tsx`
+  - `src/app/login/page.tsx`
+  - `src/components/shared-marks-entry.tsx`
+  - `src/components/secular-hub/SecularHubClient.tsx`
+  - `src/components/theology-hub/TheologyHubClient.tsx`
+  - `src/__tests__/overhaul-workstreams.test.mjs`
+  - `OVERNIGHT_PROGRESS_LEDGER.md`
+- **Scope & Workstreams Completed:**
+  1. **Workstream 1: Non-Muslim Portrait Template & Mixed Landscape/Portrait Batch Print Hardening:**
+     - Added standard Chromium CSS Named Pages (`@page landscape-sheet { size: A4 landscape; margin: 0mm; }` & `@page portrait-sheet { size: A4 portrait; margin: 0mm; }`) in `print-system.css`, with explicit page assignment on `.landscape-page` and `.portrait-page`, eliminating orientation overrides when batch printing mixed cohorts like P.4 (38 students: Muslim Landscape + Non-Muslim Portrait).
+     - Completely rebuilt `P7EOTReport.tsx` for exact design parity with `PrimaryEOTReport.tsx` (double `#c2994c` gold & `#0f4d25` emerald border, `#7F1D1D` maroon title, centered `/logo-512h.png` crest, dynamic title from `getSecularPortraitReportTitle`, inside-border `<OfficialReportStamp />`, bold pupil profile typography, and normal flow `justify-start` fitting 100% within 297mm without page breaking).
+  2. **Workstream 2: Instant Mathematical Signature White-Clipping & Processed Ink Cache:**
+     - Applied `mixBlendMode: 'multiply'` with `filter: 'grayscale(1) brightness(1.48) contrast(3.8) url(#jiddah-clean-ink)'` on `CleanSignatureImage.tsx`, providing instant client-side white-clipping of camera-photo paper grey tones.
+     - Added module-level `processedSignatureCache` in `signature-ink-processor.ts` and tuned adaptive background luminance threshold to the 65th-percentile so dark-grey paper drops to `alpha = 0`.
+     - In `StampGenerator.tsx`, integrated authentic school badge (`/logo-512h.png`) through monochrome SVG ink filter `<filter id="jiddah-stamp-ink-filter">`.
+  3. **Workstream 3: Branded Jiddah Loader & Zero-Lag Tooltips:**
+     - Created `<JiddahLoader />` with dual orbiting emerald (`#0D5C3A`) and gold (`#D97706`) rings, shimmer bar, and variants (`fullscreen`, `stage`, `inline`), and wired it into `/login`, `DocumentCanvas`, `shared-marks-entry`, `SecularHubClient`, and `TheologyHubClient`.
+     - Optimized `TooltipContent` in `figma-ui/ui/tooltip.tsx` to zero-transition pill with light-on-dark (light) and pearl-on-dark `dark:bg-[#F1F5F2] dark:text-[#093D26]` (dark).
+     - Wrapped `ReportPreviewCell` in `React.memo` and wrapped filter switches in `React.startTransition`.
+  4. **Workstream 4: Clean Student Roster Popover, Studio Accent Hierarchy & Mobile UX:**
+     - Replaced cluttered chips in `StudentRosterSidebar.tsx` with a clean 2-item bar (`N Students (M selected)` + `Select All / Clear All` button), and classified division/grade badges so Nursery shows `Grade A/B`, Theology shows Arabic estimate (`ممتاز/جيد جداً`), and `Div I` only appears for Primary Secular.
+     - Updated Studio toolbar hierarchy with Forest Emerald Phase pills, Warm Gold-Amber Curriculum track, Warm Gold Studio Customize trigger, and Emerald-Gold Primary CTA.
+     - Compacted `PrintDialog.tsx` to `max-w-[440px] max-h-[74dvh]` and added mobile `⋮` menu exposing all 6 desktop capabilities.
+  5. **Workstream 5: Verification Gate:**
+     - Full automated suite: 78/78 tests passing across 21 suites in `src/__tests__/overhaul-workstreams.test.mjs`.
+     - TypeScript compiler (`npm run typecheck`): 0 errors (`tsc --noEmit`).
+     - Next.js production build (`npm run build`): 68/68 routes compiled cleanly in Next.js 16.4.6.
+
+---
+
+### Milestone 26: Progressive Card Mounting, Transparent Stamp Crest, Seated Signatures, Redesigned P7 & Topbar Responsiveness (`feat/overnight-system-renovation`)
+- **Files Modified:**
+  - `src/components/ReportGeneratorClient.tsx`
+  - `src/components/figma-ui/DocumentCanvas.tsx`
+  - `src/components/ui/jiddah-loader.tsx`
+  - `src/components/reports/StampGenerator.tsx`
+  - `src/components/reports/CleanSignatureImage.tsx`
+  - `src/lib/signature-ink-processor.ts`
+  - `src/components/reports/PrimaryEOTReport.tsx`
+  - `src/components/reports/PrimaryMOTReport.tsx`
+  - `src/components/reports/PrimaryBOTReport.tsx`
+  - `src/components/reports/NurseryEOTReport.tsx`
+  - `src/components/reports/NurseryMOTReport.tsx`
+  - `src/components/reports/NurseryTheologyEOTReport.tsx`
+  - `src/components/reports/TheologyMOTReport.tsx`
+  - `src/components/reports/P7EOTReport.tsx`
+  - `src/components/figma-ui/EmptyState.tsx`
+  - `src/components/figma-ui/TopToolbar.tsx`
+  - `src/components/figma-ui/ui/tooltip.tsx`
+  - `src/__tests__/overhaul-workstreams.test.mjs`
+  - `src/__tests__/report-print.test.mjs`
+  - `OVERNIGHT_PROGRESS_LEDGER.md`
+- **Scope & Workstreams Completed:**
+  1. **Workstream 1: Eliminate Loading Freeze/Lag & Duplicate Toast:**
+     - Removed duplicate `toast.loading('Generating batch reports...')` and `toast.dismiss()` in `ReportGeneratorClient.tsx`.
+     - Implemented progressive frame-sliced card mounting in `DocumentCanvas.tsx` (`visibleCount` starting at `2` on Frame 1, incrementing by `4` per frame via `requestAnimationFrame` with subtle `180ms ease-out` opacity fade-in), preventing 38 heavy DOM trees and 76 canvas operations from freezing the main thread.
+     - Replaced layout-triggering `left: -40%` in `jiddah-loader.tsx` with GPU-composited `transform: translateX(-100%)` to `translateX(250%)` and `willChange: 'transform'`.
+  2. **Workstream 2: Transparent Stamp Crest + Royal Blue Ink Signatures Seated on Dotted Lines:**
+     - Defined SVG Luminance-to-Alpha Inversion Filter `<filter id="jiddah-stamp-crest-ink">` in `StampGenerator.tsx` (`values="0 0 0 0 0.106  0 0 0 0 0.231  0 0 0 0 0.545  -1.6 -1.6 -1.6 0 2.2"`), stripping the white background bounding box from `/logo-512h.png` to 100% transparency.
+     - Added inline SVG Luminance-to-Blue-Ink Alpha Filter `<filter id="jiddah-blue-signature-ink">` in `CleanSignatureImage.tsx` (`values="0 0 0 0 0.059  0 0 0 0 0.204  0 0 0 0 0.569  -2.8 -2.8 -2.8 0 3.9"`) and tuned ballpoint pen blue ink in `signature-ink-processor.ts` to authentic Royal Blue (`#0F3491` / `R=15, G=52, B=145`).
+     - Seated signatures directly ON the dotted line across all report templates (`PrimaryEOTReport`, `PrimaryMOTReport`, `PrimaryBOTReport`, `NurseryEOTReport`, `NurseryMOTReport`, `NurseryTheologyEOTReport`, `TheologyMOTReport`, `P7EOTReport`) with `position: 'relative', display: 'flex', alignItems: 'flex-end', height: '36px', borderBottom: '1.5px dotted #334155'` and `marginBottom: '-6px'` on `<CleanSignatureImage />`.
+  3. **Workstream 3: Redesign Portrait Template `P7EOTReport.tsx` & Bold Arabic Typography:**
+     - Completely redesigned `P7EOTReport.tsx` (Secular A4 Portrait for Non-Muslims & P.7) to fill the 210mm × 297mm sheet proportionally with ZERO middle gap: Jiddah header (~38mm) with Maroon `#7F1D1D` title, centered 56px crest, and Bismillah/title badge; warm-ivory bordered Pupil card (~26mm, `border: 1.5px dashed #C59B27`, `bg: #FAF6EE`) with Pupil Name (17px font-black), Class (15px font-extrabold), Term (15px), Year (15px), and Row 2 LIN/ADM (14px), Total Marks (15px), Aggregate (15px), Division (15px `#0D5C3A`); Comparative Performance Table (~108mm) with Gold `#C59B27` banner, Forest Green header, 13.5px font-weight 800 subjects and marks, Total + Average rows; full D1–F9 table + UNEB Division Classification Strip (~28mm); General Conduct, Class Teacher Comment + Signature on dotted line, Head Teacher Comment + Signature on dotted line, inside `<OfficialReportStamp />` (~56mm); Term dates + Maroon validity banner sitting flush at bottom (~20mm).
+     - Upgraded Arabic pupil names across `PrimaryEOTReport.tsx`, `NurseryTheologyEOTReport.tsx`, and `TheologyMOTReport.tsx` to `21px font-black text-[#0F172A]` and Arabic cohort values (`الفصل`, `الفترة`, `عام`) to `16.5px font-extrabold text-[#0F172A]`.
+  4. **Workstream 4: Zoom Normalization, "All Classes", Auto-Map Class Aliases, Delete "Open Filters & Roster", Topbar Responsiveness:**
+     - Defaulted zoom in `ReportGeneratorClient.tsx` to `1.0` (`100%` = Fit to Window), where `scale = fitScale * zoom`.
+     - Prepended `{ value: 'all', label: 'All Classes', count: figmaEnrollments.length }` in desktop and mobile class dropdowns and sorted classes in natural school order (`Baby`, `Middle`, `Top`, `P.1`–`P.7`).
+     - Implemented bidirectional `SECULAR_TO_THEOLOGY_MAP` and `THEOLOGY_TO_SECULAR_MAP` class mapping on curriculum switch so switching curriculum preserves active cohort and resets `selectedStudentIds` without dropping to `0 Selected`.
+     - Deleted redundant `"Open Filters & Roster"` button from `EmptyState.tsx`.
+     - In `TopToolbar.tsx`: set `min-w-0 shrink max-w-[145px] xl:max-w-[230px]` on Student Roster pill, hid `• [Student Name]` below `xl`, hid `"Customize"` text label below `xl`, and set tooltip `delayDuration={50}`.
+  5. **Workstream 5: Verification Gate:**
+     - Full automated suite: 84/84 tests passing across 22 suites in `src/__tests__/overhaul-workstreams.test.mjs` and 5/5 in `report-print.test.mjs`.
+     - TypeScript compiler (`npm run typecheck`): 0 errors (`tsc --noEmit`).
+     - Next.js production build (`npm run build`): 68/68 routes compiled cleanly in Next.js 16.4.6.
+
+
+---
+
+### Milestone 27: Solid Blue Block Elimination, Ink Promise Deduplication, Filled Portrait Gaps & Mixed-Orientation Single-Sheet Print Lock (`feat/overnight-system-renovation`)
+- **Files Modified:**
+  - `src/lib/signature-ink-processor.ts`
+  - `src/components/reports/CleanSignatureImage.tsx`
+  - `src/components/reports/StampGenerator.tsx`
+  - `src/components/reports/ReportPreviewCell.tsx`
+  - `src/components/figma-ui/DocumentCanvas.tsx`
+  - `src/components/ReportGeneratorClient.tsx`
+  - `src/components/reports/PrintPortal.tsx`
+  - `src/styles/reports/print-system.css`
+  - `src/components/reports/P7EOTReport.tsx`
+  - `src/components/reports/NurseryEOTReport.tsx`
+  - `src/components/reports/NurseryMOTReport.tsx`
+  - `src/components/figma-ui/PrintDialog.tsx`
+  - `src/components/figma-ui/StudentRosterSidebar.tsx`
+  - `src/__tests__/overhaul-workstreams.test.mjs`
+  - `src/__tests__/signature-assets.test.mjs`
+  - `OVERNIGHT_PROGRESS_LEDGER.md`
+- **Scope & Workstreams Completed:**
+  1. **Workstream 1: Fix Solid Dark-Blue Signature & Stamp Blocks AND Eliminate Main-Thread Lag:**
+     - Fixed SVG color matrix in `CleanSignatureImage.tsx`: changed `#jiddah-blue-signature-ink` `<feColorMatrix>` alpha row from `-2.8 -2.8 -2.8 0 3.9` to `0 0 0 1 0` so transparent pixels (`alpha = 0`) never turn into opaque dark-blue blocks (`0 * -2.8 + 3.9 = 3.9 -> 1.0`).
+     - In `CleanSignatureImage.tsx`, when `resolvedSrc` is already a processed data URL (`data:image/png;base64,...`), bypassed `mixBlendMode` and CSS SVG filters entirely to prevent GPU pipeline thrashing and solid blue clipping.
+     - Added `inFlightSignaturePromises` Map in `signature-ink-processor.ts` to deduplicate concurrent extraction calls across 38 student cards down to 2 offscreen `<canvas>` extractions instead of 76.
+     - In `StampGenerator.tsx`, exported `stampCrestCache` and singleton hook `useMonochromeStampCrest(inkColor)`. Pre-renders `/logo-512h.png` to an offscreen 120×120 canvas once, clips white background (`lum > 215`) to pure transparency (`alpha = 0`), recolors crest emblem to ink color, and replaces `<image filter="url(#jiddah-stamp-crest-ink)">` with clean `<image href={crestDataUrl || "/logo-512h.png"}>`.
+     - In `DocumentCanvas.tsx` & `ReportPreviewCell.tsx`: replaced 38 per-cell `ResizeObserver` instances with a single debounced `ResizeObserver` on the canvas container that precalculates `landscapeScale` and `portraitScale` based on container dimensions and zoom, passing `scale={scale}` down to each cell to lock preview scrolling to 60fps.
+  2. **Workstream 2: Proportional Void Elimination in `P7EOTReport.tsx` & Nursery Reports:**
+     - In `P7EOTReport.tsx`: unconditionally rendered Maroon Arabic school title `<h2>مدرسة جدة الإسلامية للروضة<br />والإبتدائية - انساغو - واكيسو</h2>` and `bismillah` across all religions; added `white-space: nowrap` on Pupil Name and LIN/ADM items so identity details never wrap onto 2 lines; changed `.content-layer` to `justify-content: flex-start; gap: 6px;`; expanded `.table-container` with `flex: 1 1 auto; display: flex; flex-direction: column;` and `table { height: 100%; font-size: 13.5px; }` with `padding: 8px 6px;` per cell; increased padding on UNEB strip and footer comments box (`padding: 8px 12px; gap: 5px;`) to distribute space evenly without an empty middle gap.
+     - In `NurseryEOTReport.tsx` & `NurseryMOTReport.tsx`: removed `style={{ marginTop: 'auto' }}` on grading scale tables, enlarged cell padding to `9px 10px; font-size: 13px;` and header padding to `9px 8px; font-size: 11.5px;`.
+     - In `NurseryEOTReport.tsx`: updated `Learner's Competence (Progressive Records)` to display all 3 rows (`Beginning of Term (BOT)`, `Mid-Term Assessment (MOT)`, and `End of Term Assessment (EOT)`) across LA1–LA5 and Writing.
+  3. **Workstream 3: Mixed-Orientation Print Hardening (Single Sheet per Student):**
+     - In `print-system.css`: added explicit `.report-sheet-landscape` (`page: landscape-sheet !important; width: 297mm; height: 210mm;`) and `.report-sheet-portrait` (`page: portrait-sheet !important; width: 210mm; height: 297mm;`).
+     - In `PrintPortal.tsx`: supported `pageOrientation?: 'portrait' | 'landscape' | 'mixed'`. In mixed orientation, omitted the unnamed `@page` tag so Chromium uses CSS named pages.
+     - In `ReportGeneratorClient.tsx`: dynamically inspected batch students; if all landscape, injected `@page { size: A4 landscape; margin: 0mm; }`; if all portrait, injected `@page { size: A4 portrait; margin: 0mm; }`; if mixed, injected empty string so Chromium respects `@page landscape-sheet` and `@page portrait-sheet` per student sheet without forcing 210mm portrait cards onto 297mm landscape sheets or breaking onto 2 pages (38 students = 38 sheets exactly).
+     - In `P7EOTReport.tsx`: added `max-height: 296mm; overflow: hidden; break-inside: avoid !important; page-break-inside: avoid !important;`.
+  4. **Workstream 4: Verification Gate:**
+     - Full automated suite: 89/89 tests passing across 23 suites in `src/__tests__/overhaul-workstreams.test.mjs`, 63/63 tests passing in related report unit tests (`report-print.test.mjs`, `signature-assets.test.mjs`, `report-logo.test.mjs`, `grading-and-calculations.test.mjs`). Total 152/152 unit assertions green.
+     - TypeScript compiler (`npm run typecheck`): 0 errors (`tsc --noEmit`).
+     - Next.js production build (`npm run build`): 68/68 routes compiled cleanly in Next.js 16.4.6 with webpack.
+
+
+---
+
+### Milestone 28: Adaptive Signature Extraction, Portrait Single-Sheet Lock, Nursery Overlap Fix & Fluid Mobile/Roster Count (`feat/overnight-system-renovation`)
+- **Files Created / Modified:**
+  - `src/app/api/signatures/proxy/route.ts` (New)
+  - `src/lib/client-cache.ts`
+  - `src/lib/signature-ink-processor.ts`
+  - `src/components/reports/CleanSignatureImage.tsx`
+  - `src/components/reports/P7EOTReport.tsx`
+  - `src/components/reports/PrimaryEOTReport.tsx`
+  - `src/components/reports/PrimaryMOTReport.tsx`
+  - `src/components/reports/PrimaryBOTReport.tsx`
+  - `src/styles/reports/print-system.css`
+  - `src/components/reports/TheologyMOTReport.tsx`
+  - `src/components/figma-ui/DocumentCanvas.tsx`
+  - `src/components/reports/NurseryEOTReport.tsx`
+  - `src/components/reports/NurseryMOTReport.tsx`
+  - `src/components/reports/NurseryTheologyEOTReport.tsx`
+  - `src/components/ReportGeneratorClient.tsx`
+  - `src/components/figma-ui/StudentRosterSidebar.tsx`
+  - `src/__tests__/overhaul-workstreams.test.mjs`
+  - `OVERNIGHT_PROGRESS_LEDGER.md`
+- **Scope & Workstreams Completed:**
+  1. **WS1 — Clean & Transparent Class Teacher Signature:**
+     - Replaced failing coarse background threshold in `signature-ink-processor.ts` with an O(1) 2D integral image `17×17` (`windowRadius = 8`) adaptive local-contrast extractor (`localContrast >= 9` and `globalContrast >= 10`), 4px outer photo frame trim, Royal Ballpoint Blue (`#0F3491`) normalization with boosted alpha `(localContrast - 8) * 16`, bumped `SIG_CACHE_VERSION = 'v5-adaptive-local'`, and removed raw-grey-image fallback (`EMPTY_TRANSPARENT_PNG_DATA_URL`).
+     - Added authenticated `GET /api/signatures/proxy` (`verifyDataAccess` + SSRF allowlist for Supabase storage `/storage/v1/object/`, `/signatures/`, and localhost) so un-CORS'd Supabase URLs extract reliably without canvas tainting.
+     - Updated `CleanSignatureImage.tsx` to initialize synchronously from `getCachedSignatureUrl` without raw grey flash.
+  2. **WS2 — `P7EOTReport.tsx` Cleanup, Header Enlargement & Single-Sheet Portrait Print Lock:**
+     - Removed `LIN / ADM` and `GENDER` fields from `P7EOTReport.tsx` and organized Pupil Identity into 2 balanced rows (`PUPIL'S NAME` + `CLASS`; `TERM` + `YEAR` + `AGGREGATE` + `DIVISION`).
+     - Enlarged English (`21px–22px` bold Maroon) and Arabic (`24px–25px` bold Maroon) school header titles across `P7EOTReport.tsx`, `PrimaryEOTReport.tsx`, `PrimaryMOTReport.tsx`, and `PrimaryBOTReport.tsx`.
+     - Locked single-sheet portrait & landscape bounds in `print-system.css`, `P7EOTReport.tsx`, `PrimaryEOTReport.tsx`, `TheologyMOTReport.tsx`, `DocumentCanvas.tsx`, and `ReportGeneratorClient.tsx` (`296mm` portrait max-height, `296mm × 209mm` landscape bounds, and `data-last-printed="true"` page-break reset) to eliminate trailing blank pages.
+  3. **WS3 — Restore Nursery Footer Clarity & Dedicated `SIG:` Dotted Lines:**
+     - Removed flex `min-height: 0` compression in `NurseryEOTReport.tsx` & `NurseryMOTReport.tsx` and compacted table/body padding so `OFFICIAL GRADING SCALE` never overlaps the footer.
+     - Separated Class Teacher and Head Teacher comment lines from dedicated right-aligned `SIG:` + `#334155` dotted signature boxes (`borderBottom: '1.5px dotted #334155'`).
+     - Removed colliding `border-top` on `.sign-line` in `NurseryTheologyEOTReport.tsx`.
+  4. **WS4 — Fluid Mobile Topbar (`280px–320px`) & In-View Roster Count:**
+     - Added `selectedInViewIds` and `selectedInViewCount` in `ReportGeneratorClient.tsx` and `inViewSelectedCount` in `StudentRosterSidebar.tsx` so counters reflect active cohort selection cleanly while preserving cross-class selection memory.
+     - Hardened mobile topbar layout in `ReportGeneratorClient.tsx` (`overflow-hidden`, `hidden min-[420px]:inline-flex` palette trigger, `hidden min-[380px]:inline` ratio) so `MoreActionsMenu` (`⋮`) stays visible down to `280px`.
+  5. **WS5 — Verification Gate:**
+     - `npm run typecheck`: 0 errors (`tsc --noEmit`).
+     - `overhaul-workstreams.test.mjs`: 93/93 tests passing across 24 suites (including Workstream 28).
+     - `report-print.test.mjs`, `signature-assets.test.mjs`, `report-logo.test.mjs`, `grading-and-calculations.test.mjs`: 63/63 tests passing across 7 suites (total 156/156 assertions passing).
+     - `npm run build`: 69/69 static pages and all dynamic routes compiled cleanly in Next.js 16.4.6 (`--webpack`).
+
+
+## Milestone 29 — Mobile-First 6-Item Studio Bar, Slot-Relative 100% Fit & Touch Pan, Sauvola Solid Royal Blue Ink + KYC Quality Verifier + Digital Signature Pad, and Nursery BOT Removal
+- **WS1 — Mobile-First Studio Bar, Compact Mobile Selection Strip & Touch-Panning Zoom (`src/components/ReportGeneratorClient.tsx`, `src/components/figma-ui/DocumentCanvas.tsx`, `src/components/reports/ReportPreviewCell.tsx`, `src/components/figma-ui/TopToolbar.tsx`):**
+  - Rebuilt the mobile topbar (`flex md:hidden items-center justify-between gap-1 px-2 h-11 w-full max-w-full overflow-hidden`) to render strictly **6 compact elements**:
+    1. `☰` Sidebar Drawer Trigger (`w-7 h-7 shrink-0`)
+    2. `Class CustomPillSelect` (`min-w-0 shrink max-w-[92px] sm:max-w-[120px] h-7.5 px-2 text-[11px] font-bold truncate`)
+    3. `👥 Roster & Batch Pill` (`h-7.5 px-2 text-[11px] font-bold shrink-0` showing `👥 ${selectedInViewCount}`)
+    4. `Phase • Curriculum Pill` (`h-7.5 px-2 text-[11px] font-bold shrink-0 whitespace-nowrap` dynamically displaying `EOT•Sec` / `EOT•Theo` / `MOT•Both` and hiding `BOT` when Nursery or Theology is active)
+    5. `🖨️ Print CTA` (`h-7.5 px-2.5 rounded-full text-[11px] font-bold shrink-0 whitespace-nowrap` showing `🖨️ ${selectedInViewCount}`)
+    6. `⋮` `MoreActionsMenu` (`w-7 h-7 shrink-0` — 100% visible down to `280px`) exposing `🎨 Customize Studio & Stamp`, `⊞ Grid / Single View`, `☑️ Select Cards on Canvas`, `↓ Download PDF`, `☀️/🌙 Theme`, and `⚙️ Report Studio 2.0`.
+  - Refactored `visual-selection-bar` in `DocumentCanvas.tsx` into a single compact horizontal row on mobile (`37/38` badge | `All | Clear | Invert` | `🖨️ Print (37)` | `✕`).
+  - Defaulted the floating zoom dock to minimized (`🔍 100% • 1/38`) on mobile (`< 768px`) and applied `max-w-[calc(100vw-20px)] max-h-[72dvh]` on mobile/desktop popovers.
+  - Replaced hardcoded/viewport-crushing zoom scaling with slot-relative `100%` Fit (`zoom = 1.0`), clamped `zoom` strictly to `[0.5, 0.75, 0.9, 1.0, 1.15, 1.25, 1.5]` (`50%`–`150%`), set explicit scaled pixel width/height on the outer wrapper in `ReportPreviewCell.tsx` (`Math.round(nativeWidthPx * actualScale)` × `Math.round(nativeHeightPx * actualScale)`), and enabled 2D touch panning (`overflow-x: auto; overflow-y: auto; -webkit-overflow-scrolling: touch; touch-action: pan-x pan-y`) when `zoom > 1.0`.
+- **WS2 — Sauvola Solid Royal Blue Signature Ink + Real-Time KYC Quality Verifier + Digital Signature Pad (`src/lib/signature-ink-processor.ts`, `src/lib/signature-quality-verifier.ts`, `src/components/SignatureInkReviewCard.tsx`, `src/components/layout/signatures-client.tsx`):**
+  - Upgraded `signature-ink-processor.ts` (`SIG_CACHE_VERSION = 'v7-sauvola-solid-royal-blue'`) to Sauvola Adaptive Document Binarization (`19×19` local window `windowRadius = 9` mean $m(x,y)$ and std-dev $s(x,y)$ via 2D integral images `integralLum` and `integralLumSq`, threshold $T(x,y) = m(x,y) \cdot (1 - 0.14 \cdot (1 - s(x,y)/128))$ with `localContrast >= 8` and `globalContrast >= 10`), Royal Ballpoint Pen Blue (`R = 12, G = 42, B = 132` / `#0C2A84`), full solid stroke opacity (`alpha = 235..255`, `alpha >= 215`) + `3×3` stroke-strengthening pass, and zero raw-grey fallback.
+  - Created `src/lib/signature-quality-verifier.ts` with `verifySignatureImageQuality` (`sharpnessScore`, `lightingUniformityScore`, `contrastScore`) and `INK_BOLDNESS_PRESETS` (`Light | Balanced | Bold`), wired into `SignatureInkReviewCard.tsx`.
+  - Added the Mobile & Desktop Digital Signature Pad Tab (`"✍️ Draw Signature"`) with smooth HTML5 `<canvas>` Bézier pen pad (`touch-action: none`), `Pen Color (Royal Blue / Black)`, `Stroke Thickness`, `Clear`, `Save Transparent Signature`, and `<input type="file" accept="image/*" capture="environment" />` camera snap support in `signatures-client.tsx`.
+- **WS3 — Remove `BOT` from Nursery & Hide `BOT` When Nursery or Theology Is Active (`src/components/reports/NurseryEOTReport.tsx`, `src/components/figma-ui/TopToolbar.tsx`, `src/components/ReportGeneratorClient.tsx`, `src/components/shared-marks-entry.tsx`):**
+  - Removed `Beginning of Term (BOT)` and `End of Term Assessment (EOT)` rows from `Learner's Competence (Progressive Records)` in `NurseryEOTReport.tsx` so only `Mid-Term Assessment (MOT)` renders across `LA1..LA5` (+ `Writing`).
+  - Hid `BOT` from desktop and mobile phase selectors whenever a Nursery class (`Baby`, `Middle`, `Top`) or `Theology` curriculum is active, with automatic fallback from `BOT` to `EOT`.
+- **WS4 — Polish `P7EOTReport.tsx` & Single-Sheet Portrait Print Lock (`src/components/reports/P7EOTReport.tsx`, `src/components/figma-ui/DocumentCanvas.tsx`, `src/styles/print-system.css`):**
+  - Verified `P7EOTReport.tsx` omits `LIN / ADM` and `GENDER`, includes `PUPIL'S NAME`, `CLASS`, `TERM`, `YEAR`, `TOTAL MARKS`, `AGGREGATE`, and `DIVISION`, enlarges the English & Arabic school names (`22px` / `24px` `#7F1D1D`), and locks single-sheet portrait printing (`data-last-printed="true"` + `max-height: 296mm !important`).
+- **WS5 — Automated Verification Gate (`src/__tests__/overhaul-workstreams.test.mjs`):**
+  - Added `Workstream 29` automated regression tests (`WS29.1`–`WS29.5`).
+
+
+---
+
+## Milestone 30: Portrait Arabic Header Fit, Theology Position/Out-Of, Nursery Educative Watermark & Comments, Instant Selection, and Report Studio 2.0
+- **WS1 — Portrait Arabic Header Fit & Single-Sheet Print Lock (`src/components/reports/P7EOTReport.tsx`, `src/styles/reports/print-system.css`):**
+  - Constrained `.header-section` to a strict 3-column grid (`grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; width: 100%; box-sizing: border-box; padding: 2px 6px;`) and right Arabic column (`direction: rtl; text-align: right; padding-right: 6px; min-width: 0; max-width: 100%; overflow: hidden;`) with `18.5px` (`fontWeight: 900`, `lineHeight: 1.25`) Arabic school name lines so `مدرسة جدة الإسلامية للروضة` / `والإبتدائية - انساغي` never clips at the right page border.
+  - Capped `.portrait-page` and `.report-sheet-portrait` height in `@media print` to `292mm !important`, zeroed out padding/margins/gaps on `.document-canvas-root`, `.document-canvas-scroll`, `.document-canvas-grid`, and `[data-canvas-scroll]`, hid `.report-card-sheet.print-excluded`, and enforced `page-break-after: avoid !important; break-after: avoid !important;` on `.report-card-sheet[data-last-printed="true"]` and all descendants.
+- **WS2 — `الترتيب` (Position) & `عدد الطلبة` (Out Of) on Theology Profile Card (`src/components/reports/PrimaryEOTReport.tsx`, `src/app/api/report/route.ts`, `src/app/api/report/batch/route.ts`):**
+  - Updated single and batch report API routes to compute and attach `theology_position` and `theology_total_students` across all curricula (`secular`, `theology`, `combined`).
+  - Added the 3rd row to `.info-box.arabic` in `PrimaryEOTReport.tsx` displaying `الترتيب :` and `عدد الطلبة :` in bold (`15.5px`, `fontWeight: 900`, `#0F172A`) Arabic-Indic numerals while keeping the Secular identity box unchanged.
+- **WS3 — Nursery Templates Polish & Blended Educative Artwork (`src/components/reports/NurseryEducativeWatermark.tsx`, `src/components/reports/NurseryTheologyEOTReport.tsx`, `src/components/reports/NurseryEOTReport.tsx`, `src/components/reports/NurseryMOTReport.tsx`, `src/utils/signatures.ts`):**
+  - Enlarged and centered Arabic teacher and headteacher remarks (`18.5px`, `fontWeight: 800`, `#1E40AF`) in `NurseryTheologyEOTReport.tsx` and wired `classTeacherSignatureUrl` on the `تقرير مرب الفصل` dotted line.
+  - Created `NurseryEducativeWatermark.tsx` combining Layer 1 (Central School Crest `/logo-512h.png` `320px × 320px`) and Layer 2 (SVG vector educative nursery artwork: `A B C` blocks, open storybook, `1 2 3` numerals, pencil & musical notes, giraffe, baby elephant, lion cub, and graduation cap) and wired it into the Nursery templates.
+- **WS4 — Instantaneous Card Selection & Button Response (`src/components/figma-ui/DocumentCanvas.tsx`, `src/components/reports/ReportPreviewCell.tsx`, `src/components/ReportGeneratorClient.tsx`):**
+  - Added `O(1)` `selectedIdSet` lookup, `MemoizedCanvasCard` (`React.memo`), custom `ReportPreviewCell` `React.memo` comparator, and stable `handleToggleSelectCard` `useCallback`.
+- **WS5 — Quick Studio Popover & Full `Report Studio 2.0` Overhaul (`src/lib/studio-config-store.ts`, `src/components/figma-ui/TopToolbar.tsx`, `src/components/reports/ReportStudioClient.tsx`, `src/app/api/settings/school/route.ts`):**
+  - Created shared persistent `studio-config-store.ts` (`jiddah_studio_formatting_v2` + `/api/settings/school` `report_studio_config` + `jiddah:studio-config-updated` custom event) consumed by all 8 report templates.
+  - Updated `TopToolbar.tsx` Studio Popover with `"Official Headteacher Stamp"`, `"✨ Nursery Educative Art"`, `"💾 Save as School Default"`, and `"🚀 Open Full Report Studio 2.0"`.
+  - Rebuilt `ReportStudioClient.tsx` as a 2-Pane Live Document Design Studio with all 8 templates, 4 sample student profiles, 4-tab Left Inspector Dock (`w-[340px]`), and global persistence.
+
+---
+
+### Milestone 31 — Final Precision Polish Across PrimaryEOTReport, P7EOTReport, PrimaryMOTReport, PrimaryBOTReport & Report Studio 2.0
+- **WS1 — Secular Profile Box `AGGREGATE` Alongside `DIVISION` & Standardized `TERM` Display (`src/components/reports/PrimaryEOTReport.tsx`, `src/components/reports/P7EOTReport.tsx`, `src/components/reports/PrimaryBOTReport.tsx`):**
+  - Updated Row 3 of the Left Secular Pupil Identity box in `PrimaryEOTReport.tsx` to display two balanced fields side-by-side (`AGGREGATE:` in bold `14.5px` `#0F172A` and `DIVISION:` in bold `14.5px` `#0D5C3A`), matching the right-hand Theology box and `P7EOTReport.tsx`.
+  - Added `AGG:` alongside `DIV:` in `PrimaryBOTReport.tsx` and standardized `TERM:` display to `Term ${term_number}` across `PrimaryEOTReport.tsx` and `P7EOTReport.tsx`.
+- **WS2 — Authentic Jiddah School Metadata & Unclipped Header Motto (`src/components/reports/ReportStudioClient.tsx`, `src/components/reports/P7EOTReport.tsx`, `src/components/reports/PrimaryEOTReport.tsx`):**
+  - Updated `defaultBranding` in `ReportStudioClient.tsx` with authentic Jiddah Islamic Schools metadata (`Jiddah Islamic Schools`, `P.O. BOX 34008 Kampala (U)`, `+256705316961 / +256 787 779 909`, `jiddahislamicnurseryandpri@gmail.com`, `Striving for Life & The Hereafter`).
+  - Added `overflow: visible` and `line-height: 1.2` on `.header-section` and `.header-left` in `P7EOTReport.tsx` and `PrimaryEOTReport.tsx` so the motto is never clipped vertically.
+- **WS3 — Report Studio 2.0 Single-Row Header, Clean Icons, Populated `GRD` & Auto-Paired Archetypes (`src/components/reports/ReportStudioClient.tsx`, `src/components/reports/PrimaryEOTReport.tsx`, `src/components/reports/P7EOTReport.tsx`, `src/components/reports/PrimaryMOTReport.tsx`, `src/components/reports/PrimaryBOTReport.tsx`):**
+  - Removed duplicate `💾` text emoji from `Save & Apply to All Reports` and rendered clean Lucide icons in the 4 inspector tabs.
+  - Populated `bot_grade_display`, `mot_grade_display`, `eot_grade_display`, `bot_agg`, `mot_agg`, `eot_agg`, and `is_core: true` on `primarySubjects` in `ReportStudioClient.tsx`, plus grade fallbacks in the report templates.
+  - Auto-paired sample student archetypes when switching templates (`handleTemplateSelect`) and moved the Sample Student archetype switcher into the floating stage pill above the document so the top `<header>` sits cleanly on a single row.
+
+---
+
+### Milestone 32 — Canonical Live Studio Style Resolver Across All 8 Report Templates, Overflow-Proof Responsive Studio Top Bar, RTL Stamp Date Fix, Theology Grade & Footer Separation, and Lucide Vector Iconography
+- **WS1 — Canonical Live Studio Style Resolver (`src/lib/studio-config-store.ts` & All 8 Report Templates):**
+  - Created `resolveEffectiveStudioStyle(studioConfig, reportData)` in `src/lib/studio-config-store.ts` returning `primaryColor`, `secondaryColor`, `headerAccentColor`, `fontFamilyCss`, `fontScaleMultiplier`, `scoreFontWeight`, `headingFontWeight`, `commentFontSizePx`, `arabicCommentFontSizePx`, `densityPadding`, `watermarkOpacity`, `showNurseryArt`, `nurseryArtOpacity`, `showStamp`, `stampMode`, `stampColor`, `stampDate`, `stampScale`, `showSignatures`, `signatureInkColor`, `signatureThreshold`, and `schoolHeader`.
+  - Fixed `normalizeStudioConfig` and `useSyncedStudioConfig` so switching between `jiddah-classic`, `royal-emerald`, `imperial-navy`, `burgundy-heritage`, and `monochrome` immediately updates `primaryColor`, `secondaryColor`, and `accentColor` to the new palette instead of retaining stale previous colors.
+  - Wired `resolveEffectiveStudioStyle` into all 8 report templates (`PrimaryEOTReport.tsx`, `P7EOTReport.tsx`, `PrimaryMOTReport.tsx`, `PrimaryBOTReport.tsx`, `NurseryEOTReport.tsx`, `NurseryMOTReport.tsx`, `NurseryTheologyEOTReport.tsx`, `TheologyMOTReport.tsx`), replacing hardcoded emerald/maroon/gold hex values with dynamic `effective.primaryColor`, `effective.secondaryColor`, and `effective.headerAccentColor`, and applying live font stacks, font scale, density padding, score weights, comment font sizes, and school header identity.
+  - Wired live School Header Identity inputs (`School Name (English)`, `School Name (Arabic)`, `Address / P.O. Box`, `Phone`, `Email`, `School Motto`) and `Comment Font Size` (`Normal | Large | X-Large`) in `ReportStudioClient.tsx`, persisting to `/api/settings/school` and `/api/settings/school/branding`.
+- **WS2 — Overflow-Proof Responsive Studio Top Bar & Mobile/Tablet Segmented View Switcher (`src/components/reports/ReportStudioClient.tsx`):**
+  - Rebuilt the Top Studio Header Bar (`h-13 px-3 bg-white dark:bg-[#151D1A] border-b border-stone-200 dark:border-white/10 flex items-center justify-between gap-2 w-full max-w-full overflow-hidden`) with:
+    - Left Group: `Back to Report Center` button + Studio 2.0 badge.
+    - Center Group (`data-testid="studio-template-switcher"`): `< Prev` / `Next >` steppers + compact `<select id="studio-template-select" data-testid="studio-template-select">` (all 8 templates) + compact Sample Archetype pills (`Muslim | Non-Muslim | P.7 | Nursery`).
+    - Right Group: `Reset` button + `Save & Apply to All Reports` CTA (`data-testid="studio-save-apply-all"`), guaranteed 100% visible across all screen widths (`320px`–`1920px`).
+  - Added mobile/tablet segmented view switcher (`data-testid="studio-mobile-view-switcher"`, `lg:hidden`: `[ Customize Controls | Live Report Preview ]`) so `< lg` screens switch cleanly between the inspector controls and the auto-scaled preview canvas.
+- **WS3 — RTL Stamp Date Isolation, Theology Grade Computation, Stamp Separation & Calligraphic Signatures (`src/components/reports/StampGenerator.tsx`, `src/components/reports/TheologyMOTReport.tsx`, `src/components/reports/PrimaryEOTReport.tsx`, `src/components/reports/ReportStudioClient.tsx`):**
+  - Enforced `dir="ltr"`, `direction="ltr"`, and `unicodeBidi: "isolate"` / `"bidi-override"` on `<div data-testid="official-vector-stamp">`, `<svg>`, and `<text>` elements in `StampGenerator.tsx` so `24 APR 2026` never reverses into `APR 2026 24` inside RTL containers (`TheologyMOTReport.tsx`, `NurseryTheologyEOTReport.tsx`), and wired `studioFormatting?.stampScale`.
+  - Added `computedDivision` fallback in `TheologyMOTReport.tsx` (`ممتاز` / `جيد جداً` / `جيد` / `مقبول` / `ضعيف` computed from average score when `reportData?.theology?.division` is missing) and separated `.tc-footer` (`flex: 1; min-width: 0;` on `.tc-comment` and `132px × 64px` on `.tc-stamp`) so `<OfficialReportStamp />` never overlaps the `تقرير مرب الفصل` dotted line.
+  - Constrained `.stamp-wrapper` in `PrimaryEOTReport.tsx` (`132px × 62px`, `marginBottom: '2px'`) and upgraded `SAMPLE_HEADTEACHER_SIG` and `SAMPLE_TEACHER_SIG` in `ReportStudioClient.tsx` to multi-stroke calligraphic Royal Blue (`#0C2A84`) fountain-pen SVG signatures.
+- **WS4 & WS5 — Lucide Vector Iconography & Verification Gate (`src/components/reports/ReportStudioClient.tsx`, `src/components/figma-ui/TopToolbar.tsx`, `src/__tests__/overhaul-workstreams.test.mjs`):**
+  - Replaced all leftover raw emojis (`🎨`, `🔤`, `🖼️`, `✒️`, `✨`, `💾`, `🚀`) in `ReportStudioClient.tsx` and `TopToolbar.tsx` with Lucide vector icons inside emerald/amber tinted icon badges.
+  - Verified with `npm run typecheck` (0 errors), 172/172 automated tests passing across 33 suites, and `npm run build`.
+
+---
+
+### Milestone 33 — Template & Print Engine Stabilization, Scoped Report Studio 2.0, Stamp/Signature/Watermark Controls & Upload Center Overhaul
+- **WS1 — Dual EOT & Portrait Template Stabilization (`PrimaryEOTReport.tsx`, `P7EOTReport.tsx`, `studio-config-store.ts`):**
+  - Standardized 2-line Arabic school name splitting (`splitArabicSchoolName`) in `studio-config-store.ts` so `nameArabicLine1` / `nameArabicLine2` render without dangling hyphens across `PrimaryEOTReport.tsx` and `P7EOTReport.tsx`.
+  - Removed the uncomputed `AVERAGE` row in `P7EOTReport.tsx`, enforced single-sheet `286mm !important` height/max-height, wired `<NurseryEducativeWatermark />`, and anchored `<OfficialReportStamp />` inside a fixed `135px × 64px` `position: relative; overflow: visible` slot across all 8 report templates so stamp scaling/rotation/offsets never shift adjacent layout rows.
+- **WS2 — Print Engine Orientation & Single-Sheet Lock (`PrintPortal.tsx`, `print-system.css`, `ReportGeneratorClient.tsx`):**
+  - Implemented `isLandscapeReportData` and `applyDynamicPrintPageRule` in `ReportGeneratorClient.tsx`, injecting `#jiddah-print-page-rule` with exact `@page { size: 297mm 210mm !important; margin: 0mm !important; }` for Landscape reports and `size: 210mm 297mm !important; margin: 0mm !important;` for Portrait reports.
+  - Resolved conflicting named `@page` rules in `print-system.css` and locked `.report-sheet-landscape` (`min-height: 206mm !important`) and `.report-sheet-portrait` (`height: 286mm !important`) to eliminate blank overflow sheets and clipped edges.
+- **WS3 — Scoped Studio Save, Reset Defaults, Split Dual Fonts & Expanded Palettes (`studio-config-store.ts`, `ReportStudioClient.tsx`, `TopToolbar.tsx`, `src/lib/fonts.ts`, `src/app/globals.css`):**
+  - Replaced all native `<select>` elements across `ReportStudioClient.tsx` and `TopToolbar.tsx` with accessible `<CustomPillSelect />` components.
+  - Added per-template `templateOverrides`, `getCurriculumGroupTemplates`, Scoped Save Popover (`save-scope-template`, `save-scope-group`, `save-scope-all`), per-section `Reset Default` actions, independent `englishFontFamily`/`englishFontScale` + `arabicFontFamily`/`arabicFontScale`, 4-channel palettes (`badgeHighlightColor`, `nursery-cobalt-sunshine` default for Nursery, `madinah-emerald-gold` default for Theology).
+- **WS4 — Color Wheel Picker, Watermark Gallery & Physical Stamp/Signature Transform Controls (`color-wheel-picker.tsx`, `NurseryEducativeWatermark.tsx`, `StampGenerator.tsx`, `CleanSignatureImage.tsx`):**
+  - Created `<ColorWheelPicker />` with a 360° conic Hue wheel, 2D S/V box, Hex input, institutional swatches, and default reset.
+  - Expanded `<NurseryEducativeWatermark />` across all 8 templates with `watermarkStyle` (`crest`, `crest-star`, `laurel-seal`, `none`), `watermarkScale`, and 7 vector `artPreset` themes (`safari`, `abc-literacy`, `stem-explorers`, `islamic-arabesque`, `certificate-filigree`, `none`).
+  - Upgraded `StampGenerator.tsx` with dual-ink `date_ink_color` (`#C81E1E`) and `official-stamp-anchor-slot` + `official-stamp-transform-layer`, and `CleanSignatureImage.tsx` with SVG `feColorMatrix` ink tinting, scale/rotation/X-Y offsets, and contrast threshold modes.
+- **WS5 — Upload & Assets Center Overhaul (`src/utils/signatures.ts`, `src/app/api/signatures/route.ts`, `src/app/admin/upload/page.tsx`, `src/components/layout/upload-client.tsx`):**
+  - Excluded `theology-teacher-p7` from `getDynamicSignatureSlots()` UI discovery (`!isP7Class`, while preserving `getReportSignatureKeys()` contract) and canonically sorted slots (`head-teacher` -> Secular `Baby..P.7` -> Theology `Baby..P.6`).
+  - Wired `getUploadMetrics()` + `GET /api/signatures` metadata `size` + SSR `initialSignatureSlots` + client `HEAD` byte fallback into `upload-client.tsx` so telemetry (`Total Files`, `Storage Used`, `Signatures`, `Official Stamps`, `Asset Categories`, `Storage Quota`) renders accurate counts and byte totals with distinct Lucide icons (`FolderKanban`, `HardDrive`, `FileSignature`, `Stamp`).
+  - Added `<CustomPillSelect id="upload-signature-role-select" />`, 2-mode signature capture (`Upload & Auto-Clean Photo` with `<SignatureInkReviewCard />` and interactive `<DigitalSignaturePad />` pointer canvas), `<OfficialReportStamp />` live preview on the `Stamps` tab, and Live Signature Assets visual gallery (`Replace`, `Re-Clean Ink`, `Delete`).
+- **WS6 — Verification Gate (`overhaul-workstreams.test.mjs`, `upload-metrics.test.mjs`, `eot-report-auth-and-badges.test.mjs`):**
+  - Verified with `npm run typecheck` (0 errors), 200/200 automated unit tests passing across 38 suites (`WS1`–`WS33`, `upload-metrics`, `report-print`, `signature-assets`, `signature-deactivation`, `grading-and-calculations`, `report-logo`, `eot-report-auth-and-badges`), and `npm run build` passing cleanly (`69/69` static pages generated).
+
+---
+
+### Milestone 34 — 5-Subject Landscape Fit, Zero Ghost Page 2 Print Portal, 16px Anti-Shake ResizeObserver, Conic Icon Buttons & Split Upload Workspace
+- **WS1 — 5-Subject Vertical Fit & Zero Ghost Sheet (`PrimaryEOTReport.tsx`, `P7EOTReport.tsx`, `PrintPortal.tsx`, `print-system.css`, `ReportGeneratorClient.tsx`, `DocumentCanvas.tsx`):**
+  - Tightened `PrimaryEOTReport.tsx` vertical spacing (`.landscape-page` `padding: 2.5mm 4mm`, `.inner-border` `padding: 3px 12px`, `.content-layer` `gap: 2.5px`, `.school-logo` `height: 48px`, `.info-box` `padding: 3px 8px; gap: 2px`, `.table-container th/td` `padding: 2px 3.5px; line-height: 1.15`, `.grading-container th/td` `padding: 1.5px 3px`, `.comments-area` `padding: 3px 8px; gap: 2px`, `.validity-bar` `padding: 3.5px 6px`) and added a 5th `COMP` subject to `primarySubjects` in `ReportStudioClient.tsx` so Studio matches real 5-subject Report Center cards.
+  - Updated `PrintPortal.tsx` to mount `#report-print-portal` (`data-print-portal="active"`) directly into `document.body` via `createPortal`, wrapping `#print-portal` inside it; updated `print-system.css` to hide `body:has(#report-print-portal) > *:not(#report-print-portal):not(style):not(script)`, enforce `break-after: avoid !important` globally on sheets, break strictly BEFORE `data-first-printed="false"` sheets (`i > 0`), and lock Landscape (`297mm × 209mm`) and Portrait (`210mm × 295mm`) bounds without trailing blank Page 2.
+- **WS2 — Anti-Shake ResizeObserver & Cross-Browser Font Scale Variables (`ReportStudioClient.tsx`, `ReportPreviewCell.tsx`, `DocumentCanvas.tsx`, All 8 Templates):**
+  - Added an `overflow-hidden` outer stage wrapper (`previewStageOuterRef`) in `ReportStudioClient.tsx` with `ResizeObserver` wrapped in `requestAnimationFrame` + `16px` hysteresis deadband, passing computed `studioPreviewScale` directly into `<ReportPreviewCell scale={...} />`; also added `16px` deadband hysteresis in `ReportPreviewCell.tsx` and `DocumentCanvas.tsx`.
+  - Replaced CSS `zoom:` across all 8 report templates with `--report-font-scale` / CSS custom properties for consistent cross-browser print dimensions in Chrome, Edge, Firefox, and Safari.
+- **WS3 — Conic Color Wheel Icon & Tooltip Reset Controls (`color-wheel-picker.tsx`, `ReportStudioClient.tsx`):**
+  - Replaced `Wheel` / `Hide Wheel` and `Default` / `Reset Default` text buttons in `color-wheel-picker.tsx` and `SectionHeaderWithReset` (`ReportStudioClient.tsx`) with compact icon buttons featuring a 360° conic-gradient color wheel icon and `<RotateCcw />` icon wrapped in `<Tooltip>`s while preserving `aria-label="Reset Default"`.
+- **WS4 & WS5 — Fit-on-Screen 12-Column Upload Workspace & Verification (`upload-client.tsx`, `overhaul-workstreams.test.mjs`):**
+  - Removed `<HeroSection />`, removed duplicate `ASSET CATEGORIES` sidebar card, fixed the `"used consumed"` quota typo, added a single-row segmented category + telemetry bar (`data-testid="upload-telemetry-bar"`), mobile pane switcher (`data-testid="upload-mobile-view-switcher"`), and an above-the-fold 12-column split workspace (`lg:col-span-5` capture dock + `lg:col-span-7` searchable/filterable Live Visual Asset Gallery).
+  - Verified with `npm run typecheck` (0 errors), 204/204 automated unit tests passing across 39 suites, and `npm run build` passing cleanly (`69/69` static pages generated).
+
+---
+
+### Milestone 35 — Zero Blank Page 1 Print Portal, Mixed-Only Named Pages, P7 & Nursery Gap Elimination & Jiddah Emerald/Marigold Upload Center Redesign
+- **WS1 — Zero Blank Page 1 & Right-Edge Flush Reset (`src/app/admin/layout.tsx`, `ReportGeneratorClient.tsx`, `PrintPortal.tsx`, `print-system.css`, `ReportContainer.tsx`, `PrimaryEOTReport.tsx`, `P7EOTReport.tsx`):**
+  - Removed `print:!block` from `SidebarProvider`, `SidebarInset`, and `main` in `src/app/admin/layout.tsx`, changed `[data-testid="report-center-workspace"]` in `ReportGeneratorClient.tsx` to `report-studio-root ... print:!hidden`, and enforced `html:has(#report-print-portal) body > *:not(#report-print-portal):not(style):not(script)` collapse in `print-system.css` so the screen app chrome occupies `0px` when printing via `#report-print-portal` (eliminating Blank Page 1).
+  - Scoped CSS Named Pages (`page: landscape-sheet !important` / `page: portrait-sheet !important`) strictly to `#report-print-portal[data-mixed-orientation="true"]`, preventing Chromium `page: auto -> named` blank page transitions on single/uniform jobs, and enforced `margin: 0 !important; left: 0 !important;` flush geometry on Dual EOT & Portrait sheets.
+- **WS2 — P7 & Nursery Spacing Balance (`P7EOTReport.tsx`, `NurseryEOTReport.tsx`):**
+  - Changed `.p7-eot-report .table-section` and `.p7-eot-report .table-container` from `flex: 1` to `flex: 0 0 auto` so zero bordered white gap stretches beneath the `TOTAL` row, and redistributed generous breathing room across `.info-grid`, `.marks-table` cells (`11px 8px`), `.grading-container` / `.uneb-strip`, and `.comments-box` (`justify-content: space-evenly`, `min-height: 34px`).
+  - Changed `.nursery-eot-report .tables-container` to `flex: 0 0 auto; justify-content: flex-start; gap: 10px;` and balanced table cell paddings (`10px 12px` Learning Area, `9px 12px` Learner Competence, `8px 10px` Grading Scale, `12px 14px` remarks box).
+- **WS3 — Senior UI/UX Upload Center Redesign (`src/utils/signatures.ts`, `src/components/layout/upload-client.tsx`):**
+  - Removed unused `dos-signature`, `theology-head`, and `principal` slots from `getDynamicSignatureSlots()` (`signatures.ts`) and `upload-client.tsx`, formatted Theology slots with Arabic suffixes, and filtered to the canonical 20 report card slots (`head-teacher` + Secular `Baby..P.7` + Theology `Baby..P.6`).
+  - Replaced raw `<img>` tags on signature gallery cards with transparent ink `<CleanSignatureImage />`, eliminated `<RefreshCw />` buttons on signature cards in favor of `<Upload />`, `<PenTool />`, and `<Wand2 />`, added the Forest Green (`#0D5C3A`) Active Role Banner (`data-testid="upload-role-banner"`) with Warm Marigold/Amber (`#EA580C` / `#D97706`) capture CTAs, curriculum filters (`All | Secular | Theology`), and status filters (`All | Signed | Missing`).
+- **WS4 — Verification Gate (`overhaul-workstreams.test.mjs`, `upload-metrics.test.mjs`):**
+  - Verified with `npm run typecheck` (0 errors), 207/207 unit tests passing across 40 suites (`WS1`–`WS35`, `upload-metrics`, `report-print`, `signature-assets`, `signature-deactivation`, `grading-and-calculations`, `report-logo`, `eot-report-auth-and-badges`), and `npm run build` passing cleanly (`69/69` routes compiled).
+
+---
+
+### Milestone 36 — Root-and-Branch Rebuild of Secular Hub & Theology Hub, 500 Bugfix, 10 UI/UX Standards, Landscape Broadsheet PrintPortal & Academic Merit Roll
+- **WS1 — Fix 500 Internal Server Error in `/api/theology-hub` & Resilient Hub API Endpoints (`src/app/api/theology-hub/route.ts`, `src/app/api/secular-hub/route.ts`):**
+  - Traced exact root cause of HTTP 500 (`Failed to load theology data`): PostgreSQL returned `column students_1.theology_exempt does not exist` when `theology_exempt` was included in the `students` select query. Purged non-existent `theology_exempt` from `theology-hub/route.ts` in favor of canonical `(id, name, arabic_name, admission_number, gender, religion, is_muslim)`.
+  - Added query parameter support for `class_id` and `level` on both endpoints; added class authorization check against `allowedTheologyIds` / `allowedCircularIds`; added resilient fallback to `subjects` table if `theology_subjects` or `circular_subjects` fail; normalized enrollment student/class relation objects.
+- **WS2 — 10 Senior UI/UX Standards & Jiddah Brand Hierarchy (`TheologyHubClient.tsx`, `SecularHubClient.tsx`):**
+  - **1. Concentric Radius:** Outer container shells use `rounded-2xl` with `p-1.5` / `p-2` / `p-2.5`, while inner action cards and pill selects use `rounded-[10px]` so inner radii nest harmoniously.
+  - **2. Alpha Borders:** Replaced harsh solid borders with subtle alpha borders (`border-[#0D5C3A]/15 dark:border-white/10`, `border-stone-200/80`).
+  - **3. OKLCH Palettes & Gradients:** Implemented Forest Emerald `bg-[linear-gradient(135deg_in_oklch,oklch(0.38_0.12_155)_0%,oklch(0.28_0.09_160)_100%)]` and Warm Marigold `bg-[linear-gradient(135deg_in_oklch,oklch(0.68_0.19_48),oklch(0.60_0.17_44))]`.
+  - **4. Matched Icon Stroke Weight:** Matched Lucide icon `strokeWidth={2.25}` across all navigation buttons, search inputs, and headers.
+  - **5. Masked Scroll Edges:** Applied `[mask-image:linear-gradient(to_right,transparent,black_16px,black_calc(100%-16px),transparent)]` on overflowable broadsheet tables and smooth 200ms tab transitions.
+  - **6. Dark Mode Layered Depth & `dvh` Viewport:** Elevated dark surfaces (`#0D1411` -> `#151F1B` -> `#1A2621`) with `min-h-[100dvh]` and responsive table heights (`max-h-[calc(100dvh-230px)]`).
+  - **7. Commanding Forest-Green + Warm Marigold Banner:** Replaced flat gray toolbars with commanding Forest Emerald OKLCH banners featuring Term/Year selector, Class selector, View Mode toggle (`[ Sheet | Analysis | Top 10 ]`), Phase toggle (`[ BOT | MOT | EOT ]`), and direct `Print Broadsheet` and `Export CSV` action buttons.
+- **WS3 — Broadsheet Suite, Cohort Analytics, Top 10 Merit Roll & Landscape PrintPortal (`TheologyHubClient.tsx`, `SecularHubClient.tsx`):**
+  - **Interactive Broadsheet:** Real-time student search, Division filter pills (`All | Div I | Div II | Div III | Div IV | Div U`), grade toggle, sticky `#` and student name columns, color-coded UNEB/Theology grade badges (`D1-D2` / `ممتاز` Emerald, `C3-C6` / `جيد` Amber, `P7-P8` / `مقبول` Orange, `F9` / `ضعيف` Rose), and pinned footer summary with class averages and pass rates (≥50%).
+  - **One-Click Report Jump:** Clicking any student row links directly to `/admin/reports?student_id=${student.id}&term_id=${termId}`.
+  - **Cohort Analytics:** 4-Card Executive KPI Grid (Total Enrolled, Class Mean Score, Distinctions Count/%, Exam Phase), Subject Performance Breakdown matrix table with visual pass-rate progress bars, and Division classification distribution.
+  - **Top 10 Merit Roll:** Gold, Silver, and Bronze podium cards for the top 3 class champions followed by the Top 10 merit roll table using tie-aware standard competition ranking (`1, 2, 3, 3, 5`).
+  - **Formal Institutional Broadsheet Printing:** Dedicated `<PrintPortal pageOrientation="landscape">` rendering `<OfficialPrintLetterhead>` with Jiddah crest, contact info, motto, complete print table, division summary box, and `<OfficialPrintSignaturesFooter>` with the official circular school stamp (`<OfficialReportStamp maxWidth={110} maxHeight={52} />`).
+  - **Working CSV Export:** Generates formatted, formula-injection-safe (CWE-1236) CSV broadsheets with UTF-8 BOM (`\uFEFF`) for Excel Arabic compatibility.
+- **WS4 — Verification Gate (`src/__tests__/hubs-broadsheet.test.mjs`):**
+  - Verified with `npm run typecheck` (0 errors), 219/219 automated unit tests passing across 43 suites, and `npm run build` passing cleanly (`69/69` routes compiled in Next.js production build).
 
 
 

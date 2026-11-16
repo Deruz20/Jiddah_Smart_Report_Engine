@@ -1,17 +1,41 @@
 import { getNurseryGrade, getNurseryTeacherComment, getConductRemark } from '@/lib/grading'
 import { ReportContainer } from '@/components/reports/shared/ReportContainer'
-import { CleanSignatureImg } from '@/components/reports/shared/CleanSignatureImg'
+import { CleanSignatureImage } from '@/components/reports/CleanSignatureImage'
 import { OfficialReportStamp } from '@/components/reports/StampGenerator'
 import { resolveReportBranding } from '@/lib/school-settings-helper'
 import { formatDateWithOrdinal } from '@/utils/dateHelpers';
 
 import { getClassTeacherSignatureKey } from "@/utils/signatures";
+import { NurseryEducativeWatermark } from "@/components/reports/NurseryEducativeWatermark";
+import { useStudioFormatting, resolveEffectiveStudioStyle } from "@/lib/studio-config-store";
 
-export default function NurseryEOTReport({ reportData }: any) {
+export default function NurseryEOTReport({ reportData, studioFormatting: studioFormattingProp }: any) {
+  const studioFormatting = useStudioFormatting(studioFormattingProp, reportData?.settings?.report_studio_config)
+  const effective = resolveEffectiveStudioStyle(studioFormatting, reportData, 'nursery-eot')
+  const effectiveStudioPass = { ...studioFormatting, ...effective, stampInkColor: effective.stampColor }
   const branding = resolveReportBranding(reportData)
   const printPrefs = reportData?.settings?.print_preferences
-  const includeSignatures = printPrefs?.includeSignatures !== undefined ? Boolean(printPrefs.includeSignatures) : true
-  const includeStamp = Boolean(printPrefs?.includeStamp)
+  const includeSignatures =
+    effective.showSignatures &&
+    (printPrefs?.includeSignatures !== undefined ? Boolean(printPrefs.includeSignatures) : true)
+  const includeStamp =
+    effective.showStamp &&
+    (printPrefs?.includeStamp !== undefined ? Boolean(printPrefs.includeStamp) : true)
+  const rawClassName =
+    reportData?.student?.class_name ||
+    reportData?.class_name ||
+    reportData?.class ||
+    ''
+  const secTeacherKey = getClassTeacherSignatureKey(rawClassName, false)
+  const theoTeacherKey = getClassTeacherSignatureKey(rawClassName, true)
+  const sigMap = reportData?.signatures || {}
+  const classTeacherSignatureUrl =
+    (secTeacherKey && sigMap[secTeacherKey]) ||
+    (theoTeacherKey && sigMap[theoTeacherKey]) ||
+    sigMap['class-teacher-baby'] ||
+    sigMap['class-teacher-middle'] ||
+    sigMap['class-teacher-top'] ||
+    null
   const subjects = (reportData?.circular?.subjects || []).filter((s: any) => {
     if (reportData?.student?.class_name?.toLowerCase().includes('top') && s.subject_name.toLowerCase().includes('writing')) {
       return false;
@@ -52,16 +76,16 @@ export default function NurseryEOTReport({ reportData }: any) {
       primaryFont={branding.primaryFont}
       arabicFont={branding.arabicFont}
       themePreset={branding.themePreset}
-      themeColor={branding.themeColor}
+      themeColor={effective.primaryColor}
     >
       <style dangerouslySetInnerHTML={{
         __html: `
     .nursery-eot-report {
-        --primary-green: #059669;
-        --dark-green: #064e3b;
-        --accent-gold: #fbbf24;
+        --primary-green: ${effective.primaryColor};
+        --dark-green: ${effective.headerAccentColor};
+        --accent-gold: ${effective.secondaryColor};
         --border-light: #e2e8f0;
-        --data-indigo: #4338ca;
+        --data-indigo: ${effective.primaryColor};
         --bg-stripes: #f8fafc;
         
         flex: 1 1 auto;
@@ -70,7 +94,9 @@ export default function NurseryEOTReport({ reportData }: any) {
         display: flex;
         flex-direction: column;
         background: transparent;
-        font-family: 'Inter', system-ui, sans-serif;
+        font-family: ${effective.fontFamilyCss} !important;
+        --report-font-scale: ${effective.fontScaleMultiplier};
+        font-size: calc(100% * var(--report-font-scale, 1));
         position: relative;
         overflow: hidden;
         border: none;
@@ -92,12 +118,12 @@ export default function NurseryEOTReport({ reportData }: any) {
 
     /* HEADER */
     .nursery-eot-report .header-banner {
-        background: linear-gradient(to right, #2563eb, #1e40af);
+        background: linear-gradient(to right, ${effective.primaryColor}, ${effective.headerAccentColor});
         padding: 16px 24px;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        border-bottom: 4px solid var(--accent-gold);
+        border-bottom: 4px solid ${effective.secondaryColor};
         color: white;
         flex-shrink: 0;
     }
@@ -111,7 +137,7 @@ export default function NurseryEOTReport({ reportData }: any) {
         letter-spacing: 0.04em;
         line-height: 1.15;
     }
-    .nursery-eot-report .school-left p { margin: 4px 0 0; font-size: 11px; font-weight: 500; color: #93c5fd; }
+    .nursery-eot-report .school-left p { margin: 4px 0 0; font-size: 11px; font-weight: 500; color: rgba(255,255,255,0.85); }
 
     .nursery-eot-report .header-center { width: 36%; text-align: center; display: flex; flex-direction: column; align-items: center; }
     
@@ -156,11 +182,12 @@ export default function NurseryEOTReport({ reportData }: any) {
 
     /* BODY PADDING */
     .nursery-eot-report .report-body {
-        padding: 20px 24px;
+        padding: 14px 24px;
         display: flex;
         flex-direction: column;
+        justify-content: flex-start;
+        gap: 10px;
         flex: 1 1 auto;
-        min-height: 0;
     }
 
     /* INFO BOXES */
@@ -168,12 +195,12 @@ export default function NurseryEOTReport({ reportData }: any) {
         flex: 0 0 auto;
         display: flex;
         gap: 16px;
-        margin-bottom: 16px;
+        margin-bottom: 0;
     }
     .nursery-eot-report .info-box {
         flex: 1;
         background: #f8fafc;
-        border: 1px solid var(--border-light);
+        border: 1.5px solid ${effective.secondaryColor};
         border-radius: 12px;
         padding: 12px 16px;
         box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
@@ -194,35 +221,35 @@ export default function NurseryEOTReport({ reportData }: any) {
         display: flex;
         align-items: flex-end;
         padding: 0 0 2px 4px;
-        color: #1e40af;
+        color: ${effective.primaryColor};
         font-weight: 700;
-        font-size: 14px;
+        font-size: ${effective.commentFontSizePx}px;
     }
 
     /* TABLES */
     .nursery-eot-report .tables-container {
-        flex: 1 1 auto;
+        flex: 0 0 auto;
         display: flex;
         flex-direction: column;
-        gap: 16px;
-        min-height: 0;
+        justify-content: flex-start;
+        gap: 10px;
     }
     
     .nursery-eot-report table {
         width: 100%;
         border-collapse: separate;
         border-spacing: 0;
-        border: 1px solid var(--border-light);
+        border: 1.5px solid ${effective.secondaryColor};
         border-radius: 8px;
         overflow: hidden;
     }
     .nursery-eot-report th {
-        background: #1e40af;
+        background: ${effective.primaryColor};
         color: white;
         font-size: 11px;
-        padding: 8px 6px;
+        padding: ${effective.densityPadding};
         text-transform: uppercase;
-        border-bottom: 2px solid #1e3a8a;
+        border-bottom: 2px solid ${effective.secondaryColor};
         font-weight: 700;
         letter-spacing: 0.05em;
         border-right: 1px solid rgba(255,255,255,0.2);
@@ -232,9 +259,18 @@ export default function NurseryEOTReport({ reportData }: any) {
     .nursery-eot-report td {
         border-bottom: 1px solid var(--border-light);
         border-right: 1px solid var(--border-light);
-        padding: 7px 6px;
-        font-size: 12px;
+        padding: 9px 12px;
+        font-size: 12.5px;
         color: #334155;
+    }
+    .nursery-eot-report .learning-area-table td {
+        padding: 10px 12px;
+    }
+    .nursery-eot-report .competence-table td {
+        padding: 9px 12px;
+    }
+    .nursery-eot-report .grading-scale-table td {
+        padding: 8px 10px;
     }
     .nursery-eot-report td:last-child { border-right: none; }
     .nursery-eot-report tbody tr:last-child td { border-bottom: none; }
@@ -242,19 +278,19 @@ export default function NurseryEOTReport({ reportData }: any) {
 
     .nursery-eot-report .data-cell {
         text-align: center;
-        font-weight: 700;
-        color: #1e40af;
+        font-weight: ${effective.scoreFontWeight};
+        color: ${effective.primaryColor};
         font-size: 13px;
     }
     
     .nursery-eot-report .subject-cell {
-        font-weight: 600;
+        font-weight: ${effective.headingFontWeight};
         color: #0f172a;
     }
 
     .nursery-eot-report .table-banner {
         background: #eff6ff;
-        color: #1e40af;
+        color: ${effective.primaryColor};
         font-size: 12px;
         font-weight: 800;
         text-align: center;
@@ -266,8 +302,8 @@ export default function NurseryEOTReport({ reportData }: any) {
 
     /* FOOTER */
     .nursery-eot-report .report-footer {
-        flex: 0 0 auto;
-        margin-top: 16px;
+        flex: 1 1 auto;
+        margin-top: 2px;
         display: flex;
         justify-content: space-between;
         align-items: flex-end;
@@ -277,12 +313,15 @@ export default function NurseryEOTReport({ reportData }: any) {
         margin-right: 20px;
         background: #f8fafc;
         border-radius: 12px;
-        padding: 12px 16px;
-        border: 1px solid var(--border-light);
+        padding: 12px 14px;
+        border: 1.5px solid ${effective.secondaryColor};
     }
     .nursery-eot-report .stamp-box {
-        width: 146px;
-        height: 98px;
+        width: 135px;
+        height: 68px;
+        max-width: 135px;
+        max-height: 68px;
+        overflow: hidden;
         border: none;
         display: flex;
         flex-direction: column;
@@ -297,9 +336,9 @@ export default function NurseryEOTReport({ reportData }: any) {
       <div className="nursery-eot-report">
         <div className="header-banner">
           <div className="school-left">
-            <h1>{branding.schoolName}</h1>
-            <p>{branding.address}</p>
-            <p>Tel: {branding.phone}</p>
+            <h1>{effective.schoolHeader.nameEnglish}</h1>
+            <p>{effective.schoolHeader.address}</p>
+            <p>Tel: {effective.schoolHeader.phone}</p>
           </div>
           <div className="header-center">
             <div className="logo">
@@ -323,24 +362,30 @@ export default function NurseryEOTReport({ reportData }: any) {
           </div>
         </div>
 
-        <div className="report-body">
+        <div className="report-body" style={{ position: 'relative' }}>
+          <NurseryEducativeWatermark
+            templateId="nursery-eot"
+            logoUrl={branding.logoUrl || '/logo-512h.png'}
+            studioFormatting={effectiveStudioPass}
+            includeEducativeArt={true}
+          />
           {/* INFO BOXES */}
           <div className="info-container">
             <div className="info-box">
-              <div className="info-row"><span className="label">Student Name</span><div className="line">{reportData?.student?.name}</div></div>
-              <div className="info-row"><span className="label">Student ID</span><div className="line">{reportData?.student?.admission_number}</div></div>
-              <div className="info-row"><span className="label">Pay Code</span><div className="line">--</div></div>
+              <div className="info-row"><span className="label">Student Name</span><div className="line pupil-name" style={{ fontSize: '16px', fontWeight: 900, textTransform: 'uppercase', color: '#0F172A' }}>{reportData?.student?.name}</div></div>
+              <div className="info-row"><span className="label">Student ID</span><div className="line" style={{ fontSize: '13.5px', fontWeight: 800, color: '#0F172A' }}>{reportData?.student?.admission_number}</div></div>
+              <div className="info-row"><span className="label">Pay Code</span><div className="line" style={{ fontSize: '13.5px', fontWeight: 800, color: '#0F172A' }}>--</div></div>
             </div>
             <div className="info-box">
-              <div className="info-row"><span className="label">Class</span><div className="line">{reportData?.student?.class_name}</div></div>
-              <div className="info-row"><span className="label">Date</span><div className="line">{reportData?.term?.end_date ? formatDate(reportData.term.end_date) : '_________________'}</div></div>
+              <div className="info-row"><span className="label">Class</span><div className="line" style={{ fontSize: '14.5px', fontWeight: 800, color: '#0F172A' }}>{reportData?.student?.class_name}</div></div>
+              <div className="info-row"><span className="label">Date</span><div className="line" style={{ fontSize: '13.5px', fontWeight: 800, color: '#0F172A' }}>{reportData?.term?.end_date ? formatDate(reportData.term.end_date) : '_________________'}</div></div>
             </div>
           </div>
 
           {/* TABLES */}
           <div className="tables-container">
-            
-            <table>
+
+            <table className="learning-area-table">
               <thead>
                 <tr>
                   <th style={{ textAlign: 'left', width: '40%' }}>Learning Area</th>
@@ -355,7 +400,7 @@ export default function NurseryEOTReport({ reportData }: any) {
                   return (
                     <tr key={subject.subject_name}>
                       <td className="subject-cell">
-                        <span style={{marginRight: '8px', fontSize: '14px'}}>{getSubjectIcon(subject.subject_name)}</span>
+                        <span style={{ marginRight: '8px', fontSize: '14px' }}>{getSubjectIcon(subject.subject_name)}</span>
                         {subject.subject_name}
                       </td>
                       <td className="data-cell">{eotGrade?.grade ?? '--'}</td>
@@ -367,7 +412,7 @@ export default function NurseryEOTReport({ reportData }: any) {
               </tbody>
             </table>
 
-            <table>
+            <table className="competence-table">
               <thead>
                 <tr>
                   <th colSpan={reportData?.student?.class_name?.toLowerCase().includes('top') ? 6 : 7} style={{ background: '#0f172a', textAlign: 'left', letterSpacing: '0.1em' }}>Learner's Competence (Progressive Records)</th>
@@ -386,23 +431,22 @@ export default function NurseryEOTReport({ reportData }: any) {
               </thead>
               <tbody>
                 <tr>
-                  <td className="subject-cell">Mid-Term Assessment</td>
+                  <td className="subject-cell">Mid-Term Assessment (MOT)</td>
                   {subjects.slice(0, 6).map((subject: any, index: number) => (
-                    <td key={index} className="data-cell">
-                      {subject.mot_score != null 
-                        ? getNurseryGrade(subject.mot_score).grade 
+                    <td key={'mot-' + index} className="data-cell">
+                      {subject.mot_score != null
+                        ? getNurseryGrade(subject.mot_score).grade
                         : '--'}
                     </td>
                   ))}
-                  {/* Fill empty cells if fewer than 6 subjects */}
                   {Array.from({ length: Math.max(0, (!reportData?.student?.class_name?.toLowerCase().includes('top') ? 6 : 5) - subjects.slice(0, 6).length) }).map((_, i) => (
-                    <td key={'empty-'+i} className="data-cell">--</td>
+                    <td key={'mot-empty-' + i} className="data-cell">--</td>
                   ))}
                 </tr>
               </tbody>
             </table>
 
-            <table style={{ marginTop: 'auto' }}>
+            <table className="grading-scale-table">
               <thead>
                 <tr>
                   <th colSpan={6} style={{ background: '#1e40af', textAlign: 'center' }}>OFFICIAL GRADING SCALE</th>
@@ -426,21 +470,27 @@ export default function NurseryEOTReport({ reportData }: any) {
           <div className="report-footer">
             <div className="remarks-box">
               <div className="info-row"><span className="label" style={{ minWidth: '100px' }}>Conduct</span><div className="line">{reportData?.circular?.conduct_remark ?? getConductRemark(null)}</div></div>
-              <div className="info-row" style={{ marginTop: '12px' }}>
+              <div className="info-row" style={{ marginTop: '10px', alignItems: 'flex-end', gap: '8px' }}>
                 <span className="label" style={{ minWidth: '100px' }}>Class Teacher</span>
-                <div className="line" style={{ position: 'relative' }}>
-                  {getNurseryTeacherComment(grades)}
-                  {includeSignatures && reportData?.student?.class_name && reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.class_name) ?? ''] && (
-                    <CleanSignatureImg src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]} alt="Signature" style={{ position: 'absolute', bottom: 0, height: '40px', right: 0 }} />
+                <div className="line" style={{ flex: 1, minHeight: '22px', borderBottom: '1.5px dotted #cbd5e1', display: 'flex', alignItems: 'flex-end' }}>
+                  <span>{getNurseryTeacherComment(grades)}</span>
+                </div>
+                <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#475569', flexShrink: 0, paddingBottom: '2px' }}>SIG:</span>
+                <div style={{ borderBottom: '1.5px dotted #334155', minWidth: '95px', width: '108px', height: '28px', display: 'inline-flex', alignItems: 'flex-end', justifyContent: 'center', position: 'relative', flexShrink: 0 }}>
+                  {includeSignatures && classTeacherSignatureUrl && (
+                    <CleanSignatureImage src={classTeacherSignatureUrl} alt="Signature" style={{ maxHeight: '34px', width: '104px', objectFit: 'contain', marginBottom: '-6px' }} studioFormatting={effectiveStudioPass} />
                   )}
                 </div>
               </div>
-              <div className="info-row" style={{ marginTop: '12px' }}>
+              <div className="info-row" style={{ marginTop: '10px', alignItems: 'flex-end', gap: '8px' }}>
                 <span className="label" style={{ minWidth: '100px' }}>Head Teacher</span>
-                <div className="line" style={{ position: 'relative' }}>
-                  {getNurseryTeacherComment(grades)}
+                <div className="line" style={{ flex: 1, minHeight: '22px', borderBottom: '1.5px dotted #cbd5e1', display: 'flex', alignItems: 'flex-end' }}>
+                  <span>{getNurseryTeacherComment(grades)}</span>
+                </div>
+                <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#475569', flexShrink: 0, paddingBottom: '2px' }}>SIG:</span>
+                <div style={{ borderBottom: '1.5px dotted #334155', minWidth: '95px', width: '108px', height: '28px', display: 'inline-flex', alignItems: 'flex-end', justifyContent: 'center', position: 'relative', flexShrink: 0 }}>
                   {includeSignatures && reportData?.signatures?.['head-teacher'] && (
-                    <CleanSignatureImg src={reportData.signatures['head-teacher']} alt="Signature" style={{ position: 'absolute', bottom: 0, height: '40px', right: 0 }} />
+                    <CleanSignatureImage src={reportData.signatures['head-teacher']} alt="Signature" style={{ maxHeight: '34px', width: '104px', objectFit: 'contain', marginBottom: '-6px' }} studioFormatting={effectiveStudioPass} />
                   )}
                 </div>
               </div>
@@ -451,17 +501,13 @@ export default function NurseryEOTReport({ reportData }: any) {
               </div>
             </div>
 
-            <div className="stamp-box" style={{ padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div className="stamp-box" style={{ width: '135px', height: '64px', minWidth: '135px', minHeight: '64px', position: 'relative', overflow: 'visible', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               {includeStamp ? (
-                reportData?.signatures?.['school-stamp'] ? (
-                  <img src={reportData.signatures['school-stamp']} alt="Official school stamp" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
-                ) : (
-                  <OfficialReportStamp reportData={reportData} maxWidth={140} maxHeight={92} />
-                )
+                <OfficialReportStamp reportData={reportData} studioFormatting={effectiveStudioPass} maxWidth={135} maxHeight={64} />
               ) : null}
             </div>
           </div>
-          
+
           <div style={{ textAlign: 'center', marginTop: '12px', fontSize: '9px', color: '#94a3b8', fontWeight: 600, letterSpacing: '0.05em' }}>
             NOT VALID WITHOUT OFFICIAL SCHOOL STAMP AND SIGNATURE
           </div>

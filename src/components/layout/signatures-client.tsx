@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import * as Switch from '@radix-ui/react-switch'
 import { toast } from 'sonner'
 import {
@@ -13,6 +13,7 @@ import {
   ArrowRight,
   Stamp,
   FileSignature,
+  Camera,
 } from 'lucide-react'
 import Link from 'next/link'
 import { ConfirmDestructiveDialog } from '@/components/ConfirmDestructiveDialog'
@@ -65,6 +66,159 @@ export default function SignaturesClient({
   } | null>(null)
   const [stampConfig, setStampConfig] = useState<StampConfig>(DEFAULT_STAMP_CONFIG)
   const [showStampStudio, setShowStampStudio] = useState(true)
+  const [signatureInputMode, setSignatureInputMode] = useState<'upload' | 'draw'>('upload')
+  const [drawSlotKey, setDrawSlotKey] = useState<string>('head_teacher')
+  const [drawPenColor, setDrawPenColor] = useState<'#0C2A84' | '#0F172A'>('#0C2A84')
+  const [drawStrokeThickness, setDrawStrokeThickness] = useState<number>(3.2)
+  const [hasDrawnStrokes, setHasDrawnStrokes] = useState<boolean>(false)
+  const [savingDrawnSignature, setSavingDrawnSignature] = useState<boolean>(false)
+  const padCanvasRef = useRef<HTMLCanvasElement | null>(null)
+  const isDrawingRef = useRef<boolean>(false)
+  const lastPointRef = useRef<{ x: number; y: number } | null>(null)
+  const midPointRef = useRef<{ x: number; y: number } | null>(null)
+
+  const clearSignaturePad = () => {
+    const canvas = padCanvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (ctx) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+    }
+    setHasDrawnStrokes(false)
+    isDrawingRef.current = false
+    lastPointRef.current = null
+    midPointRef.current = null
+  }
+
+  const getPadPoint = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const canvas = padCanvasRef.current
+    if (!canvas) return { x: 0, y: 0 }
+    const rect = canvas.getBoundingClientRect()
+    const scaleX = canvas.width / Math.max(1, rect.width)
+    const scaleY = canvas.height / Math.max(1, rect.height)
+    return {
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY,
+    }
+  }
+
+  const handlePadPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    e.preventDefault()
+    const canvas = padCanvasRef.current
+    if (!canvas) return
+    canvas.setPointerCapture?.(e.pointerId)
+    const pt = getPadPoint(e)
+    isDrawingRef.current = true
+    lastPointRef.current = pt
+    midPointRef.current = pt
+    const ctx = canvas.getContext('2d')
+    if (ctx) {
+      ctx.strokeStyle = drawPenColor
+      ctx.fillStyle = drawPenColor
+      ctx.lineWidth = drawStrokeThickness
+      ctx.lineCap = 'round'
+      ctx.lineJoin = 'round'
+      ctx.beginPath()
+      ctx.arc(pt.x, pt.y, drawStrokeThickness / 2, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    setHasDrawnStrokes(true)
+  }
+
+  const handlePadPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!isDrawingRef.current) return
+    e.preventDefault()
+    const canvas = padCanvasRef.current
+    if (!canvas || !lastPointRef.current || !midPointRef.current) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    const currentPt = getPadPoint(e)
+    const newMid = {
+      x: (lastPointRef.current.x + currentPt.x) / 2,
+      y: (lastPointRef.current.y + currentPt.y) / 2,
+    }
+    ctx.strokeStyle = drawPenColor
+    ctx.lineWidth = drawStrokeThickness
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+    ctx.beginPath()
+    ctx.moveTo(midPointRef.current.x, midPointRef.current.y)
+    ctx.quadraticCurveTo(lastPointRef.current.x, lastPointRef.current.y, newMid.x, newMid.y)
+    ctx.stroke()
+    lastPointRef.current = currentPt
+    midPointRef.current = newMid
+  }
+
+  const handlePadPointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!isDrawingRef.current) return
+    e.preventDefault()
+    isDrawingRef.current = false
+    lastPointRef.current = null
+    midPointRef.current = null
+  }
+
+  const handleSaveDrawnSignature = async () => {
+    const canvas = padCanvasRef.current
+    if (!canvas || !hasDrawnStrokes) {
+      toast.error('Please draw a signature on the pad first.')
+      return
+    }
+    setSavingDrawnSignature(true)
+    try {
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return
+      const { width, height } = canvas
+      const imgData = ctx.getImageData(0, 0, width, height)
+      const data = imgData.data
+      let minX = width
+      let minY = height
+      let maxX = 0
+      let maxY = 0
+      let foundInk = false
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const alpha = data[(y * width + x) * 4 + 3]
+          if (alpha > 16) {
+            foundInk = true
+            if (x < minX) minX = x
+            if (x > maxX) maxX = x
+            if (y < minY) minY = y
+            if (y > maxY) maxY = y
+          }
+        }
+      }
+      if (!foundInk) {
+        toast.error('Please draw a clear signature before saving.')
+        return
+      }
+      const pad = 16
+      const cropX = Math.max(0, minX - pad)
+      const cropY = Math.max(0, minY - pad)
+      const cropW = Math.min(width - cropX, maxX - minX + 1 + pad * 2)
+      const cropH = Math.min(height - cropY, maxY - minY + 1 + pad * 2)
+      const outCanvas = document.createElement('canvas')
+      outCanvas.width = Math.max(64, cropW)
+      outCanvas.height = Math.max(32, cropH)
+      const outCtx = outCanvas.getContext('2d')
+      if (outCtx) {
+        outCtx.drawImage(canvas, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH)
+      }
+      const blob = await new Promise<Blob | null>((resolve) =>
+        outCanvas.toBlob((b) => resolve(b), 'image/png')
+      )
+      if (!blob) throw new Error('Failed to export transparent PNG from signature pad.')
+      const drawnFile = new File([blob], `${drawSlotKey}-drawn-signature.png`, {
+        type: 'image/png',
+      })
+      await handleFileChange(drawSlotKey, drawnFile)
+      clearSignaturePad()
+      setSignatureInputMode('upload')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to save drawn signature.')
+    } finally {
+      setSavingDrawnSignature(false)
+    }
+  }
 
   useEffect(() => {
     let active = true
@@ -387,6 +541,162 @@ export default function SignaturesClient({
         />
       )}
 
+      {/* Mobile & Desktop Digital Signature Mode Switcher + Draw Pad */}
+      <div className="bg-white rounded-2xl border border-[#E3E8E3] p-4 shadow-sm space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 className="text-xs font-bold text-[#111827] flex items-center gap-1.5">
+              <span>✍️ Digital Signature Capture Studio</span>
+              <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700 border border-blue-200">
+                Mobile &amp; Desktop Ready
+              </span>
+            </h3>
+            <p className="text-[11px] text-[#6B7280] mt-0.5">
+              Upload or snap a photo of a paper signature (auto-verified &amp; Sauvola-cleaned), or draw directly on your screen with zero paper background.
+            </p>
+          </div>
+          <div className="inline-flex items-center rounded-xl bg-[#F4F6F4] p-1 border border-[#E2E8E2]">
+            <button
+              type="button"
+              onClick={() => setSignatureInputMode('upload')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                signatureInputMode === 'upload'
+                  ? 'bg-[#0D5C3A] text-white shadow-xs'
+                  : 'text-[#4B5563] hover:text-[#111827]'
+              }`}
+            >
+              📤 Upload / Camera Photo
+            </button>
+            <button
+              type="button"
+              data-testid="draw-signature-tab"
+              onClick={() => setSignatureInputMode('draw')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                signatureInputMode === 'draw'
+                  ? 'bg-[#0D5C3A] text-white shadow-xs'
+                  : 'text-[#4B5563] hover:text-[#111827]'
+              }`}
+            >
+              ✍️ Draw Signature
+            </button>
+          </div>
+        </div>
+
+        {signatureInputMode === 'draw' && (
+          <div
+            data-testid="digital-signature-pad-panel"
+            className="rounded-xl border border-blue-200 bg-slate-50/70 p-3.5 space-y-3"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <label className="text-[11px] font-bold text-slate-700">Target Slot:</label>
+                <select
+                  value={drawSlotKey}
+                  onChange={(e) => setDrawSlotKey(e.target.value)}
+                  className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-semibold text-slate-900"
+                >
+                  {slots
+                    .filter((s) => s.slot_key !== 'school_stamp')
+                    .map((s) => (
+                      <option key={s.slot_key} value={s.slot_key}>
+                        {s.label}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="inline-flex items-center gap-1 rounded-lg bg-white p-1 border border-slate-200">
+                  <span className="text-[10px] font-bold text-slate-500 px-1.5">Pen Color:</span>
+                  <button
+                    type="button"
+                    onClick={() => setDrawPenColor('#0C2A84')}
+                    className={`px-2 py-0.5 rounded text-[11px] font-bold transition-colors ${
+                      drawPenColor === '#0C2A84'
+                        ? 'bg-[#0C2A84] text-white'
+                        : 'text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    Royal Blue
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDrawPenColor('#0F172A')}
+                    className={`px-2 py-0.5 rounded text-[11px] font-bold transition-colors ${
+                      drawPenColor === '#0F172A'
+                        ? 'bg-slate-900 text-white'
+                        : 'text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    Black
+                  </button>
+                </div>
+
+                <div className="inline-flex items-center gap-1 rounded-lg bg-white p-1 border border-slate-200">
+                  <span className="text-[10px] font-bold text-slate-500 px-1.5">Stroke Thickness:</span>
+                  {[
+                    { label: 'Fine', value: 2.2 },
+                    { label: 'Medium', value: 3.2 },
+                    { label: 'Bold', value: 4.5 },
+                  ].map((opt) => (
+                    <button
+                      key={opt.label}
+                      type="button"
+                      onClick={() => setDrawStrokeThickness(opt.value)}
+                      className={`px-2 py-0.5 rounded text-[11px] font-bold transition-colors ${
+                        drawStrokeThickness === opt.value
+                          ? 'bg-blue-700 text-white'
+                          : 'text-slate-600 hover:bg-slate-100'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="relative rounded-xl border-2 border-dashed border-slate-300 bg-white overflow-hidden">
+              <div className="pointer-events-none absolute inset-x-6 bottom-7 border-b border-dotted border-slate-300 flex items-end justify-between">
+                <span className="text-[10px] font-bold tracking-widest text-slate-400 uppercase pb-0.5">
+                  SIG: Sign on the line using finger, stylus, or mouse
+                </span>
+              </div>
+              <canvas
+                ref={padCanvasRef}
+                width={680}
+                height={180}
+                style={{ touchAction: 'none' }}
+                onPointerDown={handlePadPointerDown}
+                onPointerMove={handlePadPointerMove}
+                onPointerUp={handlePadPointerUp}
+                onPointerCancel={handlePadPointerUp}
+                className="w-full h-[150px] sm:h-[170px] cursor-crosshair touch-none select-none block"
+              />
+            </div>
+
+            <div className="flex items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={clearSignaturePad}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+              >
+                Clear
+              </button>
+              <button
+                type="button"
+                disabled={!hasDrawnStrokes || savingDrawnSignature}
+                onClick={() => void handleSaveDrawnSignature()}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[#0D5C3A] px-4 py-1.5 text-xs font-bold text-white hover:bg-[#0A472C] disabled:opacity-50 transition-colors"
+              >
+                <Check className="h-3.5 w-3.5" />
+                <span>{savingDrawnSignature ? 'Saving...' : 'Save Transparent Signature'}</span>
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* 2-Column Grid of Asset Cards */}
       {loading && slots.length === 0 ? (
         <div className="bg-white rounded-2xl border border-[#E3E8E3] p-8 text-center text-xs text-[#6B7280]">
@@ -523,6 +833,17 @@ export default function SignaturesClient({
                         if (file) handleFileSelection(slot.slot_key, slot.uploaded, file)
                       }}
                     />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="hidden"
+                      id={`camera-${slot.slot_key}`}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) handleFileSelection(slot.slot_key, slot.uploaded, file)
+                      }}
+                    />
                   </div>
                 </div>
 
@@ -561,23 +882,48 @@ export default function SignaturesClient({
                     )}
                   </div>
 
-                  <label
-                    htmlFor={`file-${slot.slot_key}`}
-                    className={`inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
-                      isUploading || isToggling || isDeleting ? 'opacity-50 pointer-events-none' : ''
-                    } ${
-                      slot.uploaded
-                        ? 'border border-[#D5DFD5] bg-white text-[#374151] hover:bg-[#F8FAF8]'
-                        : 'bg-[#0D5C3A] text-white hover:bg-[#0A472C]'
-                    }`}
-                  >
-                    {isUploading ? (
-                      <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Upload className="h-3.5 w-3.5" />
+                  <div className="flex items-center gap-1.5">
+                    {slot.slot_key !== 'school_stamp' && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDrawSlotKey(slot.slot_key)
+                            setSignatureInputMode('draw')
+                          }}
+                          className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50/70 px-2.5 py-1.5 text-[11px] font-semibold text-blue-800 hover:bg-blue-100 transition-colors"
+                          title="Draw signature on screen"
+                        >
+                          <span>✍️ Draw</span>
+                        </button>
+                        <label
+                          htmlFor={`camera-${slot.slot_key}`}
+                          className="inline-flex md:hidden cursor-pointer items-center gap-1 rounded-lg border border-[#D5DFD5] bg-white px-2.5 py-1.5 text-[11px] font-semibold text-[#374151] hover:bg-[#F8FAF8] transition-colors"
+                          title="Snap signature photo with phone camera"
+                        >
+                          <Camera className="h-3.5 w-3.5" />
+                          <span>Camera</span>
+                        </label>
+                      </>
                     )}
-                    <span>{slot.uploaded ? 'Replace' : 'Upload PNG'}</span>
-                  </label>
+                    <label
+                      htmlFor={`file-${slot.slot_key}`}
+                      className={`inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                        isUploading || isToggling || isDeleting ? 'opacity-50 pointer-events-none' : ''
+                      } ${
+                        slot.uploaded
+                          ? 'border border-[#D5DFD5] bg-white text-[#374151] hover:bg-[#F8FAF8]'
+                          : 'bg-[#0D5C3A] text-white hover:bg-[#0A472C]'
+                      }`}
+                    >
+                      {isUploading ? (
+                        <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Upload className="h-3.5 w-3.5" />
+                      )}
+                      <span>{slot.uploaded ? 'Replace' : 'Upload PNG'}</span>
+                    </label>
+                  </div>
                 </div>
               </div>
             )

@@ -5,6 +5,9 @@ type StudentRow = {
   arabic_name?: string | null
   created_at?: string
   is_archived?: boolean
+  is_muslim?: boolean | null
+  religion?: string | null
+  theology_exempt?: boolean | null
 }
 
 /** Supabase may return a joined row as an object or single-element array. */
@@ -61,5 +64,8 @@ export function reshapeEnrollmentRow(e: {
     theology_level: theology?.level ?? null,
     academic_year: e.academic_year,
     is_archived: student.is_archived ?? false,
+    is_muslim: student.is_muslim,
+    religion: student.is_muslim === false ? 'Non-Muslim' : (student.religion || 'Muslim'),
+    theology_exempt: student.theology_exempt ?? false,
   }
 }

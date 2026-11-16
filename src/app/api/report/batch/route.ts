@@ -30,6 +30,7 @@ import { fetchMergedSchoolSettings } from '@/lib/school-settings-helper'
 import { getMarkScore } from '@/lib/mark-scores'
 import { fetchAllSupabaseRows } from '@/lib/supabase-pagination'
 import { getReportSignatures } from '@/utils/signatures'
+import { resolveEquivalentTerms } from '@/lib/marks-reconciliation'
 import { applyRateLimit, rateLimitResponse } from '@/utils/rate-limit'
 import { z } from 'zod'
 
@@ -162,16 +163,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Reconcile equivalent terms by academic_year and term_number
-    let termIds = [term.id]
-    const { data: equivalentTerms } = await supabase
-      .from('terms')
-      .select('id')
-      .eq('academic_year', term.academic_year)
-      .eq('term_number', term.term_number)
-
-    if (equivalentTerms && equivalentTerms.length > 0) {
-      termIds = [...new Set([term.id, ...equivalentTerms.map((t: any) => t.id)])]
-    }
+    const termInfo = await resolveEquivalentTerms(supabase, term_id)
+    const termIds = termInfo.termIds
 
     const isTerm3 = term.term_number === 3
 
@@ -535,7 +528,7 @@ export async function POST(request: NextRequest) {
 
       let theologyPosition = null;
       let totalTheologyStudents = null;
-      if (curriculum !== 'secular' && showClassPosition && enrollment.theology_class_id && theologyRankings[enrollment.theology_class_id] && theologySectionData) {
+      if (showClassPosition && enrollment.theology_class_id && theologyRankings[enrollment.theology_class_id] && theologySectionData) {
          const rankings = theologyRankings[enrollment.theology_class_id]
          totalTheologyStudents = theologyClassSizes[enrollment.theology_class_id]
          if (rankings.length > 0) {
@@ -546,6 +539,8 @@ export async function POST(request: NextRequest) {
          }
          theologySectionData.position = theologyPosition;
          theologySectionData.total_students = totalTheologyStudents;
+         theologySectionData.theology_position = theologyPosition;
+         theologySectionData.theology_total_students = totalTheologyStudents;
       }
 
       if (curriculum === 'theology') {
@@ -651,11 +646,15 @@ export async function POST(request: NextRequest) {
           total_students,
         },
         theology: theologySectionData,
+        theology_position: theologyPosition,
+        theology_total_students: totalTheologyStudents,
         meta: {
           is_term_3: isTerm3,
           promotion_status,
           position,
           total_students,
+          theology_position: theologyPosition,
+          theology_total_students: totalTheologyStudents,
         },
         signatures,
         settings: schoolSettings,

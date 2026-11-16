@@ -1,10 +1,16 @@
-import { createClient } from '@/utils/supabase/server'
+import { createClient, createAdminClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import UploadClient from '@/components/layout/upload-client'
+import {
+  getDynamicSignatureSlots,
+  getLatestSignatureObjectNameForSlot,
+  withSignatureVersion,
+} from '@/utils/signatures'
 
 export const dynamic = "force-dynamic";
 
 const BUCKET = 'documents'
+const SIGNATURES_BUCKET = 'signatures'
 
 function getFileType(name: string) {
   const extension = name.split('.').pop()?.toLowerCase() ?? ''
@@ -23,9 +29,10 @@ export default async function UploadPage() {
   if (error) {
     console.error('Upload Center could not load document storage:', error.message)
   }
-  const files = (objects ?? []).map((object) => {
+  const files = (objects ?? []).filter((o) => o.name && !o.name.startsWith('.')).map((object) => {
     const { data } = supabase.storage.from(BUCKET).getPublicUrl(object.name)
-    const size = Number(object.metadata?.size ?? 0)
+    const size = Number(object.metadata?.size ?? object.metadata?.contentLength ?? 0) || 0
+    const rawCategory = String(object.metadata?.category ?? '')
 
     return {
       id: object.name,
@@ -36,15 +43,45 @@ export default async function UploadPage() {
       public_url: data?.publicUrl ?? null,
       status: 'done' as const,
       progress: 100,
-      category: ['Branding', 'Documents', 'Other'].includes(String(object.metadata?.category))
-        ? String(object.metadata?.category)
+      category: ['Branding', 'Documents', 'Signatures', 'Stamps', 'Other'].includes(rawCategory)
+        ? rawCategory
         : 'Documents'
     }
   })
 
+  let initialSignatureSlots: any[] = []
+  try {
+    const admin = createAdminClient(cookieStore)
+    const [activeResult, disabledResult, dynamicSlots] = await Promise.all([
+      admin.storage.from(SIGNATURES_BUCKET).list('', { limit: 1000 }),
+      admin.storage.from(SIGNATURES_BUCKET).list('disabled', { limit: 1000 }),
+      getDynamicSignatureSlots(admin),
+    ])
+    const activeFiles = !activeResult.error && activeResult.data ? activeResult.data : []
+    const disabledFiles = !disabledResult.error && disabledResult.data ? disabledResult.data : []
+    initialSignatureSlots = dynamicSlots.map((slot) => {
+      const activePath = getLatestSignatureObjectNameForSlot(activeFiles, slot.slot_key)
+      const disabledPath = getLatestSignatureObjectNameForSlot(disabledFiles, slot.slot_key)
+      const activeObj = activePath ? activeFiles.find((f) => f?.name === activePath) : null
+      const disabledObj = disabledPath ? disabledFiles.find((f) => f?.name === disabledPath) : null
+      const { data } = activePath ? admin.storage.from(SIGNATURES_BUCKET).getPublicUrl(activePath) : { data: null }
+      const public_url = data?.publicUrl ? withSignatureVersion(data.publicUrl, activePath) : null
+      return {
+        ...slot,
+        public_url,
+        size: Number(activeObj?.metadata?.size ?? activeObj?.metadata?.contentLength ?? disabledObj?.metadata?.size ?? 0) || 0,
+        updated_at: activeObj?.updated_at ?? disabledObj?.updated_at ?? null,
+        uploaded: Boolean(activePath || disabledPath),
+        active: Boolean(activePath),
+      }
+    })
+  } catch (err) {
+    console.warn('UploadPage signature slots preload warning:', err)
+  }
+
   return (
     <div className="w-full min-h-screen bg-[var(--bg-canvas)]">
-      <UploadClient initialFiles={files} />
+      <UploadClient initialFiles={files} initialSignatureSlots={initialSignatureSlots} />
     </div>
   )
 }

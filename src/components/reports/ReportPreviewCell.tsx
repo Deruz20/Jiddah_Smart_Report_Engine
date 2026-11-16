@@ -21,17 +21,29 @@ import type { StabilizedReportType } from '@/types/report'
 interface ReportPreviewCellProps {
   children: React.ReactNode
   reportType: StabilizedReportType
+  /** Optional report object for O(1) memoization comparator */
+  report?: any
   /** User zoom factor from the toolbar */
   zoom?: number
+  /** Number of columns when in Grid View (2-up) */
+  columns?: number
+  /** Direct scale factor passed from parent container to eliminate per-cell ResizeObserver lag */
+  scale?: number
   isActive?: boolean
+  isSelected?: boolean
+  isSelectionMode?: boolean
+  onToggleSelectCard?: (studentId: string) => void
+  studioFormatting?: any
   onClick?: () => void
   className?: string
 }
 
-export function ReportPreviewCell({
+function ReportPreviewCellComponent({
   children,
   reportType,
   zoom = 1,
+  columns = 1,
+  scale: externalScale,
   isActive = false,
   onClick,
   className = '',
@@ -40,34 +52,60 @@ export function ReportPreviewCell({
   const [fitScale, setFitScale] = useState(1)
 
   const dims = STABILIZED_REPORT_ORIENTATIONS[reportType]
-  const reportW = dims.width
-  const reportH = dims.height
+  const nativeWidthPx = dims.width
+  const nativeHeightPx = dims.height
+  const reportW = nativeWidthPx
+  const reportH = nativeHeightPx
+
+  const lastWidthRef = useRef<number>(0)
 
   const updateFit = useCallback((availableW: number) => {
-    const padding = availableW < 640 ? 24 : 64
-    const usable = Math.max(availableW - padding, 220)
-    const fit = Math.min(usable / reportW, 1)
+    const roundedW = Math.round(availableW)
+    if (lastWidthRef.current > 0 && Math.abs(roundedW - lastWidthRef.current) < 16) {
+      return
+    }
+    lastWidthRef.current = roundedW
+    const isMobile = roundedW < 768
+    const effectiveCols = columns > 1 && !isMobile ? columns : 1
+    const slotWidth = effectiveCols > 1
+      ? Math.floor((roundedW - 72) / effectiveCols)
+      : Math.floor(roundedW - (isMobile ? 16 : 48))
+    const usable = Math.max(slotWidth, 200)
+    const fit = Math.min(usable / nativeWidthPx, 1)
     setFitScale(Math.max(fit, 0.2))
-  }, [reportW])
+  }, [nativeWidthPx, columns])
 
   useEffect(() => {
+    if (externalScale !== undefined) return
     const sentinel = sentinelRef.current
     if (!sentinel) return
     // Watch the nearest scroll container, not the shell itself
     const scrollEl = sentinel.closest('[data-canvas-scroll]') as HTMLElement | null
     const target = scrollEl ?? sentinel.parentElement ?? sentinel
+    let rAF: number | null = null
 
     const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) updateFit(entry.contentRect.width)
+      const latest = entries[entries.length - 1]
+      if (!latest) return
+      const width = latest.contentRect.width
+      if (rAF) cancelAnimationFrame(rAF)
+      rAF = requestAnimationFrame(() => updateFit(width))
     })
     observer.observe(target)
     updateFit(target.clientWidth)
-    return () => observer.disconnect()
-  }, [updateFit])
+    return () => {
+      if (rAF) cancelAnimationFrame(rAF)
+      observer.disconnect()
+    }
+  }, [updateFit, externalScale])
 
-  const scale = Math.min(Math.max(fitScale * zoom, 0.2), 2)
-  const scaledW = Math.round(reportW * scale)
-  const scaledH = Math.round(reportH * scale)
+  const clampedZoom = Math.min(1.5, Math.max(0.5, zoom))
+  const actualScale = externalScale !== undefined
+    ? externalScale
+    : Math.min(Math.max(fitScale * clampedZoom, 0.2), 2)
+  const scale = actualScale
+  const scaledW = Math.round(nativeWidthPx * actualScale)
+  const scaledH = Math.round(nativeHeightPx * actualScale)
 
   return (
     <div
@@ -90,7 +128,7 @@ export function ReportPreviewCell({
           : undefined,
         cursor: 'pointer',
         flexShrink: 0,
-        transition: 'box-shadow 0.15s, transform 0.15s',
+        transition: 'box-shadow 0.15s',
       }}
     >
       {/* Decorative watermark — screen only, zero layout impact */}
@@ -124,3 +162,35 @@ export function ReportPreviewCell({
     </div>
   )
 }
+
+export const ReportPreviewCell = React.memo(
+  ReportPreviewCellComponent,
+  (prev, next) => {
+    if (prev.report || next.report) {
+      return (
+        prev.report === next.report &&
+        prev.report?.student?.id === next.report?.student?.id &&
+        prev.report?.id === next.report?.id &&
+        prev.reportType === next.reportType &&
+        prev.isActive === next.isActive &&
+        prev.isSelected === next.isSelected &&
+        prev.isSelectionMode === next.isSelectionMode &&
+        prev.scale === next.scale &&
+        prev.zoom === next.zoom &&
+        prev.columns === next.columns &&
+        prev.studioFormatting === next.studioFormatting
+      )
+    }
+    return (
+      prev.children === next.children &&
+      prev.reportType === next.reportType &&
+      prev.isActive === next.isActive &&
+      prev.isSelected === next.isSelected &&
+      prev.isSelectionMode === next.isSelectionMode &&
+      prev.scale === next.scale &&
+      prev.zoom === next.zoom &&
+      prev.columns === next.columns &&
+      prev.studioFormatting === next.studioFormatting
+    )
+  }
+)

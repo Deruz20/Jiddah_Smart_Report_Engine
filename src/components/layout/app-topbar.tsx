@@ -473,6 +473,11 @@ export function AppTopbar({ breadcrumbs, currentPage }: AppTopbarProps) {
     return () => subscription?.unsubscribe();
   }, []);
 
+  // Reclaim full vertical viewport for Report Center Document Studio
+  if (pathname?.startsWith('/admin/reports')) {
+    return null;
+  }
+
   return (
     <>
       <AnimatePresence>

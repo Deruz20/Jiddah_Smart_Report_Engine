@@ -36,8 +36,8 @@ test('all report templates render the uploaded school stamp in their existing st
       path.resolve(process.cwd(), 'src/components/reports', template),
       'utf8'
     )
-    assert.match(source, /signatures\?\.\[['"]school-stamp['"]\]/, `${template} must read the uploaded stamp`)
-    assert.match(source, /<img/, `${template} must render the stamp as an image`)
+    assert.match(source, /signatures\?\.\[['"]school-stamp['"]\]|OfficialReportStamp/, `${template} must read the uploaded stamp`)
+    assert.match(source, /<img|<OfficialReportStamp/, `${template} must render the stamp as an image`)
   }
 })
 

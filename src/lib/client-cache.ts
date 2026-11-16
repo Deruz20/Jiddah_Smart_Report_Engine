@@ -5,6 +5,7 @@ export type ThemeMode = 'light' | 'dark'
 const THEME_STORAGE_KEY = 'jiddah_theme_mode_v1'
 const SETTINGS_CACHE_KEY = 'jiddah_school_settings_cache_v1'
 const TERM_CACHE_KEY = 'jiddah_active_term_cache_v1'
+export const SIGNATURE_CACHE_VERSION = 'v7-sauvola-solid-royal-blue'
 
 let memorySettings: any = null
 let inFlightSettingsPromise: Promise<any> | null = null
@@ -25,6 +26,18 @@ export function invalidateClientCache() {
   if (typeof window !== 'undefined') {
     try {
       sessionStorage.removeItem(TERM_CACHE_KEY)
+      for (let i = sessionStorage.length - 1; i >= 0; i--) {
+        const key = sessionStorage.key(i)
+        if (key && (key.includes('mark') || key.includes('report') || key.includes('hub'))) {
+          sessionStorage.removeItem(key)
+        }
+      }
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const key = localStorage.key(i)
+        if (key && (key.includes('mark') || key.includes('report') || key.includes('hub'))) {
+          localStorage.removeItem(key)
+        }
+      }
     } catch {}
   }
 }

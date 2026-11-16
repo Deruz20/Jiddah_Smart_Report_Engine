@@ -6,6 +6,7 @@ import { verifyDataAccess, verifyEnrollmentClassAccess } from '@/lib/auth-server
 import { canAccessClass, isAdministratorRole, subjectMatchesClassScope } from '@/lib/teacher-access'
 import { resolveSectionType } from '@/lib/section-type'
 import { fetchMergedSchoolSettings, isExamSetLockedForUser } from '@/lib/school-settings-helper'
+import { resolveEquivalentTerms } from '@/lib/marks-reconciliation'
 
 async function verifyCircularSubjectScope(
   supabase: SupabaseClient,
@@ -75,7 +76,8 @@ export async function GET(request: NextRequest) {
       `)
 
     if (term_id) {
-      query = query.eq('term_id', term_id)
+      const termInfo = await resolveEquivalentTerms(supabase, term_id)
+      query = query.in('term_id', termInfo.termIds)
     }
 
     const { data, error } = await query

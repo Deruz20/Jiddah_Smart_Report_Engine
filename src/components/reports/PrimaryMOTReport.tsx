@@ -4,12 +4,17 @@ import {
   getConductRemark,
 } from "@/lib/grading";
 import { ReportContainer } from "@/components/reports/shared/ReportContainer";
-import { CleanSignatureImg } from "@/components/reports/shared/CleanSignatureImg";
+import { CleanSignatureImage } from "@/components/reports/CleanSignatureImage";
 import { OfficialReportStamp } from "@/components/reports/StampGenerator";
 import { resolveReportBranding, resolveReportGradingBands } from "@/lib/school-settings-helper";
 import { getClassTeacherSignatureKey } from "@/utils/signatures";
+import { useStudioFormatting, resolveEffectiveStudioStyle } from "@/lib/studio-config-store";
+import { NurseryEducativeWatermark } from "@/components/reports/NurseryEducativeWatermark";
 
-export default function PrimaryMOTReport({ reportData }: any) {
+export default function PrimaryMOTReport({ reportData, studioFormatting: studioFormattingProp }: any) {
+  const studioFormatting = useStudioFormatting(studioFormattingProp, reportData?.settings?.report_studio_config);
+  const effective = resolveEffectiveStudioStyle(studioFormatting, reportData, 'primary-mot');
+  const effectiveStudioPass = { ...studioFormatting, ...effective, stampInkColor: effective.stampColor };
   const branding = resolveReportBranding(reportData);
   const gradingBands = resolveReportGradingBands(reportData);
 
@@ -20,8 +25,12 @@ export default function PrimaryMOTReport({ reportData }: any) {
     "";
 
   const printPrefs = reportData?.settings?.print_preferences;
-  const includeSignatures = printPrefs?.includeSignatures !== undefined ? Boolean(printPrefs.includeSignatures) : true;
-  const includeStamp = Boolean(printPrefs?.includeStamp);
+  const includeSignatures =
+    effective.showSignatures &&
+    (printPrefs?.includeSignatures !== undefined ? Boolean(printPrefs.includeSignatures) : true);
+  const includeStamp =
+    effective.showStamp &&
+    (printPrefs?.includeStamp !== undefined ? Boolean(printPrefs.includeStamp) : true);
 
   const teacherComment =
     reportData?.circular?.class_teacher_comment ??
@@ -43,11 +52,11 @@ export default function PrimaryMOTReport({ reportData }: any) {
 
   const renderSubjectRow = (subject: any) => (
     <tr key={subject.subject_name}>
-      <td className="subject" style={{ textAlign: 'left', paddingLeft: '8px' }}>{subject.subject_name}</td>
-      <td>{subject.bot_score ?? ""}</td>
-      <td>{subject.bot_grade_display ?? ""}</td>
-      <td>{subject.mot_score ?? ""}</td>
-      <td>{subject.mot_grade_display ?? ""}</td>
+      <td className="subject" style={{ textAlign: 'left', paddingLeft: '8px', fontWeight: effective.headingFontWeight }}>{subject.subject_name}</td>
+      <td style={{ fontWeight: effective.scoreFontWeight }}>{subject.bot_score ?? ""}</td>
+      <td style={{ fontWeight: effective.scoreFontWeight }}>{subject.bot_grade_display ?? subject.bot_agg ?? ""}</td>
+      <td style={{ fontWeight: effective.scoreFontWeight }}>{subject.mot_score ?? ""}</td>
+      <td style={{ fontWeight: effective.scoreFontWeight }}>{subject.mot_grade_display ?? subject.mot_agg ?? ""}</td>
       <td style={{ textAlign: "left", paddingLeft: "8px", fontFamily: '"Caveat", cursive', fontSize: '1.2em' }}>
         {subject.remark ?? ""}
       </td>
@@ -60,7 +69,7 @@ export default function PrimaryMOTReport({ reportData }: any) {
       primaryFont={branding.primaryFont}
       arabicFont={branding.arabicFont}
       themePreset={branding.themePreset}
-      themeColor={branding.themeColor}
+      themeColor={effective.primaryColor}
     >
       <style
         dangerouslySetInnerHTML={{
@@ -75,14 +84,19 @@ export default function PrimaryMOTReport({ reportData }: any) {
         }
 
         .mot-report-page {
+            --report-primary-color: ${effective.primaryColor};
+            --report-secondary-color: ${effective.secondaryColor};
+            --report-border-color: ${effective.secondaryColor};
             width: 100%;
             height: 100%;
             background: #fffef8;
-            border: 4px solid var(--report-primary-color, #163f2d);
+            border: 4px solid ${effective.primaryColor};
             position: relative;
             overflow: hidden;
             padding: 20px 25px 40px;
-            font-family: 'Poppins', sans-serif;
+            font-family: ${effective.fontFamilyCss} !important;
+            --report-font-scale: ${effective.fontScaleMultiplier};
+            font-size: calc(100% * var(--report-font-scale, 1));
             color: #000;
         }
 
@@ -93,7 +107,7 @@ export default function PrimaryMOTReport({ reportData }: any) {
             left: 0;
             width: 100%;
             text-align: center;
-            color: var(--report-primary-color, #0d5c3f);
+            color: ${effective.primaryColor};
             letter-spacing: 6px;
             font-size: 14px;
         }
@@ -103,7 +117,7 @@ export default function PrimaryMOTReport({ reportData }: any) {
             text-align: center;
             font-family: 'Cairo', sans-serif;
             font-size: 24px;
-            color: var(--report-primary-color, #0d5c3f);
+            color: ${effective.primaryColor};
             font-weight: 700;
             margin-top: 5px;
         }
@@ -117,16 +131,18 @@ export default function PrimaryMOTReport({ reportData }: any) {
 
         .mot-school-left { width: 42%; }
         .mot-school-left h1 {
-            color: #7a1408;
-            font-size: 18px;
-            line-height: 1.2;
-            font-weight: 800;
+            color: ${effective.headerAccentColor};
+            font-size: 21px;
+            line-height: 1.15;
+            letter-spacing: -0.3px;
+            font-weight: 900;
             margin: 0;
         }
         .mot-school-left p {
             margin-top: 5px;
-            font-size: 11px;
-            line-height: 1.5;
+            font-size: 11.5px;
+            font-weight: 600;
+            line-height: 1.45;
             color: #444;
             margin-bottom: 0;
         }
@@ -142,13 +158,13 @@ export default function PrimaryMOTReport({ reportData }: any) {
         .mot-logo img { width: 100%; height: 100%; object-fit: contain; }
 
         .mot-school-right { width: 42%; text-align: right; font-family: 'Cairo', sans-serif; }
-        .mot-school-right h2 { color: #7a1408; font-size: 21px; line-height: 1.4; margin: 0; }
+        .mot-school-right h2 { color: ${effective.headerAccentColor}; font-size: 24px; font-weight: 900; line-height: 1.25; margin: 0; }
 
         /* Ribbon */
         .mot-ribbon {
             width: 320px;
             margin: 12px auto;
-            background: linear-gradient(to right, var(--report-primary-color, #0d5c3f), #15734f);
+            background: linear-gradient(to right, ${effective.primaryColor}, ${effective.headerAccentColor});
             color: #fff;
             text-align: center;
             padding: 10px;
@@ -156,12 +172,12 @@ export default function PrimaryMOTReport({ reportData }: any) {
             font-size: 20px;
             font-weight: 700;
             box-shadow: 0 4px 10px rgba(0,0,0,.15);
-            border: 3px solid var(--report-border-color, #d6b14c);
+            border: 3px solid ${effective.secondaryColor};
         }
 
         /* Info Section */
         .mot-info {
-            border: 2px solid var(--report-border-color, #d6b14c);
+            border: 2px solid ${effective.secondaryColor};
             border-radius: 12px;
             padding: 10px 18px;
         }
@@ -171,12 +187,12 @@ export default function PrimaryMOTReport({ reportData }: any) {
             margin-bottom: 10px;
         }
         .mot-field { display: flex; align-items: baseline; gap: 8px; font-size: 14px; font-weight: 700; color: #111827; }
-        .mot-line { border-bottom: 2px solid var(--report-primary-color, #0d5c3f); min-height: 22px; text-align: center; color: #047857; font-weight: 900; font-size: 16px; display: inline-flex; align-items: center; justify-content: center; }
+        .mot-line { border-bottom: 2px solid ${effective.primaryColor}; min-height: 22px; text-align: center; color: ${effective.primaryColor}; font-weight: 900; font-size: 16px; display: inline-flex; align-items: center; justify-content: center; }
 
         /* Rounded Table Container */
         .mot-table-wrap {
             margin-top: 12px;
-            border: 2px solid var(--report-border-color, #d6b14c);
+            border: 2px solid ${effective.secondaryColor};
             border-radius: 10px;
             overflow: hidden;
         }
@@ -188,36 +204,36 @@ export default function PrimaryMOTReport({ reportData }: any) {
         }
 
         .mot-main-table th {
-            background: var(--report-primary-color, #0d5c3f);
+            background: ${effective.primaryColor};
             color: #fff;
             padding: 8px 4px;
-            border: 1px solid var(--report-border-color, #d6b14c);
+            border: 1px solid ${effective.secondaryColor};
             font-size: 12px;
         }
 
         .mot-main-table td {
-            border: 1px solid var(--report-border-color, #d6b14c);
-            padding: 7px 8px;
+            border: 1px solid ${effective.secondaryColor};
+            padding: ${effective.densityPadding};
             height: 36px;
             font-size: 12px;
             text-align: center;
         }
 
-        .mot-main-table .subhead th { background: #e8f3ec; color: var(--report-primary-color, #0d5c3f); font-weight: 700; }
-        .mot-main-table .subject { font-weight: 700; text-align: left !important; }
+        .mot-main-table .subhead th { background: #e8f3ec; color: ${effective.primaryColor}; font-weight: 700; }
+        .mot-main-table .subject { font-weight: ${effective.headingFontWeight}; text-align: left !important; }
 
         /* Grading */
         .mot-grading { margin-top: 12px; }
-        .mot-grade-title { font-size: 14px; font-weight: 700; color: #7a1408; margin-bottom: 4px; }
+        .mot-grade-title { font-size: 14px; font-weight: 700; color: ${effective.headerAccentColor}; margin-bottom: 4px; }
 
         .mot-grade-wrap {
-            border: 2px solid var(--report-border-color, #d6b14c);
+            border: 2px solid ${effective.secondaryColor};
             border-radius: 10px;
             overflow: hidden;
         }
 
         .mot-grade-table { width: 100%; border-collapse: collapse; border-style: hidden; }
-        .mot-grade-table th { background: var(--report-border-color, #d6b14c); color: #000; padding: 6px; border: 1px solid #333; font-size: 11px; }
+        .mot-grade-table th { background: ${effective.secondaryColor}; color: #000; padding: 6px; border: 1px solid #333; font-size: 11px; }
         .mot-grade-table td { border: 1px solid #333; text-align: center; padding: 6px; font-size: 11px; }
 
         /* Bottom Section */
@@ -235,7 +251,7 @@ export default function PrimaryMOTReport({ reportData }: any) {
             flex: 1;
             min-height: 22px;
             font-family: 'Caveat', cursive;
-            font-size: 16px;
+            font-size: ${effective.commentFontSizePx + 2}px;
             font-weight: 700;
             color: #1e293b;
             padding-left: 8px;
@@ -287,22 +303,28 @@ export default function PrimaryMOTReport({ reportData }: any) {
             width: 100%;
             text-align: center;
             font-size: 12px;
-            color: #b10000;
+            color: ${effective.headerAccentColor};
             font-weight: 700;
         }
         `,
         }}
       />
       <div className="mot-report-page">
+        <NurseryEducativeWatermark
+          templateId="primary-mot"
+          logoUrl={branding.logoUrl || "/logo-512h.png"}
+          studioFormatting={effectiveStudioPass}
+          includeEducativeArt={false}
+        />
         <div className="mot-top-arabic">بِسْمِ ٱللَّٰهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</div>
 
         <div className="mot-header">
           <div className="mot-school-left">
-            <h1 data-testid="report-school-name">{branding.schoolName}</h1>
+            <h1 data-testid="report-school-name">{effective.schoolHeader.nameEnglish}</h1>
             <p>
-              {branding.address}<br/>
-              Tel: {branding.phone}<br/>
-              {branding.email}
+              {effective.schoolHeader.address}<br />
+              Tel: {effective.schoolHeader.phone}<br />
+              {effective.schoolHeader.email}
             </p>
           </div>
 
@@ -320,7 +342,7 @@ export default function PrimaryMOTReport({ reportData }: any) {
           </div>
 
           <div className="mot-school-right">
-            <h2>مدرسة جدة الإسلامية للروضة <br/> والإبتدائية بنساغو</h2>
+            <h2>{effective.schoolHeader.nameArabic}</h2>
           </div>
         </div>
 
@@ -329,24 +351,24 @@ export default function PrimaryMOTReport({ reportData }: any) {
         <div className="mot-info">
           <div className="mot-info-row">
             <div className="mot-field" style={{ flex: 1.2 }}>
-              Class: <div className="mot-line" style={{ fontWeight: 800, textAlign: 'center' }}>{className}</div>
+              Class: <div className="mot-line" style={{ fontWeight: 800, fontSize: '14.5px', textAlign: 'center', color: '#0F172A' }}>{className}</div>
             </div>
             <div className="mot-field" style={{ flex: 1 }}>
-              Term: <div className="mot-line" style={{ fontWeight: 800, textAlign: 'center' }}>{reportData?.term?.term_number ?? "--"}</div>
+              Term: <div className="mot-line" style={{ fontWeight: 800, fontSize: '14.5px', textAlign: 'center', color: '#0F172A' }}>{reportData?.term?.term_number ?? "--"}</div>
             </div>
             <div className="mot-field" style={{ flex: 1 }}>
-              Year: <div className="mot-line" style={{ fontWeight: 800, textAlign: 'center' }}>{reportData?.term?.academic_year ?? "--"}</div>
+              Year: <div className="mot-line" style={{ fontWeight: 800, fontSize: '14.5px', textAlign: 'center', color: '#0F172A' }}>{reportData?.term?.academic_year ?? "--"}</div>
             </div>
             <div className="mot-field" style={{ flex: 1.2 }}>
-              Division: <div className="mot-line" style={{ fontWeight: 900, textAlign: 'center', color: '#b10000' }}>{reportData?.circular?.division ?? "_________"}</div>
+              Division: <div className="mot-line" style={{ fontWeight: 900, fontSize: '14.5px', textAlign: 'center', color: '#b10000' }}>{reportData?.circular?.division ?? "_________"}</div>
             </div>
             <div className="mot-field" style={{ flex: 1 }}>
-              AGG: <div className="mot-line" style={{ fontWeight: 900, textAlign: 'center', color: '#b10000' }}>{reportData?.circular?.mot_aggregate ?? "_________"}</div>
+              AGG: <div className="mot-line" style={{ fontWeight: 900, fontSize: '14.5px', textAlign: 'center', color: '#b10000' }}>{reportData?.circular?.mot_aggregate ?? "_________"}</div>
             </div>
           </div>
           <div className="mot-info-row" style={{ marginBottom: 0 }}>
             <div className="mot-field" style={{ width: '100%' }}>
-              Pupil&apos;s Name: <div className="mot-line" style={{ width: '100%', fontSize: '18px', fontWeight: 900, textTransform: 'uppercase', textAlign: 'center', letterSpacing: '0.5px' }}>{reportData?.student?.name}</div>
+              Pupil&apos;s Name: <div className="mot-line" style={{ width: '100%', fontSize: '16px', fontWeight: 900, textTransform: 'uppercase', textAlign: 'center', letterSpacing: '0.5px', color: '#0F172A' }}>{reportData?.student?.name}</div>
             </div>
           </div>
         </div>
@@ -355,10 +377,10 @@ export default function PrimaryMOTReport({ reportData }: any) {
           <table className="mot-main-table">
             <thead>
               <tr>
-                <th rowSpan={2} style={{width: '22%'}}>SUBJECTS</th>
+                <th rowSpan={2} style={{ width: '22%' }}>SUBJECTS</th>
                 <th colSpan={2}>BEGINNING OF TERM</th>
                 <th colSpan={2}>MIDTERM</th>
-                <th rowSpan={2} style={{width: '28%'}}>SUBJECT TEACHER&apos;S COMMENT</th>
+                <th rowSpan={2} style={{ width: '28%' }}>SUBJECT TEACHER&apos;S COMMENT</th>
               </tr>
               <tr className="subhead">
                 <th>MARK</th><th>AGG</th><th>MARK</th><th>AGG</th>
@@ -367,7 +389,7 @@ export default function PrimaryMOTReport({ reportData }: any) {
             <tbody>
               {reportData?.circular?.subjects?.map(renderSubjectRow)}
               <tr>
-                <td className="subject" style={{textAlign: 'left', paddingLeft: '8px'}}>TOTAL</td>
+                <td className="subject" style={{ textAlign: 'left', paddingLeft: '8px' }}>TOTAL</td>
                 <td>{reportData?.circular?.bot_total ?? ""}</td>
                 <td>{reportData?.circular?.bot_aggregate ?? ""}</td>
                 <td>{reportData?.circular?.mot_total ?? ""}</td>
@@ -403,16 +425,16 @@ export default function PrimaryMOTReport({ reportData }: any) {
         <div className="mot-bottom">
           <div className="mot-conduct-row">
             <span className="mot-comment-label">Conduct:</span>
-            <div className="mot-comment-value" style={{fontFamily: '"Caveat", cursive', fontSize: '18px'}}>{conductRemark}</div>
+            <div className="mot-comment-value" style={{ fontFamily: '"Caveat", cursive', fontSize: '18px' }}>{conductRemark}</div>
           </div>
 
           <div className="mot-comment-row">
             <span className="mot-comment-label">Class Teacher&apos;s Comment:</span>
             <div className="mot-comment-value">{teacherComment}</div>
             <span className="mot-sig-label">Signature:</span>
-            <div className="mot-sig-line">
+            <div className="mot-sig-line" style={{ position: 'relative', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', height: '36px', minWidth: '120px', borderBottom: '1.5px dotted #334155' }}>
               {includeSignatures && classTeacherSig && (
-                <CleanSignatureImg src={classTeacherSig} alt="Class Teacher Signature" style={{ maxHeight: '34px' }} />
+                <CleanSignatureImage src={classTeacherSig} alt="Class Teacher Signature" style={{ height: '36px', width: '112px', objectFit: 'contain', marginBottom: '-6px' }} studioFormatting={effectiveStudioPass} />
               )}
             </div>
           </div>
@@ -421,21 +443,17 @@ export default function PrimaryMOTReport({ reportData }: any) {
             <span className="mot-comment-label">Head Teacher&apos;s Comment:</span>
             <div className="mot-comment-value">{headComment}</div>
             <span className="mot-sig-label">Signature:</span>
-            <div className="mot-sig-line">
+            <div className="mot-sig-line" style={{ position: 'relative', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', height: '36px', minWidth: '120px', borderBottom: '1.5px dotted #334155' }}>
               {includeSignatures && headTeacherSig && (
-                <CleanSignatureImg src={headTeacherSig} alt="Head Teacher Signature" style={{ maxHeight: '34px' }} />
+                <CleanSignatureImage src={headTeacherSig} alt="Head Teacher Signature" style={{ height: '36px', width: '112px', objectFit: 'contain', marginBottom: '-6px' }} studioFormatting={effectiveStudioPass} />
               )}
             </div>
           </div>
 
           <div className="mot-footer-stamp">
-            <div className="mot-stamp" style={{ padding: '2px' }}>
+            <div className="mot-stamp" style={{ width: '135px', height: '64px', minWidth: '135px', minHeight: '64px', position: 'relative', overflow: 'visible', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               {includeStamp ? (
-                reportData?.signatures?.['school-stamp'] ? (
-                  <img src={reportData.signatures['school-stamp']} alt="Official school stamp" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
-                ) : (
-                  <OfficialReportStamp reportData={reportData} maxWidth={144} maxHeight={88} />
-                )
+                <OfficialReportStamp reportData={reportData} studioFormatting={effectiveStudioPass} maxWidth={135} maxHeight={64} />
               ) : null}
             </div>
           </div>

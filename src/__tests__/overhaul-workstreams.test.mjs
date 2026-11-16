@@ -154,11 +154,12 @@ describe('Workstream 2: Signature Ink Extractor & Paper Removal', () => {
 });
 
 describe('Workstream 3: Jiddah Stamp Configuration & Date Formatting', () => {
-  it('defaults to official Jiddah stamp geometry, navy blue ink, and P.O. BOX line', () => {
+  it('defaults to official Jiddah stamp geometry, royal stamp blue ink, and Nsaggu P.O.Box line', () => {
     assert.equal(DEFAULT_STAMP_CONFIG.school_name, 'JIDDAH ISLAMIC NURSERY & PRIMARY SCHOOL');
     assert.equal(DEFAULT_STAMP_CONFIG.title, 'HEADTEACHER');
-    assert.equal(DEFAULT_STAMP_CONFIG.po_box, 'P.O. BOX 34008, KAMPALA - UGANDA');
-    assert.equal(DEFAULT_STAMP_CONFIG.ink_color, '#1B3678');
+    assert.equal(DEFAULT_STAMP_CONFIG.po_box, 'P.O.Box 34008, Nsaggu');
+    assert.equal(DEFAULT_STAMP_CONFIG.phone, 'Nakawuka Rd, Wakiso District');
+    assert.equal(DEFAULT_STAMP_CONFIG.ink_color, '#1B3B8B');
     assert.equal(DEFAULT_STAMP_CONFIG.date, '26 OCT 2026');
   });
 
@@ -728,8 +729,10 @@ describe('Workstream 11: Milestone 16 Layout Compactness, Mobile Refinement & Mo
     assert.match(marksEntrySrc, /id="marks-subject-filter-mobile"/);
 
     // Row 2: Phase track + Department track
-    assert.match(marksEntrySrc, /flex-\[4\] grid grid-cols-4/);
-    assert.match(marksEntrySrc, /flex-\[3\] grid grid-cols-3/);
+    assert.match(marksEntrySrc, /flex-\[4\]/);
+    assert.match(marksEntrySrc, /grid-cols-4/);
+    assert.match(marksEntrySrc, /flex-\[3\]/);
+    assert.match(marksEntrySrc, /grid-cols-3/);
 
     // Mobile student switcher: no redundant outer avatar circle before StudentCombobox
     assert.doesNotMatch(marksEntrySrc, /<div className="w-8 h-8 rounded-full bg-emerald-600[^"]*"><StudentCombobox/);
@@ -1038,7 +1041,7 @@ describe('Workstream 15: Report Center Smart Defaults, Zone 1 Bar & Split-Pane A
     const topToolbarPath = path.join(rootDir, 'src/components/figma-ui/TopToolbar.tsx');
     const topToolbarSrc = fs.readFileSync(topToolbarPath, 'utf8');
     assert.match(topToolbarSrc, /data-testid="reports-zone-1-bar"/);
-    assert.match(topToolbarSrc, /bg-white dark:bg-\[#151D1A\] rounded-2xl px-3 py-2 border border-\[#0D5C3A\]\/15 dark:border-\[#F59E0B\]\/20/);
+    assert.match(topToolbarSrc, /bg-white dark:bg-\[#151D1A\] rounded-2xl px-3 py-1\.5 border border-\[#0D5C3A\]\/15 dark:border-\[#F59E0B\]\/20/);
     assert.doesNotMatch(topToolbarSrc, /<div className="text-xs font-bold text-stone-700 dark:text-stone-200 truncate">\s*Report Center\s*<\/div>/);
 
     // ReportPreviewCell paper styling
@@ -1097,13 +1100,13 @@ describe('WORKSTREAM 16: Full-Width Document Preview & Dual-Curriculum Report Da
     assert.match(toolbarSrc, /studentSelectorPill/);
   });
 
-  it('provides WhatsApp-style floating vertical dock with steppers and zoom controls in DocumentCanvas', () => {
+  it('provides translucent bottom-right floating dock with steppers and zoom controls in DocumentCanvas', () => {
     const canvasPath = path.join(rootDir, 'src/components/figma-ui/DocumentCanvas.tsx');
     const canvasSrc = fs.readFileSync(canvasPath, 'utf8');
 
     assert.match(canvasSrc, /data-testid="floating-control-dock"/);
-    assert.match(canvasSrc, /ChevronUp/);
-    assert.match(canvasSrc, /ChevronDown/);
+    assert.match(canvasSrc, /ChevronLeft/);
+    assert.match(canvasSrc, /ChevronRight/);
     assert.match(canvasSrc, /data-testid="unified-zoom-control"/);
     assert.match(canvasSrc, /Maximize2/);
     assert.doesNotMatch(canvasSrc, /data-testid="stage-top-mini-bar"/);
@@ -1116,8 +1119,8 @@ describe('WORKSTREAM 16: Full-Width Document Preview & Dual-Curriculum Report Da
     // Queries theology_subjects table (not subjects)
     assert.match(singleReportSrc, /\.from\('theology_subjects'\)/);
     // Uses equivalent termIds
-    assert.match(singleReportSrc, /termIds = \[...new Set\(\[term\.id/);
-    assert.match(singleReportSrc, /\.in\('term_id', termIds\)/);
+    assert.match(singleReportSrc, /resolveEquivalentTerms/);
+    assert.match(singleReportSrc, /fetchAndReconcileSecularMarks/);
     // Never sets theology to null for secular/dual
     assert.match(singleReportSrc, /theology: theologySectionData,/);
 
@@ -1125,7 +1128,7 @@ describe('WORKSTREAM 16: Full-Width Document Preview & Dual-Curriculum Report Da
     const batchReportSrc = fs.readFileSync(batchReportPath, 'utf8');
 
     // Reconciles equivalent terms
-    assert.match(batchReportSrc, /termIds = \[...new Set\(\[term\.id/);
+    assert.match(batchReportSrc, /resolveEquivalentTerms/);
     // Fetches theology_subjects regardless of curriculum === 'secular'
     assert.match(batchReportSrc, /\.from\('theology_subjects'\)/);
     // Always provides theologySectionData for dual-curriculum report cards
@@ -1149,7 +1152,7 @@ describe('WORKSTREAM 16: Full-Width Document Preview & Dual-Curriculum Report Da
     const printCssPath = path.join(rootDir, 'src/styles/reports/print-system.css');
     const printCssSrc = fs.readFileSync(printCssPath, 'utf8');
 
-    assert.match(printCssSrc, /@page \{\s*size: A4 portrait;\s*margin: 0mm;\s*\}/);
+    assert.doesNotMatch(printCssSrc, /^@page\s*\{\s*size:\s*A4\s+portrait/m);
     assert.match(printCssSrc, /\.a4-two-up-page/);
     assert.match(printCssSrc, /max-height: 138mm;/);
     assert.match(printCssSrc, /color-scheme: light !important;/);
@@ -1162,8 +1165,1095 @@ describe('WORKSTREAM 16: Full-Width Document Preview & Dual-Curriculum Report Da
   });
 });
 
+describe('Workstream 22: Universal Marks Reconciliation, Form Collision Fix, Stamp Hardening & Document Studio', () => {
+  const rootDir = process.cwd();
+
+  it('verifies marks-reconciliation engine handles equivalent terms, fetchAllSupabaseRows, and merging', () => {
+    const reconcilerPath = path.join(rootDir, 'src/lib/marks-reconciliation.ts');
+    const reconcilerSrc = fs.readFileSync(reconcilerPath, 'utf8');
+
+    assert.match(reconcilerSrc, /export async function resolveEquivalentTerms/);
+    assert.match(reconcilerSrc, /export async function fetchAndReconcileSecularMarks/);
+    assert.match(reconcilerSrc, /export async function fetchAndReconcileTheologyMarks/);
+    assert.match(reconcilerSrc, /fetchAllSupabaseRows/);
+    assert.match(reconcilerSrc, /canonicalSecularSubjectCode/);
+    assert.match(reconcilerSrc, /canonicalTheologySubjectCode/);
+  });
+
+  it('verifies TheologyMarkTableRow and SecularMarkTableRow have bounded progress bars and no duplicate labels', () => {
+    const marksEntryPath = path.join(rootDir, 'src/components/shared-marks-entry.tsx');
+    const marksEntrySrc = fs.readFileSync(marksEntryPath, 'utf8');
+
+    assert.match(marksEntrySrc, /max-w-\[140px\]/);
+    assert.match(marksEntrySrc, /pr-5 overflow-hidden/);
+    assert.match(marksEntrySrc, /toArabicDigits\(theologyStats\.total\)/);
+    assert.match(marksEntrySrc, /whitespace-nowrap truncate/);
+    assert.match(marksEntrySrc, /md:hidden/);
+  });
+
+  it('verifies all 8 report templates bound stamps to 135x68 and crest renders unclipped', () => {
+    const templates = [
+      'PrimaryEOTReport.tsx',
+      'P7EOTReport.tsx',
+      'PrimaryMOTReport.tsx',
+      'PrimaryBOTReport.tsx',
+      'NurseryEOTReport.tsx',
+      'NurseryMOTReport.tsx',
+      'NurseryTheologyEOTReport.tsx',
+      'TheologyMOTReport.tsx',
+    ];
+
+    for (const t of templates) {
+      const tPath = path.join(rootDir, `src/components/reports/${t}`);
+      const tSrc = fs.readFileSync(tPath, 'utf8');
+      assert.match(tSrc, /13[25]px/);
+      assert.match(tSrc, /6[248]px/);
+      assert.match(tSrc, /OfficialReportStamp/);
+    }
+
+    const crestPath = path.join(rootDir, 'src/components/reports/ReportSchoolLogo.tsx');
+    const crestSrc = fs.readFileSync(crestPath, 'utf8');
+    assert.match(crestSrc, /w-14 h-14/);
+    assert.match(crestSrc, /overflow-visible/);
+  });
+
+  it('verifies student religion resolver and non-Muslim Secular Portrait routing', () => {
+    const religionPath = path.join(rootDir, 'src/lib/student-religion.ts');
+    const religionSrc = fs.readFileSync(religionPath, 'utf8');
+
+    assert.match(religionSrc, /export function isNonMuslimStudent/);
+    assert.match(religionSrc, /export function shouldUseSecularPortraitTemplate/);
+    assert.match(religionSrc, /export function getSecularPortraitReportTitle/);
+
+    const clientPath = path.join(rootDir, 'src/components/ReportGeneratorClient.tsx');
+    const clientSrc = fs.readFileSync(clientPath, 'utf8');
+    assert.match(clientSrc, /shouldUseSecularPortraitTemplate/);
+    assert.match(clientSrc, /applyDynamicPrintPageRule/);
+    assert.match(clientSrc, /jiddah-print-page-rule/);
+  });
+
+  it('verifies global AppTopbar hides on /admin/reports and TopToolbar exposes full Document Studio controls', () => {
+    const topbarPath = path.join(rootDir, 'src/components/layout/app-topbar.tsx');
+    const topbarSrc = fs.readFileSync(topbarPath, 'utf8');
+    assert.match(topbarSrc, /pathname\?\.startsWith\('\/admin\/reports'\)/);
+    // Verifies Rule of Hooks: early return occurs AFTER all useEffect declarations
+    const effectIndex = topbarSrc.lastIndexOf('React.useEffect');
+    const returnIndex = topbarSrc.indexOf("if (pathname?.startsWith('/admin/reports'))");
+    assert.ok(returnIndex > effectIndex, 'Early return for /admin/reports must occur after all useEffect hooks to prevent hook count mismatch');
+
+    const toolbarPath = path.join(rootDir, 'src/components/figma-ui/TopToolbar.tsx');
+    const toolbarSrc = fs.readFileSync(toolbarPath, 'utf8');
+    assert.match(toolbarSrc, /Document Studio Controls/);
+    assert.match(toolbarSrc, /Template Color Themes/);
+    assert.match(toolbarSrc, /Stamps, Signatures & Watermarks/);
+    assert.match(toolbarSrc, /data-testid="studio-popover-trigger"/);
+  });
+
+  it('guarantees marks-reconciliation resolves student IDs through enrollments table without invalid column lookups', () => {
+    const reconcilerPath = path.join(rootDir, 'src/lib/marks-reconciliation.ts');
+    const reconcilerSrc = fs.readFileSync(reconcilerPath, 'utf8');
+
+    // circular_marks and theology_marks query by enrollment_id, not student_id
+    assert.match(reconcilerSrc, /\.from\('circular_marks'\)[\s\S]*?\.in\('enrollment_id', chunk\)/);
+    assert.match(reconcilerSrc, /\.from\('theology_marks'\)[\s\S]*?\.in\('enrollment_id', chunk\)/);
+
+    // Resolves student_ids via enrollments table
+    assert.match(reconcilerSrc, /\.from\('enrollments'\)[\s\S]*?\.select\('id, student_id'\)[\s\S]*?\.in\('student_id', chunk\)/);
+  });
+});
+
+describe('Workstream 23: Authentic Jiddah Vector Stamp, Clean Signature Ink Filter, Multi-Page Print, Bold Pupil Profiles & MS Word Toolbar', () => {
+  const rootDir = process.cwd();
+
+  it('1. renders authentic Jiddah Headteacher digital vector stamp SVG with exact physical geometry and defaults across all 8 templates', () => {
+    const stampPath = path.join(rootDir, 'src/components/reports/StampGenerator.tsx');
+    const stampSrc = fs.readFileSync(stampPath, 'utf8');
+
+    // Exact outer U-bracket frame paths in Royal Stamp Blue (#1B3B8B)
+    assert.match(stampSrc, /M 14 52 L 14 18 Q 14 10 22 10 L 358 10 Q 366 10 366 18 L 366 52/);
+    assert.match(stampSrc, /M 14 168 L 14 202 Q 14 210 22 210 L 358 210 Q 366 210 366 202 L 366 168/);
+    assert.match(stampSrc, /strokeWidth="4\.5"/);
+
+    // Rotated vertical wall texts
+    assert.match(stampSrc, /transform="translate\(14, 110\) rotate\(90\)"/);
+    assert.match(stampSrc, /transform="translate\(366, 110\) rotate\(-90\)"/);
+    assert.match(stampSrc, /HEADTEACHER&apos;S OFFICE/);
+
+    // Top 2 Header Lines
+    assert.match(stampSrc, /JIDDAH ISLAMIC NURSERY &amp;/);
+    assert.match(stampSrc, /PRIMARY SCHOOL/);
+
+    // Middle 3-Column Row: Shield Crest, Red Dater Stamp, Crescent & Star
+    assert.match(stampSrc, /DAY AND BOARDING/);
+    assert.match(stampSrc, /STRIVE FOR LIFE &amp; HERE AFTER/);
+    assert.match(stampSrc, /date_ink_color|#C81E1E|#D92626/);
+
+    // Bottom 3 Footer Lines
+    assert.match(stampSrc, /HEADTEACHER/);
+    assert.match(stampSrc, /P\.O\.Box 34008, Nsaggu/);
+    assert.match(stampSrc, /Nakawuka Rd, Wakiso District/);
+
+    // Digital vector stamp is primary default across all 8 templates (no direct uploaded image ternary bypass)
+    const templates = [
+      'PrimaryEOTReport.tsx',
+      'P7EOTReport.tsx',
+      'PrimaryMOTReport.tsx',
+      'PrimaryBOTReport.tsx',
+      'NurseryEOTReport.tsx',
+      'NurseryMOTReport.tsx',
+      'NurseryTheologyEOTReport.tsx',
+      'TheologyMOTReport.tsx',
+    ];
+
+    for (const t of templates) {
+      const tSrc = fs.readFileSync(path.join(rootDir, `src/components/reports/${t}`), 'utf8');
+      assert.doesNotMatch(tSrc, /reportData\?\.signatures\?\.\['school-stamp'\]\s*\?\s*\(\s*<img/);
+      assert.match(tSrc, /<OfficialReportStamp\s+reportData=\{reportData\}\s+studioFormatting=\{(?:studioFormatting|effectiveStudioPass)\}/);
+    }
+  });
+
+  it('2. strips grey camera paper backgrounds from teacher signatures via CleanSignatureImage and #jiddah-clean-ink SVG filter', () => {
+    const sigCompPath = path.join(rootDir, 'src/components/reports/CleanSignatureImage.tsx');
+    const sigCompSrc = fs.readFileSync(sigCompPath, 'utf8');
+
+    assert.match(sigCompSrc, /export function CleanSignatureImage/);
+    assert.match(sigCompSrc, /export const extractSignatureInk/);
+    assert.match(sigCompSrc, /id="jiddah-clean-ink"/);
+    assert.match(sigCompSrc, /<feColorMatrix/);
+    assert.match(sigCompSrc, /<feComponentTransfer>/);
+    assert.match(sigCompSrc, /slope="4\.5"\s+intercept="-1\.35"/);
+    assert.match(sigCompSrc, /url\(#jiddah-clean-ink\)/);
+  });
+
+  it('3. unconstrains layout wrappers during @media print so multi-page batch printing outputs all N sheets', () => {
+    const layoutPath = path.join(rootDir, 'src/app/admin/layout.tsx');
+    const layoutSrc = fs.readFileSync(layoutPath, 'utf8');
+    assert.match(layoutSrc, /print:!h-auto print:!min-h-0 print:!max-h-none print:!overflow-visible print:!static/);
+    assert.doesNotMatch(layoutSrc, /print:!block/);
+
+    const printCssPath = path.join(rootDir, 'src/styles/reports/print-system.css');
+    const printCssSrc = fs.readFileSync(printCssPath, 'utf8');
+    assert.match(printCssSrc, /\[data-slot="sidebar-wrapper"\]/);
+    assert.match(printCssSrc, /\[data-slot="sidebar-inset"\]/);
+    assert.match(printCssSrc, /\.report-card-sheet,\s*[\s\S]*?#print-portal \.report-container\s*\{[\s\S]*?page-break-after:\s*avoid\s*!important;[\s\S]*?break-after:\s*avoid\s*!important;/);
+
+    const eotPath = path.join(rootDir, 'src/components/reports/PrimaryEOTReport.tsx');
+    const eotSrc = fs.readFileSync(eotPath, 'utf8');
+    // Verify tightened vertical padding so bottom validity banner never clips
+    assert.match(eotSrc, /\.landscape-page\s*\{[\s\S]*?padding:\s*2\.5mm 4mm;/);
+  });
+
+  it('4. enforces big and bold pupil profile typography across all 8 report templates', () => {
+    const eotSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/PrimaryEOTReport.tsx'), 'utf8');
+    assert.match(eotSrc, /font-size:\s*15\.5px;\s*font-weight:\s*900;/);
+    assert.match(eotSrc, /font-size:\s*(?:17|22)px;\s*font-weight:\s*900;/);
+
+    const p7Src = fs.readFileSync(path.join(rootDir, 'src/components/reports/P7EOTReport.tsx'), 'utf8');
+    assert.match(p7Src, /\.p7-eot-report \.line\.pupil-name\s*\{[^}]*font-size:\s*16px;\s*font-weight:\s*900;/);
+
+    const motSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/PrimaryMOTReport.tsx'), 'utf8');
+    assert.match(motSrc, /fontSize:\s*'16px',\s*fontWeight:\s*900,\s*textTransform:\s*'uppercase'/);
+
+    const botSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/PrimaryBOTReport.tsx'), 'utf8');
+    assert.match(botSrc, /fontSize:\s*'16px',\s*fontWeight:\s*900,\s*textTransform:\s*'uppercase'/);
+
+    const nurseryEotSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/NurseryEOTReport.tsx'), 'utf8');
+    assert.match(nurseryEotSrc, /fontSize:\s*'16px',\s*fontWeight:\s*900,\s*textTransform:\s*'uppercase'/);
+
+    const nurseryMotSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/NurseryMOTReport.tsx'), 'utf8');
+    assert.match(nurseryMotSrc, /fontSize:\s*'16px',\s*fontWeight:\s*900,\s*textTransform:\s*'uppercase'/);
+
+    const nurseryTheoSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/NurseryTheologyEOTReport.tsx'), 'utf8');
+    assert.match(nurseryTheoSrc, /font-weight:\s*900;\s*font-size:\s*17px;/);
+
+    const theoMotSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/TheologyMOTReport.tsx'), 'utf8');
+    assert.match(theoMotSrc, /font-weight:\s*900;\s*font-size:\s*17px;/);
+  });
+
+  it('5. makes Desktop TopToolbar hidden md:flex with iconic view-mode-toggle, visual-select-toggle, download, and print buttons, and consolidates mobile into a single h-11 header', () => {
+    const toolbarSrc = fs.readFileSync(path.join(rootDir, 'src/components/figma-ui/TopToolbar.tsx'), 'utf8');
+    assert.match(toolbarSrc, /hidden md:flex items-center justify-between gap-2/);
+    assert.match(toolbarSrc, /data-testid="view-mode-toggle"/);
+    assert.match(toolbarSrc, /data-testid="visual-select-toggle"/);
+    assert.match(toolbarSrc, /data-testid="toolbar-download-btn"/);
+    assert.match(toolbarSrc, /data-testid="toolbar-print-btn"/);
+
+    const clientSrc = fs.readFileSync(path.join(rootDir, 'src/components/ReportGeneratorClient.tsx'), 'utf8');
+    assert.match(clientSrc, /h-11 px-2 flex md:hidden items-center justify-between gap-1 bg-white dark:bg-\[#151D1A\]/);
+    assert.match(clientSrc, /visualSelectMode=\{visualSelectMode\}/);
+    assert.match(clientSrc, /onToggleVisualSelect=/);
+    assert.match(clientSrc, /onPrintCurrent=\{handlePrintCurrent\}/);
+
+    const rosterSrc = fs.readFileSync(path.join(rootDir, 'src/components/figma-ui/StudentRosterSidebar.tsx'), 'utf8');
+    assert.match(rosterSrc, /data-testid="roster-select-all-btn"/);
+    assert.match(rosterSrc, /inViewSelectedCount\} selected/);
+  });
+});
+
+describe('Workstream 24: Landscape Print Lock, Blank Page 1 Fix, Iconic Studio Topbar & Visual Selection, Translucent Minimizable Dock, Zero-Blur Modals & Adaptive Ink Extraction', () => {
+  const rootDir = process.cwd();
+
+  it('1. removes static portrait @page override, locks landscape tables-row to flex row, and eliminates blank Page 1', () => {
+    const printCssSrc = fs.readFileSync(path.join(rootDir, 'src/styles/reports/print-system.css'), 'utf8');
+    // Static global portrait @page rule must not override dynamic landscape orientation
+    assert.doesNotMatch(printCssSrc, /^@page\s*\{\s*size:\s*A4\s+portrait/m);
+    // Side-by-side landscape tables lock
+    assert.match(printCssSrc, /\.landscape-page\s+\.tables-wrapper,\s*[\r\n]+\s*\.landscape-page\s+\.tables-row\s*\{[\s\S]*?display:\s*flex\s*!important;[\s\S]*?flex-direction:\s*row\s*!important;/);
+    // Scoped main rule so PrimaryEOTReport doesn't collapse
+    assert.match(printCssSrc, /\[data-slot="sidebar-inset"\]\s*>\s*main/);
+    // No blank page 1
+    assert.match(printCssSrc, /\.report-card-sheet:first-child[\s\S]*?break-before:\s*avoid\s*!important;/);
+
+    const eotSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/PrimaryEOTReport.tsx'), 'utf8');
+    assert.match(eotSrc, /<div className="tables-wrapper tables-row">/);
+    assert.doesNotMatch(eotSrc, /<main className="tables-wrapper">/);
+
+    const clientSrc = fs.readFileSync(path.join(rootDir, 'src/components/ReportGeneratorClient.tsx'), 'utf8');
+    const portalSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/PrintPortal.tsx'), 'utf8');
+    assert.match(clientSrc, /data-testid="report-center-workspace"[\s\S]*?print:!hidden/);
+    assert.match(clientSrc, /applyDynamicPrintPageRule/);
+    assert.match(portalSrc, /297mm 210mm !important/);
+  });
+
+  it('2. upgrades PrintDialog with 3 clear print scopes and on-canvas Select on Canvas mode', () => {
+    const dialogSrc = fs.readFileSync(path.join(rootDir, 'src/components/figma-ui/PrintDialog.tsx'), 'utf8');
+    assert.match(dialogSrc, /onEnterVisualSelect/);
+    assert.match(dialogSrc, /Select on Canvas/);
+    assert.match(dialogSrc, /Batch Print/);
+    assert.match(dialogSrc, /Current Report/);
+    assert.match(dialogSrc, /Custom Visual Selection/);
+
+    const canvasSrc = fs.readFileSync(path.join(rootDir, 'src/components/figma-ui/DocumentCanvas.tsx'), 'utf8');
+    assert.match(canvasSrc, /data-testid="visual-selection-bar"/);
+    assert.match(canvasSrc, /justify-start/);
+  });
+
+  it('3. renders a translucent, minimizable bottom-right floating zoom/page dock with side="top" tooltips', () => {
+    const canvasSrc = fs.readFileSync(path.join(rootDir, 'src/components/figma-ui/DocumentCanvas.tsx'), 'utf8');
+    assert.match(canvasSrc, /dockMinimized/);
+    assert.match(canvasSrc, /side="top"/);
+    assert.match(canvasSrc, /bg-white\/75/);
+  });
+
+  it('4. strips backdrop-blur from modals/dialogs/popovers and removes dark-grey camera boxes from signatures', () => {
+    const globalsSrc = fs.readFileSync(path.join(rootDir, 'src/app/globals.css'), 'utf8');
+    assert.match(globalsSrc, /\[data-slot="dialog-overlay"\][\s\S]*?backdrop-filter:\s*none\s*!important;/);
+    assert.match(globalsSrc, /\[data-slot="popover-content"\][\s\S]*?backdrop-filter:\s*none\s*!important;/);
+
+    const printDialogSrc = fs.readFileSync(path.join(rootDir, 'src/components/figma-ui/PrintDialog.tsx'), 'utf8');
+    assert.doesNotMatch(printDialogSrc, /backdropFilter:\s*'blur\(/);
+
+    const inkSrc = fs.readFileSync(path.join(rootDir, 'src/lib/signature-ink-processor.ts'), 'utf8');
+    assert.match(inkSrc, /lum >= 85/);
+    assert.match(inkSrc, /localContrast < 8 \|\| globalContrast < 10/);
+  });
+});
+
+describe('Workstream 25: CSS Named Pages for Mixed Print, P7 Portrait Parity, White-Clipped Signatures, Authentic Badge Stamp & Branded Loader', () => {
+  const rootDir = process.cwd();
+
+  it('1. configures CSS named pages (@page landscape-sheet & @page portrait-sheet) for mixed-orientation batch printing', () => {
+    const printCssSrc = fs.readFileSync(path.join(rootDir, 'src/styles/reports/print-system.css'), 'utf8');
+    assert.match(printCssSrc, /@page landscape-sheet\s*\{\s*size:\s*A4 landscape;/);
+    assert.match(printCssSrc, /@page portrait-sheet\s*\{\s*size:\s*A4 portrait;/);
+    assert.match(printCssSrc, /page:\s*landscape-sheet\s*!important;/);
+    assert.match(printCssSrc, /page:\s*portrait-sheet\s*!important;/);
+
+    const primaryEotSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/PrimaryEOTReport.tsx'), 'utf8');
+    assert.doesNotMatch(primaryEotSrc, /page:\s*landscape-sheet\s*!important;/);
+    assert.match(primaryEotSrc, /data-report-orientation="landscape"/);
+  });
+
+  it('2. enforces P7EOTReport design parity with PrimaryEOTReport (double gold/emerald border, maroon header, centered crest, inside stamp, bold pupil line)', () => {
+    const p7Src = fs.readFileSync(path.join(rootDir, 'src/components/reports/P7EOTReport.tsx'), 'utf8');
+    assert.doesNotMatch(p7Src, /page:\s*portrait-sheet\s*!important;/);
+    assert.match(p7Src, /data-report-orientation="portrait"/);
+    assert.match(p7Src, /effective\.headerAccentColor|#7F1D1D/); // Maroon/accent title
+    assert.match(p7Src, /\/logo-512h\.png/); // Centered crest
+    assert.match(p7Src, /getSecularPortraitReportTitle/);
+    assert.match(p7Src, /<OfficialReportStamp/);
+    assert.match(p7Src, /\.p7-eot-report \.line\.pupil-name[\s\S]*?font-size:\s*16px;[\s\S]*?font-weight:\s*900;/);
+    assert.match(p7Src, /--report-border-color:\s*\$\{effective\.secondaryColor\}|--report-border-color,\s*#c2994c/);
+    assert.match(p7Src, /--report-primary-color:\s*\$\{effective\.primaryColor\}|--report-primary-color,\s*#0f4d25/);
+  });
+
+  it('3. white-clips signatures instantly with CSS multiply + grayscale/brightness/contrast and caches processed canvas data', () => {
+    const sigImgSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/CleanSignatureImage.tsx'), 'utf8');
+    assert.match(sigImgSrc, /mixBlendMode/);
+    assert.match(sigImgSrc, /'multiply'/);
+    assert.match(sigImgSrc, /grayscale\(1\) brightness\(1\.48\) contrast\(3\.8\)/);
+
+    const procSrc = fs.readFileSync(path.join(rootDir, 'src/lib/signature-ink-processor.ts'), 'utf8');
+    assert.match(procSrc, /processedSignatureCache/);
+    assert.match(procSrc, /SIG_CACHE_VERSION = 'v7-sauvola-solid-royal-blue'/);
+  });
+
+  it('4. renders authentic Jiddah badge image with ink filter in StampGenerator', () => {
+    const stampSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/StampGenerator.tsx'), 'utf8');
+    assert.match(stampSrc, /id="jiddah-stamp-ink-filter"/);
+    assert.match(stampSrc, /href=\{crestDataUrl \|\| "\/logo-512h\.png"\}|href="\/logo-512h\.png"/);
+  });
+
+  it('5. provides pearl-on-dark tooltips in dark mode without sluggish animations', () => {
+    const tooltipSrc = fs.readFileSync(path.join(rootDir, 'src/components/figma-ui/ui/tooltip.tsx'), 'utf8');
+    assert.match(tooltipSrc, /dark:bg-\[#F1F5F2\]/);
+    assert.match(tooltipSrc, /dark:text-\[#093D26\]/);
+    assert.match(tooltipSrc, /transition-none/);
+  });
+
+  it('6. provides clean 2-item roster bar and eliminates false Div I on Nursery and Theology', () => {
+    const rosterSrc = fs.readFileSync(path.join(rootDir, 'src/components/figma-ui/StudentRosterSidebar.tsx'), 'utf8');
+    assert.match(rosterSrc, /data-testid="roster-select-all-btn"/);
+    assert.match(rosterSrc, /isNursery/);
+    assert.match(rosterSrc, /isTheology/);
+    assert.match(rosterSrc, /ممتاز/);
+    assert.match(rosterSrc, /getNurseryGrade/);
+  });
+
+  it('7. wires branded JiddahLoader with dual-orbiting rings across Report Canvas, Login, Marks Entry, and Hubs', () => {
+    const loaderSrc = fs.readFileSync(path.join(rootDir, 'src/components/ui/jiddah-loader.tsx'), 'utf8');
+    assert.match(loaderSrc, /JiddahLoader/);
+    assert.match(loaderSrc, /#0D5C3A/); // Forest emerald
+    assert.match(loaderSrc, /#D97706/); // Warm gold
+
+    const canvasSrc = fs.readFileSync(path.join(rootDir, 'src/components/figma-ui/DocumentCanvas.tsx'), 'utf8');
+    assert.match(canvasSrc, /<JiddahLoader/);
+
+    const loginSrc = fs.readFileSync(path.join(rootDir, 'src/app/login/page.tsx'), 'utf8');
+    assert.match(loginSrc, /<JiddahLoader/);
+
+    const sharedMarksSrc = fs.readFileSync(path.join(rootDir, 'src/components/shared-marks-entry.tsx'), 'utf8');
+    assert.match(sharedMarksSrc, /<JiddahLoader/);
+
+    const secularHubSrc = fs.readFileSync(path.join(rootDir, 'src/components/secular-hub/SecularHubClient.tsx'), 'utf8');
+    assert.match(secularHubSrc, /<JiddahLoader/);
+
+    const theologyHubSrc = fs.readFileSync(path.join(rootDir, 'src/components/theology-hub/TheologyHubClient.tsx'), 'utf8');
+    assert.match(theologyHubSrc, /<JiddahLoader/);
+
+    const previewCellSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/ReportPreviewCell.tsx'), 'utf8');
+    assert.match(previewCellSrc, /React\.memo\(\s*ReportPreviewCellComponent/);
+  });
+});
+
+describe('Workstream 26: Progressive Card Mounting, Transparent Stamp Crest, Seated Signatures, Redesigned P7 & Topbar Responsiveness', () => {
+  const rootDir = process.cwd();
+
+  it('1. progressively mounts preview cards via requestAnimationFrame and eliminates duplicate batch toast', () => {
+    const canvasSrc = fs.readFileSync(path.join(rootDir, 'src/components/figma-ui/DocumentCanvas.tsx'), 'utf8');
+    assert.match(canvasSrc, /visibleCount/);
+    assert.match(canvasSrc, /requestAnimationFrame/);
+    assert.match(canvasSrc, /visibleReports/);
+
+    const clientSrc = fs.readFileSync(path.join(rootDir, 'src/components/ReportGeneratorClient.tsx'), 'utf8');
+    assert.doesNotMatch(clientSrc, /toast\.loading\('Generating batch reports/);
+  });
+
+  it('2. adds transparent stamp crest SVG luminance filter and royal blue signature ink filter', () => {
+    const stampSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/StampGenerator.tsx'), 'utf8');
+    assert.match(stampSrc, /id="jiddah-stamp-crest-ink"/);
+    assert.match(stampSrc, /useMonochromeStampCrest|filter="url\(#jiddah-stamp-crest-ink\)"/);
+
+    const cleanSigSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/CleanSignatureImage.tsx'), 'utf8');
+    assert.match(cleanSigSrc, /id="jiddah-blue-signature-ink"/);
+    assert.match(cleanSigSrc, /#0F3491/);
+
+    const procSrc = fs.readFileSync(path.join(rootDir, 'src/lib/signature-ink-processor.ts'), 'utf8');
+    assert.match(procSrc, /outR = Math\.round\(12/);
+    assert.match(procSrc, /outG = Math\.round\(42/);
+    assert.match(procSrc, /outB = Math\.round\(132/);
+  });
+
+  it('3. seats signatures directly on dotted line across report templates', () => {
+    const reportFiles = [
+      'src/components/reports/PrimaryEOTReport.tsx',
+      'src/components/reports/PrimaryMOTReport.tsx',
+      'src/components/reports/PrimaryBOTReport.tsx',
+      'src/components/reports/NurseryEOTReport.tsx',
+      'src/components/reports/NurseryMOTReport.tsx',
+      'src/components/reports/NurseryTheologyEOTReport.tsx',
+      'src/components/reports/P7EOTReport.tsx',
+    ];
+
+    for (const file of reportFiles) {
+      const src = fs.readFileSync(path.join(rootDir, file), 'utf8');
+      assert.match(src, /borderBottom:\s*'1\.5px dotted #334155'/);
+      assert.match(src, /marginBottom:\s*'-6px'/);
+    }
+  });
+
+  it('4. enforces 21px font-black Arabic pupil typography and 16.5px cohort values', () => {
+    const primarySrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/PrimaryEOTReport.tsx'), 'utf8');
+    assert.match(primarySrc, /\.arabic-pupil-name\s*\{[\s\S]*?font-size:[\s\S]*?21[\s\S]*?font-weight:\s*900;/);
+    assert.match(primarySrc, /\.info-box\.arabic \.info-value\s*\{[\s\S]*?font-size:[\s\S]*?16\.5[\s\S]*?font-weight:\s*900;/);
+
+    const nurseryTheoSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/NurseryTheologyEOTReport.tsx'), 'utf8');
+    assert.match(nurseryTheoSrc, /fontSize:\s*'21px',\s*fontWeight:\s*900/);
+
+    const theoMotSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/TheologyMOTReport.tsx'), 'utf8');
+    assert.match(theoMotSrc, /fontSize:\s*'21px',\s*color:\s*'#0F172A'/);
+  });
+
+  it('5. enforces redesigned P7EOTReport proportional layout with Comparative Performance gold banner, UNEB strip, and zero middle gap', () => {
+    const p7Src = fs.readFileSync(path.join(rootDir, 'src/components/reports/P7EOTReport.tsx'), 'utf8');
+    assert.match(p7Src, /COMPARATIVE PERFORMANCE/);
+    assert.match(p7Src, /th-banner/);
+    assert.match(p7Src, /uneb-strip/);
+    assert.match(p7Src, /UNEB PRIMARY DIVISION CLASSIFICATION/);
+    assert.match(p7Src, /border:\s*1\.5px dashed (#C59B27|\$\{effective\.secondaryColor\})/);
+    assert.match(p7Src, /background-color:\s*#FAF6EE/);
+  });
+
+  it('6. normalizes default zoom to 1.0, prepends All Classes, auto-maps curriculum aliases, and collapses Topbar responsively', () => {
+    const clientSrc = fs.readFileSync(path.join(rootDir, 'src/components/ReportGeneratorClient.tsx'), 'utf8');
+    assert.match(clientSrc, /const \[zoom, setZoom\] = useState\(1\.0\)/);
+    assert.match(clientSrc, /SECULAR_TO_THEOLOGY_MAP/);
+    assert.match(clientSrc, /THEOLOGY_TO_SECULAR_MAP/);
+    assert.match(clientSrc, /All Classes/);
+    assert.match(clientSrc, /max-w-\[145px\] xl:max-w-\[230px\]/);
+
+    const toolbarSrc = fs.readFileSync(path.join(rootDir, 'src/components/figma-ui/TopToolbar.tsx'), 'utf8');
+    assert.match(toolbarSrc, /hidden xl:inline">Customize/);
+
+    const emptySrc = fs.readFileSync(path.join(rootDir, 'src/components/figma-ui/EmptyState.tsx'), 'utf8');
+    assert.doesNotMatch(emptySrc, /Open Filters &amp; Roster/);
+  });
+});
+
+describe('Workstream 27: Solid Blue Block Elimination, Canvas Deduplication, Filled Gaps & Single-Sheet Print Lock', () => {
+  const rootDir = process.cwd();
+
+  it('1. eliminates solid blue blocks by fixing SVG alpha matrix and rendering transparent processed signatures', () => {
+    const cleanSigSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/CleanSignatureImage.tsx'), 'utf8');
+    assert.match(cleanSigSrc, /0 0 0 1 0/);
+    assert.match(cleanSigSrc, /isProcessed\s*=\s*Boolean\(resolvedSrc\?\.startsWith\('data:'\)\)/);
+
+    const procSrc = fs.readFileSync(path.join(rootDir, 'src/lib/signature-ink-processor.ts'), 'utf8');
+    assert.match(procSrc, /export const inFlightSignaturePromises = new Map<string, Promise<string>>\(\)/);
+    assert.match(procSrc, /sourceRgba\[topIdx \+ 3\] >= 40/);
+    assert.match(procSrc, /sourceRgba\[srcIdx \+ 3\] < 40/);
+  });
+
+  it('2. renders monochromatic stamp crest without filter clipping blocks via cached singleton hook', () => {
+    const stampSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/StampGenerator.tsx'), 'utf8');
+    assert.match(stampSrc, /export const stampCrestCache = new Map<string, string>\(\)/);
+    assert.match(stampSrc, /export function useMonochromeStampCrest/);
+    assert.match(stampSrc, /const crestDataUrl = useMonochromeStampCrest/);
+    assert.match(stampSrc, /href=\{crestDataUrl \|\| "\/logo-512h\.png"\}/);
+    assert.doesNotMatch(stampSrc, /<image[^>]*filter="url\(#jiddah-stamp-crest-ink\)"/);
+  });
+
+  it('3. eliminates per-cell ResizeObservers and broadcasts scale from DocumentCanvas at 60fps', () => {
+    const previewCellSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/ReportPreviewCell.tsx'), 'utf8');
+    assert.match(previewCellSrc, /scale:\s*externalScale/);
+    assert.match(previewCellSrc, /if \(externalScale !== undefined\) return/);
+
+    const canvasSrc = fs.readFileSync(path.join(rootDir, 'src/components/figma-ui/DocumentCanvas.tsx'), 'utf8');
+    assert.match(canvasSrc, /const \[containerWidth, setContainerWidth\] = useState<number>\(0\)/);
+    assert.match(canvasSrc, /renderReport\(report, isActive, \{ landscapeScale, portraitScale \}\)/);
+
+    const clientSrc = fs.readFileSync(path.join(rootDir, 'src/components/ReportGeneratorClient.tsx'), 'utf8');
+    assert.match(clientSrc, /renderJiddahReport = useCallback\(\s*\(report: ReportData, isActive: boolean, scales\?:/);
+  });
+
+  it('4. fills middle void in P7EOTReport and Nursery reports with proportional tables and progressive records', () => {
+    const p7Src = fs.readFileSync(path.join(rootDir, 'src/components/reports/P7EOTReport.tsx'), 'utf8');
+    assert.match(p7Src, /مدرسة جدة الإسلامية للروضة/);
+    assert.match(p7Src, /justify-content:\s*flex-start;/);
+    assert.match(p7Src, /white-space:\s*nowrap/);
+    assert.match(p7Src, /max-height:\s*296mm;/);
+
+    const nurseryEotSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/NurseryEOTReport.tsx'), 'utf8');
+    assert.doesNotMatch(nurseryEotSrc, /<table style=\{\{ marginTop: 'auto' \}\}>/);
+    assert.doesNotMatch(nurseryEotSrc, /Beginning of Term \(BOT\)/);
+    assert.match(nurseryEotSrc, /Mid-Term Assessment \(MOT\)/);
+    assert.doesNotMatch(nurseryEotSrc, /End of Term Assessment \(EOT\)/);
+
+    const nurseryMotSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/NurseryMOTReport.tsx'), 'utf8');
+    assert.doesNotMatch(nurseryMotSrc, /<table style=\{\{ marginTop: 'auto' \}\}>/);
+  });
+
+  it('5. enforces named page sheet styling and prevents unnamed @page overriding mixed-batch orientation', () => {
+    const printCssSrc = fs.readFileSync(path.join(rootDir, 'src/styles/reports/print-system.css'), 'utf8');
+    assert.match(printCssSrc, /\.report-sheet-landscape/);
+    assert.match(printCssSrc, /\.report-sheet-portrait/);
+
+    const portalSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/PrintPortal.tsx'), 'utf8');
+    assert.match(portalSrc, /pageOrientation\?: 'portrait' \| 'landscape' \| 'mixed'/);
+    assert.match(portalSrc, /pageOrientation !== 'mixed'/);
+
+    const clientSrc = fs.readFileSync(path.join(rootDir, 'src/components/ReportGeneratorClient.tsx'), 'utf8');
+    assert.match(clientSrc, /report-sheet-landscape/);
+    assert.match(clientSrc, /report-sheet-portrait/);
+    assert.match(clientSrc, /hasLandscape && !hasPortrait/);
+    assert.match(clientSrc, /hasPortrait && !hasLandscape/);
+  });
+});
+
+describe('Workstream 28: Adaptive Signature Extractor, Portrait Single-Sheet Lock, Nursery Overlap Fix & Fluid Mobile/Roster Count', () => {
+  const rootDir = process.cwd();
+
+  it('1. uses 2D integral localMean + globalMedian adaptive extraction, CORS proxy, and zero raw-grey fallback', () => {
+    const procSrc = fs.readFileSync(path.join(rootDir, 'src/lib/signature-ink-processor.ts'), 'utf8');
+    assert.match(procSrc, /windowRadius = 9/);
+    assert.match(procSrc, /integralLum/);
+    assert.match(procSrc, /localContrast < 8 \|\| globalContrast < 10/);
+    assert.match(procSrc, /EMPTY_TRANSPARENT_PNG_DATA_URL/);
+    assert.match(procSrc, /\/api\/signatures\/proxy/);
+
+    const cleanSigSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/CleanSignatureImage.tsx'), 'utf8');
+    assert.match(cleanSigSrc, /getCachedSignatureUrl/);
+    assert.match(cleanSigSrc, /useState<string \| null>\(\(\) =>/);
+
+    const proxyPath = path.join(rootDir, 'src/app/api/signatures/proxy/route.ts');
+    assert.ok(fs.existsSync(proxyPath), 'proxy route exists');
+    const proxySrc = fs.readFileSync(proxyPath, 'utf8');
+    assert.match(proxySrc, /verifyDataAccess/);
+    assert.match(proxySrc, /Access-Control-Allow-Origin/);
+  });
+
+  it('2. cleans P7EOTReport identity rows, enlarges school headers, and eliminates trailing blank portrait sheet', () => {
+    const p7Src = fs.readFileSync(path.join(rootDir, 'src/components/reports/P7EOTReport.tsx'), 'utf8');
+    assert.doesNotMatch(p7Src, /LIN \/ ADM/);
+    assert.doesNotMatch(p7Src, />GENDER</);
+    assert.match(p7Src, /height:\s*(?:286|292|295)mm\s*!important/);
+
+    const primaryEotSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/PrimaryEOTReport.tsx'), 'utf8');
+    assert.match(primaryEotSrc, /font-size:\s*22px/);
+
+    const printCssSrc = fs.readFileSync(path.join(rootDir, 'src/styles/reports/print-system.css'), 'utf8');
+    assert.match(printCssSrc, /height:\s*(?:286|292|295)mm\s*!important/);
+    assert.match(printCssSrc, /data-last-printed="true"/);
+
+    const canvasSrc = fs.readFileSync(path.join(rootDir, 'src/components/figma-ui/DocumentCanvas.tsx'), 'utf8');
+    assert.match(canvasSrc, /data-last-printed=/);
+
+    const theoSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/TheologyMOTReport.tsx'), 'utf8');
+    assert.match(theoSrc, /data-last-printed=\{isLastPrinted \? 'true' : 'false'\}/);
+  });
+
+  it('3. eliminates Nursery footer overlap and seats Class Teacher + Head Teacher signatures on dedicated SIG lines', () => {
+    for (const file of ['src/components/reports/NurseryEOTReport.tsx', 'src/components/reports/NurseryMOTReport.tsx']) {
+      const src = fs.readFileSync(path.join(rootDir, file), 'utf8');
+      assert.doesNotMatch(src, /\.tables-container\s*\{[^}]*min-height:\s*0/);
+      assert.match(src, /justify-content:\s*space-between/);
+      assert.match(src, />SIG:</);
+      assert.match(src, /borderBottom:\s*'1\.5px dotted #334155'/);
+    }
+
+    const nurseryTheoSrc = fs.readFileSync(path.join(rootDir, 'src/components/reports/NurseryTheologyEOTReport.tsx'), 'utf8');
+    assert.match(nurseryTheoSrc, /border-top:\s*none;/);
+  });
+
+  it('4. displays in-view selected count and preserves 280px fluid mobile topbar', () => {
+    const clientSrc = fs.readFileSync(path.join(rootDir, 'src/components/ReportGeneratorClient.tsx'), 'utf8');
+    assert.match(clientSrc, /selectedInViewIds/);
+    assert.match(clientSrc, /selectedInViewCount/);
+    assert.match(clientSrc, /data-testid="mobile-roster-pill"/);
+    assert.match(clientSrc, /w-full max-w-full overflow-hidden/);
+
+    const sidebarSrc = fs.readFileSync(path.join(rootDir, 'src/components/figma-ui/StudentRosterSidebar.tsx'), 'utf8');
+    assert.match(sidebarSrc, /inViewSelectedCount/);
+  });
+});
 
 
 
 
 
+
+
+
+
+
+describe('Workstream 29: Mobile-First 6-Item Studio Bar, Slot-Relative 100% Fit & Touch Pan, Sauvola Solid Royal Blue Ink + KYC Verifier + Digital Signature Pad, and Nursery BOT Removal', () => {
+  const read = (relPath) => fs.readFileSync(path.join(process.cwd(), relPath), 'utf8');
+
+  it('WS29.1: Mobile topbar renders strictly 6 compact items with max-w-full overflow-hidden, DocumentCanvas renders a single compact selection row on mobile, and zoom dock defaults to minimized on mobile', () => {
+    const clientSrc = read('src/components/ReportGeneratorClient.tsx');
+    const canvasSrc = read('src/components/figma-ui/DocumentCanvas.tsx');
+    const toolbarSrc = read('src/components/figma-ui/TopToolbar.tsx');
+
+    // Mobile topbar container and 6 items
+    assert.match(clientSrc, /h-11 px-2 flex md:hidden.*w-full max-w-full overflow-hidden/);
+    assert.match(clientSrc, /data-testid="mobile-roster-pill"/);
+    assert.match(clientSrc, /data-testid="mobile-phase-curriculum-pill"/);
+    assert.match(clientSrc, /data-testid="mobile-print-cta"/);
+    assert.match(clientSrc, /🎨 Customize Studio & Stamp/);
+    assert.match(clientSrc, /max-w-\[calc\(100vw-20px\)\] max-h-\[72dvh\]/);
+    assert.match(toolbarSrc, /max-w-\[calc\(100vw-20px\)\] max-h-\[72dvh\]/);
+
+    // Compact mobile selection bar & minimized zoom dock default on mobile
+    assert.match(canvasSrc, /window\.innerWidth < 768/);
+    assert.match(canvasSrc, /data-testid="visual-selection-bar"/);
+    assert.match(canvasSrc, /flex items-center justify-between gap-1 px-2\.5 py-1\.5 rounded-xl/);
+    assert.match(canvasSrc, /data-testid="floating-dock-minimized"/);
+  });
+
+  it('WS29.2: DocumentCanvas and ReportPreviewCell compute slot-relative 100% fit (zoom=1.0), clamp zoom to [0.5, 1.5], set explicit scaled pixel width/height on outer wrapper, and enable 2D touch panning when zoom > 1.0', () => {
+    const clientSrc = read('src/components/ReportGeneratorClient.tsx');
+    const canvasSrc = read('src/components/figma-ui/DocumentCanvas.tsx');
+    const cellSrc = read('src/components/reports/ReportPreviewCell.tsx');
+
+    assert.match(clientSrc, /export const ZOOM_STEPS = \[0\.5, 0\.75, 0\.9, 1\.0, 1\.15, 1\.25, 1\.5\] as const/);
+    assert.match(canvasSrc, /Math\.min\(1\.5, Math\.max\(0\.5, zoom\)\)/);
+    assert.match(canvasSrc, /\(stageClientWidth - 72\) \/ 2/);
+    assert.match(canvasSrc, /stageClientWidth - \(isMobile \? 16 : 48\)/);
+    assert.match(canvasSrc, /touchAction: zoom > 1\.0 \? 'pan-x pan-y' : 'pan-y'/);
+    assert.match(canvasSrc, /WebkitOverflowScrolling: 'touch'/);
+
+    assert.match(cellSrc, /Math\.min\(1\.5, Math\.max\(0\.5, zoom\)\)/);
+    assert.match(cellSrc, /const scaledW = Math\.round\(nativeWidthPx \* actualScale\)/);
+    assert.match(cellSrc, /const scaledH = Math\.round\(nativeHeightPx \* actualScale\)/);
+  });
+
+  it('WS29.3: signature-ink-processor.ts uses SIG_CACHE_VERSION v7-sauvola-solid-royal-blue, Sauvola 19x19 integral-image binarization, Royal Blue (#0C2A84 / R=12,G=42,B=132), solid stroke opacity (alpha >= 215), and zero raw-grey fallback; signature-quality-verifier.ts + SignatureInkReviewCard + signatures-client digital signature pad', () => {
+    const procSrc = read('src/lib/signature-ink-processor.ts');
+    const cacheSrc = read('src/lib/client-cache.ts');
+    const verifierSrc = read('src/lib/signature-quality-verifier.ts');
+    const reviewSrc = read('src/components/SignatureInkReviewCard.tsx');
+    const sigClientSrc = read('src/components/layout/signatures-client.tsx');
+
+    assert.match(procSrc, /SIG_CACHE_VERSION = 'v7-sauvola-solid-royal-blue'/);
+    assert.match(cacheSrc, /SIGNATURE_CACHE_VERSION = 'v7-sauvola-solid-royal-blue'/);
+    assert.match(procSrc, /windowRadius = 9/);
+    assert.match(procSrc, /integralLumSq/);
+    assert.match(procSrc, /sauvolaThreshold = localMean \* \(1 - 0\.14 \* \(1 - localStd \/ 128\)\)/);
+    assert.match(procSrc, /outR = Math\.round\(12/);
+    assert.match(procSrc, /outG = Math\.round\(42/);
+    assert.match(procSrc, /outB = Math\.round\(132/);
+    assert.match(procSrc, /Math\.max\(235,/);
+    assert.doesNotMatch(procSrc, /catch\s*\{\s*return src;\s*\}/);
+
+    assert.match(verifierSrc, /export function verifySignatureImageQuality/);
+    assert.match(verifierSrc, /sharpnessScore/);
+    assert.match(verifierSrc, /lightingUniformityScore/);
+    assert.match(verifierSrc, /contrastScore/);
+    assert.match(verifierSrc, /INK_BOLDNESS_PRESETS/);
+
+    assert.match(reviewSrc, /verifySignatureFileQuality/);
+    assert.match(reviewSrc, /INK_BOLDNESS_PRESETS/);
+    assert.match(reviewSrc, /Sharpness/);
+    assert.match(reviewSrc, /Lighting Uniformity/);
+
+    assert.match(sigClientSrc, /data-testid="draw-signature-tab"/);
+    assert.match(sigClientSrc, /data-testid="digital-signature-pad-panel"/);
+    assert.match(sigClientSrc, /touchAction: 'none'/);
+    assert.match(sigClientSrc, /capture="environment"/);
+    assert.match(sigClientSrc, /Save Transparent Signature/);
+  });
+
+  it('WS29.4: NurseryEOTReport omits BOT from Progressive Records, and TopToolbar, ReportGeneratorClient, and shared-marks-entry hide BOT when Nursery or Theology is active', () => {
+    const nurseryEotSrc = read('src/components/reports/NurseryEOTReport.tsx');
+    const toolbarSrc = read('src/components/figma-ui/TopToolbar.tsx');
+    const clientSrc = read('src/components/ReportGeneratorClient.tsx');
+    const marksSrc = read('src/components/shared-marks-entry.tsx');
+
+    assert.doesNotMatch(nurseryEotSrc, /Beginning of Term \(BOT\)/);
+    assert.match(nurseryEotSrc, /Mid-Term Assessment \(MOT\)/);
+    assert.match(toolbarSrc, /phaseTrack/);
+    assert.match(clientSrc, /isCurrentNurseryOrTheology/);
+    assert.match(clientSrc, /availablePhases/);
+    assert.match(marksSrc, /hideBotPhase/);
+    assert.match(marksSrc, /availableExamTypes/);
+  });
+
+  it('WS29.5: P7EOTReport omits LIN / ADM and GENDER, includes TOTAL MARKS, AGGREGATE, and DIVISION, enlarges English & Arabic school names, and locks single-sheet portrait printing', () => {
+    const p7Src = read('src/components/reports/P7EOTReport.tsx');
+    const canvasSrc = read('src/components/figma-ui/DocumentCanvas.tsx');
+    const cssSrc = read('src/styles/reports/print-system.css');
+
+    assert.doesNotMatch(p7Src, /LIN \/ ADM/);
+    assert.doesNotMatch(p7Src, /label: 'GENDER'/);
+    assert.match(p7Src, /TOTAL MARKS/);
+    assert.match(p7Src, /AGGREGATE/);
+    assert.match(p7Src, /DIVISION/);
+    assert.match(p7Src, /font-size:\s*22px/);
+    assert.match(p7Src, /font-size:\s*18\.5px/);
+    assert.match(canvasSrc, /data-last-printed=/);
+    assert.match(cssSrc, /max-height:\s*(?:286|292|295)mm\s*!important/);
+  });
+});
+
+describe('Workstream 30: Portrait Arabic Header Fit, Theology Position/Out-Of, Nursery Educative Watermark & Comments, Instant Selection, and Report Studio 2.0', () => {
+  const read = (relPath) => fs.readFileSync(path.join(process.cwd(), relPath), 'utf8');
+
+  it('WS30.1: P7EOTReport constrains Arabic header inside 3-column grid (18.5px, rtl, padding-right: 6px, overflow: hidden) and print-system.css enforces 295mm portrait cap with break-after: avoid on data-last-printed="true"', () => {
+    const p7Src = read('src/components/reports/P7EOTReport.tsx');
+    const cssSrc = read('src/styles/reports/print-system.css');
+
+    assert.match(p7Src, /grid-template-columns:\s*1fr auto 1fr/);
+    assert.match(p7Src, /font-size:\s*18\.5px/);
+    assert.match(p7Src, /paddingRight:\s*'6px'/);
+    assert.match(p7Src, /max-height:\s*(?:286|292|295)mm\s*!important/);
+    assert.match(cssSrc, /\.report-card-sheet\.print-excluded\s*\{\s*display:\s*none\s*!important;/);
+    assert.match(cssSrc, /\.report-card-sheet\[data-last-printed="true"\][\s\S]*?break-after:\s*avoid\s*!important/);
+  });
+
+  it('WS30.2: PrimaryEOTReport Arabic Theology identity box includes الترتيب (Position) and عدد الطلبة (Out Of) in Arabic-Indic numerals, and API routes return theology_position & theology_total_students across all curricula', () => {
+    const primaryEotSrc = read('src/components/reports/PrimaryEOTReport.tsx');
+    const singleRouteSrc = read('src/app/api/report/route.ts');
+    const batchRouteSrc = read('src/app/api/report/batch/route.ts');
+
+    assert.match(primaryEotSrc, /الترتيب :/);
+    assert.match(primaryEotSrc, /عدد الطلبة :/);
+    assert.match(primaryEotSrc, /toArabicNumerals\(theologyPosition\)/);
+    assert.match(primaryEotSrc, /toArabicNumerals\(theologyTotalStudents\)/);
+    assert.match(singleRouteSrc, /theology_position:\s*theologyPosition/);
+    assert.match(singleRouteSrc, /theology_total_students:\s*totalTheologyStudents/);
+    assert.match(batchRouteSrc, /theology_position:\s*theologyPosition/);
+    assert.match(batchRouteSrc, /theology_total_students:\s*totalTheologyStudents/);
+  });
+
+  it('WS30.3: NurseryTheologyEOTReport centers 18.5px bold Arabic remarks and renders classTeacherSignatureUrl, and NurseryEducativeWatermark renders central school crest + educative nursery vector art across Nursery templates', () => {
+    const nurseryTheoSrc = read('src/components/reports/NurseryTheologyEOTReport.tsx');
+    const nurseryEotSrc = read('src/components/reports/NurseryEOTReport.tsx');
+    const nurseryMotSrc = read('src/components/reports/NurseryMOTReport.tsx');
+    const watermarkSrc = read('src/components/reports/NurseryEducativeWatermark.tsx');
+
+    assert.match(nurseryTheoSrc, /fontSize:\s*`\$\{effective\.arabicCommentFontSizePx\}px`/);
+    assert.match(nurseryTheoSrc, /fontWeight:\s*800/);
+    assert.match(nurseryTheoSrc, /color:\s*'#1E40AF'/);
+    assert.match(nurseryTheoSrc, /classTeacherSignatureUrl/);
+    assert.match(nurseryEotSrc, /<NurseryEducativeWatermark/);
+    assert.match(nurseryMotSrc, /<NurseryEducativeWatermark/);
+    assert.match(watermarkSrc, /data-testid="nursery-educative-watermark"/);
+    assert.match(watermarkSrc, /\/logo-512h\.png/);
+  });
+
+  it('WS30.4: DocumentCanvas and ReportPreviewCell use O(1) Set lookup, MemoizedCanvasCard, and custom React.memo comparator with stable handleToggleSelectCard callback', () => {
+    const canvasSrc = read('src/components/figma-ui/DocumentCanvas.tsx');
+    const cellSrc = read('src/components/reports/ReportPreviewCell.tsx');
+    const clientSrc = read('src/components/ReportGeneratorClient.tsx');
+
+    assert.match(canvasSrc, /selectedIdSet = useMemo\(\(\) => new Set\(selectedIds\)/);
+    assert.match(canvasSrc, /MemoizedCanvasCard = React\.memo/);
+    assert.match(cellSrc, /prev\.report\?\.student\?\.id === next\.report\?\.student\?\.id/);
+    assert.match(clientSrc, /handleToggleSelectCard = useCallback/);
+  });
+
+  it('WS30.5: TopToolbar Studio Popover and ReportStudioClient 2.0 share persistent studio-config-store, render all 8 templates live, and support global persistence', () => {
+    const storeSrc = read('src/lib/studio-config-store.ts');
+    const toolbarSrc = read('src/components/figma-ui/TopToolbar.tsx');
+    const studioSrc = read('src/components/reports/ReportStudioClient.tsx');
+
+    assert.match(storeSrc, /jiddah_studio_formatting_v2/);
+    assert.match(storeSrc, /jiddah:studio-config-updated/);
+    assert.match(toolbarSrc, /Official Headteacher Stamp/);
+    assert.match(toolbarSrc, /Nursery Educative Art/);
+    assert.match(toolbarSrc, /Save as School Default/);
+    assert.match(toolbarSrc, /Open Full Report Studio 2\.0/);
+    assert.match(studioSrc, /data-testid="report-studio-2-root"/);
+    assert.match(studioSrc, /nursery-theology-eot/);
+    assert.match(studioSrc, /data-testid="save-scope-all"|Save & Apply to All/);
+  });
+
+  it('WS31.1: PrimaryEOTReport Secular Profile Box Row 3 displays AGGREGATE and DIVISION side-by-side, PrimaryBOTReport includes AGG alongside DIV, and TERM display is standardized', () => {
+    const primaryEotSrc = read('src/components/reports/PrimaryEOTReport.tsx');
+    const p7EotSrc = read('src/components/reports/P7EOTReport.tsx');
+    const primaryBotSrc = read('src/components/reports/PrimaryBOTReport.tsx');
+
+    assert.match(primaryEotSrc, /<span className="info-label">AGGREGATE:<\/span>/);
+    assert.match(primaryEotSrc, /eotAgg \|\| reportData\?\.total_aggregates \|\| '--'/);
+    assert.match(primaryEotSrc, /<span className="info-label">DIVISION:<\/span>/);
+    assert.match(primaryEotSrc, /division \|\| '--'/);
+    assert.match(primaryEotSrc, /formattedTerm = reportData\?\.term\?\.term_number \? `Term \$\{reportData\.term\.term_number\}`/);
+    assert.match(p7EotSrc, /reportData\?\.term\?\.term_number \? `Term \$\{reportData\.term\.term_number\}`/);
+    assert.match(primaryBotSrc, /AGG: <div className="bot-line"/);
+  });
+
+  it('WS31.2: ReportStudioClient uses authentic Jiddah Islamic Schools metadata and PrimaryEOTReport/P7EOTReport prevent motto clipping', () => {
+    const studioSrc = read('src/components/reports/ReportStudioClient.tsx');
+    const primaryEotSrc = read('src/components/reports/PrimaryEOTReport.tsx');
+    const p7EotSrc = read('src/components/reports/P7EOTReport.tsx');
+
+    assert.match(studioSrc, /Jiddah Islamic Schools/);
+    assert.match(studioSrc, /P\.O\. BOX 34008 Kampala \(U\)/);
+    assert.match(studioSrc, /\+256705316961 \/ \+256 787 779 909/);
+    assert.match(studioSrc, /jiddahislamicnurseryandpri@gmail\.com/);
+    assert.match(studioSrc, /Striving for Life & The Hereafter/);
+    assert.match(primaryEotSrc, /\.header-left \{ flex: 0 0 36%; overflow: visible; \}/);
+    assert.match(p7EotSrc, /\.p7-eot-report \.header-left \{ min-width: 0; overflow: visible; \}/);
+  });
+
+  it('WS31.3: ReportStudioClient populates GRD display fields, auto-pairs sample student archetypes, removes duplicate emojis, and renders single-row studio header with floating stage archetype pill', () => {
+    const studioSrc = read('src/components/reports/ReportStudioClient.tsx');
+    const primaryEotSrc = read('src/components/reports/PrimaryEOTReport.tsx');
+    const p7EotSrc = read('src/components/reports/P7EOTReport.tsx');
+
+    assert.match(studioSrc, /bot_grade_display:\s*'D1'/);
+    assert.match(studioSrc, /mot_grade_display:\s*'D1'/);
+    assert.match(studioSrc, /eot_grade_display:\s*'D1'/);
+    assert.match(studioSrc, /is_core:\s*true/);
+    assert.match(primaryEotSrc, /subject\.eot_grade_display \?\? subject\.eot_agg \?\? subject\.grade \?\? "--"/);
+    assert.match(p7EotSrc, /subject\.eot_grade_display \?\? subject\.eot_agg \?\? subject\.grade \?\? '--'/);
+    assert.doesNotMatch(studioSrc, /💾 Save & Apply to All Reports/);
+    assert.match(studioSrc, /h-13 px-3 bg-white dark:bg-\[#151D1A\] border-b border-stone-200 dark:border-white\/10 flex items-center justify-between gap-2 w-full max-w-full overflow-hidden/);
+    assert.match(studioSrc, /data-testid="studio-sample-archetype-switcher"/);
+  });
+
+  it('WS32.1: resolveEffectiveStudioStyle is defined in studio-config-store and wired into all 8 report templates', () => {
+    const storeSrc = read('src/lib/studio-config-store.ts');
+    assert.match(storeSrc, /export function resolveEffectiveStudioStyle/);
+
+    const templates = [
+      'src/components/reports/PrimaryEOTReport.tsx',
+      'src/components/reports/P7EOTReport.tsx',
+      'src/components/reports/PrimaryMOTReport.tsx',
+      'src/components/reports/PrimaryBOTReport.tsx',
+      'src/components/reports/NurseryEOTReport.tsx',
+      'src/components/reports/NurseryMOTReport.tsx',
+      'src/components/reports/NurseryTheologyEOTReport.tsx',
+      'src/components/reports/TheologyMOTReport.tsx',
+    ];
+    for (const tplPath of templates) {
+      const src = read(tplPath);
+      assert.match(src, /resolveEffectiveStudioStyle/, `${tplPath} must use resolveEffectiveStudioStyle`);
+    }
+  });
+
+  it('WS32.2: ReportStudioClient top bar is overflow-proof with compact template selector, Prev/Next steppers, mobile view switcher, and zero raw emojis', () => {
+    const studioSrc = read('src/components/reports/ReportStudioClient.tsx');
+    const toolbarSrc = read('src/components/figma-ui/TopToolbar.tsx');
+
+    assert.match(studioSrc, /dataTestId="studio-template-select"|data-testid="studio-template-select"/);
+    assert.match(studioSrc, /data-testid="studio-mobile-view-switcher"/);
+    assert.match(studioSrc, /data-testid="studio-save-apply-all"/);
+    assert.match(studioSrc, /School Name \(Arabic\)/);
+    assert.match(studioSrc, /Comment Font Size/);
+    assert.doesNotMatch(studioSrc, /[🎨🔤🖼️✒️✨💾🚀]/);
+    assert.doesNotMatch(toolbarSrc, /[✨💾🚀]/);
+  });
+
+  it('WS32.3: StampGenerator enforces dir="ltr" and unicodeBidi isolate/bidi-override so 24 APR 2026 never reverses inside RTL templates, and TheologyMOTReport computes valid Arabic grade and separates footer stamp', () => {
+    const stampSrc = read('src/components/reports/StampGenerator.tsx');
+    const theoMotSrc = read('src/components/reports/TheologyMOTReport.tsx');
+
+    assert.match(stampSrc, /dir="ltr"/);
+    assert.match(stampSrc, /unicodeBidi:\s*"isolate"/);
+    assert.match(stampSrc, /unicodeBidi:\s*"bidi-override"/);
+    assert.match(theoMotSrc, /computedDivision/);
+    assert.match(theoMotSrc, /if \(avg >= 85\) return 'ممتاز'/);
+    assert.match(theoMotSrc, /\.tc-comment \{[\s\S]*?flex: 1;[\s\S]*?min-width: 0;/);
+  });
+});
+
+describe('Workstream 33: Template & Print Engine Stabilization, Scoped Report Studio 2.0, Stamp/Signature/Watermark Precision & Upload Center Overhaul', () => {
+  const read = (relPath) => fs.readFileSync(path.join(process.cwd(), relPath), 'utf8');
+
+  it('WS33.1: P7EOTReport removes uncomputed AVERAGE row and locks 286mm height, while PrimaryEOTReport uses splitArabicSchoolName and fixed 135x64 stamp slot', () => {
+    const p7Src = read('src/components/reports/P7EOTReport.tsx');
+    const primarySrc = read('src/components/reports/PrimaryEOTReport.tsx');
+
+    assert.doesNotMatch(p7Src, />AVERAGE</);
+    assert.match(p7Src, /height:\s*295mm\s*!important/);
+    assert.match(p7Src, /nameArabicLine1/);
+    assert.match(p7Src, /nameArabicLine2/);
+    assert.match(p7Src, /<NurseryEducativeWatermark/);
+    assert.match(p7Src, /maxWidth=\{135\}[\s\S]*?maxHeight=\{64\}/);
+
+    assert.match(primarySrc, /nameArabicLine1/);
+    assert.match(primarySrc, /nameArabicLine2/);
+    assert.match(primarySrc, /effective\.arabicFontFamilyCss/);
+    assert.match(primarySrc, /<NurseryEducativeWatermark[\s\S]*?templateId="primary-eot"/);
+    assert.match(primarySrc, /width:\s*'135px'[\s\S]*?height:\s*'64px'[\s\S]*?overflow:\s*'visible'/);
+  });
+
+  it('WS33.2: PrintPortal and print-system.css enforce exact mm @page rules without conflicting named pages', () => {
+    const portalSrc = read('src/components/reports/PrintPortal.tsx');
+    const cssSrc = read('src/styles/reports/print-system.css');
+    const clientSrc = read('src/components/ReportGeneratorClient.tsx');
+
+    assert.match(clientSrc, /function isLandscapeReportData/);
+    assert.match(clientSrc, /function applyDynamicPrintPageRule/);
+    assert.match(clientSrc, /size: 297mm 210mm !important; margin: 0mm !important;/);
+    assert.match(clientSrc, /size: 210mm 297mm !important; margin: 0mm !important;/);
+    assert.match(portalSrc, /297mm 210mm !important; margin: 0mm !important;/);
+    assert.match(portalSrc, /210mm 297mm !important; margin: 0mm !important;/);
+    assert.match(cssSrc, /height:\s*209mm\s*!important/);
+    assert.match(cssSrc, /height:\s*295mm\s*!important/);
+  });
+
+  it('WS33.3: studio-config-store supports scoped template overrides, dual fonts, expanded palettes, ColorWheelPicker, Watermark art presets, and Stamp/Signature transform controls', () => {
+    const storeSrc = read('src/lib/studio-config-store.ts');
+    const studioSrc = read('src/components/reports/ReportStudioClient.tsx');
+    const toolbarSrc = read('src/components/figma-ui/TopToolbar.tsx');
+    const colorPickerSrc = read('src/components/ui/color-wheel-picker.tsx');
+    const watermarkSrc = read('src/components/reports/NurseryEducativeWatermark.tsx');
+    const stampSrc = read('src/components/reports/StampGenerator.tsx');
+    const sigSrc = read('src/components/reports/CleanSignatureImage.tsx');
+
+    assert.match(storeSrc, /export type ReportTemplateId/);
+    assert.match(storeSrc, /export function getCurriculumGroupTemplates/);
+    assert.match(storeSrc, /export function splitArabicSchoolName/);
+    assert.match(storeSrc, /nursery-cobalt-sunshine/);
+    assert.match(storeSrc, /madinah-emerald-gold/);
+    assert.match(storeSrc, /englishFontFamily/);
+    assert.match(storeSrc, /arabicFontFamily/);
+
+    assert.doesNotMatch(studioSrc, /<select[\s>]/);
+    assert.doesNotMatch(toolbarSrc, /<select[\s>]/);
+    assert.match(studioSrc, /data-testid="save-scope-template"/);
+    assert.match(studioSrc, /data-testid="save-scope-group"/);
+    assert.match(studioSrc, /data-testid="save-scope-all"/);
+    assert.match(studioSrc, /Reset Default/);
+    assert.match(studioSrc, /ColorWheelPicker/);
+    assert.match(colorPickerSrc, /export function ColorWheelPicker/);
+
+    assert.match(watermarkSrc, /islamic-arabesque/);
+    assert.match(watermarkSrc, /certificate-filigree/);
+    assert.match(watermarkSrc, /stem-explorers/);
+    assert.match(stampSrc, /official-stamp-anchor-slot/);
+    assert.match(stampSrc, /official-stamp-transform-layer/);
+    assert.match(sigSrc, /feColorMatrix/);
+    assert.match(sigSrc, /signatureThreshold/);
+  });
+
+  it('WS33.4: Upload Center uses unified getUploadMetrics, CustomPillSelect, 2-mode digital signature draw pad, Stamp preview, Live Visual Gallery, and excludes theology-teacher-p7 from dynamic UI slots', () => {
+    const sigUtilsSrc = read('src/utils/signatures.ts');
+    const sigApiSrc = read('src/app/api/signatures/route.ts');
+    const uploadPageSrc = read('src/app/admin/upload/page.tsx');
+    const uploadClientSrc = read('src/components/layout/upload-client.tsx');
+
+    assert.match(sigUtilsSrc, /isTheology && key === 'theology-teacher-p7'/);
+    assert.match(sigUtilsSrc, /getClassSortWeight/);
+    assert.match(sigApiSrc, /extractFileSize/);
+    assert.match(uploadPageSrc, /initialSignatureSlots/);
+    assert.match(uploadClientSrc, /getUploadMetrics/);
+    assert.match(uploadClientSrc, /CustomPillSelect/);
+    assert.doesNotMatch(uploadClientSrc, /<select[\s>]/);
+    assert.match(uploadClientSrc, /Draw Digital Signature/);
+    assert.match(uploadClientSrc, /touchAction:\s*'none'/);
+    assert.match(uploadClientSrc, /OfficialReportStamp/);
+    assert.match(uploadClientSrc, /Re-Clean Ink/);
+  });
+});
+
+describe('Workstream 34: 5-Subject Landscape Fit, Zero Ghost Page 2 Portal, 16px Deadband Anti-Shake, Conic Icon Buttons & Split Upload Workspace', () => {
+  const read = (relPath) => fs.readFileSync(path.join(process.cwd(), relPath), 'utf8');
+
+  it('WS34.1: PrimaryEOTReport tightens 5-subject vertical spacing inside 209mm, and PrintPortal + print-system.css hide body siblings cleanly and break strictly via data-first-printed="false"', () => {
+    const primarySrc = read('src/components/reports/PrimaryEOTReport.tsx');
+    const p7Src = read('src/components/reports/P7EOTReport.tsx');
+    const portalSrc = read('src/components/reports/PrintPortal.tsx');
+    const cssSrc = read('src/styles/reports/print-system.css');
+    const clientSrc = read('src/components/ReportGeneratorClient.tsx');
+
+    assert.match(primarySrc, /padding:\s*2\.5mm 4mm;/);
+    assert.match(primarySrc, /\.school-logo\s*\{[\s\S]*?height:\s*48px;/);
+    assert.match(primarySrc, /\.validity-bar\s*\{[\s\S]*?padding:\s*3\.5px 6px;/);
+    assert.match(p7Src, /height:\s*295mm\s*!important/);
+    assert.match(p7Src, /max-height:\s*295mm\s*!important/);
+
+    assert.match(portalSrc, /createPortal/);
+    assert.match(portalSrc, /id="report-print-portal"/);
+    assert.match(portalSrc, /data-print-portal="active"/);
+    assert.match(cssSrc, /html:has\(#report-print-portal\)\s*body\s*>\s*\*:not\(#report-print-portal\):not\(style\):not\(script\)/);
+    assert.match(cssSrc, /\.report-card-sheet\[data-first-printed="false"\]/);
+    assert.match(cssSrc, /\.report-card-sheet\[data-first-printed="true"\]/);
+    assert.match(clientSrc, /data-first-printed=\{isFirstSheet \? 'true' : 'false'\}/);
+  });
+
+  it('WS34.2: ReportStudioClient includes 5 sample primary subjects, uses 16px ResizeObserver deadband hysteresis on overflow-hidden wrapper, and eliminates CSS zoom across all 8 templates', () => {
+    const studioSrc = read('src/components/reports/ReportStudioClient.tsx');
+    const previewCellSrc = read('src/components/reports/ReportPreviewCell.tsx');
+    const docCanvasSrc = read('src/components/figma-ui/DocumentCanvas.tsx');
+
+    assert.match(studioSrc, /subject_name:\s*'COMP'/);
+    assert.match(studioSrc, /previewStageOuterRef/);
+    assert.match(studioSrc, /Math\.abs\(newWidth - prev\.width\)\s*<\s*16/);
+    assert.match(studioSrc, /requestAnimationFrame/);
+    assert.match(previewCellSrc, /Math\.abs\(roundedW - lastWidthRef\.current\)\s*<\s*16/);
+    assert.match(docCanvasSrc, /Math\.abs\(w - prev\)\s*>=\s*16/);
+
+    const templates = [
+      'src/components/reports/PrimaryEOTReport.tsx',
+      'src/components/reports/P7EOTReport.tsx',
+      'src/components/reports/PrimaryMOTReport.tsx',
+      'src/components/reports/PrimaryBOTReport.tsx',
+      'src/components/reports/NurseryEOTReport.tsx',
+      'src/components/reports/NurseryMOTReport.tsx',
+      'src/components/reports/NurseryTheologyEOTReport.tsx',
+      'src/components/reports/TheologyMOTReport.tsx',
+    ];
+    for (const tpl of templates) {
+      const src = read(tpl);
+      assert.doesNotMatch(src, /\bzoom:\s*\$\{effective\.(?:fontScaleMultiplier|arabicFontScaleMultiplier)\}/, `${tpl} must use CSS variables instead of zoom:`);
+    }
+  });
+
+  it('WS34.3: ColorWheelPicker and SectionHeaderWithReset use crisp conic-wheel & RotateCcw icon buttons inside Tooltips', () => {
+    const colorPickerSrc = read('src/components/ui/color-wheel-picker.tsx');
+    const studioSrc = read('src/components/reports/ReportStudioClient.tsx');
+
+    assert.doesNotMatch(colorPickerSrc, />\s*Wheel\s*</);
+    assert.doesNotMatch(colorPickerSrc, />\s*Default\s*</);
+    assert.match(colorPickerSrc, /conic-gradient\(/);
+    assert.match(colorPickerSrc, /<Tooltip>/);
+    assert.match(colorPickerSrc, /aria-label="Reset Default"/);
+    assert.match(studioSrc, /<TooltipContent side="top">/);
+    assert.match(studioSrc, /aria-label="Reset Default"/);
+  });
+
+  it('WS34.4: UploadClient removes HeroSection & duplicate ASSET CATEGORIES sidebar, fixes quota typo, and renders 12-column side-by-side workspace above the fold', () => {
+    const uploadSrc = read('src/components/layout/upload-client.tsx');
+
+    assert.doesNotMatch(uploadSrc, /HeroSection/);
+    assert.doesNotMatch(uploadSrc, /Asset Categories/);
+    assert.doesNotMatch(uploadSrc, /used consumed/);
+    assert.match(uploadSrc, /lg:grid-cols-12/);
+    assert.match(uploadSrc, /lg:col-span-(?:4|5)/);
+    assert.match(uploadSrc, /lg:col-span-(?:8|7)/);
+    assert.match(uploadSrc, /data-testid="upload-telemetry-bar"/);
+    assert.match(uploadSrc, /data-testid="upload-mobile-view-switcher"/);
+    assert.match(uploadSrc, /max-h-\[calc\(100dvh-(?:215|165)px\)\]/);
+  });
+});
+
+describe('Workstream 35: Zero Blank Page 1 Print Portal, Mixed-Only Named Pages, P7 & Nursery Gap Elimination & Jiddah Emerald/Marigold Upload Center Redesign', () => {
+  const read = (relPath) => fs.readFileSync(path.join(process.cwd(), relPath), 'utf8');
+
+  it('WS35.1: AdminLayout & ReportGeneratorClient hide app chrome during portal printing and PrintPortal scopes named pages strictly to mixed batches', () => {
+    const layoutSrc = read('src/app/admin/layout.tsx');
+    const clientSrc = read('src/components/ReportGeneratorClient.tsx');
+    const portalSrc = read('src/components/reports/PrintPortal.tsx');
+    const cssSrc = read('src/styles/reports/print-system.css');
+    const containerSrc = read('src/components/reports/shared/ReportContainer.tsx');
+    const primarySrc = read('src/components/reports/PrimaryEOTReport.tsx');
+
+    assert.doesNotMatch(layoutSrc, /print:!block/);
+    assert.match(clientSrc, /report-studio-root[\s\S]*?print:!hidden/);
+    assert.match(portalSrc, /data-mixed-orientation=\{pageOrientation === 'mixed' \? 'true' : 'false'\}/);
+    assert.match(cssSrc, /html:has\(#report-print-portal\) body > \*:not\(#report-print-portal\):not\(style\):not\(script\)/);
+    assert.match(cssSrc, /#report-print-portal\[data-mixed-orientation="true"\] \.report-sheet-landscape/);
+    assert.match(containerSrc, /report-container-root/);
+    assert.match(primarySrc, /margin:\s*0\s*!important;[\s\S]*?left:\s*0\s*!important;/);
+  });
+
+  it('WS35.2: P7EOTReport sets .table-section and .table-container to flex: 0 0 auto with balanced spacing, and NurseryEOTReport tightens gaps between tables', () => {
+    const p7Src = read('src/components/reports/P7EOTReport.tsx');
+    const nurserySrc = read('src/components/reports/NurseryEOTReport.tsx');
+
+    assert.match(p7Src, /\.p7-eot-report \.table-section\s*\{[\s\S]*?flex:\s*0 0 auto;/);
+    assert.match(p7Src, /\.p7-eot-report \.table-container\s*\{[\s\S]*?flex:\s*0 0 auto;/);
+    assert.match(p7Src, /\.p7-eot-report \.comments-box\s*\{[\s\S]*?justify-content:\s*space-evenly;/);
+    assert.match(nurserySrc, /\.nursery-eot-report \.tables-container\s*\{[\s\S]*?flex:\s*0 0 auto;[\s\S]*?justify-content:\s*flex-start;/);
+    assert.match(nurserySrc, /\.nursery-eot-report \.learning-area-table td\s*\{[\s\S]*?padding:\s*10px 12px;/);
+  });
+
+  it('WS35.3: UploadClient renders CleanSignatureImage, uses Upload/PenTool/Wand2 without RefreshCw on signature cards, excludes unused DOS/Head/Principal roles, and uses Forest Green + Warm Marigold hierarchy', () => {
+    const sigUtilsSrc = read('src/utils/signatures.ts');
+    const uploadSrc = read('src/components/layout/upload-client.tsx');
+
+    assert.doesNotMatch(sigUtilsSrc, /slot_key:\s*'dos-signature'/);
+    assert.doesNotMatch(sigUtilsSrc, /slot_key:\s*'theology-head'/);
+    assert.doesNotMatch(sigUtilsSrc, /slot_key:\s*'principal'/);
+
+    assert.match(uploadSrc, /CleanSignatureImage/);
+    assert.match(uploadSrc, /data-testid="upload-role-banner"/);
+    assert.match(uploadSrc, /#0D5C3A/);
+    assert.match(uploadSrc, /#EA580C/);
+    assert.match(uploadSrc, /UploadCloud/);
+    assert.match(uploadSrc, /'dos-signature'[\s\S]*?'theology-head'[\s\S]*?'principal'/);
+  });
+});

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useId, useState } from "react";
+import React, { useId, useState, useEffect } from "react";
 import { Sliders, Save, RefreshCw, Check, Calendar } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
@@ -13,6 +13,7 @@ export interface StampConfig {
   po_box: string;
   phone: string;
   ink_color: string;
+  date_ink_color?: string;
   size_scale: number;
   rotation: number;
   opacity: number;
@@ -29,12 +30,13 @@ export const DEFAULT_STAMP_CONFIG: StampConfig = {
   shape: "rectangle",
   school_name: "JIDDAH ISLAMIC NURSERY & PRIMARY SCHOOL",
   title: "HEADTEACHER",
-  po_box: "P.O. BOX 34008, KAMPALA - UGANDA",
-  phone: "",
-  ink_color: "#1B3678",
+  po_box: "P.O.Box 34008, Nsaggu",
+  phone: "Nakawuka Rd, Wakiso District",
+  ink_color: "#1B3B8B",
+  date_ink_color: "#C81E1E",
   size_scale: 1,
   rotation: -2,
-  opacity: 0.9,
+  opacity: 0.92,
   grain_realism: true,
   grunge_intensity: 35,
   date: "26 OCT 2026",
@@ -45,10 +47,10 @@ export const DEFAULT_STAMP_CONFIG: StampConfig = {
 };
 
 const STAMP_COLOR_PRESETS = [
-  { label: "Official Stamp Blue", hex: "#1B3678" },
-  { label: "Royal Violet", hex: "#5B21B6" },
+  { label: "Official Stamp Blue", hex: "#1B3B8B" },
+  { label: "Royal Blue", hex: "#1D4ED8" },
   { label: "Institutional Emerald", hex: "#0D5C3A" },
-  { label: "Archival Crimson", hex: "#991B1B" },
+  { label: "Archival Crimson", hex: "#D92626" },
   { label: "Jet Black", hex: "#0F172A" },
 ];
 
@@ -84,6 +86,85 @@ function splitStampSchoolHeader(name: string): [string, string] {
   return [words.slice(0, mid).join(" "), words.slice(mid).join(" ")];
 }
 
+export const stampCrestCache = new Map<string, string>();
+
+/**
+ * Singleton hook that converts /logo-512h.png to a transparent monochromatic emblem
+ * matching the stamp's ink color via an offscreen canvas once, eliminating SVG filter clipping blocks.
+ */
+export function useMonochromeStampCrest(inkColor: string = "#1B3B8B"): string {
+  const [crestUrl, setCrestUrl] = useState<string>(() => stampCrestCache.get(inkColor) || "/logo-512h.png");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const cached = stampCrestCache.get(inkColor);
+    if (cached) {
+      setCrestUrl(cached);
+      return;
+    }
+
+    let active = true;
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = 120;
+        canvas.height = 120;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+
+        ctx.drawImage(img, 0, 0, 120, 120);
+        const imgData = ctx.getImageData(0, 0, 120, 120);
+        const data = imgData.data;
+
+        let hex = inkColor.replace("#", "");
+        if (hex.length === 3) hex = hex.split("").map((c) => c + c).join("");
+        const inkR = parseInt(hex.slice(0, 2), 16) || 27;
+        const inkG = parseInt(hex.slice(2, 4), 16) || 59;
+        const inkB = parseInt(hex.slice(4, 6), 16) || 139;
+
+        for (let i = 0; i < data.length; i += 4) {
+          const a = data[i + 3];
+          if (a < 40) {
+            data[i + 3] = 0;
+            continue;
+          }
+          const lum = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+          // Strip white canvas backing inside crest
+          if (lum > 215) {
+            data[i + 3] = 0;
+            continue;
+          }
+          // Recolor darker crest pixels to inkColor with antialiased alpha
+          data[i] = inkR;
+          data[i + 1] = inkG;
+          data[i + 2] = inkB;
+          const strokeAlpha = Math.min(255, Math.round(((215 - lum) / 140) * 255));
+          data[i + 3] = Math.min(a, Math.max(0, strokeAlpha));
+        }
+
+        ctx.putImageData(imgData, 0, 0);
+        const resultUrl = canvas.toDataURL("image/png");
+        stampCrestCache.set(inkColor, resultUrl);
+        if (active) {
+          setCrestUrl(resultUrl);
+        }
+      } catch {
+        // Fallback to /logo-512h.png
+      }
+    };
+    img.onerror = () => {};
+    img.src = "/logo-512h.png";
+
+    return () => {
+      active = false;
+    };
+  }, [inkColor]);
+
+  return crestUrl;
+}
+
 export function VectorStamp({
   config,
   date,
@@ -104,6 +185,8 @@ export function VectorStamp({
     ...config,
   };
 
+  const crestDataUrl = useMonochromeStampCrest(merged.ink_color);
+
   const displayDate = formatStampDisplayDate(date || merged.date);
   const grunge = Math.max(0, Math.min(100, merged.grunge_intensity ?? (merged.grain_realism ? 35 : 0)));
   const useFilter = merged.grain_realism && grunge > 0;
@@ -116,8 +199,13 @@ export function VectorStamp({
   const opacity = Number(merged.opacity ?? 0.9);
   const [headerLine1, headerLine2] = splitStampSchoolHeader(merged.school_name);
 
-  const baseW = merged.shape === "circle" ? 136 : merged.shape === "oval" ? 182 : 204;
-  const baseH = merged.shape === "circle" ? 136 : merged.shape === "oval" ? 124 : 108;
+  const inkHex = (merged.ink_color || "#1B3B8B").replace("#", "");
+  const inkR = Number(((parseInt(inkHex.slice(0, 2), 16) || 27) / 255).toFixed(3));
+  const inkG = Number(((parseInt(inkHex.slice(2, 4), 16) || 59) / 255).toFixed(3));
+  const inkB = Number(((parseInt(inkHex.slice(4, 6), 16) || 139) / 255).toFixed(3));
+
+  const baseW = merged.shape === "circle" ? 136 : merged.shape === "oval" ? 182 : 380;
+  const baseH = merged.shape === "circle" ? 136 : merged.shape === "oval" ? 124 : 220;
 
   const fitRatio =
     maxWidth && maxHeight
@@ -135,6 +223,7 @@ export function VectorStamp({
   return (
     <div
       data-testid="official-vector-stamp"
+      dir="ltr"
       style={{
         display: "inline-flex",
         alignItems: "center",
@@ -145,13 +234,21 @@ export function VectorStamp({
         opacity,
         transformOrigin: "center center",
         mixBlendMode: "multiply",
+        direction: "ltr",
+        unicodeBidi: "isolate",
       }}
     >
       <svg
         width={baseW}
         height={baseH}
         viewBox={`0 0 ${baseW} ${baseH}`}
-        style={{ overflow: "visible", filter: useFilter ? `url(#${filterId})` : undefined }}
+        direction="ltr"
+        style={{
+          overflow: "visible",
+          filter: useFilter ? `url(#${filterId})` : undefined,
+          direction: "ltr",
+          unicodeBidi: "isolate",
+        }}
       >
         <defs>
           <filter id={filterId} x="-5%" y="-5%" width="110%" height="110%">
@@ -170,143 +267,193 @@ export function VectorStamp({
               yChannelSelector="G"
             />
           </filter>
+          <filter id="jiddah-stamp-ink-filter" colorInterpolationFilters="sRGB">
+            <feColorMatrix
+              type="matrix"
+              values="0.33 0.33 0.33 0 0  0.33 0.33 0.33 0 0  0.33 0.33 0.33 0 0  0 0 0 1 0"
+            />
+            <feComponentTransfer>
+              <feFuncR type="linear" slope="0" intercept={inkR} />
+              <feFuncG type="linear" slope="0" intercept={inkG} />
+              <feFuncB type="linear" slope="0" intercept={inkB} />
+              <feFuncA type="linear" slope="-4.0" intercept="3.6" />
+            </feComponentTransfer>
+          </filter>
+          <filter id="jiddah-stamp-crest-ink" colorInterpolationFilters="sRGB">
+            <feColorMatrix
+              type="matrix"
+              values="0 0 0 0 0.106
+                      0 0 0 0 0.231
+                      0 0 0 0 0.545
+                      -1.6 -1.6 -1.6 0 2.2"
+            />
+          </filter>
           <path id={pathTopId} d="M 18,68 A 50,50 0 1,1 118,68" fill="none" />
           <path id={pathBottomId} d="M 118,68 A 50,50 0 0,1 18,68" fill="none" />
         </defs>
 
-        {/* 1. JIDDAH RECTANGULAR RUBBER STAMP */}
+        {/* 1. JIDDAH RECTANGULAR RUBBER STAMP — AUTHENTIC DIGITAL VECTOR CLONE */}
         {merged.shape === "rectangle" && (
           <g stroke={merged.ink_color} fill={merged.ink_color}>
-            {/* Outer rounded stamp border */}
-            <rect
-              x="2.5"
-              y="2.5"
-              width="199"
-              height="103"
-              rx="7"
+            {/* Outer Bracket Frame (Royal Stamp Blue #1B3B8B, strokeWidth=4.5) */}
+            <path
+              d="M 14 52 L 14 18 Q 14 10 22 10 L 358 10 Q 366 10 366 18 L 366 52"
               fill="none"
-              strokeWidth="2.4"
+              stroke={merged.ink_color}
+              strokeWidth="4.5"
+              strokeLinecap="round"
             />
-            {/* Inner precision hairline border */}
-            <rect
-              x="6"
-              y="6"
-              width="192"
-              height="96"
-              rx="4.5"
+            <path
+              d="M 14 168 L 14 202 Q 14 210 22 210 L 358 210 Q 366 210 366 202 L 366 168"
               fill="none"
-              strokeWidth="0.9"
+              stroke={merged.ink_color}
+              strokeWidth="4.5"
+              strokeLinecap="round"
             />
 
-            {/* Header lines */}
+            {/* Left Vertical Wall Text: HEADTEACHER'S OFFICE */}
             <text
-              x="102"
-              y={headerLine2 ? "20" : "24"}
-              fontSize={headerLine2 ? "10" : "10.5"}
-              fontWeight="900"
-              fontFamily="Georgia, 'Times New Roman', serif"
+              transform="translate(14, 110) rotate(90)"
               textAnchor="middle"
-              letterSpacing="0.8px"
+              fontSize="9.5"
+              fontWeight="800"
+              letterSpacing="0.5px"
+              fill={merged.ink_color}
               stroke="none"
+              fontFamily="Arial, Helvetica, sans-serif"
             >
-              {headerLine1}
-            </text>
-            {headerLine2 ? (
-              <text
-                x="102"
-                y="31"
-                fontSize="8.3"
-                fontWeight="800"
-                fontFamily="Georgia, 'Times New Roman', serif"
-                textAnchor="middle"
-                letterSpacing="0.5px"
-                stroke="none"
-              >
-                {headerLine2}
-              </text>
-            ) : null}
-
-            {/* Upper rule above Date band */}
-            <line x1="12" y1="36.5" x2="192" y2="36.5" strokeWidth="1" />
-
-            {/* Decorative flanking stars */}
-            <text
-              x="26"
-              y="55"
-              fontSize="11"
-              textAnchor="middle"
-              stroke="none"
-            >
-              ★
-            </text>
-            <text
-              x="178"
-              y="55"
-              fontSize="11"
-              textAnchor="middle"
-              stroke="none"
-            >
-              ★
+              HEADTEACHER&apos;S OFFICE
             </text>
 
-            {/* Adjustable Date Line */}
+            {/* Right Vertical Wall Text: HEADTEACHER'S OFFICE */}
             <text
-              x={102 + dateOffsetX}
-              y={55 + dateOffsetY}
-              fontSize={dateFontSize}
-              fontWeight="900"
-              fontFamily="'Courier New', Courier, monospace"
+              transform="translate(366, 110) rotate(-90)"
               textAnchor="middle"
+              fontSize="9.5"
+              fontWeight="800"
+              letterSpacing="0.5px"
+              fill={merged.ink_color}
+              stroke="none"
+              fontFamily="Arial, Helvetica, sans-serif"
+            >
+              HEADTEACHER&apos;S OFFICE
+            </text>
+
+            {/* Top 2 Header Lines (Royal Stamp Blue #1B3B8B) */}
+            <text
+              x="190"
+              y="36"
+              textAnchor="middle"
+              fontSize="20.5"
+              fontWeight="800"
+              letterSpacing="0.6px"
+              fill={merged.ink_color}
+              stroke="none"
+              fontFamily="Arial, Helvetica, sans-serif"
+            >
+              JIDDAH ISLAMIC NURSERY &amp;
+            </text>
+            <text
+              x="190"
+              y="61"
+              textAnchor="middle"
+              fontSize="20.5"
+              fontWeight="800"
               letterSpacing="1.2px"
+              fill={merged.ink_color}
               stroke="none"
+              fontFamily="Arial, Helvetica, sans-serif"
+            >
+              PRIMARY SCHOOL
+            </text>
+
+            {/* Middle 3-Column Row (y=68 to 142) */}
+            {/* Column 1: Left Jiddah Authentic School Crest Badge (x=24 to 100, y=66 to 140) */}
+            <g transform="translate(0, 0)">
+              <desc>DAY AND BOARDING - STRIVE FOR LIFE &amp; HERE AFTER</desc>
+              <image
+                href={crestDataUrl || "/logo-512h.png"}
+                x="24"
+                y="66"
+                width="76"
+                height="74"
+                preserveAspectRatio="xMidYMid meet"
+              />
+            </g>
+
+            {/* Column 2: Center Crimson Red Dater-Stamp Date (#C81E1E) */}
+            <text
+              x={195 + dateOffsetX}
+              y={115 + dateOffsetY}
+              textAnchor="middle"
+              fill={merged.date_ink_color || "#C81E1E"}
+              stroke="none"
+              fontSize="22"
+              fontWeight="900"
+              fontFamily="'Impact', 'Arial Black', sans-serif"
+              letterSpacing="1.6px"
+              direction="ltr"
+              style={{ direction: "ltr", unicodeBidi: "bidi-override" }}
             >
               {displayDate}
             </text>
 
-            {/* Lower rule below Date band */}
-            <line x1="12" y1="63" x2="192" y2="63" strokeWidth="1" />
-
-            {/* Signatory Role (e.g. HEADTEACHER) */}
-            <text
-              x="102"
-              y="77.5"
-              fontSize="9.8"
-              fontWeight="900"
-              fontFamily="Georgia, 'Times New Roman', serif"
-              textAnchor="middle"
-              letterSpacing="1.4px"
-              stroke="none"
-            >
-              {merged.title.toUpperCase()}
-            </text>
-
-            {/* Footer Address / PO Box */}
-            <text
-              x="102"
-              y={merged.phone ? "89" : "93"}
-              fontSize="6.7"
-              fontWeight="800"
-              fontFamily="Arial, Helvetica, sans-serif"
-              textAnchor="middle"
-              letterSpacing="0.4px"
-              stroke="none"
-            >
-              {merged.po_box.toUpperCase()}
-            </text>
-
-            {merged.phone ? (
-              <text
-                x="102"
-                y="97.5"
-                fontSize="6.2"
-                fontWeight="700"
-                fontFamily="Arial, Helvetica, sans-serif"
-                textAnchor="middle"
+            {/* Column 3: Right Bold Crescent & 5-Pointed Star (x=285 to 348) */}
+            <g transform="translate(0, 0)">
+              {/* Crescent opening toward top-left */}
+              <path
+                d="M 306 86 C 330 86 344 98 344 110 C 344 124 330 132 312 132 C 304 132 296 130 290 126 C 314 124 326 114 326 104 C 326 94 316 88 306 86 Z"
+                fill={merged.ink_color}
                 stroke="none"
-              >
-                {merged.phone}
-              </text>
-            ) : null}
+              />
+              {/* 5-pointed star at upper-left */}
+              <polygon
+                points="300,90 302.5,95 308,95.5 304,99 305.5,104.5 300,101.5 294.5,104.5 296,99 292,95.5 297.5,95"
+                fill={merged.ink_color}
+                stroke="none"
+              />
+            </g>
+
+            {/* Bottom 3 Footer Lines */}
+            <text
+              x="190"
+              y="164"
+              textAnchor="middle"
+              fill={merged.ink_color}
+              stroke="none"
+              fontFamily="Georgia, 'Times New Roman', serif"
+              fontSize="22"
+              fontWeight="900"
+              letterSpacing="3.5px"
+            >
+              HEADTEACHER
+            </text>
+            <text
+              x="190"
+              y="184"
+              textAnchor="middle"
+              fill={merged.ink_color}
+              stroke="none"
+              fontFamily="Arial, Helvetica, sans-serif"
+              fontSize="16.5"
+              fontWeight="800"
+              letterSpacing="0.6px"
+            >
+              P.O.Box 34008, Nsaggu
+            </text>
+            <text
+              x="190"
+              y="203"
+              textAnchor="middle"
+              fill={merged.ink_color}
+              stroke="none"
+              fontFamily="Arial, Helvetica, sans-serif"
+              fontSize="16.5"
+              fontWeight="800"
+              letterSpacing="0.4px"
+            >
+              Nakawuka Rd, Wakiso District
+            </text>
           </g>
         )}
 
@@ -349,6 +496,8 @@ export function VectorStamp({
               fontFamily="'Courier New', Courier, monospace"
               textAnchor="middle"
               stroke="none"
+              direction="ltr"
+              style={{ direction: "ltr", unicodeBidi: "bidi-override" }}
             >
               {displayDate}
             </text>
@@ -406,6 +555,8 @@ export function VectorStamp({
               fontFamily="'Courier New', Courier, monospace"
               textAnchor="middle"
               stroke="none"
+              direction="ltr"
+              style={{ direction: "ltr", unicodeBidi: "bidi-override" }}
             >
               {displayDate}
             </text>
@@ -430,10 +581,12 @@ export function VectorStamp({
 
 export function OfficialReportStamp({
   reportData,
-  maxWidth = 152,
-  maxHeight = 84,
+  studioFormatting,
+  maxWidth = 135,
+  maxHeight = 64,
 }: {
   reportData: any;
+  studioFormatting?: any;
   maxWidth?: number;
   maxHeight?: number;
 }) {
@@ -442,41 +595,110 @@ export function OfficialReportStamp({
     reportData?.settings?.print_preferences?.stamp_config ||
     {};
 
+  const studioScaleMultiplier =
+    typeof studioFormatting?.stampScale === "number" && studioFormatting.stampScale > 0
+      ? studioFormatting.stampScale / 100
+      : 1;
+  const studioRotation =
+    typeof studioFormatting?.stampRotation === "number"
+      ? studioFormatting.stampRotation
+      : savedStampConfig.rotation ?? DEFAULT_STAMP_CONFIG.rotation;
+  const studioOpacity =
+    typeof studioFormatting?.stampOpacity === "number"
+      ? Math.max(0.5, Math.min(1, studioFormatting.stampOpacity / 100))
+      : savedStampConfig.opacity ?? DEFAULT_STAMP_CONFIG.opacity;
+  const stampOffsetX = Number(studioFormatting?.stampOffsetX ?? 0);
+  const stampOffsetY = Number(studioFormatting?.stampOffsetY ?? 0);
+
   const config: StampConfig = {
     ...DEFAULT_STAMP_CONFIG,
     ...savedStampConfig,
+    ink_color:
+      studioFormatting?.stampInkColor ||
+      studioFormatting?.stampColor ||
+      savedStampConfig.ink_color ||
+      DEFAULT_STAMP_CONFIG.ink_color,
+    date_ink_color:
+      studioFormatting?.stampDateInkColor ||
+      savedStampConfig.date_ink_color ||
+      DEFAULT_STAMP_CONFIG.date_ink_color,
+    grain_realism:
+      studioFormatting?.stampNaturalRealism !== undefined
+        ? Boolean(studioFormatting.stampNaturalRealism)
+        : savedStampConfig.grain_realism ?? DEFAULT_STAMP_CONFIG.grain_realism,
+    opacity: studioOpacity,
+    // Outer position:absolute transform-layer handles scale/rotation/translation with zero layout shift
+    rotation: 0,
+    size_scale: 1,
   };
 
   const resolvedDate =
+    studioFormatting?.stampDate ||
     reportData?.stamp_date ||
     reportData?.settings?.stamp_date ||
     config.date ||
     reportData?.term?.end_date ||
     DEFAULT_STAMP_CONFIG.date;
 
-  if (config.use_uploaded_image && reportData?.signatures?.["school-stamp"]) {
-    return (
-      <img
-        src={reportData.signatures["school-stamp"]}
-        alt="Official School Stamp"
-        style={{
-          maxWidth: `${maxWidth}px`,
-          maxHeight: `${maxHeight}px`,
-          objectFit: "contain",
-          mixBlendMode: "multiply",
-          backgroundColor: "transparent",
-        }}
-      />
-    );
-  }
+  const isUploadedMode =
+    studioFormatting?.stampMode === "uploaded" ||
+    config.use_uploaded_image === true;
+
+  const totalScale = (savedStampConfig.size_scale ?? DEFAULT_STAMP_CONFIG.size_scale ?? 1) * studioScaleMultiplier;
 
   return (
-    <VectorStamp
-      config={config}
-      date={resolvedDate}
-      maxWidth={maxWidth}
-      maxHeight={maxHeight}
-    />
+    <div
+      data-testid="official-stamp-anchor-slot"
+      style={{
+        width: `${maxWidth}px`,
+        height: `${maxHeight}px`,
+        minWidth: `${maxWidth}px`,
+        minHeight: `${maxHeight}px`,
+        position: "relative",
+        overflow: "visible",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
+      }}
+    >
+      <div
+        data-testid="official-stamp-transform-layer"
+        style={{
+          position: "absolute",
+          inset: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          pointerEvents: "auto",
+          transform: `translate(${stampOffsetX}px, ${stampOffsetY}px) rotate(${studioRotation}deg) scale(${totalScale})`,
+          transformOrigin: "center center",
+        }}
+      >
+        {isUploadedMode && reportData?.signatures?.["school-stamp"] ? (
+          <img
+            src={reportData.signatures["school-stamp"]}
+            alt="Official School Stamp"
+            style={{
+              maxWidth: "100%",
+              maxHeight: "100%",
+              objectFit: "contain",
+              mixBlendMode: "multiply",
+              opacity: studioOpacity,
+              filter: "contrast(1.65) brightness(1.12)",
+              backgroundColor: "transparent",
+            }}
+          />
+        ) : (
+          <VectorStamp
+            config={config}
+            date={resolvedDate}
+            maxWidth={maxWidth}
+            maxHeight={maxHeight}
+          />
+        )}
+      </div>
+    </div>
   );
 }
 

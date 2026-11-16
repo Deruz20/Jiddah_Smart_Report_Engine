@@ -31,7 +31,7 @@ test('keeps the theology watermark visible in grayscale print output', () => {
 });
 
 test('defaults browser print output to A4 portrait paper', () => {
-  assert.match(printStyles, /@page\s*\{\s*size:\s*A4 portrait;/);
+  assert.match(printStyles, /@page\s+(?:portrait-sheet|portrait-page)\s*\{\s*size:\s*A4 portrait;/);
 });
 
 test('fits Theology two-up sheets inside printer-safe A4 bounds', () => {

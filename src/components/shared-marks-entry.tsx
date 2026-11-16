@@ -3,6 +3,7 @@
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { toast } from 'sonner'
+import { JiddahLoader } from '@/components/ui/jiddah-loader'
 import {
   Check,
   RefreshCw,
@@ -123,12 +124,11 @@ const SecularMarkTableRow = React.memo(function SecularMarkTableRow({
         </td>
       )}
       {!isAllPhases && (
-        <td className="hidden sm:table-cell sm:w-[36%] px-3 py-1">
+        <td className="hidden sm:table-cell sm:w-[36%] px-3 py-1 pr-5 overflow-hidden">
           {hasScore ? (
-            <div className="flex flex-col gap-0.5 w-full max-w-[220px]">
+            <div className="flex flex-col gap-0.5 w-full max-w-[140px]">
               <div className="flex items-center justify-between text-[11px] font-semibold">
                 <span className="text-[var(--text-secondary)] truncate">{remark}</span>
-                <span className="font-mono text-[var(--text-primary)] font-bold">{activeScore}%</span>
               </div>
               <div className="w-full h-1.5 rounded-full bg-black/[0.06] dark:bg-white/[0.08] overflow-hidden">
                 <div
@@ -151,7 +151,7 @@ const SecularMarkTableRow = React.memo(function SecularMarkTableRow({
           )}
         </td>
       )}
-      {['bot', 'all'].includes(examType) && (
+      {!isNursery && ['bot', 'all'].includes(examType) && (
         <td
           className={
             isAllPhases
@@ -238,12 +238,11 @@ const TheologyMarkTableRow = React.memo(function TheologyMarkTableRow({
         </div>
       </td>
       {!isAllPhases && (
-        <td className={`hidden sm:table-cell sm:w-[36%] px-3 ${isBothView ? 'py-2.5' : 'py-1'}`} dir="rtl">
+        <td className={`hidden sm:table-cell sm:w-[36%] px-3 pr-5 overflow-hidden ${isBothView ? 'py-2.5' : 'py-1'}`} dir="rtl">
           {hasScore ? (
-            <div className="flex flex-col gap-0.5 w-full max-w-[220px]">
+            <div className="flex flex-col gap-0.5 w-full max-w-[140px]">
               <div className="flex items-center justify-between text-[11px] font-semibold">
                 <span className="text-[var(--text-secondary)] font-bold truncate">{remark}</span>
-                <span className="font-mono text-[var(--text-primary)] font-bold">{toArabicNumerals(activeScore)}٪</span>
               </div>
               <div className="w-full h-1.5 rounded-full bg-black/[0.06] dark:bg-white/[0.08] overflow-hidden">
                 <div
@@ -708,6 +707,18 @@ export function SharedMarksEntry({
       (selectedClassFilter !== 'all' && isNurseryClass(selectedClassFilter))
     )
   }, [selectedEnrollment?.circular_class, selectedEnrollment?.theology_class_level, selectedClassFilter])
+
+  const hideBotPhase = isCurrentNursery || activeView === 'theology' || allowedDepartment === 'theology'
+  const availableExamTypes = useMemo<ExamType[]>(
+    () => (hideBotPhase ? ['mot', 'eot', 'all'] : ['bot', 'mot', 'eot', 'all']),
+    [hideBotPhase]
+  )
+
+  useEffect(() => {
+    if (hideBotPhase && examType === 'bot') {
+      setExamType('eot')
+    }
+  }, [hideBotPhase, examType])
 
   const getSubjectOrder = (name: string) => {
     const n = (name || '').toUpperCase()
@@ -1231,9 +1242,9 @@ export function SharedMarksEntry({
 
             {/* Right Group */}
             <div className="flex items-center gap-1.5 shrink-0 ml-auto">
-              {/* Read-Only Active Term Confirmation Pill */}
+              {/* Read-Only Active Term Confirmation Pill (Hidden on desktop as Topbar displays active term) */}
               <div
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#0D5C3A]/8 text-[#0D5C3A] dark:bg-[#10B981]/15 dark:text-[#34D399] font-semibold text-[11px] border border-[#0D5C3A]/15 dark:border-[#10B981]/25 select-none shrink-0"
+                className="hidden md:hidden inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#0D5C3A]/8 text-[#0D5C3A] dark:bg-[#10B981]/15 dark:text-[#34D399] font-semibold text-[11px] border border-[#0D5C3A]/15 dark:border-[#10B981]/25 select-none shrink-0"
                 title="Active Term (use ⋮ menu to change)"
               >
                 <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
@@ -1247,7 +1258,7 @@ export function SharedMarksEntry({
                 className="inline-flex items-center bg-[#F0F4F9] dark:bg-[#131314] h-8 p-0.5 rounded-full border-0 gap-0.5 shrink-0"
                 aria-label="Exam Type"
               >
-                {(['bot', 'mot', 'eot', 'all'] as ExamType[]).map((type) => (
+                {availableExamTypes.map((type) => (
                   <button
                     key={type}
                     type="button"
@@ -1362,8 +1373,8 @@ export function SharedMarksEntry({
             {/* Row 2: Phase Track + Department View */}
             <div className="flex items-center gap-1.5 w-full">
               {/* Phase Track (BOT | MOT | EOT | ALL) */}
-              <div className="flex-[4] grid grid-cols-4 bg-white dark:bg-[#1E1F20] p-0.5 rounded-full border border-black/[0.06] dark:border-white/[0.06] h-[34px] items-center" aria-label="Exam Phase Mobile">
-                {(['bot', 'mot', 'eot', 'all'] as ExamType[]).map((type) => (
+              <div className={`flex-[4] grid ${hideBotPhase ? 'grid-cols-3' : 'grid-cols-4'} bg-white dark:bg-[#1E1F20] p-0.5 rounded-full border border-black/[0.06] dark:border-white/[0.06] h-[34px] items-center`} aria-label="Exam Phase Mobile">
+                {availableExamTypes.map((type) => (
                   <button
                     key={type}
                     type="button"
@@ -1618,8 +1629,11 @@ export function SharedMarksEntry({
             </div>
           ) : isFetching || isLoading ? (
             <div className="flex flex-col items-center justify-center py-16 px-4 text-center rounded-2xl border border-[#0D5C3A]/10 dark:border-[#F59E0B]/12 bg-[var(--bg-card)]">
-              <RefreshCw className="w-6 h-6 animate-spin text-emerald-600 mb-2.5" />
-              <p className="text-[var(--text-primary)] text-xs font-bold">Loading student assessment sheet...</p>
+              <JiddahLoader
+                variant="stage"
+                label="Loading Student Assessment Sheet..."
+                sublabel="Fetching academic marks & evaluation records..."
+              />
             </div>
           ) : selectedEnrollment ? (
             <div className="space-y-2 w-full min-w-0 flex-1 min-h-0 flex flex-col justify-between">
@@ -1789,7 +1803,7 @@ export function SharedMarksEntry({
                                     Performance &amp; Remark
                                   </th>
                                 )}
-                                {['bot', 'all'].includes(examType) && (
+                                {!isCurrentNursery && ['bot', 'all'].includes(examType) && (
                                   <th
                                     className={
                                       examType === 'all'
@@ -1954,9 +1968,9 @@ export function SharedMarksEntry({
                           </div>
 
                           {/* Theology Card Footer Summary */}
-                          <div className="px-3.5 py-1.5 bg-gradient-to-l from-[#D97706]/[0.08] to-[#0D5C3A]/[0.05] dark:from-[#F59E0B]/[0.12] dark:to-[#10B981]/[0.08] border-t border-[#D97706]/20 dark:border-[#F59E0B]/25 flex items-center justify-between text-xs font-semibold text-[var(--text-primary)] mt-auto shrink-0" dir="rtl">
-                            <span className="font-bold text-[#D97706] dark:text-[#F59E0B]">ملخص المواد الشرعية</span>
-                            <span className="tabular-nums font-mono font-bold">
+                          <div className="px-3.5 py-1.5 bg-gradient-to-l from-[#D97706]/[0.08] to-[#0D5C3A]/[0.05] dark:from-[#F59E0B]/[0.12] dark:to-[#10B981]/[0.08] border-t border-[#D97706]/20 dark:border-[#F59E0B]/25 flex items-center justify-between text-xs font-semibold text-[var(--text-primary)] mt-auto shrink-0 gap-2 overflow-hidden" dir="rtl">
+                            <span className="font-bold text-[#D97706] dark:text-[#F59E0B] shrink-0 whitespace-nowrap">ملخص المواد الشرعية</span>
+                            <span className="tabular-nums font-mono font-bold whitespace-nowrap truncate text-[11px] sm:text-xs">
                               المجموع: {toArabicDigits(theologyStats.total)} / {toArabicDigits(theologyStats.maxTotal)} • المعدل: {toArabicDigits(theologyStats.mean)}٪ • التقدير: {theologyStats.remark}
                             </span>
                           </div>

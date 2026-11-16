@@ -7,10 +7,19 @@ type ReportSchoolLogoProps = Omit<ImgHTMLAttributes<HTMLImageElement>, 'onError'
   src?: string | null
 }
 
-export function ReportSchoolLogo({ src, ...props }: ReportSchoolLogoProps) {
+export function ReportSchoolLogo({ src, className, ...props }: ReportSchoolLogoProps) {
   const handleError = (event: SyntheticEvent<HTMLImageElement>) => {
     fallbackReportLogo(event.currentTarget)
   }
 
-  return <img {...props} src={src || DEFAULT_REPORT_LOGO} onError={handleError} />
+  return (
+    <div className="w-14 h-14 overflow-visible flex items-center justify-center mx-auto my-0.5 shrink-0">
+      <img
+        {...props}
+        className={`w-full h-full object-contain ${className || ''}`}
+        src={src || DEFAULT_REPORT_LOGO}
+        onError={handleError}
+      />
+    </div>
+  )
 }

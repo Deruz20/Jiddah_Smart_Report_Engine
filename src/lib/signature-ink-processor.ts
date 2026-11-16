@@ -1,5 +1,10 @@
 export type SignatureInkMode = 'blue' | 'black' | 'original';
 
+export const SIG_CACHE_VERSION = 'v7-sauvola-solid-royal-blue';
+
+const EMPTY_TRANSPARENT_PNG_DATA_URL =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+
 export interface SignatureExtractionOptions {
   inkMode?: SignatureInkMode;
   boldness?: number;
@@ -54,7 +59,7 @@ export function hasOpaquePaperBackground(
         transparentPixels++;
       } else {
         const lum = getLuminance(rgba[idx], rgba[idx + 1], rgba[idx + 2]);
-        if (lum >= 145) {
+        if (lum >= 85) {
           opaqueLightPixels++;
         }
       }
@@ -64,13 +69,16 @@ export function hasOpaquePaperBackground(
   if (sampled === 0) return false;
   // Already an alpha-transparent PNG with minimal background fill
   if (transparentPixels / sampled >= 0.32) return false;
-  // Opaque bright/gray paper fills >30% of sampled grid
-  return opaqueLightPixels / sampled >= 0.25;
+  // Opaque bright/gray paper fills >25% of sampled grid (also handles darker shadow photos)
+  if (opaqueLightPixels / sampled >= 0.25) return true;
+  // Fallback for very dim shadow photos (all opaque, no transparency)
+  return transparentPixels / sampled < 0.05;
 }
 
 /**
- * Extracts crisp transparent pen ink from an RGBA buffer captured on paper,
- * handling shadows, uneven phone lighting, grey paper, and light ruled lines.
+ * Extracts crisp transparent pen ink from an RGBA buffer captured on paper
+ * using a fast O(1) 2D Integral Image (17x17 local neighborhood mean) + global median contrast.
+ * Strips both bright white paper and dimly lit dark-grey paper shadows cleanly.
  */
 export function extractCleanSignaturePixels(
   sourceRgba: Uint8ClampedArray,
@@ -94,115 +102,181 @@ export function extractCleanSignaturePixels(
 
   const totalPixels = width * height;
   const lumBuffer = new Float32Array(totalPixels);
+  const opaqueMask = new Uint8Array(totalPixels);
+  const opaqueLums: number[] = [];
 
   for (let i = 0; i < totalPixels; i++) {
     const idx = i * 4;
     const a = sourceRgba[idx + 3];
-    lumBuffer[i] = a < 20 ? 255 : getLuminance(sourceRgba[idx], sourceRgba[idx + 1], sourceRgba[idx + 2]);
-  }
-
-  // Build coarse illumination grid using 80th percentile per block to handle uneven lighting
-  const targetCellSize = Math.min(32, Math.max(8, Math.round(Math.min(width, height) / 3)));
-  const gridCols = Math.max(2, Math.min(20, Math.ceil(width / targetCellSize)));
-  const gridRows = Math.max(2, Math.min(20, Math.ceil(height / targetCellSize)));
-  const cellBg = new Float32Array(gridCols * gridRows);
-
-  for (let gy = 0; gy < gridRows; gy++) {
-    const y0 = Math.floor((gy * height) / gridRows);
-    const y1 = Math.min(height, Math.ceil(((gy + 1) * height) / gridRows));
-    for (let gx = 0; gx < gridCols; gx++) {
-      const x0 = Math.floor((gx * width) / gridCols);
-      const x1 = Math.min(width, Math.ceil(((gx + 1) * width) / gridCols));
-
-      const samples: number[] = [];
-      const stride = Math.max(1, Math.floor(Math.sqrt(((x1 - x0) * (y1 - y0)) / 96)));
-      for (let y = y0; y < y1; y += stride) {
-        for (let x = x0; x < x1; x += stride) {
-          samples.push(lumBuffer[y * width + x]);
-        }
-      }
-
-      if (samples.length === 0) {
-        cellBg[gy * gridCols + gx] = 245;
-      } else {
-        samples.sort((a, b) => a - b);
-        const p80 = samples[Math.min(samples.length - 1, Math.floor(samples.length * 0.8))];
-        cellBg[gy * gridCols + gx] = Math.max(95, p80);
-      }
+    if (a < 40) {
+      lumBuffer[i] = 255;
+      opaqueMask[i] = 0;
+    } else {
+      const lum = getLuminance(sourceRgba[idx], sourceRgba[idx + 1], sourceRgba[idx + 2]);
+      lumBuffer[i] = lum;
+      opaqueMask[i] = 1;
+      opaqueLums.push(lum);
     }
   }
 
-  // Smooth the illumination grid slightly so tile seams never create halos
-  const smoothedBg = new Float32Array(gridCols * gridRows);
-  for (let gy = 0; gy < gridRows; gy++) {
-    for (let gx = 0; gx < gridCols; gx++) {
-      let sum = 0;
-      let weight = 0;
-      for (let dy = -1; dy <= 1; dy++) {
-        for (let dx = -1; dx <= 1; dx++) {
-          const ny = gy + dy;
-          const nx = gx + dx;
-          if (ny >= 0 && ny < gridRows && nx >= 0 && nx < gridCols) {
-            const w = dx === 0 && dy === 0 ? 4 : 1;
-            sum += cellBg[ny * gridCols + nx] * w;
-            weight += w;
-          }
-        }
-      }
-      smoothedBg[gy * gridCols + gx] = sum / Math.max(1, weight);
-    }
+  if (opaqueLums.length === 0) {
+    return {
+      data: new Uint8ClampedArray(sourceRgba.length),
+      width,
+      height,
+      bounds: { minX: 0, minY: 0, maxX: width - 1, maxY: height - 1, width, height },
+      inkPixelRatio: 0,
+    };
   }
 
-  const rawAlpha = new Uint8ClampedArray(totalPixels);
-  const cutoff = Math.max(0.11, Math.min(0.32, 0.25 - (boldness - 1.0) * 0.07));
-  const steepness = 12 + boldness * 7;
+  // Global median luminance across all opaque pixels (represents paper even under dim lighting)
+  opaqueLums.sort((a, b) => a - b);
+  const globalMedian = opaqueLums[Math.floor(opaqueLums.length * 0.5)] ?? 220;
+
+  // Sample outer border pixels to check if this is an opaque rectangular photo needing 4px frame trim
+  const borderSamples: number[] = [];
+  let totalBorderPixels = 0;
+  for (let x = 0; x < width; x++) {
+    const topIdx = x * 4;
+    const btmIdx = ((height - 1) * width + x) * 4;
+    totalBorderPixels += 2;
+    if (sourceRgba[topIdx + 3] >= 40) borderSamples.push(lumBuffer[x]);
+    if (sourceRgba[btmIdx + 3] >= 40) borderSamples.push(lumBuffer[(height - 1) * width + x]);
+  }
+  for (let y = 0; y < height; y++) {
+    const leftIdx = y * width * 4;
+    const rightIdx = (y * width + (width - 1)) * 4;
+    totalBorderPixels += 2;
+    if (sourceRgba[leftIdx + 3] >= 40) borderSamples.push(lumBuffer[y * width]);
+    if (sourceRgba[rightIdx + 3] >= 40) borderSamples.push(lumBuffer[y * width + (width - 1)]);
+  }
+  const isOpaquePhoto = totalBorderPixels > 0 && borderSamples.length / totalBorderPixels >= 0.45;
+
+  // Build 2D Integral Images (prefix sums of L and L^2) for O(1) 19x19 Sauvola local mean & std-dev
+  const strideW = width + 1;
+  const integralLum = new Float64Array(strideW * (height + 1));
+  const integralLumSq = new Float64Array(strideW * (height + 1));
+  const integralCount = new Int32Array(strideW * (height + 1));
 
   for (let y = 0; y < height; y++) {
-    const fy = ((y + 0.5) / height) * gridRows - 0.5;
-    const gy0 = Math.max(0, Math.min(gridRows - 1, Math.floor(fy)));
-    const gy1 = Math.max(0, Math.min(gridRows - 1, gy0 + 1));
-    const ty = Math.max(0, Math.min(1, fy - gy0));
+    let rowLum = 0;
+    let rowLumSq = 0;
+    let rowCnt = 0;
+    const srcRow = y * width;
+    const dstRow = (y + 1) * strideW;
+    const prevDstRow = y * strideW;
+
+    for (let x = 0; x < width; x++) {
+      const p = srcRow + x;
+      if (opaqueMask[p] === 1) {
+        const l = lumBuffer[p];
+        rowLum += l;
+        rowLumSq += l * l;
+        rowCnt += 1;
+      }
+      integralLum[dstRow + x + 1] = integralLum[prevDstRow + x + 1] + rowLum;
+      integralLumSq[dstRow + x + 1] = integralLumSq[prevDstRow + x + 1] + rowLumSq;
+      integralCount[dstRow + x + 1] = integralCount[prevDstRow + x + 1] + rowCnt;
+    }
+  }
+
+  const windowRadius = 9; // 19x19 Sauvola window: [-9, +9]
+  const rawAlpha = new Uint8ClampedArray(totalPixels);
+  const localContrastBuf = new Float32Array(totalPixels);
+
+  for (let y = 0; y < height; y++) {
+    const y0 = Math.max(0, y - windowRadius);
+    const y1 = Math.min(height - 1, y + windowRadius);
+    const r0 = y0 * strideW;
+    const r1 = (y1 + 1) * strideW;
 
     for (let x = 0; x < width; x++) {
       const p = y * width + x;
       const srcIdx = p * 4;
-      if (sourceRgba[srcIdx + 3] < 20) {
+      if (sourceRgba[srcIdx + 3] < 40) {
         rawAlpha[p] = 0;
         continue;
       }
 
-      const fx = ((x + 0.5) / width) * gridCols - 0.5;
-      const gx0 = Math.max(0, Math.min(gridCols - 1, Math.floor(fx)));
-      const gx1 = Math.max(0, Math.min(gridCols - 1, gx0 + 1));
-      const tx = Math.max(0, Math.min(1, fx - gx0));
-
-      const top =
-        smoothedBg[gy0 * gridCols + gx0] * (1 - tx) +
-        smoothedBg[gy0 * gridCols + gx1] * tx;
-      const bottom =
-        smoothedBg[gy1 * gridCols + gx0] * (1 - tx) +
-        smoothedBg[gy1 * gridCols + gx1] * tx;
-      const localBg = top * (1 - ty) + bottom * ty;
-
-      const delta = localBg - lumBuffer[p];
-      if (delta <= 8) {
+      // Drop 4px outer border frame on non-transparent photos
+      if (isOpaquePhoto && (x < 4 || x >= width - 4 || y < 4 || y >= height - 4)) {
         rawAlpha[p] = 0;
         continue;
       }
 
-      const relDarkness = Math.min(1, delta / Math.max(70, localBg * 0.72));
-      const sigmoid = 1 / (1 + Math.exp(-steepness * (relDarkness - cutoff)));
-      if (sigmoid < 0.08) {
+      const x0 = Math.max(0, x - windowRadius);
+      const x1 = Math.min(width - 1, x + windowRadius);
+
+      const sum =
+        integralLum[r1 + x1 + 1] -
+        integralLum[r1 + x0] -
+        integralLum[r0 + x1 + 1] +
+        integralLum[r0 + x0];
+      const sumSq =
+        integralLumSq[r1 + x1 + 1] -
+        integralLumSq[r1 + x0] -
+        integralLumSq[r0 + x1 + 1] +
+        integralLumSq[r0 + x0];
+      const cnt =
+        integralCount[r1 + x1 + 1] -
+        integralCount[r1 + x0] -
+        integralCount[r0 + x1 + 1] +
+        integralCount[r0 + x0];
+
+      const localMean = cnt > 0 ? sum / cnt : globalMedian;
+      const variance = cnt > 0 ? Math.max(0, sumSq / cnt - localMean * localMean) : 0;
+      const localStd = Math.sqrt(variance);
+      const lum = lumBuffer[p];
+      const localContrast = localMean - lum;
+      const globalContrast = globalMedian - lum;
+      localContrastBuf[p] = localContrast;
+
+      // Sauvola Adaptive Document Binarization: T(x,y) = m(x,y) * (1 - 0.14 * (1 - s(x,y)/128))
+      const sauvolaThreshold = localMean * (1 - 0.14 * (1 - localStd / 128));
+
+      // Paper Background (L(x,y) > T(x,y) or insufficient local/global contrast): alpha = 0 (100% transparent)
+      if (lum > sauvolaThreshold || localContrast < 8 || globalContrast < 10) {
         rawAlpha[p] = 0;
-      } else {
-        const stretched = (sigmoid - 0.08) / 0.92;
-        const gamma = Math.max(0.6, 1.1 - (boldness - 1.0) * 0.25);
-        rawAlpha[p] = Math.min(255, Math.round(Math.pow(stretched, gamma) * 255));
+        continue;
       }
+
+      // Pen Strokes (L(x,y) <= T(x,y)): Full solid opacity (alpha = 235 to 255)
+      const solidAlpha = Math.min(
+        255,
+        Math.max(235, Math.round(235 + Math.min(20, (localContrast - 8) * boldness)))
+      );
+      rawAlpha[p] = solidAlpha;
     }
   }
 
-  // Gentle despeckle + edge anti-aliasing
+  // Pass 1: Despeckle isolated 1-pixel noise grains
+  const despeckledAlpha = new Uint8ClampedArray(totalPixels);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const p = y * width + x;
+      const cAlpha = rawAlpha[p];
+      if (cAlpha === 0) continue;
+
+      let activeNeighbors = 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          const ny = y + dy;
+          const nx = x + dx;
+          if (ny >= 0 && ny < height && nx >= 0 && nx < width) {
+            if (rawAlpha[ny * width + nx] >= 215) activeNeighbors++;
+          }
+        }
+      }
+
+      if (activeNeighbors === 0 && localContrastBuf[p] < 18) {
+        continue;
+      }
+      despeckledAlpha[p] = cAlpha;
+    }
+  }
+
+  // Pass 2: 3x3 Stroke-Strengthening Pass + Solid Royal Blue Recoloring (R=12, G=42, B=132 / #0C2A84)
   const finalRgba = new Uint8ClampedArray(sourceRgba.length);
   let minX = width;
   let minY = height;
@@ -213,59 +287,49 @@ export function extractCleanSignaturePixels(
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const p = y * width + x;
-      const cAlpha = rawAlpha[p];
-      if (cAlpha === 0) continue;
+      let strokeAlpha = despeckledAlpha[p];
 
-      let activeNeighbors = 0;
-      let neighborAlphaSum = 0;
-      for (let dy = -1; dy <= 1; dy++) {
-        for (let dx = -1; dx <= 1; dx++) {
-          if (dx === 0 && dy === 0) continue;
-          const ny = y + dy;
-          const nx = x + dx;
-          if (ny >= 0 && ny < height && nx >= 0 && nx < width) {
-            const na = rawAlpha[ny * width + nx];
-            if (na > 12) activeNeighbors++;
-            neighborAlphaSum += na;
+      if (strokeAlpha === 0 && localContrastBuf[p] >= 5 && (!isOpaquePhoto || (x >= 4 && x < width - 4 && y >= 4 && y < height - 4))) {
+        // 3x3 stroke-strengthening: reinforce immediate neighbors of core pen strokes
+        let maxNeighbor = 0;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (dx === 0 && dy === 0) continue;
+            const ny = y + dy;
+            const nx = x + dx;
+            if (ny >= 0 && ny < height && nx >= 0 && nx < width) {
+              const na = despeckledAlpha[ny * width + nx];
+              if (na > maxNeighbor) maxNeighbor = na;
+            }
           }
+        }
+        if (maxNeighbor >= 235 && boldness >= 1.0) {
+          strokeAlpha = 235;
         }
       }
 
-      // Drop isolated 1px noise grains
-      if (activeNeighbors === 0 && cAlpha < 210) {
-        continue;
-      }
-
-      const smoothedAlpha =
-        cAlpha < 210
-          ? Math.min(255, Math.round(cAlpha * 0.72 + (neighborAlphaSum / 8) * 0.28))
-          : cAlpha;
-
-      if (smoothedAlpha < 12) continue;
+      if (strokeAlpha < 215) continue;
 
       const idx = p * 4;
-      const strength = smoothedAlpha / 255;
-
       let outR: number;
       let outG: number;
       let outB: number;
 
       if (inkMode === 'blue') {
-        // Pen Blue (#14387F) with slight stroke depth richness
-        outR = Math.round(24 - strength * 8);
-        outG = Math.round(64 - strength * 12);
-        outB = Math.round(138 - strength * 16);
+        // Deep Royal Ballpoint Pen Blue (R = 12, G = 42, B = 132 / #0C2A84)
+        outR = Math.round(12);
+        outG = Math.round(42);
+        outB = Math.round(132);
       } else if (inkMode === 'black') {
         // Jet Black (#0F172A)
-        outR = Math.round(24 - strength * 10);
-        outG = Math.round(34 - strength * 12);
-        outB = Math.round(52 - strength * 12);
+        outR = 15;
+        outG = 23;
+        outB = 42;
       } else {
-        // Original ink hue preserved, deepened slightly for clean crisp contrast
         const srcR = sourceRgba[idx];
         const srcG = sourceRgba[idx + 1];
         const srcB = sourceRgba[idx + 2];
-        const darken = 0.78;
+        const darken = 0.72;
         outR = Math.max(0, Math.min(255, Math.round(srcR * darken)));
         outG = Math.max(0, Math.min(255, Math.round(srcG * darken)));
         outB = Math.max(0, Math.min(255, Math.round(srcB * darken)));
@@ -274,7 +338,7 @@ export function extractCleanSignaturePixels(
       finalRgba[idx] = outR;
       finalRgba[idx + 1] = outG;
       finalRgba[idx + 2] = outB;
-      finalRgba[idx + 3] = smoothedAlpha;
+      finalRgba[idx + 3] = Math.min(255, Math.max(235, strokeAlpha));
 
       inkPixels++;
       if (x < minX) minX = x;
@@ -324,12 +388,67 @@ export function extractCleanSignaturePixels(
   };
 }
 
+export const extractSignatureInk = extractCleanSignaturePixels;
+
+/**
+ * Recolors an already-transparent PNG signature cleanly into solid Royal Blue / Black ink
+ * (alpha = 235 to 255) with 3x3 stroke-strengthening so faint pre-extracted PNGs are 100% bold.
+ */
+function recolorTransparentSignature(
+  sourceRgba: Uint8ClampedArray,
+  width: number,
+  height: number,
+  inkMode: SignatureInkMode
+): Uint8ClampedArray {
+  const out = new Uint8ClampedArray(sourceRgba.length);
+  const total = width * height;
+  const coreMask = new Uint8Array(total);
+
+  for (let i = 0; i < total; i++) {
+    const a = sourceRgba[i * 4 + 3];
+    if (a >= 22) coreMask[i] = 1;
+  }
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const p = y * width + x;
+      let isStroke = coreMask[p] === 1;
+      if (!isStroke) {
+        // 3x3 stroke-strengthening on 4-connected neighbors
+        if (
+          (x > 0 && coreMask[p - 1] === 1) ||
+          (x + 1 < width && coreMask[p + 1] === 1) ||
+          (y > 0 && coreMask[p - width] === 1) ||
+          (y + 1 < height && coreMask[p + width] === 1)
+        ) {
+          isStroke = true;
+        }
+      }
+      if (!isStroke) continue;
+      const idx = p * 4;
+      const srcA = sourceRgba[idx + 3];
+      if (inkMode === 'original') {
+        out[idx] = sourceRgba[idx];
+        out[idx + 1] = sourceRgba[idx + 1];
+        out[idx + 2] = sourceRgba[idx + 2];
+      } else {
+        out[idx] = inkMode === 'blue' ? 12 : 15;
+        out[idx + 1] = inkMode === 'blue' ? 42 : 23;
+        out[idx + 2] = inkMode === 'blue' ? 132 : 42;
+      }
+      out[idx + 3] = Math.min(255, Math.max(235, srcA));
+    }
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------------------
-// Browser Canvas Wrappers & URL Cache
+// Browser Canvas Wrappers, CORS-Safe Fetch & URL Cache
 // ---------------------------------------------------------------------------
 
 const MAX_PROCESSING_DIM = 900;
-const cleanedUrlCache = new Map<string, string>();
+export const processedSignatureCache = new Map<string, string>();
+const cleanedUrlCache = processedSignatureCache;
 
 function loadBrowserImage(src: string, crossOrigin?: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -339,6 +458,51 @@ function loadBrowserImage(src: string, crossOrigin?: string): Promise<HTMLImageE
     img.onerror = (err) => reject(err);
     img.src = src;
   });
+}
+
+async function loadSignatureImageSafe(src: string): Promise<HTMLImageElement> {
+  if (src.startsWith('data:') || src.startsWith('blob:')) {
+    return loadBrowserImage(src);
+  }
+
+  // Try direct CORS fetch -> Blob URL (avoids browser non-CORS cache poisoning)
+  try {
+    const res = await fetch(src, { mode: 'cors', credentials: 'omit' });
+    if (res.ok) {
+      const blob = await res.blob();
+      const objUrl = URL.createObjectURL(blob);
+      try {
+        const img = await loadBrowserImage(objUrl);
+        return img;
+      } finally {
+        URL.revokeObjectURL(objUrl);
+      }
+    }
+  } catch {
+    // Fall through to same-origin authenticated proxy
+  }
+
+  // Fallback: fetch through /api/signatures/proxy so remote images never taint canvas
+  if (typeof window !== 'undefined' && /^https?:\/\//i.test(src)) {
+    try {
+      const proxyUrl = `/api/signatures/proxy?url=${encodeURIComponent(src)}`;
+      const proxyRes = await fetch(proxyUrl);
+      if (proxyRes.ok) {
+        const blob = await proxyRes.blob();
+        const objUrl = URL.createObjectURL(blob);
+        try {
+          const img = await loadBrowserImage(objUrl);
+          return img;
+        } finally {
+          URL.revokeObjectURL(objUrl);
+        }
+      }
+    } catch {
+      // Fall through to direct crossOrigin attempt
+    }
+  }
+
+  return loadBrowserImage(src, 'anonymous');
 }
 
 function imageElementToCanvasData(img: HTMLImageElement): {
@@ -444,35 +608,60 @@ export async function processSignatureFileToPng(
   }
 }
 
+export const inFlightSignaturePromises = new Map<string, Promise<string>>();
+
+export function getCachedSignatureUrl(
+  src: string,
+  options: SignatureExtractionOptions = {}
+): string | undefined {
+  if (!src) return undefined;
+  const cacheKey = `${SIG_CACHE_VERSION}|${src}|${options.inkMode ?? 'blue'}|${options.boldness ?? 1.25}`;
+  return cleanedUrlCache.get(cacheKey);
+}
+
 export async function cleanSignatureImageUrl(
   src: string,
   options: SignatureExtractionOptions = {}
 ): Promise<string> {
   if (!src || typeof window === 'undefined' || typeof document === 'undefined') return src;
 
-  const cacheKey = `${src}|${options.inkMode ?? 'blue'}|${options.boldness ?? 1.25}`;
+  const cacheKey = `${SIG_CACHE_VERSION}|${src}|${options.inkMode ?? 'blue'}|${options.boldness ?? 1.25}`;
   const cached = cleanedUrlCache.get(cacheKey);
   if (cached) return cached;
 
-  try {
-    const img = await loadBrowserImage(src, 'anonymous');
-    const { rgba, width, height } = imageElementToCanvasData(img);
+  const inFlight = inFlightSignaturePromises.get(cacheKey);
+  if (inFlight) return inFlight;
 
-    if (!hasOpaquePaperBackground(rgba, width, height)) {
-      cleanedUrlCache.set(cacheKey, src);
-      return src;
+  const promise = (async () => {
+    try {
+      const img = await loadSignatureImageSafe(src);
+      const { rgba, width, height } = imageElementToCanvasData(img);
+
+      // Already alpha-transparent PNG: normalize ink tone without subtracting background
+      if (!hasOpaquePaperBackground(rgba, width, height)) {
+        const recolored = recolorTransparentSignature(rgba, width, height, options.inkMode ?? 'blue');
+        const { dataUrl } = await rgbaToPngBlobAndDataUrl(recolored, width, height);
+        cleanedUrlCache.set(cacheKey, dataUrl);
+        return dataUrl;
+      }
+
+      // Photographed/scanned signature on white or dark-grey paper: extract locally & never return raw grey src
+      const extracted = extractCleanSignaturePixels(rgba, width, height, options);
+      if (extracted.width === 0 || extracted.height === 0 || extracted.inkPixelRatio === 0) {
+        cleanedUrlCache.set(cacheKey, EMPTY_TRANSPARENT_PNG_DATA_URL);
+        return EMPTY_TRANSPARENT_PNG_DATA_URL;
+      }
+
+      const { dataUrl } = await rgbaToPngBlobAndDataUrl(extracted.data, extracted.width, extracted.height);
+      cleanedUrlCache.set(cacheKey, dataUrl);
+      return dataUrl;
+    } catch {
+      return EMPTY_TRANSPARENT_PNG_DATA_URL;
     }
+  })().finally(() => {
+    inFlightSignaturePromises.delete(cacheKey);
+  });
 
-    const extracted = extractCleanSignaturePixels(rgba, width, height, options);
-    if (extracted.width === 0 || extracted.height === 0 || extracted.inkPixelRatio < 0.0005) {
-      cleanedUrlCache.set(cacheKey, src);
-      return src;
-    }
-
-    const { dataUrl } = await rgbaToPngBlobAndDataUrl(extracted.data, extracted.width, extracted.height);
-    cleanedUrlCache.set(cacheKey, dataUrl);
-    return dataUrl;
-  } catch {
-    return src;
-  }
+  inFlightSignaturePromises.set(cacheKey, promise);
+  return promise;
 }

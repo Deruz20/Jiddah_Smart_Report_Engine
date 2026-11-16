@@ -67,22 +67,43 @@ export async function GET(request: NextRequest) {
 
     const SIGNATURE_SLOTS = await getDynamicSignatureSlots(admin)
 
-    const activeBySlot = new Map<string, string>()
-    const disabledBySlot = new Map<string, string>()
+    const activeBySlot = new Map<string, { name: string; size: number; updated_at: string | null }>()
+    const disabledBySlot = new Map<string, { name: string; size: number; updated_at: string | null }>()
+    const extractFileSize = (fileObj: any) =>
+      Number(fileObj?.metadata?.size ?? fileObj?.metadata?.contentLength ?? 0) || 0
+
     for (const slot of SIGNATURE_SLOTS) {
       const activePath = getLatestSignatureObjectNameForSlot(activeFiles, slot.slot_key)
       const disabledPath = getLatestSignatureObjectNameForSlot(disabledFiles, slot.slot_key)
-      if (activePath) activeBySlot.set(slot.slot_key, activePath)
-      if (disabledPath) disabledBySlot.set(slot.slot_key, disabledPath)
+      if (activePath) {
+        const obj = activeFiles.find((f) => f?.name === activePath)
+        activeBySlot.set(slot.slot_key, {
+          name: activePath,
+          size: extractFileSize(obj),
+          updated_at: obj?.updated_at ?? null,
+        })
+      }
+      if (disabledPath) {
+        const obj = disabledFiles.find((f) => f?.name === disabledPath)
+        disabledBySlot.set(slot.slot_key, {
+          name: disabledPath,
+          size: extractFileSize(obj),
+          updated_at: obj?.updated_at ?? null,
+        })
+      }
     }
 
     const slots = SIGNATURE_SLOTS.map((slot) => {
-      const activePath = activeBySlot.get(slot.slot_key)
-      const disabledPath = disabledBySlot.get(slot.slot_key)
+      const activeEntry = activeBySlot.get(slot.slot_key)
+      const disabledEntry = disabledBySlot.get(slot.slot_key)
+      const activePath = activeEntry?.name
+      const disabledPath = disabledEntry?.name
       const public_url = activePath ? buildPublicUrl(admin, activePath) : null
       return {
         ...slot,
         public_url,
+        size: activeEntry?.size ?? disabledEntry?.size ?? 0,
+        updated_at: activeEntry?.updated_at ?? disabledEntry?.updated_at ?? null,
         uploaded: Boolean(activePath || disabledPath),
         active: Boolean(activePath),
       }

@@ -6,7 +6,7 @@ import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import { cn } from "./utils";
 
 function TooltipProvider({
-  delayDuration = 60,
+  delayDuration = 50,
   skipDelayDuration = 0,
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Provider>) {
@@ -49,7 +49,7 @@ function TooltipContent({
         data-slot="tooltip-content"
         sideOffset={sideOffset}
         className={cn(
-          "bg-neutral-900 text-white dark:bg-[#1E1F20] dark:text-[#E3E3E3] z-50 w-fit rounded-full px-3 py-1.5 text-xs font-medium tracking-tight shadow-md border border-white/10 dark:border-white/10 pointer-events-none select-none",
+          "bg-[#1E2923] text-[#FFFFFF] border border-black/10 shadow-md px-2.5 py-1 rounded-lg text-xs font-medium dark:bg-[#F1F5F2] dark:text-[#093D26] dark:border-[#D97706]/40 dark:font-semibold dark:shadow-[0_4px_14px_rgba(0,0,0,0.5)] transition-none animate-none z-50 w-fit pointer-events-none select-none",
           className,
         )}
         {...props}

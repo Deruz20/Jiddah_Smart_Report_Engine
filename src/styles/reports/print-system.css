@@ -75,6 +75,7 @@
    PRINT: PORTAL (completely hidden on screen, fully revealed on print)
    ============================================================================ */
 
+#report-print-portal,
 #print-portal {
   position: fixed;
   top: 0;
@@ -88,37 +89,207 @@
 }
 
 /* ============================================================================
+   PRINT: CSS NAMED PAGES (A4 Landscape & Portrait isolation per sheet)
+   ============================================================================ */
+
+@page landscape-sheet {
+  size: A4 landscape;
+  margin: 0mm;
+}
+
+@page portrait-sheet {
+  size: A4 portrait;
+  margin: 0mm;
+}
+
+/* ============================================================================
    PRINT: @MEDIA RULES
    ============================================================================ */
 
 @media print {
-  /* 1. Hide EVERYTHING on the main page */
-  html body {
-    visibility: hidden !important;
+
+  /* 0. Multi-Page Batch Print: Unconstrain all ancestors so Chrome prints all N sheets */
+  html,
+  body,
+  #__next,
+  [data-slot="sidebar-wrapper"],
+  [data-slot="sidebar-inset"],
+  [data-slot="sidebar-inset"]>main,
+  .report-studio-root,
+  .document-canvas-root,
+  .document-canvas-scroll,
+  .document-canvas-grid,
+  [data-canvas-scroll],
+  [data-testid="report-center-workspace"],
+  [data-testid="report-preview-stage"] {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
     overflow: visible !important;
+    display: block !important;
+    position: static !important;
     margin: 0 !important;
     padding: 0 !important;
+    gap: 0 !important;
+    border: 0 !important;
+  }
+
+  .report-card-sheet.print-excluded {
+    display: none !important;
+  }
+
+  /* 1. Completely collapse screen app tree when #report-print-portal is present so Page 1 is NEVER blank */
+  html:has(#report-print-portal) body > *:not(#report-print-portal):not(style):not(script),
+  body:has(#report-print-portal) [data-slot="sidebar-wrapper"],
+  body:has(#report-print-portal) [data-slot="sidebar-inset"],
+  body:has(#report-print-portal) main,
+  .report-studio-root {
+    display: none !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    max-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    overflow: hidden !important;
+  }
+
+  html,
+  body,
+  #report-print-portal,
+  #print-portal {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
     height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    left: 0 !important;
+    top: 0 !important;
     background: #ffffff !important;
   }
 
   /* 2. Reveal ONLY the print portal */
+  #report-print-portal,
   #print-portal {
-    position: absolute !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: auto !important;
-    height: auto !important;
     overflow: visible !important;
     visibility: visible !important;
     z-index: 9999 !important;
     pointer-events: none !important;
-    display: block !important;
   }
 
+  #report-print-portal *,
   #print-portal,
   #print-portal * {
     visibility: visible !important;
+  }
+
+  /* NEVER break after a sheet; ONLY break BEFORE sheets after the first sheet (i > 0) */
+  .report-card-sheet,
+  .landscape-page,
+  .portrait-page,
+  .a4-portrait-page,
+  .a4-two-up-page,
+  #print-portal .report-container {
+    margin: 0 !important;
+    padding: 0 !important;
+    left: 0 !important;
+    transform: none !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .report-card-sheet[data-first-printed="false"],
+  .theology-2up-sheet[data-first-printed="false"] {
+    page-break-before: always !important;
+    break-before: page !important;
+  }
+
+  .report-card-sheet[data-first-printed="true"],
+  .theology-2up-sheet[data-first-printed="true"],
+  .report-card-sheet:first-child,
+  #print-portal .report-container:first-child {
+    page-break-before: avoid !important;
+    break-before: avoid !important;
+  }
+
+  .report-card-sheet:last-child,
+  #print-portal .report-container:last-child {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+
+  /* Named pages ONLY for mixed-orientation batches so uniform jobs avoid page:auto -> named transitions */
+  #report-print-portal[data-mixed-orientation="true"] .report-sheet-landscape,
+  #report-print-portal[data-mixed-orientation="true"] .landscape-page {
+    page: landscape-sheet !important;
+  }
+
+  #report-print-portal[data-mixed-orientation="true"] .report-sheet-portrait,
+  #report-print-portal[data-mixed-orientation="true"] .portrait-page {
+    page: portrait-sheet !important;
+  }
+
+  /* Lock landscape & portrait page boxes flush at 0,0 without pushing right or overflowing */
+  .report-sheet-landscape {
+    width: 297mm !important;
+    min-width: 297mm !important;
+    max-width: 297mm !important;
+    height: 209mm !important;
+    min-height: 0 !important;
+    max-height: 209mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    left: 0 !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .landscape-page,
+  [data-report-orientation="landscape"] {
+    width: 297mm !important;
+    min-width: 297mm !important;
+    max-width: 297mm !important;
+    height: 209mm !important;
+    min-height: 0 !important;
+    max-height: 209mm !important;
+    margin: 0 !important;
+    left: 0 !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .landscape-page .tables-wrapper,
+  .landscape-page .tables-row {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: stretch !important;
+  }
+
+  .report-sheet-portrait,
+  .portrait-page,
+  .a4-portrait-page,
+  .a4-two-up-page,
+  [data-report-orientation="portrait"] {
+    width: 210mm !important;
+    min-width: 210mm !important;
+    max-width: 210mm !important;
+    height: 295mm !important;
+    min-height: 0 !important;
+    max-height: 295mm !important;
+    margin: 0 !important;
+    left: 0 !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    break-inside: avoid !important;
   }
 
   #secular-hub-print-root,
@@ -177,6 +348,7 @@
   #class-roster-print-root .print\:flex {
     display: flex !important;
   }
+
   /* 3. Report containers inside the portal print true A4 */
   #print-portal .report-container {
     transform: none !important;
@@ -184,21 +356,24 @@
     margin: 0 !important;
     padding: 0 !important;
     overflow: visible !important;
-    page-break-after: always;
-    break-after: page;
-    page-break-inside: avoid;
-    break-inside: avoid;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 
   #print-portal .report-container[data-report-orientation='portrait']:not(.theology-2up-sheet):not([data-report-type='TheologyMOTReport']) {
     width: 210mm !important;
-    height: 297mm !important;
-    max-height: 1122px !important;
+    height: 295mm !important;
+    max-height: 295mm !important;
+    overflow: hidden !important;
   }
 
   #print-portal .report-container[data-report-orientation='landscape'] {
     width: 297mm !important;
-    height: 210mm !important;
+    height: 209mm !important;
+    max-height: 209mm !important;
+    overflow: hidden !important;
   }
 
   /* 3b. Theology 2-up sheet strictly constrains height to prevent spillover */
@@ -244,7 +419,7 @@
   }
 
   #print-portal .report-container[data-report-orientation='landscape'] {
-    max-height: 793px !important;
+    max-height: 209mm !important;
     overflow: hidden !important;
   }
 
@@ -258,9 +433,17 @@
   #print-portal .report-container:last-child,
   #secular-hub-print-root .hub-sheet-page:last-child,
   #theology-hub-print-root .hub-sheet-page:last-child,
-  #class-roster-print-root .hub-sheet-page:last-child {
-    page-break-after: auto !important;
-    break-after: auto !important;
+  #class-roster-print-root .hub-sheet-page:last-child,
+  .report-card-sheet[data-last-printed="true"],
+  .report-card-sheet[data-last-printed="true"] .report-container,
+  .report-card-sheet[data-last-printed="true"] .portrait-page,
+  .report-card-sheet[data-last-printed="true"] .landscape-page,
+  .report-card-sheet[data-last-printed="true"] .a4-portrait-page,
+  .report-card-sheet[data-last-printed="true"] .a4-two-up-page,
+  .report-card-sheet[data-last-printed="true"] [data-report-orientation],
+  .theology-2up-sheet[data-last-printed="true"] {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
   }
 
   /* 5. Kill ALL transforms everywhere in print scope (safety net) */
@@ -333,19 +516,14 @@
   /* 9. Hide preview-only UI chrome */
   .print-hide,
   .no-print,
-  .report-preview-shell > :not(.report-scale-origin) {
+  .report-preview-shell> :not(.report-scale-origin) {
     display: none !important;
   }
 }
 
 /* ============================================================================
-   PAGE SIZE STRATEGY (browser-native)
+   PAGE SIZE STRATEGY (browser-native, dynamic @page injected by ReportGeneratorClient)
    ============================================================================ */
-
-@page {
-  size: A4 portrait;
-  margin: 0mm;
-}
 
 @page portrait-page {
   size: A4 portrait;
@@ -419,13 +597,13 @@
   color: #0F172A !important;
 }
 
-/* Assign named @page to report containers by orientation attribute */
-#print-portal .report-container[data-report-orientation='portrait'] {
-  page: portrait-page;
+/* Assign named @page ONLY for mixed-orientation batches matching outer .report-card-sheet */
+#report-print-portal[data-mixed-orientation="true"] #print-portal .report-container[data-report-orientation='portrait'] {
+  page: portrait-sheet;
 }
 
-#print-portal .report-container[data-report-orientation='landscape'] {
-  page: landscape-page;
+#report-print-portal[data-mixed-orientation="true"] #print-portal .report-container[data-report-orientation='landscape'] {
+  page: landscape-sheet;
 }
 
 #secular-hub-print-root[data-report-orientation='portrait'],

@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
         theology_class_id,
         circular_classes ( id, class_name, section ),
         theology_classes ( id, class_name_arabic, class_name_english, level ),
-        students!inner ( id, name, admission_number, created_at, arabic_name, is_archived )
+        students!inner ( id, name, admission_number, created_at, arabic_name, is_archived, is_muslim )
       `)
       .eq('is_active', true)
       .order('academic_year', { ascending: false })

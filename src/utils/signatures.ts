@@ -158,25 +158,25 @@ export function getClassTeacherSignatureKey(className: string | undefined | null
   
   let baseClass = '';
 
-  if (c.includes('baby')) {
+  if (c.includes('baby') || c.includes('lower kindergarten') || c.includes('الروضة السفلى')) {
     baseClass = 'baby';
-  } else if (c.includes('middle')) {
+  } else if (c.includes('middle') || c.includes('middle kindergarten') || c.includes('الروضة الوسطى')) {
     baseClass = 'middle';
-  } else if (c.includes('top')) {
+  } else if (c.includes('top') || c.includes('upper kindergarten') || c.includes('الروضة العليا')) {
     baseClass = 'top';
-  } else if (c.includes('p.1') || c.includes('p1') || c.includes('primary 1') || c.includes('primary one')) {
+  } else if (c.includes('p.1') || c.includes('p1') || c.includes('primary 1') || c.includes('primary one') || c.includes('الصف الأول')) {
     baseClass = 'p1';
-  } else if (c.includes('p.2') || c.includes('p2') || c.includes('primary 2') || c.includes('primary two')) {
+  } else if (c.includes('p.2') || c.includes('p2') || c.includes('primary 2') || c.includes('primary two') || c.includes('الصف الثاني')) {
     baseClass = 'p2';
-  } else if (c.includes('p.3') || c.includes('p3') || c.includes('primary 3') || c.includes('primary three')) {
+  } else if (c.includes('p.3') || c.includes('p3') || c.includes('primary 3') || c.includes('primary three') || c.includes('الصف الثالث')) {
     baseClass = 'p3';
-  } else if (c.includes('p.4') || c.includes('p4') || c.includes('primary 4') || c.includes('primary four')) {
+  } else if (c.includes('p.4') || c.includes('p4') || c.includes('primary 4') || c.includes('primary four') || c.includes('الصف الرابع')) {
     baseClass = 'p4';
-  } else if (c.includes('p.5') || c.includes('p5') || c.includes('primary 5') || c.includes('primary five')) {
+  } else if (c.includes('p.5') || c.includes('p5') || c.includes('primary 5') || c.includes('primary five') || c.includes('الصف الخامس')) {
     baseClass = 'p5';
-  } else if (c.includes('p.6') || c.includes('p6') || c.includes('primary 6') || c.includes('primary six')) {
+  } else if (c.includes('p.6') || c.includes('p6') || c.includes('primary 6') || c.includes('primary six') || c.includes('الصف السادس')) {
     baseClass = 'p6';
-  } else if (c.includes('p.7') || c.includes('p7') || c.includes('primary 7') || c.includes('primary seven')) {
+  } else if (c.includes('p.7') || c.includes('p7') || c.includes('primary 7') || c.includes('primary seven') || c.includes('الصف السابع')) {
     baseClass = 'p7';
   } else {
     return null;
@@ -265,13 +265,6 @@ export async function getReportSignatures(supabase: SupabaseClient) {
 export async function getDynamicSignatureSlots(supabase: SupabaseClient) {
   const slots = [
     {
-      slot_key: 'school-stamp',
-      label: 'Official School Stamp',
-      role: 'School',
-      description: 'Official circular or rectangular school stamp rendered on terminal report cards.',
-      required: true,
-    },
-    {
       slot_key: 'head-teacher',
       label: 'Headteacher Signature',
       role: 'Head Teacher',
@@ -279,26 +272,12 @@ export async function getDynamicSignatureSlots(supabase: SupabaseClient) {
       required: true,
     },
     {
-      slot_key: 'dos-signature',
-      label: 'Director of Studies (DOS) Signature',
-      role: 'DOS',
-      description: 'Authorized signature for the Director of Studies (Secular Curriculum).',
+      slot_key: 'school-stamp',
+      label: 'Official School Stamp',
+      role: 'School',
+      description: 'Official circular or rectangular school stamp rendered on terminal report cards.',
       required: true,
     },
-    {
-      slot_key: 'theology-head',
-      label: 'Theology Head Signature',
-      role: 'DOS Theology',
-      description: 'Authorized signature for the Head of Theology / Islamic Studies.',
-      required: true,
-    },
-    {
-      slot_key: 'principal',
-      label: 'Principal Signature',
-      role: 'Principal',
-      description: 'Authority signature for official transcripts and school certificates.',
-      required: false,
-    }
   ];
 
   const { data: enrollments, error } = await supabase
@@ -328,14 +307,47 @@ export async function getDynamicSignatureSlots(supabase: SupabaseClient) {
     if (theologyClass?.class_name_english) theologyClassNames.add(theologyClass.class_name_english);
   }
 
+  const getClassSortWeight = (name: string) => {
+    const normalized = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (normalized.includes('baby')) return 1;
+    if (normalized.includes('middle')) return 2;
+    if (normalized.includes('top')) return 3;
+    const pMatch = normalized.match(/^p(\d+)$/) || normalized.match(/(\d+)/);
+    if (pMatch) return 10 + Number(pMatch[1]);
+    return 999;
+  };
+
+  const getTheologyArabicSuffix = (key: string) => {
+    const map: Record<string, string> = {
+      'theology-teacher-baby': 'الروضة السفلى',
+      'theology-teacher-middle': 'الروضة الوسطى',
+      'theology-teacher-top': 'الروضة العليا',
+      'theology-teacher-p1': 'الصف الأول',
+      'theology-teacher-p2': 'الصف الثاني',
+      'theology-teacher-p3': 'الصف الثالث',
+      'theology-teacher-p4': 'الصف الرابع',
+      'theology-teacher-p5': 'الصف الخامس',
+      'theology-teacher-p6': 'الصف السادس',
+    };
+    return map[key] ? ` (${map[key]})` : '';
+  };
+
   const addTeacherSlots = (classNames: Set<string>, isTheology: boolean) => {
-    for (const name of classNames) {
+    const sortedNames = Array.from(classNames).sort((a, b) => {
+      const weightDiff = getClassSortWeight(a) - getClassSortWeight(b);
+      return weightDiff !== 0 ? weightDiff : a.localeCompare(b);
+    });
+
+    for (const name of sortedNames) {
       const key = getClassTeacherSignatureKey(name, isTheology);
       if (!key || slots.some((slot) => slot.slot_key === key)) continue;
+      // P.7 sits PLE only under the Secular curriculum; Theology stops at P.6.
+      if (isTheology && key === 'theology-teacher-p7') continue;
       const prettyName = name.trim();
+      const arabicSuffix = isTheology ? getTheologyArabicSuffix(key) : '';
       slots.push({
         slot_key: key,
-        label: `${isTheology ? 'Theology Teacher' : 'Class Teacher'} — ${prettyName}`,
+        label: `${isTheology ? 'Theology Teacher' : 'Class Teacher'} — ${prettyName}${arabicSuffix}`,
         role: isTheology ? 'Theology Teacher' : 'Class Teacher',
         description: `Signature for ${prettyName}${isTheology ? ' Theology' : ''} reports.`,
         required: true,

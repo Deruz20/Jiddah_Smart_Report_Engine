@@ -916,12 +916,12 @@ export default function TheologyHubClient({
                         <thead className="sticky top-0 z-10 bg-stone-50/95 dark:bg-[#1A2621]/95 backdrop-blur-md border-b-2 border-[#0D5C3A]/20 dark:border-white/10">
                           <tr>
                             {/* م — sticky right */}
-                            <th className="sticky right-0 z-20 bg-stone-50 dark:bg-[#1A2621] py-2.5 sm:py-3 px-1.5 sm:px-2 font-extrabold text-center w-8 sm:w-10 border-l border-stone-200 dark:border-white/10 text-stone-600 dark:text-stone-300 font-arabic text-[11px] sm:text-[12px]">
+                            <th className="sticky top-0 right-0 z-30 bg-stone-50 dark:bg-[#1A2621] py-2.5 sm:py-3 px-1.5 sm:px-2 font-extrabold text-center w-8 sm:w-10 border-l border-stone-200 dark:border-white/10 text-stone-600 dark:text-stone-300 font-arabic text-[11px] sm:text-[12px]">
                               م
                             </th>
 
                             {/* Student Name — sticky */}
-                            <th className="sticky right-8 sm:right-10 z-20 bg-stone-50 dark:bg-[#1A2621] py-2.5 sm:py-3 px-2 sm:px-4 font-extrabold text-right min-w-[130px] sm:min-w-[180px] border-l border-stone-200 dark:border-white/10 text-stone-700 dark:text-stone-200 font-arabic text-[11px] sm:text-[12px]">
+                            <th className="sticky top-0 right-8 sm:right-10 z-30 bg-stone-50 dark:bg-[#1A2621] py-2.5 sm:py-3 px-2 sm:px-4 font-extrabold text-right min-w-[130px] sm:min-w-[180px] border-l border-stone-200 dark:border-white/10 text-stone-700 dark:text-stone-200 font-arabic text-[11px] sm:text-[12px]">
                               اسم التلميذ/ة
                             </th>
 

@@ -4,6 +4,8 @@ import "./globals.css";
 import { Toaster } from "sonner";
 import { PowerSyncProvider } from "../components/providers/PowerSyncProvider";
 import { VersionChecker } from "@/components/system/version-checker";
+import { SpeedInsights } from '@vercel/speed-insights/next';
+import { Analytics } from '@vercel/analytics/next';
 
 export const viewport: Viewport = {
   themeColor: "#039D4A",
@@ -77,6 +79,8 @@ export default function RootLayout({
           <VersionChecker />
           <Toaster position="bottom-right" richColors />
         </PowerSyncProvider>
+        <SpeedInsights />
+        <Analytics />
       </body>
     </html>
   );

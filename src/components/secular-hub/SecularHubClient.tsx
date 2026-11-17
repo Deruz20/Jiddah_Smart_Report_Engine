@@ -44,7 +44,9 @@ import {
   getDivision,
   isNurseryClass,
   getNurseryGrade,
+  computeNurseryBadge,
   type GradeCode,
+  type NurseryGrade,
 } from '@/lib/grading'
 
 type TermData = {
@@ -409,12 +411,41 @@ export default function SecularHubClient({
       unranked: students.filter((s) => s.division === '-' || !s.total).length,
     }
 
+    // Nursery-specific analytics
+    const nurseryGradeCounts: Record<NurseryGrade, number> = {
+      A: 0,
+      B: 0,
+      C: 0,
+      D: 0,
+      E: 0,
+    }
+    let nurseryTotalPercentSum = 0
+    let nurseryScoredStudentCount = 0
+
+    students.forEach((st) => {
+      if (typeof st.total === 'number' && st.total > 0 && subjects.length > 0) {
+        const studentAvg = Math.round(st.total / subjects.length)
+        const g = getNurseryGrade(studentAvg).grade
+        nurseryGradeCounts[g]++
+        nurseryTotalPercentSum += studentAvg
+        nurseryScoredStudentCount++
+      }
+    })
+
+    const nurseryOverallAvg = nurseryScoredStudentCount > 0 ? Math.round(nurseryTotalPercentSum / nurseryScoredStudentCount) : 0
+    const nurseryExcellenceCount = nurseryGradeCounts.A + nurseryGradeCounts.B
+    const nurseryExcellencePct = students.length > 0 ? Math.round((nurseryExcellenceCount / students.length) * 100) : 0
+
     return {
       subjectStats,
       classAverageTotal,
       highestTotal,
       lowestTotal,
       divCounts,
+      nurseryGradeCounts,
+      nurseryOverallAvg,
+      nurseryExcellenceCount,
+      nurseryExcellencePct,
       totalCandidates: students.length,
       satCandidates: totalScores.length,
     }
@@ -519,29 +550,63 @@ export default function SecularHubClient({
     const classLabel = activeClass ? activeClass.class_name.replace(/\s+/g, '_') : 'Class'
     const filename = `Jiddah_Secular_Broadsheet_${classLabel}_${termLabel}_${examPhase.toUpperCase()}_2026.csv`
 
-    const headers = [
-      'Rank',
-      'Admission No',
-      'Student Full Name',
-      'Gender',
-      ...assessmentData.orderedSubjects.map((s) => `${s.subject_name} (Mark)`),
-      ...assessmentData.orderedSubjects.map((s) => `${s.subject_name} (Grade)`),
-      'Total Score',
-      'Aggregate',
-      'Division',
-    ]
+    const headers = isNursery
+      ? [
+          'Rank',
+          'Admission No',
+          'Student Full Name',
+          'Gender',
+          ...assessmentData.orderedSubjects.map((s) => `${s.subject_name} (Mark)`),
+          ...assessmentData.orderedSubjects.map((s) => `${s.subject_name} (Letter Grade)`),
+          'Total Score',
+          'Average Score',
+          'Overall Grade',
+          'Remark',
+        ]
+      : [
+          'Rank',
+          'Admission No',
+          'Student Full Name',
+          'Gender',
+          ...assessmentData.orderedSubjects.map((s) => `${s.subject_name} (Mark)`),
+          ...assessmentData.orderedSubjects.map((s) => `${s.subject_name} (Grade)`),
+          'Total Score',
+          'Aggregate',
+          'Division',
+        ]
 
-    const rows = assessmentData.students.map((st) => [
-      st.position,
-      st.admission_number || '-',
-      st.name,
-      st.gender || '-',
-      ...assessmentData.orderedSubjects.map((s) => st.subjectScores[s.id] ?? '-'),
-      ...assessmentData.orderedSubjects.map((s) => st.subjectGrades[s.id] ?? '-'),
-      st.total || '-',
-      st.aggregate ?? '-',
-      st.division || '-',
-    ])
+    const rows = assessmentData.students.map((st) => {
+      if (isNursery) {
+        const avg =
+          typeof st.total === 'number' && assessmentData.orderedSubjects.length > 0
+            ? Math.round(st.total / assessmentData.orderedSubjects.length)
+            : null
+        const gInfo = avg != null ? getNurseryGrade(avg) : null
+        return [
+          st.position,
+          st.admission_number || '-',
+          st.name,
+          st.gender || '-',
+          ...assessmentData.orderedSubjects.map((s) => st.subjectScores[s.id] ?? '-'),
+          ...assessmentData.orderedSubjects.map((s) => st.subjectGrades[s.id] ?? '-'),
+          st.total || '-',
+          avg != null ? `${avg}%` : '-',
+          gInfo?.grade || '-',
+          gInfo?.remark || '-',
+        ]
+      }
+      return [
+        st.position,
+        st.admission_number || '-',
+        st.name,
+        st.gender || '-',
+        ...assessmentData.orderedSubjects.map((s) => st.subjectScores[s.id] ?? '-'),
+        ...assessmentData.orderedSubjects.map((s) => st.subjectGrades[s.id] ?? '-'),
+        st.total || '-',
+        st.aggregate ?? '-',
+        st.division || '-',
+      ]
+    })
 
     if (broadsheetSummary) {
       rows.push([])
@@ -871,10 +936,10 @@ export default function SecularHubClient({
                       {/* Table Header */}
                       <thead className="sticky top-0 z-10 bg-stone-100/90 dark:bg-[#1A2621]/90 backdrop-blur-md text-stone-700 dark:text-stone-200 border-b border-stone-200 dark:border-white/10">
                         <tr>
-                          <th className="sticky left-0 z-20 bg-stone-100 dark:bg-[#1A2621] py-2.5 px-1.5 sm:px-3 font-extrabold text-[10px] sm:text-[11px] uppercase tracking-wider text-center w-8 sm:w-12 border-r border-stone-200 dark:border-white/10">
+                          <th className="sticky top-0 left-0 z-30 bg-stone-100 dark:bg-[#1A2621] py-2.5 px-1.5 sm:px-3 font-extrabold text-[10px] sm:text-[11px] uppercase tracking-wider text-center w-10 sm:w-12 min-w-[40px] sm:min-w-[48px] max-w-[40px] sm:max-w-[48px] border-r border-stone-200 dark:border-white/10">
                             #
                           </th>
-                          <th className="sticky left-8 sm:left-12 z-20 bg-stone-100 dark:bg-[#1A2621] py-2.5 px-2 sm:px-3 font-extrabold text-[10px] sm:text-[11px] uppercase tracking-wider min-w-[130px] sm:min-w-[200px] border-r border-stone-200 dark:border-white/10">
+                          <th className="sticky top-0 left-10 sm:left-12 z-30 bg-stone-100 dark:bg-[#1A2621] py-2.5 px-2 sm:px-3 font-extrabold text-[10px] sm:text-[11px] uppercase tracking-wider min-w-[130px] sm:min-w-[200px] border-r border-stone-200 dark:border-white/10">
                             Student Name &amp; ID
                           </th>
                           {assessmentData.orderedSubjects.map((sub) => (
@@ -894,12 +959,26 @@ export default function SecularHubClient({
                           <th className="py-2.5 px-2.5 font-black text-[11px] text-center bg-stone-200/50 dark:bg-white/5 border-r border-stone-200 dark:border-white/10 min-w-[70px]">
                             Total
                           </th>
-                          <th className="py-2.5 px-2 font-black text-[11px] text-center bg-stone-200/50 dark:bg-white/5 border-r border-stone-200 dark:border-white/10 min-w-[60px]">
-                            Agg
-                          </th>
-                          <th className="py-2.5 px-2 font-black text-[11px] text-center bg-stone-200/50 dark:bg-white/5 border-r border-stone-200 dark:border-white/10 min-w-[60px]">
-                            Div
-                          </th>
+                          {!isNursery && (
+                            <>
+                              <th className="py-2.5 px-2 font-black text-[11px] text-center bg-stone-200/50 dark:bg-white/5 border-r border-stone-200 dark:border-white/10 min-w-[60px]">
+                                Agg
+                              </th>
+                              <th className="py-2.5 px-2 font-black text-[11px] text-center bg-stone-200/50 dark:bg-white/5 border-r border-stone-200 dark:border-white/10 min-w-[60px]">
+                                Div
+                              </th>
+                            </>
+                          )}
+                          {isNursery && (
+                            <>
+                              <th className="py-2.5 px-2 font-black text-[11px] text-center bg-stone-200/50 dark:bg-white/5 border-r border-stone-200 dark:border-white/10 min-w-[60px]">
+                                Average
+                              </th>
+                              <th className="py-2.5 px-2 font-black text-[11px] text-center bg-stone-200/50 dark:bg-white/5 border-r border-stone-200 dark:border-white/10 min-w-[60px]">
+                                Grade
+                              </th>
+                            </>
+                          )}
                           <th className="py-2.5 px-2.5 font-black text-[11px] text-center bg-amber-500/10 dark:bg-amber-400/10 text-amber-800 dark:text-amber-300 min-w-[55px]">
                             Rank
                           </th>
@@ -930,12 +1009,12 @@ export default function SecularHubClient({
                               }}
                             >
                               {/* Sticky Index */}
-                              <td className="sticky left-0 z-10 bg-white dark:bg-[#151F1B] group-hover:bg-stone-50 dark:group-hover:bg-[#1A2621] py-2 px-1.5 sm:px-3 text-center font-bold text-stone-400 text-[11px] sm:text-xs border-r border-stone-100 dark:border-white/5 w-8 sm:w-12">
+                              <td className="sticky left-0 z-10 bg-white dark:bg-[#151F1B] group-hover:bg-stone-50 dark:group-hover:bg-[#1A2621] py-2 px-1.5 sm:px-3 text-center font-bold text-stone-400 text-[11px] sm:text-xs border-r border-stone-100 dark:border-white/5 w-10 sm:w-12 min-w-[40px] sm:min-w-[48px] max-w-[40px] sm:max-w-[48px]">
                                 {idx + 1}
                               </td>
 
                               {/* Sticky Student Name & ID */}
-                              <td className="sticky left-8 sm:left-12 z-10 bg-white dark:bg-[#151F1B] group-hover:bg-stone-50 dark:group-hover:bg-[#1A2621] py-2 px-2 sm:px-3 border-r border-stone-100 dark:border-white/5 min-w-[130px] sm:min-w-[200px] max-w-[160px] sm:max-w-none">
+                              <td className="sticky left-10 sm:left-12 z-10 bg-white dark:bg-[#151F1B] group-hover:bg-stone-50 dark:group-hover:bg-[#1A2621] py-2 px-2 sm:px-3 border-r border-stone-100 dark:border-white/5 min-w-[130px] sm:min-w-[200px] max-w-[160px] sm:max-w-none">
                                 <div className="font-bold text-stone-900 dark:text-stone-100 text-xs truncate sm:whitespace-normal">
                                   {st.name}
                                 </div>
@@ -966,33 +1045,62 @@ export default function SecularHubClient({
                                 {st.total ? st.total : '-'}
                               </td>
 
-                              {/* Aggregate */}
-                              <td className="py-2 px-2 text-center font-mono font-extrabold text-xs text-[#0D5C3A] dark:text-emerald-400 bg-stone-50/50 dark:bg-white/[0.02] border-r border-stone-100 dark:border-white/5">
-                                {st.aggregate ?? '-'}
-                              </td>
-
-                              {/* Division */}
-                              <td className="py-2 px-2 text-center font-bold text-xs border-r border-stone-100 dark:border-white/5">
-                                {isNursery ? (
-                                  <span className="text-stone-300 dark:text-stone-600 font-bold">-</span>
-                                ) : (
-                                  <span
-                                    className={`inline-flex items-center justify-center w-6 h-6 rounded-md text-xs font-black ${
-                                      st.division === 'I'
-                                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                                        : st.division === 'II'
-                                        ? 'bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300'
-                                        : st.division === 'III'
-                                        ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                                        : st.division === 'IV'
-                                        ? 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300'
-                                        : 'bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-400'
-                                    }`}
-                                  >
-                                    {st.division}
-                                  </span>
-                                )}
-                              </td>
+                              {isNursery ? (
+                                <>
+                                  {/* Nursery Average Score */}
+                                  <td className="py-2 px-2 text-center font-mono font-black text-xs text-[#0D5C3A] dark:text-emerald-400 bg-stone-50/50 dark:bg-white/[0.02] border-r border-stone-100 dark:border-white/5">
+                                    {typeof st.total === 'number' && assessmentData.orderedSubjects.length > 0
+                                      ? `${Math.round(st.total / assessmentData.orderedSubjects.length)}%`
+                                      : '-'}
+                                  </td>
+                                  {/* Nursery Letter Grade Badge */}
+                                  <td className="py-2 px-2 text-center border-r border-stone-100 dark:border-white/5">
+                                    {typeof st.total === 'number' && assessmentData.orderedSubjects.length > 0 ? (
+                                      (() => {
+                                        const avg = Math.round(st.total / assessmentData.orderedSubjects.length)
+                                        const badge = computeNurseryBadge(avg)
+                                        return badge ? (
+                                          <span
+                                            className={`inline-flex items-center justify-center w-6 h-6 rounded-md text-xs font-black ${badge.bg} ${badge.text}`}
+                                            title={`${badge.grade}: ${badge.remark} (${avg}%)`}
+                                          >
+                                            {badge.grade}
+                                          </span>
+                                        ) : (
+                                          <span className="text-stone-300 dark:text-stone-600 font-bold">-</span>
+                                        )
+                                      })()
+                                    ) : (
+                                      <span className="text-stone-300 dark:text-stone-600 font-bold">-</span>
+                                    )}
+                                  </td>
+                                </>
+                              ) : (
+                                <>
+                                  {/* Aggregate */}
+                                  <td className="py-2 px-2 text-center font-mono font-extrabold text-xs text-[#0D5C3A] dark:text-emerald-400 bg-stone-50/50 dark:bg-white/[0.02] border-r border-stone-100 dark:border-white/5">
+                                    {st.aggregate ?? '-'}
+                                  </td>
+                                  {/* Division */}
+                                  <td className="py-2 px-2 text-center font-bold text-xs border-r border-stone-100 dark:border-white/5">
+                                    <span
+                                      className={`inline-flex items-center justify-center w-6 h-6 rounded-md text-xs font-black ${
+                                        st.division === 'I'
+                                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                                          : st.division === 'II'
+                                          ? 'bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300'
+                                          : st.division === 'III'
+                                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                                          : st.division === 'IV'
+                                          ? 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300'
+                                          : 'bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-400'
+                                      }`}
+                                    >
+                                      {st.division}
+                                    </span>
+                                  </td>
+                                </>
+                              )}
 
                               {/* Rank */}
                               <td className="py-2 px-2.5 text-center font-mono font-black text-xs text-amber-800 dark:text-amber-400 bg-amber-50/30 dark:bg-amber-400/[0.03]">
@@ -1027,7 +1135,7 @@ export default function SecularHubClient({
                           <tr>
                             <td
                               colSpan={2}
-                              className="sticky left-0 z-20 bg-stone-100 dark:bg-[#1A2621] py-2 px-2 sm:px-3 text-right text-[10px] sm:text-[11px] uppercase tracking-wider font-extrabold text-[#0D5C3A] dark:text-emerald-400 border-r border-stone-200 dark:border-white/10"
+                              className="sticky left-0 bottom-0 z-30 bg-stone-100 dark:bg-[#1A2621] py-2 px-2 sm:px-3 text-right text-[10px] sm:text-[11px] uppercase tracking-wider font-extrabold text-[#0D5C3A] dark:text-emerald-400 border-r border-stone-200 dark:border-white/10"
                             >
                               Class Average
                             </td>
@@ -1050,7 +1158,9 @@ export default function SecularHubClient({
                               {broadsheetSummary.classAverageTotal}
                             </td>
                             <td colSpan={3} className="py-2 px-2 text-center text-[10px] text-stone-400">
-                              Mean: {broadsheetSummary.classAverageTotal}
+                              {isNursery
+                                ? `Class Mean: ${broadsheetSummary.nurseryOverallAvg}% • A+B: ${broadsheetSummary.nurseryExcellenceCount}`
+                                : `Mean: ${broadsheetSummary.classAverageTotal}`}
                             </td>
                           </tr>
 
@@ -1058,7 +1168,7 @@ export default function SecularHubClient({
                           <tr className="text-stone-600 dark:text-stone-400 text-[10px]">
                             <td
                               colSpan={2}
-                              className="sticky left-0 z-20 bg-stone-100 dark:bg-[#1A2621] py-1.5 px-2 sm:px-3 text-right uppercase tracking-wider font-bold border-r border-stone-200 dark:border-white/10"
+                              className="sticky left-0 bottom-0 z-30 bg-stone-100 dark:bg-[#1A2621] py-1.5 px-2 sm:px-3 text-right uppercase tracking-wider font-bold border-r border-stone-200 dark:border-white/10"
                             >
                               Pass Rate (≥50%)
                             </td>
@@ -1128,27 +1238,44 @@ export default function SecularHubClient({
                     </div>
                   </div>
 
-                  <div className="rounded-2xl p-4 bg-white dark:bg-[#151F1B] border border-[#0D5C3A]/12 dark:border-white/10 shadow-xs flex items-center justify-between">
-                    <div>
-                      <p className="text-[10px] font-extrabold uppercase tracking-wider text-stone-400">Div I &amp; II Distinction</p>
-                      <h3 className="text-2xl font-black text-[#0D5C3A] dark:text-emerald-400 mt-1">
-                        {(broadsheetSummary?.divCounts.I || 0) + (broadsheetSummary?.divCounts.II || 0)}
-                      </h3>
-                      <p className="text-[10px] text-stone-500 mt-0.5">
-                        {broadsheetSummary && broadsheetSummary.totalCandidates > 0
-                          ? Math.round(
-                              (((broadsheetSummary.divCounts.I || 0) + (broadsheetSummary.divCounts.II || 0)) /
-                                broadsheetSummary.totalCandidates) *
-                                100
-                            )
-                          : 0}
-                        % of class
-                      </p>
+                  {isNursery ? (
+                    <div className="rounded-2xl p-4 bg-white dark:bg-[#151F1B] border border-[#0D5C3A]/12 dark:border-white/10 shadow-xs flex items-center justify-between">
+                      <div>
+                        <p className="text-[10px] font-extrabold uppercase tracking-wider text-stone-400">Grade A &amp; B Excellence</p>
+                        <h3 className="text-2xl font-black text-[#0D5C3A] dark:text-emerald-400 mt-1">
+                          {broadsheetSummary?.nurseryExcellenceCount ?? 0}
+                        </h3>
+                        <p className="text-[10px] text-stone-500 mt-0.5">
+                          {broadsheetSummary?.nurseryExcellencePct ?? 0}% of class (Mastery Tier)
+                        </p>
+                      </div>
+                      <div className="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-950/50 flex items-center justify-center text-teal-600 dark:text-teal-400">
+                        <Percent className="w-5 h-5" strokeWidth={2.25} />
+                      </div>
                     </div>
-                    <div className="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-950/50 flex items-center justify-center text-teal-600 dark:text-teal-400">
-                      <Percent className="w-5 h-5" strokeWidth={2.25} />
+                  ) : (
+                    <div className="rounded-2xl p-4 bg-white dark:bg-[#151F1B] border border-[#0D5C3A]/12 dark:border-white/10 shadow-xs flex items-center justify-between">
+                      <div>
+                        <p className="text-[10px] font-extrabold uppercase tracking-wider text-stone-400">Div I &amp; II Distinction</p>
+                        <h3 className="text-2xl font-black text-[#0D5C3A] dark:text-emerald-400 mt-1">
+                          {(broadsheetSummary?.divCounts.I || 0) + (broadsheetSummary?.divCounts.II || 0)}
+                        </h3>
+                        <p className="text-[10px] text-stone-500 mt-0.5">
+                          {broadsheetSummary && broadsheetSummary.totalCandidates > 0
+                            ? Math.round(
+                                (((broadsheetSummary.divCounts.I || 0) + (broadsheetSummary.divCounts.II || 0)) /
+                                  broadsheetSummary.totalCandidates) *
+                                  100
+                              )
+                            : 0}
+                          % of class
+                        </p>
+                      </div>
+                      <div className="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-950/50 flex items-center justify-center text-teal-600 dark:text-teal-400">
+                        <Percent className="w-5 h-5" strokeWidth={2.25} />
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   <div className="rounded-2xl p-4 bg-white dark:bg-[#151F1B] border border-[#0D5C3A]/12 dark:border-white/10 shadow-xs flex items-center justify-between">
                     <div>
@@ -1253,6 +1380,40 @@ export default function SecularHubClient({
                     </div>
                   </div>
                 )}
+
+                {/* Nursery Grade Cohort */}
+                {broadsheetSummary && isNursery && (
+                  <div className="rounded-2xl border border-[#0D5C3A]/12 dark:border-white/10 bg-white dark:bg-[#151F1B] shadow-xs p-5">
+                    <h3 className="text-sm font-extrabold text-stone-900 dark:text-white uppercase tracking-wider mb-3">
+                      Nursery Letter Grade Classification Cohort
+                    </h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-2">
+                      {(['A', 'B', 'C', 'D', 'E'] as const).map((grade) => {
+                        const count = broadsheetSummary.nurseryGradeCounts[grade] || 0
+                        const pct = broadsheetSummary.totalCandidates > 0
+                          ? Math.round((count / broadsheetSummary.totalCandidates) * 100)
+                          : 0
+                        const colorMap: Record<string, string> = {
+                          A: 'text-emerald-700 dark:text-emerald-400',
+                          B: 'text-sky-700 dark:text-sky-400',
+                          C: 'text-amber-700 dark:text-amber-400',
+                          D: 'text-orange-700 dark:text-orange-400',
+                          E: 'text-rose-700 dark:text-rose-400',
+                        }
+                        return (
+                          <div
+                            key={grade}
+                            className="p-3 rounded-xl border border-stone-200/80 dark:border-white/10 bg-stone-50/50 dark:bg-white/[0.02] text-center"
+                          >
+                            <span className="text-[10px] font-black uppercase tracking-wider text-stone-400">Grade {grade}</span>
+                            <div className={`text-xl font-black mt-1 ${colorMap[grade]}`}>{count}</div>
+                            <div className="text-[10px] font-bold text-stone-500">{pct}%</div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
               </motion.div>
             )}
 
@@ -1278,7 +1439,7 @@ export default function SecularHubClient({
                       <h4 className="font-bold text-stone-900 dark:text-white text-sm mt-1">{top10Data[1].name}</h4>
                       <p className="text-xs text-stone-400 font-mono mt-0.5">{top10Data[1].admission_number || 'ID'}</p>
                       <div className="mt-2 text-xs font-mono font-black text-slate-700 dark:text-slate-300">
-                        {top10Data[1].total} pts{isNursery ? '' : ` • Div ${top10Data[1].division}`}
+                        {top10Data[1].total} pts{isNursery && assessmentData.orderedSubjects.length > 0 ? ` • ${computeNurseryBadge(Math.round(top10Data[1].total / assessmentData.orderedSubjects.length))?.grade ?? ''}` : !isNursery ? ` • Div ${top10Data[1].division}` : ''}
                       </div>
                     </div>
 
@@ -1295,7 +1456,7 @@ export default function SecularHubClient({
                         {top10Data[0].admission_number || 'ID'}
                       </p>
                       <div className="mt-2.5 px-3 py-1 rounded-full bg-amber-500/20 text-amber-950 dark:text-amber-200 text-xs font-mono font-black">
-                        {top10Data[0].total} pts{isNursery ? '' : ` • Div ${top10Data[0].division} (Agg ${top10Data[0].aggregate ?? '-'})`}
+                        {top10Data[0].total} pts{isNursery && assessmentData.orderedSubjects.length > 0 ? ` • ${computeNurseryBadge(Math.round(top10Data[0].total / assessmentData.orderedSubjects.length))?.grade ?? ''}` : !isNursery ? ` • Div ${top10Data[0].division} (Agg ${top10Data[0].aggregate ?? '-'})` : ''}
                       </div>
                     </div>
 
@@ -1308,7 +1469,7 @@ export default function SecularHubClient({
                       <h4 className="font-bold text-stone-900 dark:text-white text-sm mt-1">{top10Data[2].name}</h4>
                       <p className="text-xs text-stone-400 font-mono mt-0.5">{top10Data[2].admission_number || 'ID'}</p>
                       <div className="mt-2 text-xs font-mono font-black text-amber-800 dark:text-amber-400">
-                        {top10Data[2].total} pts{isNursery ? '' : ` • Div ${top10Data[2].division}`}
+                        {top10Data[2].total} pts{isNursery && assessmentData.orderedSubjects.length > 0 ? ` • ${computeNurseryBadge(Math.round(top10Data[2].total / assessmentData.orderedSubjects.length))?.grade ?? ''}` : !isNursery ? ` • Div ${top10Data[2].division}` : ''}
                       </div>
                     </div>
                   </div>
@@ -1332,8 +1493,17 @@ export default function SecularHubClient({
                           <th className="py-2.5 px-3 text-center">Admission #</th>
                           <th className="py-2.5 px-3 text-center">Gender</th>
                           <th className="py-2.5 px-3 text-center">Total Marks</th>
-                          <th className="py-2.5 px-3 text-center">Aggregate</th>
-                          <th className="py-2.5 px-3 text-center">Division</th>
+                          {isNursery ? (
+                            <>
+                              <th className="py-2.5 px-3 text-center">Average Score</th>
+                              <th className="py-2.5 px-3 text-center">Overall Grade</th>
+                            </>
+                          ) : (
+                            <>
+                              <th className="py-2.5 px-3 text-center">Aggregate</th>
+                              <th className="py-2.5 px-3 text-center">Division</th>
+                            </>
+                          )}
                           <th className="py-2.5 px-3 text-center">Report</th>
                         </tr>
                       </thead>
@@ -1357,18 +1527,39 @@ export default function SecularHubClient({
                             <td className="py-2.5 px-3 text-center font-mono font-black text-stone-900 dark:text-white">
                               {st.total}
                             </td>
-                            <td className="py-2.5 px-3 text-center font-mono font-extrabold text-[#0D5C3A] dark:text-emerald-400">
-                              {st.aggregate ?? '-'}
-                            </td>
-                            <td className="py-2.5 px-3 text-center">
-                              {isNursery ? (
-                                <span className="text-stone-300 dark:text-stone-600 font-bold">-</span>
-                              ) : (
-                                <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-md text-[10px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                                  Div {st.division}
-                                </span>
-                              )}
-                            </td>
+                            {isNursery ? (
+                              <>
+                                <td className="py-2.5 px-3 text-center font-mono font-extrabold text-[#0D5C3A] dark:text-emerald-400">
+                                  {typeof st.total === 'number' && assessmentData.orderedSubjects.length > 0
+                                    ? `${Math.round(st.total / assessmentData.orderedSubjects.length)}%`
+                                    : '-'}
+                                </td>
+                                <td className="py-2.5 px-3 text-center">
+                                  {typeof st.total === 'number' && assessmentData.orderedSubjects.length > 0 ? (
+                                    (() => {
+                                      const avg = Math.round(st.total / assessmentData.orderedSubjects.length)
+                                      const badge = computeNurseryBadge(avg)
+                                      return badge ? (
+                                        <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded-md text-[10px] font-black ${badge.bg} ${badge.text}`}>
+                                          Grade {badge.grade}
+                                        </span>
+                                      ) : <span className="text-stone-400">-</span>
+                                    })()
+                                  ) : <span className="text-stone-400">-</span>}
+                                </td>
+                              </>
+                            ) : (
+                              <>
+                                <td className="py-2.5 px-3 text-center font-mono font-extrabold text-[#0D5C3A] dark:text-emerald-400">
+                                  {st.aggregate ?? '-'}
+                                </td>
+                                <td className="py-2.5 px-3 text-center">
+                                  <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-md text-[10px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                    Div {st.division}
+                                  </span>
+                                </td>
+                              </>
+                            )}
                             <td className="py-2.5 px-3 text-center">
                               <ExternalLink className="w-3.5 h-3.5 text-stone-400 inline-block" strokeWidth={2.25} />
                             </td>
@@ -1420,8 +1611,12 @@ export default function SecularHubClient({
                   </th>
                 ))}
                 <th className="border border-black p-1 text-center font-black min-w-[40px]">Total</th>
-                <th className="border border-black p-1 text-center font-black min-w-[32px]">Agg</th>
-                <th className="border border-black p-1 text-center font-black min-w-[30px]">Div</th>
+                {!isNursery && (
+                  <>
+                    <th className="border border-black p-1 text-center font-black min-w-[32px]">Agg</th>
+                    <th className="border border-black p-1 text-center font-black min-w-[30px]">Div</th>
+                  </>
+                )}
                 <th className="border border-black p-1 text-center font-black min-w-[32px]">Rank</th>
               </tr>
             </thead>
@@ -1446,8 +1641,12 @@ export default function SecularHubClient({
                     )
                   })}
                   <td className="border border-black p-1 text-center font-mono font-black">{st.total || '-'}</td>
-                  <td className="border border-black p-1 text-center font-mono font-black">{st.aggregate ?? '-'}</td>
-                  <td className="border border-black p-1 text-center font-black">{isNursery ? '-' : `Div ${st.division}`}</td>
+                  {!isNursery && (
+                    <>
+                      <td className="border border-black p-1 text-center font-mono font-black">{st.aggregate ?? '-'}</td>
+                      <td className="border border-black p-1 text-center font-black">Div {st.division}</td>
+                    </>
+                  )}
                   <td className="border border-black p-1 text-center font-mono font-black">{st.position}</td>
                 </tr>
               ))}
@@ -1466,9 +1665,15 @@ export default function SecularHubClient({
                   <td className="border border-black p-1.5 text-center font-mono">
                     {broadsheetSummary.classAverageTotal}
                   </td>
-                  <td colSpan={3} className="border border-black p-1.5 text-center text-[8px] text-stone-600">
-                    Mean Total: {broadsheetSummary.classAverageTotal}
-                  </td>
+                  {!isNursery ? (
+                    <td colSpan={3} className="border border-black p-1.5 text-center text-[8px] text-stone-600">
+                      Mean Total: {broadsheetSummary.classAverageTotal}
+                    </td>
+                  ) : (
+                    <td colSpan={1} className="border border-black p-1.5 text-center text-[8px] text-stone-600">
+                      Mean: {broadsheetSummary.nurseryOverallAvg}%
+                    </td>
+                  )}
                 </tr>
               </tfoot>
             )}

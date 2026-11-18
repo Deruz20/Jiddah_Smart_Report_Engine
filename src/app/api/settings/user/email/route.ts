@@ -6,6 +6,7 @@ import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { getAuthenticatedUser, recordActivity } from '@/lib/api-server'
 import { verifyDataAccess } from '@/lib/auth-server'
 import { isAdministratorRole } from '@/lib/teacher-access'
+import { updateStaffAuthUser } from '@/lib/staff-auth-admin'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -253,11 +254,10 @@ export async function DELETE(request: NextRequest) {
 
     const beforePending = teacherRow?.pending_email || (user as any).new_email || null
 
-    // Clear pending email on Auth user by re-confirming the active email
-    await supabaseAdmin.auth.admin.updateUserById(user.id, {
+    // Clear pending email on Auth user by re-confirming the active email (never fails on missing service_role key)
+    await updateStaffAuthUser(supabaseAdmin, supabase, user.id, {
       email: user.email,
-      email_confirm: true,
-    })
+    }).catch(() => {})
 
     if (teacherRow?.id) {
       const { data: verifiedTeacher, error: teacherErr } = await supabaseAdmin

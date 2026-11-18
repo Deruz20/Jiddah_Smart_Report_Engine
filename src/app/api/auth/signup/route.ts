@@ -2,6 +2,7 @@ import { createAdminClient, createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { corsPreflight, withCors } from '@/lib/api-cors'
+import { createStaffAuthUser, deleteStaffAuthUser } from '@/lib/staff-auth-admin'
 
 export async function OPTIONS(request: NextRequest) {
   return corsPreflight(request) ?? new NextResponse(null, { status: 204 })
@@ -85,30 +86,28 @@ export async function POST(request: NextRequest) {
         : 'Secular'
     }
 
-    const { data: authData, error: createError } = await supabaseAdmin.auth.admin.createUser({
+    const authCreated = await createStaffAuthUser(supabaseAdmin, supabase, {
       email: normalizedEmail,
       password: String(password),
-      email_confirm: true,
-      user_metadata: {
-        full_name: finalName,
-        subject: finalSubject,
-      },
+      name: finalName,
+      role: finalRole,
+      subject: finalSubject,
     })
 
-    if (createError || !authData.user) {
-      console.error('Signup account creation failed:', createError?.message)
+    if (!authCreated.ok || !authCreated.userId) {
+      console.error('Signup account creation failed:', authCreated.error)
       return withCors(
         request,
-        NextResponse.json({ error: createError?.message || 'Account creation failed' }, { status: 500 })
+        NextResponse.json({ error: authCreated.error || 'Account creation failed' }, { status: authCreated.status || 500 })
       )
     }
 
-    const newUser = authData.user
+    const newUserId = authCreated.userId
     const { error: profileError } = await supabaseAdmin
       .from('teachers')
       .insert([{
-        id: newUser.id,
-        auth_user_id: newUser.id,
+        id: newUserId,
+        auth_user_id: newUserId,
         email: normalizedEmail,
         role: finalRole,
         subject: finalSubject,
@@ -119,7 +118,7 @@ export async function POST(request: NextRequest) {
       }])
 
     if (profileError) {
-      await supabaseAdmin.auth.admin.deleteUser(newUser.id)
+      await deleteStaffAuthUser(supabaseAdmin, supabase, newUserId).catch(() => {})
       console.error('Signup teacher profile creation failed:', profileError.message)
       return withCors(request, NextResponse.json({ error: 'Failed to create teacher profile' }, { status: 500 }))
     }
@@ -131,8 +130,8 @@ export async function POST(request: NextRequest) {
       .eq('status', 'pending')
 
     if (claimError) {
-      await supabaseAdmin.from('teachers').delete().eq('id', newUser.id)
-      await supabaseAdmin.auth.admin.deleteUser(newUser.id)
+      await supabaseAdmin.from('teachers').delete().eq('id', newUserId)
+      await deleteStaffAuthUser(supabaseAdmin, supabase, newUserId).catch(() => {})
       console.error('Signup invite claim failed:', claimError.message)
       return withCors(request, NextResponse.json({ error: 'Failed to claim invitation' }, { status: 500 }))
     }
@@ -141,8 +140,8 @@ export async function POST(request: NextRequest) {
       request,
       NextResponse.json({
         user: {
-          id: newUser.id,
-          email: newUser.email,
+          id: newUserId,
+          email: normalizedEmail,
           name: finalName,
           role: finalRole,
         },

@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { getAuthenticatedUser, normalizePhone, normalizeString, recordActivity } from '@/lib/api-server'
 import {
+  isAdministratorRole,
   normalizeAccountRole,
   resolveAssignedClassDisplayForTeacher,
   resolveRoleDepartment,
@@ -224,6 +225,35 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
+    // Fetch before state for audit log & Administrator check
+    const [{ data: existingProfile }, { data: existingTeacherByAuth }, { data: existingTeacherByEmail }] =
+      await Promise.all([
+        supabaseAdmin.from('profiles').select('id, full_name, phone, role').eq('id', user.id).maybeSingle(),
+        supabaseAdmin
+          .from('teachers')
+          .select('id, auth_user_id, email, username, name, phone, status, role')
+          .or(`auth_user_id.eq.${user.id},id.eq.${user.id}`)
+          .maybeSingle(),
+        user.email
+          ? supabaseAdmin
+              .from('teachers')
+              .select('id, auth_user_id, email, username, name, phone, status, role')
+              .ilike('email', user.email)
+              .maybeSingle()
+          : Promise.resolve({ data: null }),
+      ])
+    const existingTeacher = existingTeacherByAuth || existingTeacherByEmail
+
+    const callerRole =
+      existingTeacher?.role ||
+      existingProfile?.role ||
+      user.app_metadata?.role ||
+      user.user_metadata?.role ||
+      ''
+    const isCallerAdmin =
+      isAdministratorRole(callerRole) &&
+      String(existingTeacher?.status || 'active').toLowerCase() === 'active'
+
     const updates: Record<string, string> = {}
     if (typeof body.full_name === 'string' || typeof body.display_name === 'string') {
       const normalizedName = normalizeString(String(body.full_name ?? body.display_name ?? ''))
@@ -254,40 +284,35 @@ export async function PATCH(request: NextRequest) {
       }
     }
 
-    if (body.username !== undefined && String(body.username).trim() !== '') {
-      const normalizedUname = normalizeUsername(body.username)
-      const checkUname = validateUsernameFormat(normalizedUname)
-      if (!checkUname.valid) {
+    if (body.username !== undefined) {
+      if (!isCallerAdmin) {
+        await recordActivity(supabaseAdmin, user.id, 'profile_escalation_blocked', {
+          attempted_keys: ['username'],
+        })
         return withCors(
           request,
-          NextResponse.json({ error: checkUname.error || 'Invalid username format.' }, { status: 400 })
+          NextResponse.json(
+            { error: 'Forbidden: Only an Administrator can modify a staff username.' },
+            { status: 403 }
+          )
         )
       }
-      updates.username = normalizedUname
+      if (String(body.username).trim() !== '') {
+        const normalizedUname = normalizeUsername(body.username)
+        const checkUname = validateUsernameFormat(normalizedUname)
+        if (!checkUname.valid) {
+          return withCors(
+            request,
+            NextResponse.json({ error: checkUname.error || 'Invalid username format.' }, { status: 400 })
+          )
+        }
+        updates.username = normalizedUname
+      }
     }
 
     if (Object.keys(updates).length === 0) {
       return withCors(request, NextResponse.json({ error: 'No valid profile fields provided' }, { status: 400 }))
     }
-
-    // Fetch before state for audit log
-    const [{ data: existingProfile }, { data: existingTeacherByAuth }, { data: existingTeacherByEmail }] =
-      await Promise.all([
-        supabaseAdmin.from('profiles').select('id, full_name, phone').eq('id', user.id).maybeSingle(),
-        supabaseAdmin
-          .from('teachers')
-          .select('id, auth_user_id, email, username, name, phone, status, role')
-          .or(`auth_user_id.eq.${user.id},id.eq.${user.id}`)
-          .maybeSingle(),
-        user.email
-          ? supabaseAdmin
-              .from('teachers')
-              .select('id, auth_user_id, email, username, name, phone, status, role')
-              .ilike('email', user.email)
-              .maybeSingle()
-          : Promise.resolve({ data: null }),
-      ])
-    const existingTeacher = existingTeacherByAuth || existingTeacherByEmail
 
     if (updates.username !== undefined) {
       const taken = await isUsernameTaken(supabaseAdmin, updates.username, existingTeacher?.id)

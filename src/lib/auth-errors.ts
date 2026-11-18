@@ -32,6 +32,10 @@ export function mapAuthError(err: unknown): { message: string; status: number } 
     return { message: 'Invalid email or password', status: 401 }
   }
 
+  if (lower.includes('user_banned') || lower.includes('user is banned')) {
+    return { message: 'Invalid email or password', status: 401 }
+  }
+
   if (
     lower.includes('email logins are disabled') ||
     lower.includes('email signups are disabled') ||

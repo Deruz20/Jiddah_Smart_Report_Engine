@@ -1,5 +1,7 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { recordActivity } from '@/lib/api-server';
+import { updateStaffAuthUser } from '@/lib/staff-auth-admin';
+import { rememberTeacherUsernameMapping } from '@/lib/username';
 
 export interface DeactivationResult {
   success: boolean;
@@ -22,7 +24,8 @@ export interface DeactivationResult {
 export async function executeTeacherDeactivation(
   supabaseAdmin: SupabaseClient,
   callerUser: { id: string; email?: string | null },
-  targetTeacherId: string
+  targetTeacherId: string,
+  sessionClient?: SupabaseClient
 ): Promise<DeactivationResult> {
   // 1. Verify caller profile and administrative permissions
   let callerProfile: { id: string; role: string; email: string } | null = null;
@@ -58,11 +61,21 @@ export async function executeTeacherDeactivation(
   }
 
   // 2. Fetch target teacher to inspect role, auth_user_id, and existence
-  const { data: targetTeacher, error: findError } = await supabaseAdmin
+  let { data: targetTeacher, error: findError } = await supabaseAdmin
     .from('teachers')
-    .select('id, name, email, role, auth_user_id, status')
+    .select('id, name, email, username, role, auth_user_id, status')
     .eq('id', targetTeacherId)
     .single();
+
+  if (findError && findError.message?.includes('username')) {
+    const retryFind = await supabaseAdmin
+      .from('teachers')
+      .select('id, name, email, role, auth_user_id, status')
+      .eq('id', targetTeacherId)
+      .single();
+    targetTeacher = retryFind.data as any;
+    findError = retryFind.error;
+  }
 
   if (findError || !targetTeacher) {
     return { success: false, status: 404, error: 'Teacher not found' };
@@ -110,14 +123,19 @@ export async function executeTeacherDeactivation(
     };
   }
 
+  rememberTeacherUsernameMapping({ ...targetTeacher, status: 'inactive' });
+
   // 6. Revoke Auth login access by banning auth user via authoritative teachers.auth_user_id
   const authUserIdToBan =
     targetTeacher.auth_user_id || (targetTeacher.id.length === 36 ? targetTeacher.id : null);
   if (authUserIdToBan) {
     try {
-      await supabaseAdmin.auth.admin.updateUserById(authUserIdToBan, {
-        ban_duration: '876600h', // 100 years
+      const banRes = await updateStaffAuthUser(supabaseAdmin, sessionClient || supabaseAdmin, authUserIdToBan, {
+        banned: true,
       });
+      if (!banRes.ok) {
+        console.warn('Warning: Failed to ban auth user:', banRes.error);
+      }
     } catch (authBanErr: any) {
       console.warn('Warning: Failed to ban auth user:', authBanErr.message);
     }

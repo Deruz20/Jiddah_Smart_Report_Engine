@@ -773,4 +773,199 @@ describe('Phase 3.5 — Go-Live Role Defaults, Archived Student Exclusion, Anti-
       });
     }
   });
+
+  it('Workstream 7: Create Principal via /admin/teachers Modal, Username + Email Login, Edit, Password Reset, Deactivate & Reactivate (Zero Bearer Token Errors)', async () => {
+    const testEmail = 'new_principal_e1@test.local';
+    const testUsername = 'principal_e1';
+    const initialPass = 'PrincipalPass99!';
+    const resetPass = 'PrincipalReset77!';
+    let createdTeacherId = null;
+
+    // Clean any leftover test row from a previous aborted run
+    const { data: leftover } = await supabaseAdmin
+      .from('teachers')
+      .select('id, auth_user_id')
+      .eq('email', testEmail)
+      .maybeSingle();
+    if (leftover) {
+      await supabaseAdmin.from('teachers').delete().eq('id', leftover.id);
+      await supabaseAdmin.auth.admin.deleteUser(leftover.auth_user_id || leftover.id).catch(() => {});
+    }
+
+    const launchOpts = fs.existsSync('/usr/bin/google-chrome')
+      ? { headless: true, executablePath: '/usr/bin/google-chrome' }
+      : { headless: true };
+    const browser = await chromium.launch(launchOpts);
+
+    try {
+      const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+      const page = await context.newPage();
+
+      // 1. Login as Administrator via UI
+      await page.goto(`${BASE_URL}/login`, { waitUntil: 'networkidle' });
+      await page.locator('input[type="text"]').first().fill('admin');
+      await page.locator('input[type="password"]').first().fill(DEFAULT_PASS);
+      await Promise.all([
+        page.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 15000 }),
+        page.locator('button[type="submit"]').click(),
+      ]);
+
+      // 2. Open /admin/teachers, click + Principal Account, fill details, click Create Staff Account
+      await page.goto(`${BASE_URL}/admin/teachers`, { waitUntil: 'networkidle' });
+      const quickPrincipalBtn = page.getByTestId('quick-create-principal-btn');
+      await quickPrincipalBtn.waitFor({ state: 'visible', timeout: 10000 });
+      await quickPrincipalBtn.click();
+
+      await page.locator('input[name="full_name"]').fill('Principal E1 Tester');
+      await page.getByTestId('teacher-username-input').fill(testUsername);
+      await page.locator('input[name="email"]').fill(testEmail);
+      await page.locator('input[name="initial_password"]').fill(initialPass);
+
+      const [inviteRes] = await Promise.all([
+        page.waitForResponse(
+          (res) => res.url().includes('/api/admin/teachers/invite') && res.request().method() === 'POST',
+          { timeout: 15000 }
+        ),
+        page.locator('button[type="submit"]:has-text("Create Staff Account")').click(),
+      ]);
+
+      const inviteJson = await inviteRes.json();
+      assert.ok(
+        inviteRes.status() === 200 || inviteRes.status() === 201,
+        `Expected 200/201 from POST /api/admin/teachers/invite, got ${inviteRes.status()}: ${JSON.stringify(inviteJson)}`
+      );
+      assert.doesNotMatch(JSON.stringify(inviteJson), /Bearer token/i);
+      createdTeacherId = inviteJson.teacher?.id;
+      assert.ok(createdTeacherId, 'Expected created teacher id in invite response');
+
+      // Wait for modal to close and new Principal to render in table
+      await page.getByTestId('teacher-username-input').waitFor({ state: 'hidden', timeout: 10000 });
+      await page.getByText('Principal E1 Tester').first().waitFor({ state: 'visible', timeout: 10000 });
+      const pageTextAfterCreate = await page.locator('body').textContent();
+      assert.doesNotMatch(pageTextAfterCreate || '', /Bearer token/i);
+
+      await context.close();
+
+      // 3. Sign in immediately as newly created Principal via BOTH username AND email
+      const loginByUsernameRes = await fetch(`${BASE_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier: testUsername, password: initialPass }),
+      });
+      const loginByUsernameJson = await loginByUsernameRes.json();
+      assert.equal(
+        loginByUsernameRes.status,
+        200,
+        `Expected 200 when new Principal logs in by username "${testUsername}", got ${loginByUsernameRes.status}: ${JSON.stringify(loginByUsernameJson)}`
+      );
+      assert.equal(loginByUsernameJson.user?.email, testEmail);
+
+      const loginByEmailRes = await fetch(`${BASE_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier: testEmail, password: initialPass }),
+      });
+      assert.equal(loginByEmailRes.status, 200, 'New Principal must be able to log in by email');
+
+      // 4. Edit Principal via PUT /api/admin/teachers/[id]
+      const editRes = await fetch(`${BASE_URL}/api/admin/teachers/${createdTeacherId}`, {
+        method: 'PUT',
+        headers: {
+          Cookie: cookiesByRole['Administrator'],
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: 'Principal E1 Edited',
+          role: 'Principal',
+          email: testEmail,
+          username: testUsername,
+          subject: 'Both',
+          classes: [],
+          status: 'active',
+        }),
+      });
+      const editJson = await editRes.json();
+      assert.equal(editRes.status, 200, `Expected 200 from PUT /api/admin/teachers/[id]: ${JSON.stringify(editJson)}`);
+      assert.doesNotMatch(JSON.stringify(editJson), /Bearer token/i);
+
+      // 5. Reset Principal password via POST /api/admin/reset-password and confirm new password logs in
+      const resetRes = await fetch(`${BASE_URL}/api/admin/reset-password`, {
+        method: 'POST',
+        headers: {
+          Cookie: cookiesByRole['Administrator'],
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: createdTeacherId,
+          email: testEmail,
+          newPassword: resetPass,
+        }),
+      });
+      const resetJson = await resetRes.json();
+      assert.equal(resetRes.status, 200, `Expected 200 from POST /api/admin/reset-password: ${JSON.stringify(resetJson)}`);
+      assert.doesNotMatch(JSON.stringify(resetJson), /Bearer token/i);
+
+      const loginAfterResetRes = await fetch(`${BASE_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier: testUsername, password: resetPass }),
+      });
+      assert.equal(loginAfterResetRes.status, 200, 'Login with reset password must succeed');
+
+      // 6. Deactivate via DELETE /api/admin/teachers/[id], confirm login blocked, then Reactivate via PUT and confirm login restored
+      const deactivateRes = await fetch(`${BASE_URL}/api/admin/teachers/${createdTeacherId}`, {
+        method: 'DELETE',
+        headers: { Cookie: cookiesByRole['Administrator'] },
+      });
+      const deactivateJson = await deactivateRes.json();
+      assert.equal(deactivateRes.status, 200, `Expected 200 from DELETE /api/admin/teachers/[id]: ${JSON.stringify(deactivateJson)}`);
+      assert.doesNotMatch(JSON.stringify(deactivateJson), /Bearer token/i);
+
+      const blockedLoginRes = await fetch(`${BASE_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier: testUsername, password: resetPass }),
+      });
+      assert.notEqual(blockedLoginRes.status, 200, 'Deactivated Principal must not be able to log in');
+
+      const reactivateRes = await fetch(`${BASE_URL}/api/admin/teachers/${createdTeacherId}`, {
+        method: 'PUT',
+        headers: {
+          Cookie: cookiesByRole['Administrator'],
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: 'active' }),
+      });
+      const reactivateJson = await reactivateRes.json();
+      assert.equal(reactivateRes.status, 200, `Expected 200 reactivating Principal: ${JSON.stringify(reactivateJson)}`);
+      assert.doesNotMatch(JSON.stringify(reactivateJson), /Bearer token/i);
+
+      const restoredLoginRes = await fetch(`${BASE_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier: testUsername, password: resetPass }),
+      });
+      assert.equal(restoredLoginRes.status, 200, 'Reactivated Principal must be able to log in again');
+
+      console.log('[E1 WORKSTREAM 7 PRINCIPAL PROVISIONING LIFECYCLE PROOF]', JSON.stringify({
+        inviteStatus: inviteRes.status(),
+        loginByUsernameStatus: loginByUsernameRes.status,
+        loginByEmailStatus: loginByEmailRes.status,
+        editStatus: editRes.status,
+        resetPasswordStatus: resetRes.status,
+        loginAfterResetStatus: loginAfterResetRes.status,
+        deactivateStatus: deactivateRes.status,
+        reactivateStatus: reactivateRes.status,
+        restoredLoginStatus: restoredLoginRes.status,
+      }));
+    } finally {
+      await browser.close();
+      if (createdTeacherId) {
+        await supabaseAdmin.from('activity_logs').delete().eq('user_id', createdTeacherId);
+        await supabaseAdmin.from('teacher_class_assignments').delete().eq('teacher_id', createdTeacherId);
+        await supabaseAdmin.from('teachers').delete().eq('id', createdTeacherId);
+        await supabaseAdmin.auth.admin.deleteUser(createdTeacherId).catch(() => {});
+      }
+    }
+  });
 });

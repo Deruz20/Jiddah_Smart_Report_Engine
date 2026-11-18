@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import { executeTeacherDeactivation } from '@/lib/teacher-deactivation';
 import { isAdministratorRole, PERMISSION_KEYS } from '@/lib/teacher-access';
 import { isUsernameTaken, normalizeUsername, rememberTeacherUsernameMapping, validateUsernameFormat } from '@/lib/username';
+import { updateStaffAuthUser } from '@/lib/staff-auth-admin';
 import { recordActivity } from '@/lib/api-server';
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -237,29 +238,20 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const authUserId = currentTeacher.auth_user_id || id;
 
     // Sync Auth user status (ban / unban), email (direct admin update without confirmation email per A3), and metadata.
-    // Never pass authUserId (UUID) into auth.admin.signOut(); use updateUserById ban/unban wrapped non-fatally.
+    // Never pass authUserId (UUID) into auth.admin.signOut(); use updateStaffAuthUser wrapped non-fatally.
     try {
-      const authUpdate: Record<string, any> = {
-        user_metadata: {
-          name: updatedRow.name,
-          full_name: updatedRow.name,
-          role: updatedRow.role,
-          subject: updatedRow.subject,
-        },
-      };
-      if (status !== undefined) {
-        authUpdate.ban_duration = nextStatus === 'active' ? 'none' : '876600h';
-      }
-      if (
-        email &&
-        String(email).trim().toLowerCase() !== String(currentTeacher.email || '').trim().toLowerCase()
-      ) {
-        authUpdate.email = String(email).trim().toLowerCase();
-        authUpdate.email_confirm = true;
-      }
-      const { error: authSyncErr } = await supabaseAdmin.auth.admin.updateUserById(authUserId, authUpdate);
-      if (authSyncErr) {
-        console.warn('Non-fatal auth user metadata/ban sync warning:', authSyncErr.message);
+      const emailChanged =
+        Boolean(email) &&
+        String(email).trim().toLowerCase() !== String(currentTeacher.email || '').trim().toLowerCase();
+      const authSyncRes = await updateStaffAuthUser(supabaseAdmin, supabase, authUserId, {
+        name: updatedRow.name,
+        role: updatedRow.role,
+        subject: updatedRow.subject,
+        ...(status !== undefined ? { banned: nextStatus !== 'active' } : {}),
+        ...(emailChanged ? { email: String(email).trim().toLowerCase() } : {}),
+      });
+      if (!authSyncRes.ok) {
+        console.warn('Non-fatal auth user metadata/ban sync warning:', authSyncRes.error);
       }
     } catch (err: any) {
       console.warn('Could not update auth user metadata:', err.message);
@@ -322,7 +314,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
 
     const supabaseAdmin = createAdminClient(cookieStore);
 
-    const result = await executeTeacherDeactivation(supabaseAdmin, user, id);
+    const result = await executeTeacherDeactivation(supabaseAdmin, user, id, supabase);
     if (!result.success) {
       return NextResponse.json({ error: result.error }, { status: result.status });
     }

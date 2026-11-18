@@ -115,7 +115,7 @@ export default async function TeachersManagementPage() {
       classes: [...new Set(resolvedNames)],
       classIds: [...new Set(resolvedIds)],
       email: t.email || '',
-      username: t.username || '',
+      username: t.username || (t.email ? String(t.email).split('@')[0] : ''),
       phone: t.phone || '',
       status: t.status || 'active',
       joined: t.created_at || '',

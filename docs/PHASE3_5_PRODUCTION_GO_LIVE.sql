@@ -308,7 +308,8 @@ BEGIN
       SELECT lower(trim(t.email))
         INTO v_email
         FROM public.teachers t
-       WHERE split_part(lower(trim(COALESCE(t.email, ''))), '@', 1) = v_clean
+       WHERE (t.username IS NULL OR trim(t.username) = '')
+         AND split_part(lower(trim(COALESCE(t.email, ''))), '@', 1) = v_clean
          AND COALESCE(lower(trim(t.status)), 'active') NOT IN ('inactive', 'suspended', 'deactivated', 'banned')
        ORDER BY t.created_at ASC NULLS LAST
        LIMIT 1;
@@ -370,8 +371,8 @@ BEGIN
     IF NEW.classes IS DISTINCT FROM OLD.classes THEN
       RAISE EXCEPTION 'Unauthorized: Only an Administrator can modify assigned classes.' USING ERRCODE = '42501';
     END IF;
-    IF NOT v_is_self AND NEW.username IS DISTINCT FROM OLD.username THEN
-      RAISE EXCEPTION 'Unauthorized: Only an Administrator or the account owner can modify a staff username.' USING ERRCODE = '42501';
+    IF NEW.username IS DISTINCT FROM OLD.username THEN
+      RAISE EXCEPTION 'Unauthorized: Only an Administrator can modify a staff username.' USING ERRCODE = '42501';
     END IF;
   END IF;
 
@@ -411,6 +412,199 @@ CREATE POLICY "teachers_update_admin_or_self"
         AND t.role::text = ANY (ARRAY['Administrator'::text, 'admin'::text])
     )
   );
+
+-- -----------------------------------------------------------------------------
+-- 4b. ADMINISTRATOR STAFF AUTH MANAGEMENT RPC (`public.admin_manage_staff_auth`)
+-- -----------------------------------------------------------------------------
+-- Fallback for staff account management when the server has no service_role key.
+-- Callable ONLY by an active Administrator in public.teachers (or service_role).
+-- Actions: create | set_password | update_email | update_metadata | ban | unban | delete
+CREATE OR REPLACE FUNCTION public.admin_manage_staff_auth(
+  p_action   text,
+  p_email    text DEFAULT NULL,
+  p_password text DEFAULT NULL,
+  p_name     text DEFAULT NULL,
+  p_role     text DEFAULT NULL,
+  p_user_id  uuid DEFAULT NULL
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_action   text := lower(trim(COALESCE(p_action, '')));
+  v_email    text := lower(trim(COALESCE(p_email, '')));
+  v_is_admin boolean := false;
+  v_user_id  uuid;
+  v_now      timestamptz := now();
+BEGIN
+  IF current_setting('role', true) = 'service_role' OR current_user = 'postgres' THEN
+    v_is_admin := true;
+  ELSE
+    SELECT EXISTS (
+      SELECT 1 FROM public.teachers t
+      WHERE (t.auth_user_id = auth.uid() OR (t.auth_user_id IS NULL AND t.id = auth.uid()))
+        AND COALESCE(t.status, 'active') = 'active'
+        AND t.role::text = ANY (ARRAY['Administrator'::text, 'admin'::text])
+    ) INTO v_is_admin;
+  END IF;
+
+  IF NOT v_is_admin THEN
+    RAISE EXCEPTION 'Forbidden: Only an active Administrator can manage staff accounts.' USING ERRCODE = '42501';
+  END IF;
+
+  IF v_action = 'create' THEN
+    IF v_email = '' OR position('@' in v_email) = 0 THEN
+      RAISE EXCEPTION 'A valid email is required.' USING ERRCODE = '22023';
+    END IF;
+    IF p_password IS NULL OR length(p_password) < 8 THEN
+      RAISE EXCEPTION 'Password must be at least 8 characters long.' USING ERRCODE = '22023';
+    END IF;
+    SELECT u.id INTO v_user_id
+      FROM auth.users u
+     WHERE lower(u.email) = v_email
+     LIMIT 1;
+
+    IF v_user_id IS NOT NULL THEN
+      IF EXISTS (
+        SELECT 1 FROM public.teachers t
+        WHERE t.auth_user_id = v_user_id
+           OR t.id = v_user_id
+           OR lower(trim(COALESCE(t.email, ''))) = v_email
+      ) THEN
+        RAISE EXCEPTION 'An auth account already exists for this email.' USING ERRCODE = '23505';
+      END IF;
+
+      UPDATE auth.users
+         SET encrypted_password = extensions.crypt(p_password, extensions.gen_salt('bf', 10)),
+             email_confirmed_at = COALESCE(email_confirmed_at, v_now),
+             banned_until = NULL,
+             raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb) || jsonb_build_object(
+               'name', COALESCE(p_name, split_part(v_email, '@', 1)),
+               'full_name', COALESCE(p_name, split_part(v_email, '@', 1)),
+               'role', p_role,
+               'onboarding_completed', true,
+               'email_verified', true
+             ),
+             updated_at = v_now
+       WHERE id = v_user_id;
+
+      IF NOT EXISTS (
+        SELECT 1 FROM auth.identities i
+        WHERE i.user_id = v_user_id AND i.provider = 'email'
+      ) THEN
+        INSERT INTO auth.identities (
+          provider_id, user_id, identity_data, provider, last_sign_in_at, created_at, updated_at
+        ) VALUES (
+          v_user_id::text, v_user_id,
+          jsonb_build_object('sub', v_user_id::text, 'email', v_email, 'email_verified', true, 'phone_verified', false),
+          'email', NULL, v_now, v_now
+        );
+      END IF;
+
+      RETURN jsonb_build_object('success', true, 'action', v_action, 'user_id', v_user_id, 'email', v_email);
+    END IF;
+
+    v_user_id := gen_random_uuid();
+
+    INSERT INTO auth.users (
+      instance_id, id, aud, role, email, encrypted_password,
+      email_confirmed_at, confirmation_token, recovery_token,
+      email_change_token_new, email_change, email_change_token_current,
+      phone_change, phone_change_token, reauthentication_token,
+      raw_app_meta_data, raw_user_meta_data, created_at, updated_at
+    ) VALUES (
+      '00000000-0000-0000-0000-000000000000', v_user_id, 'authenticated', 'authenticated',
+      v_email, extensions.crypt(p_password, extensions.gen_salt('bf', 10)),
+      v_now, '', '', '', '', '', '', '', '',
+      jsonb_build_object('provider', 'email', 'providers', jsonb_build_array('email')),
+      jsonb_build_object(
+        'name', COALESCE(p_name, split_part(v_email, '@', 1)),
+        'full_name', COALESCE(p_name, split_part(v_email, '@', 1)),
+        'role', p_role,
+        'onboarding_completed', true,
+        'email_verified', true
+      ),
+      v_now, v_now
+    );
+
+    INSERT INTO auth.identities (
+      provider_id, user_id, identity_data, provider, last_sign_in_at, created_at, updated_at
+    ) VALUES (
+      v_user_id::text, v_user_id,
+      jsonb_build_object('sub', v_user_id::text, 'email', v_email, 'email_verified', true, 'phone_verified', false),
+      'email', NULL, v_now, v_now
+    );
+
+    RETURN jsonb_build_object('success', true, 'action', v_action, 'user_id', v_user_id, 'email', v_email);
+  END IF;
+
+  IF p_user_id IS NULL THEN
+    RAISE EXCEPTION 'p_user_id is required for action %', v_action USING ERRCODE = '22023';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = p_user_id) THEN
+    RAISE EXCEPTION 'Auth user not found.' USING ERRCODE = 'P0002';
+  END IF;
+
+  IF v_action = 'set_password' THEN
+    IF p_password IS NULL OR length(p_password) < 8 THEN
+      RAISE EXCEPTION 'Password must be at least 8 characters long.' USING ERRCODE = '22023';
+    END IF;
+    UPDATE auth.users
+       SET encrypted_password = extensions.crypt(p_password, extensions.gen_salt('bf', 10)),
+           updated_at = v_now
+     WHERE id = p_user_id;
+
+  ELSIF v_action = 'update_email' THEN
+    IF v_email = '' OR position('@' in v_email) = 0 THEN
+      RAISE EXCEPTION 'A valid email is required.' USING ERRCODE = '22023';
+    END IF;
+    IF EXISTS (SELECT 1 FROM auth.users u WHERE lower(u.email) = v_email AND u.id <> p_user_id) THEN
+      RAISE EXCEPTION 'Another auth account already uses this email.' USING ERRCODE = '23505';
+    END IF;
+    UPDATE auth.users
+       SET email = v_email, email_confirmed_at = COALESCE(email_confirmed_at, v_now),
+           email_change = '', email_change_token_new = '', email_change_token_current = '',
+           updated_at = v_now
+     WHERE id = p_user_id;
+    UPDATE auth.identities
+       SET identity_data = COALESCE(identity_data, '{}'::jsonb) || jsonb_build_object('email', v_email),
+           updated_at = v_now
+     WHERE user_id = p_user_id AND provider = 'email';
+
+  ELSIF v_action = 'update_metadata' THEN
+    UPDATE auth.users
+       SET raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb)
+             || jsonb_strip_nulls(jsonb_build_object('name', p_name, 'full_name', p_name, 'role', p_role)),
+           updated_at = v_now
+     WHERE id = p_user_id;
+
+  ELSIF v_action = 'ban' THEN
+    UPDATE auth.users SET banned_until = v_now + interval '100 years', updated_at = v_now WHERE id = p_user_id;
+    BEGIN
+      DELETE FROM auth.sessions WHERE user_id = p_user_id;
+    EXCEPTION WHEN undefined_table THEN NULL;
+    END;
+
+  ELSIF v_action = 'unban' THEN
+    UPDATE auth.users SET banned_until = NULL, updated_at = v_now WHERE id = p_user_id;
+
+  ELSIF v_action = 'delete' THEN
+    DELETE FROM auth.identities WHERE user_id = p_user_id;
+    DELETE FROM auth.users WHERE id = p_user_id;
+
+  ELSE
+    RAISE EXCEPTION 'Unsupported action: %', v_action USING ERRCODE = '22023';
+  END IF;
+
+  RETURN jsonb_build_object('success', true, 'action', v_action, 'user_id', p_user_id);
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.admin_manage_staff_auth(text, text, text, text, text, uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.admin_manage_staff_auth(text, text, text, text, text, uuid) TO authenticated, service_role;
+NOTIFY pgrst, 'reload schema';
 
 -- -----------------------------------------------------------------------------
 -- 5. REMOVE UNUSED `P.6` THEOLOGY CLASS (`e16b9c2c-ead3-45d6-94c6-98cd3285254c`)

@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
 import { resolveUniqueUsernameFromEmail } from '@/lib/username';
+import { createStaffAuthUser, deleteStaffAuthUser } from '@/lib/staff-auth-admin';
 
 export async function POST(req: Request) {
   try {
@@ -50,23 +51,28 @@ export async function POST(req: Request) {
     const finalName = invite.name || String(name || '').trim() || String(email).trim().split('@')[0];
 
     // 2. Create the auth.users account
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email: String(email).trim().toLowerCase(),
-      password,
-      email_confirm: true,
-      user_metadata: {
+    const authCreated = await createStaffAuthUser(
+      supabaseAdmin,
+      supabaseAdmin,
+      {
+        email: String(email).trim().toLowerCase(),
+        password,
+        name: finalName,
         role: finalRole,
         subject: finalSubject,
-        name: finalName
-      }
-    });
+      },
+      { skipRpc: true }
+    );
 
-    if (authError || !authData.user) {
-      console.error('Auth Creation Error:', authError);
-      return NextResponse.json({ error: authError?.message || 'Failed to create account' }, { status: 500 });
+    if (!authCreated.ok || !authCreated.userId) {
+      console.error('Auth Creation Error:', authCreated.error);
+      return NextResponse.json(
+        { error: authCreated.error || 'Failed to create account' },
+        { status: authCreated.status || 500 }
+      );
     }
 
-    const userId = authData.user.id;
+    const userId = authCreated.userId;
 
     // 3. Create the teachers profile row using the invite details
     // Ignore any frontend-submitted profile details except phone if not provided in invite
@@ -91,7 +97,7 @@ export async function POST(req: Request) {
     if (profileError) {
       console.error('Profile Creation Error:', profileError);
       // Cleanup auth account to prevent partial registration
-      await supabaseAdmin.auth.admin.deleteUser(userId);
+      await deleteStaffAuthUser(supabaseAdmin, supabaseAdmin, userId).catch(() => {});
       return NextResponse.json({ error: 'Failed to create profile' }, { status: 500 });
     }
 

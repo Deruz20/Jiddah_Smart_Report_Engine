@@ -3,7 +3,8 @@ import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { verifyDataAccess } from '@/lib/auth-server';
 import { isAdministratorRole, PERMISSION_KEYS } from '@/lib/teacher-access';
-import { isUsernameTaken, normalizeUsername, resolveUniqueUsernameFromEmail, validateUsernameFormat } from '@/lib/username';
+import { isUsernameTaken, normalizeUsername, rememberTeacherUsernameMapping, resolveUniqueUsernameFromEmail, validateUsernameFormat } from '@/lib/username';
+import { createStaffAuthUser, deleteStaffAuthUser } from '@/lib/staff-auth-admin';
 import { recordActivity } from '@/lib/api-server';
 
 export async function POST(req: Request) {
@@ -97,27 +98,22 @@ export async function POST(req: Request) {
         }
       }
 
-      const { data: authCreated, error: createAuthErr } = await supabaseAdmin.auth.admin.createUser({
+      const authCreated = await createStaffAuthUser(supabaseAdmin, supabase, {
         email: normalizedEmail,
         password: pwd,
-        email_confirm: true,
-        user_metadata: {
-          name: finalName,
-          full_name: finalName,
-          role: finalRole,
-          subject: finalSubject,
-          onboarding_completed: true,
-        },
+        name: finalName,
+        role: finalRole,
+        subject: finalSubject,
       });
 
-      if (createAuthErr || !authCreated?.user) {
+      if (!authCreated.ok || !authCreated.userId) {
         return NextResponse.json(
-          { error: createAuthErr?.message || 'Failed to create Auth user account' },
-          { status: 500 }
+          { error: authCreated.error || 'Failed to create Auth user account' },
+          { status: authCreated.status || 500 }
         );
       }
 
-      const newUserId = authCreated.user.id;
+      const newUserId = authCreated.userId;
       const validPermSet = new Set<string>(PERMISSION_KEYS);
       const validPerms = Array.isArray(permissions)
         ? permissions.filter(
@@ -167,12 +163,14 @@ export async function POST(req: Request) {
       }
 
       if (profileErr || !createdTeacher) {
-        await supabaseAdmin.auth.admin.deleteUser(newUserId);
+        await deleteStaffAuthUser(supabaseAdmin, supabase, newUserId);
         return NextResponse.json(
           { error: profileErr?.message || 'Failed to create staff profile' },
           { status: 500 }
         );
       }
+
+      rememberTeacherUsernameMapping(createdTeacher);
 
       // Sync teacher_class_assignments
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

@@ -486,16 +486,16 @@ test('Item E: Teacher Deactivation, Session Revocation, Guards & Audit Suite', a
     console.log('  [J5 SELF-DEACTIVATE GUARD] Status:', selfRes.status, 'Body:', selfBody);
   });
 
-  // Teardown: Clean up disposable test fixtures
+  // Teardown: Clean up disposable test fixtures (clear FKs before deleting teacher row)
   t.after(async () => {
+    await supabaseAdmin.from('circular_marks').delete().eq('id', HISTORICAL_CIRCULAR_MARK_ID);
+    await supabaseAdmin.from('circular_subjects').delete().eq('id', CIRCULAR_SUBJECT_ID);
+    await supabaseAdmin.from('circular_classes').update({ class_teacher_id: 'c599cb13-fb3d-4e5d-8e27-253cb7e5ac1a' }).eq('id', 'c1000000-0000-0000-0000-000000000001');
+    await supabaseAdmin.from('theology_marks').update({ updated_by: 'c599cb13-fb3d-4e5d-8e27-253cb7e5ac1a', mot_score: 89, eot_score: 91 }).eq('id', HISTORICAL_MARK_ID);
+    await supabaseAdmin.from('activity_logs').delete().eq('user_id', DISPOSABLE_TEACHER_ID);
     await supabaseAdmin.from('teacher_class_assignments').delete().eq('teacher_id', DISPOSABLE_TEACHER_ID);
     await supabaseAdmin.from('teachers').delete().eq('id', DISPOSABLE_TEACHER_ID);
     await supabaseAdmin.auth.admin.deleteUser(DISPOSABLE_TEACHER_ID).catch(() => {});
-    await supabaseAdmin.from('circular_marks').delete().eq('id', HISTORICAL_CIRCULAR_MARK_ID);
-    await supabaseAdmin.from('circular_subjects').delete().eq('id', CIRCULAR_SUBJECT_ID);
-    // Reset mark author to teacher@test.local and restore class_teacher_id
-    await supabaseAdmin.from('circular_classes').update({ class_teacher_id: 'c599cb13-fb3d-4e5d-8e27-253cb7e5ac1a' }).eq('id', 'c1000000-0000-0000-0000-000000000001');
-    await supabaseAdmin.from('theology_marks').update({ updated_by: 'c599cb13-fb3d-4e5d-8e27-253cb7e5ac1a', mot_score: 89, eot_score: 91 }).eq('id', HISTORICAL_MARK_ID);
     console.log('  [TEARDOWN] Disposable teacher fixtures completely cleaned up.');
   });
 });

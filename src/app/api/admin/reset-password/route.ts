@@ -5,6 +5,7 @@ import { verifyDataAccess } from '@/lib/auth-server';
 import { isAdministratorRole } from '@/lib/teacher-access';
 import { recordActivity } from '@/lib/api-server';
 import { getSupabaseAnonKey } from '@/lib/supabase-env';
+import { updateStaffAuthUser } from '@/lib/staff-auth-admin';
 
 function isValidJwt(token: string | null | undefined): token is string {
   return typeof token === 'string' && token.trim().split('.').length === 3;
@@ -70,14 +71,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Target staff account not found' }, { status: 404 });
     }
 
-    // Never pass targetAuthUid (UUID) into auth.admin.signOut() — only use updateUserById
-    let { data: updatedAuth, error } = await adminSupabase.auth.admin.updateUserById(
-      targetAuthUid,
-      { password: trimmedPassword }
-    );
+    // Never pass targetAuthUid (UUID) into auth.admin.signOut() — route through updateStaffAuthUser
+    const authResUpdate = await updateStaffAuthUser(adminSupabase, supabase, targetAuthUid, {
+      password: trimmedPassword,
+    });
+    let updatedAuth: { user: any } | null = authResUpdate.ok
+      ? { user: { id: targetAuthUid, updated_at: new Date().toISOString() } }
+      : null;
+    let error: any = authResUpdate.ok
+      ? null
+      : { message: authResUpdate.error || 'Failed to update user password', status: authResUpdate.status };
 
-    // If resetting own password when SUPABASE_SERVICE_ROLE_KEY is unset, fallback to active session JWT
-    if ((error || !updatedAuth?.user) && targetAuthUid === user.id) {
+    // If resetting own password when SUPABASE_SERVICE_ROLE_KEY & RPC are unavailable, fallback to active session JWT
+    if (!authResUpdate.ok && targetAuthUid === user.id) {
       const { data: selfUpdated, error: selfErr } = await supabase.auth.updateUser({
         password: trimmedPassword,
       });
@@ -120,7 +126,7 @@ export async function POST(req: NextRequest) {
       console.error('Error updating password:', error?.message);
       return NextResponse.json(
         { error: error?.message || 'Failed to update user password' },
-        { status: 500 }
+        { status: error?.status || 500 }
       );
     }
 

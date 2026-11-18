@@ -222,10 +222,14 @@ export default function AccountClient({
     }
   };
 
+  const roleBadge = profile?.role || profile?.canonical_role || "Administrator";
+  const canonicalRole = profile?.canonical_role || roleBadge;
+  const isAdmin = canonicalRole === "Administrator" || roleBadge === "Administrator";
+
   const isProfileDirty =
     fullName.trim() !== initialFormState.fullName.trim() ||
     phone.trim() !== initialFormState.phone.trim() ||
-    username.trim().toLowerCase() !== initialFormState.username.trim().toLowerCase();
+    (isAdmin && username.trim().toLowerCase() !== initialFormState.username.trim().toLowerCase());
 
   const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -237,8 +241,8 @@ export default function AccountClient({
       toast.error("Invalid phone number format. Use 7–20 digits (e.g. +256 700 000000).");
       return;
     }
-    const cleanUsername = username.trim().toLowerCase();
-    if (cleanUsername && (cleanUsername.length < 2 || cleanUsername.includes("@"))) {
+    const cleanUsername = isAdmin ? username.trim().toLowerCase() : "";
+    if (isAdmin && cleanUsername && (cleanUsername.length < 2 || cleanUsername.includes("@"))) {
       toast.error("Username must be at least 2 characters and cannot contain '@'.");
       return;
     }
@@ -251,7 +255,7 @@ export default function AccountClient({
         body: JSON.stringify({
           full_name: fullName.trim(),
           phone: phone.trim(),
-          ...(cleanUsername ? { username: cleanUsername } : {}),
+          ...(isAdmin && cleanUsername ? { username: cleanUsername } : {}),
         }),
       });
       const payload = await res.json();
@@ -443,9 +447,6 @@ export default function AccountClient({
     }
   };
 
-  const roleBadge = profile?.role || profile?.canonical_role || "Administrator";
-  const canonicalRole = profile?.canonical_role || roleBadge;
-  const isAdmin = canonicalRole === "Administrator" || roleBadge === "Administrator";
   const rawDept = profile?.department || "General";
   const departmentBadge =
     isAdmin || canonicalRole === "Principal" || canonicalRole === "Head Teacher"
@@ -626,21 +627,30 @@ export default function AccountClient({
 
             <div>
               <label className="block text-xs font-semibold text-[#1F1F1F] dark:text-[#CBD5E1] mb-1.5">
-                Sign-In Username
+                {isAdmin ? "Sign-In Username" : "Sign-In Username (Read-Only)"}
               </label>
               <input
                 data-testid="account-username-input"
                 type="text"
                 value={username}
+                readOnly={!isAdmin}
+                disabled={!isAdmin}
                 onChange={(e) => {
+                  if (!isAdmin) return;
                   hasUserEditedProfileRef.current = true;
                   setUsername(e.target.value);
                 }}
                 placeholder="e.g. sysadmin"
-                className="w-full h-10 rounded-lg border border-[#E1E3E1] dark:border-[#3C4043] bg-white dark:bg-[#131314] px-3 text-sm font-mono text-[#1F1F1F] dark:text-[#E3E3E3] focus:border-[#0D5C3A] dark:focus:border-[#A8C7FA] outline-none"
+                className={
+                  isAdmin
+                    ? "w-full h-10 rounded-lg border border-[#E1E3E1] dark:border-[#3C4043] bg-white dark:bg-[#131314] px-3 text-sm font-mono text-[#1F1F1F] dark:text-[#E3E3E3] focus:border-[#0D5C3A] dark:focus:border-[#A8C7FA] outline-none"
+                    : "w-full h-10 rounded-lg border border-[#E1E3E1] dark:border-[#3C4043] bg-[#F8FAFD] dark:bg-[#131314] px-3 text-sm font-mono text-[#444746] dark:text-[#E3E3E3] cursor-not-allowed"
+                }
               />
               <p className="text-[11px] text-[#747775] dark:text-[#8E918F] mt-1">
-                Use this username (or your email) with your password to sign in.
+                {isAdmin
+                  ? "Use this username (or your email) with your password to sign in."
+                  : "Use this username (or your email) with your password to sign in. Only an Administrator can change it."}
               </p>
             </div>
 

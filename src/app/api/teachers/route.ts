@@ -137,7 +137,7 @@ export async function GET(request: NextRequest) {
         classes: [...new Set(resolvedClasses)],
         class_ids: allTokens.filter((token) => classMap.has(token)),
         email: teacher.email || '',
-        username: teacher.username || '',
+        username: teacher.username || (teacher.email ? String(teacher.email).split('@')[0] : ''),
         phone: teacher.phone || '',
         status: validStatuses.includes(teacher.status) ? teacher.status : 'active',
         joined: teacher.joined || teacher.created_at || '',

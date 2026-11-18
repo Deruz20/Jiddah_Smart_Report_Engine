@@ -25,6 +25,7 @@ export const dynamic = 'force-dynamic'
 export default async function TheologyHubPage() {
   let terms: TermData[] = []
   let theologyClasses: TheologyClassData[] = []
+  let canViewSchoolWideScope = false
   let error: string | null = null
 
   try {
@@ -59,6 +60,7 @@ export default async function TheologyHubPage() {
     }
 
     const allowedClassIds = classIdsForType(access, 'theology')
+    canViewSchoolWideScope = allowedClassIds === null
 
     let classesQuery = supabase
       .from('theology_classes')
@@ -99,5 +101,11 @@ export default async function TheologyHubPage() {
     )
   }
 
-  return <TheologyHubClient terms={terms} theologyClasses={theologyClasses} />
+  return (
+    <TheologyHubClient
+      terms={terms}
+      theologyClasses={theologyClasses}
+      canViewSchoolWideScope={canViewSchoolWideScope}
+    />
+  )
 }

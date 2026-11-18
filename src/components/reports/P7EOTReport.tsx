@@ -48,15 +48,15 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
 
   const teacherComment =
     reportData?.circular?.class_teacher_comment ??
-    getClassTeacherComment(reportData?.circular?.division ?? null, undefined, reportData?.settings?.grading_scale)
+    getClassTeacherComment(reportData?.circular?.division ?? null, undefined, reportData?.settings?.grading_scale, reportData?.settings?.division_boundaries)
 
   const headComment =
     reportData?.circular?.head_teacher_comment ??
-    getHeadTeacherComment(reportData?.circular?.division ?? null, undefined, reportData?.settings?.grading_scale)
+    getHeadTeacherComment(reportData?.circular?.division ?? null, undefined, reportData?.settings?.grading_scale, reportData?.settings?.division_boundaries)
 
   const conductRemark =
     reportData?.circular?.conduct_remark ??
-    getConductRemark(reportData?.circular?.division ?? null)
+    getConductRemark(reportData?.circular?.division ?? null, reportData?.settings?.division_boundaries, reportData?.settings?.promotion_comments?.default_conduct)
 
   const hasTheology =
     isMuslim &&
@@ -100,11 +100,10 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
       <td className="score-cell">{subject.eot_score ?? '--'}</td>
       <td className="grade-cell">{subject.eot_grade_display ?? subject.eot_agg ?? subject.grade ?? '--'}</td>
       <td className="remark-cell" style={{ color: remarkColor(subject.remark) }}>
-        {subject.remark ||
-          (subject.eot_score != null
-            ? getSubjectRemark(getSubjectGradeNumber(subject.eot_score))
+        {subject.remark || (subject.eot_score != null
+            ? getSubjectRemark(getSubjectGradeNumber(subject.eot_score, gradingBands), gradingBands)
             : subject.mot_score != null
-              ? getSubjectRemark(getSubjectGradeNumber(subject.mot_score))
+              ? getSubjectRemark(getSubjectGradeNumber(subject.mot_score, gradingBands), gradingBands)
               : '')}
       </td>
       <td

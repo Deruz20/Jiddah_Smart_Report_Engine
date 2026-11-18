@@ -76,7 +76,6 @@ const UNUSED_SIGNATURE_SLOTS = new Set([
   'theology-teacher-p7',
   'dos-signature',
   'theology-head',
-  'principal',
 ])
 
 const DRAW_INK_OPTIONS = [

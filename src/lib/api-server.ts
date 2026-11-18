@@ -54,17 +54,28 @@ export async function recordActivity(
   userId: string,
   action: string,
   metadata: unknown = null
-) {
+): Promise<{ data: any; error: any }> {
   try {
     const payload = {
       user_id: userId,
       action,
-      metadata: typeof metadata === 'string' ? metadata : JSON.stringify(metadata),
+      metadata: metadata ?? null,
       created_at: new Date().toISOString(),
     }
 
-    await supabase.from('activity_logs').insert([payload])
-  } catch {
-    // Ignore activity log failures so primary API operations still succeed.
+    const { data, error } = await supabase
+      .from('activity_logs')
+      .insert([payload])
+      .select('id, metadata, created_at')
+      .maybeSingle()
+
+    if (error) {
+      console.error(`recordActivity(${action}) failed:`, error.message)
+      return { data: null, error }
+    }
+    return { data, error: null }
+  } catch (err: any) {
+    console.error(`recordActivity(${action}) exception:`, err?.message || err)
+    return { data: null, error: err }
   }
 }

@@ -1,9 +1,10 @@
-import { createClient } from '@/utils/supabase/server'
+import { createAdminClient, createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { AdminMarksEntryClient } from '@/components/AdminMarksEntryClient'
 import { verifyDataAccess, resolveUserScope } from '@/lib/auth-server'
 import { classIdsForType } from '@/lib/teacher-access'
 import { reshapeEnrollmentRow } from '@/lib/enrollment-shape'
+import { fetchMergedSchoolSettings } from '@/lib/school-settings-helper'
 import { EnrollmentData } from '@/types/models'
 
 export const dynamic = 'force-dynamic'
@@ -23,6 +24,12 @@ export default async function MarksEntryPage() {
   let isUnassigned = false
   let assignedSubjects: string[] = []
   let roleLabel = 'Teacher'
+  let gradingConfig: {
+    grading_scale?: any[]
+    division_boundaries?: any[]
+    theology_grading_scale?: any[]
+    theology_division_boundaries?: any[]
+  } | undefined
   let error: string | null = null
 
   try {
@@ -86,14 +93,23 @@ export default async function MarksEntryPage() {
       enrollQuery = enrollQuery.not('circular_class_id', 'is', null)
     }
 
-    const [termRes, enrollRes] = await Promise.all([
+    const supabaseAdmin = createAdminClient(cookieStore)
+    const [termRes, enrollRes, mergedSettings] = await Promise.all([
       supabase
         .from('terms')
         .select('id, academic_year, term_number, label, is_current')
         .order('academic_year', { ascending: false })
         .order('term_number', { ascending: true }),
       skipEnrollQuery ? Promise.resolve({ data: [], error: null }) : enrollQuery,
+      fetchMergedSchoolSettings(supabaseAdmin),
     ])
+
+    gradingConfig = {
+      grading_scale: mergedSettings.grading_scale,
+      division_boundaries: mergedSettings.division_boundaries,
+      theology_grading_scale: mergedSettings.theology_grading_scale,
+      theology_division_boundaries: (mergedSettings as any).theology_division_boundaries,
+    }
 
     if (termRes.error) {
       throw termRes.error
@@ -142,6 +158,7 @@ export default async function MarksEntryPage() {
             isUnassigned={isUnassigned}
             assignedSubjects={assignedSubjects}
             roleLabel={roleLabel}
+            gradingConfig={gradingConfig}
           />
         )}
       </div>

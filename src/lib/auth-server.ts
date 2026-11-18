@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js';
+import { getServiceRoleKey } from './supabase-env.ts';
 import {
   accessDeniedForLookupError,
   authorizeTeacherProfile,
@@ -12,9 +13,21 @@ import {
   type TeacherProfile,
   type ClassType,
   canAccessClass,
+  hasPermission,
+  PERMISSION_KEYS,
+  PERMISSION_METADATA,
+  DEFAULT_ROLE_PERMISSIONS,
+  ALL_STAFF_ROLES,
 } from './teacher-access.ts';
 
-export type { AuthAccessResult, ClassAssignment, Department, ActionType } from './teacher-access.ts';
+export type { AuthAccessResult, ClassAssignment, Department, ActionType, PermissionKey, StaffRoleName } from './teacher-access.ts';
+export {
+  hasPermission,
+  PERMISSION_KEYS,
+  PERMISSION_METADATA,
+  DEFAULT_ROLE_PERMISSIONS,
+  ALL_STAFF_ROLES,
+};
 export {
   resolveUserScope,
   canAccessClassInScope,
@@ -74,9 +87,18 @@ export async function verifyDataAccess(
         const res = typeof eqTarget?.single === 'function' ? await eqTarget.single() : await eqTarget;
         mockRow = res?.data || (Array.isArray(res) ? res[0] : null);
       }
-      if (mockRow) {
+      if (mockRow && mockRow.role) {
         return authorizeTeacherProfile(
           mockRow,
+          [],
+          action,
+          targetClass,
+          targetDepartment
+        );
+      }
+      if (isAdministratorRole(user.id)) {
+        return authorizeTeacherProfile(
+          { id: user.id, role: 'Administrator', status: 'active' },
           [],
           action,
           targetClass,
@@ -88,7 +110,7 @@ export async function verifyDataAccess(
     }
   }
 
-  const adminKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const adminKey = getServiceRoleKey();
   const directory = !isMockClient && adminKey
     ? createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321', adminKey, {
         auth: { persistSession: false, autoRefreshToken: false },
@@ -102,32 +124,41 @@ export async function verifyDataAccess(
   if (hasValidUuid) {
     const res = await directory
       .from('teachers')
-      .select('id, auth_user_id, email, role, subject, status, classes')
+      .select('id, auth_user_id, email, role, subject, status, classes, permissions')
       .or(`auth_user_id.eq.${user.id},id.eq.${user.id}`)
       .limit(2);
     profiles = res.data;
     profileError = res.error;
 
-    // Fallback if `classes` column does not exist on older schema
-    if (profileError && profileError.message?.includes('classes')) {
-      const retry = await directory
+    if (profileError && (profileError.message?.includes('permissions') || profileError.message?.includes('classes'))) {
+      const retryWithClasses = await directory
         .from('teachers')
-        .select('id, auth_user_id, email, role, subject, status')
+        .select('id, auth_user_id, email, role, subject, status, classes')
         .or(`auth_user_id.eq.${user.id},id.eq.${user.id}`)
         .limit(2);
-      profiles = retry.data as any;
-      profileError = retry.error;
+      if (!retryWithClasses.error) {
+        profiles = retryWithClasses.data as any;
+        profileError = null;
+      } else {
+        const retry = await directory
+          .from('teachers')
+          .select('id, auth_user_id, email, role, subject, status')
+          .or(`auth_user_id.eq.${user.id},id.eq.${user.id}`)
+          .limit(2);
+        profiles = retry.data as any;
+        profileError = retry.error;
+      }
     }
   } else if (user.email) {
     const res = await directory
       .from('teachers')
-      .select('id, auth_user_id, email, role, subject, status, classes')
+      .select('id, auth_user_id, email, role, subject, status, classes, permissions')
       .eq('email', user.email)
       .limit(2);
     profiles = res.data;
     profileError = res.error;
 
-    if (profileError && profileError.message?.includes('classes')) {
+    if (profileError && (profileError.message?.includes('permissions') || profileError.message?.includes('classes'))) {
       const retry = await directory
         .from('teachers')
         .select('id, auth_user_id, email, role, subject, status')
@@ -195,6 +226,47 @@ export async function verifyDataAccess(
 
   if (!profile) {
     return { isAuthorized: false, message: 'User profile not found or identity is ambiguous.' };
+  }
+
+  // Mirror confirmed Auth user email to teachers.email automatically (Amendment 3 A3)
+  const profileAny = profile as any;
+  if (
+    user.email &&
+    profileAny.email &&
+    String(profileAny.email).trim().toLowerCase() !== String(user.email).trim().toLowerCase() &&
+    (profile.auth_user_id === user.id || profile.id === user.id)
+  ) {
+    try {
+      await directory
+        .from('teachers')
+        .update({ email: String(user.email).trim().toLowerCase(), pending_email: null })
+        .eq('id', profile.id);
+      profileAny.email = String(user.email).trim().toLowerCase();
+    } catch {
+      try {
+        await directory
+          .from('teachers')
+          .update({ email: String(user.email).trim().toLowerCase() })
+          .eq('id', profile.id);
+      } catch {}
+    }
+  }
+
+  let rolePermissionsMap: Record<string, string[]> | null = null;
+  try {
+    const { data: rpRows, error: rpErr } = await directory
+      .from('role_permissions')
+      .select('role, permissions');
+    if (!rpErr && Array.isArray(rpRows) && rpRows.length > 0) {
+      rolePermissionsMap = {};
+      for (const row of rpRows) {
+        if (row?.role && Array.isArray(row?.permissions)) {
+          rolePermissionsMap[row.role] = row.permissions;
+        }
+      }
+    }
+  } catch {
+    // Table not yet created on older schema; fallback to DEFAULT_ROLE_PERMISSIONS
   }
 
   let assignments: ClassAssignment[] = [];
@@ -293,7 +365,8 @@ export async function verifyDataAccess(
     assignments,
     action,
     targetClass,
-    targetDepartment
+    targetDepartment,
+    rolePermissionsMap
   );
 }
 
@@ -309,8 +382,10 @@ export async function verifyEnrollmentClassAccess(
 
   const { data: enrollment, error } = await supabase
     .from('enrollments')
-    .select('id, circular_class_id, theology_class_id')
+    .select('id, circular_class_id, theology_class_id, is_active, students!inner(id, is_archived)')
     .eq('id', enrollmentId)
+    .eq('is_active', true)
+    .eq('students.is_archived', false)
     .maybeSingle();
 
   if (error) {

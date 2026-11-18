@@ -13,56 +13,56 @@ import {
   resolveTheologyRemarks,
 } from '../lib/school-settings-helper.ts';
 
-test('Theology 2026 PDF Standards — Grading Scale', async (t) => {
-  await t.test('Score boundaries map to correct grade numbers and displays', () => {
-    // 85-100: D1
+test('Theology IPLE Standards — Distinct Single-Subject Grading Scale', async (t) => {
+  await t.test('Score boundaries map to correct grade numbers and distinct Arabic IPLE subject displays', () => {
+    // 85-100: Point 1 (تفوق ١)
     assert.equal(getTheologyGradeNumber(100), 1);
     assert.equal(getTheologyGradeNumber(85), 1);
-    assert.equal(getTheologyGradeDisplay(85), 'D1');
+    assert.equal(getTheologyGradeDisplay(85), 'ت١');
 
-    // 75-84: D2
+    // 75-84: Point 2 (تفوق ٢)
     assert.equal(getTheologyGradeNumber(84), 2);
     assert.equal(getTheologyGradeNumber(75), 2);
-    assert.equal(getTheologyGradeDisplay(75), 'D2');
+    assert.equal(getTheologyGradeDisplay(75), 'ت٢');
 
-    // 65-74: C3
+    // 65-74: Point 3 (جدارة ٣)
     assert.equal(getTheologyGradeNumber(74), 3);
     assert.equal(getTheologyGradeNumber(65), 3);
-    assert.equal(getTheologyGradeDisplay(65), 'C3');
+    assert.equal(getTheologyGradeDisplay(65), 'ج٣');
 
-    // 60-64: C4
+    // 60-64: Point 4 (جدارة ٤)
     assert.equal(getTheologyGradeNumber(64), 4);
     assert.equal(getTheologyGradeNumber(60), 4);
-    assert.equal(getTheologyGradeDisplay(60), 'C4');
+    assert.equal(getTheologyGradeDisplay(60), 'ج٤');
 
-    // 55-59: C5
+    // 55-59: Point 5 (جدارة ٥)
     assert.equal(getTheologyGradeNumber(59), 5);
     assert.equal(getTheologyGradeNumber(55), 5);
-    assert.equal(getTheologyGradeDisplay(55), 'C5');
+    assert.equal(getTheologyGradeDisplay(55), 'ج٥');
 
-    // 50-54: C6
+    // 50-54: Point 6 (جدارة ٦)
     assert.equal(getTheologyGradeNumber(54), 6);
     assert.equal(getTheologyGradeNumber(50), 6);
-    assert.equal(getTheologyGradeDisplay(50), 'C6');
+    assert.equal(getTheologyGradeDisplay(50), 'ج٦');
 
-    // 40-49: P7
+    // 40-49: Point 7 (اجتياز ٧)
     assert.equal(getTheologyGradeNumber(49), 7);
     assert.equal(getTheologyGradeNumber(40), 7);
-    assert.equal(getTheologyGradeDisplay(40), 'P7');
+    assert.equal(getTheologyGradeDisplay(40), 'ن٧');
 
-    // 30-39: P8
+    // 30-39: Point 8 (اجتياز ٨)
     assert.equal(getTheologyGradeNumber(39), 8);
     assert.equal(getTheologyGradeNumber(30), 8);
-    assert.equal(getTheologyGradeDisplay(30), 'P8');
+    assert.equal(getTheologyGradeDisplay(30), 'ن٨');
 
-    // 0-29: F9
+    // 0-29: Point 9 (دون المستوى ٩)
     assert.equal(getTheologyGradeNumber(29), 9);
     assert.equal(getTheologyGradeNumber(0), 9);
-    assert.equal(getTheologyGradeDisplay(0), 'F9');
+    assert.equal(getTheologyGradeDisplay(0), 'خ٩');
   });
 
   await t.test('Theology 4 subjects aggregate calculation uses 2026 scale', () => {
-    // 85 + 75 + 65 + 60 -> D1(1) + D2(2) + C3(3) + C4(4) = 10
+    // 85 + 75 + 65 + 60 -> 1 + 2 + 3 + 4 = 10
     const agg = calculateTheologyAggregate([85, 75, 65, 60]);
     assert.equal(agg, 10);
   });
@@ -113,9 +113,9 @@ test('Theology School Settings Helper Defaults & Resolution', (t) => {
 
   const reportDataEmpty = { settings: {} };
   const bands = resolveTheologyGradingBands(reportDataEmpty);
-  assert.equal(bands[0].grade, 'D1');
+  assert.equal(bands[0].grade, 'ت١');
   assert.equal(bands[0].min, 85);
-  assert.equal(bands[8].grade, 'F9');
+  assert.equal(bands[8].grade, 'خ٩');
   assert.equal(bands[8].max, 29);
 
   const remarks = resolveTheologyRemarks(reportDataEmpty);

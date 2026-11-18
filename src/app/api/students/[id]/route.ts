@@ -2,7 +2,7 @@ import { createAdminClient, createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
-import { verifyDataAccess } from '@/lib/auth-server'
+import { verifyDataAccess, hasPermission } from '@/lib/auth-server'
 import {
   canAccessEnrollment,
   canHardDeleteStudent,
@@ -48,9 +48,15 @@ export async function PUT(
       return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
-    const authRes = await verifyDataAccess(supabase, user, 'write')
-    if (!authRes.isAuthorized) {
-      return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
+    const authRes = await verifyDataAccess(supabase, user, 'read')
+    if (!authRes.isAuthorized || !hasPermission(authRes, 'write_students')) {
+      return withCors(
+        request,
+        NextResponse.json(
+          { error: authRes.message || 'Forbidden: Insufficient permissions to edit student records.' },
+          { status: 403 }
+        )
+      )
     }
 
     const { data: currentEnrollments, error: currentEnrollmentsError } = await supabaseAdmin
@@ -108,8 +114,8 @@ export async function PUT(
       )
     }
 
-    // 1. Update the student record
-    const { error: studentUpdateError } = await supabase
+    // 1. Update the student record (use supabaseAdmin after verified RBAC check so scoped non-admin roles with write_students succeed)
+    const { error: studentUpdateError } = await supabaseAdmin
       .from('students')
       .update({
         name: body.name.trim(),
@@ -208,9 +214,15 @@ export async function DELETE(
       return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
-    const authRes = await verifyDataAccess(supabase, user, 'write')
-    if (!authRes.isAuthorized) {
-      return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
+    const authRes = await verifyDataAccess(supabase, user, 'read')
+    if (!authRes.isAuthorized || !hasPermission(authRes, 'write_students')) {
+      return withCors(
+        request,
+        NextResponse.json(
+          { error: authRes.message || 'Forbidden: Insufficient permissions to edit student records.' },
+          { status: 403 }
+        )
+      )
     }
 
     if (isHardDelete && !canHardDeleteStudent(authRes)) {
@@ -278,9 +290,9 @@ export async function DELETE(
       }
     } else {
       // Soft delete (Archive)
-      const { error: archiveError } = await supabase
+      const { error: archiveError } = await supabaseAdmin
         .from('students')
-        .update({ is_archived: true })
+        .update({ is_archived: true, archived_at: new Date().toISOString() })
         .eq('id', studentId)
 
       if (archiveError) {
@@ -319,12 +331,19 @@ export async function PATCH(
       return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
-    const authRes = await verifyDataAccess(supabase, user, 'write')
-    if (!authRes.isAuthorized) {
-      return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
+    const authRes = await verifyDataAccess(supabase, user, 'read')
+    if (!authRes.isAuthorized || !hasPermission(authRes, 'write_students')) {
+      return withCors(
+        request,
+        NextResponse.json(
+          { error: authRes.message || 'Forbidden: Insufficient permissions to edit student records.' },
+          { status: 403 }
+        )
+      )
     }
 
-    const { data: activeEnrollments, error: enrollmentError } = await createAdminClient(cookieStore)
+    const supabaseAdmin = createAdminClient(cookieStore)
+    const { data: activeEnrollments, error: enrollmentError } = await supabaseAdmin
       .from('enrollments')
       .select('circular_class_id, theology_class_id')
       .eq('student_id', studentId)
@@ -342,9 +361,13 @@ export async function PATCH(
       return withCors(request, NextResponse.json({ error: 'Unauthorized to update this student' }, { status: 403 }))
     }
 
-    const { error: archiveError } = await supabase
+    const nextArchived = Boolean(body.is_archived)
+    const { error: archiveError } = await supabaseAdmin
       .from('students')
-      .update({ is_archived: body.is_archived })
+      .update({
+        is_archived: nextArchived,
+        archived_at: nextArchived ? new Date().toISOString() : null,
+      })
       .eq('id', studentId)
 
     if (archiveError) {

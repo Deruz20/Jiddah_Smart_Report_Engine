@@ -142,16 +142,16 @@ describe('P0 Pipeline Parity: Theology Aggregates, Arabic Remarks & Comments', (
     assert.equal(calculateTheologyAggregate([88, 76, null, 65]), null);
   });
 
-  test('Arabic theology remarks conform strictly to school standards', () => {
-    assert.equal(getTheologySubjectRemark(1), 'ممتاز');
-    assert.equal(getTheologySubjectRemark(2), 'جيد جداً');
-    assert.equal(getTheologySubjectRemark(3), 'جيد');
-    assert.equal(getTheologySubjectRemark(4), 'جيد');
-    assert.equal(getTheologySubjectRemark(5), 'مقبول');
-    assert.equal(getTheologySubjectRemark(6), 'مقبول');
-    assert.equal(getTheologySubjectRemark(7), 'ضعيف');
-    assert.equal(getTheologySubjectRemark(8), 'ضعيف جداً');
-    assert.equal(getTheologySubjectRemark(9), 'راسب');
+  test('Arabic theology subject remarks use distinct IPLE attainment descriptors', () => {
+    assert.equal(getTheologySubjectRemark(1), 'تفوق عالٍ');
+    assert.equal(getTheologySubjectRemark(2), 'تفوق');
+    assert.equal(getTheologySubjectRemark(3), 'جدارة عالية');
+    assert.equal(getTheologySubjectRemark(4), 'جدارة حسنة');
+    assert.equal(getTheologySubjectRemark(5), 'جدارة متوسطة');
+    assert.equal(getTheologySubjectRemark(6), 'جدارة أساسية');
+    assert.equal(getTheologySubjectRemark(7), 'اجتياز كافٍ');
+    assert.equal(getTheologySubjectRemark(8), 'اجتياز حدّي');
+    assert.equal(getTheologySubjectRemark(9), 'دون المستوى');
   });
 
   test('Theology total comment brackets conform to score ranges', () => {
@@ -285,7 +285,7 @@ describe('Defect G-2 Regression: Score Type Resolution Parity (BOT vs MOT vs EOT
     const gradeNum = getSubjectGradeNumber(score);
     assert.equal(gradeNum, 5);
     assert.equal(getGradeDisplay(gradeNum), 'C5');
-    assert.equal(getSubjectRemark(gradeNum), 'Fair');
+    assert.equal(getSubjectRemark(gradeNum), 'Fairly Good');
   });
 
   test('null or missing marks fall back to null safely across all score types', () => {

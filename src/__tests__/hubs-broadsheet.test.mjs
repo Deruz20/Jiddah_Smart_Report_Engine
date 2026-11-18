@@ -187,25 +187,27 @@ describe('Hubs & Broadsheet Suite: Workstream 3 - Senior UI/UX Standards & Jidda
     assert.match(secSrc, /activeTab === 'top_students'/);
   });
 
-  it('both hubs render formal institutional print broadsheet via PrintPortal landscape with stamp and signatures', () => {
-    const theoPath = path.resolve('src/components/theology-hub/TheologyHubClient.tsx');
-    const secPath = path.resolve('src/components/secular-hub/SecularHubClient.tsx');
-    const theoSrc = fs.readFileSync(theoPath, 'utf8');
-    const secSrc = fs.readFileSync(secPath, 'utf8');
+  it('both hubs render formal institutional print broadsheet via PrintPortal (8mm margin) with customization studio, stamp and signatures', () => {
+    const theoSrc = fs.readFileSync(path.resolve('src/components/theology-hub/TheologyHubClient.tsx'), 'utf8');
+    const secSrc = fs.readFileSync(path.resolve('src/components/secular-hub/SecularHubClient.tsx'), 'utf8');
+    const docSrc = fs.readFileSync(path.resolve('src/components/hubs/BroadsheetPrintDocument.tsx'), 'utf8');
+    const modalSrc = fs.readFileSync(path.resolve('src/components/hubs/BroadsheetPrintStudioModal.tsx'), 'utf8');
 
-    // Uses PrintPortal with landscape orientation
-    assert.match(theoSrc, /<PrintPortal\s+pageOrientation="landscape">/);
-    assert.match(secSrc, /<PrintPortal\s+pageOrientation="landscape">/);
+    // Uses PrintPortal with configurable orientation and printer-safe 8mm margin
+    assert.match(theoSrc, /<PrintPortal\s+pageOrientation=\{printConfig\.orientation\}\s+pageMargin="8mm">/);
+    assert.match(secSrc, /<PrintPortal\s+pageOrientation=\{printConfig\.orientation\}\s+pageMargin="8mm">/);
+    assert.match(theoSrc, /<BroadsheetPrintDocument/);
+    assert.match(secSrc, /<BroadsheetPrintDocument/);
+    assert.match(theoSrc, /<BroadsheetPrintStudioModal/);
+    assert.match(secSrc, /<BroadsheetPrintStudioModal/);
 
-    // Official Letterhead & Official Signatures Footer
-    assert.match(theoSrc, /<OfficialPrintLetterhead/);
-    assert.match(theoSrc, /<OfficialPrintSignaturesFooter/);
-    assert.match(secSrc, /<OfficialPrintLetterhead/);
-    assert.match(secSrc, /<OfficialPrintSignaturesFooter/);
+    // Studio modal provides live paper preview
+    assert.match(modalSrc, /Live Sheet Preview/);
 
-    // Official Stamp
-    assert.match(theoSrc, /<OfficialReportStamp/);
-    assert.match(secSrc, /<OfficialReportStamp/);
+    // Official Letterhead, Official Signatures Footer & Official Stamp in shared renderer
+    assert.match(docSrc, /<OfficialPrintLetterhead/);
+    assert.match(docSrc, /<OfficialPrintSignaturesFooter/);
+    assert.match(docSrc, /<OfficialReportStamp/);
   });
 
   it('both hubs support one-click jump to student report cards in /admin/reports', () => {
@@ -244,37 +246,37 @@ describe('Hubs & Broadsheet Suite: Workstream 3 - Senior UI/UX Standards & Jidda
     assert.match(theoSrc, /الترتيب/);
     assert.match(theoSrc, /الملاحظات/);
 
-    // Authentic Arabic Performance Badges
+    // Authentic Arabic IPLE Overall Division Badges
     assert.match(theoSrc, /ممتاز/);
     assert.match(theoSrc, /جيد جداً/);
     assert.match(theoSrc, /جيد/);
     assert.match(theoSrc, /مقبول/);
-    assert.match(theoSrc, /ضعيف/);
+    assert.match(theoSrc, /راسب/);
 
     // Footer in Arabic
     assert.match(theoSrc, /متوسط الفصل/);
     assert.match(theoSrc, /نسبة النجاح/);
   });
 
-  it('Theology Broadsheet print renderer features official double-border frame (4px #14532D and 1.5px #C59B27) with official stamp', () => {
-    const theoPath = path.resolve('src/components/theology-hub/TheologyHubClient.tsx');
-    const theoSrc = fs.readFileSync(theoPath, 'utf8');
+  it('Theology Broadsheet print renderer features official Forest Emerald & Gold frame with default formal signatories and stamp', () => {
+    const docSrc = fs.readFileSync(path.resolve('src/components/hubs/BroadsheetPrintDocument.tsx'), 'utf8');
+    const cfgSrc = fs.readFileSync(path.resolve('src/lib/broadsheet-print-config.ts'), 'utf8');
 
-    // Official double-border frame
-    assert.match(theoSrc, /border:\s*['"]4px solid #14532D['"]/);
-    assert.match(theoSrc, /border:\s*['"]1\.5px solid #C59B27['"]/);
+    // Official forest green & gold institutional frame colors + readable print typography
+    assert.match(docSrc, /#14532D/);
+    assert.match(docSrc, /#C59B27/);
+    assert.match(docSrc, /#0D5C3A/);
 
     // Document title banner in Forest Emerald
-    assert.match(theoSrc, /كشف درجات الطلاب العام — قسم العلوم الشرعية واللغة العربية/);
-    assert.match(theoSrc, /#0D5C3A/);
+    assert.match(docSrc, /كشف درجات الطلاب العام — قسم العلوم الشرعية واللغة العربية/);
 
-    // Official Sign-Off Footer
-    assert.match(theoSrc, /مُعدّ الكشف: معلم الفصل/);
-    assert.match(theoSrc, /مُراجع: مشرف الدراسات/);
-    assert.match(theoSrc, /معتمد: مدير المدرسة والختم الرسمي/);
+    // Default Official Sign-Off Footer labels in config
+    assert.match(cfgSrc, /مُعدّ الكشف: معلم الفصل/);
+    assert.match(cfgSrc, /مُراجع: مشرف الدراسات \(DOS\)/);
+    assert.match(cfgSrc, /معتمد: مدير المدرسة والختم الرسمي/);
 
-    // Official circular report stamp inside print portal
-    assert.match(theoSrc, /<OfficialReportStamp[\s\S]*?maxWidth=\{110\}[\s\S]*?maxHeight=\{52\}/);
+    // Official circular report stamp inside shared broadsheet print renderer
+    assert.match(docSrc, /<OfficialReportStamp[\s\S]*?maxWidth=\{110\}[\s\S]*?maxHeight=\{52\}/);
   });
 
   it('both hubs implement streamlined, compact top toolbars matching Report Center (h-12 single bar)', () => {

@@ -2,9 +2,6 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies, headers } from "next/headers";
 import { getServerSupabaseKey, getServiceRoleKey, getSupabaseAnonKey } from "@/lib/supabase-env";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://dummy.supabase.co';
-const supabaseKey = getSupabaseAnonKey() || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummy';
-
 const SUPABASE_FETCH_TIMEOUT_MS = 25_000;
 
 function fetchWithTimeout(
@@ -23,12 +20,35 @@ function fetchWithTimeout(
 }
 
 export const createClient = (cookieStore: Awaited<ReturnType<typeof cookies>>) => {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://dummy.supabase.co';
+  const supabaseKey = getSupabaseAnonKey() || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummy';
+
   const client = createServerClient(
-    supabaseUrl!,
-    supabaseKey!,
+    supabaseUrl,
+    supabaseKey,
     {
       global: {
-        fetch: fetchWithTimeout,
+        fetch: async (input, init) => {
+          let nextInit = init;
+          try {
+            const hasAuthCookie = cookieStore.getAll().some((c) => c.name.includes('-auth-token'));
+            if (!hasAuthCookie) {
+              const headerList = await headers();
+              const incomingAuth = headerList.get('authorization') || headerList.get('Authorization');
+              if (incomingAuth && incomingAuth.toLowerCase().startsWith('bearer ')) {
+                const mergedHeaders = new Headers(init?.headers);
+                const currentAuth = mergedHeaders.get('Authorization') || mergedHeaders.get('authorization') || '';
+                if (!currentAuth || currentAuth === `Bearer ${supabaseKey}`) {
+                  mergedHeaders.set('Authorization', incomingAuth);
+                  nextInit = { ...init, headers: mergedHeaders };
+                }
+              }
+            }
+          } catch {
+            // Outside request context
+          }
+          return fetchWithTimeout(input, nextInit);
+        },
       },
       cookies: {
         getAll() {
@@ -74,6 +94,8 @@ export const createClient = (cookieStore: Awaited<ReturnType<typeof cookies>>) =
 };
 
 export const createAdminClient = (cookieStore?: Awaited<ReturnType<typeof cookies>>) => {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://dummy.supabase.co';
+  const supabaseKey = getSupabaseAnonKey() || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummy';
   const serviceKey = getServiceRoleKey();
   if (serviceKey) {
     const { createClient: createSupabaseClient } = require('@supabase/supabase-js');
@@ -103,4 +125,3 @@ export const createAdminClient = (cookieStore?: Awaited<ReturnType<typeof cookie
     }
   );
 };
-

@@ -46,6 +46,8 @@ export interface ClassReportingStatus {
   stageLabel: string;
   percent: number;
   anomalies: number;
+  eotApplicable?: boolean;
+  candidateBadge?: string | null;
 }
 
 export interface DashboardData {
@@ -757,6 +759,10 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-300 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20">
                               <AlertTriangle className="size-3" />
                               {cls.anomalies} Outliers
+                            </span>
+                          ) : cls.eotApplicable === false ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-stone-100 text-stone-700 border border-stone-300 dark:bg-white/10 dark:text-stone-300 dark:border-white/15">
+                              {cls.candidateBadge || "N/A — candidate class"}
                             </span>
                           ) : cls.percent === 100 ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-300 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20">

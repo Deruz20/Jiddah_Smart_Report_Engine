@@ -34,13 +34,13 @@ export default function PrimaryBOTReport({ reportData, studioFormatting: studioF
 
   const teacherComment =
     reportData?.circular?.class_teacher_comment ??
-    getClassTeacherComment(reportData?.circular?.division ?? null, undefined, reportData?.settings?.grading_scale);
+    getClassTeacherComment(reportData?.circular?.division ?? null, undefined, reportData?.settings?.grading_scale, reportData?.settings?.division_boundaries);
   const headComment =
     reportData?.circular?.head_teacher_comment ??
-    getHeadTeacherComment(reportData?.circular?.division ?? null, undefined, reportData?.settings?.grading_scale);
+    getHeadTeacherComment(reportData?.circular?.division ?? null, undefined, reportData?.settings?.grading_scale, reportData?.settings?.division_boundaries);
   const conductRemark =
     reportData?.circular?.conduct_remark ??
-    getConductRemark(reportData?.circular?.division ?? null);
+    getConductRemark(reportData?.circular?.division ?? null, reportData?.settings?.division_boundaries, reportData?.settings?.promotion_comments?.default_conduct);
 
   const classTeacherSigKey = reportData?.student?.class_name
     ? getClassTeacherSignatureKey(reportData.student.class_name) ?? ''

@@ -70,7 +70,7 @@ export const ROLE_GATED_NAV_ITEMS: NavItemConfig[] = [
     label: "Dashboard",
     id: "dashboard",
     href: "/admin",
-    roles: ["Administrator", "Head Teacher", "DOS Secular", "DOS Theology", "Class Teacher"],
+    roles: ["Administrator", "Principal", "Head Teacher", "DOS Secular", "DOS Theology", "Class Teacher"],
   },
   {
     icon: ClipboardEdit,
@@ -78,7 +78,7 @@ export const ROLE_GATED_NAV_ITEMS: NavItemConfig[] = [
     teacherLabel: "Marks Entry",
     id: "marks",
     href: "/admin/marks",
-    roles: ["Administrator", "Head Teacher", "DOS Secular", "DOS Theology", "Class Teacher"],
+    roles: ["Administrator", "Principal", "Head Teacher", "DOS Secular", "DOS Theology", "Class Teacher"],
   },
   {
     icon: Users,
@@ -86,7 +86,7 @@ export const ROLE_GATED_NAV_ITEMS: NavItemConfig[] = [
     teacherLabel: "Students",
     id: "students",
     href: "/admin/students",
-    roles: ["Administrator", "Head Teacher", "DOS Secular", "DOS Theology", "Class Teacher"],
+    roles: ["Administrator", "Principal", "Head Teacher", "DOS Secular", "DOS Theology", "Class Teacher"],
   },
   {
     icon: Layers,
@@ -94,7 +94,7 @@ export const ROLE_GATED_NAV_ITEMS: NavItemConfig[] = [
     teacherLabel: "Classes",
     id: "classes",
     href: "/admin/classes",
-    roles: ["Administrator", "Head Teacher", "DOS Secular", "DOS Theology", "Class Teacher"],
+    roles: ["Administrator", "Principal", "Head Teacher", "DOS Secular", "DOS Theology", "Class Teacher"],
   },
   {
     icon: GraduationCap,
@@ -102,14 +102,14 @@ export const ROLE_GATED_NAV_ITEMS: NavItemConfig[] = [
     teacherLabel: "Subjects",
     id: "subjects",
     href: "/admin/subjects",
-    roles: ["Administrator", "Head Teacher", "DOS Secular", "DOS Theology", "Class Teacher"],
+    roles: ["Administrator", "Principal", "Head Teacher", "DOS Secular", "DOS Theology", "Class Teacher"],
   },
   {
     icon: CalendarCheck,
     label: "Daily Roll Call",
     id: "roll-call",
     href: "/teacher/roll-call",
-    roles: ["Administrator", "Head Teacher", "Class Teacher"],
+    roles: ["Administrator", "Principal", "Head Teacher", "Class Teacher"],
   },
   {
     icon: FileText,
@@ -117,7 +117,7 @@ export const ROLE_GATED_NAV_ITEMS: NavItemConfig[] = [
     teacherLabel: "Report Center",
     id: "reports",
     href: "/admin/reports",
-    roles: ["Administrator", "Head Teacher", "DOS Secular", "DOS Theology", "Class Teacher"],
+    roles: ["Administrator", "Principal", "Head Teacher", "DOS Secular", "DOS Theology", "Class Teacher"],
     children: [
       { label: "Report Center", href: "/admin/reports", id: "reports-overview" },
       { label: "Report Studio 2.0", href: "/admin/reports/studio", id: "reports-studio" },
@@ -128,7 +128,7 @@ export const ROLE_GATED_NAV_ITEMS: NavItemConfig[] = [
     label: "Secular Hub",
     id: "secular-hub",
     href: "/admin/secular-hub",
-    roles: ["Administrator", "Head Teacher", "DOS Secular", "Class Teacher"],
+    roles: ["Administrator", "Principal", "Head Teacher", "DOS Secular", "Class Teacher"],
     department: "secular",
   },
   {
@@ -136,7 +136,7 @@ export const ROLE_GATED_NAV_ITEMS: NavItemConfig[] = [
     label: "Theology Hub",
     id: "theology-hub",
     href: "/admin/theology-hub",
-    roles: ["Administrator", "Head Teacher", "DOS Theology", "Class Teacher"],
+    roles: ["Administrator", "Principal", "Head Teacher", "DOS Theology", "Class Teacher"],
     department: "theology",
   },
   {
@@ -144,14 +144,14 @@ export const ROLE_GATED_NAV_ITEMS: NavItemConfig[] = [
     label: "Teachers & Staff",
     id: "teachers",
     href: "/admin/teachers",
-    roles: ["Administrator", "Head Teacher", "DOS Secular", "DOS Theology"],
+    roles: ["Administrator"],
   },
   {
     icon: UploadCloud,
     label: "Upload Center",
     id: "uploads",
     href: "/admin/upload",
-    roles: ["Administrator", "Head Teacher", "DOS Secular", "DOS Theology"],
+    roles: ["Administrator", "Principal", "Head Teacher", "DOS Secular", "DOS Theology", "Class Teacher"],
   },
 ];
 
@@ -322,6 +322,7 @@ export function AppSidebar() {
   const [rawRoleDisplay, setRawRoleDisplay] = React.useState("Administrator");
   const [rawSubject, setRawSubject] = React.useState("");
   const [userName, setUserName] = React.useState("Staff");
+  const [avatarUrl, setAvatarUrl] = React.useState<string | null>(null);
   const [schoolName, setSchoolName] = React.useState("Jiddah");
 
   React.useEffect(() => {
@@ -335,6 +336,21 @@ export function AppSidebar() {
   }, []);
 
   React.useEffect(() => {
+    const onProfileUpdated = (event: Event) => {
+      const custom = event as CustomEvent<Record<string, any>>;
+      const detail = custom.detail || {};
+      if (typeof detail.full_name === "string" && detail.full_name.trim()) {
+        setUserName(detail.full_name.trim());
+      }
+      if (typeof detail.avatar_url === "string" && detail.avatar_url.trim()) {
+        setAvatarUrl(detail.avatar_url.trim());
+      }
+    };
+    window.addEventListener("jiddah:profile-updated", onProfileUpdated);
+    return () => window.removeEventListener("jiddah:profile-updated", onProfileUpdated);
+  }, []);
+
+  React.useEffect(() => {
     const supabase = createClient();
     supabase.auth.getSession().then(async ({ data }: any) => {
       const user = data.session?.user;
@@ -343,17 +359,19 @@ export function AppSidebar() {
       let subject = user.user_metadata?.subject || "";
       let displayName =
         user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split("@")[0] || "Staff";
+      let resolvedAvatar = user.user_metadata?.avatar_url || null;
 
       if (user.email) {
         try {
           const { data: teacherRow } = await supabase
             .from("teachers")
-            .select("name, role, subject")
-            .eq("email", user.email)
+            .select("name, role, subject, avatar")
+            .or(`auth_user_id.eq.${user.id},email.eq.${user.email}`)
             .maybeSingle();
           if (teacherRow?.role) rawRole = teacherRow.role;
           if (teacherRow?.subject) subject = teacherRow.subject;
           if (teacherRow?.name) displayName = teacherRow.name;
+          if ((teacherRow as any)?.avatar) resolvedAvatar = (teacherRow as any).avatar;
         } catch {
           // fallback to session metadata
         }
@@ -363,6 +381,7 @@ export function AppSidebar() {
       setRawRoleDisplay(rawRole);
       setRawSubject(subject);
       setUserName(displayName);
+      setAvatarUrl(resolvedAvatar);
     });
 
     let active = true;
@@ -593,9 +612,21 @@ export function AppSidebar() {
                   aria-label={`${userName} — account`}
                   className="size-10 rounded-full flex items-center justify-center transition-colors outline-none hover:bg-black/[0.08] dark:hover:bg-white/[0.08]"
                 >
-                  <span className="size-8 rounded-full flex items-center justify-center bg-gradient-to-br from-[#0D5C3A] to-[#0A4A2F] text-[11px] font-bold text-white shadow-xs">
-                    {initials}
-                  </span>
+                  {avatarUrl ? (
+                    <img
+                      data-testid="sidebar-user-avatar-img"
+                      src={avatarUrl}
+                      alt={userName}
+                      className="size-8 rounded-full object-cover shadow-xs"
+                    />
+                  ) : (
+                    <span
+                      data-testid="sidebar-user-avatar-initials"
+                      className="size-8 rounded-full flex items-center justify-center bg-gradient-to-br from-[#0D5C3A] to-[#0A4A2F] text-[11px] font-bold text-white shadow-xs"
+                    >
+                      {initials}
+                    </span>
+                  )}
                 </Link>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={12}>
@@ -615,11 +646,26 @@ export function AppSidebar() {
                 isAccountActive && "bg-black/[0.04] dark:bg-white/[0.06]"
               )}
             >
-              <span className="size-8 shrink-0 rounded-full flex items-center justify-center bg-gradient-to-br from-[#0D5C3A] to-[#0A4A2F] text-[11px] font-bold text-white shadow-xs">
-                {initials}
-              </span>
+              {avatarUrl ? (
+                <img
+                  data-testid="sidebar-user-avatar-img"
+                  src={avatarUrl}
+                  alt={userName}
+                  className="size-8 shrink-0 rounded-full object-cover shadow-xs"
+                />
+              ) : (
+                <span
+                  data-testid="sidebar-user-avatar-initials"
+                  className="size-8 shrink-0 rounded-full flex items-center justify-center bg-gradient-to-br from-[#0D5C3A] to-[#0A4A2F] text-[11px] font-bold text-white shadow-xs"
+                >
+                  {initials}
+                </span>
+              )}
               <span className="min-w-0 leading-tight">
-                <span className="block truncate text-[13px] font-semibold text-[#1F1F1F] dark:text-[#E3E3E3]">
+                <span
+                  data-testid="sidebar-user-name"
+                  className="block truncate text-[13px] font-semibold text-[#1F1F1F] dark:text-[#E3E3E3]"
+                >
                   {userName}
                 </span>
                 <span className="block truncate text-[11px] font-medium text-[#747775] dark:text-[#8E918F]">

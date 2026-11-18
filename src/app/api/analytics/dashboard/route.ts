@@ -53,8 +53,9 @@ export async function GET(request: NextRequest) {
 
     let enrollQuery = supabase
       .from("enrollments")
-      .select("id, circular_class_id, theology_class_id", { count: "exact" })
-      .eq("is_active", true);
+      .select("id, circular_class_id, theology_class_id, students!inner(id, is_archived)", { count: "exact" })
+      .eq("is_active", true)
+      .eq("students.is_archived", false);
     let classQuery = supabase.from("circular_classes").select("id, class_name, section");
     let theoClassQuery = supabase
       .from("theology_classes")
@@ -160,7 +161,14 @@ export async function GET(request: NextRequest) {
     const circularMarks = filterMarksByMatchingTerms(rawCircularMarks || [], matchingTermIds);
     const theologyMarks = filterMarksByMatchingTerms(rawTheologyMarks || [], matchingTermIds);
 
-    const { secularClassStatuses, theologyClassStatuses, classStatuses } = buildClassStatuses({
+    const {
+      secularClassStatuses,
+      theologyClassStatuses,
+      classStatuses,
+      totalRequiredEotSecular,
+      totalRequiredEotTheology,
+      excludedEotEnrollmentIds,
+    } = buildClassStatuses({
       department: scope.department,
       enrollments: enrollRows,
       circularClasses: classes || [],
@@ -169,6 +177,9 @@ export async function GET(request: NextRequest) {
       theologyMarks,
       circularSubjects: circularSubjects || [],
       theologySubjects: theologySubjects || [],
+      termNumber: activeTerm?.term_number ?? null,
+      termLabel: activeTerm?.label ?? activeTerm?.name ?? null,
+      candidateRules: mergedSettings?.candidate_class_rules,
     });
 
     const totalRequiredSecular = secularClassStatuses.reduce((s, c) => s + c.totalRequired, 0);
@@ -180,6 +191,9 @@ export async function GET(request: NextRequest) {
       theologyMarks,
       totalRequiredSecular,
       totalRequiredTheology,
+      totalRequiredEotSecular,
+      totalRequiredEotTheology,
+      excludedEotEnrollmentIds,
     });
 
     const missingMarks = classStatuses.reduce((sum, c) => sum + c.missingMarks, 0);

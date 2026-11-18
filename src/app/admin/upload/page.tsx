@@ -1,9 +1,11 @@
 import { createClient, createAdminClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import UploadClient from '@/components/layout/upload-client'
+import { verifyDataAccess, hasPermission } from '@/lib/auth-server'
 import {
   getDynamicSignatureSlots,
   getLatestSignatureObjectNameForSlot,
+  resolveAllowedSignatureSlotsForUser,
   withSignatureVersion,
 } from '@/utils/signatures'
 
@@ -24,6 +26,26 @@ function getFileType(name: string) {
 export default async function UploadPage() {
   const cookieStore = await cookies()
   const supabase = createClient(cookieStore)
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return <div className="p-10 text-rose-600 font-medium">Unauthorized</div>
+  }
+  const authRes = await verifyDataAccess(supabase, user, 'read')
+  const admin = createAdminClient(cookieStore)
+  const allowedSlots = authRes.isAuthorized
+    ? await resolveAllowedSignatureSlotsForUser(admin, authRes)
+    : new Set<string>()
+  const canAccessUploadCenter =
+    authRes.isAuthorized &&
+    (allowedSlots === null ||
+      allowedSlots.size > 0 ||
+      hasPermission(authRes, 'manage_settings') ||
+      hasPermission(authRes, 'lock_marks') ||
+      Boolean(authRes.canonicalRole?.startsWith('DOS')))
+  if (!canAccessUploadCenter) {
+    return <div className="p-10 text-rose-600 font-medium">Access Denied: You must have an assigned class or supervisory role to access the Upload &amp; Signature Center.</div>
+  }
 
   const { data: objects, error } = await supabase.storage.from(BUCKET).list('', { limit: 1000 })
   if (error) {
@@ -51,7 +73,6 @@ export default async function UploadPage() {
 
   let initialSignatureSlots: any[] = []
   try {
-    const admin = createAdminClient(cookieStore)
     const [activeResult, disabledResult, dynamicSlots] = await Promise.all([
       admin.storage.from(SIGNATURES_BUCKET).list('', { limit: 1000 }),
       admin.storage.from(SIGNATURES_BUCKET).list('disabled', { limit: 1000 }),
@@ -59,7 +80,9 @@ export default async function UploadPage() {
     ])
     const activeFiles = !activeResult.error && activeResult.data ? activeResult.data : []
     const disabledFiles = !disabledResult.error && disabledResult.data ? disabledResult.data : []
-    initialSignatureSlots = dynamicSlots.map((slot) => {
+    initialSignatureSlots = dynamicSlots
+      .filter((slot) => allowedSlots === null || allowedSlots.has(slot.slot_key))
+      .map((slot) => {
       const activePath = getLatestSignatureObjectNameForSlot(activeFiles, slot.slot_key)
       const disabledPath = getLatestSignatureObjectNameForSlot(disabledFiles, slot.slot_key)
       const activeObj = activePath ? activeFiles.find((f) => f?.name === activePath) : null

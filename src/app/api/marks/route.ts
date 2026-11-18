@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { isCoreSubject } from '@/lib/grading'
 import { resolveSectionType } from '@/lib/section-type'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
-import { verifyDataAccess, resolveUserScope, canAccessSubjectInScope } from '@/lib/auth-server'
+import { verifyDataAccess, hasPermission, resolveUserScope, canAccessSubjectInScope } from '@/lib/auth-server'
 import { recordActivity } from '@/lib/api-server'
 import { canAccessClass, isAdministratorRole } from '@/lib/teacher-access'
 import { fetchMergedSchoolSettings, isExamSetLockedForUser } from '@/lib/school-settings-helper'
@@ -45,20 +45,26 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Authentication required. Please log in.' }, { status: 401 }))
     }
 
-    const { data: enrollment, error: enrollmentError } = await supabase
-      .from('enrollments')
-      .select('id, student_id, circular_class_id, theology_class_id, circular_classes(section, class_name), theology_classes(level)')
-      .eq('id', enrollment_id)
-      .single()
+    const [enrollmentRes, authRes, termInfo] = await Promise.all([
+      supabase
+        .from('enrollments')
+        .select('id, student_id, is_active, circular_class_id, theology_class_id, circular_classes(section, class_name), theology_classes(level), students!inner(id, is_archived)')
+        .eq('id', enrollment_id)
+        .eq('is_active', true)
+        .eq('students.is_archived', false)
+        .single(),
+      verifyDataAccess(supabase, user, 'read'),
+      resolveEquivalentTerms(supabase, term_id),
+    ])
 
+    const { data: enrollment, error: enrollmentError } = enrollmentRes
     if (enrollmentError || !enrollment) {
       return withCors(request, NextResponse.json({ error: 'Enrollment not found' }, { status: 404 }))
     }
 
     // Security Check
-    const authRes = await verifyDataAccess(supabase, user, 'read');
-    if (!authRes.isAuthorized) {
-      return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
+    if (!authRes.isAuthorized || !hasPermission(authRes, 'read_marks')) {
+      return withCors(request, NextResponse.json({ error: authRes.message || 'Forbidden: Insufficient permissions to read marks.' }, { status: 403 }))
     }
     const canReadCircular = canAccessClass(authRes, 'circular', enrollment.circular_class_id)
     const canReadTheology = canAccessClass(
@@ -71,38 +77,67 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Unauthorized: You do not have access to this student\'s classes.' }, { status: 403 }))
     }
 
-    // Fetch circular subjects
     const circularClassMeta = Array.isArray(enrollment.circular_classes)
       ? enrollment.circular_classes[0]
       : (enrollment.circular_classes as { section?: string; class_name?: string } | null)
     const sectionType = resolveSectionType(circularClassMeta?.section, circularClassMeta?.class_name)
-    const { data: subjects, error: subjectsError } = await supabase
-      .from('circular_subjects')
-      .select('id, subject_name')
-      .eq('section', sectionType)
-      .order('subject_name', { ascending: true })
-
-    if (subjectsError) {
-      console.error('circular_subjects DB error:', subjectsError.message)
-      return withCors(request, NextResponse.json({ error: subjectsError.message }, { status: 500 }))
-    }
-
-    const termInfo = await resolveEquivalentTerms(supabase, term_id)
     const studentIdList = enrollment.student_id ? [enrollment.student_id] : []
 
-    // Fetch and reconcile circular marks
-    const reconciledSecular = await fetchAndReconcileSecularMarks(supabase, {
-      enrollmentIds: [enrollment_id],
-      studentIds: studentIdList,
-      termIds: termInfo.termIds,
-      termAliases: termInfo.termAliases,
-    })
+    const hasTheologyClass = Boolean(enrollment.theology_class_id && enrollment.theology_classes)
+    const theologyClassLevel = hasTheologyClass
+      ? Array.isArray(enrollment.theology_classes)
+        ? enrollment.theology_classes[0]?.level
+        : (enrollment.theology_classes as any)?.level
+      : null
+
+    const [
+      subjectsRes,
+      reconciledSecular,
+      theologySubjectsRes,
+      reconciledTheology,
+    ] = await Promise.all([
+      supabase
+        .from('circular_subjects')
+        .select('id, subject_name')
+        .eq('section', sectionType)
+        .order('subject_name', { ascending: true }),
+      fetchAndReconcileSecularMarks(supabase, {
+        enrollmentIds: [enrollment_id],
+        studentIds: studentIdList,
+        termIds: termInfo.termIds,
+        termAliases: termInfo.termAliases,
+      }),
+      hasTheologyClass && theologyClassLevel
+        ? supabase
+            .from('theology_subjects')
+            .select('id, subject_name_arabic')
+            .eq('level', theologyClassLevel)
+            .order('sort_order', { ascending: true })
+        : Promise.resolve({ data: [], error: null }),
+      hasTheologyClass && theologyClassLevel
+        ? fetchAndReconcileTheologyMarks(supabase, {
+            enrollmentIds: [enrollment_id],
+            studentIds: studentIdList,
+            termIds: termInfo.termIds,
+            termAliases: termInfo.termAliases,
+          })
+        : Promise.resolve([]),
+    ])
+
+    if (subjectsRes.error) {
+      console.error('circular_subjects DB error:', subjectsRes.error.message)
+      return withCors(request, NextResponse.json({ error: subjectsRes.error.message }, { status: 500 }))
+    }
+    if (theologySubjectsRes.error) {
+      console.error('theology_subjects DB error:', theologySubjectsRes.error.message)
+      return withCors(request, NextResponse.json({ error: theologySubjectsRes.error.message }, { status: 500 }))
+    }
 
     const circularMarkMap = new Map(
       reconciledSecular.map((mark) => [mark.subject_id, mark])
     )
 
-    let circular_marks = (subjects || []).map((subject: any) => {
+    let circular_marks = (subjectsRes.data || []).map((subject: any) => {
       const existingMark = circularMarkMap.get(subject.id)
       return {
         subject_id: subject.id,
@@ -114,36 +149,13 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Fetch theology subjects if theology_class_id exists
     let theology_marks: any[] = []
-    if (enrollment.theology_class_id && enrollment.theology_classes) {
-      const theologyClassLevel = Array.isArray(enrollment.theology_classes)
-        ? enrollment.theology_classes[0]?.level
-        : (enrollment.theology_classes as any)?.level
-      const { data: theologySubjects, error: theologySubjectsError } = await supabase
-        .from('theology_subjects')
-        .select('id, subject_name_arabic')
-        .eq('level', theologyClassLevel)
-        .order('sort_order', { ascending: true })
-
-      if (theologySubjectsError) {
-        console.error('theology_subjects DB error:', theologySubjectsError.message)
-        return withCors(request, NextResponse.json({ error: theologySubjectsError.message }, { status: 500 }))
-      }
-
-      // Fetch and reconcile existing theology marks
-      const reconciledTheology = await fetchAndReconcileTheologyMarks(supabase, {
-        enrollmentIds: [enrollment_id],
-        studentIds: studentIdList,
-        termIds: termInfo.termIds,
-        termAliases: termInfo.termAliases,
-      })
-
+    if (hasTheologyClass && theologyClassLevel) {
       const theologyMarkMap = new Map(
         reconciledTheology.map((mark) => [mark.subject_id, mark])
       )
 
-      theology_marks = (theologySubjects || []).map((subject: any) => {
+      theology_marks = (theologySubjectsRes.data || []).map((subject: any) => {
         const existingMark = theologyMarkMap.get(subject.id)
         return {
           subject_id: subject.id,
@@ -204,11 +216,13 @@ export async function POST(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Authentication required. Please log in.' }, { status: 401 }))
     }
 
-    // 1. Fetch enrollment's sections
+    // 1. Fetch enrollment's sections (strictly active, non-archived students only)
     const { data: enrollment, error: enrollmentError } = await supabase
       .from('enrollments')
-      .select('circular_class_id, theology_class_id, circular_classes(section, class_name), theology_classes(level)')
+      .select('circular_class_id, theology_class_id, is_active, circular_classes(section, class_name), theology_classes(level), students!inner(id, is_archived)')
       .eq('id', enrollment_id)
+      .eq('is_active', true)
+      .eq('students.is_archived', false)
       .single()
       
     if (enrollmentError || !enrollment) {

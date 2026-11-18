@@ -121,7 +121,7 @@ test('Item E: Teacher Deactivation, Session Revocation, Guards & Audit Suite', a
 
   // Helper for SSR cookie headers
   const getHeaders = (session) => {
-    const base64Session = Buffer.from(JSON.stringify(session)).toString('base64');
+    const base64Session = Buffer.from(JSON.stringify(session)).toString('base64url');
     return {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${session.access_token}`,
@@ -244,13 +244,15 @@ test('Item E: Teacher Deactivation, Session Revocation, Guards & Audit Suite', a
   // E-D & E-E: Playwright UI test verifies button is renamed "Deactivate" BEFORE deactivation
   await t.test('E-D & E-E: Playwright UI test verifies button is renamed "Deactivate"', async () => {
     const browser = await chromium.launch({
-      executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+      executablePath: (await import('node:fs')).default.existsSync('/usr/bin/google-chrome')
+        ? '/usr/bin/google-chrome'
+        : 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
       headless: true
     });
     const context = await browser.newContext();
 
     // Inject Admin session cookie directly
-    const ssrCookieValue = 'base64-' + Buffer.from(JSON.stringify(adminSession)).toString('base64');
+    const ssrCookieValue = 'base64-' + Buffer.from(JSON.stringify(adminSession)).toString('base64url');
     await context.addCookies([
       {
         name: 'sb-127-auth-token',
@@ -484,16 +486,16 @@ test('Item E: Teacher Deactivation, Session Revocation, Guards & Audit Suite', a
     console.log('  [J5 SELF-DEACTIVATE GUARD] Status:', selfRes.status, 'Body:', selfBody);
   });
 
-  // Teardown: Clean up disposable test fixtures
+  // Teardown: Clean up disposable test fixtures (clear FKs before deleting teacher row)
   t.after(async () => {
+    await supabaseAdmin.from('circular_marks').delete().eq('id', HISTORICAL_CIRCULAR_MARK_ID);
+    await supabaseAdmin.from('circular_subjects').delete().eq('id', CIRCULAR_SUBJECT_ID);
+    await supabaseAdmin.from('circular_classes').update({ class_teacher_id: 'c599cb13-fb3d-4e5d-8e27-253cb7e5ac1a' }).eq('id', 'c1000000-0000-0000-0000-000000000001');
+    await supabaseAdmin.from('theology_marks').update({ updated_by: 'c599cb13-fb3d-4e5d-8e27-253cb7e5ac1a', mot_score: 89, eot_score: 91 }).eq('id', HISTORICAL_MARK_ID);
+    await supabaseAdmin.from('activity_logs').delete().eq('user_id', DISPOSABLE_TEACHER_ID);
     await supabaseAdmin.from('teacher_class_assignments').delete().eq('teacher_id', DISPOSABLE_TEACHER_ID);
     await supabaseAdmin.from('teachers').delete().eq('id', DISPOSABLE_TEACHER_ID);
     await supabaseAdmin.auth.admin.deleteUser(DISPOSABLE_TEACHER_ID).catch(() => {});
-    await supabaseAdmin.from('circular_marks').delete().eq('id', HISTORICAL_CIRCULAR_MARK_ID);
-    await supabaseAdmin.from('circular_subjects').delete().eq('id', CIRCULAR_SUBJECT_ID);
-    // Reset mark author to teacher@test.local and restore class_teacher_id
-    await supabaseAdmin.from('circular_classes').update({ class_teacher_id: 'c599cb13-fb3d-4e5d-8e27-253cb7e5ac1a' }).eq('id', 'c1000000-0000-0000-0000-000000000001');
-    await supabaseAdmin.from('theology_marks').update({ updated_by: 'c599cb13-fb3d-4e5d-8e27-253cb7e5ac1a', mot_score: 89, eot_score: 91 }).eq('id', HISTORICAL_MARK_ID);
     console.log('  [TEARDOWN] Disposable teacher fixtures completely cleaned up.');
   });
 });

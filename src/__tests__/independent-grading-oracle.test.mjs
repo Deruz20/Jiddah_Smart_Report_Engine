@@ -154,22 +154,22 @@ describe('Wave 3: Independent Grading & Calculation Oracle', () => {
       assert.equal(getSubjectRemark(1), 'Excellent');
       assert.equal(getSubjectRemark(2), 'Very Good');
       assert.equal(getSubjectRemark(3), 'Good');
-      assert.equal(getSubjectRemark(4), 'Fairly Good');
-      assert.equal(getSubjectRemark(5), 'Fair');
-      assert.equal(getSubjectRemark(6), 'Average');
-      assert.equal(getSubjectRemark(7), 'Below Average');
-      assert.equal(getSubjectRemark(8), 'Poor');
-      assert.equal(getSubjectRemark(9), 'Failed');
+      assert.equal(getSubjectRemark(4), 'Quite Good');
+      assert.equal(getSubjectRemark(5), 'Fairly Good');
+      assert.equal(getSubjectRemark(6), 'Fair');
+      assert.equal(getSubjectRemark(7), 'More Effort');
+      assert.equal(getSubjectRemark(8), 'Work Harder');
+      assert.equal(getSubjectRemark(9), 'Poor / Pull Up');
     });
 
-    it('generates authentic Arabic remarks for Islamic theology', () => {
-      assert.equal(getTheologySubjectRemark(1), 'ممتاز');
-      assert.equal(getTheologySubjectRemark(2), 'جيد جداً');
-      assert.equal(getTheologySubjectRemark(3), 'جيد');
-      assert.equal(getTheologySubjectRemark(5), 'مقبول');
-      assert.equal(getTheologySubjectRemark(7), 'ضعيف');
-      assert.equal(getTheologySubjectRemark(8), 'ضعيف جداً');
-      assert.equal(getTheologySubjectRemark(9), 'راسب');
+    it('generates distinct Arabic IPLE attainment descriptors for individual theology subjects', () => {
+      assert.equal(getTheologySubjectRemark(1), 'تفوق عالٍ');
+      assert.equal(getTheologySubjectRemark(2), 'تفوق');
+      assert.equal(getTheologySubjectRemark(3), 'جدارة عالية');
+      assert.equal(getTheologySubjectRemark(5), 'جدارة متوسطة');
+      assert.equal(getTheologySubjectRemark(7), 'اجتياز كافٍ');
+      assert.equal(getTheologySubjectRemark(8), 'اجتياز حدّي');
+      assert.equal(getTheologySubjectRemark(9), 'دون المستوى');
     });
   });
 

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Plus, Edit, Trash2, GraduationCap, ChevronDown, Save } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { ConfirmDestructiveDialog } from "@/components/ConfirmDestructiveDialog";
+import { normalizeGradingCriterion } from "@/lib/grading-engine";
 
 type GradingCriteria = {
   id: string;
@@ -60,8 +61,9 @@ export function GradingCriteriaClient({
 
       if (criteriaError && criteriaError.code !== '42P01') {
         console.error("Error fetching criteria:", criteriaError);
+        toast.error("Failed to load grading rules: " + criteriaError.message);
       } else if (criteriaData) {
-        setCriteria(criteriaData as GradingCriteria[]);
+        setCriteria(criteriaData.map((row: any) => normalizeGradingCriterion(row) as GradingCriteria));
       }
 
       // Fetch classes for dropdowns
@@ -90,29 +92,49 @@ export function GradingCriteriaClient({
 
     try {
       const supabase = createClient();
+      const minVal = Number(formValues.min_value);
+      const maxVal = Number(formValues.max_value);
+      const metricType = String(formValues.metric_type || "subject_score").trim();
+      const outputType = String(formValues.output_type || "comment").trim();
+      const outputText = String(formValues.output_text || "").trim();
+      if (minVal > maxVal) {
+        toast.error("Minimum value cannot exceed maximum value.");
+        return;
+      }
+
       const payload = {
-        curriculum: activeTab === 'circular' ? 'secular' : 'theology',
+        section: activeTab === 'circular' ? 'secular' : 'theology',
         class_id: formValues.class_id || null,
-        metric_type: formValues.metric_type,
-        min_value: Number(formValues.min_value),
-        max_value: Number(formValues.max_value),
-        output_type: formValues.output_type,
-        output_text: formValues.output_text,
+        grade: `${metricType}:${outputType}`,
+        min_score: minVal,
+        max_score: maxVal,
+        min_value: minVal,
+        max_value: maxVal,
+        remark: outputText,
       };
 
       if (isEditing === "new") {
-        const { error } = await supabase.from("grading_criteria").insert([payload]);
-        if (error) throw error;
-        toast.success("Grading rule added successfully.");
+        const { data: inserted, error } = await supabase
+          .from("grading_criteria")
+          .insert([payload])
+          .select("*")
+          .single();
+        if (error || !inserted) throw error || new Error("No row returned after insert.");
+        toast.success("Grading rule added and verified.");
       } else {
-        const { error } = await supabase.from("grading_criteria").update(payload).eq("id", isEditing);
-        if (error) throw error;
-        toast.success("Grading rule updated successfully.");
+        const { data: updated, error } = await supabase
+          .from("grading_criteria")
+          .update(payload)
+          .eq("id", isEditing)
+          .select("*")
+          .single();
+        if (error || !updated) throw error || new Error("Rule not found or permission denied.");
+        toast.success("Grading rule updated and verified.");
       }
 
       setIsEditing(null);
       setFormValues({});
-      fetchData();
+      await fetchData();
     } catch (error: any) {
       toast.error("Error saving rule: " + error.message);
     }
@@ -215,6 +237,8 @@ export function GradingCriteriaClient({
                         <option value="subject_score" />
                         <option value="total_score" />
                         <option value="aggregate" />
+                        <option value="conduct" />
+                        <option value="head_comment" />
                       </datalist>
                     </div>
 

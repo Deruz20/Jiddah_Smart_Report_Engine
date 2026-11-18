@@ -1,4 +1,4 @@
-import { createClient } from '@/utils/supabase/server'
+import { createAdminClient, createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import SettingsClient from '@/components/layout/SettingsClient'
 import { fetchMergedSchoolSettings } from '@/lib/school-settings-helper'
@@ -18,27 +18,25 @@ export default async function SchoolSettingsPage() {
     )
   }
 
-  const { verifyDataAccess } = await import('@/lib/auth-server')
+  const { verifyDataAccess, hasPermission } = await import('@/lib/auth-server')
   const authRes = await verifyDataAccess(supabase, user, 'read')
-  const { isAdministratorRole } = await import('@/lib/teacher-access')
-  const isDOS =
-    authRes.canonicalRole === 'DOS Secular' || authRes.canonicalRole === 'DOS Theology'
 
-  if (!authRes.isAuthorized || (!isAdministratorRole(authRes.canonicalRole || authRes.role) && !isDOS)) {
+  if (!authRes.isAuthorized || !hasPermission(authRes, 'manage_settings')) {
     return (
       <div className="p-10 text-rose-700 bg-[#F8FAF8] min-h-screen font-medium">
-        Access Denied: Only Administrators and Directors of Studies may access School Settings.
+        Access Denied: Only Administrators may access School Settings.
       </div>
     )
   }
 
+  const supabaseAdmin = createAdminClient(cookieStore)
   const [{ data: terms }, initialSettings] = await Promise.all([
     supabase
       .from('terms')
       .select('id, name, academic_year, start_date, end_date, next_term_begins, is_active, created_at')
       .order('academic_year', { ascending: false })
       .order('name', { ascending: true }),
-    fetchMergedSchoolSettings(supabase),
+    fetchMergedSchoolSettings(supabaseAdmin),
   ])
 
   return (

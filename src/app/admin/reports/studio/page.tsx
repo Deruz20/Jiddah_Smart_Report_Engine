@@ -1,6 +1,7 @@
 import { createClient } from '@/utils/supabase/server';
 import { cookies } from 'next/headers';
 import ReportStudioClient from '@/components/reports/ReportStudioClient';
+import { verifyDataAccess, hasPermission } from '@/lib/auth-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,23 +21,11 @@ export default async function ReportStudioPage() {
     );
   }
 
-  const { data: profile } = await supabase
-    .from('teachers')
-    .select('role, status')
-    .eq('email', user.email)
-    .single();
-
-  const role = profile?.role;
-  const isDenied =
-    profile?.status === 'inactive' ||
-    role === 'Support Staff' ||
-    role === 'Theology Instructor' ||
-    role === 'Teacher Theology';
-
-  if (isDenied) {
+  const access = await verifyDataAccess(supabase, user, 'read');
+  if (!access.isAuthorized || !hasPermission(access, 'read_reports')) {
     return (
       <div className="p-10 text-red-500 font-medium max-w-xl mx-auto mt-10 bg-red-50 border border-red-200 rounded-xl">
-        Access Denied: Your role ({role}) does not have permission to access Report Studio.
+        Access Denied: Your role ({access.role || 'Unknown'}) does not have permission to access Report Studio.
       </div>
     );
   }

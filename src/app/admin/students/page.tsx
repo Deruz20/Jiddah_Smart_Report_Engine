@@ -4,7 +4,7 @@ import { StudentRegistrationContainer } from '@/components/students/StudentRegis
 import { StudentsListClient } from '@/components/StudentsListClient'
 import { MetricCard } from '@/components/figma-ui/MetricCard'
 import { RegistrationTips } from '@/components/figma-ui/RegistrationTips'
-import { GraduationCap, BookOpen, TrendingUp, Calendar, UserPlus, ChevronDown } from 'lucide-react'
+import { UserPlus, ChevronDown } from 'lucide-react'
 
 import { verifyDataAccess, resolveUserScope } from '@/lib/auth-server'
 import { classIdsForType } from '@/lib/teacher-access'
@@ -89,53 +89,11 @@ export default async function StudentsManagementPage() {
       arabic_name: e.students.arabic_name ?? null,
     }))
 
-  const runningClassesCount = new Set(
-    students
-      .map((s: any) => (s.circular_class && s.circular_class !== '—' ? s.circular_class : s.theology_class_english || s.theology_class_arabic))
-      .filter(Boolean)
-  ).size;
-
-  const heroStats = [
-    { label: 'Active Students', value: students.length, icon: GraduationCap, color: 'emerald' },
-    { label: 'Classes Running', value: runningClassesCount, icon: BookOpen, color: 'orange' },
-    { label: 'Active Cohorts', value: `${runningClassesCount} Levels`, icon: TrendingUp, color: 'emerald' },
-    { label: 'Academic Year', value: currentAcademicYear, icon: Calendar, color: 'stone' },
-  ];
+  const activeStudentsCount = students.filter((s: any) => !s.is_archived).length;
 
   return (
     <div className="w-full max-w-full text-stone-900 dark:text-[#E3E3E3] font-sans pb-6 relative overflow-x-hidden">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-3 sm:pt-4 space-y-4">
-        {/* Compact 4-pill KPI strip */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-          {heroStats.map((stat) => {
-            const Icon = stat.icon;
-            return (
-              <div
-                key={stat.label}
-                className="bg-white dark:bg-[#1E1F20] border border-[#0D5C3A]/10 dark:border-[#F59E0B]/12 rounded-xl px-3 py-2.5 flex items-center gap-2.5 shadow-2xs"
-              >
-                <div
-                  className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
-                    stat.color === 'emerald'
-                      ? 'bg-emerald-50 dark:bg-emerald-950/40 text-[#059669] dark:text-[#34D399]'
-                      : stat.color === 'orange'
-                      ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400'
-                      : 'bg-stone-100 dark:bg-[#282A2C] text-stone-600 dark:text-stone-300'
-                  }`}
-                >
-                  <Icon size={14} />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-sm sm:text-base font-extrabold text-stone-900 dark:text-white leading-none tabular-nums">
-                    {stat.value}
-                  </div>
-                  <div className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5 truncate">{stat.label}</div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
         {/* Collapsible Student Registration Drawer — keeps Enrolled Students immediately visible above the fold */}
         <details className="group bg-white dark:bg-[#1E1F20] border border-[#0D5C3A]/10 dark:border-[#F59E0B]/12 rounded-2xl shadow-2xs overflow-hidden">
           <summary className="list-none cursor-pointer px-4 py-3 flex items-center justify-between gap-3 bg-[#FAF7F2] dark:bg-[#282A2C]/60 hover:bg-stone-100/70 dark:hover:bg-[#282A2C] transition-colors select-none">
@@ -165,16 +123,20 @@ export default async function StudentsManagementPage() {
                 <StudentRegistrationContainer />
               </div>
               <div className="lg:col-span-2 flex flex-col gap-4">
-                <MetricCard total={students.length} />
+                <MetricCard total={activeStudentsCount} />
                 <RegistrationTips />
               </div>
             </div>
           </div>
         </details>
 
-        {/* Students Directory Table — Immediately visible above the fold */}
+        {/* Students Directory Table & Live Active vs Archived Metric Counters */}
         <section>
-          <StudentsListClient students={students} department={authRes.filterByDepartment} />
+          <StudentsListClient
+            students={students}
+            department={authRes.filterByDepartment}
+            currentAcademicYear={String(currentAcademicYear)}
+          />
         </section>
       </div>
     </div>

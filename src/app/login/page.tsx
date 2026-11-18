@@ -193,16 +193,26 @@ function LoginContent() {
     setLoading(true);
     setAuthErrorMessage(null);
     const supabase = createClient();
+    const trimmedIdentifier = values.email.trim();
     try {
-      let { data, error } = await supabase.auth.signInWithPassword({
-        email: values.email,
-        password: values.password,
-      });
+      const loginReq = () =>
+        fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            identifier: trimmedIdentifier,
+            password: values.password,
+          }),
+        });
 
-      // Local rehearsal auto-sync for developer environments
+      let res = await loginReq();
+      let payload = await res.json().catch(() => ({}));
+
+      // Local rehearsal auto-sync for developer email accounts
       if (
-        error &&
-        !isNetworkFailure(error) &&
+        !res.ok &&
+        res.status === 401 &&
+        trimmedIdentifier.includes("@") &&
         typeof window !== "undefined" &&
         (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
       ) {
@@ -210,26 +220,21 @@ function LoginContent() {
           const syncRes = await fetch("/api/auth/local-sync", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email: values.email, password: values.password }),
+            body: JSON.stringify({ email: trimmedIdentifier, password: values.password }),
           });
           if (syncRes.ok) {
-            const retry = await supabase.auth.signInWithPassword({
-              email: values.email,
-              password: values.password,
-            });
-            if (!retry.error) {
-              data = retry.data;
-              error = null;
-            }
+            res = await loginReq();
+            payload = await res.json().catch(() => ({}));
           }
         } catch {}
       }
 
-      if (error) throw error;
+      if (!res.ok) {
+        throw new Error(payload?.error || "Invalid login credentials");
+      }
 
-      const needsOnboarding =
-        data.user?.user_metadata?.role?.toLowerCase().includes("teacher") &&
-        !data.user?.user_metadata?.onboarding_completed;
+      const roleStr = String(payload?.user?.role || "").toLowerCase();
+      const needsOnboarding = roleStr.includes("teacher") && !payload?.user?.onboarding_completed;
 
       window.location.href = needsOnboarding ? "/onboarding" : redirectTo;
     } catch (error: any) {
@@ -238,7 +243,7 @@ function LoginContent() {
       } catch {}
       const msg = isNetworkFailure(error)
         ? NETWORK_MESSAGE
-        : error?.message || "Invalid email or password. Please verify your credentials.";
+        : error?.message || "Invalid login credentials";
       setAuthErrorMessage(msg);
     } finally {
       setLoading(false);
@@ -246,7 +251,7 @@ function LoginContent() {
   };
 
   const handleLoginInvalid = (errors: FieldErrors<LoginForm>) => {
-    const message = firstFieldError(errors) ?? "Please enter your email address and password.";
+    const message = firstFieldError(errors) ?? "Please enter your email or username and password.";
     setAuthErrorMessage(message);
   };
 
@@ -407,16 +412,16 @@ function LoginContent() {
                     htmlFor="email"
                     className="block text-[13px] font-medium text-[#374151] mb-1.5"
                   >
-                    Email address
+                    Email or Username
                   </label>
                   <div className="relative flex items-center group">
                     <Mail className="absolute left-3.5 w-4 h-4 text-[#9CA3AF] group-focus-within:text-[#D97706] transition-colors pointer-events-none" />
                     <input
                       id="email"
-                      type="email"
-                      autoComplete="email"
-                      aria-label="Email address"
-                      placeholder="name@jiddahschool.ac.ug"
+                      type="text"
+                      autoComplete="username"
+                      aria-label="Email or Username"
+                      placeholder="username or name@jiddahschool.ac.ug"
                       disabled={loading}
                       className="clerk-input w-full h-11 pl-10 pr-3.5 rounded-lg border border-[#DCD6CC] bg-[#FFFFFF] text-sm text-[#111827] placeholder:text-[#9CA3AF] focus:border-[#D97706] focus:ring-3 focus:ring-[#D97706]/15 focus:outline-none transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                       {...loginForm.register("email")}

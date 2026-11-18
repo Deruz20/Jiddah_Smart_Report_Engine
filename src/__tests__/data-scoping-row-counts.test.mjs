@@ -20,7 +20,7 @@ async function getSessionHeaders(email, password) {
     throw new Error(`Auth failed for ${email}: ${error?.message}`);
   }
   const token = data.session.access_token;
-  const base64Session = Buffer.from(JSON.stringify(data.session)).toString('base64');
+  const base64Session = Buffer.from(JSON.stringify(data.session)).toString('base64url');
   return {
     'Authorization': `Bearer ${token}`,
     'Cookie': `sb-127-auth-token=base64-${base64Session}`,
@@ -122,29 +122,37 @@ test('F5 Data Scoping & Row-Count Verification Suite (with unassigned fixture)',
     assert.ok(marks.length >= 2, `Head Teacher must see all theology marks (>=2). Got: ${marks.length}`);
   });
 
-  // 4. DOS: sees ALL rows across their department
+  // 4. DOS: sees ALL rows across their own department only
   await t.test('4. DOS sees ALL rows across department (including unassigned)', async () => {
-    const headers = await getSessionHeaders('dos@test.local', 'Password123!');
+    const secularDosHeaders = await getSessionHeaders('dos@test.local', 'Password123!');
+    const theologyDosHeaders = await getSessionHeaders('dos_theology@test.local', 'Password123!');
 
-    const resStudents = await fetch(`${BASE_URL}/api/students`, { headers });
+    const resStudents = await fetch(`${BASE_URL}/api/students`, { headers: secularDosHeaders });
     assert.equal(resStudents.status, 200);
     const students = await resStudents.json();
     console.log(`  [DOS /api/students] Row count: ${students.length}`);
     assert.ok(students.length >= 2, `DOS must see all students (>=2). Got: ${students.length}`);
 
-    const resTheologyClasses = await fetch(`${BASE_URL}/api/theology-classes`, { headers });
+    // DOS Secular must NOT see Theology classes; DOS Theology sees ALL Theology classes (>=2)
+    const resSecularDosTheologyClasses = await fetch(`${BASE_URL}/api/theology-classes`, { headers: secularDosHeaders });
+    assert.equal(resSecularDosTheologyClasses.status, 200);
+    const secularDosClassesPayload = await resSecularDosTheologyClasses.json();
+    const secularDosClasses = secularDosClassesPayload.data || secularDosClassesPayload;
+    assert.equal(secularDosClasses.length, 0, `DOS Secular must see 0 theology classes. Got: ${secularDosClasses.length}`);
+
+    const resTheologyClasses = await fetch(`${BASE_URL}/api/theology-classes`, { headers: theologyDosHeaders });
     assert.equal(resTheologyClasses.status, 200);
     const classesPayload = await resTheologyClasses.json();
     const classes = classesPayload.data || classesPayload;
-    console.log(`  [DOS /api/theology-classes] Row count: ${classes.length}`);
-    assert.ok(classes.length >= 2, `DOS must see all theology classes (>=2). Got: ${classes.length}`);
+    console.log(`  [DOS Theology /api/theology-classes] Row count: ${classes.length}`);
+    assert.ok(classes.length >= 2, `DOS Theology must see all theology classes (>=2). Got: ${classes.length}`);
 
-    const resTheologyMarks = await fetch(`${BASE_URL}/api/theology-marks`, { headers });
+    const resTheologyMarks = await fetch(`${BASE_URL}/api/theology-marks`, { headers: theologyDosHeaders });
     assert.equal(resTheologyMarks.status, 200);
     const marksPayload = await resTheologyMarks.json();
     const marks = marksPayload.data || marksPayload;
-    console.log(`  [DOS /api/theology-marks] Row count: ${marks.length}`);
-    assert.ok(marks.length >= 2, `DOS must see all theology marks (>=2). Got: ${marks.length}`);
+    console.log(`  [DOS Theology /api/theology-marks] Row count: ${marks.length}`);
+    assert.ok(marks.length >= 2, `DOS Theology must see all theology marks (>=2). Got: ${marks.length}`);
   });
 
   // 5. Administrator: sees ALL rows globally

@@ -36,6 +36,9 @@ import {
   getSubjectRemark,
   getTheologySubjectRemark,
   getTheologyGradeNumber,
+  getTheologyGradeDisplay,
+  calculateTheologyAggregateFromMarks,
+  getTheologyDivision,
 } from '@/lib/grading'
 import { CustomPillSelect, StudentCombobox } from '@/components/ui/custom-pill-select'
 
@@ -52,6 +55,14 @@ const SecularMarkTableRow = React.memo(function SecularMarkTableRow({
   examType,
   isNursery,
   isBothView,
+  customGradingScale,
+  rawBot,
+  rawMot,
+  rawEot,
+  errBot,
+  errMot,
+  errEot,
+  isExamSetLocked,
   renderScoreCell,
 }: {
   mark: CircularMarkRow
@@ -59,6 +70,14 @@ const SecularMarkTableRow = React.memo(function SecularMarkTableRow({
   examType: ExamType
   isNursery: boolean
   isBothView?: boolean
+  customGradingScale?: any[]
+  rawBot?: string
+  rawMot?: string
+  rawEot?: string
+  errBot?: string
+  errMot?: string
+  errEot?: string
+  isExamSetLocked?: boolean
   renderScoreCell: (
     curriculum: 'secular' | 'theology',
     subjectId: string,
@@ -81,8 +100,8 @@ const SecularMarkTableRow = React.memo(function SecularMarkTableRow({
     if (isNursery) {
       remark = getNurseryGrade(activeScore).remark
     } else {
-      const gNum = getSubjectGradeNumber(activeScore)
-      remark = getSubjectRemark(gNum)
+      const gNum = getSubjectGradeNumber(activeScore, customGradingScale)
+      remark = getSubjectRemark(gNum, customGradingScale)
     }
   }
 
@@ -186,19 +205,45 @@ const SecularMarkTableRow = React.memo(function SecularMarkTableRow({
       )}
     </tr>
   )
-})
+}, (prev, next) => (
+  prev.mark === next.mark &&
+  prev.idx === next.idx &&
+  prev.examType === next.examType &&
+  prev.isNursery === next.isNursery &&
+  prev.isBothView === next.isBothView &&
+  prev.customGradingScale === next.customGradingScale &&
+  prev.rawBot === next.rawBot &&
+  prev.rawMot === next.rawMot &&
+  prev.rawEot === next.rawEot &&
+  prev.errBot === next.errBot &&
+  prev.errMot === next.errMot &&
+  prev.errEot === next.errEot &&
+  prev.isExamSetLocked === next.isExamSetLocked
+))
 
 const TheologyMarkTableRow = React.memo(function TheologyMarkTableRow({
   mark,
   idx,
   examType,
   isBothView,
+  customTheologyScale,
+  rawMot,
+  rawEot,
+  errMot,
+  errEot,
+  isExamSetLocked,
   renderScoreCell,
 }: {
   mark: TheologyMarkRow
   idx: number
   examType: ExamType
   isBothView?: boolean
+  customTheologyScale?: any[]
+  rawMot?: string
+  rawEot?: string
+  errMot?: string
+  errEot?: string
+  isExamSetLocked?: boolean
   renderScoreCell: (
     curriculum: 'secular' | 'theology',
     subjectId: string,
@@ -214,7 +259,9 @@ const TheologyMarkTableRow = React.memo(function TheologyMarkTableRow({
       : mark.eot_score ?? mark.mot_score
 
   const hasScore = typeof activeScore === 'number' && !Number.isNaN(activeScore)
-  const remark = hasScore ? getTheologySubjectRemark(getTheologyGradeNumber(activeScore)) : ''
+  const remark = hasScore
+    ? getTheologySubjectRemark(getTheologyGradeNumber(activeScore, customTheologyScale), customTheologyScale)
+    : ''
   const isAllPhases = examType === 'all'
 
   return (
@@ -289,7 +336,18 @@ const TheologyMarkTableRow = React.memo(function TheologyMarkTableRow({
       )}
     </tr>
   )
-})
+}, (prev, next) => (
+  prev.mark === next.mark &&
+  prev.idx === next.idx &&
+  prev.examType === next.examType &&
+  prev.isBothView === next.isBothView &&
+  prev.customTheologyScale === next.customTheologyScale &&
+  prev.rawMot === next.rawMot &&
+  prev.rawEot === next.rawEot &&
+  prev.errMot === next.errMot &&
+  prev.errEot === next.errEot &&
+  prev.isExamSetLocked === next.isExamSetLocked
+))
 
 export type ExamType = 'bot' | 'mot' | 'eot' | 'all'
 
@@ -327,9 +385,18 @@ export interface SharedMarksEntryProps {
   isUnassigned?: boolean
   assignedSubjects?: string[]
   roleLabel?: string
+  gradingConfig?: {
+    grading_scale?: any[]
+    division_boundaries?: any[]
+    theology_grading_scale?: any[]
+    theology_division_boundaries?: any[]
+  }
 }
 
-function computeTheologyBadge(score: number | null | undefined): {
+function computeTheologyBadge(
+  score: number | null | undefined,
+  customTheologyScale?: any[]
+): {
   grade: string
   bg: string
   text: string
@@ -338,16 +405,19 @@ function computeTheologyBadge(score: number | null | undefined): {
   if (score === null || score === undefined || Number.isNaN(Number(score))) return null
   const n = Number(score)
   if (n < 0 || n > 100) return null
-  if (n >= 85) return { grade: 'ممتاز', bg: 'bg-emerald-500/15', text: 'text-emerald-800 dark:text-emerald-300 font-bold', border: 'border-emerald-500/30' }
-  if (n >= 75) return { grade: 'جيد جدا', bg: 'bg-emerald-500/10', text: 'text-emerald-700 dark:text-emerald-400 font-bold', border: 'border-emerald-500/20' }
-  if (n >= 60) return { grade: 'جيد', bg: 'bg-blue-500/15', text: 'text-blue-800 dark:text-blue-300 font-bold', border: 'border-blue-500/30' }
-  if (n >= 50) return { grade: 'مقبول', bg: 'bg-amber-500/15', text: 'text-amber-800 dark:text-amber-300 font-bold', border: 'border-amber-500/30' }
-  return { grade: 'ضعيف', bg: 'bg-rose-500/15', text: 'text-rose-800 dark:text-rose-300 font-bold', border: 'border-rose-500/30' }
+  const gradeNum = getTheologyGradeNumber(n, customTheologyScale)
+  const grade = getTheologyGradeDisplay(n, customTheologyScale)
+  if (gradeNum <= 1) return { grade, bg: 'bg-emerald-500/15', text: 'text-emerald-800 dark:text-emerald-300 font-bold', border: 'border-emerald-500/30' }
+  if (gradeNum === 2) return { grade, bg: 'bg-emerald-500/10', text: 'text-emerald-700 dark:text-emerald-400 font-bold', border: 'border-emerald-500/20' }
+  if (gradeNum <= 6) return { grade, bg: 'bg-blue-500/15', text: 'text-blue-800 dark:text-blue-300 font-bold', border: 'border-blue-500/30' }
+  if (gradeNum <= 8) return { grade, bg: 'bg-amber-500/15', text: 'text-amber-800 dark:text-amber-300 font-bold', border: 'border-amber-500/30' }
+  return { grade, bg: 'bg-rose-500/15', text: 'text-rose-800 dark:text-rose-300 font-bold', border: 'border-rose-500/30' }
 }
 
 function computeGradeBadge(
   score: number | null | undefined,
-  isNursery = false
+  isNursery = false,
+  customGradingScale?: any[]
 ): {
   grade: string
   bg: string
@@ -368,15 +438,17 @@ function computeGradeBadge(
     }
   }
 
-  if (n >= 85) return { grade: 'D1', bg: 'bg-emerald-500/15', text: 'text-emerald-800 dark:text-emerald-300 font-bold', border: 'border-emerald-500/30' }
-  if (n >= 75) return { grade: 'D2', bg: 'bg-emerald-500/10', text: 'text-emerald-700 dark:text-emerald-400 font-bold', border: 'border-emerald-500/20' }
-  if (n >= 70) return { grade: 'C3', bg: 'bg-blue-500/15', text: 'text-blue-800 dark:text-blue-300 font-bold', border: 'border-blue-500/30' }
-  if (n >= 60) return { grade: 'C4', bg: 'bg-blue-500/10', text: 'text-blue-700 dark:text-blue-400 font-bold', border: 'border-blue-500/20' }
-  if (n >= 55) return { grade: 'C5', bg: 'bg-cyan-500/15', text: 'text-cyan-800 dark:text-cyan-300 font-bold', border: 'border-cyan-500/30' }
-  if (n >= 50) return { grade: 'C6', bg: 'bg-cyan-500/10', text: 'text-cyan-700 dark:text-cyan-400 font-bold', border: 'border-cyan-500/20' }
-  if (n >= 40) return { grade: 'P7', bg: 'bg-amber-500/15', text: 'text-amber-800 dark:text-amber-300 font-bold', border: 'border-amber-500/30' }
-  if (n >= 35) return { grade: 'P8', bg: 'bg-orange-500/15', text: 'text-orange-800 dark:text-orange-300 font-bold', border: 'border-orange-500/30' }
-  return { grade: 'F9', bg: 'bg-rose-500/15', text: 'text-rose-800 dark:text-rose-300 font-bold', border: 'border-rose-500/30' }
+  const gradeNum = getSubjectGradeNumber(n, customGradingScale)
+  const grade = getGradeDisplay(gradeNum)
+  if (gradeNum === 1) return { grade, bg: 'bg-emerald-500/15', text: 'text-emerald-800 dark:text-emerald-300 font-bold', border: 'border-emerald-500/30' }
+  if (gradeNum === 2) return { grade, bg: 'bg-emerald-500/10', text: 'text-emerald-700 dark:text-emerald-400 font-bold', border: 'border-emerald-500/20' }
+  if (gradeNum === 3) return { grade, bg: 'bg-blue-500/15', text: 'text-blue-800 dark:text-blue-300 font-bold', border: 'border-blue-500/30' }
+  if (gradeNum === 4) return { grade, bg: 'bg-blue-500/10', text: 'text-blue-700 dark:text-blue-400 font-bold', border: 'border-blue-500/20' }
+  if (gradeNum === 5) return { grade, bg: 'bg-cyan-500/15', text: 'text-cyan-800 dark:text-cyan-300 font-bold', border: 'border-cyan-500/30' }
+  if (gradeNum === 6) return { grade, bg: 'bg-cyan-500/10', text: 'text-cyan-700 dark:text-cyan-400 font-bold', border: 'border-cyan-500/20' }
+  if (gradeNum === 7) return { grade, bg: 'bg-amber-500/15', text: 'text-amber-800 dark:text-amber-300 font-bold', border: 'border-amber-500/30' }
+  if (gradeNum === 8) return { grade, bg: 'bg-orange-500/15', text: 'text-orange-800 dark:text-orange-300 font-bold', border: 'border-orange-500/30' }
+  return { grade, bg: 'bg-rose-500/15', text: 'text-rose-800 dark:text-rose-300 font-bold', border: 'border-rose-500/30' }
 }
 
 function StudentPerformanceSideCard({
@@ -548,6 +620,7 @@ export function SharedMarksEntry({
   isUnassigned = false,
   assignedSubjects = [],
   roleLabel = 'Teacher',
+  gradingConfig,
 }: SharedMarksEntryProps) {
   const selectedEnrollment = (Array.isArray(enrollments) ? enrollments.find((e) => e.id === selectedEnrollmentId) : null) || null
 
@@ -775,8 +848,8 @@ export function SharedMarksEntry({
     if (isCurrentNursery) {
       return getNurseryGrade(liveSummary.avg).grade
     }
-    return getGradeDisplay(getSubjectGradeNumber(Math.round(liveSummary.avg)))
-  }, [liveSummary.scoredCount, liveSummary.avg, isCurrentNursery])
+    return getGradeDisplay(getSubjectGradeNumber(Math.round(liveSummary.avg), gradingConfig?.grading_scale))
+  }, [liveSummary.scoredCount, liveSummary.avg, isCurrentNursery, gradingConfig?.grading_scale])
 
   const secularStats = useMemo(() => {
     const scoreKey = examType === 'bot' ? 'bot_score' : examType === 'mot' ? 'mot_score' : 'eot_score'
@@ -789,7 +862,7 @@ export function SharedMarksEntry({
     const grade = validScores.length > 0
       ? isCurrentNursery
         ? getNurseryGrade(mean).grade
-        : getGradeDisplay(getSubjectGradeNumber(Math.round(mean)))
+        : getGradeDisplay(getSubjectGradeNumber(Math.round(mean), gradingConfig?.grading_scale))
       : '—'
     return {
       total,
@@ -799,7 +872,7 @@ export function SharedMarksEntry({
       scoredCount: validScores.length,
       totalCount: sortedCircularMarks.length,
     }
-  }, [sortedCircularMarks, examType, isCurrentNursery])
+  }, [sortedCircularMarks, examType, isCurrentNursery, gradingConfig?.grading_scale])
 
   const theologyStats = useMemo(() => {
     const scoreKey = examType === 'mot' ? 'mot_score' : 'eot_score'
@@ -809,16 +882,29 @@ export function SharedMarksEntry({
     const total = validScores.reduce((acc, v) => acc + v, 0)
     const maxTotal = theologyMarks.length * 100
     const mean = validScores.length > 0 ? Math.round((total / validScores.length) * 10) / 10 : 0
-    const badge = validScores.length > 0 ? computeTheologyBadge(mean) : null
+    const agg = calculateTheologyAggregateFromMarks(
+      theologyMarks.map((m) => ({
+        subject_name_arabic: m.subject_name_arabic,
+        score: m[scoreKey] ?? null,
+      })),
+      gradingConfig?.theology_grading_scale
+    )
+    const overallDivision =
+      agg !== null
+        ? getTheologyDivision(agg, gradingConfig?.theology_division_boundaries)
+        : validScores.length > 0
+          ? 'قيد الإدخال'
+          : '—'
     return {
       total,
       maxTotal,
       mean,
-      remark: badge?.grade || '—',
+      aggregate: agg,
+      remark: overallDivision,
       scoredCount: validScores.length,
       totalCount: theologyMarks.length,
     }
-  }, [theologyMarks, examType])
+  }, [theologyMarks, examType, gradingConfig?.theology_grading_scale, gradingConfig?.theology_division_boundaries])
 
   const topTheologySubject = useMemo(() => {
     const scoreKey = examType === 'mot' ? 'mot_score' : 'eot_score'
@@ -971,8 +1057,8 @@ export function SharedMarksEntry({
     const isLow = !fieldError && hasScore && numVal < 50
     const badge = !fieldError && hasScore
       ? (curriculum === 'theology'
-          ? computeTheologyBadge(numVal)
-          : computeGradeBadge(numVal, isCurrentNursery))
+          ? computeTheologyBadge(numVal, gradingConfig?.theology_grading_scale)
+          : computeGradeBadge(numVal, isCurrentNursery, gradingConfig?.grading_scale))
       : null
 
     return (
@@ -1151,8 +1237,13 @@ export function SharedMarksEntry({
                   const matching =
                     nextClass === 'all'
                       ? enrollments
-                      : enrollments.filter((en) => en.circular_class === nextClass)
-                  if (matching.length > 0) {
+                      : enrollments.filter(
+                          (en) =>
+                            en.circular_class === nextClass ||
+                            en.theology_class_level === nextClass ||
+                            en.theology_class_arabic === nextClass
+                        )
+                  if (matching.length > 0 && !matching.some((en) => en.id === selectedEnrollmentId)) {
                     onSelectEnrollment(matching[0].id)
                   }
                 }}
@@ -1342,8 +1433,13 @@ export function SharedMarksEntry({
                   const matching =
                     nextClass === 'all'
                       ? enrollments
-                      : enrollments.filter((en) => en.circular_class === nextClass)
-                  if (matching.length > 0) {
+                      : enrollments.filter(
+                          (en) =>
+                            en.circular_class === nextClass ||
+                            en.theology_class_level === nextClass ||
+                            en.theology_class_arabic === nextClass
+                        )
+                  if (matching.length > 0 && !matching.some((en) => en.id === selectedEnrollmentId)) {
                     onSelectEnrollment(matching[0].id)
                   }
                 }}
@@ -1610,13 +1706,13 @@ export function SharedMarksEntry({
         )}
 
         {/* Unassigned teacher state */}
-        {!error && isUnassigned && enrollments.length === 0 ? (
+        {isUnassigned && enrollments.length === 0 ? (
           <UnassignedTeacherState
             moduleName="Marks Entry"
             department={allowedDepartment}
             roleLabel={roleLabel}
           />
-        ) : !error && (
+        ) : (
           !selectedEnrollmentId ? (
             <div className="flex flex-col items-center justify-center py-16 px-4 text-center rounded-2xl border border-dashed border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 bg-[var(--bg-card)]">
               <div className="w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-600 flex items-center justify-center mb-3">
@@ -1847,6 +1943,14 @@ export function SharedMarksEntry({
                                   examType={examType}
                                   isNursery={isCurrentNursery}
                                   isBothView={isBothView}
+                                  customGradingScale={gradingConfig?.grading_scale}
+                                  rawBot={rawInputs[`secular:${mark.subject_id}:bot`]}
+                                  rawMot={rawInputs[`secular:${mark.subject_id}:mot`]}
+                                  rawEot={rawInputs[`secular:${mark.subject_id}:eot`]}
+                                  errBot={fieldErrors[`secular:${mark.subject_id}:bot`]}
+                                  errMot={fieldErrors[`secular:${mark.subject_id}:mot`]}
+                                  errEot={fieldErrors[`secular:${mark.subject_id}:eot`]}
+                                  isExamSetLocked={isExamSetLocked}
                                   renderScoreCell={renderScoreCell}
                                 />
                               ))}
@@ -1932,6 +2036,12 @@ export function SharedMarksEntry({
                                     idx={idx}
                                     examType={examType}
                                     isBothView={isBothView}
+                                    customTheologyScale={gradingConfig?.theology_grading_scale}
+                                    rawMot={rawInputs[`theology:${mark.subject_id}:mot`]}
+                                    rawEot={rawInputs[`theology:${mark.subject_id}:eot`]}
+                                    errMot={fieldErrors[`theology:${mark.subject_id}:mot`]}
+                                    errEot={fieldErrors[`theology:${mark.subject_id}:eot`]}
+                                    isExamSetLocked={isExamSetLocked}
                                     renderScoreCell={renderScoreCell}
                                   />
                                 ))}
@@ -1971,7 +2081,8 @@ export function SharedMarksEntry({
                           <div className="px-3.5 py-1.5 bg-gradient-to-l from-[#D97706]/[0.08] to-[#0D5C3A]/[0.05] dark:from-[#F59E0B]/[0.12] dark:to-[#10B981]/[0.08] border-t border-[#D97706]/20 dark:border-[#F59E0B]/25 flex items-center justify-between text-xs font-semibold text-[var(--text-primary)] mt-auto shrink-0 gap-2 overflow-hidden" dir="rtl">
                             <span className="font-bold text-[#D97706] dark:text-[#F59E0B] shrink-0 whitespace-nowrap">ملخص المواد الشرعية</span>
                             <span className="tabular-nums font-mono font-bold whitespace-nowrap truncate text-[11px] sm:text-xs">
-                              المجموع: {toArabicDigits(theologyStats.total)} / {toArabicDigits(theologyStats.maxTotal)} • المعدل: {toArabicDigits(theologyStats.mean)}٪ • التقدير: {theologyStats.remark}
+                              المجموع: {toArabicDigits(theologyStats.total)} / {toArabicDigits(theologyStats.maxTotal)}
+                              {theologyStats.aggregate != null ? ` • المجموع التراكمي: ${toArabicDigits(theologyStats.aggregate)}` : ''} • الدرجة: {theologyStats.remark}
                             </span>
                           </div>
                         </div>

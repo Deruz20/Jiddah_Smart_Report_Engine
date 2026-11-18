@@ -414,11 +414,11 @@ export default function NurseryMOTReport({ reportData, studioFormatting: studioF
           {/* FOOTER */}
           <div className="report-footer">
             <div className="remarks-box">
-              <div className="info-row"><span className="label" style={{ minWidth: '100px' }}>Conduct</span><div className="line">{reportData?.circular?.conduct_remark ?? getConductRemark(null)}</div></div>
+              <div className="info-row"><span className="label" style={{ minWidth: '100px' }}>Conduct</span><div className="line">{reportData?.circular?.conduct_remark ?? getConductRemark(null, reportData?.settings?.division_boundaries, reportData?.settings?.promotion_comments?.default_conduct)}</div></div>
               <div className="info-row" style={{ marginTop: '10px', alignItems: 'flex-end', gap: '8px' }}>
                 <span className="label" style={{ minWidth: '100px' }}>Class Teacher</span>
                 <div className="line" style={{ flex: 1, minHeight: '22px', borderBottom: '1.5px dotted #cbd5e1', display: 'flex', alignItems: 'flex-end' }}>
-                  <span>{getNurseryTeacherComment(grades)}</span>
+                  <span>{reportData?.circular?.class_teacher_comment || getNurseryTeacherComment(grades)}</span>
                 </div>
                 <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#475569', flexShrink: 0, paddingBottom: '2px' }}>SIG:</span>
                 <div style={{ borderBottom: '1.5px dotted #334155', minWidth: '95px', width: '108px', height: '28px', display: 'inline-flex', alignItems: 'flex-end', justifyContent: 'center', position: 'relative', flexShrink: 0 }}>
@@ -430,7 +430,7 @@ export default function NurseryMOTReport({ reportData, studioFormatting: studioF
               <div className="info-row" style={{ marginTop: '10px', alignItems: 'flex-end', gap: '8px' }}>
                 <span className="label" style={{ minWidth: '100px' }}>Head Teacher</span>
                 <div className="line" style={{ flex: 1, minHeight: '22px', borderBottom: '1.5px dotted #cbd5e1', display: 'flex', alignItems: 'flex-end' }}>
-                  <span>{getNurseryTeacherComment(grades)}</span>
+                  <span>{reportData?.circular?.head_teacher_comment || getNurseryTeacherComment(grades)}</span>
                 </div>
                 <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#475569', flexShrink: 0, paddingBottom: '2px' }}>SIG:</span>
                 <div style={{ borderBottom: '1.5px dotted #334155', minWidth: '95px', width: '108px', height: '28px', display: 'inline-flex', alignItems: 'flex-end', justifyContent: 'center', position: 'relative', flexShrink: 0 }}>

@@ -38,7 +38,9 @@ test('Item D: Class Teacher Theology Marks Save & Strict RLS Boundary Suite', as
 
   await t.test('1. Playwright E2E Positive Control: Class Teacher saves theology marks via browser UI', async () => {
     const browser = await chromium.launch({
-      executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+      executablePath: (await import('node:fs')).default.existsSync('/usr/bin/google-chrome')
+        ? '/usr/bin/google-chrome'
+        : 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
       headless: true
     });
 

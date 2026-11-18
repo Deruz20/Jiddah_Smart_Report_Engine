@@ -1,7 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { ReportGeneratorClient } from '@/components/ReportGeneratorClient'
-import { verifyDataAccess, resolveUserScope } from '@/lib/auth-server'
+import { verifyDataAccess, resolveUserScope, hasPermission } from '@/lib/auth-server'
 import { UnassignedTeacherState } from '@/components/UnassignedTeacherState'
 
 export const dynamic = 'force-dynamic'
@@ -31,20 +31,17 @@ export default async function ReportsManagementPage() {
       )
     }
 
-    const metaRole = user.app_metadata?.role || user.user_metadata?.role;
-    const { isAdministratorRole } = await import('@/lib/teacher-access');
-    const isAdmin = isAdministratorRole(metaRole);
-
-    if (!isAdmin) {
-      const access = await verifyDataAccess(supabase, user, 'read');
-      if (!access.isAuthorized) {
-        return (
-          <div className="p-6 text-rose-700 font-medium max-w-xl mx-auto mt-8 bg-rose-50 border border-rose-200 rounded-xl">
-            Access Denied: {access.message || 'You do not have permission to access the Report Center.'}
-          </div>
-        );
-      }
-      const scope = resolveUserScope(access);
+    const access = await verifyDataAccess(supabase, user, 'read')
+    if (!access.isAuthorized || !hasPermission(access, 'read_reports')) {
+      return (
+        <div className="p-6 text-rose-700 font-medium max-w-xl mx-auto mt-8 bg-rose-50 border border-rose-200 rounded-xl">
+          Access Denied: {access.message || 'You do not have permission to access the Report Center.'}
+        </div>
+      )
+    }
+    const { isAdministratorRole } = await import('@/lib/teacher-access')
+    if (!isAdministratorRole(access.role)) {
+      const scope = resolveUserScope(access)
       if (scope.isUnassigned) {
         return (
           <div className="p-4 sm:p-6">
@@ -54,7 +51,7 @@ export default async function ReportsManagementPage() {
               roleLabel={scope.rawRole || scope.canonicalRole}
             />
           </div>
-        );
+        )
       }
     }
 

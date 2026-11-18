@@ -46,8 +46,9 @@ export default async function AdminDashboard() {
 
   let studentQuery = supabase
     .from("enrollments")
-    .select("id, student_id, circular_class_id, theology_class_id")
-    .eq("is_active", true);
+    .select("id, student_id, circular_class_id, theology_class_id, students!inner(id, is_archived)")
+    .eq("is_active", true)
+    .eq("students.is_archived", false);
   let teacherQuery = supabase
     .from("teachers")
     .select("id, auth_user_id, name, email, role, subject, status")
@@ -170,7 +171,14 @@ export default async function AdminDashboard() {
   const classesList = classRows || [];
   const theoClassesList = theoClassRows || [];
 
-  const { secularClassStatuses, theologyClassStatuses, classStatuses } = buildClassStatuses({
+  const {
+    secularClassStatuses,
+    theologyClassStatuses,
+    classStatuses,
+    totalRequiredEotSecular,
+    totalRequiredEotTheology,
+    excludedEotEnrollmentIds,
+  } = buildClassStatuses({
     department: scope.department,
     enrollments: enrollmentsList,
     circularClasses: classesList,
@@ -179,6 +187,9 @@ export default async function AdminDashboard() {
     theologyMarks: theologyMarksList,
     circularSubjects: circularSubjects || [],
     theologySubjects: theologySubjects || [],
+    termNumber: activeTerm?.term_number ?? null,
+    termLabel: activeTerm?.label ?? activeTerm?.name ?? null,
+    candidateRules: mergedSettings?.candidate_class_rules,
   });
 
   const totalRequiredSecular = secularClassStatuses.reduce((sum, c) => sum + c.totalRequired, 0);
@@ -190,6 +201,9 @@ export default async function AdminDashboard() {
     theologyMarks: theologyMarksList,
     totalRequiredSecular,
     totalRequiredTheology,
+    totalRequiredEotSecular,
+    totalRequiredEotTheology,
+    excludedEotEnrollmentIds,
   });
 
   const totalMissingMarks = classStatuses.reduce((acc, curr) => acc + curr.missingMarks, 0);

@@ -2,7 +2,7 @@ import { createClient } from '@/utils/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
-import { verifyDataAccess, verifyEnrollmentClassAccess } from '@/lib/auth-server'
+import { verifyDataAccess, hasPermission, verifyEnrollmentClassAccess } from '@/lib/auth-server'
 import { recordActivity } from '@/lib/api-server'
 import { canAccessClass, isAdministratorRole, subjectMatchesClassScope } from '@/lib/teacher-access'
 import { fetchMergedSchoolSettings, isExamSetLockedForUser } from '@/lib/school-settings-helper'
@@ -46,8 +46,8 @@ export async function GET(request: NextRequest) {
     }
 
     const authRes = await verifyDataAccess(supabase, user, 'read')
-    if (!authRes.isAuthorized) {
-      return NextResponse.json({ error: authRes.message }, { status: 403 })
+    if (!authRes.isAuthorized || !hasPermission(authRes, 'read_marks')) {
+      return NextResponse.json({ error: authRes.message || 'Forbidden: Insufficient permissions to read marks.' }, { status: 403 })
     }
     if (authRes.filterByDepartment && authRes.filterByDepartment === 'secular') {
       return NextResponse.json({ error: 'Unauthorized: Cannot access Theology marks' }, { status: 403 })
@@ -62,15 +62,18 @@ export async function GET(request: NextRequest) {
         term_id,
         mot_score,
         eot_score,
-        enrollments (
+        enrollments!inner (
           student_id,
+          is_active,
           circular_class_id,
           theology_class_id,
-          students ( name ),
+          students!inner ( name, is_archived ),
           theology_classes ( class_name_english, level )
         ),
         theology_subjects ( subject_name_arabic, level )
       `)
+      .eq('enrollments.is_active', true)
+      .eq('enrollments.students.is_archived', false)
 
     if (term_id) {
       const termInfo = await resolveEquivalentTerms(supabase, term_id)

@@ -77,13 +77,13 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
 
   const teacherComment =
     reportData?.circular?.class_teacher_comment ||
-    getClassTeacherComment(reportData?.circular?.division ?? null, undefined, reportData?.settings?.grading_scale)
+    getClassTeacherComment(reportData?.circular?.division ?? null, undefined, reportData?.settings?.grading_scale, reportData?.settings?.division_boundaries)
   const headComment =
     reportData?.circular?.head_teacher_comment ||
-    getHeadTeacherComment(reportData?.circular?.division ?? null, undefined, reportData?.settings?.grading_scale)
+    getHeadTeacherComment(reportData?.circular?.division ?? null, undefined, reportData?.settings?.grading_scale, reportData?.settings?.division_boundaries)
   const conductRemark =
     reportData?.circular?.conduct_remark ??
-    getConductRemark(reportData?.circular?.division ?? null)
+    getConductRemark(reportData?.circular?.division ?? null, reportData?.settings?.division_boundaries, reportData?.settings?.promotion_comments?.default_conduct)
 
   const remarkColor = (remark: string | undefined): string => {
     if (!remark) return "#1d4ed8"
@@ -128,7 +128,7 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
       <td style={{ fontWeight: effective.scoreFontWeight }}>{subject.eot_score ?? "--"}</td>
       <td className="grade-cell">{subject.eot_grade_display ?? subject.eot_agg ?? subject.grade ?? "--"}</td>
       <td className="remark-cell" style={{ color: remarkColor(subject.remark) }}>
-        {subject.remark || (subject.eot_score != null ? getSubjectRemark(getSubjectGradeNumber(subject.eot_score)) : subject.mot_score != null ? getSubjectRemark(getSubjectGradeNumber(subject.mot_score)) : "")}
+        {subject.remark || (subject.eot_score != null ? getSubjectRemark(getSubjectGradeNumber(subject.eot_score, gradingBands), gradingBands) : subject.mot_score != null ? getSubjectRemark(getSubjectGradeNumber(subject.mot_score, gradingBands), gradingBands) : "")}
       </td>
       <td style={{ textTransform: 'uppercase', fontFamily: '"Caveat", cursive', fontWeight: 'bold', fontSize: '1.2em', color: effective.primaryColor }}>{(subject.teacher_initials || '').toUpperCase()}</td>
     </tr>
@@ -831,8 +831,8 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
                       <div className="theology-notes">
                         <div className="t-note-row">
                           <span className="t-note-lbl">ملاحظة مشرف الفصل:</span>
-                          <div className="t-note-val" style={{ color: remarkColor(getTheologyComment(reportData?.theology?.eot_total ?? null, reportData?.student?.gender, reportData?.settings?.theology_remarks)) }}>
-                            {getTheologyComment(reportData?.theology?.eot_total ?? null, reportData?.student?.gender, reportData?.settings?.theology_remarks)}
+                          <div className="t-note-val" style={{ color: remarkColor(reportData?.theology?.teacher_comment || getTheologyComment(reportData?.theology?.eot_total ?? null, reportData?.student?.gender, reportData?.settings?.theology_remarks, reportData?.theology?.division, reportData?.theology?.subjects?.length || 4)) }}>
+                            {reportData?.theology?.teacher_comment || getTheologyComment(reportData?.theology?.eot_total ?? null, reportData?.student?.gender, reportData?.settings?.theology_remarks, reportData?.theology?.division, reportData?.theology?.subjects?.length || 4)}
                           </div>
                         </div>
                         <div className="t-note-row">

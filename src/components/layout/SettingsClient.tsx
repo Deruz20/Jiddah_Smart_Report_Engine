@@ -30,14 +30,19 @@ import {
   DEFAULT_THEOLOGY_GRADING_SCALE,
   DEFAULT_THEOLOGY_REMARKS,
   DEFAULT_DIVISION_BOUNDARIES,
+  DEFAULT_THEOLOGY_DIVISION_BOUNDARIES,
+  DEFAULT_PROMOTION_COMMENTS,
   DEFAULT_FEE_STRUCTURE,
   DEFAULT_MARKS_LOCKS,
   DEFAULT_PRINT_PREFERENCES,
   normalizeSchoolLogoUrl,
   validateGradingBands,
+  validateDivisionBoundaries,
   type GradingBandItem,
   type TheologyRemarkItem,
   type DivisionBoundaryItem,
+  type TheologyDivisionBoundaryItem,
+  type PromotionCommentsConfig,
   type FeeStructureConfig,
   type MarksLocksConfig,
   type PrintPreferencesConfig,
@@ -51,16 +56,21 @@ import AccountClient, { type UserProfileData } from "@/components/layout/account
 
 export type SettingsCategoryKey =
   | "identity"
+  | "secular_grading"
+  | "theology_grading"
+  | "comments"
+  | "locks"
   | "terms"
   | "grading"
   | "signatures"
   | "print"
-  | "locks"
   | "account";
 
 interface CategoryDef {
   id: SettingsCategoryKey;
   label: string;
+  shortLabel: string;
+  subtitle: string;
   icon: React.ComponentType<{ className?: string; size?: number }>;
   keywords: string[];
 }
@@ -68,7 +78,9 @@ interface CategoryDef {
 const SETTINGS_CATEGORIES: CategoryDef[] = [
   {
     id: "identity",
-    label: "School Identity & Profile",
+    label: "School Identity & Active Term",
+    shortLabel: "Identity & Term",
+    subtitle: "Branding, contact profile, active term & calendar",
     icon: Building2,
     keywords: [
       "school",
@@ -86,13 +98,6 @@ const SETTINGS_CATEGORIES: CategoryDef[] = [
       "website",
       "logo",
       "crest",
-    ],
-  },
-  {
-    id: "terms",
-    label: "Academic Terms & Calendar",
-    icon: CalendarRange,
-    keywords: [
       "academic",
       "term",
       "terms",
@@ -110,10 +115,14 @@ const SETTINGS_CATEGORIES: CategoryDef[] = [
     ],
   },
   {
-    id: "grading",
-    label: "Grading & Remarks Engine",
+    id: "secular_grading",
+    label: "Secular Grading & Divisions (PLE)",
+    shortLabel: "Secular (PLE)",
+    subtitle: "D1–F9 score scale & 4–36 PLE aggregate divisions",
     icon: Award,
     keywords: [
+      "secular",
+      "ple",
       "grading",
       "grade",
       "scale",
@@ -121,56 +130,56 @@ const SETTINGS_CATEGORIES: CategoryDef[] = [
       "d2",
       "c3",
       "f9",
-      "remarks",
-      "theology",
-      "arabic",
       "division",
       "aggregate",
       "boundaries",
       "uneb",
-      "comment",
-      "headteacher",
-      "class teacher",
     ],
   },
   {
-    id: "signatures",
-    label: "Stamps & Signatures",
-    icon: Stamp,
+    id: "theology_grading",
+    label: "Theology Grading & Divisions (IPLE)",
+    shortLabel: "Theology (IPLE)",
+    subtitle: "1–9 point weights & 4–36 IPLE Arabic divisions",
+    icon: Sliders,
     keywords: [
-      "stamp",
-      "stamps",
-      "signature",
-      "signatures",
-      "headteacher",
-      "dos",
-      "theology head",
-      "class teacher",
-      "upload",
-      "png",
+      "theology",
+      "iple",
+      "arabic",
+      "mamtaz",
+      "ممتاز",
+      "جيد",
+      "راسب",
+      "division",
+      "aggregate",
+      "boundaries",
     ],
   },
   {
-    id: "print",
-    label: "Report Card & Print Layout",
-    icon: Printer,
+    id: "comments",
+    label: "Comments, Conduct & Remarks Rules",
+    shortLabel: "Comments & Conduct",
+    subtitle: "Grading & Remarks Engine — Teacher, Headteacher & Promotion templates",
+    icon: CalendarRange,
     keywords: [
-      "report",
-      "print",
-      "layout",
-      "watermark",
-      "stamp",
-      "signatures",
-      "high fidelity",
-      "colors",
-      "class position",
-      "rank",
-      "pdf",
+      "grading & remarks engine",
+      "comments",
+      "conduct",
+      "remarks",
+      "promotion",
+      "probation",
+      "repeat",
+      "headteacher",
+      "class teacher",
+      "boys",
+      "girls",
     ],
   },
   {
     id: "locks",
-    label: "Marks & Access Locks",
+    label: "Exam Locks & Access Safeguards",
+    shortLabel: "Locks & Safeguards",
+    subtitle: "BOT/MOT/EOT exam locks, print layout, signatures & account security",
     icon: ShieldCheck,
     keywords: [
       "marks",
@@ -184,21 +193,16 @@ const SETTINGS_CATEGORIES: CategoryDef[] = [
       "exam set",
       "security",
       "override",
-    ],
-  },
-  {
-    id: "account",
-    label: "My Account & Security",
-    icon: UserCheck,
-    keywords: [
+      "stamp",
+      "stamps",
+      "signature",
+      "signatures",
+      "report",
+      "print",
+      "layout",
+      "watermark",
       "account",
       "password",
-      "security",
-      "avatar",
-      "profile",
-      "role",
-      "department",
-      "sign out",
     ],
   },
 ];
@@ -236,7 +240,15 @@ export default function SettingsClient({
   initialCategory = "identity",
 }: SettingsClientProps) {
   const router = useRouter();
-  const [activeCategory, setActiveCategory] = useState<SettingsCategoryKey>(initialCategory);
+  const normalizeTabKey = (cat?: SettingsCategoryKey): SettingsCategoryKey => {
+    if (!cat || cat === "terms") return "identity";
+    if (cat === "grading") return "comments";
+    if (cat === "signatures" || cat === "print" || cat === "account") return "locks";
+    return cat;
+  };
+  const [activeCategory, setActiveCategory] = useState<SettingsCategoryKey>(() =>
+    normalizeTabKey(initialCategory)
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [loadingSettings, setLoadingSettings] = useState(!initialSettings);
 
@@ -293,6 +305,23 @@ export default function SettingsClient({
     initialSettings?.division_boundaries || DEFAULT_DIVISION_BOUNDARIES
   );
   const [savingDivisionBoundaries, setSavingDivisionBoundaries] = useState(false);
+
+  const [theologyDivisionBoundaries, setTheologyDivisionBoundaries] = useState<TheologyDivisionBoundaryItem[]>(
+    (initialSettings as any)?.theology_division_boundaries || DEFAULT_THEOLOGY_DIVISION_BOUNDARIES
+  );
+  const [savedTheologyDivisionBoundaries, setSavedTheologyDivisionBoundaries] = useState<TheologyDivisionBoundaryItem[]>(
+    (initialSettings as any)?.theology_division_boundaries || DEFAULT_THEOLOGY_DIVISION_BOUNDARIES
+  );
+  const [savingTheologyDivisionBoundaries, setSavingTheologyDivisionBoundaries] = useState(false);
+
+  // 4. Term 3 Promotion & Conduct Remarks State
+  const [promotionComments, setPromotionComments] = useState<PromotionCommentsConfig>(
+    initialSettings?.promotion_comments || DEFAULT_PROMOTION_COMMENTS
+  );
+  const [savedPromotionComments, setSavedPromotionComments] = useState<PromotionCommentsConfig>(
+    initialSettings?.promotion_comments || DEFAULT_PROMOTION_COMMENTS
+  );
+  const [savingPromotionComments, setSavingPromotionComments] = useState(false);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [resettingDefaults, setResettingDefaults] = useState(false);
 
@@ -350,6 +379,14 @@ export default function SettingsClient({
             setDivisionBoundaries(d.division_boundaries);
             setSavedDivisionBoundaries(d.division_boundaries);
           }
+          if (Array.isArray((d as any).theology_division_boundaries) && (d as any).theology_division_boundaries.length > 0) {
+            setTheologyDivisionBoundaries((d as any).theology_division_boundaries);
+            setSavedTheologyDivisionBoundaries((d as any).theology_division_boundaries);
+          }
+          if (d.promotion_comments) {
+            setPromotionComments({ ...DEFAULT_PROMOTION_COMMENTS, ...d.promotion_comments });
+            setSavedPromotionComments({ ...DEFAULT_PROMOTION_COMMENTS, ...d.promotion_comments });
+          }
           if (d.print_preferences) {
             setPrintPrefs({ ...DEFAULT_PRINT_PREFERENCES, ...d.print_preferences });
           }
@@ -375,6 +412,10 @@ export default function SettingsClient({
     JSON.stringify(theologyRemarks) !== JSON.stringify(savedTheologyRemarks);
   const isDivisionDirty =
     JSON.stringify(divisionBoundaries) !== JSON.stringify(savedDivisionBoundaries);
+  const isTheologyDivisionDirty =
+    JSON.stringify(theologyDivisionBoundaries) !== JSON.stringify(savedTheologyDivisionBoundaries);
+  const isPromotionCommentsDirty =
+    JSON.stringify(promotionComments) !== JSON.stringify(savedPromotionComments);
 
   // Live Grading Validation
   const secularValidation = useMemo(
@@ -385,6 +426,44 @@ export default function SettingsClient({
     () => validateGradingBands(theologyScale),
     [theologyScale]
   );
+  const secularDivisionValidation = useMemo(
+    () => validateDivisionBoundaries(divisionBoundaries),
+    [divisionBoundaries]
+  );
+  const theologyDivisionValidation = useMemo(
+    () => validateDivisionBoundaries(theologyDivisionBoundaries),
+    [theologyDivisionBoundaries]
+  );
+
+  const saveAndVerifySettingsPatch = async (
+    patchPayload: Record<string, any>,
+    fallbackError: string
+  ): Promise<MergedSchoolSettings> => {
+    const res = await fetch("/api/settings/school", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store",
+      body: JSON.stringify(patchPayload),
+    });
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(payload?.error || `${fallbackError} (HTTP ${res.status})`);
+    }
+
+    const verifyRes = await fetch(`/api/settings/school?verify=${Date.now()}`, {
+      cache: "no-store",
+    });
+    const verifyPayload = await verifyRes.json().catch(() => ({}));
+    if (!verifyRes.ok || !verifyPayload?.data) {
+      throw new Error(
+        verifyPayload?.error ||
+          "Settings write completed but read-back verification failed."
+      );
+    }
+
+    invalidateClientCache();
+    return verifyPayload.data as MergedSchoolSettings;
+  };
 
   // Save Identity Handler
   const handleSaveIdentity = async (e: React.FormEvent) => {
@@ -396,19 +475,25 @@ export default function SettingsClient({
 
     setSavingIdentity(true);
     try {
-      const res = await fetch("/api/settings/school", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(identity),
-      });
-      const payload = await res.json();
-      if (!res.ok) {
-        throw new Error(payload?.error || "Failed to save school identity");
-      }
-
-      setSavedIdentity(identity);
-      invalidateClientCache();
-      toast.success("School identity and profile saved.");
+      const confirmed = await saveAndVerifySettingsPatch(
+        identity,
+        "Failed to save school identity"
+      );
+      const verifiedIdentity = {
+        school_name: confirmed.school_name || identity.school_name,
+        arabic_name: confirmed.arabic_name || "",
+        motto: confirmed.motto || "",
+        registration_number: confirmed.registration_number || "",
+        po_box: confirmed.po_box || "",
+        address: confirmed.address || "",
+        phone: confirmed.phone || confirmed.phone_1 || "",
+        email: confirmed.email || "",
+        website_url: confirmed.website_url || "",
+        logo_url: normalizeSchoolLogoUrl(confirmed.logo_url),
+      };
+      setIdentity(verifiedIdentity);
+      setSavedIdentity(verifiedIdentity);
+      toast.success("School identity and profile saved and verified.");
       router.refresh();
     } catch (err: any) {
       toast.error(err.message || "Unable to save school profile");
@@ -465,18 +550,17 @@ export default function SettingsClient({
 
     setSavingSecularScale(true);
     try {
-      const res = await fetch("/api/settings/school", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ grading_scale: secularScale }),
-      });
-      const payload = await res.json();
-      if (!res.ok) {
-        throw new Error(payload?.error || "Failed to save secular grading scale");
-      }
-
-      setSavedSecularScale(secularScale);
-      toast.success("Secular grading scale updated.");
+      const confirmed = await saveAndVerifySettingsPatch(
+        { grading_scale: secularScale },
+        "Failed to save secular grading scale"
+      );
+      const verifiedScale =
+        Array.isArray(confirmed.grading_scale) && confirmed.grading_scale.length > 0
+          ? confirmed.grading_scale
+          : secularScale;
+      setSecularScale(verifiedScale);
+      setSavedSecularScale(verifiedScale);
+      toast.success("Secular grading scale saved and verified.");
       router.refresh();
     } catch (err: any) {
       toast.error(err.message || "Unable to save secular grading scale");
@@ -494,22 +578,26 @@ export default function SettingsClient({
 
     setSavingTheologyScale(true);
     try {
-      const res = await fetch("/api/settings/school", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const confirmed = await saveAndVerifySettingsPatch(
+        {
           theology_grading_scale: theologyScale,
           theology_remarks: theologyRemarks,
-        }),
-      });
-      const payload = await res.json();
-      if (!res.ok) {
-        throw new Error(payload?.error || "Failed to save theology grading settings");
-      }
-
-      setSavedTheologyScale(theologyScale);
-      setSavedTheologyRemarks(theologyRemarks);
-      toast.success("Theology grading scale and Arabic descriptors updated.");
+        },
+        "Failed to save theology grading settings"
+      );
+      const verifiedScale =
+        Array.isArray(confirmed.theology_grading_scale) && confirmed.theology_grading_scale.length > 0
+          ? confirmed.theology_grading_scale
+          : theologyScale;
+      const verifiedRemarks =
+        Array.isArray(confirmed.theology_remarks) && confirmed.theology_remarks.length > 0
+          ? confirmed.theology_remarks
+          : theologyRemarks;
+      setTheologyScale(verifiedScale);
+      setSavedTheologyScale(verifiedScale);
+      setTheologyRemarks(verifiedRemarks);
+      setSavedTheologyRemarks(verifiedRemarks);
+      toast.success("Theology grading scale and Arabic descriptors saved and verified.");
       router.refresh();
     } catch (err: any) {
       toast.error(err.message || "Unable to save theology grading scale");
@@ -518,22 +606,26 @@ export default function SettingsClient({
     }
   };
 
-  // Save Division Boundaries & Comment Templates
+  // Save Secular Division Boundaries & Comment Templates
   const handleSaveDivisionBoundaries = async () => {
+    if (!secularDivisionValidation.valid) {
+      toast.error(secularDivisionValidation.error || "Invalid secular division boundaries.");
+      return;
+    }
+
     setSavingDivisionBoundaries(true);
     try {
-      const res = await fetch("/api/settings/school", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ division_boundaries: divisionBoundaries }),
-      });
-      const payload = await res.json();
-      if (!res.ok) {
-        throw new Error(payload?.error || "Failed to save division aggregate boundaries");
-      }
-
-      setSavedDivisionBoundaries(divisionBoundaries);
-      toast.success("Division aggregate boundaries and comment templates saved.");
+      const confirmed = await saveAndVerifySettingsPatch(
+        { division_boundaries: divisionBoundaries },
+        "Failed to save division aggregate boundaries"
+      );
+      const verifiedDivs =
+        Array.isArray(confirmed.division_boundaries) && confirmed.division_boundaries.length > 0
+          ? confirmed.division_boundaries
+          : divisionBoundaries;
+      setDivisionBoundaries(verifiedDivs);
+      setSavedDivisionBoundaries(verifiedDivs);
+      toast.success("Division aggregate boundaries and comment templates saved and verified.");
       router.refresh();
     } catch (err: any) {
       toast.error(err.message || "Unable to save division boundaries");
@@ -542,35 +634,95 @@ export default function SettingsClient({
     }
   };
 
+  // Save Theology IPLE Division Boundaries
+  const handleSaveTheologyDivisionBoundaries = async () => {
+    if (!theologyDivisionValidation.valid) {
+      toast.error(theologyDivisionValidation.error || "Invalid theology division boundaries.");
+      return;
+    }
+
+    setSavingTheologyDivisionBoundaries(true);
+    try {
+      const confirmed = await saveAndVerifySettingsPatch(
+        { theology_division_boundaries: theologyDivisionBoundaries },
+        "Failed to save theology division boundaries"
+      );
+      const verifiedTheoDivs =
+        Array.isArray((confirmed as any).theology_division_boundaries) &&
+        (confirmed as any).theology_division_boundaries.length > 0
+          ? (confirmed as any).theology_division_boundaries
+          : theologyDivisionBoundaries;
+      setTheologyDivisionBoundaries(verifiedTheoDivs);
+      setSavedTheologyDivisionBoundaries(verifiedTheoDivs);
+      toast.success("IPLE theology division boundaries saved and verified.");
+      router.refresh();
+    } catch (err: any) {
+      toast.error(err.message || "Unable to save theology division boundaries");
+    } finally {
+      setSavingTheologyDivisionBoundaries(false);
+    }
+  };
+
+  // Save Promotion & Conduct Comments Settings
+  const handleSavePromotionComments = async () => {
+    setSavingPromotionComments(true);
+    try {
+      const confirmed = await saveAndVerifySettingsPatch(
+        { promotion_comments: promotionComments },
+        "Failed to save promotion comments and conduct settings"
+      );
+      const verifiedPromo = {
+        ...DEFAULT_PROMOTION_COMMENTS,
+        ...(confirmed.promotion_comments || promotionComments),
+      };
+      setPromotionComments(verifiedPromo);
+      setSavedPromotionComments(verifiedPromo);
+      toast.success("Promotion comments and conduct settings saved and verified.");
+      router.refresh();
+    } catch (err: any) {
+      toast.error(err.message || "Unable to save promotion comments");
+    } finally {
+      setSavingPromotionComments(false);
+    }
+  };
+
   // One-Click Reset to UNEB / Jiddah Defaults
   const handleConfirmResetGradingDefaults = async () => {
     setResettingDefaults(true);
     try {
-      const res = await fetch("/api/settings/school", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const confirmed = await saveAndVerifySettingsPatch(
+        {
           grading_scale: DEFAULT_GRADING_SCALE,
           theology_grading_scale: DEFAULT_THEOLOGY_GRADING_SCALE,
           theology_remarks: DEFAULT_THEOLOGY_REMARKS,
           division_boundaries: DEFAULT_DIVISION_BOUNDARIES,
-        }),
-      });
-      const payload = await res.json();
-      if (!res.ok) {
-        throw new Error(payload?.error || "Failed to restore UNEB / Jiddah defaults");
-      }
+          theology_division_boundaries: DEFAULT_THEOLOGY_DIVISION_BOUNDARIES,
+          promotion_comments: DEFAULT_PROMOTION_COMMENTS,
+        },
+        "Failed to restore UNEB / Jiddah defaults"
+      );
 
-      setSecularScale(DEFAULT_GRADING_SCALE);
-      setSavedSecularScale(DEFAULT_GRADING_SCALE);
-      setTheologyScale(DEFAULT_THEOLOGY_GRADING_SCALE);
-      setSavedTheologyScale(DEFAULT_THEOLOGY_GRADING_SCALE);
-      setTheologyRemarks(DEFAULT_THEOLOGY_REMARKS);
-      setSavedTheologyRemarks(DEFAULT_THEOLOGY_REMARKS);
-      setDivisionBoundaries(DEFAULT_DIVISION_BOUNDARIES);
-      setSavedDivisionBoundaries(DEFAULT_DIVISION_BOUNDARIES);
+      const vSec = confirmed.grading_scale || DEFAULT_GRADING_SCALE;
+      const vTheo = confirmed.theology_grading_scale || DEFAULT_THEOLOGY_GRADING_SCALE;
+      const vRem = confirmed.theology_remarks || DEFAULT_THEOLOGY_REMARKS;
+      const vDiv = confirmed.division_boundaries || DEFAULT_DIVISION_BOUNDARIES;
+      const vTheoDiv = (confirmed as any).theology_division_boundaries || DEFAULT_THEOLOGY_DIVISION_BOUNDARIES;
+      const vPromo = { ...DEFAULT_PROMOTION_COMMENTS, ...(confirmed.promotion_comments || {}) };
+
+      setSecularScale(vSec);
+      setSavedSecularScale(vSec);
+      setTheologyScale(vTheo);
+      setSavedTheologyScale(vTheo);
+      setTheologyRemarks(vRem);
+      setSavedTheologyRemarks(vRem);
+      setDivisionBoundaries(vDiv);
+      setSavedDivisionBoundaries(vDiv);
+      setTheologyDivisionBoundaries(vTheoDiv);
+      setSavedTheologyDivisionBoundaries(vTheoDiv);
+      setPromotionComments(vPromo);
+      setSavedPromotionComments(vPromo);
       setResetDialogOpen(false);
-      toast.success("Grading scales and division rules restored to UNEB / Jiddah defaults.");
+      toast.success("Grading scales and division rules restored and verified.");
       router.refresh();
     } catch (err: any) {
       toast.error(err.message || "Failed to reset grading defaults");
@@ -587,16 +739,12 @@ export default function SettingsClient({
     setSavingPrintPrefKey(key);
 
     try {
-      const res = await fetch("/api/settings/school", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ print_preferences: updated }),
-      });
-      const payload = await res.json();
-      if (!res.ok) {
-        throw new Error(payload?.error || "Failed to update print preference");
-      }
-      toast.success("Report card print preference saved.");
+      const confirmed = await saveAndVerifySettingsPatch(
+        { print_preferences: updated },
+        "Failed to update print preference"
+      );
+      setPrintPrefs({ ...DEFAULT_PRINT_PREFERENCES, ...(confirmed.print_preferences || updated) });
+      toast.success("Report card print preference saved and verified.");
       router.refresh();
     } catch (err: any) {
       setPrintPrefs(previous);
@@ -624,12 +772,15 @@ export default function SettingsClient({
       const res = await fetch("/api/settings/school", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
+        cache: "no-store",
         body: JSON.stringify({ marks_locks: updated }),
       });
-      const payload = await res.json();
-      if (!res.ok) {
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok || !payload?.data) {
         throw new Error(payload?.error || "Failed to update marks lock");
       }
+      setMarksLocks({ ...DEFAULT_MARKS_LOCKS, ...(payload.data.marks_locks || updated) });
+      invalidateClientCache();
       const examLabel = key === "bot_locked" ? "BOT" : key === "mot_locked" ? "MOT" : "EOT";
       toast.success(
         checked
@@ -660,6 +811,15 @@ export default function SettingsClient({
 
   const shouldShowCategory = (id: SettingsCategoryKey) => visibleCategories.includes(id);
 
+  const tabDirtyMap: Record<string, boolean> = {
+    identity: isIdentityDirty,
+    secular_grading: isSecularScaleDirty || isDivisionDirty,
+    theology_grading: isTheologyDirty || isTheologyDivisionDirty,
+    comments: isDivisionDirty || isTheologyDirty || isPromotionCommentsDirty,
+    locks: false,
+  };
+  const totalDirtyTabs = Object.values(tabDirtyMap).filter(Boolean).length;
+
   const lockedExamsCount = [
     marksLocks.bot_locked,
     marksLocks.mot_locked,
@@ -675,60 +835,132 @@ export default function SettingsClient({
   ].filter(Boolean).length;
 
   return (
-    <div className="min-h-screen bg-[#F8FAF8] dark:bg-[#0A0E0C] text-[#111827] dark:text-[#F4F7F5] -mx-4 sm:-mx-6 -my-6 sm:-my-8 px-4 sm:px-6 py-6">
-      {/* Top Chrome Material-3 Settings Search Header */}
-      <header className="sticky top-0 z-20 bg-[#F8FAF8]/95 dark:bg-[#0A0E0C]/95 backdrop-blur-sm pb-5 pt-1 border-b border-[#E3E8E3] dark:border-[#1C2622] mb-6">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-center">
-            <div className="w-8 h-8 rounded-xl bg-[#0D5C3A] text-white flex items-center justify-center font-bold text-xs shadow-sm">
-              JS
+    <div className="min-h-screen bg-[#FDFBF7] dark:bg-[#0A0E0C] text-[#111827] dark:text-[#F4F7F5] -mx-4 sm:-mx-6 -my-6 sm:-my-8 px-4 sm:px-6 py-6">
+      {/* Top Senior UI/UX Settings Header + Segmented 5-Tab Workspace Bar */}
+      <header className="sticky top-0 z-20 bg-[#FDFBF7]/95 dark:bg-[#0A0E0C]/95 backdrop-blur-sm pb-3 pt-1 border-b border-[#E7E2D7] dark:border-[#1C2622] mb-6">
+        <div className="max-w-6xl mx-auto space-y-3">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-center">
+              <div className="w-9 h-9 rounded-xl bg-[#0F4D25] text-white flex items-center justify-center font-bold text-xs shadow-sm">
+                JS
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-base font-bold text-[#111827] dark:text-[#F4F7F5] leading-none">
+                    School Settings &amp; Academic Engine
+                  </h1>
+                  <span
+                    data-testid="settings-global-dirty-badge"
+                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
+                      totalDirtyTabs > 0
+                        ? "bg-amber-100 text-amber-800 border border-amber-300"
+                        : "bg-emerald-100 text-[#0F4D25] border border-emerald-300"
+                    }`}
+                  >
+                    {totalDirtyTabs > 0 ? `${totalDirtyTabs} Unsaved` : "All Synced"}
+                  </span>
+                </div>
+                <p className="text-[11px] text-stone-500 dark:text-[#9AA7A0] mt-0.5">
+                  Configure school identity, active term, PLE/IPLE grading scales, comments, and exam locks
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-base font-bold text-[#111827] dark:text-[#F4F7F5] leading-none">School Settings</h1>
-              <p className="text-[11px] text-[#6B7280] dark:text-[#9AA7A0] mt-0.5">
-                System Configuration & Academic Engine
-              </p>
+
+            {/* Centered Pill Search Input */}
+            <div className="max-w-[440px] w-full h-10 rounded-full bg-white dark:bg-[#131A16] focus-within:ring-2 focus-within:ring-[#0F4D25]/20 border border-[#E7E2D7] dark:border-[#24332E] focus-within:border-[#0F4D25] px-4 text-sm flex items-center gap-3 transition-all shadow-2xs">
+              <Search className="w-4 h-4 text-stone-400 shrink-0" />
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search settings (grading, term, conduct, lock)..."
+                aria-label="Search settings"
+                className="w-full bg-transparent text-xs sm:text-sm text-[#111827] dark:text-[#F4F7F5] placeholder:text-stone-400 outline-none"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  aria-label="Clear settings search"
+                  className="p-1 rounded-full hover:bg-stone-100 text-stone-500 hover:text-stone-900 transition"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Centered Pill Search Input */}
-          <div className="max-w-[680px] w-full h-10 rounded-full bg-[#EEF3EE] dark:bg-[#131A16] focus-within:bg-white dark:focus-within:bg-[#16221C] focus-within:ring-2 focus-within:ring-[#0D5C3A]/20 border border-transparent dark:border-[#24332E] focus-within:border-[#0D5C3A]/30 px-4 text-sm flex items-center gap-3 transition-all">
-            <Search className="w-4 h-4 text-[#6B7280] dark:text-[#9AA7A0] shrink-0" />
-            <input
-              type="search"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search settings (e.g. grading, stamp, active term, fees, password)..."
-              aria-label="Search settings"
-              className="w-full bg-transparent text-xs sm:text-sm text-[#111827] dark:text-[#F4F7F5] placeholder:text-[#6B7280] dark:placeholder:text-[#9AA7A0] outline-none"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery("")}
-                aria-label="Clear settings search"
-                className="p-1 rounded-full hover:bg-[#E2EEE2] text-[#6B7280] hover:text-[#111827] transition"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
+          {/* 5-Tab Segmented Workspace Switcher */}
+          <div
+            role="tablist"
+            aria-label="School Settings Workspace Tabs"
+            data-testid="settings-segmented-tabs"
+            className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar"
+          >
+            {SETTINGS_CATEGORIES.map((cat, idx) => {
+              const Icon = cat.icon;
+              const isActive = !normalizedQuery && activeCategory === cat.id;
+              const isMatch = Boolean(normalizedQuery && visibleCategories.includes(cat.id));
+              const isDirty = Boolean(tabDirtyMap[cat.id]);
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={Boolean(isActive || isMatch)}
+                  data-testid={`settings-tab-${cat.id}`}
+                  onClick={() => {
+                    setSearchQuery("");
+                    setActiveCategory(cat.id);
+                  }}
+                  className={`inline-flex items-center gap-2 whitespace-nowrap rounded-xl px-3.5 py-2 text-xs font-bold transition-all shrink-0 cursor-pointer border ${
+                    isActive || isMatch
+                      ? "bg-[#0F4D25] text-white border-[#0F4D25] shadow-xs"
+                      : "bg-white dark:bg-[#131A16] border-[#E7E2D7] dark:border-[#24332E] text-stone-700 dark:text-stone-300 hover:bg-[#FAF7F2] dark:hover:bg-[#1C2620]"
+                  }`}
+                >
+                  <span
+                    className={`inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-extrabold ${
+                      isActive || isMatch
+                        ? "bg-white/20 text-white"
+                        : "bg-stone-100 dark:bg-white/10 text-stone-600 dark:text-stone-300"
+                    }`}
+                  >
+                    {idx + 1}
+                  </span>
+                  <Icon className="w-3.5 h-3.5 shrink-0" />
+                  <span>{cat.label}</span>
+                  {cat.id === "comments" && (
+                    <span className="sr-only">Grading &amp; Remarks Engine</span>
+                  )}
+                  {isDirty && (
+                    <span
+                      className={`w-2 h-2 rounded-full ${
+                        isActive || isMatch ? "bg-amber-300" : "bg-amber-500"
+                      }`}
+                      title="Unsaved changes in this tab"
+                    />
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
       </header>
 
       {/* Main Workspace: Left Navigation Rail + Centered Modular Card Column */}
       <div className="max-w-6xl mx-auto flex flex-col lg:flex-row items-start gap-6">
-        {/* Left Settings Navigation Rail (Desktop vertical rail, Mobile horizontal scroll pills) */}
+        {/* Left Settings Navigation Rail (Desktop vertical rail) */}
         <aside
           aria-label="Settings categories"
-          className="w-full lg:w-64 shrink-0 lg:pr-4 lg:sticky lg:top-24"
+          className="hidden lg:block w-64 shrink-0 pr-2 sticky top-32"
         >
-          {/* Mobile Horizontal Pills */}
-          <div className="flex lg:hidden items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
+          <nav className="flex flex-col space-y-1.5">
             {SETTINGS_CATEGORIES.map((cat) => {
               const Icon = cat.icon;
               const isActive = !normalizedQuery && activeCategory === cat.id;
-              const isMatch = normalizedQuery && visibleCategories.includes(cat.id);
+              const isMatch = Boolean(normalizedQuery && visibleCategories.includes(cat.id));
+              const isDirty = Boolean(tabDirtyMap[cat.id]);
               return (
                 <button
                   key={cat.id}
@@ -737,41 +969,26 @@ export default function SettingsClient({
                     setSearchQuery("");
                     setActiveCategory(cat.id);
                   }}
-                  className={`inline-flex items-center gap-2 whitespace-nowrap rounded-full px-3.5 py-2 text-xs transition-colors shrink-0 ${
+                  className={`flex items-start gap-3 w-full text-left text-xs transition-all rounded-xl p-3 border cursor-pointer ${
                     isActive || isMatch
-                      ? "bg-[#E2EEE2] dark:bg-emerald-950/60 text-[#0D5C3A] dark:text-emerald-300 font-semibold"
-                      : "bg-white dark:bg-[#131A16] border border-[#E3E8E3] dark:border-[#24332E] text-[#374151] dark:text-stone-300 hover:bg-[#F1F5F1] dark:hover:bg-[#1C2620]"
+                      ? "bg-emerald-50/90 dark:bg-emerald-950/60 text-[#0F4D25] dark:text-emerald-300 border-emerald-300/80 font-bold shadow-2xs"
+                      : "bg-white dark:bg-[#131A16] border-[#E7E2D7] dark:border-[#24332E] text-stone-700 dark:text-stone-300 hover:bg-[#FAF7F2] dark:hover:bg-[#1C2620]"
                   }`}
                 >
-                  <Icon className="w-[18px] h-[18px] shrink-0" />
-                  <span>{cat.label}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Desktop Vertical Chrome Material-3 Rail */}
-          <nav className="hidden lg:flex flex-col space-y-1">
-            {SETTINGS_CATEGORIES.map((cat) => {
-              const Icon = cat.icon;
-              const isActive = !normalizedQuery && activeCategory === cat.id;
-              const isMatch = normalizedQuery && visibleCategories.includes(cat.id);
-              return (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => {
-                    setSearchQuery("");
-                    setActiveCategory(cat.id);
-                  }}
-                  className={`flex items-center gap-3 w-full text-left text-sm transition-colors ${
-                    isActive || isMatch
-                      ? "bg-[#E2EEE2] dark:bg-emerald-950/60 text-[#0D5C3A] dark:text-emerald-300 font-semibold rounded-r-full py-2.5 px-4"
-                      : "text-[#374151] dark:text-stone-300 hover:bg-[#F1F5F1] dark:hover:bg-[#1C2620] rounded-r-full py-2.5 px-4"
-                  }`}
-                >
-                  <Icon className="w-[18px] h-[18px] shrink-0" />
-                  <span className="truncate">{cat.label}</span>
+                  <Icon className="w-4 h-4 shrink-0 mt-0.5 text-[#0F4D25] dark:text-emerald-400" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="truncate font-bold">{cat.label}</span>
+                      {isDirty && (
+                        <span className="px-1.5 py-0.2 rounded-full bg-amber-100 text-amber-800 text-[9px] font-bold shrink-0">
+                          Unsaved
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-stone-500 dark:text-stone-400 mt-0.5 line-clamp-1 font-normal">
+                      {cat.subtitle}
+                    </p>
+                  </div>
                 </button>
               );
             })}
@@ -1068,14 +1285,8 @@ export default function SettingsClient({
                   </div>
                 </form>
               </div>
-            </section>
-          )}
 
-          {/* =====================================================================
-              CATEGORY 2: ACADEMIC TERMS & CALENDAR
-          ===================================================================== */}
-          {shouldShowCategory("terms") && (
-            <section className="space-y-5" aria-label="Academic Terms and Calendar">
+              {/* Embedded Academic Terms & Calendar inside Tab 1: School Identity & Active Term */}
               <TermsClient
                 initialTerms={normalizedTerms}
                 initialFeeStructure={feeStructure}
@@ -1085,12 +1296,20 @@ export default function SettingsClient({
           )}
 
           {/* =====================================================================
-              CATEGORY 3: GRADING & REMARKS ENGINE
+              TAB 2: SECULAR GRADING & DIVISIONS (PLE)
+              + TAB 3: THEOLOGY GRADING & DIVISIONS (IPLE)
+              + TAB 4: COMMENTS, CONDUCT & REMARKS RULES
           ===================================================================== */}
-          {shouldShowCategory("grading") && (
+          {(shouldShowCategory("secular_grading") ||
+            shouldShowCategory("theology_grading") ||
+            shouldShowCategory("comments")) && (
             <section className="space-y-5" aria-label="Grading and Remarks Engine">
-              {/* Card 3A: Secular Grading Scale (D1-F9) */}
-              <div className="bg-white dark:bg-[#131A16] rounded-2xl border border-[#E3E8E3] dark:border-[#24332E] shadow-[0_1px_3px_rgba(15,41,30,0.04)] p-6">
+              {/* Card 3A: Secular Grading Scale (D1-F9) — shown on Tab 2 (secular_grading) or search */}
+              {(shouldShowCategory("secular_grading") || Boolean(normalizedQuery)) && (
+              <div
+                data-testid="settings-card-secular-grading"
+                className="bg-white dark:bg-[#131A16] rounded-2xl border border-[#E3E8E3] dark:border-[#24332E] shadow-[0_1px_3px_rgba(15,41,30,0.04)] p-6"
+              >
                 <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                   <div>
                     <h2 className="text-[15px] font-semibold text-[#111827] dark:text-[#F4F7F5]">
@@ -1241,16 +1460,33 @@ export default function SettingsClient({
                   </button>
                 </div>
               </div>
+              )}
 
-              {/* Card 3B: Theology Grading Scale & Arabic Descriptors */}
-              <div className="bg-white dark:bg-[#131A16] rounded-2xl border border-[#E3E8E3] dark:border-[#24332E] shadow-[0_1px_3px_rgba(15,41,30,0.04)] p-6">
-                <div className="mb-4">
-                  <h2 className="text-[15px] font-semibold text-[#111827] dark:text-[#F4F7F5]">
-                    Theology Grading Scale & Arabic Remarks (التقديرات الشرعية)
-                  </h2>
-                  <p className="text-xs text-[#6B7280] dark:text-[#9AA7A0] mt-0.5">
-                    Arabic descriptors applied to Theology MOT and EOT report cards with native RTL layout.
-                  </p>
+              {/* Card 3B: Theology Aggregate Weight Scale (1–9 Points) & Overall Arabic Remarks — shown on Tab 3 (theology_grading) or Tab 4 (comments) */}
+              {(shouldShowCategory("theology_grading") ||
+                shouldShowCategory("comments") ||
+                Boolean(normalizedQuery)) && (
+              <div
+                data-testid="settings-card-theology-grading"
+                className="bg-white dark:bg-[#131A16] rounded-2xl border border-[#E3E8E3] dark:border-[#24332E] shadow-[0_1px_3px_rgba(15,41,30,0.04)] p-6"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                  <div>
+                    <h2 className="text-[15px] font-semibold text-[#111827] dark:text-[#F4F7F5]">
+                      Theology Aggregate Weight Scale (1–9 Points) &amp; Overall Arabic Remarks (التقديرات الشرعية)
+                    </h2>
+                    <p className="text-xs text-[#6B7280] dark:text-[#9AA7A0] mt-0.5">
+                      Theology sheets display raw marks cleanly (no D1–F9 letter codes). These 1–9 point score bands feed the 4-subject overall division aggregate (4–12 = ممتاز, 13–23 = جيد جداً, 24–29 = جيد, 30–34 = مقبول, 35–36 = راسب).
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setResetDialogOpen(true)}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-[#D5DFD5] bg-[#F8FAF8] hover:bg-[#EEF3EE] px-3 py-1.5 text-xs font-semibold text-[#374151] transition"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5 text-[#0D5C3A]" />
+                    <span>Reset to UNEB / Jiddah Defaults</span>
+                  </button>
                 </div>
 
                 <div className="space-y-3 mb-5">
@@ -1319,7 +1555,7 @@ export default function SettingsClient({
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="border-b border-[#E3E8E3] text-[11px] font-semibold uppercase tracking-wider text-[#6B7280]">
-                        <th className="py-2 pr-2">Grade</th>
+                        <th className="py-2 pr-2">Point (1–9)</th>
                         <th className="py-2 px-2">Min</th>
                         <th className="py-2 px-2">Max</th>
                         <th className="py-2 pl-2 text-right">Arabic Subject Remark (التقدير)</th>
@@ -1328,7 +1564,7 @@ export default function SettingsClient({
                     <tbody className="divide-y divide-[#F1F5F1] text-sm">
                       {theologyScale.map((band, idx) => (
                         <tr key={band.grade + idx}>
-                          <td className="py-2 pr-2 font-bold text-[#0D5C3A] w-16">{band.grade}</td>
+                          <td className="py-2 pr-2 font-bold text-[#0D5C3A] w-20">Pt {idx + 1}</td>
                           <td className="py-2 px-2 w-20">
                             <input
                               type="number"
@@ -1397,9 +1633,16 @@ export default function SettingsClient({
                   </button>
                 </div>
               </div>
+              )}
 
-              {/* Card 3C: Division Aggregate Boundaries & Comment Templates */}
-              <div className="bg-white dark:bg-[#131A16] rounded-2xl border border-[#E3E8E3] dark:border-[#24332E] shadow-[0_1px_3px_rgba(15,41,30,0.04)] p-6">
+              {/* Card 3C: Division Aggregate Boundaries & Comment Templates — shown on Tab 2 (secular_grading) or Tab 4 (comments) */}
+              {(shouldShowCategory("secular_grading") ||
+                shouldShowCategory("comments") ||
+                Boolean(normalizedQuery)) && (
+              <div
+                data-testid="settings-card-secular-divisions"
+                className="bg-white dark:bg-[#131A16] rounded-2xl border border-[#E3E8E3] dark:border-[#24332E] shadow-[0_1px_3px_rgba(15,41,30,0.04)] p-6"
+              >
                 <div className="mb-4">
                   <h2 className="text-[15px] font-semibold text-[#111827] dark:text-[#F4F7F5]">
                     Division Aggregate Boundaries & Automated Comments
@@ -1449,9 +1692,9 @@ export default function SettingsClient({
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                         <div>
-                          <label className="block text-[11px] font-semibold text-[#6B7280] mb-1">
+                          <label className="block text-[11px] font-semibold text-[#6B7280] dark:text-[#9AA7A0] mb-1">
                             Class Teacher Comment Template
                           </label>
                           <input
@@ -1466,7 +1709,7 @@ export default function SettingsClient({
                           />
                         </div>
                         <div>
-                          <label className="block text-[11px] font-semibold text-[#6B7280] mb-1">
+                          <label className="block text-[11px] font-semibold text-[#6B7280] dark:text-[#9AA7A0] mb-1">
                             Headteacher Comment Template
                           </label>
                           <input
@@ -1480,21 +1723,58 @@ export default function SettingsClient({
                             className="w-full h-9 rounded-lg border border-[#D5DFD5] dark:border-[#2A3B35] bg-white dark:bg-[#0D1412] px-2.5 text-xs text-[#111827] dark:text-[#F4F7F5]"
                           />
                         </div>
+                        <div>
+                          <label className="block text-[11px] font-semibold text-[#6B7280] dark:text-[#9AA7A0] mb-1">
+                            Conduct Remark Template
+                          </label>
+                          <input
+                            type="text"
+                            value={div.conductRemark || ""}
+                            placeholder="e.g. Good conduct. Keep it up."
+                            onChange={(e) => {
+                              const next = [...divisionBoundaries];
+                              next[idx] = { ...div, conductRemark: e.target.value };
+                              setDivisionBoundaries(next);
+                            }}
+                            className="w-full h-9 rounded-lg border border-[#D5DFD5] dark:border-[#2A3B35] bg-white dark:bg-[#0D1412] px-2.5 text-xs text-[#111827] dark:text-[#F4F7F5]"
+                          />
+                        </div>
                       </div>
                     </div>
                   ))}
                 </div>
 
+                {/* Validation Banner & Submit for Secular Division Boundaries */}
+                <div
+                  className={`mt-4 rounded-xl px-3.5 py-2.5 text-xs font-medium flex items-center gap-2 border ${
+                    secularDivisionValidation.valid
+                      ? "bg-[#F8FAF8] border-[#E3E8E3] text-[#0D5C3A]"
+                      : "bg-rose-50 border-rose-200 text-rose-700"
+                  }`}
+                >
+                  {secularDivisionValidation.valid ? (
+                    <>
+                      <Check className="w-4 h-4 shrink-0" />
+                      <span>Continuous 4–36 aggregate coverage verified for Secular divisions.</span>
+                    </>
+                  ) : (
+                    <>
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                      <span>{secularDivisionValidation.error}</span>
+                    </>
+                  )}
+                </div>
+
                 <div className="flex items-center justify-between pt-4 mt-4 border-t border-[#F1F5F1]">
                   <span className="text-xs text-[#6B7280]">
                     {isDivisionDirty
-                      ? "Unsaved division boundary or comment changes"
-                      : "Division aggregate rules synced with report engine"}
+                      ? "Unsaved secular division boundary or comment changes"
+                      : "Secular division rules synced with report engine"}
                   </span>
                   <button
                     type="button"
                     onClick={handleSaveDivisionBoundaries}
-                    disabled={!isDivisionDirty || savingDivisionBoundaries}
+                    disabled={!isDivisionDirty || !secularDivisionValidation.valid || savingDivisionBoundaries}
                     className="inline-flex items-center gap-1.5 rounded-lg bg-[#0D5C3A] hover:bg-[#0A472C] px-4 py-2 text-xs font-semibold text-white transition disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     {savingDivisionBoundaries ? (
@@ -1502,31 +1782,285 @@ export default function SettingsClient({
                     ) : (
                       <Check className="w-3.5 h-3.5" />
                     )}
-                    <span>{savingDivisionBoundaries ? "Saving..." : "Save Changes"}</span>
+                    <span>{savingDivisionBoundaries ? "Saving..." : "Save Secular Divisions"}</span>
                   </button>
                 </div>
               </div>
+              )}
+
+              {/* Card 3C-IPLE: Theology Overall Aggregate Division Boundaries — shown on Tab 3 (theology_grading) */}
+              {(shouldShowCategory("theology_grading") || Boolean(normalizedQuery)) && (
+              <div
+                data-testid="settings-card-theology-divisions"
+                className="bg-white dark:bg-[#131A16] rounded-2xl border border-[#E3E8E3] dark:border-[#24332E] shadow-[0_1px_3px_rgba(15,41,30,0.04)] p-6"
+              >
+                <div className="mb-4">
+                  <h2 className="text-[15px] font-semibold text-[#111827] dark:text-[#F4F7F5]">
+                    Theology IPLE Overall Division Boundaries (تقديرات المجموع التراكمي ٤–٣٦)
+                  </h2>
+                  <p className="text-xs text-[#6B7280] dark:text-[#9AA7A0] mt-0.5">
+                    Configurable 4-core-subject aggregate cutoffs for Arabic Theology divisions (e.g. ممتاز 4–12, جيد جداً 13–23).
+                  </p>
+                </div>
+
+                <div
+                  className={`mb-4 rounded-xl px-3.5 py-2.5 text-xs font-medium flex items-center gap-2 border ${
+                    theologyDivisionValidation.valid
+                      ? "bg-[#F8FAF8] border-[#E3E8E3] text-[#0D5C3A]"
+                      : "bg-rose-50 border-rose-200 text-rose-700"
+                  }`}
+                >
+                  {theologyDivisionValidation.valid ? (
+                    <>
+                      <Check className="w-4 h-4 shrink-0" />
+                      <span>Continuous 4–36 aggregate coverage verified for IPLE theology divisions.</span>
+                    </>
+                  ) : (
+                    <>
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                      <span>{theologyDivisionValidation.error}</span>
+                    </>
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  {theologyDivisionBoundaries.map((div, idx) => (
+                    <div
+                      key={`${div.equivalentDivision}-${idx}`}
+                      className="rounded-xl border border-[#E3E8E3] bg-[#F8FAF8] p-4 space-y-2"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                          <span
+                            dir="rtl"
+                            className="inline-flex items-center rounded-lg bg-[#E2EEE2] px-2.5 py-1 text-xs font-bold text-[#0D5C3A]"
+                          >
+                            {div.division}
+                          </span>
+                          <span className="text-xs text-[#6B7280] font-medium">
+                            ({div.label})
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className="text-[#6B7280] font-medium">Aggregate Range:</span>
+                          <input
+                            type="number"
+                            min={4}
+                            max={36}
+                            value={div.min}
+                            onChange={(e) => {
+                              const next = [...theologyDivisionBoundaries];
+                              next[idx] = { ...div, min: Number(e.target.value) };
+                              setTheologyDivisionBoundaries(next);
+                            }}
+                            className="w-16 h-8 rounded border border-[#D5DFD5] bg-white px-2 text-xs font-bold text-[#111827]"
+                          />
+                          <span className="text-[#6B7280]">to</span>
+                          <input
+                            type="number"
+                            min={4}
+                            max={36}
+                            value={div.max}
+                            onChange={(e) => {
+                              const next = [...theologyDivisionBoundaries];
+                              next[idx] = { ...div, max: Number(e.target.value) };
+                              setTheologyDivisionBoundaries(next);
+                            }}
+                            className="w-16 h-8 rounded border border-[#D5DFD5] bg-white px-2 text-xs font-bold text-[#111827]"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex items-center justify-between pt-4 mt-4 border-t border-[#F1F5F1]">
+                  <span className="text-xs text-[#6B7280]">
+                    {isTheologyDivisionDirty
+                      ? "Unsaved IPLE theology division boundary changes"
+                      : "IPLE theology division thresholds synced across hubs and reports"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleSaveTheologyDivisionBoundaries}
+                    disabled={!isTheologyDivisionDirty || !theologyDivisionValidation.valid || savingTheologyDivisionBoundaries}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-[#0D5C3A] hover:bg-[#0A472C] px-4 py-2 text-xs font-semibold text-white transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {savingTheologyDivisionBoundaries ? (
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Check className="w-3.5 h-3.5" />
+                    )}
+                    <span>{savingTheologyDivisionBoundaries ? "Saving..." : "Save Theology Divisions"}</span>
+                  </button>
+                </div>
+              </div>
+              )}
+
+              {/* Card 3D: Term 3 Promotion & General Conduct Settings — shown on Tab 4 (comments) */}
+              {(shouldShowCategory("comments") || Boolean(normalizedQuery)) && (
+              <div
+                data-testid="settings-card-promotion-conduct"
+                className="bg-white dark:bg-[#131A16] rounded-2xl border border-[#E3E8E3] dark:border-[#24332E] shadow-[0_1px_3px_rgba(15,41,30,0.04)] p-6"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                  <div>
+                    <h2 className="text-[15px] font-semibold text-[#111827] dark:text-[#F4F7F5]">
+                      Term 3 Promotion Remarks &amp; General Conduct
+                    </h2>
+                    <p className="text-xs text-[#6B7280] dark:text-[#9AA7A0] mt-0.5">
+                      Automated Class Teacher comments applied during end-of-year promotion decisions and fallback conduct remarks.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setResetDialogOpen(true)}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-[#D5DFD5] bg-[#F8FAF8] hover:bg-[#EEF3EE] px-3 py-1.5 text-xs font-semibold text-[#374151] transition"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5 text-[#0D5C3A]" />
+                    <span>Reset to UNEB / Jiddah Defaults</span>
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-[#6B7280] dark:text-[#9AA7A0] mb-1">
+                        Promoted Remark (Division I, II, III)
+                      </label>
+                      <input
+                        type="text"
+                        value={promotionComments.promoted}
+                        onChange={(e) =>
+                          setPromotionComments({ ...promotionComments, promoted: e.target.value })
+                        }
+                        className="w-full h-9 rounded-lg border border-[#D5DFD5] dark:border-[#2A3B35] bg-white dark:bg-[#0D1412] px-2.5 text-xs text-[#111827] dark:text-[#F4F7F5]"
+                        placeholder="Promoted to the next class."
+                      />
+                      <p className="text-[10px] text-[#9AA7A0] mt-0.5">Printed under Class Teacher's Comment for passing candidates.</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-[#6B7280] dark:text-[#9AA7A0] mb-1">
+                        Promoted on Probation Remark (Division IV)
+                      </label>
+                      <input
+                        type="text"
+                        value={promotionComments.promoted_probation}
+                        onChange={(e) =>
+                          setPromotionComments({ ...promotionComments, promoted_probation: e.target.value })
+                        }
+                        className="w-full h-9 rounded-lg border border-[#D5DFD5] dark:border-[#2A3B35] bg-white dark:bg-[#0D1412] px-2.5 text-xs text-[#111827] dark:text-[#F4F7F5]"
+                        placeholder="Promoted on probation."
+                      />
+                      <p className="text-[10px] text-[#9AA7A0] mt-0.5">Printed when pupil is promoted with academic conditions.</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-[#6B7280] dark:text-[#9AA7A0] mb-1">
+                        Repeat Class Remark (Ungraded U)
+                      </label>
+                      <input
+                        type="text"
+                        value={promotionComments.repeat}
+                        onChange={(e) =>
+                          setPromotionComments({ ...promotionComments, repeat: e.target.value })
+                        }
+                        className="w-full h-9 rounded-lg border border-[#D5DFD5] dark:border-[#2A3B35] bg-white dark:bg-[#0D1412] px-2.5 text-xs text-[#111827] dark:text-[#F4F7F5]"
+                        placeholder="Advised to repeat the class."
+                      />
+                      <p className="text-[10px] text-[#9AA7A0] mt-0.5">Printed when student does not qualify for promotion.</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-[#6B7280] dark:text-[#9AA7A0] mb-1">
+                        Try Next Class Remark (Manual Override)
+                      </label>
+                      <input
+                        type="text"
+                        value={promotionComments.try_next_class}
+                        onChange={(e) =>
+                          setPromotionComments({ ...promotionComments, try_next_class: e.target.value })
+                        }
+                        className="w-full h-9 rounded-lg border border-[#D5DFD5] dark:border-[#2A3B35] bg-white dark:bg-[#0D1412] px-2.5 text-xs text-[#111827] dark:text-[#F4F7F5]"
+                        placeholder="Try next class."
+                      />
+                      <p className="text-[10px] text-[#9AA7A0] mt-0.5">Printed when teachers assign manual probation promotion.</p>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-[#F1F5F1] dark:border-[#24332E]">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-[#6B7280] dark:text-[#9AA7A0] mb-1">
+                          Default General Conduct Remark (Nursery / Unclassified)
+                        </label>
+                        <input
+                          type="text"
+                          value={promotionComments.default_conduct}
+                          onChange={(e) =>
+                            setPromotionComments({ ...promotionComments, default_conduct: e.target.value })
+                          }
+                          className="w-full h-9 rounded-lg border border-[#D5DFD5] dark:border-[#2A3B35] bg-white dark:bg-[#0D1412] px-2.5 text-xs text-[#111827] dark:text-[#F4F7F5]"
+                          placeholder="Good conduct."
+                        />
+                        <p className="text-[10px] text-[#9AA7A0] mt-0.5">Fallback conduct remark when student has no division assigned.</p>
+                      </div>
+
+                      <div className="flex items-center gap-2 pt-2 sm:pt-0">
+                        <input
+                          type="checkbox"
+                          id="append_division_comment"
+                          checked={promotionComments.append_division_comment || false}
+                          onChange={(e) =>
+                            setPromotionComments({
+                              ...promotionComments,
+                              append_division_comment: e.target.checked,
+                            })
+                          }
+                          className="w-4 h-4 rounded text-[#0D5C3A] focus:ring-[#0D5C3A] border-[#D5DFD5]"
+                        />
+                        <label
+                          htmlFor="append_division_comment"
+                          className="text-xs font-medium text-[#374151] dark:text-[#E2E8F0] cursor-pointer"
+                        >
+                          Append Division Academic Remark to Promotion Status
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-4 mt-4 border-t border-[#F1F5F1] dark:border-[#24332E]">
+                  <span className="text-xs text-[#6B7280]">
+                    {isPromotionCommentsDirty
+                      ? "Unsaved promotion or conduct settings"
+                      : "Promotion remarks and conduct templates synced"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleSavePromotionComments}
+                    disabled={!isPromotionCommentsDirty || savingPromotionComments}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-[#0D5C3A] hover:bg-[#0A472C] px-4 py-2 text-xs font-semibold text-white transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {savingPromotionComments ? (
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Check className="w-3.5 h-3.5" />
+                    )}
+                    <span>{savingPromotionComments ? "Saving..." : "Save Changes"}</span>
+                  </button>
+                </div>
+              </div>
+              )}
             </section>
           )}
 
           {/* =====================================================================
-              CATEGORY 4: STAMPS & SIGNATURES
+              TAB 5: EXAM LOCKS & ACCESS SAFEGUARDS (+ Print Layout & Signatures)
           ===================================================================== */}
-          {shouldShowCategory("signatures") && (
-            <section className="space-y-5" aria-label="Stamps and Signatures">
-              <SignaturesClient
-                initialSlots={initialSlots}
-                embedded={true}
-                searchQuery={searchQuery}
-              />
-            </section>
-          )}
-
-          {/* =====================================================================
-              CATEGORY 5: REPORT CARD & PRINT LAYOUT
-          ===================================================================== */}
-          {shouldShowCategory("print") && (
-            <section className="space-y-5" aria-label="Report Card and Print Layout">
+          {shouldShowCategory("locks") && (
+            <section className="space-y-5" aria-label="Exam Locks and Access Safeguards">
               <div className="bg-white dark:bg-[#131A16] rounded-2xl border border-[#E3E8E3] dark:border-[#24332E] shadow-[0_1px_3px_rgba(15,41,30,0.04)] p-6">
                 <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                   <div>
@@ -1625,19 +2159,12 @@ export default function SettingsClient({
                   })}
                 </div>
               </div>
-            </section>
-          )}
 
-          {/* =====================================================================
-              CATEGORY 6: MARKS & ACCESS LOCKS
-          ===================================================================== */}
-          {shouldShowCategory("locks") && (
-            <section className="space-y-5" aria-label="Marks and Access Locks">
               <div className="bg-white dark:bg-[#131A16] rounded-2xl border border-[#E3E8E3] dark:border-[#24332E] shadow-[0_1px_3px_rgba(15,41,30,0.04)] p-6">
                 <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                   <div>
                     <h2 className="text-[15px] font-semibold text-[#111827] dark:text-[#F4F7F5]">
-                      Marks Entry & Exam Set Access Locks
+                      Marks Entry &amp; Exam Set Access Locks
                     </h2>
                     <p className="text-xs text-[#6B7280] dark:text-[#9AA7A0] mt-0.5">
                       Freeze teacher mark entry per exam set once reports are printed. Administrators retain override access.
@@ -1740,14 +2267,13 @@ export default function SettingsClient({
                   })}
                 </div>
               </div>
-            </section>
-          )}
 
-          {/* =====================================================================
-              CATEGORY 7: MY ACCOUNT & SECURITY
-          ===================================================================== */}
-          {shouldShowCategory("account") && (
-            <section className="space-y-5" aria-label="My Account and Security">
+              <SignaturesClient
+                initialSlots={initialSlots}
+                embedded={true}
+                searchQuery={searchQuery}
+              />
+
               <AccountClient
                 initialProfile={initialProfile}
                 userEmail={userEmail}

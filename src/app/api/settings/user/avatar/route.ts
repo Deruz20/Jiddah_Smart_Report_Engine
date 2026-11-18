@@ -8,6 +8,7 @@ import { sniffImageMimeType } from '@/lib/image-sniff'
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp']
 const MAX_FILE_SIZE = 2 * 1024 * 1024
 const AVATAR_BUCKET = 'user-avatars'
+const ALL_EXTENSIONS = ['png', 'jpg', 'webp']
 
 export async function OPTIONS(request: NextRequest) {
   return apiOptions(request)
@@ -34,7 +35,10 @@ export async function POST(request: NextRequest) {
     }
 
     if (!ACCEPTED_TYPES.includes(file.type)) {
-      return withCors(request, NextResponse.json({ error: 'Unsupported image type' }, { status: 400 }))
+      return withCors(
+        request,
+        NextResponse.json({ error: 'Unsupported image type. Only PNG, JPG, and WEBP are allowed (no SVG).' }, { status: 400 })
+      )
     }
 
     if (file.size > MAX_FILE_SIZE) {
@@ -63,10 +67,23 @@ export async function POST(request: NextRequest) {
     }
     const extension = mimeToExt[sniffedMime] || 'png'
     const filePath = `avatars/${user.id}.${extension}`
+    const stalePaths = ALL_EXTENSIONS.filter((ext) => ext !== extension).map((ext) => `avatars/${user.id}.${ext}`)
 
     const supabaseAdmin = createAdminClient(cookieStore)
 
+    // Fetch before state for audit logging
+    const [{ data: existingProfile }, { data: existingTeacher }] = await Promise.all([
+      supabaseAdmin.from('profiles').select('id, avatar_url').eq('id', user.id).maybeSingle(),
+      supabaseAdmin
+        .from('teachers')
+        .select('id, avatar')
+        .or(`auth_user_id.eq.${user.id},id.eq.${user.id}${user.email ? `,email.eq.${user.email}` : ''}`)
+        .maybeSingle(),
+    ])
+    const previousAvatarUrl = existingTeacher?.avatar || existingProfile?.avatar_url || user.user_metadata?.avatar_url || null
+
     let finalAvatarUrl = ''
+    let usedBucket = AVATAR_BUCKET
     const { error: uploadError } = await supabaseAdmin.storage.from(AVATAR_BUCKET).upload(filePath, buffer, {
       upsert: true,
       contentType: sniffedMime,
@@ -76,20 +93,26 @@ export async function POST(request: NextRequest) {
       const { data: publicData } = supabaseAdmin.storage.from(AVATAR_BUCKET).getPublicUrl(filePath)
       finalAvatarUrl = publicData?.publicUrl ? `${publicData.publicUrl}?t=${Date.now()}` : ''
     } else {
-      // Fallback to signatures bucket if user-avatars bucket is not provisioned
-      const fallbackPath = `avatars/${user.id}.${extension}`
-      const { error: fallbackErr } = await supabaseAdmin.storage.from('signatures').upload(fallbackPath, buffer, {
+      usedBucket = 'signatures'
+      const { error: fallbackErr } = await supabaseAdmin.storage.from('signatures').upload(filePath, buffer, {
         upsert: true,
         contentType: sniffedMime,
       })
       if (!fallbackErr) {
-        const { data: publicData } = supabaseAdmin.storage.from('signatures').getPublicUrl(fallbackPath)
+        const { data: publicData } = supabaseAdmin.storage.from('signatures').getPublicUrl(filePath)
         finalAvatarUrl = publicData?.publicUrl ? `${publicData.publicUrl}?t=${Date.now()}` : ''
       }
     }
 
     if (!finalAvatarUrl) {
       return withCors(request, NextResponse.json({ error: 'Failed to store avatar image' }, { status: 500 }))
+    }
+
+    // Remove stale avatar files of other extensions so old photo is cleanly replaced
+    try {
+      await supabaseAdmin.storage.from(usedBucket).remove(stalePaths)
+    } catch {
+      // Non-fatal cleanup
     }
 
     await supabase.auth.updateUser({
@@ -100,10 +123,29 @@ export async function POST(request: NextRequest) {
 
     await supabaseAdmin
       .from('profiles')
-      .update({ avatar_url: finalAvatarUrl })
-      .eq('id', user.id)
+      .upsert([{ id: user.id, avatar_url: finalAvatarUrl }], { onConflict: 'id' })
 
-    await recordActivity(supabase, user.id, 'upload_avatar', { avatar_url: finalAvatarUrl })
+    if (existingTeacher?.id) {
+      const { data: verifiedTeacher, error: teacherErr } = await supabaseAdmin
+        .from('teachers')
+        .update({ avatar: finalAvatarUrl })
+        .eq('id', existingTeacher.id)
+        .select('id, avatar')
+        .single()
+
+      if (teacherErr || verifiedTeacher?.avatar !== finalAvatarUrl) {
+        return withCors(
+          request,
+          NextResponse.json({ error: 'Read-back verification failed when saving avatar to staff profile.' }, { status: 500 })
+        )
+      }
+    }
+
+    await recordActivity(supabaseAdmin, user.id, 'upload_avatar', {
+      before: { avatar_url: previousAvatarUrl },
+      after: { avatar_url: finalAvatarUrl },
+    })
+
     return withCors(request, NextResponse.json({ data: { avatar_url: finalAvatarUrl } }))
   } catch (err: any) {
     console.error('settings/user/avatar POST exception:', err)

@@ -1,4 +1,8 @@
 import { resolveSectionType } from "./section-type";
+import {
+  doesExamApplyToClassInTerm,
+  type CandidateClassExclusionRule,
+} from "./academic-sections";
 
 export interface TermRecord {
   id: string;
@@ -58,6 +62,8 @@ export interface ClassReportingStatus {
   stageLabel: string;
   percent: number;
   anomalies: number;
+  eotApplicable?: boolean;
+  candidateBadge?: string | null;
 }
 
 export interface ExamColumnMetric {
@@ -201,10 +207,16 @@ export function buildClassStatuses(params: {
   theologyMarks: MarkRowRecord[];
   circularSubjects?: SubjectRecord[];
   theologySubjects?: SubjectRecord[];
+  termNumber?: number | null;
+  termLabel?: string | null;
+  candidateRules?: CandidateClassExclusionRule[];
 }): {
   secularClassStatuses: ClassReportingStatus[];
   theologyClassStatuses: ClassReportingStatus[];
   classStatuses: ClassReportingStatus[];
+  totalRequiredEotSecular: number;
+  totalRequiredEotTheology: number;
+  excludedEotEnrollmentIds: Set<string>;
 } {
   const {
     department,
@@ -215,7 +227,14 @@ export function buildClassStatuses(params: {
     theologyMarks,
     circularSubjects = [],
     theologySubjects = [],
+    termNumber,
+    termLabel,
+    candidateRules,
   } = params;
+
+  const excludedEotEnrollmentIds = new Set<string>();
+  let totalRequiredEotSecular = 0;
+  let totalRequiredEotTheology = 0;
 
   const secularClassStatuses: ClassReportingStatus[] = circularClasses.map((c) => {
     const rawLabel = c.class_name || "Unnamed Class";
@@ -223,17 +242,39 @@ export function buildClassStatuses(params: {
       ? `Class (${c.section || "General"})`
       : rawLabel;
 
+    const eotApp = doesExamApplyToClassInTerm(
+      {
+        id: c.id,
+        class_name: c.class_name,
+        section: c.section,
+        curriculum: "secular",
+        examType: "eot",
+        termNumber,
+        termLabel,
+      },
+      candidateRules
+    );
+
     const classEnrollments = enrollments.filter((e) => e.circular_class_id === c.id);
     const totalStudents = classEnrollments.length;
     const enrollmentIds = new Set(classEnrollments.map((e) => e.id));
+    if (!eotApp.applies) {
+      enrollmentIds.forEach((eid) => excludedEotEnrollmentIds.add(eid));
+    }
 
     const classMarks = circularMarks.filter(
       (m) => enrollmentIds.has(m.enrollment_id) && hasAnyRecordedScore(m)
     );
     const marksEntered = classMarks.length;
     const subjectMultiplier = countSubjectsForCircularClass(c, circularSubjects);
-    const totalRequired = totalStudents * subjectMultiplier;
-    const missingMarks = Math.max(0, totalRequired - marksEntered);
+    const rawRequired = totalStudents * subjectMultiplier;
+    if (eotApp.applies) {
+      totalRequiredEotSecular += rawRequired;
+    }
+
+    const suppressCandidateEotMissing = !eotApp.applies && marksEntered === 0;
+    const totalRequired = suppressCandidateEotMissing ? 0 : rawRequired;
+    const missingMarks = suppressCandidateEotMissing ? 0 : Math.max(0, totalRequired - marksEntered);
     const anomalies = classMarks.filter(hasScoreAnomaly).length;
     const percent =
       totalRequired > 0 ? Math.min(100, Math.round((marksEntered / totalRequired) * 100)) : 0;
@@ -246,26 +287,51 @@ export function buildClassStatuses(params: {
       totalRequired,
       missingMarks,
       stage: "marks_in",
-      stageLabel: deriveStageLabel(totalStudents, percent),
+      stageLabel: suppressCandidateEotMissing ? eotApp.badge : deriveStageLabel(totalStudents, percent),
       percent,
       anomalies,
+      eotApplicable: eotApp.applies,
+      candidateBadge: !eotApp.applies ? eotApp.badge : null,
     };
   });
 
   const theologyClassStatuses: ClassReportingStatus[] = theologyClasses.map((tc) => {
     const baseName = tc.class_name_english || tc.class_name_arabic || "Theology Cohort";
     const className = department === "both" ? `${baseName} (Theology)` : baseName;
+    const eotApp = doesExamApplyToClassInTerm(
+      {
+        id: tc.id,
+        class_name_english: tc.class_name_english,
+        class_name_arabic: tc.class_name_arabic,
+        level: tc.level,
+        curriculum: "theology",
+        examType: "eot",
+        termNumber,
+        termLabel,
+      },
+      candidateRules
+    );
+
     const classEnrollments = enrollments.filter((e) => e.theology_class_id === tc.id);
     const totalStudents = classEnrollments.length;
     const enrollmentIds = new Set(classEnrollments.map((e) => e.id));
+    if (!eotApp.applies) {
+      enrollmentIds.forEach((eid) => excludedEotEnrollmentIds.add(eid));
+    }
 
     const classMarks = theologyMarks.filter(
       (m) => enrollmentIds.has(m.enrollment_id) && hasAnyRecordedScore(m)
     );
     const marksEntered = classMarks.length;
     const subjectMultiplier = countSubjectsForTheologyClass(tc, theologySubjects);
-    const totalRequired = totalStudents * subjectMultiplier;
-    const missingMarks = Math.max(0, totalRequired - marksEntered);
+    const rawRequired = totalStudents * subjectMultiplier;
+    if (eotApp.applies) {
+      totalRequiredEotTheology += rawRequired;
+    }
+
+    const suppressCandidateEotMissing = !eotApp.applies && marksEntered === 0;
+    const totalRequired = suppressCandidateEotMissing ? 0 : rawRequired;
+    const missingMarks = suppressCandidateEotMissing ? 0 : Math.max(0, totalRequired - marksEntered);
     const anomalies = classMarks.filter(hasScoreAnomaly).length;
     const percent =
       totalRequired > 0 ? Math.min(100, Math.round((marksEntered / totalRequired) * 100)) : 0;
@@ -278,9 +344,11 @@ export function buildClassStatuses(params: {
       totalRequired,
       missingMarks,
       stage: "marks_in",
-      stageLabel: deriveStageLabel(totalStudents, percent),
+      stageLabel: suppressCandidateEotMissing ? eotApp.badge : deriveStageLabel(totalStudents, percent),
       percent,
       anomalies,
+      eotApplicable: eotApp.applies,
+      candidateBadge: !eotApp.applies ? eotApp.badge : null,
     };
   });
 
@@ -291,7 +359,14 @@ export function buildClassStatuses(params: {
       ? secularClassStatuses
       : [...secularClassStatuses, ...theologyClassStatuses];
 
-  return { secularClassStatuses, theologyClassStatuses, classStatuses };
+  return {
+    secularClassStatuses,
+    theologyClassStatuses,
+    classStatuses,
+    totalRequiredEotSecular,
+    totalRequiredEotTheology,
+    excludedEotEnrollmentIds,
+  };
 }
 
 export function computeExamBreakdown(params: {
@@ -300,6 +375,9 @@ export function computeExamBreakdown(params: {
   theologyMarks: MarkRowRecord[];
   totalRequiredSecular: number;
   totalRequiredTheology: number;
+  totalRequiredEotSecular?: number;
+  totalRequiredEotTheology?: number;
+  excludedEotEnrollmentIds?: Set<string>;
 }): ExamBreakdownTelemetry {
   const {
     department,
@@ -307,6 +385,9 @@ export function computeExamBreakdown(params: {
     theologyMarks,
     totalRequiredSecular,
     totalRequiredTheology,
+    totalRequiredEotSecular,
+    totalRequiredEotTheology,
+    excludedEotEnrollmentIds,
   } = params;
 
   const activeSecular = department === "theology" ? [] : circularMarks;
@@ -325,13 +406,20 @@ export function computeExamBreakdown(params: {
   for (const m of combined) {
     const mot = toNumericScore(m.mot_score);
     if (mot !== null && mot >= 0 && mot <= 100) motScores.push(mot);
-    const eot = toNumericScore(m.eot_score);
-    if (eot !== null && eot >= 0 && eot <= 100) eotScores.push(eot);
+    if (!excludedEotEnrollmentIds || !excludedEotEnrollmentIds.has(m.enrollment_id)) {
+      const eot = toNumericScore(m.eot_score);
+      if (eot !== null && eot >= 0 && eot <= 100) eotScores.push(eot);
+    }
   }
 
   const totalCombinedSlots =
     (department === "theology" ? 0 : totalRequiredSecular) +
     (department === "secular" ? 0 : totalRequiredTheology);
+  const effectiveEotSecular = totalRequiredEotSecular ?? totalRequiredSecular;
+  const effectiveEotTheology = totalRequiredEotTheology ?? totalRequiredTheology;
+  const totalEotCombinedSlots =
+    (department === "theology" ? 0 : effectiveEotSecular) +
+    (department === "secular" ? 0 : effectiveEotTheology);
   const totalBotSlots = department === "theology" ? 0 : totalRequiredSecular;
 
   const avgOf = (arr: number[]): number | null =>
@@ -364,7 +452,7 @@ export function computeExamBreakdown(params: {
     },
     eot: {
       entered: eotScores.length,
-      completionPct: pctOf(eotScores.length, totalCombinedSlots),
+      completionPct: pctOf(eotScores.length, totalEotCombinedSlots),
       averageScore: eotAvg,
     },
     progressionDelta,
@@ -407,7 +495,9 @@ export function buildDashboardAlerts(params: {
     });
   }
 
-  const lowCohorts = params.classStatuses.filter((c) => c.totalStudents > 0 && c.percent < 50);
+  const lowCohorts = params.classStatuses.filter(
+    (c) => c.totalStudents > 0 && c.percent < 50 && c.eotApplicable !== false
+  );
   if (lowCohorts.length > 0) {
     const sample = lowCohorts
       .slice(0, 2)

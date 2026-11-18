@@ -12,12 +12,15 @@ import {
   isCoreSubject,
   isGradableSubject,
   calculateAggregate,
-  calculateTheologyAggregate,
+  calculateTheologyAggregateFromMarks,
   getDivision,
+  getTheologyDivision,
   getPromotionStatus,
   getConductRemark,
   getClassTeacherReportComment,
   getHeadTeacherComment,
+  getNurseryTeacherComment,
+  getTheologyComment,
   getGradingRemarkForScore,
   getGradingRemarkForScores,
 } from '@/lib/grading'
@@ -34,9 +37,13 @@ import { resolveEquivalentTerms } from '@/lib/marks-reconciliation'
 import { applyRateLimit, rateLimitResponse } from '@/utils/rate-limit'
 import { z } from 'zod'
 
+const pgUuidSchema = z
+  .string()
+  .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, 'Invalid UUID')
+
 const batchReportSchema = z.object({
-  enrollment_ids: z.array(z.string().uuid()).min(1, 'At least one student is required'),
-  term_id: z.string().uuid('Invalid term ID'),
+  enrollment_ids: z.array(pgUuidSchema).min(1, 'At least one student is required'),
+  term_id: pgUuidSchema,
   score_type: z.enum(['bot', 'mot', 'eot']).default('mot'),
   curriculum: z.enum(['secular', 'theology', 'combined']).default('secular'),
   stamp_date: z.string().optional()
@@ -61,16 +68,6 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const rawBody = await request.json()
-    
-    // Strict Zod Validation
-    const parsed = batchReportSchema.safeParse(rawBody)
-    if (!parsed.success) {
-      return withCors(request, NextResponse.json({ error: 'Invalid payload', details: parsed.error.format() }, { status: 400 }))
-    }
-
-    const { enrollment_ids, term_id, score_type, curriculum, stamp_date } = parsed.data
-
     const cookieStore = await cookies()
     const supabase = createClient(cookieStore)
 
@@ -79,16 +76,33 @@ export async function POST(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
-    const { verifyDataAccess } = await import('@/lib/auth-server')
+    const { verifyDataAccess, hasPermission } = await import('@/lib/auth-server')
     const authRes = await verifyDataAccess(supabase, user, 'read')
-    if (!authRes.isAuthorized) {
-      return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
+    if (!authRes.isAuthorized || !hasPermission(authRes, 'read_reports')) {
+      return withCors(
+        request,
+        NextResponse.json(
+          { error: authRes.message || 'Forbidden: Insufficient permissions to generate report cards.' },
+          { status: 403 }
+        )
+      )
     }
 
-    const { data: gradingCriteriaData } = await supabase.from('grading_criteria').select('*')
+    const rawBody = await request.json()
+
+    // Strict Zod Validation
+    const parsed = batchReportSchema.safeParse(rawBody)
+    if (!parsed.success) {
+      return withCors(request, NextResponse.json({ error: 'Invalid payload', details: parsed.error.format() }, { status: 400 }))
+    }
+
+    const { enrollment_ids, term_id, score_type, curriculum, stamp_date } = parsed.data
+    const supabaseAdmin = createAdminClient(cookieStore)
+
+    const { data: gradingCriteriaData } = await supabaseAdmin.from('grading_criteria').select('*')
     const gradingCriteria = (gradingCriteriaData as GradingCriterion[]) || []
 
-    const schoolSettings = await fetchMergedSchoolSettings(supabase, gradingCriteria)
+    const schoolSettings = await fetchMergedSchoolSettings(supabaseAdmin, gradingCriteria)
 
     // Helper to fetch in chunks to avoid URL length limits and timeouts
     const fetchInChunks = async (table: string, select: string, column: string, ids: string[], extraBuilder?: (query: any) => any) => {
@@ -97,7 +111,7 @@ export async function POST(request: NextRequest) {
       for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
         const chunk = ids.slice(i, i + CHUNK_SIZE)
         const chunkResults = await fetchAllSupabaseRows(() => {
-          let query = supabase.from(table).select(select).in(column, chunk)
+          let query = supabaseAdmin.from(table).select(select).in(column, chunk)
           if (extraBuilder) query = extraBuilder(query)
           return query.order('id', { ascending: true })
         })
@@ -106,8 +120,8 @@ export async function POST(request: NextRequest) {
       return results
     }
 
-    // 1. Fetch requested enrollments in chunks
-    const requestedEnrollments = await fetchInChunks(
+    // 1. Fetch requested enrollments in chunks (strictly active, non-archived students only)
+    const rawRequestedEnrollments = await fetchInChunks(
       'enrollments',
       `
         id,
@@ -117,11 +131,16 @@ export async function POST(request: NextRequest) {
         theology_class_id,
         circular_classes ( id, class_name, section ),
         theology_classes ( id, class_name_arabic, class_name_english, level ),
-        students ( id, name, arabic_name, admission_number, created_at, is_muslim, gender )
+        students!inner ( id, name, arabic_name, admission_number, created_at, is_muslim, gender, is_archived )
       `,
       'id',
-      enrollment_ids
+      enrollment_ids,
+      (q) => q.eq('is_active', true).eq('students.is_archived', false)
     )
+    const requestedEnrollments = (rawRequestedEnrollments || []).filter((e: any) => {
+      const st = Array.isArray(e.students) ? e.students[0] : e.students
+      return e.is_active !== false && st && st.is_archived !== true
+    })
 
     if (!requestedEnrollments || requestedEnrollments.length === 0) {
       return withCors(request, NextResponse.json({ error: 'No enrollments found or error fetching enrollments' }, { status: 404 }))
@@ -170,7 +189,7 @@ export async function POST(request: NextRequest) {
 
     // 3. Identify all circular classes involved to fetch ALL their students for accurate ranking
     const circularClassIds = [...new Set(requestedEnrollments.map(e => e.circular_class_id).filter(Boolean))]
-    
+
     // Determine section types involved
     const sectionTypes = new Set<string>()
     requestedEnrollments.forEach(e => {
@@ -185,7 +204,7 @@ export async function POST(request: NextRequest) {
     const circularSubjectsCache: Record<string, any[]> = {}
     if (curriculum !== 'theology') {
       for (const st of Array.from(sectionTypes)) {
-        const { data: subs } = await supabase.from('subjects').select('id, subject_name').eq('curriculum', 'secular').eq('section', st)
+        const { data: subs } = await supabaseAdmin.from('subjects').select('id, subject_name').eq('curriculum', 'secular').eq('section', st)
         circularSubjectsCache[st] = subs || []
       }
     }
@@ -198,11 +217,12 @@ export async function POST(request: NextRequest) {
 
     if (curriculum !== 'theology') {
       if (circularClassIds.length > 0) {
-        const { data: classmates } = await supabase
+        const { data: classmates } = await supabaseAdmin
           .from('enrollments')
-          .select('id, circular_class_id')
+          .select('id, circular_class_id, students!inner(id, is_archived)')
           .in('circular_class_id', circularClassIds)
           .eq('is_active', true)
+          .eq('students.is_archived', false)
         if (classmates) allClassmates = classmates
       }
 
@@ -218,7 +238,7 @@ export async function POST(request: NextRequest) {
       for (const cId of circularClassIds) {
         const classMembers = allClassmates.filter(c => c.circular_class_id === cId)
         const memberTotals: { id: string, total: number }[] = []
-        
+
         for (const member of classMembers) {
           const memberMarks = allCircularMarks.filter(m => m.enrollment_id === member.id)
           const memberScores = memberMarks.map(m => getMarkScore(m, score_type))
@@ -228,7 +248,7 @@ export async function POST(request: NextRequest) {
             memberTotals.push({ id: member.id, total: eTotal })
           }
         }
-        
+
         classRankings[cId] = memberTotals.sort((a, b) => b.total - a.total)
         circularClassSizes[cId] = classMembers.length
       }
@@ -242,7 +262,7 @@ export async function POST(request: NextRequest) {
     const theologySubjectsCache: Record<string, any[]> = {}
     for (const lvl of theologyLevels) {
       if (!lvl) continue;
-      const { data: subs } = await supabase.from('theology_subjects').select('id, subject_name_arabic').eq('level', lvl)
+      const { data: subs } = await supabaseAdmin.from('theology_subjects').select('id, subject_name_arabic').eq('level', lvl)
       theologySubjectsCache[lvl] = subs?.map(s => ({ id: s.id, subject_name_arabic: s.subject_name_arabic })) || []
     }
 
@@ -258,11 +278,12 @@ export async function POST(request: NextRequest) {
     // If we are in theology mode or dual mode, we need theology class rankings.
     const theologyClassIds = [...new Set(requestedEnrollments.map(e => e.theology_class_id).filter(Boolean))]
     if (theologyClassIds.length > 0) {
-      const { data: theoClassmates } = await supabase
+      const { data: theoClassmates } = await supabaseAdmin
         .from('enrollments')
-        .select('id, theology_class_id')
+        .select('id, theology_class_id, students!inner(id, is_archived)')
         .in('theology_class_id', theologyClassIds)
         .eq('is_active', true)
+        .eq('students.is_archived', false)
 
       if (theoClassmates) {
         const allTheoClassmateIds = theoClassmates.map(c => c.id)
@@ -271,24 +292,24 @@ export async function POST(request: NextRequest) {
           allTheoMarks = await fetchInChunks('theology_marks', '*', 'enrollment_id', allTheoClassmateIds, (q) => q.in('term_id', termIds))
         }
 
-          for (const tId of theologyClassIds) {
-            const classMembers = theoClassmates.filter(c => c.theology_class_id === tId)
-            const memberTotals: { id: string, total: number }[] = []
+        for (const tId of theologyClassIds) {
+          const classMembers = theoClassmates.filter(c => c.theology_class_id === tId)
+          const memberTotals: { id: string, total: number }[] = []
 
-            for (const member of classMembers) {
-              const memberMarks = allTheoMarks.filter(m => m.enrollment_id === member.id)
-              const memberScores = memberMarks.map(m => getMarkScore(m, score_type))
-              const hasMarks = memberScores.some(score => score !== null)
-              if (hasMarks) {
-                const eTotal = memberScores.reduce((sum, score) => sum + (score ?? 0), 0)
-                memberTotals.push({ id: member.id, total: eTotal })
-              }
+          for (const member of classMembers) {
+            const memberMarks = allTheoMarks.filter(m => m.enrollment_id === member.id)
+            const memberScores = memberMarks.map(m => getMarkScore(m, score_type))
+            const hasMarks = memberScores.some(score => score !== null)
+            if (hasMarks) {
+              const eTotal = memberScores.reduce((sum, score) => sum + (score ?? 0), 0)
+              memberTotals.push({ id: member.id, total: eTotal })
             }
-            theologyRankings[tId] = memberTotals.sort((a, b) => b.total - a.total)
-            theologyClassSizes[tId] = classMembers.length
           }
+          theologyRankings[tId] = memberTotals.sort((a, b) => b.total - a.total)
+          theologyClassSizes[tId] = classMembers.length
         }
       }
+    }
 
     // 5. Generate Reports Data array
     const subjectOrder = {
@@ -297,7 +318,7 @@ export async function POST(request: NextRequest) {
     }
     const theologyOrder = ['القرآن الكريم', 'اللغة العربية', 'الفقه', 'التربية الإسلامية']
 
-    const { data: signatureObjects } = await supabase.storage.from('signatures').list('', { limit: 100 })
+    const { data: signatureObjects } = await supabaseAdmin.storage.from('signatures').list('', { limit: 100 })
     const signatures: Record<string, string | null> = {
       'head-teacher': null,
       'principal': null,
@@ -306,11 +327,11 @@ export async function POST(request: NextRequest) {
     for (const object of signatureObjects ?? []) {
       const match = object.name.match(/^([a-z0-9-]+)\.(?:png|jpe?g|webp)$/i)
       if (match) {
-        signatures[match[1]] = supabase.storage.from('signatures').getPublicUrl(object.name).data.publicUrl
+        signatures[match[1]] = supabaseAdmin.storage.from('signatures').getPublicUrl(object.name).data.publicUrl
       }
     }
 
-    const { data: initialsData } = await supabase.from('teacher_initials').select('*')
+    const { data: initialsData } = await supabaseAdmin.from('teacher_initials').select('*')
     const teacherInitialsMap: Record<string, string> = {}
     if (initialsData) {
       initialsData.forEach(item => {
@@ -335,7 +356,7 @@ export async function POST(request: NextRequest) {
       const section = circularClassData?.section ?? theologyClassData?.level
       const className = circularClassData?.class_name ?? theologyClassData?.class_name_english
       const sectionType = (section || className) ? resolveSectionType(section, className) : 'unknown'
-      
+
       const circularSubjects = circularSubjectsCache[sectionType] || []
       const eCircularMarks = allCircularMarks.filter(m => m.enrollment_id === enrollment.id)
 
@@ -425,7 +446,7 @@ export async function POST(request: NextRequest) {
       const mot_aggregate = sectionType === 'nursery' ? null : calculateAggregate(motAggregateMarks, sectionType, schoolSettings?.grading_scale)
       const bot_aggregate = sectionType === 'nursery' ? null : calculateAggregate(botAggregateMarks, sectionType, schoolSettings?.grading_scale)
       const reportAggregate = score_type === 'mot' ? mot_aggregate : (score_type === 'bot' ? bot_aggregate : aggregate)
-      
+
       const division = reportAggregate !== null ? getDivision(reportAggregate, schoolSettings?.division_boundaries) : null
       const promotion_status = isTerm3 && division ? getPromotionStatus(division) : null
       const showClassPosition =
@@ -445,14 +466,14 @@ export async function POST(request: NextRequest) {
 
       let position: number | null = null
       let total_students: number | null = null
-      
+
       if (curriculum !== 'theology' && showClassPosition) {
         if (enrollment.circular_class_id && classRankings[enrollment.circular_class_id]) {
           const rankings = classRankings[enrollment.circular_class_id]
           total_students = circularClassSizes[enrollment.circular_class_id]
           if (rankings.length > 0) {
-             const myRank = rankings.findIndex(r => r.total === targetTotal)
-             if (myRank !== -1) position = myRank + 1
+            const myRank = rankings.findIndex(r => r.total === targetTotal)
+            if (myRank !== -1) position = myRank + 1
           }
         }
       }
@@ -463,7 +484,7 @@ export async function POST(request: NextRequest) {
       if (enrollment.theology_class_id && theologyLevel) {
         const tSubjects = theologySubjectsCache[theologyLevel] || []
         const eTheoMarks = requestedTheologyMarks.filter(m => m.enrollment_id === enrollment.id)
-        
+
         const theoRows = tSubjects.map(sub => {
           const existing = eTheoMarks.find(m => m.subject_id === sub.id)
           const score = getMarkScore(existing, score_type)
@@ -485,8 +506,8 @@ export async function POST(request: NextRequest) {
           const defaultRemark = eotScore !== null
             ? getTheologySubjectRemark(getTheologyGradeNumber(eotScore, (schoolSettings as any)?.theology_grading_scale), (schoolSettings as any)?.theology_grading_scale)
             : motScore !== null
-            ? getTheologySubjectRemark(getTheologyGradeNumber(motScore, (schoolSettings as any)?.theology_grading_scale), (schoolSettings as any)?.theology_grading_scale)
-            : null
+              ? getTheologySubjectRemark(getTheologyGradeNumber(motScore, (schoolSettings as any)?.theology_grading_scale), (schoolSettings as any)?.theology_grading_scale)
+              : null
           const overrideRemark = evaluateCriteria(numericScore, 'subject_score', 'theology', enrollment.theology_class_id, gradingCriteria, 'comment')
 
           return {
@@ -500,7 +521,7 @@ export async function POST(request: NextRequest) {
             theology_remark: overrideRemark || defaultRemark,
           }
         })
-        
+
         const sortedTheoSubjects = theoRows.sort((a, b) => {
           const aIndex = theologyOrder.indexOf(a.subject_name_arabic)
           const bIndex = theologyOrder.indexOf(b.subject_name_arabic)
@@ -510,16 +531,39 @@ export async function POST(request: NextRequest) {
           return 0
         })
 
-        const theoScores = sortedTheoSubjects.map(r => r.score)
-        const theologyAggregate = theoScores.some(s => s == null) ? null : calculateTheologyAggregate(theoScores as number[], (schoolSettings as any)?.theology_grading_scale)
+        const theologyAggregate = calculateTheologyAggregateFromMarks(
+          sortedTheoSubjects,
+          (schoolSettings as any)?.theology_grading_scale
+        )
+        const theologyDivision =
+          theologyAggregate !== null
+            ? getTheologyDivision(theologyAggregate, (schoolSettings as any)?.theology_division_boundaries)
+            : null
+        const theoTotal = sortedTheoSubjects.reduce((sum, r) => sum + (typeof r.score === 'number' ? r.score : 0), 0)
+        const theoMotTotal = sortedTheoSubjects.reduce((sum, r) => sum + (typeof r.mot_score === 'number' ? r.mot_score : 0), 0)
+        const theoEotTotal = sortedTheoSubjects.reduce((sum, r) => sum + (typeof r.eot_score === 'number' ? r.eot_score : 0), 0)
+        const theoScoredCount =
+          sortedTheoSubjects.filter((r) => typeof r.score === 'number').length ||
+          sortedTheoSubjects.length
+        const hasAnyTheoScore = sortedTheoSubjects.some((r) => typeof r.score === 'number')
+        const theologyComment = hasAnyTheoScore || theologyDivision
+          ? getTheologyComment(
+            hasAnyTheoScore ? theoTotal : null,
+            studentData?.gender,
+            schoolSettings?.theology_remarks,
+            theologyDivision,
+            theoScoredCount
+          )
+          : ''
 
         theologySectionData = {
           subjects: sortedTheoSubjects,
-          total: sortedTheoSubjects.reduce((sum, r) => sum + (typeof r.score === 'number' ? r.score : 0), 0),
-          mot_total: sortedTheoSubjects.reduce((sum, r) => sum + (typeof r.mot_score === 'number' ? r.mot_score : 0), 0),
-          eot_total: sortedTheoSubjects.reduce((sum, r) => sum + (typeof r.eot_score === 'number' ? r.eot_score : 0), 0),
+          total: theoTotal,
+          mot_total: theoMotTotal,
+          eot_total: theoEotTotal,
           aggregate: theologyAggregate,
-          division: theologyAggregate !== null ? getDivision(theologyAggregate, schoolSettings?.division_boundaries) : null,
+          division: theologyDivision,
+          teacher_comment: theologyComment,
         }
       }
 
@@ -529,18 +573,18 @@ export async function POST(request: NextRequest) {
       let theologyPosition = null;
       let totalTheologyStudents = null;
       if (showClassPosition && enrollment.theology_class_id && theologyRankings[enrollment.theology_class_id] && theologySectionData) {
-         const rankings = theologyRankings[enrollment.theology_class_id]
-         totalTheologyStudents = theologyClassSizes[enrollment.theology_class_id]
-         if (rankings.length > 0) {
-            const myObj = rankings.find(r => r.id === enrollment.id)
-            if (myObj) {
-              theologyPosition = rankings.findIndex(r => r.total === myObj.total) + 1
-            }
-         }
-         theologySectionData.position = theologyPosition;
-         theologySectionData.total_students = totalTheologyStudents;
-         theologySectionData.theology_position = theologyPosition;
-         theologySectionData.theology_total_students = totalTheologyStudents;
+        const rankings = theologyRankings[enrollment.theology_class_id]
+        totalTheologyStudents = theologyClassSizes[enrollment.theology_class_id]
+        if (rankings.length > 0) {
+          const myObj = rankings.find(r => r.id === enrollment.id)
+          if (myObj) {
+            theologyPosition = rankings.findIndex(r => r.total === myObj.total) + 1
+          }
+        }
+        theologySectionData.position = theologyPosition;
+        theologySectionData.total_students = totalTheologyStudents;
+        theologySectionData.theology_position = theologyPosition;
+        theologySectionData.theology_total_students = totalTheologyStudents;
       }
 
       if (curriculum === 'theology') {
@@ -552,7 +596,7 @@ export async function POST(request: NextRequest) {
             admission_number: studentData?.admission_number ?? '—',
             arabic_name: studentData?.arabic_name ?? null,
 
-  
+
             religion: studentData?.is_muslim === false ? 'Non-Muslim' : 'Muslim',
             class_name: theologyClassEnglish ?? '—',
             gender: studentData?.gender ?? null,
@@ -589,6 +633,39 @@ export async function POST(request: NextRequest) {
           }
         }
       }
+
+      const nurseryGradesForComments = sectionType === 'nursery'
+        ? sortedCircularSubjects
+          .filter((row) => typeof row.score === 'number')
+          .map((row) => getNurseryGrade(row.score as number).grade)
+        : []
+      const nurseryCommentDefault =
+        nurseryGradesForComments.length > 0 ? getNurseryTeacherComment(nurseryGradesForComments) : ''
+      const classTeacherGradingRule = evaluateCriteria(
+        reportAggregate ?? null,
+        'aggregate',
+        'secular',
+        enrollment.circular_class_id,
+        gradingCriteria,
+        'comment'
+      )
+      const headTeacherGradingRule =
+        evaluateCriteria(
+          reportAggregate ?? null,
+          'head_comment',
+          'secular',
+          enrollment.circular_class_id,
+          gradingCriteria,
+          'comment'
+        ) || classTeacherGradingRule
+      const conductGradingRule = evaluateCriteria(
+        reportAggregate ?? null,
+        'conduct',
+        'secular',
+        enrollment.circular_class_id,
+        gradingCriteria,
+        'comment'
+      )
 
       return {
         id: enrollment.id,
@@ -628,20 +705,26 @@ export async function POST(request: NextRequest) {
           division,
           conduct_remark: score_type === 'mot'
             ? ''
-            : evaluateCriteria(reportAggregate ?? null, 'aggregate', 'secular', enrollment.circular_class_id, gradingCriteria, 'comment') || getConductRemark(division),
-          class_teacher_comment: getClassTeacherReportComment({
-            scoreType: score_type,
-            termNumber: term.term_number,
-            promotionStatus: promotion_status,
-            gradingComment: evaluateCriteria(reportAggregate ?? null, 'aggregate', 'secular', enrollment.circular_class_id, gradingCriteria, 'comment'),
-            division,
-            scores: sortedCircularSubjects.filter(row => row.is_core).map(row => row.score),
-            gradingBands: schoolSettings?.grading_scale,
-            divisionBoundaries: schoolSettings?.division_boundaries,
-          }),
-          head_teacher_comment: score_type === 'mot'
-            ? evaluateCriteria(reportAggregate ?? null, 'aggregate', 'secular', enrollment.circular_class_id, gradingCriteria, 'comment') || getGradingRemarkForScores(sortedCircularSubjects.filter(row => row.is_core).map(row => row.score), schoolSettings?.grading_scale)
-            : evaluateCriteria(reportAggregate ?? null, 'aggregate', 'secular', enrollment.circular_class_id, gradingCriteria, 'comment') || (division ? getHeadTeacherComment(division, sortedCircularSubjects.filter(row => row.is_core).map(row => row.score), schoolSettings?.grading_scale, schoolSettings?.division_boundaries) : ''),
+            : conductGradingRule ||
+            getConductRemark(division, schoolSettings?.division_boundaries, schoolSettings?.promotion_comments?.default_conduct),
+          class_teacher_comment: sectionType === 'nursery'
+            ? classTeacherGradingRule || nurseryCommentDefault
+            : getClassTeacherReportComment({
+              scoreType: score_type,
+              termNumber: term.term_number,
+              promotionStatus: promotion_status,
+              gradingComment: classTeacherGradingRule,
+              division,
+              scores: sortedCircularSubjects.filter(row => row.is_core).map(row => row.score),
+              gradingBands: schoolSettings?.grading_scale,
+              divisionBoundaries: schoolSettings?.division_boundaries,
+              promotionComments: schoolSettings?.promotion_comments,
+            }),
+          head_teacher_comment: sectionType === 'nursery'
+            ? headTeacherGradingRule || nurseryCommentDefault
+            : score_type === 'mot'
+              ? headTeacherGradingRule || getGradingRemarkForScores(sortedCircularSubjects.filter(row => row.is_core).map(row => row.score), schoolSettings?.grading_scale)
+              : headTeacherGradingRule || (division ? getHeadTeacherComment(division, sortedCircularSubjects.filter(row => row.is_core).map(row => row.score), schoolSettings?.grading_scale, schoolSettings?.division_boundaries) : ''),
           position,
           total_students,
         },
@@ -679,7 +762,9 @@ export async function POST(request: NextRequest) {
       type: 'report'
     })
 
-    return withCors(request, NextResponse.json({ reports: filteredReports }))
+    const batchRes = NextResponse.json({ reports: filteredReports })
+    batchRes.headers.set('Cache-Control', 'no-store, max-age=0')
+    return withCors(request, batchRes)
   } catch (err: any) {
     console.error('Batch Report API POST error:', err)
     return withCors(request, NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 }))

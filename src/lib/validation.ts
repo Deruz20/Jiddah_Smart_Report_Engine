@@ -20,22 +20,43 @@ export const teacherFormSchema = z.object({
   full_name: z.string().trim().min(3, 'Name must be at least 3 characters').max(100).regex(/^[a-zA-Z\s\-'.]+$/, 'Name contains invalid characters'),
   email: z.string().trim().email('Invalid email address').optional().or(z.literal('')),
   phone: z.string().trim().regex(/^[+\d\s\-()]{7,20}$/, 'Invalid phone number').optional().or(z.literal('')),
-  role: z.enum(['Head Teacher', 'Class Teacher', 'Theology Instructor', 'Deputy Head Teacher', 'Support Staff']),
+  role: z.enum([
+    'Administrator',
+    'Principal',
+    'Head Teacher',
+    'Deputy Head Teacher',
+    'DOS',
+    'DOS Secular',
+    'DOS Theology',
+    'Class Teacher',
+    'Theology Instructor',
+    'Support Staff',
+  ]),
   subject_specialization: z.string().trim().max(100).optional().or(z.literal('')),
   class_assigned: z.string().trim().max(20).optional().or(z.literal('')),
 })
 
 export const loginFormSchema = z.object({
-  email: z.string().trim().email('Enter a valid email address'),
+  email: z.string().trim().min(2, 'Enter your email address or username'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
 })
 
 export const signUpFormSchema = z.object({
   fullName: z.string().trim().min(2, 'Full name is required').max(100, 'Name too long').regex(noAngleBrackets, 'Invalid characters'),
   email: z.string().trim().email('Enter a valid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-  confirmPassword: z.string().min(6, 'Confirm your password'),
-  role: z.enum(['Admin', 'Secular DOS', 'Theology DOS']),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+  confirmPassword: z.string().min(8, 'Confirm your password'),
+  role: z.enum([
+    'Administrator',
+    'Principal',
+    'Head Teacher',
+    'Deputy Head Teacher',
+    'DOS Secular',
+    'DOS Theology',
+    'Class Teacher',
+    'Theology Instructor',
+    'Support Staff',
+  ]),
 }).superRefine(({ password, confirmPassword }, ctx) => {
   if (password !== confirmPassword) {
     ctx.addIssue({

@@ -1,8 +1,8 @@
-import { createClient } from '@/utils/supabase/server'
+import { createAdminClient, createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import TeachersClient, { DashboardTeacher } from '@/components/layout/teachers-client'
-import { verifyDataAccess } from '@/lib/auth-server'
-import { normalizeAccountRole } from '@/lib/teacher-access'
+import { verifyDataAccess, DEFAULT_ROLE_PERMISSIONS, PERMISSION_KEYS, type PermissionKey } from '@/lib/auth-server'
+import { isAdministratorRole, normalizeAccountRole } from '@/lib/teacher-access'
 
 export const dynamic = "force-dynamic";
 
@@ -14,20 +14,41 @@ export default async function TeachersManagementPage() {
   if (!user) return <div className="p-10">Unauthorized</div>
 
   const authRes = await verifyDataAccess(supabase, user, 'read');
-  if (!authRes.isAuthorized) {
-    return <div className="p-10 text-red-500">Access Denied: {authRes.message}</div>
+  if (!authRes.isAuthorized || !isAdministratorRole(authRes.role)) {
+    return (
+      <div className="p-10 text-red-600 font-semibold" data-testid="teachers-access-denied">
+        Access Denied: Administrator access required to manage users, roles, and permissions.
+      </div>
+    );
   }
 
-  // Fetch both circular and theology classes + assignments to map all UUIDs to human-readable names
+  const supabaseAdmin = createAdminClient(cookieStore);
+
+  // Fetch both circular and theology classes + assignments + role_permissions
   const [
     { data: circularClasses },
     { data: theologyClasses },
     { data: classAssignments },
+    rolePermsRes,
   ] = await Promise.all([
-    supabase.from('circular_classes').select('id, class_name, section, class_teacher_id'),
-    supabase.from('theology_classes').select('id, class_name_english, class_name_arabic'),
-    supabase.from('teacher_class_assignments').select('teacher_id, class_id'),
+    supabaseAdmin.from('circular_classes').select('id, class_name, section, class_teacher_id'),
+    supabaseAdmin.from('theology_classes').select('id, class_name_english, class_name_arabic'),
+    supabaseAdmin.from('teacher_class_assignments').select('teacher_id, class_id'),
+    supabaseAdmin.from('role_permissions').select('role, permissions'),
   ]);
+
+  const initialRolePermissions: Record<string, PermissionKey[]> = { ...DEFAULT_ROLE_PERMISSIONS };
+  if (!rolePermsRes.error && Array.isArray(rolePermsRes.data)) {
+    const validSet = new Set<string>(PERMISSION_KEYS);
+    for (const row of rolePermsRes.data) {
+      if (row?.role && Array.isArray(row.permissions)) {
+        initialRolePermissions[row.role] = row.permissions.filter((k: string): k is PermissionKey =>
+          validSet.has(k)
+        );
+      }
+    }
+  }
+  initialRolePermissions.Administrator = [...PERMISSION_KEYS];
 
   const classIdToName = new Map<string, string>();
   const classNameToId = new Map<string, string>();
@@ -45,15 +66,10 @@ export default async function TeachersManagementPage() {
     if (c.class_name_arabic) classNameToId.set(c.class_name_arabic.toLowerCase(), c.id);
   });
 
-  let query = supabase.from('teachers').select('*').order('name', { ascending: true });
-
-  if (authRes.filterByDepartment === 'secular') {
-    query = query.not('subject', 'ilike', '%Theology%');
-  } else if (authRes.filterByDepartment === 'theology') {
-    query = query.ilike('subject', '%Theology%');
-  }
-
-  const { data: teachers } = await query;
+  const { data: teachers } = await supabaseAdmin
+    .from('teachers')
+    .select('*')
+    .order('name', { ascending: true });
 
   const formattedTeachers: DashboardTeacher[] = (teachers || []).map((t: any) => {
     const rawList: string[] = Array.isArray(t.classes)
@@ -94,37 +110,26 @@ export default async function TeachersManagementPage() {
       id: t.id,
       name: t.name || '',
       role: normalizeAccountRole(t.role, t.subject),
+      rawRole: t.role || '',
       subject: t.subject || '',
       classes: [...new Set(resolvedNames)],
       classIds: [...new Set(resolvedIds)],
       email: t.email || '',
+      username: t.username || (t.email ? String(t.email).split('@')[0] : ''),
       phone: t.phone || '',
       status: t.status || 'active',
-      joined: t.created_at || ''
+      joined: t.created_at || '',
+      permissions: Array.isArray(t.permissions) ? t.permissions : [],
     };
   });
-
-  let currentUserRole = authRes.role || user?.user_metadata?.role || 'Class Teacher';
-  let currentUserSubject = '';
-
-  if (user?.email) {
-    const { data: profile } = await supabase.from('teachers').select('role, subject').eq('email', user.email).maybeSingle();
-    if (profile) {
-      currentUserRole = profile.role || currentUserRole;
-      currentUserSubject = profile.subject || '';
-    }
-  }
-
-  if (currentUserRole === 'Administrator' || currentUserRole === 'admin') {
-    currentUserRole = 'admin';
-  }
 
   return (
     <div className="w-full h-full bg-[#FDFBF7]">
       <TeachersClient
         initialTeachers={formattedTeachers}
-        currentUserRole={currentUserRole}
-        currentUserSubject={currentUserSubject}
+        currentUserRole="admin"
+        currentUserSubject="Administration"
+        initialRolePermissions={initialRolePermissions}
       />
     </div>
   )

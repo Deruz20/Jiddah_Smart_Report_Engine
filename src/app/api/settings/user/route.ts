@@ -1,11 +1,49 @@
-import { createClient } from '@/utils/supabase/server'
+import { createClient, createAdminClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { getAuthenticatedUser, normalizePhone, normalizeString, recordActivity } from '@/lib/api-server'
-import { normalizeAccountRole, resolveRoleDepartment } from '@/lib/teacher-access'
+import {
+  isAdministratorRole,
+  normalizeAccountRole,
+  resolveAssignedClassDisplayForTeacher,
+  resolveRoleDepartment,
+  resolveStaffRoleKey,
+} from '@/lib/teacher-access'
+import {
+  isUsernameTaken,
+  normalizeUsername,
+  rememberTeacherUsernameMapping,
+  validateUsernameFormat,
+} from '@/lib/username'
 
-const allowedProfileKeys = ['full_name', 'first_name', 'last_name', 'phone']
+const ALLOWED_PROFILE_KEYS = new Set([
+  'full_name',
+  'display_name',
+  'first_name',
+  'last_name',
+  'phone',
+  'username',
+])
+const FORBIDDEN_ESCALATION_KEYS = new Set([
+  'role',
+  'canonical_role',
+  'department',
+  'subject',
+  'classes',
+  'assigned_classes',
+  'assigned_subjects',
+  'permissions',
+  'effective_permissions',
+  'status',
+  'email',
+  'pending_email',
+  'auth_user_id',
+  'is_admin',
+  'id',
+])
+
+const PHONE_REGEX = /^\+?[0-9\s\-()]{7,20}$/
 
 export async function OPTIONS(request: NextRequest) {
   return apiOptions(request)
@@ -24,31 +62,56 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
-    const [{ data: profile, error: profileError }, { data: teacherRowByAuth }, { data: teacherRowByEmail }] = await Promise.all([
-      supabase
+    const supabaseAdmin = createAdminClient(cookieStore)
+
+    const [{ data: profile }, { data: teacherRowByAuth }, { data: teacherRowByEmail }] = await Promise.all([
+      supabaseAdmin
         .from('profiles')
         .select('id, full_name, phone, role, avatar_url')
         .eq('id', user.id)
         .maybeSingle(),
-      supabase
+      supabaseAdmin
         .from('teachers')
-        .select('id, name, phone, role, subject, classes, status')
-        .eq('auth_user_id', user.id)
+        .select('*')
+        .or(`auth_user_id.eq.${user.id},id.eq.${user.id}`)
         .maybeSingle(),
       user.email
-        ? supabase
+        ? supabaseAdmin
             .from('teachers')
-            .select('id, name, phone, role, subject, classes, status')
-            .eq('email', user.email)
+            .select('*')
+            .ilike('email', user.email)
             .maybeSingle()
         : Promise.resolve({ data: null }),
     ])
 
-    if (profileError && profileError.code !== 'PGRST116') {
-      console.warn('settings/user GET profiles lookup fallback:', profileError.message)
+    const teacherRow = teacherRowByAuth || teacherRowByEmail
+    if (teacherRow) {
+      rememberTeacherUsernameMapping(teacherRow)
     }
 
-    const teacherRow = teacherRowByAuth || teacherRowByEmail
+    // Mirror confirmed auth email to staff table automatically (Amendment 3 A3)
+    if (teacherRow && user.email && teacherRow.email?.toLowerCase() !== user.email.toLowerCase()) {
+      await supabaseAdmin
+        .from('teachers')
+        .update({
+          email: user.email.toLowerCase(),
+          pending_email: null,
+        })
+        .eq('id', teacherRow.id)
+      teacherRow.email = user.email.toLowerCase()
+      teacherRow.pending_email = null
+    } else if (
+      teacherRow &&
+      teacherRow.pending_email &&
+      user.email &&
+      teacherRow.pending_email.toLowerCase() === user.email.toLowerCase()
+    ) {
+      await supabaseAdmin
+        .from('teachers')
+        .update({ pending_email: null })
+        .eq('id', teacherRow.id)
+      teacherRow.pending_email = null
+    }
 
     const rawRole =
       teacherRow?.role ||
@@ -58,32 +121,53 @@ export async function GET(request: NextRequest) {
       'Administrator'
     const subjectStr = teacherRow?.subject || user.user_metadata?.subject || ''
     const canonicalRole = normalizeAccountRole(rawRole, subjectStr)
+    const staffRole = resolveStaffRoleKey(rawRole, subjectStr)
     const derivedDept = resolveRoleDepartment(rawRole, subjectStr)
     const departmentDisplay =
-      canonicalRole === 'Administrator' || canonicalRole === 'Head Teacher' || derivedDept === 'both'
+      canonicalRole === 'Administrator' ||
+      canonicalRole === 'Principal' ||
+      canonicalRole === 'Head Teacher' ||
+      derivedDept === 'both'
         ? 'All Departments'
         : derivedDept === 'theology'
           ? 'Theology Track'
           : 'Secular Track'
     const derivedFullName =
-      profile?.full_name ||
       teacherRow?.name ||
+      profile?.full_name ||
       user.user_metadata?.full_name ||
       user.user_metadata?.name ||
       user.email?.split('@')[0] ||
       ''
 
+    const { assignedClasses, rawClassTokensResolved } = await resolveAssignedClassDisplayForTeacher(
+      supabaseAdmin,
+      canonicalRole,
+      staffRole,
+      teacherRow
+    )
+
+    const pendingEmail =
+      (user as any).new_email ||
+      teacherRow?.pending_email ||
+      user.user_metadata?.pending_email ||
+      null
+
     const payload = {
       id: user.id,
-      email: user.email || '',
+      email: user.email || teacherRow?.email || '',
+      username: teacherRow?.username || '',
+      pending_email: pendingEmail,
       full_name: derivedFullName,
-      phone: profile?.phone || teacherRow?.phone || '',
-      role: rawRole,
+      phone: teacherRow?.phone ?? profile?.phone ?? '',
+      role: staffRole,
       canonical_role: canonicalRole,
       department: departmentDisplay,
-      assigned_classes: Array.isArray(teacherRow?.classes) ? teacherRow.classes : [],
+      assigned_classes: assignedClasses,
+      raw_class_tokens_resolved: rawClassTokensResolved,
       assigned_subjects: subjectStr ? [subjectStr] : [],
-      avatar_url: user.user_metadata?.avatar_url || profile?.avatar_url || null,
+      avatar_url: teacherRow?.avatar || profile?.avatar_url || user.user_metadata?.avatar_url || null,
+      last_sign_in_at: (user as any).last_sign_in_at || null,
     }
 
     return withCors(request, NextResponse.json({ data: payload }))
@@ -107,56 +191,278 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json()
-    if (!body || typeof body !== 'object') {
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
       return withCors(request, NextResponse.json({ error: 'Invalid payload' }, { status: 400 }))
     }
 
-    const updates: Record<string, string> = {}
-    Object.entries(body).forEach(([key, value]) => {
-      if (!allowedProfileKeys.includes(key)) return
-      if (typeof value === 'string') {
-        updates[key] = key === 'phone' ? normalizePhone(value) : normalizeString(value)
-      }
-    })
+    const supabaseAdmin = createAdminClient(cookieStore)
 
-    if (updates.full_name && !updates.first_name) {
-      const parts = updates.full_name.split(/\s+/).filter(Boolean)
-      updates.first_name = parts[0] || ''
-      updates.last_name = parts.slice(1).join(' ')
+    // Anti-escalation guard (Amendment 3 A4): reject any attempt to pass role, department, classes, permissions, status, or email
+    const attemptedForbiddenKeys = Object.keys(body).filter((key) => FORBIDDEN_ESCALATION_KEYS.has(key))
+    if (attemptedForbiddenKeys.length > 0) {
+      await recordActivity(supabaseAdmin, user.id, 'profile_escalation_blocked', {
+        attempted_keys: attemptedForbiddenKeys,
+      })
+      return withCors(
+        request,
+        NextResponse.json(
+          {
+            error: `Forbidden: Profile endpoint only accepts whitelisted fields (full_name, phone, username). Cannot modify: ${attemptedForbiddenKeys.join(', ')}`,
+          },
+          { status: 403 }
+        )
+      )
+    }
+
+    const unknownKeys = Object.keys(body).filter((key) => !ALLOWED_PROFILE_KEYS.has(key))
+    if (unknownKeys.length > 0) {
+      return withCors(
+        request,
+        NextResponse.json(
+          { error: `Disallowed profile fields: ${unknownKeys.join(', ')}` },
+          { status: 400 }
+        )
+      )
+    }
+
+    // Fetch before state for audit log & Administrator check
+    const [{ data: existingProfile }, { data: existingTeacherByAuth }, { data: existingTeacherByEmail }] =
+      await Promise.all([
+        supabaseAdmin.from('profiles').select('id, full_name, phone, role').eq('id', user.id).maybeSingle(),
+        supabaseAdmin
+          .from('teachers')
+          .select('id, auth_user_id, email, username, name, phone, status, role')
+          .or(`auth_user_id.eq.${user.id},id.eq.${user.id}`)
+          .maybeSingle(),
+        user.email
+          ? supabaseAdmin
+              .from('teachers')
+              .select('id, auth_user_id, email, username, name, phone, status, role')
+              .ilike('email', user.email)
+              .maybeSingle()
+          : Promise.resolve({ data: null }),
+      ])
+    const existingTeacher = existingTeacherByAuth || existingTeacherByEmail
+
+    const callerRole =
+      existingTeacher?.role ||
+      existingProfile?.role ||
+      user.app_metadata?.role ||
+      user.user_metadata?.role ||
+      ''
+    const isCallerAdmin =
+      isAdministratorRole(callerRole) &&
+      String(existingTeacher?.status || 'active').toLowerCase() === 'active'
+
+    const updates: Record<string, string> = {}
+    if (typeof body.full_name === 'string' || typeof body.display_name === 'string') {
+      const normalizedName = normalizeString(String(body.full_name ?? body.display_name ?? ''))
+      if (normalizedName.length < 2) {
+        return withCors(
+          request,
+          NextResponse.json({ error: 'Full name must be at least 2 characters long.' }, { status: 400 })
+        )
+      }
+      updates.full_name = normalizedName
+    }
+
+    if (body.phone !== undefined) {
+      if (body.phone === null || String(body.phone).trim() === '') {
+        updates.phone = ''
+      } else {
+        const rawPhone = String(body.phone).trim()
+        if (!PHONE_REGEX.test(rawPhone)) {
+          return withCors(
+            request,
+            NextResponse.json(
+              { error: 'Invalid phone number format. Use 7–20 digits (e.g. +256 700 000000).' },
+              { status: 400 }
+            )
+          )
+        }
+        updates.phone = normalizePhone(rawPhone)
+      }
+    }
+
+    if (body.username !== undefined) {
+      if (!isCallerAdmin) {
+        await recordActivity(supabaseAdmin, user.id, 'profile_escalation_blocked', {
+          attempted_keys: ['username'],
+        })
+        return withCors(
+          request,
+          NextResponse.json(
+            { error: 'Forbidden: Only an Administrator can modify a staff username.' },
+            { status: 403 }
+          )
+        )
+      }
+      if (String(body.username).trim() !== '') {
+        const normalizedUname = normalizeUsername(body.username)
+        const checkUname = validateUsernameFormat(normalizedUname)
+        if (!checkUname.valid) {
+          return withCors(
+            request,
+            NextResponse.json({ error: checkUname.error || 'Invalid username format.' }, { status: 400 })
+          )
+        }
+        updates.username = normalizedUname
+      }
     }
 
     if (Object.keys(updates).length === 0) {
       return withCors(request, NextResponse.json({ error: 'No valid profile fields provided' }, { status: 400 }))
     }
 
-    const { error: profileUpsertError } = await supabase
+    if (updates.username !== undefined) {
+      const taken = await isUsernameTaken(supabaseAdmin, updates.username, existingTeacher?.id)
+      if (taken) {
+        return withCors(
+          request,
+          NextResponse.json({ error: 'Username is already taken by another staff member.' }, { status: 409 })
+        )
+      }
+    }
+
+    const beforeState = {
+      full_name: existingTeacher?.name || existingProfile?.full_name || user.user_metadata?.full_name || '',
+      phone: existingTeacher?.phone ?? existingProfile?.phone ?? '',
+      username: existingTeacher?.username || user.user_metadata?.username || '',
+    }
+
+    // Upsert profiles table (only whitelisted columns that exist in public.profiles)
+    const profileUpdates: Record<string, string> = {}
+    if (updates.full_name !== undefined) profileUpdates.full_name = updates.full_name
+    if (updates.phone !== undefined) profileUpdates.phone = updates.phone
+
+    const { error: profileUpsertError } = await supabaseAdmin
       .from('profiles')
-      .upsert([{ id: user.id, ...updates }], { onConflict: 'id' })
+      .upsert([{ id: user.id, ...profileUpdates }], { onConflict: 'id' })
     if (profileUpsertError) {
       console.warn('settings/user PATCH profiles fallback:', profileUpsertError.message)
     }
 
-    // Keep Supabase Auth user_metadata in sync so server/client sessions always reflect updated name & phone
-    await supabase.auth.updateUser({
-      data: {
-        ...(updates.full_name ? { full_name: updates.full_name, name: updates.full_name } : {}),
-        ...(updates.phone !== undefined ? { phone: updates.phone } : {}),
-      },
+    // Update teacher row if present
+    let verifiedTeacher: any = null
+    if (existingTeacher?.id) {
+      const teacherUpdates: Record<string, any> = {}
+      if (updates.full_name !== undefined) teacherUpdates.name = updates.full_name
+      if (updates.phone !== undefined) teacherUpdates.phone = updates.phone || null
+      if (updates.username !== undefined) teacherUpdates.username = updates.username
+      if (Object.keys(teacherUpdates).length > 0) {
+        let { data: updatedTeacher, error: teacherErr } = await supabaseAdmin
+          .from('teachers')
+          .update(teacherUpdates)
+          .eq('id', existingTeacher.id)
+          .select('id, auth_user_id, email, username, name, phone, status, role')
+          .maybeSingle()
+
+        // Fallback if username trigger or missing column blocked update on older DB
+        if (teacherErr && updates.username !== undefined && teacherErr.message?.includes('username')) {
+          const fallbackTeacherUpdates = { ...teacherUpdates }
+          delete fallbackTeacherUpdates.username
+          if (Object.keys(fallbackTeacherUpdates).length > 0) {
+            const retryRes = await supabaseAdmin
+              .from('teachers')
+              .update(fallbackTeacherUpdates)
+              .eq('id', existingTeacher.id)
+              .select('id, auth_user_id, email, name, phone, status, role')
+              .maybeSingle()
+            updatedTeacher = retryRes.data
+              ? { ...retryRes.data, username: updates.username }
+              : null
+            teacherErr = retryRes.error
+          } else {
+            updatedTeacher = { ...existingTeacher, username: updates.username }
+            teacherErr = null
+          }
+        }
+
+        if (teacherErr) {
+          return withCors(
+            request,
+            NextResponse.json({ error: `Failed to update staff record: ${teacherErr.message}` }, { status: 500 })
+          )
+        }
+        verifiedTeacher = updatedTeacher || {
+          ...existingTeacher,
+          ...teacherUpdates,
+        }
+        rememberTeacherUsernameMapping({
+          ...verifiedTeacher,
+          email: verifiedTeacher?.email || user.email,
+          username: updates.username ?? verifiedTeacher?.username,
+        })
+      }
+    } else if (user.email) {
+      rememberTeacherUsernameMapping({
+        id: user.id,
+        email: user.email,
+        username: updates.username || user.email.split('@')[0],
+        status: 'active',
+      })
+    }
+
+    // Keep Supabase Auth user_metadata in sync
+    try {
+      await supabase.auth.updateUser({
+        data: {
+          ...(updates.full_name ? { full_name: updates.full_name, name: updates.full_name } : {}),
+          ...(updates.phone !== undefined ? { phone: updates.phone } : {}),
+          ...(updates.username !== undefined ? { username: updates.username } : {}),
+        },
+      })
+    } catch {
+      // Non-fatal metadata sync
+    }
+
+    // Read-back verification from profiles
+    const { data: verifiedProfile } = await supabaseAdmin
+      .from('profiles')
+      .select('id, full_name, phone')
+      .eq('id', user.id)
+      .maybeSingle()
+
+    const savedFullName = verifiedTeacher?.name || verifiedProfile?.full_name || updates.full_name || beforeState.full_name
+    const savedPhone =
+      verifiedTeacher !== null
+        ? verifiedTeacher.phone || ''
+        : verifiedProfile?.phone ?? updates.phone ?? beforeState.phone
+    const savedUsername =
+      verifiedTeacher?.username ||
+      updates.username ||
+      beforeState.username ||
+      (user.email ? user.email.split('@')[0] : '')
+
+    if (updates.full_name && savedFullName !== updates.full_name) {
+      return withCors(
+        request,
+        NextResponse.json({ error: 'Read-back verification failed for full_name.' }, { status: 500 })
+      )
+    }
+
+    const afterState = {
+      full_name: savedFullName,
+      phone: savedPhone,
+      username: savedUsername,
+    }
+
+    await recordActivity(supabaseAdmin, user.id, 'update_user_profile', {
+      before: beforeState,
+      after: afterState,
     })
 
-    // Sync teacher record if present
-    try {
-      const teacherUpdates: Record<string, any> = {}
-      if (updates.full_name) teacherUpdates.name = updates.full_name
-      if (updates.phone !== undefined) teacherUpdates.phone = updates.phone || null
-      if (Object.keys(teacherUpdates).length > 0) {
-        await supabase.from('teachers').update(teacherUpdates).eq('auth_user_id', user.id)
-      }
-    } catch {}
-
-    await recordActivity(supabase, user.id, 'update_user_profile', updates)
-
-    return withCors(request, NextResponse.json({ success: true, data: updates }))
+    return withCors(
+      request,
+      NextResponse.json({
+        success: true,
+        data: {
+          full_name: savedFullName,
+          phone: savedPhone,
+          username: savedUsername,
+        },
+      })
+    )
   } catch (err: any) {
     console.error('settings/user PATCH exception:', err)
     return withCors(request, NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 }))

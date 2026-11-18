@@ -1,13 +1,47 @@
 import {
   DEFAULT_GRADING_BANDS,
+  DEFAULT_DIVISION_BOUNDARIES,
+  DEFAULT_THEOLOGY_GRADING_BANDS,
+  DEFAULT_THEOLOGY_DIVISION_BOUNDARIES,
+  DEFAULT_PROMOTION_COMMENTS,
   type GradingBand,
   type DivisionBoundaryItem,
+  type TheologyDivisionBoundaryItem,
+  type PromotionCommentsConfig,
 } from './school-settings-helper'
 
 export type GradeCode = 'D1' | 'D2' | 'C3' | 'C4' | 'C5' | 'C6' | 'P7' | 'P8' | 'F9'
+export type TheologyGradeCode = 'ت١' | 'ت٢' | 'ج٣' | 'ج٤' | 'ج٥' | 'ج٦' | 'ن٧' | 'ن٨' | 'خ٩' | string
 export type Division = 'I' | 'II' | 'III' | 'IV' | 'U'
+export type TheologyDivision = 'ممتاز' | 'جيد جداً' | 'جيد' | 'مقبول' | 'راسب'
 export type NurseryGrade = 'A' | 'B' | 'C' | 'D' | 'E'
 export type PromotionStatus = 'Promote' | 'Probation' | 'Repeat' | 'Try Next Class'
+
+const ARABIC_INDIC_TO_ASCII: Record<string, string> = {
+  '٠': '0',
+  '١': '1',
+  '٢': '2',
+  '٣': '3',
+  '٤': '4',
+  '٥': '5',
+  '٦': '6',
+  '٧': '7',
+  '٨': '8',
+  '٩': '9',
+}
+
+/**
+ * Extracts numeric point value (1-9) from any grade label, supporting ASCII ('D1', '3')
+ * and Arabic-Indic IPLE labels ('ت١', 'ج٣', 'خ٩').
+ */
+export function extractGradePoint(gradeValue: unknown): number | null {
+  if (gradeValue == null) return null
+  const normalized = String(gradeValue).replace(/[٠-٩]/g, (d) => ARABIC_INDIC_TO_ASCII[d] ?? d)
+  const digits = normalized.replace(/\D/g, '')
+  if (!digits) return null
+  const num = parseInt(digits, 10)
+  return Number.isFinite(num) && num >= 1 && num <= 9 ? num : null
+}
 
 // UNEB subject grade (1-9) from mark (Secular)
 export function getSubjectGradeNumber(mark: number, customBands?: GradingBand[]): number {
@@ -18,8 +52,8 @@ export function getSubjectGradeNumber(mark: number, customBands?: GradingBand[])
     for (let i = 0; i < sorted.length; i++) {
       const b = sorted[i]
       if (mark >= b.min) {
-        const num = parseInt(String(b.grade).replace(/\D/g, ''), 10)
-        return !isNaN(num) ? num : i + 1
+        const num = extractGradePoint(b.grade)
+        return num ?? i + 1
       }
     }
   }
@@ -68,12 +102,14 @@ export function getTheologyGradeNumber(
   customBands?: { min: number; max: number; grade: string }[]
 ): number {
   if (customBands && customBands.length > 0) {
-    const sorted = [...customBands].sort((a, b) => b.min - a.min);
+    const sorted = [...customBands]
+      .filter((b) => Number.isFinite(b.min) && Number.isFinite(b.max))
+      .sort((a, b) => b.min - a.min)
     for (let i = 0; i < sorted.length; i++) {
-      const b = sorted[i];
+      const b = sorted[i]
       if (mark >= b.min) {
-        const num = parseInt(String(b.grade).replace(/\D/g, ''), 10);
-        return !isNaN(num) ? num : i + 1;
+        const num = extractGradePoint(b.grade)
+        return num ?? i + 1
       }
     }
   }
@@ -89,20 +125,42 @@ export function getTheologyGradeNumber(
   return 9
 }
 
+export function getTheologyGradeDisplayFromPoint(
+  gradeNum: number,
+  customBands?: { min: number; max: number; grade: string }[]
+): TheologyGradeCode {
+  const bands = customBands && customBands.length > 0 ? customBands : DEFAULT_THEOLOGY_GRADING_BANDS
+  const match = bands.find((b) => extractGradePoint(b.grade) === gradeNum)
+  if (match && match.grade) return match.grade
+  const fallbackMap: Record<number, TheologyGradeCode> = {
+    1: 'ت١',
+    2: 'ت٢',
+    3: 'ج٣',
+    4: 'ج٤',
+    5: 'ج٥',
+    6: 'ج٦',
+    7: 'ن٧',
+    8: 'ن٨',
+    9: 'خ٩',
+  }
+  return fallbackMap[gradeNum] ?? 'خ٩'
+}
+
 export function getTheologyGradeDisplay(
   mark: number,
   customBands?: { min: number; max: number; grade: string }[]
-): GradeCode {
-  if (customBands && customBands.length > 0) {
-    const sorted = [...customBands].sort((a, b) => b.min - a.min);
-    for (let i = 0; i < sorted.length; i++) {
-      const b = sorted[i];
-      if (mark >= b.min) {
-        return (b.grade as GradeCode) || 'F9';
-      }
+): TheologyGradeCode {
+  const bands = customBands && customBands.length > 0 ? customBands : DEFAULT_THEOLOGY_GRADING_BANDS
+  const sorted = [...bands]
+    .filter((b) => Number.isFinite(b.min))
+    .sort((a, b) => b.min - a.min)
+  for (let i = 0; i < sorted.length; i++) {
+    const b = sorted[i]
+    if (mark >= b.min) {
+      return b.grade || getTheologyGradeDisplayFromPoint(i + 1)
     }
   }
-  return getGradeDisplay(getTheologyGradeNumber(mark))
+  return getTheologyGradeDisplayFromPoint(getTheologyGradeNumber(mark, customBands), customBands)
 }
 
 export const CORE_SUBJECTS_BY_SECTION: Record<string, string[][]> = {
@@ -190,33 +248,159 @@ export function calculateAggregate(
   return grades.reduce((sum, g) => sum! + g!, 0) as number
 }
 
-// Theology aggregate from 4 subject scores
-export function calculateTheologyAggregate(scores: number[], customBands?: any[]): number | null {
-  if (scores.length !== 4 || scores.some((s) => s == null)) return null
-  return scores.reduce((sum, s) => sum + getTheologyGradeNumber(s, customBands), 0)
+export type TheologyAggregateMarkInput = {
+  subject_name?: string | null
+  subject_name_arabic?: string | null
+  score?: number | null
 }
 
-// Division from aggregate (Roman numerals)
+// Official 4 IPLE core theology pillars (Qur'an, Lugha, Fiqh, Tarbiya/Tauheed/Siira)
+export const CORE_THEOLOGY_SUBJECT_GROUPS: string[][] = [
+  ['القرآن الكريم', 'القرآن', 'قرآن', 'القران', 'حفظ القرآن', 'تلاوة القرآن', 'quran', "qur'an"],
+  ['اللغة العربية', 'العربية', 'النحو', 'الصرف', 'التعبير', 'اللغة', 'lugha', 'arabic'],
+  ['الفقه والعبادات', 'الفقه الإسلامي', 'الفقه', 'فقه', 'fiqh', 'fiqhu'],
+  ['التربية الإسلامية', 'التربية', 'tarbiya', 'التوحيد والعقيدة', 'التوحيد', 'العقيدة', 'tauheed', 'tawhid', 'الحديث الشريف', 'الحديث', 'hadith', 'التاريخ والسيرة', 'السيرة والآداب', 'السيرة', 'sira', 'siira'],
+]
+
+function matchesTheologyCoreSlot(subjectName: string, variants: string[]): number {
+  const normalized = subjectName.trim().toLowerCase()
+  if (!normalized) return -1
+  for (let i = 0; i < variants.length; i++) {
+    const v = variants[i].toLowerCase()
+    if (normalized === v || normalized.includes(v)) {
+      return i
+    }
+  }
+  return -1
+}
+
+export function resolveCoreTheologySubjects<T extends TheologyAggregateMarkInput>(marks: T[]): T[] {
+  const used = new Set<number>()
+  const picked: T[] = []
+
+  for (const variants of CORE_THEOLOGY_SUBJECT_GROUPS) {
+    let bestIdx = -1
+    let bestPriority = Number.MAX_SAFE_INTEGER
+
+    marks.forEach((m, idx) => {
+      if (used.has(idx)) return
+      const name = String(m.subject_name_arabic || m.subject_name || '')
+      const p = matchesTheologyCoreSlot(name, variants)
+      if (p !== -1 && p < bestPriority) {
+        bestPriority = p
+        bestIdx = idx
+      }
+    })
+
+    if (bestIdx !== -1) {
+      used.add(bestIdx)
+      picked.push(marks[bestIdx])
+    }
+  }
+
+  // Fallback for custom class rosters that only define 4 distinct subjects
+  if (picked.length < 4 && marks.length === 4) {
+    return marks
+  }
+
+  return picked
+}
+
+export function calculateTheologyAggregate(
+  input: (number | null | undefined)[] | TheologyAggregateMarkInput[],
+  customBands?: any[]
+): number | null {
+  if (!Array.isArray(input) || input.length === 0) return null
+
+  const first = input[0]
+  if (typeof first === 'object' && first !== null) {
+    return calculateTheologyAggregateFromMarks(input as TheologyAggregateMarkInput[], customBands)
+  }
+
+  const scores = input as (number | null | undefined)[]
+  if (scores.length !== 4 || scores.some((s) => typeof s !== 'number' || Number.isNaN(s))) {
+    return null
+  }
+  return scores.reduce<number>((sum, s) => sum + getTheologyGradeNumber(s as number, customBands), 0)
+}
+
+export function calculateTheologyAggregateFromMarks(
+  marks: TheologyAggregateMarkInput[],
+  customBands?: any[]
+): number | null {
+  if (!Array.isArray(marks) || marks.length < 4) return null
+  const coreSubjects = resolveCoreTheologySubjects(marks)
+  if (coreSubjects.length !== 4) return null
+  if (coreSubjects.some((m) => typeof m.score !== 'number' || Number.isNaN(m.score))) {
+    return null
+  }
+  return coreSubjects.reduce(
+    (sum, m) => sum + getTheologyGradeNumber(m.score as number, customBands),
+    0
+  )
+}
+
+// Division from aggregate (Secular Roman numerals I-IV, U)
 export function getDivision(
   aggregate: number,
   customBoundaries?: Pick<DivisionBoundaryItem, 'division' | 'min' | 'max'>[]
 ): Division {
-  if (Array.isArray(customBoundaries) && customBoundaries.length > 0) {
-    const sorted = [...customBoundaries]
-      .filter((b) => Number.isFinite(b.min) && Number.isFinite(b.max))
-      .sort((a, b) => a.max - b.max)
-    for (const b of sorted) {
-      if (aggregate <= b.max) {
-        return b.division
-      }
+  if (!Number.isFinite(aggregate) || aggregate < 4) return 'U'
+  const boundaries =
+    Array.isArray(customBoundaries) && customBoundaries.length > 0
+      ? customBoundaries
+      : DEFAULT_DIVISION_BOUNDARIES
+  const sorted = [...boundaries]
+    .filter((b) => Number.isFinite(b.min) && Number.isFinite(b.max))
+    .sort((a, b) => a.min - b.min)
+  for (const b of sorted) {
+    if (aggregate >= b.min && aggregate <= b.max) {
+      return b.division
     }
-    return 'U'
   }
-  if (aggregate <= 12) return 'I'
-  if (aggregate <= 23) return 'II'
-  if (aggregate <= 29) return 'III'
-  if (aggregate <= 34) return 'IV'
   return 'U'
+}
+
+// Overall IPLE Theology Division from 4-core-subject aggregate (4-12 = ممتاز, 13-23 = جيد جداً, etc.)
+export function getTheologyDivision(
+  aggregate: number,
+  customBoundaries?: Pick<TheologyDivisionBoundaryItem, 'division' | 'min' | 'max'>[]
+): TheologyDivision | string {
+  if (!Number.isFinite(aggregate) || aggregate < 4) return 'راسب'
+  const boundaries =
+    Array.isArray(customBoundaries) && customBoundaries.length > 0
+      ? customBoundaries
+      : DEFAULT_THEOLOGY_DIVISION_BOUNDARIES
+  const sorted = [...boundaries]
+    .filter((b) => Number.isFinite(b.min) && Number.isFinite(b.max))
+    .sort((a, b) => a.min - b.min)
+  for (const b of sorted) {
+    if (aggregate >= b.min && aggregate <= b.max) {
+      return b.division
+    }
+  }
+  return 'راسب'
+}
+
+export function getTheologyDivisionDetails(
+  aggregate: number,
+  customBoundaries?: TheologyDivisionBoundaryItem[]
+): TheologyDivisionBoundaryItem {
+  const boundaries =
+    Array.isArray(customBoundaries) && customBoundaries.length > 0
+      ? customBoundaries
+      : DEFAULT_THEOLOGY_DIVISION_BOUNDARIES
+  const matched = Number.isFinite(aggregate) && aggregate >= 4
+    ? [...boundaries]
+        .filter((b) => Number.isFinite(b.min) && Number.isFinite(b.max))
+        .sort((a, b) => a.min - b.min)
+        .find((b) => aggregate >= b.min && aggregate <= b.max)
+    : undefined
+  return (
+    matched ||
+    boundaries[boundaries.length - 1] ||
+    DEFAULT_THEOLOGY_DIVISION_BOUNDARIES[DEFAULT_THEOLOGY_DIVISION_BOUNDARIES.length - 1]
+  )
 }
 
 // Promotion (Term 3 only, based on division)
@@ -305,54 +489,58 @@ export function computeNurseryBadge(score: number | null | undefined): {
 }
 
 // Subject remarks for secular (primary)
+// Falls back to DEFAULT_GRADING_BANDS when no customBands are supplied,
+// so the remark always matches what is configured in the Settings page.
 export function getSubjectRemark(gradeNum: number, customBands?: GradingBand[]): string {
-  if (customBands && customBands.length > 0) {
-    const match = customBands.find((b) => {
-      const num = parseInt(String(b.grade).replace(/\D/g, ''), 10)
-      return num === gradeNum
-    })
-    if (match && match.remark && match.remark.trim()) {
-      return match.remark.trim()
-    }
+  // Use supplied custom bands, or fall back to the canonical UNEB defaults.
+  const bands = (customBands && customBands.length > 0) ? customBands : DEFAULT_GRADING_BANDS
+
+  const match = bands.find((b) => {
+    const num = parseInt(String(b.grade).replace(/\D/g, ''), 10)
+    return num === gradeNum
+  })
+  if (match && match.remark && match.remark.trim()) {
+    return match.remark.trim()
   }
 
+  // Hard fallback that is exactly aligned with DEFAULT_UNEB_GRADING_BANDS
   switch (gradeNum) {
     case 1: return 'Excellent'
     case 2: return 'Very Good'
     case 3: return 'Good'
-    case 4: return 'Fairly Good'
-    case 5: return 'Fair'
-    case 6: return 'Average'
-    case 7: return 'Below Average'
-    case 8: return 'Poor'
-    case 9: return 'Failed'
-    default: return 'Failed'
+    case 4: return 'Quite Good'
+    case 5: return 'Fairly Good'
+    case 6: return 'Fair'
+    case 7: return 'More Effort'
+    case 8: return 'Work Harder'
+    case 9: return 'Poor / Pull Up'
+    default: return 'Poor / Pull Up'
   }
 }
 
-// Subject remarks for theology (IPLE)
+// Individual IPLE Subject performance descriptors (distinct from overall candidate divisions)
 export function getTheologySubjectRemark(gradeNum: number, customTheologyBands?: any[]): string {
-  if (customTheologyBands && customTheologyBands.length > 0) {
-    const match = customTheologyBands.find((b) => {
-      const num = parseInt(String(b.grade).replace(/\D/g, ''), 10)
-      return num === gradeNum
-    })
-    if (match && match.remark && match.remark.trim()) {
-      return match.remark.trim()
-    }
+  const bands =
+    customTheologyBands && customTheologyBands.length > 0
+      ? customTheologyBands
+      : DEFAULT_THEOLOGY_GRADING_BANDS
+
+  const match = bands.find((b) => extractGradePoint(b.grade) === gradeNum)
+  if (match && match.remark && String(match.remark).trim()) {
+    return String(match.remark).trim()
   }
 
   switch (gradeNum) {
-    case 1: return 'ممتاز' // Excellent
-    case 2: return 'جيد جداً' // Very Good
-    case 3: return 'جيد' // Good
-    case 4: return 'جيد' // Good (or Fairly Good)
-    case 5: return 'مقبول' // Acceptable / Fair
-    case 6: return 'مقبول' // Acceptable / Fair
-    case 7: return 'ضعيف' // Weak / Below Average
-    case 8: return 'ضعيف جداً' // Very Weak / Poor
-    case 9: return 'راسب' // Failed
-    default: return 'راسب'
+    case 1: return 'تفوق عالٍ'
+    case 2: return 'تفوق'
+    case 3: return 'جدارة عالية'
+    case 4: return 'جدارة حسنة'
+    case 5: return 'جدارة متوسطة'
+    case 6: return 'جدارة أساسية'
+    case 7: return 'اجتياز كافٍ'
+    case 8: return 'اجتياز حدّي'
+    case 9: return 'دون المستوى'
+    default: return 'دون المستوى'
   }
 }
 
@@ -480,6 +668,7 @@ export function getClassTeacherReportComment({
   scores,
   gradingBands,
   divisionBoundaries,
+  promotionComments,
 }: {
   scoreType: 'bot' | 'mot' | 'eot'
   termNumber: number
@@ -489,11 +678,23 @@ export function getClassTeacherReportComment({
   scores?: (number | null | undefined)[]
   gradingBands?: ReportCommentBands
   divisionBoundaries?: DivisionBoundaryItem[]
+  promotionComments?: PromotionCommentsConfig
 }): string {
   if (scoreType === 'eot' && termNumber === 3 && promotionStatus) {
-    if (promotionStatus === 'Promote') return 'Promoted to the next class.'
-    if (promotionStatus === 'Repeat') return 'Advised to repeat the class.'
-    return 'Try next class.'
+    const pCfg = promotionComments || DEFAULT_PROMOTION_COMMENTS
+    let promoText = pCfg.try_next_class || 'Try next class.'
+    if (promotionStatus === 'Promote') promoText = pCfg.promoted || 'Promoted to the next class.'
+    else if (promotionStatus === 'Repeat') promoText = pCfg.repeat || 'Advised to repeat the class.'
+    else if (promotionStatus === 'Probation') promoText = pCfg.promoted_probation || 'Promoted on probation.'
+    else if (promotionStatus === 'Try Next Class') promoText = pCfg.try_next_class || 'Try next class.'
+
+    if (pCfg.append_division_comment) {
+      const divComment = getClassTeacherComment(division, scores, gradingBands, divisionBoundaries)
+      if (divComment) {
+        return `${promoText} ${divComment}`
+      }
+    }
+    return promoText
   }
 
   if (gradingComment) return gradingComment
@@ -503,14 +704,25 @@ export function getClassTeacherReportComment({
   return getClassTeacherComment(division, scores, gradingBands, divisionBoundaries)
 }
 
-export function getConductRemark(division: string | null): string {
+export function getConductRemark(
+  division: string | null,
+  divisionBoundaries?: DivisionBoundaryItem[],
+  defaultConduct?: string
+): string {
+  if (division && Array.isArray(divisionBoundaries) && divisionBoundaries.length > 0) {
+    const matched = divisionBoundaries.find((b) => b.division === division)
+    if (matched?.conductRemark?.trim()) {
+      return matched.conductRemark.trim()
+    }
+  }
+
   switch (division) {
     case 'I': return 'Excellent conduct. Very impressive!'
     case 'II': return 'Very good conduct. Well done!'
     case 'III': return 'Good conduct. Keep it up.'
     case 'IV': return 'Fair conduct. Be more disciplined.'
     case 'U': return 'Needs to improve on general conduct.'
-    default: return 'Good conduct.'
+    default: return defaultConduct?.trim() || 'Good conduct.'
   }
 }
 
@@ -533,11 +745,13 @@ export function getNurseryTeacherComment(grades: string[]): string {
 export function getTheologyComment(
   scoreOrTotal: number | null,
   gender?: string | null,
-  customRemarks?: { level: string; boys: string; girls: string }[]
+  customRemarks?: { level: string; boys: string; girls: string }[],
+  overallDivision?: string | null,
+  subjectCount: number = 4
 ): string {
-  if (scoreOrTotal == null) return ''
-  // If total score (> 100), assume 4 subjects to get average percentage
-  const avg = scoreOrTotal > 100 ? scoreOrTotal / 4 : scoreOrTotal
+  if (scoreOrTotal == null && !overallDivision) return ''
+  const divisor = Math.max(Number.isFinite(subjectCount) && subjectCount > 0 ? subjectCount : 4, 1)
+  const avg = scoreOrTotal != null ? (scoreOrTotal > 100 ? scoreOrTotal / divisor : scoreOrTotal) : 0
   const isGirl = gender ? ['female', 'f', 'girl', 'بنت', 'أنثى'].includes(gender.trim().toLowerCase()) : false
 
   const remarks = customRemarks && customRemarks.length > 0 ? customRemarks : [
@@ -545,29 +759,40 @@ export function getTheologyComment(
     { level: 'جيد جدا', boys: 'بقيت خطوة إلى الامتياز', girls: 'بقيت خطوة إلى الامتياز' },
     { level: 'جيد', boys: 'أنت قادر على الأفضل', girls: 'أنتِ قادرة على الأفضل' },
     { level: 'مقبول', boys: 'أنت قادر على الأفضل', girls: 'أنتِ قادرة على الأفضل' },
-    { level: 'ضعيف', boys: 'أنت قادر على الأفضل', girls: 'أنتِ قادرة على الأفضل' },
+    { level: 'راسب', boys: 'أنت قادر على الأفضل', girls: 'أنتِ قادرة على الأفضل' },
   ]
 
-  let targetLevel = 'ضعيف'
-  if (avg >= 85) targetLevel = 'ممتاز'
+  let targetLevel = 'راسب'
+  if (overallDivision && overallDivision.trim() && overallDivision !== '-') {
+    targetLevel = overallDivision.trim()
+  } else if (avg >= 85) targetLevel = 'ممتاز'
   else if (avg >= 75) targetLevel = 'جيد جدا'
   else if (avg >= 60) targetLevel = 'جيد'
   else if (avg >= 50) targetLevel = 'مقبول'
-  else targetLevel = 'ضعيف'
+  else targetLevel = 'راسب'
 
-  const normalizedTarget = targetLevel.trim()
+  const normalizeArabicKey = (s: string) =>
+    s
+      .replace(/[\u064B-\u065F\u0670]/g, '')
+      .replace(/\s+/g, '')
+      .replace(/[أإآ]/g, 'ا')
+  const normalizedTarget = normalizeArabicKey(targetLevel)
   const match =
-    remarks.find(r => r.level.trim() === normalizedTarget) ||
-    remarks.find(r => r.level.replace(/\s+/g, '') === normalizedTarget.replace(/\s+/g, '')) ||
+    remarks.find(r => r.level.trim() === targetLevel.trim()) ||
+    remarks.find(r => normalizeArabicKey(r.level) === normalizedTarget) ||
     remarks.find(r => {
-      if (normalizedTarget === 'جيد') return r.level.includes('جيد') && !r.level.includes('جدا')
-      return r.level.includes(normalizedTarget)
+      const nLevel = normalizeArabicKey(r.level)
+      if ((normalizedTarget === 'راسب' || normalizedTarget === 'ضعيف') && (nLevel.includes('راسب') || nLevel.includes('ضعيف'))) {
+        return true
+      }
+      if (normalizedTarget === 'جيد') return nLevel.includes('جيد') && !nLevel.includes('جدا')
+      return nLevel.includes(normalizedTarget)
     })
   if (match) {
     return isGirl ? (match.girls || match.boys) : (match.boys || match.girls)
   }
 
-  if (targetLevel === 'ممتاز') return 'جهد مميز،شكرا'
-  if (targetLevel === 'جيد جدا') return 'بقيت خطوة إلى الامتياز'
+  if (normalizedTarget === 'ممتاز') return 'جهد مميز،شكرا'
+  if (normalizedTarget.includes('جيدجدا')) return 'بقيت خطوة إلى الامتياز'
   return isGirl ? 'أنتِ قادرة على الأفضل' : 'أنت قادر على الأفضل'
 }

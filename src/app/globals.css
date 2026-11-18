@@ -21,7 +21,13 @@ body {
 
 
 
-@custom-variant dark (&:is(.dark *));
+@custom-variant dark {
+  &:is(.dark *) {
+    @media not print {
+      @slot;
+    }
+  }
+}
 
 :root {
   --font-size: 16px;

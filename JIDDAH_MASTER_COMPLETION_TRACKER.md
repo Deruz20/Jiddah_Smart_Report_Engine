@@ -85,3 +85,30 @@ The following operations were explicitly **NOT RUN** during this pass, in strict
 ### OWNER GATE 3: Student Registration Overhaul Approval
 - **Status:** Staged for Approval in `docs/STUDENT_REGISTRATION_OVERHAUL_PROPOSAL.md`. Interactive prototype mounted on `/admin/students`.
 - **Action Required:** Owner approval to apply additive non-breaking database migration.
+
+---
+
+## 5. Deferred Scope Ledger
+
+### P.7 candidate-class logic (PLE/IPLE)
+- **Status:** **DEFERRED** (logged in Phase 3B per `AGENT_BRIEF.md`).
+- **Facts:** P.7 candidates (both Secular and Theology) sit national PLE and IPLE examinations and therefore have **no** school Term 3 EOT examination.
+- **Current Guardrail (Active):** Central rule `doesExamApplyToClassInTerm()` in `src/lib/academic-sections.ts` (`candidate_class_rules` in `src/lib/school-settings-helper.ts`) excludes P.7 Term 3 EOT from Secular Hub, Theology Hub, Dashboard/Analytics completion %, missing-marks warnings, averages, and rankings, displaying `"N/A — candidate class"`. Term 3 BOT/MOT and Terms 1–2 remain active for P.7.
+- **Deferred Work:** Entry, storage, and analysis of PLE / IPLE external candidate grades and dedicated Mock/Pre-Mock (`exam_types`) reporting workflows remain deferred until scheduled in a future phase.
+
+
+## Phase 3.5 — Go-Live Role Defaults, Archived Student Exclusion, Anti-Freeze Performance & Senior UI/UX Overhaul (2026-11-18)
+- **Status:** `DONE-E1` (Verified on local rehearsal stack `127.0.0.1:54321` / `127.0.0.1:54322`)
+- **Workstreams Completed:**
+  1. **Workstream 1 (Role Defaults & Scoping + Safe Signature & Print Customization):**
+     - Synced `DEFAULT_ROLE_PERMISSIONS` in `src/lib/teacher-access.ts`, `scripts/seed-rehearsal-synthetic-users.mjs`, local `public.role_permissions`, and idempotent production script `docs/PHASE3_5_PRODUCTION_GO_LIVE.sql`.
+     - Scoped `/api/signatures`, `/api/signatures/upload`, and `/admin/upload` via `resolveAllowedSignatureSlotsForUser` so Principal, Head Teacher, DOS, Class Teachers, and Theology Instructors can upload/draw their own role/class signature without requiring `manage_settings`.
+  2. **Workstream 2 (Archived Students Exclusion & Student Registry Metrics + `P.6` Theology Check):**
+     - Enforced `students!inner(..., is_archived)` + `.eq('students.is_archived', false)` across `/api/students`, `/api/enrollments`, `/api/marks`, `/api/circular-marks`, `/api/theology-marks`, `/api/secular-hub`, `/api/theology-hub`, `/api/analytics/dashboard`, `/admin/page.tsx`, `/api/report`, `/api/report/batch`, and `/api/reports`.
+     - Added live-updating **Active Students** vs **Archived Students** metric counters, filter toggle, and 1-click **Restore** action in `src/components/StudentsListClient.tsx` and `/admin/students/page.tsx`.
+  3. **Workstream 3 (Anti-Freeze & Performance Optimization):**
+     - Memoized & cached `CleanSignatureImage` (`signatureDataUrlCache` keyed by `src|inkColor|threshold`) and `StampGenerator` (`stampCrestCache` + in-flight Promise deduplication).
+     - Memoized `SecularMarkTableRow` & `TheologyMarkTableRow` with row-level custom comparators in `src/components/shared-marks-entry.tsx`, reused singleton IndexedDB connection + 250ms debounced cache writes in `src/lib/offline-sync.ts`, and added fingerprint-verified server-side caching to `fetchMergedSchoolSettings` in `src/lib/school-settings-helper.ts`.
+  4. **Workstream 4 (Senior UI/UX Overhaul of `/admin/teachers` & `/admin/settings`):**
+     - Overhauled `/admin/teachers` modal (`src/components/layout/teachers-client.tsx`) with dynamic Role/Department class assignment filtering (`Automatic School-Wide Access`, `Automatic Department-Wide Access`, and sectioned `Nursery (Baby–Top)`, `Lower Primary (P.1–P.3)`, `Upper Primary (P.4–P.7)` groups) plus **Included by Role Default** emerald chips and collapsible **Extra Per-User Overrides (Optional)**.
+     - Overhauled `/admin/settings` (`src/components/layout/SettingsClient.tsx`) into a 5-tab segmented workspace (`School Identity & Active Term`, `Secular Grading & Divisions (PLE)`, `Theology Grading & Divisions (IPLE)`, `Comments, Conduct & Remarks Rules`, `Exam Locks & Access Safeguards`) with live dirty-state indicators.

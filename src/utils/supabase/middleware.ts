@@ -67,25 +67,35 @@ export async function updateSession(request: NextRequest) {
         "Class Teacher";
       rawSubject = user.user_metadata?.subject || "";
 
-      if (user.email) {
-        try {
-          const { data: teacherProfile } = await supabase
+      try {
+        let teacherProfile: any = null;
+        if (user.id) {
+          const { data: byId } = await supabase
+            .from("teachers")
+            .select("role, subject, status")
+            .or(`auth_user_id.eq.${user.id},id.eq.${user.id}`)
+            .maybeSingle();
+          teacherProfile = byId;
+        }
+        if (!teacherProfile && user.email) {
+          const { data: byEmail } = await supabase
             .from("teachers")
             .select("role, subject, status")
             .eq("email", user.email)
             .maybeSingle();
-          if (teacherProfile?.role) {
-            rawRole = teacherProfile.role;
-          }
-          if (teacherProfile?.subject) {
-            rawSubject = teacherProfile.subject;
-          }
-          if (teacherProfile?.status) {
-            status = teacherProfile.status;
-          }
-        } catch {
-          // preserve user metadata role
+          teacherProfile = byEmail;
         }
+        if (teacherProfile?.role) {
+          rawRole = teacherProfile.role;
+        }
+        if (teacherProfile?.subject) {
+          rawSubject = teacherProfile.subject;
+        }
+        if (teacherProfile?.status) {
+          status = teacherProfile.status;
+        }
+      } catch {
+        // preserve user metadata role
       }
     }
 
@@ -151,14 +161,24 @@ export async function updateSession(request: NextRequest) {
       const canonicalRole = normalizeAccountRole(rawRole, rawSubject);
       const department = resolveRoleDepartment(rawRole, rawSubject);
 
-      if (canonicalRole === "Class Teacher") {
-        const teacherBlockedPrefixes = [
+      if (canonicalRole !== "Administrator") {
+        const adminOnlyPrefixes = [
           "/admin/settings",
           "/admin/teachers",
           "/admin/invites",
+          "/admin/dev-tools",
+        ];
+        if (adminOnlyPrefixes.some((prefix) => path.startsWith(prefix))) {
+          const url = request.nextUrl.clone();
+          url.pathname = "/admin";
+          return NextResponse.redirect(url);
+        }
+      }
+
+      if (canonicalRole === "Class Teacher") {
+        const teacherBlockedPrefixes = [
           "/admin/upload",
           "/admin/activity",
-          "/admin/dev-tools",
         ];
         if (teacherBlockedPrefixes.some((prefix) => path.startsWith(prefix))) {
           const url = request.nextUrl.clone();

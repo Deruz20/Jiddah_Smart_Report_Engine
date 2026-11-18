@@ -497,7 +497,7 @@ export default function NurseryTheologyEOTReport({ reportData, studioFormatting:
             <span className="remark-label">ملاحظات مرب الفصل</span>
             <div style={{ minHeight: '42px', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', width: '100%' }}>
               <span style={{ color: '#1E40AF', fontWeight: 800, fontSize: `${effective.arabicCommentFontSizePx}px`, lineHeight: 1.35, textAlign: 'center', direction: 'rtl' }}>
-                {getTheologyComment(reportData?.theology?.total ?? null, reportData?.student?.gender, reportData?.settings?.theology_remarks)}
+                {reportData?.theology?.teacher_comment || getTheologyComment(reportData?.theology?.total ?? null, reportData?.student?.gender, reportData?.settings?.theology_remarks, reportData?.theology?.division, reportData?.theology?.subjects?.length || 4)}
               </span>
             </div>
           </div>
@@ -505,7 +505,7 @@ export default function NurseryTheologyEOTReport({ reportData, studioFormatting:
             <span className="remark-label">ملاحظات مدير المدرسة</span>
             <div style={{ minHeight: '42px', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', width: '100%' }}>
               <span style={{ color: '#1E40AF', fontWeight: 800, fontSize: `${effective.arabicCommentFontSizePx}px`, lineHeight: 1.35, textAlign: 'center', direction: 'rtl' }}>
-                {getTheologyComment(reportData?.theology?.total ?? null, reportData?.student?.gender, reportData?.settings?.theology_remarks)}
+                {reportData?.theology?.teacher_comment || getTheologyComment(reportData?.theology?.total ?? null, reportData?.student?.gender, reportData?.settings?.theology_remarks, reportData?.theology?.division, reportData?.theology?.subjects?.length || 4)}
               </span>
             </div>
           </div>

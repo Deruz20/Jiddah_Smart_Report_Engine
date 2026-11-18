@@ -112,6 +112,8 @@ const roleBadgeStyle = (role: string) => {
     case "Head Teacher":
     case "Deputy Head Teacher":
       return { background: "rgba(15,77,37,0.14)", color: "#0F4D25" };
+    case "Secretary":
+      return { background: "rgba(14,116,144,0.12)", color: "#0E7490" };
     case "DOS Secular":
     case "DOS Theology":
       return { background: "rgba(180,83,9,0.12)", color: "#92400E" };
@@ -254,7 +256,8 @@ export default function TeachersClient({
       roleKey === "Administrator" ||
       roleKey === "Principal" ||
       roleKey === "Head Teacher" ||
-      roleKey === "Deputy Head Teacher"
+      roleKey === "Deputy Head Teacher" ||
+      roleKey === "Secretary"
     ) {
       return ["All classes"];
     }
@@ -309,7 +312,8 @@ export default function TeachersClient({
     watchedRole === "Administrator" ||
     watchedRole === "Principal" ||
     watchedRole === "Head Teacher" ||
-    watchedRole === "Deputy Head Teacher";
+    watchedRole === "Deputy Head Teacher" ||
+    watchedRole === "Secretary";
 
   const isDepartmentWideDOSRole =
     watchedRole === "DOS Secular" || watchedRole === "DOS Theology";
@@ -421,10 +425,10 @@ export default function TeachersClient({
 
   const openFormModal = (presetRole?: string) => {
     setSelectedTeacher(null);
-    if (presetRole === "Principal") {
+    if (presetRole === "Principal" || presetRole === "Secretary") {
       reset({
         ...defaultTeacherFormValues,
-        role: "Principal",
+        role: presetRole,
         subject_specialization: "Both",
         classes_assigned: [],
         permissions: [],
@@ -664,6 +668,14 @@ export default function TeachersClient({
               className="flex items-center gap-2 rounded-xl border border-[#E7E2D7] bg-white hover:bg-[#FAF7F2] px-3.5 py-2.5 min-h-[44px] text-xs sm:text-sm font-semibold text-[#0F4D25] shadow-2xs"
             >
               <Shield className="w-4 h-4 text-[#0F4D25]" /> + Principal Account
+            </AnimatedButton>
+            <AnimatedButton
+              type="button"
+              data-testid="quick-create-secretary-btn"
+              onClick={() => openFormModal("Secretary")}
+              className="flex items-center gap-2 rounded-xl border border-[#E7E2D7] bg-white hover:bg-[#FAF7F2] px-3.5 py-2.5 min-h-[44px] text-xs sm:text-sm font-semibold text-cyan-800 shadow-2xs"
+            >
+              <Users className="w-4 h-4 text-cyan-700" /> + Secretary (Print &amp; QA)
             </AnimatedButton>
             <AnimatedButton
               type="button"
@@ -1120,7 +1132,8 @@ export default function TeachersClient({
                               nextRole === "Administrator" ||
                               nextRole === "Principal" ||
                               nextRole === "Head Teacher" ||
-                              nextRole === "Deputy Head Teacher"
+                              nextRole === "Deputy Head Teacher" ||
+                              nextRole === "Secretary"
                             ) {
                               setValue("subject_specialization", "Both");
                               setValue("classes_assigned", []);

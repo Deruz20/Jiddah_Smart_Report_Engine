@@ -45,6 +45,13 @@ export default async function MarksEntryPage() {
     }
 
     const scope = resolveUserScope(access)
+    if (scope.isSecretary && !scope.canWriteMarks) {
+      return (
+        <div className="p-6 text-rose-700 font-semibold max-w-xl mx-auto mt-8 bg-rose-50 border border-rose-200 rounded-xl">
+          Access Denied: Secretary accounts have print &amp; QA read access to Hubs and Report Center, not Marks Entry.
+        </div>
+      )
+    }
     isUnassigned = scope.isUnassigned
     assignedSubjects = scope.assignedSubjects
     roleLabel = scope.rawRole || scope.canonicalRole

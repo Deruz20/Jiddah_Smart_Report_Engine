@@ -153,12 +153,50 @@ VALUES
     ARRAY[]::text[],
     'Non-academic support staff — no access to student records or marks.',
     now()
+  ),
+  (
+    'Secretary',
+    ARRAY[
+      'read_students',
+      'read_marks',
+      'read_reports'
+    ]::text[],
+    'Print & QA Secretary — school-wide read access to Hubs, Students, Report Cards, and Upload Center signatures/stamps for print QA (no mark editing or lock bypass).',
+    now()
   )
 ON CONFLICT (role) DO UPDATE
 SET
   permissions = EXCLUDED.permissions,
   description = EXCLUDED.description,
   updated_at = now();
+
+-- Ensure teachers_role_check includes Secretary cleanly and idempotently
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'teachers_role_check'
+  ) THEN
+    ALTER TABLE public.teachers DROP CONSTRAINT teachers_role_check;
+  END IF;
+  ALTER TABLE public.teachers
+    ADD CONSTRAINT teachers_role_check CHECK (
+      role IN (
+        'Administrator',
+        'admin',
+        'Principal',
+        'Head Teacher',
+        'Deputy Head Teacher',
+        'DOS',
+        'DOS Secular',
+        'DOS Theology',
+        'Secretary',
+        'Class Teacher',
+        'Theology Instructor',
+        'Teacher',
+        'Support Staff'
+      )
+    );
+END $$;
 
 -- -----------------------------------------------------------------------------
 -- 2. ENSURE `students.is_archived` AND `students.archived_at` EXIST
@@ -632,7 +670,7 @@ USING (
     WHERE (t.auth_user_id = auth.uid() OR t.id = auth.uid())
       AND COALESCE(lower(t.status), 'active') NOT IN ('inactive', 'suspended', 'deactivated', 'banned')
       AND (
-        t.role IN ('Administrator', 'admin', 'Principal', 'Head Teacher', 'Deputy Head Teacher', 'DOS Secular', 'DOS Theology', 'DOS')
+        t.role IN ('Administrator', 'admin', 'Principal', 'Head Teacher', 'Deputy Head Teacher', 'Secretary', 'DOS Secular', 'DOS Theology', 'DOS')
         OR EXISTS (
           SELECT 1
           FROM public.enrollments e
@@ -665,7 +703,7 @@ USING (
     WHERE (t.auth_user_id = auth.uid() OR t.id = auth.uid())
       AND COALESCE(lower(t.status), 'active') NOT IN ('inactive', 'suspended', 'deactivated', 'banned')
       AND (
-        t.role IN ('Administrator', 'admin', 'Principal', 'Head Teacher', 'Deputy Head Teacher')
+        t.role IN ('Administrator', 'admin', 'Principal', 'Head Teacher', 'Deputy Head Teacher', 'Secretary')
         OR (
           (t.role = 'DOS Secular' OR (t.role = 'DOS' AND lower(coalesce(t.subject, '')) LIKE '%secular%'))
           AND enrollments.circular_class_id IS NOT NULL
@@ -703,7 +741,7 @@ USING (
     WHERE e.id = circular_marks.enrollment_id
       AND COALESCE(lower(t.status), 'active') NOT IN ('inactive', 'suspended', 'deactivated', 'banned')
       AND (
-        t.role IN ('Administrator', 'admin', 'Principal', 'Head Teacher', 'Deputy Head Teacher', 'DOS Secular')
+        t.role IN ('Administrator', 'admin', 'Principal', 'Head Teacher', 'Deputy Head Teacher', 'Secretary', 'DOS Secular')
         OR (t.role = 'DOS' AND lower(coalesce(t.subject, '')) <> 'theology')
         OR (cc.id IS NOT NULL AND cc.class_teacher_id = t.id)
         OR EXISTS (
@@ -729,7 +767,7 @@ USING (
     WHERE e.id = theology_marks.enrollment_id
       AND COALESCE(lower(t.status), 'active') NOT IN ('inactive', 'suspended', 'deactivated', 'banned')
       AND (
-        t.role IN ('Administrator', 'admin', 'Principal', 'Head Teacher', 'Deputy Head Teacher', 'DOS Theology')
+        t.role IN ('Administrator', 'admin', 'Principal', 'Head Teacher', 'Deputy Head Teacher', 'Secretary', 'DOS Theology')
         OR (t.role = 'DOS' AND lower(coalesce(t.subject, '')) <> 'secular')
         OR (cc.id IS NOT NULL AND cc.class_teacher_id = t.id)
         OR EXISTS (
@@ -740,6 +778,290 @@ USING (
       )
   )
 );
+
+-- -----------------------------------------------------------------------------
+-- 7. EXPLICIT WRITE POLICIES + SECURITY DEFINER UPSERT RPCs FOR MARKS ENTRY
+-- -----------------------------------------------------------------------------
+DROP POLICY IF EXISTS "staff_scoped_write_circular_marks" ON public.circular_marks;
+CREATE POLICY "staff_scoped_write_circular_marks"
+ON public.circular_marks
+FOR ALL
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1
+    FROM public.enrollments e
+    JOIN public.teachers t ON (t.auth_user_id = auth.uid() OR t.id = auth.uid())
+    LEFT JOIN public.circular_classes cc ON cc.id = e.circular_class_id
+    WHERE e.id = circular_marks.enrollment_id
+      AND COALESCE(lower(t.status), 'active') NOT IN ('inactive', 'suspended', 'deactivated', 'banned')
+      AND (
+        t.role IN ('Administrator', 'admin', 'DOS Secular')
+        OR (t.role = 'DOS' AND lower(coalesce(t.subject, '')) <> 'theology')
+        OR (
+          t.role NOT IN ('Principal', 'Head Teacher', 'Deputy Head Teacher', 'Secretary', 'Support Staff')
+          AND (
+            (cc.id IS NOT NULL AND cc.class_teacher_id = t.id)
+            OR EXISTS (
+              SELECT 1 FROM public.teacher_class_assignments tca
+              WHERE tca.teacher_id = t.id AND tca.class_id = e.circular_class_id
+            )
+            OR (e.circular_class_id IS NOT NULL AND e.circular_class_id::text = ANY(COALESCE(t.classes::text[], ARRAY[]::text[])))
+          )
+        )
+      )
+  )
+)
+WITH CHECK (
+  EXISTS (
+    SELECT 1
+    FROM public.enrollments e
+    JOIN public.teachers t ON (t.auth_user_id = auth.uid() OR t.id = auth.uid())
+    LEFT JOIN public.circular_classes cc ON cc.id = e.circular_class_id
+    WHERE e.id = circular_marks.enrollment_id
+      AND COALESCE(lower(t.status), 'active') NOT IN ('inactive', 'suspended', 'deactivated', 'banned')
+      AND (
+        t.role IN ('Administrator', 'admin', 'DOS Secular')
+        OR (t.role = 'DOS' AND lower(coalesce(t.subject, '')) <> 'theology')
+        OR (
+          t.role NOT IN ('Principal', 'Head Teacher', 'Deputy Head Teacher', 'Secretary', 'Support Staff')
+          AND (
+            (cc.id IS NOT NULL AND cc.class_teacher_id = t.id)
+            OR EXISTS (
+              SELECT 1 FROM public.teacher_class_assignments tca
+              WHERE tca.teacher_id = t.id AND tca.class_id = e.circular_class_id
+            )
+            OR (e.circular_class_id IS NOT NULL AND e.circular_class_id::text = ANY(COALESCE(t.classes::text[], ARRAY[]::text[])))
+          )
+        )
+      )
+  )
+);
+
+DROP POLICY IF EXISTS "staff_scoped_write_theology_marks" ON public.theology_marks;
+CREATE POLICY "staff_scoped_write_theology_marks"
+ON public.theology_marks
+FOR ALL
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1
+    FROM public.enrollments e
+    JOIN public.teachers t ON (t.auth_user_id = auth.uid() OR t.id = auth.uid())
+    LEFT JOIN public.circular_classes cc ON cc.id = e.circular_class_id
+    WHERE e.id = theology_marks.enrollment_id
+      AND COALESCE(lower(t.status), 'active') NOT IN ('inactive', 'suspended', 'deactivated', 'banned')
+      AND (
+        t.role IN ('Administrator', 'admin', 'DOS Theology')
+        OR (t.role = 'DOS' AND lower(coalesce(t.subject, '')) <> 'secular')
+        OR (
+          t.role NOT IN ('Principal', 'Head Teacher', 'Deputy Head Teacher', 'Secretary', 'Support Staff')
+          AND (
+            (cc.id IS NOT NULL AND cc.class_teacher_id = t.id)
+            OR EXISTS (
+              SELECT 1 FROM public.teacher_class_assignments tca
+              WHERE tca.teacher_id = t.id AND tca.class_id = e.theology_class_id
+            )
+            OR (e.theology_class_id IS NOT NULL AND e.theology_class_id::text = ANY(COALESCE(t.classes::text[], ARRAY[]::text[])))
+            OR (e.circular_class_id IS NOT NULL AND e.circular_class_id::text = ANY(COALESCE(t.classes::text[], ARRAY[]::text[])))
+          )
+        )
+      )
+  )
+)
+WITH CHECK (
+  EXISTS (
+    SELECT 1
+    FROM public.enrollments e
+    JOIN public.teachers t ON (t.auth_user_id = auth.uid() OR t.id = auth.uid())
+    LEFT JOIN public.circular_classes cc ON cc.id = e.circular_class_id
+    WHERE e.id = theology_marks.enrollment_id
+      AND COALESCE(lower(t.status), 'active') NOT IN ('inactive', 'suspended', 'deactivated', 'banned')
+      AND (
+        t.role IN ('Administrator', 'admin', 'DOS Theology')
+        OR (t.role = 'DOS' AND lower(coalesce(t.subject, '')) <> 'secular')
+        OR (
+          t.role NOT IN ('Principal', 'Head Teacher', 'Deputy Head Teacher', 'Secretary', 'Support Staff')
+          AND (
+            (cc.id IS NOT NULL AND cc.class_teacher_id = t.id)
+            OR EXISTS (
+              SELECT 1 FROM public.teacher_class_assignments tca
+              WHERE tca.teacher_id = t.id AND tca.class_id = e.theology_class_id
+            )
+            OR (e.theology_class_id IS NOT NULL AND e.theology_class_id::text = ANY(COALESCE(t.classes::text[], ARRAY[]::text[])))
+            OR (e.circular_class_id IS NOT NULL AND e.circular_class_id::text = ANY(COALESCE(t.classes::text[], ARRAY[]::text[])))
+          )
+        )
+      )
+  )
+);
+
+CREATE OR REPLACE FUNCTION public.upsert_circular_marks_scoped(p_rows jsonb)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_row jsonb;
+  v_teacher record;
+  v_enrollment record;
+  v_allowed boolean;
+  v_count integer := 0;
+BEGIN
+  IF p_rows IS NULL OR jsonb_typeof(p_rows) <> 'array' THEN
+    RETURN jsonb_build_object('count', 0);
+  END IF;
+
+  SELECT t.id, t.role, t.subject, t.classes, t.status
+    INTO v_teacher
+    FROM public.teachers t
+   WHERE (t.auth_user_id = auth.uid() OR t.id = auth.uid())
+     AND COALESCE(lower(t.status), 'active') NOT IN ('inactive', 'suspended', 'deactivated', 'banned')
+   LIMIT 1;
+
+  IF v_teacher.id IS NULL THEN
+    RAISE EXCEPTION 'Unauthorized: Active staff profile required.' USING ERRCODE = '42501';
+  END IF;
+
+  IF v_teacher.role IN ('Principal', 'Head Teacher', 'Deputy Head Teacher', 'Secretary', 'Support Staff') THEN
+    RAISE EXCEPTION 'Unauthorized: Role % is read-only for marks.', v_teacher.role USING ERRCODE = '42501';
+  END IF;
+
+  FOR v_row IN SELECT * FROM jsonb_array_elements(p_rows)
+  LOOP
+    SELECT e.id, e.circular_class_id, cc.class_teacher_id
+      INTO v_enrollment
+      FROM public.enrollments e
+      LEFT JOIN public.circular_classes cc ON cc.id = e.circular_class_id
+     WHERE e.id = (v_row->>'enrollment_id')::uuid;
+
+    IF v_enrollment.id IS NULL THEN
+      RAISE EXCEPTION 'Enrollment not found.' USING ERRCODE = '22023';
+    END IF;
+
+    v_allowed :=
+      v_teacher.role IN ('Administrator', 'admin', 'DOS Secular')
+      OR (v_teacher.role = 'DOS' AND lower(coalesce(v_teacher.subject, '')) <> 'theology')
+      OR v_enrollment.class_teacher_id = v_teacher.id
+      OR EXISTS (
+        SELECT 1 FROM public.teacher_class_assignments tca
+        WHERE tca.teacher_id = v_teacher.id AND tca.class_id = v_enrollment.circular_class_id
+      )
+      OR (v_enrollment.circular_class_id IS NOT NULL AND v_enrollment.circular_class_id::text = ANY(COALESCE(v_teacher.classes::text[], ARRAY[]::text[])));
+
+    IF NOT COALESCE(v_allowed, false) THEN
+      RAISE EXCEPTION 'Unauthorized: Enrollment is outside your assigned secular classes.' USING ERRCODE = '42501';
+    END IF;
+
+    INSERT INTO public.circular_marks (enrollment_id, subject_id, term_id, bot_score, mot_score, eot_score)
+    VALUES (
+      (v_row->>'enrollment_id')::uuid,
+      (v_row->>'subject_id')::uuid,
+      (v_row->>'term_id')::uuid,
+      CASE WHEN v_row ? 'bot_score' THEN NULLIF(v_row->>'bot_score', '')::numeric ELSE NULL END,
+      CASE WHEN v_row ? 'mot_score' THEN NULLIF(v_row->>'mot_score', '')::numeric ELSE NULL END,
+      CASE WHEN v_row ? 'eot_score' THEN NULLIF(v_row->>'eot_score', '')::numeric ELSE NULL END
+    )
+    ON CONFLICT (enrollment_id, subject_id, term_id) DO UPDATE
+    SET
+      bot_score = CASE WHEN v_row ? 'bot_score' THEN NULLIF(v_row->>'bot_score', '')::numeric ELSE circular_marks.bot_score END,
+      mot_score = CASE WHEN v_row ? 'mot_score' THEN NULLIF(v_row->>'mot_score', '')::numeric ELSE circular_marks.mot_score END,
+      eot_score = CASE WHEN v_row ? 'eot_score' THEN NULLIF(v_row->>'eot_score', '')::numeric ELSE circular_marks.eot_score END,
+      updated_at = now();
+
+    v_count := v_count + 1;
+  END LOOP;
+
+  RETURN jsonb_build_object('count', v_count);
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.upsert_theology_marks_scoped(p_rows jsonb)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_row jsonb;
+  v_teacher record;
+  v_enrollment record;
+  v_allowed boolean;
+  v_count integer := 0;
+BEGIN
+  IF p_rows IS NULL OR jsonb_typeof(p_rows) <> 'array' THEN
+    RETURN jsonb_build_object('count', 0);
+  END IF;
+
+  SELECT t.id, t.role, t.subject, t.classes, t.status
+    INTO v_teacher
+    FROM public.teachers t
+   WHERE (t.auth_user_id = auth.uid() OR t.id = auth.uid())
+     AND COALESCE(lower(t.status), 'active') NOT IN ('inactive', 'suspended', 'deactivated', 'banned')
+   LIMIT 1;
+
+  IF v_teacher.id IS NULL THEN
+    RAISE EXCEPTION 'Unauthorized: Active staff profile required.' USING ERRCODE = '42501';
+  END IF;
+
+  IF v_teacher.role IN ('Principal', 'Head Teacher', 'Deputy Head Teacher', 'Secretary', 'Support Staff') THEN
+    RAISE EXCEPTION 'Unauthorized: Role % is read-only for marks.', v_teacher.role USING ERRCODE = '42501';
+  END IF;
+
+  FOR v_row IN SELECT * FROM jsonb_array_elements(p_rows)
+  LOOP
+    SELECT e.id, e.theology_class_id, e.circular_class_id, cc.class_teacher_id
+      INTO v_enrollment
+      FROM public.enrollments e
+      LEFT JOIN public.circular_classes cc ON cc.id = e.circular_class_id
+     WHERE e.id = (v_row->>'enrollment_id')::uuid;
+
+    IF v_enrollment.id IS NULL THEN
+      RAISE EXCEPTION 'Enrollment not found.' USING ERRCODE = '22023';
+    END IF;
+
+    v_allowed :=
+      v_teacher.role IN ('Administrator', 'admin', 'DOS Theology')
+      OR (v_teacher.role = 'DOS' AND lower(coalesce(v_teacher.subject, '')) <> 'secular')
+      OR v_enrollment.class_teacher_id = v_teacher.id
+      OR EXISTS (
+        SELECT 1 FROM public.teacher_class_assignments tca
+        WHERE tca.teacher_id = v_teacher.id AND tca.class_id = v_enrollment.theology_class_id
+      )
+      OR (v_enrollment.theology_class_id IS NOT NULL AND v_enrollment.theology_class_id::text = ANY(COALESCE(v_teacher.classes::text[], ARRAY[]::text[])))
+      OR (v_enrollment.circular_class_id IS NOT NULL AND v_enrollment.circular_class_id::text = ANY(COALESCE(v_teacher.classes::text[], ARRAY[]::text[])));
+
+    IF NOT COALESCE(v_allowed, false) THEN
+      RAISE EXCEPTION 'Unauthorized: Enrollment is outside your assigned theology classes.' USING ERRCODE = '42501';
+    END IF;
+
+    INSERT INTO public.theology_marks (enrollment_id, subject_id, term_id, mot_score, eot_score)
+    VALUES (
+      (v_row->>'enrollment_id')::uuid,
+      (v_row->>'subject_id')::uuid,
+      (v_row->>'term_id')::uuid,
+      CASE WHEN v_row ? 'mot_score' THEN NULLIF(v_row->>'mot_score', '')::numeric ELSE NULL END,
+      CASE WHEN v_row ? 'eot_score' THEN NULLIF(v_row->>'eot_score', '')::numeric ELSE NULL END
+    )
+    ON CONFLICT (enrollment_id, subject_id, term_id) DO UPDATE
+    SET
+      mot_score = CASE WHEN v_row ? 'mot_score' THEN NULLIF(v_row->>'mot_score', '')::numeric ELSE theology_marks.mot_score END,
+      eot_score = CASE WHEN v_row ? 'eot_score' THEN NULLIF(v_row->>'eot_score', '')::numeric ELSE theology_marks.eot_score END,
+      updated_at = now();
+
+    v_count := v_count + 1;
+  END LOOP;
+
+  RETURN jsonb_build_object('count', v_count);
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.upsert_circular_marks_scoped(jsonb) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.upsert_circular_marks_scoped(jsonb) TO authenticated, service_role;
+REVOKE ALL ON FUNCTION public.upsert_theology_marks_scoped(jsonb) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.upsert_theology_marks_scoped(jsonb) TO authenticated, service_role;
+NOTIFY pgrst, 'reload schema';
 
 COMMIT;
 

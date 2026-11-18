@@ -16,6 +16,11 @@ import type {
 } from './school-settings-helper'
 import { computeConfigurableRankings, computeStandardRankings } from './ranking'
 import {
+  canonicalSecularSubjectCode,
+  canonicalTheologySubjectCode,
+  findReconciledMark,
+} from './marks-reconciliation'
+import {
   CANDIDATE_NA_BADGE,
   doesExamApplyToClassInTerm,
   formatClassDisplayName,
@@ -319,9 +324,28 @@ export function computeHubCohortMetrics(params: {
       ? classes.filter((c) => mapping.classToSection[String(c.id)] === sectionId)
       : classes
 
+  const resolveUnionKey = (sub: HubSubjectRecord): string => {
+    const rawName =
+      curriculum === 'theology'
+        ? sub.subject_name_arabic || sub.subject_name || ''
+        : sub.subject_name || sub.subject_name_arabic || ''
+    const code =
+      curriculum === 'theology'
+        ? canonicalTheologySubjectCode(rawName)
+        : canonicalSecularSubjectCode(rawName)
+    if (code) return `${curriculum}:${code}`
+    const normalizedName = String(rawName)
+      .trim()
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}]+/gu, ' ')
+      .trim()
+    return normalizedName ? `${curriculum}:name:${normalizedName}` : `id:${sub.id}`
+  }
+
   const classApplicability = new Map<string, ExamApplicabilityResult>()
   const classSubjectsMap = new Map<string, HubSubjectRecord[]>()
   const unionSubjectMap = new Map<string, HubSubjectRecord>()
+  const canonicalUnionIdBySubId = new Map<string, string>()
 
   const applicableSignatures = new Set<string>()
   const candidateExclusions: Array<{
@@ -353,18 +377,34 @@ export function computeHubCohortMetrics(params: {
     classSubjectsMap.set(cid, clsSubjects)
 
     if (app.applies) {
+      const seenKeysInClass = new Set<string>()
+      const clsCanonicalKeys: string[] = []
       for (const s of clsSubjects) {
-        if (!unionSubjectMap.has(s.id)) unionSubjectMap.set(s.id, s)
+        let uKey = resolveUnionKey(s)
+        if (seenKeysInClass.has(uKey)) {
+          uKey = `${uKey}::${s.id}`
+        }
+        seenKeysInClass.add(uKey)
+        clsCanonicalKeys.push(uKey)
+        if (!unionSubjectMap.has(uKey)) {
+          unionSubjectMap.set(uKey, s)
+        }
+        const canonicalSub = unionSubjectMap.get(uKey)!
+        canonicalUnionIdBySubId.set(s.id, canonicalSub.id)
       }
       const maxSum = clsSubjects.reduce((acc, s) => acc + (Number(s.max_score) || 100), 0)
-      const sigIds = clsSubjects.map((s) => s.id).sort().join(',')
+      const sigIds = clsCanonicalKeys.sort().join(',')
       applicableSignatures.add(`${clsSubjects.length}:${maxSum}:${sigIds}`)
     }
   }
 
   if (unionSubjectMap.size === 0 && targetClasses.length === 1) {
     const onlySubs = classSubjectsMap.get(String(targetClasses[0].id)) ?? []
-    for (const s of onlySubs) unionSubjectMap.set(s.id, s)
+    for (const s of onlySubs) {
+      const uKey = `id:${s.id}`
+      unionSubjectMap.set(uKey, s)
+      canonicalUnionIdBySubId.set(s.id, s.id)
+    }
   }
 
   const orderedSubjects = Array.from(unionSubjectMap.values())
@@ -489,11 +529,22 @@ export function computeHubCohortMetrics(params: {
       let satCount = 0
 
       for (const sub of clsSubjects) {
-        const mark = eMarks.find((m) => m.subject_id === sub.id)
+        const subName =
+          curriculum === 'theology'
+            ? sub.subject_name_arabic || sub.subject_name
+            : sub.subject_name
+        const mark = findReconciledMark(eMarks, {
+          studentId: enrollment.student_id,
+          enrollmentId: enrollment.id,
+          subjectId: sub.id,
+          subjectName: subName,
+          curriculum,
+        })
         const rawScore = mark?.[scoreKey]
         const numericScore =
-          rawScore != null && rawScore !== '' && !isNaN(Number(rawScore)) ? Number(rawScore) : null
-        subjectScores[sub.id] = numericScore
+          rawScore != null && String(rawScore) !== '' && !isNaN(Number(rawScore)) ? Number(rawScore) : null
+        const targetSubId = canonicalUnionIdBySubId.get(sub.id) ?? sub.id
+        subjectScores[targetSubId] = numericScore
         const subLabel =
           curriculum === 'theology'
             ? String(sub.subject_name_arabic || sub.subject_name || 'Subject')
@@ -505,17 +556,17 @@ export function computeHubCohortMetrics(params: {
           satCount++
           if (curriculum === 'secular') {
             if (clsIsNursery) {
-              subjectGrades[sub.id] = getNurseryGrade(numericScore).grade
+              subjectGrades[targetSubId] = getNurseryGrade(numericScore).grade
             } else {
               const gNum = getSubjectGradeNumber(numericScore, gradingConfig?.grading_scale)
-              subjectGrades[sub.id] = getGradeDisplay(gNum)
+              subjectGrades[targetSubId] = getGradeDisplay(gNum)
             }
             scoresForSecularAgg.push({ subject_name: String(sub.subject_name || ''), score: numericScore })
           } else {
-            subjectGrades[sub.id] = null
+            subjectGrades[targetSubId] = null
           }
         } else {
-          subjectGrades[sub.id] = null
+          subjectGrades[targetSubId] = null
           missingSubNames.push(subLabel)
         }
 

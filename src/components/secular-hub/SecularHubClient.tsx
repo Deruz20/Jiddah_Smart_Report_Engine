@@ -216,6 +216,7 @@ export default function SecularHubClient({
   const [searchQuery, setSearchQuery] = useState('')
   const [divisionFilter, setDivisionFilter] = useState<string>('all')
   const [showGrades, setShowGrades] = useState(true)
+  const [showExcludedCandidates, setShowExcludedCandidates] = useState(false)
 
   // Advanced print & broadsheet customization state (persisted locally)
   const [printConfig, setPrintConfig] = useState<BroadsheetPrintConfig>(() =>
@@ -564,9 +565,17 @@ export default function SecularHubClient({
 
   const top10Data = cohortMetrics.top10
 
-  // Filtered students for search & division
+  const excludedCandidateRowsCount = useMemo(
+    () => assessmentData.students.filter((st) => st.isCandidateExcluded).length,
+    [assessmentData.students]
+  )
+
+  // Filtered students for search, division, and candidate exclusion in Section view
   const filteredStudents = useMemo(() => {
     return assessmentData.students.filter((st) => {
+      if (isSectionMode && !showExcludedCandidates && st.isCandidateExcluded) {
+        return false
+      }
       const q = searchQuery.toLowerCase().trim()
       const matchesSearch =
         !q ||
@@ -585,7 +594,7 @@ export default function SecularHubClient({
 
       return matchesSearch && matchesDiv
     })
-  }, [assessmentData.students, searchQuery, divisionFilter, isNursery])
+  }, [assessmentData.students, searchQuery, divisionFilter, isNursery, isSectionMode, showExcludedCandidates])
 
   const printStudents = useMemo(
     () => prepareBroadsheetStudents(assessmentData.students, filteredStudents, printConfig),
@@ -753,12 +762,12 @@ export default function SecularHubClient({
       <div className="print:hidden shrink-0 px-2 sm:px-4 lg:px-6 pt-2 pb-0 w-full max-w-[1920px] mx-auto">
         <div
           data-testid="secular-hub-banner"
-          className="w-full h-auto py-2 sm:py-0 sm:h-12 bg-white dark:bg-[#151D1A] rounded-2xl px-2.5 sm:px-3 border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 shadow-2xs"
+          className="w-full h-auto py-2 sm:py-1.5 xl:py-0 sm:min-h-12 xl:h-12 bg-white dark:bg-[#151D1A] rounded-2xl px-2.5 sm:px-3 border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 flex flex-col sm:flex-row sm:flex-wrap xl:flex-nowrap sm:items-center sm:justify-between gap-1.5 2xl:gap-2 shadow-2xs"
         >
-          {/* Row 1 (Mobile) / Left+Right Container */}
-          <div className="flex items-center justify-between gap-2 min-w-0 w-full sm:w-auto sm:flex-1">
+          {/* Row 1 (Mobile) / Left+Selectors Container */}
+          <div className="flex items-center justify-between gap-2 min-w-0 w-full sm:w-auto shrink-0">
             {/* Brand + Back (+ inline desktop selectors) */}
-            <div className="flex items-center gap-1.5 min-w-0 shrink">
+            <div className="flex items-center gap-1.5 min-w-0 shrink-0">
               <Link
                 href="/admin"
                 className="w-8 h-8 rounded-full flex items-center justify-center text-stone-500 dark:text-stone-400 hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer shrink-0"
@@ -772,22 +781,22 @@ export default function SecularHubClient({
                 <div className="w-6 h-6 rounded-lg bg-[#0D5C3A] flex items-center justify-center shrink-0">
                   <LayoutDashboard className="w-3.5 h-3.5 text-white" strokeWidth={2.25} />
                 </div>
-                <span className="inline sm:hidden xl:inline text-[11px] sm:text-xs font-black text-stone-800 dark:text-stone-100 tracking-tight whitespace-nowrap">
+                <span className="inline sm:hidden 2xl:inline text-[11px] sm:text-xs font-black text-stone-800 dark:text-stone-100 tracking-tight whitespace-nowrap">
                   Secular Hub
                 </span>
               </div>
 
-              <div className="hidden sm:block w-px h-5 bg-stone-200 dark:bg-white/10 mx-0.5 shrink-0" />
+              <div className="hidden 2xl:block w-px h-5 bg-stone-200 dark:bg-white/10 mx-0.5 shrink-0" />
 
               {/* Desktop inline selectors */}
-              <div className="hidden sm:flex items-center gap-1.5 min-w-0">
+              <div className="hidden sm:flex items-center gap-1.5 shrink-0">
                 <CustomPillSelect
                   id="secular-hub-term-select-desktop"
                   ariaLabel="Academic Term"
                   value={activeTermId}
                   onChange={(val) => setActiveTermId(val)}
                   options={termOptions}
-                  className="h-8 w-36 rounded-xl bg-stone-50 dark:bg-white/5 border border-stone-200 dark:border-white/10 text-xs font-semibold text-stone-800 dark:text-stone-100"
+                  className="h-8 w-auto min-w-[136px] rounded-xl bg-stone-50 dark:bg-white/5 border border-stone-200 dark:border-white/10 text-xs font-semibold text-stone-800 dark:text-stone-100 whitespace-nowrap"
                 />
 
                 <CustomPillSelect
@@ -798,7 +807,7 @@ export default function SecularHubClient({
                   onChange={handleSelectSection}
                   options={sectionOptions}
                   placeholder="Section..."
-                  className="h-8 w-36 rounded-xl bg-stone-50 dark:bg-white/5 border border-stone-200 dark:border-white/10 text-xs font-semibold text-stone-800 dark:text-stone-100"
+                  className="h-8 min-w-[154px] w-auto rounded-xl bg-stone-50 dark:bg-white/5 border border-stone-200 dark:border-white/10 text-xs font-semibold text-stone-800 dark:text-stone-100 whitespace-nowrap"
                 />
 
                 <CustomPillSelect
@@ -808,7 +817,7 @@ export default function SecularHubClient({
                   onChange={handleSelectClass}
                   options={classOptions}
                   placeholder="Select Class..."
-                  className="h-8 w-40 rounded-xl bg-stone-50 dark:bg-white/5 border border-stone-200 dark:border-white/10 text-xs font-semibold text-stone-800 dark:text-stone-100"
+                  className="h-8 min-w-[136px] max-w-[170px] w-auto rounded-xl bg-stone-50 dark:bg-white/5 border border-stone-200 dark:border-white/10 text-xs font-semibold text-stone-800 dark:text-stone-100 whitespace-nowrap"
                 />
               </div>
             </div>
@@ -861,8 +870,8 @@ export default function SecularHubClient({
             </div>
           </div>
 
-          {/* Mobile Row 2: 3-column selectors without overlap or clipping */}
-          <div className="grid sm:hidden grid-cols-3 gap-1.5 w-full">
+          {/* Mobile Row 2: 2-row readable selectors without truncation or clipping */}
+          <div className="grid sm:hidden grid-cols-2 gap-1.5 w-full">
             <CustomPillSelect
               id="secular-hub-term-select"
               ariaLabel="Academic Term"
@@ -889,13 +898,13 @@ export default function SecularHubClient({
               value={activeClassId}
               onChange={handleSelectClass}
               options={classOptions}
-              placeholder="Class..."
-              className="h-8 w-full min-w-0 rounded-xl bg-stone-50 dark:bg-white/5 border border-stone-200 dark:border-white/10 text-[11px] font-semibold text-stone-800 dark:text-stone-100"
+              placeholder="Select Class..."
+              className="col-span-2 h-8 w-full min-w-0 rounded-xl bg-stone-50 dark:bg-white/5 border border-stone-200 dark:border-white/10 text-[11px] font-semibold text-stone-800 dark:text-stone-100"
             />
           </div>
 
           {/* CENTER: Exam Phase + View Mode — hidden on mobile, shown sm+ */}
-          <div className="hidden sm:flex items-center gap-1.5 shrink-0">
+          <div className="hidden sm:flex items-center gap-1 shrink-0">
             {/* Exam Phase — inline pill group */}
             <div className="flex items-center bg-stone-100 dark:bg-white/5 rounded-full p-0.5 border border-stone-200/80 dark:border-white/10 gap-0.5">
               {(['bot', 'mot', 'eot'] as const).map((phase) => (
@@ -903,7 +912,7 @@ export default function SecularHubClient({
                   key={phase}
                   type="button"
                   onClick={() => setExamPhase(phase)}
-                  className={`h-7 px-2.5 rounded-full text-[11px] font-bold uppercase tracking-wide transition-all cursor-pointer ${
+                  className={`h-7 px-2 2xl:px-2.5 rounded-full text-[11px] font-bold uppercase tracking-wide transition-all cursor-pointer ${
                     examPhase === phase
                       ? phase === 'eot'
                         ? 'bg-[#0D5C3A] text-white shadow-xs'
@@ -921,7 +930,7 @@ export default function SecularHubClient({
               <button
                 type="button"
                 onClick={() => handleTabChange('assessment')}
-                className={`h-7 px-2.5 rounded-full flex items-center gap-1 text-[11px] font-bold transition-all cursor-pointer ${
+                className={`h-7 px-2 2xl:px-2.5 rounded-full flex items-center gap-1 text-[11px] font-bold transition-all cursor-pointer ${
                   activeTab === 'assessment'
                     ? 'bg-[#D97706] text-white shadow-xs'
                     : 'text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-white'
@@ -933,7 +942,7 @@ export default function SecularHubClient({
               <button
                 type="button"
                 onClick={() => handleTabChange('analysis')}
-                className={`h-7 px-2.5 rounded-full flex items-center gap-1 text-[11px] font-bold transition-all cursor-pointer ${
+                className={`h-7 px-2 2xl:px-2.5 rounded-full flex items-center gap-1 text-[11px] font-bold transition-all cursor-pointer ${
                   activeTab === 'analysis'
                     ? 'bg-[#D97706] text-white shadow-xs'
                     : 'text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-white'
@@ -945,7 +954,7 @@ export default function SecularHubClient({
               <button
                 type="button"
                 onClick={() => handleTabChange('top_students')}
-                className={`h-7 px-2.5 rounded-full flex items-center gap-1 text-[11px] font-bold transition-all cursor-pointer ${
+                className={`h-7 px-2 2xl:px-2.5 rounded-full flex items-center gap-1 text-[11px] font-bold transition-all cursor-pointer ${
                   activeTab === 'top_students'
                     ? 'bg-[#D97706] text-white shadow-xs'
                     : 'text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-white'
@@ -958,14 +967,15 @@ export default function SecularHubClient({
                 type="button"
                 data-testid="tab-detailed-report"
                 onClick={() => handleTabChange('detailed_report')}
-                className={`h-7 px-2.5 rounded-full flex items-center gap-1 text-[11px] font-bold transition-all cursor-pointer ${
+                className={`h-7 px-2 2xl:px-2.5 rounded-full flex items-center gap-1 text-[11px] font-bold transition-all cursor-pointer ${
                   activeTab === 'detailed_report'
                     ? 'bg-[#0F4D25] text-white shadow-xs'
                     : 'text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-white'
                 }`}
               >
                 <FileText className="w-3 h-3" strokeWidth={2.25} />
-                <span>Detailed Report</span>
+                <span className="2xl:hidden">Detailed</span>
+                <span className="hidden 2xl:inline">Detailed Report</span>
               </button>
             </div>
           </div>
@@ -996,10 +1006,11 @@ export default function SecularHubClient({
                 !assessmentData.students.length
               }
               title="Customize Sheet & Print Preview"
+              aria-label="Customize Sheet"
               className="h-8 px-2.5 rounded-full bg-[#D97706]/12 text-[#B45309] dark:bg-[#F59E0B]/20 dark:text-[#FCD34D] border border-[#D97706]/30 hover:bg-[#D97706]/20 dark:hover:bg-[#F59E0B]/30 text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer transition disabled:opacity-40 shrink-0 focus:outline-none focus:ring-2 focus:ring-[#D97706]"
             >
               <Sliders className="size-3.5" />
-              <span className="hidden xl:inline font-bold text-[11px]">Customize</span>
+              <span className="hidden 2xl:inline font-bold text-[11px]">Customize</span>
             </button>
 
             <button
@@ -1091,6 +1102,45 @@ export default function SecularHubClient({
         </div>
       </div>
 
+      {/* 1-Click Quick-Filter Class Pills when a Section is active (visible on all viewports) */}
+      {activeSectionId && (sectionMapping.bySection[activeSectionId] || []).length > 0 && (
+        <div className="print:hidden shrink-0 w-full max-w-[1920px] mx-auto px-2 sm:px-4 lg:px-6 pb-2 pt-1.5">
+          <div
+            data-testid="secular-section-quick-pills"
+            className="flex items-center gap-1.5 overflow-x-auto scrollbar-none border-t border-stone-200/70 dark:border-white/10 pt-1.5"
+          >
+            <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 shrink-0 mr-1">
+              {activeSectionObj?.label || activeSectionId}:
+            </span>
+            <button
+              type="button"
+              onClick={() => handleSelectClass('')}
+              className={`h-6.5 px-2.5 rounded-full text-[11px] font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
+                activeClassId === ''
+                  ? 'bg-[#0D5C3A] text-white shadow-xs'
+                  : 'bg-stone-100 dark:bg-white/5 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-white/10'
+              }`}
+            >
+              All {activeSectionObj?.label || 'Section'}
+            </button>
+            {(sectionMapping.bySection[activeSectionId] || []).map((cls) => (
+              <button
+                key={cls.id}
+                type="button"
+                onClick={() => handleSelectClass(cls.id)}
+                className={`h-6.5 px-2.5 rounded-full text-[11px] font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
+                  activeClassId === cls.id
+                    ? 'bg-[#0D5C3A] text-white shadow-xs'
+                    : 'bg-stone-100 dark:bg-white/5 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-white/10'
+                }`}
+              >
+                {cls.class_name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ======================================================== */}
       {/* 2. MAIN WORKSPACE AREA */}
       {/* ======================================================== */}
@@ -1175,6 +1225,10 @@ export default function SecularHubClient({
                   rankingMethodLabelArabic={cohortMetrics.rankingMethodLabelArabic}
                   isNormalizedRanking={cohortMetrics.isNormalizedRanking}
                   showRankingMethod={isSectionMode || cohortMetrics.missingMarksList.length > 0}
+                  isSectionMode={isSectionMode}
+                  excludedRowsCount={excludedCandidateRowsCount}
+                  showExcludedCandidates={showExcludedCandidates}
+                  onToggleShowExcludedCandidates={() => setShowExcludedCandidates((prev) => !prev)}
                 />
 
                 {/* Search, Filter & Quick-Stats Strip */}
@@ -1236,22 +1290,22 @@ export default function SecularHubClient({
 
                 {/* Broadsheet Container with Full-Viewport Flex Height */}
                 <div className="flex-1 min-h-0 rounded-2xl border border-[#0D5C3A]/15 dark:border-white/10 bg-white dark:bg-[#151F1B] shadow-xs overflow-hidden flex flex-col">
-                  <div className="overflow-x-auto overflow-y-auto flex-1 min-h-0">
+                  <div className="overflow-x-auto overflow-y-auto flex-1 min-h-0 pb-16">
                     <table className="w-full text-left border-collapse text-xs">
                       {/* Table Header */}
-                      <thead className="sticky top-0 z-10 bg-stone-100/90 dark:bg-[#1A2621]/90 backdrop-blur-md text-stone-700 dark:text-stone-200 border-b border-stone-200 dark:border-white/10">
+                      <thead className="sticky top-0 z-30 bg-stone-100 dark:bg-[#1A2621] text-stone-700 dark:text-stone-200 border-b border-stone-200 dark:border-white/10">
                         <tr>
-                          <th className="sticky top-0 left-0 z-30 bg-stone-100 dark:bg-[#1A2621] py-2.5 px-1.5 sm:px-3 font-extrabold text-[10px] sm:text-[11px] uppercase tracking-wider text-center w-10 sm:w-12 min-w-[40px] sm:min-w-[48px] max-w-[40px] sm:max-w-[48px] border-r border-stone-200 dark:border-white/10">
+                          <th className="sticky top-0 left-0 z-40 bg-stone-100 dark:bg-[#1A2621] py-2.5 px-1.5 sm:px-3 font-extrabold text-[10px] sm:text-[11px] uppercase tracking-wider text-center w-10 sm:w-12 min-w-[40px] sm:min-w-[48px] max-w-[40px] sm:max-w-[48px] border-r border-stone-200 dark:border-white/10">
                             #
                           </th>
-                          <th className="sticky top-0 left-10 sm:left-12 z-30 bg-stone-100 dark:bg-[#1A2621] py-2.5 px-2 sm:px-3 font-extrabold text-[10px] sm:text-[11px] uppercase tracking-wider min-w-[130px] sm:min-w-[200px] border-r border-stone-200 dark:border-white/10">
+                          <th className="sticky top-0 left-10 sm:left-12 z-40 bg-stone-100 dark:bg-[#1A2621] py-2.5 px-2 sm:px-3 font-extrabold text-[10px] sm:text-[11px] uppercase tracking-wider min-w-[130px] sm:min-w-[200px] border-r border-stone-200 dark:border-white/10">
                             Student Name &amp; ID
                           </th>
                           {assessmentData.orderedSubjects.map((sub) => (
                             <th
                               key={sub.id}
                               colSpan={showGrades ? 2 : 1}
-                              className="py-2.5 px-2 font-bold text-[11px] text-center border-r border-stone-200 dark:border-white/10 min-w-[90px]"
+                              className="bg-stone-100 dark:bg-[#1A2621] py-2.5 px-2 font-bold text-[11px] text-center border-r border-stone-200 dark:border-white/10 min-w-[90px]"
                             >
                               <div className="font-extrabold text-[#0D5C3A] dark:text-emerald-400">
                                 {sub.subject_name}
@@ -1261,38 +1315,38 @@ export default function SecularHubClient({
                               </div>
                             </th>
                           ))}
-                          <th className="py-2.5 px-2.5 font-black text-[11px] text-center bg-stone-200/50 dark:bg-white/5 border-r border-stone-200 dark:border-white/10 min-w-[70px]">
+                          <th className="py-2.5 px-2.5 font-black text-[11px] text-center bg-stone-200 dark:bg-[#22312B] border-r border-stone-200 dark:border-white/10 min-w-[70px]">
                             Total
                           </th>
                           {cohortMetrics.isNormalizedRanking && !isNursery && (
-                            <th className="py-2.5 px-2 font-black text-[11px] text-center bg-emerald-50/70 dark:bg-emerald-950/30 text-[#0F4D25] dark:text-emerald-300 border-r border-stone-200 dark:border-white/10 min-w-[65px]">
+                            <th className="py-2.5 px-2 font-black text-[11px] text-center bg-emerald-50 dark:bg-[#182E25] text-[#0F4D25] dark:text-emerald-300 border-r border-stone-200 dark:border-white/10 min-w-[65px]">
                               Avg %
                             </th>
                           )}
                           {!isNursery && (
                             <>
-                              <th className="py-2.5 px-2 font-black text-[11px] text-center bg-stone-200/50 dark:bg-white/5 border-r border-stone-200 dark:border-white/10 min-w-[60px]">
+                              <th className="py-2.5 px-2 font-black text-[11px] text-center bg-stone-200 dark:bg-[#22312B] border-r border-stone-200 dark:border-white/10 min-w-[60px]">
                                 Agg
                               </th>
-                              <th className="py-2.5 px-2 font-black text-[11px] text-center bg-stone-200/50 dark:bg-white/5 border-r border-stone-200 dark:border-white/10 min-w-[60px]">
+                              <th className="py-2.5 px-2 font-black text-[11px] text-center bg-stone-200 dark:bg-[#22312B] border-r border-stone-200 dark:border-white/10 min-w-[60px]">
                                 Div
                               </th>
                             </>
                           )}
                           {isNursery && (
                             <>
-                              <th className="py-2.5 px-2 font-black text-[11px] text-center bg-stone-200/50 dark:bg-white/5 border-r border-stone-200 dark:border-white/10 min-w-[60px]">
+                              <th className="py-2.5 px-2 font-black text-[11px] text-center bg-stone-200 dark:bg-[#22312B] border-r border-stone-200 dark:border-white/10 min-w-[60px]">
                                 Average
                               </th>
-                              <th className="py-2.5 px-2 font-black text-[11px] text-center bg-stone-200/50 dark:bg-white/5 border-r border-stone-200 dark:border-white/10 min-w-[60px]">
+                              <th className="py-2.5 px-2 font-black text-[11px] text-center bg-stone-200 dark:bg-[#22312B] border-r border-stone-200 dark:border-white/10 min-w-[60px]">
                                 Grade
                               </th>
                             </>
                           )}
-                          <th className="py-2.5 px-2.5 font-black text-[11px] text-center bg-amber-500/10 dark:bg-amber-400/10 text-amber-800 dark:text-amber-300 min-w-[55px]">
+                          <th className="py-2.5 px-2.5 font-black text-[11px] text-center bg-amber-50 dark:bg-[#2B2618] text-amber-800 dark:text-amber-300 min-w-[55px]">
                             Rank
                           </th>
-                          <th className="py-2.5 px-2 text-center text-[10px] uppercase font-bold text-stone-400 min-w-[60px]">
+                          <th className="py-2.5 px-2 text-center text-[10px] uppercase font-bold bg-stone-100 dark:bg-[#1A2621] text-stone-400 min-w-[60px]">
                             Report
                           </th>
                         </tr>
@@ -1456,14 +1510,14 @@ export default function SecularHubClient({
 
                       {/* Pinned Summary Statistics Footer */}
                       {broadsheetSummary && (
-                        <tfoot className="sticky bottom-0 z-10 bg-stone-100 dark:bg-[#1A2621] font-bold text-stone-800 dark:text-stone-200 border-t-2 border-[#0D5C3A]/30">
-                          {/* Row 1: Class Averages */}
+                        <tfoot className="sticky bottom-0 z-20 bg-stone-100 dark:bg-[#1A2621] font-bold text-stone-800 dark:text-stone-200 border-t-2 border-[#0D5C3A]/30">
+                          {/* Row 1: Class/Section Averages */}
                           <tr>
                             <td
                               colSpan={2}
-                              className="sticky left-0 bottom-0 z-30 bg-stone-100 dark:bg-[#1A2621] py-2 px-2 sm:px-3 text-right text-[10px] sm:text-[11px] uppercase tracking-wider font-extrabold text-[#0D5C3A] dark:text-emerald-400 border-r border-stone-200 dark:border-white/10"
+                              className="sticky left-0 z-30 bg-stone-100 dark:bg-[#1A2621] py-2 px-2 sm:px-3 text-right text-[10px] sm:text-[11px] uppercase tracking-wider font-extrabold text-[#0D5C3A] dark:text-emerald-400 border-r border-stone-200 dark:border-white/10"
                             >
-                              Class Average
+                              {isSectionMode ? 'Section Average' : 'Class Average'}
                             </td>
                             {assessmentData.orderedSubjects.map((sub) => {
                               const stat = broadsheetSummary.subjectStats[sub.id]
@@ -1501,7 +1555,7 @@ export default function SecularHubClient({
                           <tr className="text-stone-600 dark:text-stone-400 text-[10px]">
                             <td
                               colSpan={2}
-                              className="sticky left-0 bottom-0 z-30 bg-stone-100 dark:bg-[#1A2621] py-1.5 px-2 sm:px-3 text-right uppercase tracking-wider font-bold border-r border-stone-200 dark:border-white/10"
+                              className="sticky left-0 z-30 bg-stone-100 dark:bg-[#1A2621] py-1.5 px-2 sm:px-3 text-right uppercase tracking-wider font-bold border-r border-stone-200 dark:border-white/10"
                             >
                               Pass Rate (≥50%)
                             </td>

@@ -85,6 +85,10 @@ export function HubDataQualityBanners({
   rankingMethodLabelArabic,
   isNormalizedRanking,
   showRankingMethod = true,
+  isSectionMode = false,
+  excludedRowsCount = 0,
+  showExcludedCandidates = false,
+  onToggleShowExcludedCandidates,
 }: {
   curriculum: HubCurriculum
   fetchError?: string | null
@@ -95,6 +99,10 @@ export function HubDataQualityBanners({
   rankingMethodLabelArabic: string
   isNormalizedRanking: boolean
   showRankingMethod?: boolean
+  isSectionMode?: boolean
+  excludedRowsCount?: number
+  showExcludedCandidates?: boolean
+  onToggleShowExcludedCandidates?: () => void
 }) {
   const isArabic = curriculum === 'theology'
 
@@ -145,15 +153,37 @@ export function HubDataQualityBanners({
         <div
           data-testid="section-candidate-exclusion-notice"
           role="status"
-          className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-[#E7E5E4] dark:border-white/10 bg-[#FAF7F2] dark:bg-[#151F1B] text-[#1C1917] dark:text-stone-200 text-xs"
+          className="flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 rounded-xl border border-[#E7E5E4] dark:border-white/10 bg-[#FAF7F2] dark:bg-[#151F1B] text-[#1C1917] dark:text-stone-200 text-xs"
         >
-          <Info className="w-3.5 h-3.5 shrink-0 text-[#0F4D25] dark:text-emerald-400" strokeWidth={2.25} />
-          <span>
-            <strong className="font-bold">{CANDIDATE_NA_BADGE}:</strong>{' '}
-            {isArabic
-              ? `تم استبعاد ${candidateExclusions.map((c) => c.className).join('، ')} من متوسطات وترتيب ونقص نهاية الفترة الثالثة.`
-              : `${candidateExclusions.map((c) => c.className).join(', ')} excluded from Term 3 EOT ranks, averages, completion %, and missing-marks alerts.`}
-          </span>
+          <div className="flex items-center gap-2 min-w-0">
+            <Info className="w-3.5 h-3.5 shrink-0 text-[#0F4D25] dark:text-emerald-400" strokeWidth={2.25} />
+            <span>
+              <strong className="font-bold">{CANDIDATE_NA_BADGE}:</strong>{' '}
+              {isArabic
+                ? `تم استبعاد ${candidateExclusions.map((c) => c.className).join('، ')} من متوسطات وترتيب ونقص نهاية الفترة الثالثة.`
+                : `${candidateExclusions.map((c) => c.className).join(', ')} excluded from Term 3 EOT ranks, averages, completion %, and missing-marks alerts.`}
+            </span>
+          </div>
+          {isSectionMode && excludedRowsCount > 0 && onToggleShowExcludedCandidates && (
+            <button
+              type="button"
+              data-testid="toggle-excluded-candidates-btn"
+              onClick={onToggleShowExcludedCandidates}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition cursor-pointer shrink-0 ${
+                showExcludedCandidates
+                  ? 'bg-[#0D5C3A] text-white border-[#0D5C3A]'
+                  : 'bg-white dark:bg-white/5 text-[#0F4D25] dark:text-emerald-300 border-[#0D5C3A]/25 hover:bg-[#0D5C3A]/10'
+              }`}
+            >
+              {isArabic
+                ? showExcludedCandidates
+                  ? `إخفاء ${formatDigits(excludedRowsCount, true)} تلاميذ (${candidateExclusions.map((c) => c.className).join('، ')})`
+                  : `${candidateExclusions.map((c) => c.className).join('، ')} مستبعد من EOT (إظهار ${formatDigits(excludedRowsCount, true)} صفوف)`
+                : showExcludedCandidates
+                  ? `Hide ${excludedRowsCount} ${candidateExclusions.map((c) => c.className).join('/')} candidate rows`
+                  : `${candidateExclusions.map((c) => c.className).join('/')} excluded from Term 3 EOT (Show ${excludedRowsCount} ${candidateExclusions.map((c) => c.className).join('/')} rows)`}
+            </button>
+          )}
         </div>
       )}
 

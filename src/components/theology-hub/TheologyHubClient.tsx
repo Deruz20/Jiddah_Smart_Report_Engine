@@ -213,6 +213,7 @@ export default function TheologyHubClient({
 
   const [searchQuery, setSearchQuery] = useState('')
   const [divisionFilter, setDivisionFilter] = useState<string>('all')
+  const [showExcludedCandidates, setShowExcludedCandidates] = useState(false)
 
   // Document customization & advanced print layout state (persisted locally)
   const [printConfig, setPrintConfig] = useState<BroadsheetPrintConfig>(() =>
@@ -298,7 +299,7 @@ export default function TheologyHubClient({
       { value: '', label: 'All Sections (Class)' },
       ...configuredSections.map((sec) => ({
         value: sec.id,
-        label: `${sec.label} (${sec.label_arabic})`,
+        label: sec.label,
         count: sectionMapping.bySection[sec.id].length,
       })),
     ],
@@ -309,7 +310,7 @@ export default function TheologyHubClient({
     if (activeSectionId) {
       const sectionClasses = sectionMapping.bySection[activeSectionId] || []
       return [
-        { value: '', label: `جميع فصول ${activeSectionObj?.label_arabic || activeSectionObj?.label || 'القسم'} (${toArabicNumerals(sectionClasses.length)})` },
+        { value: '', label: `جميع الفصول (${toArabicNumerals(sectionClasses.length)})` },
         ...sectionClasses.map((t) => ({
           value: t.id,
           label: t.class_name_arabic || t.class_name_english,
@@ -566,9 +567,17 @@ export default function TheologyHubClient({
     [cohortMetrics]
   )
 
-  // Filtered students for search & theology grade filter
+  const excludedCandidateRowsCount = useMemo(
+    () => assessmentData.students.filter((st) => st.isCandidateExcluded).length,
+    [assessmentData.students]
+  )
+
+  // Filtered students for search, theology grade filter, and candidate exclusion
   const filteredStudents = useMemo(() => {
     return assessmentData.students.filter((st) => {
+      if (isSectionMode && !showExcludedCandidates && st.isCandidateExcluded) {
+        return false
+      }
       const q = searchQuery.toLowerCase().trim()
       const matchesSearch =
         !q ||
@@ -584,7 +593,7 @@ export default function TheologyHubClient({
 
       return matchesSearch && matchesGrade
     })
-  }, [assessmentData.students, searchQuery, divisionFilter])
+  }, [assessmentData.students, searchQuery, divisionFilter, isSectionMode, showExcludedCandidates])
 
   const broadsheetSummary = useMemo(
     () => (assessmentData.students.length > 0 && assessmentData.orderedSubjects.length > 0 ? cohortMetrics.summary : null),
@@ -732,12 +741,12 @@ export default function TheologyHubClient({
       <div className="print:hidden shrink-0 px-2 sm:px-4 lg:px-6 pt-2 pb-0 w-full max-w-[1920px] mx-auto">
         <div
           data-testid="theology-hub-banner"
-          className="w-full h-auto py-2 sm:py-0 sm:h-12 bg-white dark:bg-[#151D1A] rounded-2xl px-2.5 sm:px-3 border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 shadow-2xs"
+          className="w-full h-auto py-2 sm:py-1.5 xl:py-0 sm:min-h-12 xl:h-12 bg-white dark:bg-[#151D1A] rounded-2xl px-2.5 sm:px-3 border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 flex flex-col sm:flex-row sm:flex-wrap xl:flex-nowrap sm:items-center sm:justify-between gap-1.5 2xl:gap-2 shadow-2xs"
         >
-          {/* Row 1 (Mobile) / Left+Right Container */}
-          <div className="flex items-center justify-between gap-2 min-w-0 w-full sm:w-auto sm:flex-1">
+          {/* Row 1 (Mobile) / Left+Selectors Container */}
+          <div className="flex items-center justify-between gap-2 min-w-0 w-full sm:w-auto shrink-0">
             {/* Brand + Back (+ inline desktop selectors) */}
-            <div className="flex items-center gap-1.5 min-w-0 shrink">
+            <div className="flex items-center gap-1.5 min-w-0 shrink-0">
               <Link
                 href="/admin"
                 className="w-8 h-8 rounded-full flex items-center justify-center text-stone-500 dark:text-stone-400 hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer shrink-0"
@@ -751,22 +760,22 @@ export default function TheologyHubClient({
                 <div className="w-6 h-6 rounded-lg bg-[#0D5C3A] flex items-center justify-center shrink-0">
                   <BookOpen className="w-3.5 h-3.5 text-white" strokeWidth={2.25} />
                 </div>
-                <span className="inline sm:hidden xl:inline text-[11px] sm:text-xs font-black text-stone-800 dark:text-stone-100 tracking-tight whitespace-nowrap">
+                <span className="inline sm:hidden 2xl:inline text-[11px] sm:text-xs font-black text-stone-800 dark:text-stone-100 tracking-tight whitespace-nowrap">
                   Theology Hub
                 </span>
               </div>
 
-              <div className="hidden sm:block w-px h-5 bg-stone-200 dark:bg-white/10 mx-0.5 shrink-0" />
+              <div className="hidden 2xl:block w-px h-5 bg-stone-200 dark:bg-white/10 mx-0.5 shrink-0" />
 
               {/* Desktop inline selectors */}
-              <div className="hidden sm:flex items-center gap-1.5 min-w-0">
+              <div className="hidden sm:flex items-center gap-1.5 shrink-0">
                 <CustomPillSelect
                   id="theology-hub-term-select-desktop"
                   ariaLabel="Academic Term"
                   value={activeTermId}
                   onChange={(val) => setActiveTermId(val)}
                   options={termOptions}
-                  className="h-8 w-36 rounded-xl bg-stone-50 dark:bg-white/5 border border-stone-200 dark:border-white/10 text-xs font-semibold text-stone-800 dark:text-stone-100"
+                  className="h-8 w-auto min-w-[136px] rounded-xl bg-stone-50 dark:bg-white/5 border border-stone-200 dark:border-white/10 text-xs font-semibold text-stone-800 dark:text-stone-100 whitespace-nowrap"
                 />
 
                 <CustomPillSelect
@@ -777,7 +786,7 @@ export default function TheologyHubClient({
                   onChange={handleSelectSection}
                   options={sectionOptions}
                   placeholder="Section..."
-                  className="h-8 w-36 rounded-xl bg-stone-50 dark:bg-white/5 border border-stone-200 dark:border-white/10 text-xs font-semibold text-stone-800 dark:text-stone-100"
+                  className="h-8 min-w-[154px] w-auto rounded-xl bg-stone-50 dark:bg-white/5 border border-stone-200 dark:border-white/10 text-xs font-semibold text-stone-800 dark:text-stone-100 whitespace-nowrap"
                 />
 
                 <CustomPillSelect
@@ -787,7 +796,7 @@ export default function TheologyHubClient({
                   onChange={handleSelectClass}
                   options={classOptions}
                   placeholder="Select Class..."
-                  className="h-8 w-40 rounded-xl bg-stone-50 dark:bg-white/5 border border-stone-200 dark:border-white/10 text-xs font-semibold text-stone-800 dark:text-stone-100"
+                  className="h-8 min-w-[136px] max-w-[170px] w-auto rounded-xl bg-stone-50 dark:bg-white/5 border border-stone-200 dark:border-white/10 text-xs font-semibold text-stone-800 dark:text-stone-100 whitespace-nowrap"
                 />
               </div>
             </div>
@@ -840,8 +849,8 @@ export default function TheologyHubClient({
             </div>
           </div>
 
-          {/* Mobile Row 2: 3-column selectors without overlap or clipping */}
-          <div className="grid sm:hidden grid-cols-3 gap-1.5 w-full">
+          {/* Mobile Row 2: 2-row readable selectors without truncation or clipping */}
+          <div className="grid sm:hidden grid-cols-2 gap-1.5 w-full">
             <CustomPillSelect
               id="theology-hub-term-select"
               ariaLabel="Academic Term"
@@ -868,13 +877,13 @@ export default function TheologyHubClient({
               value={activeClassId}
               onChange={handleSelectClass}
               options={classOptions}
-              placeholder="Class..."
-              className="h-8 w-full min-w-0 rounded-xl bg-stone-50 dark:bg-white/5 border border-stone-200 dark:border-white/10 text-[11px] font-semibold text-stone-800 dark:text-stone-100"
+              placeholder="Select Class..."
+              className="col-span-2 h-8 w-full min-w-0 rounded-xl bg-stone-50 dark:bg-white/5 border border-stone-200 dark:border-white/10 text-[11px] font-semibold text-stone-800 dark:text-stone-100"
             />
           </div>
 
           {/* CENTER: Exam Phase + View Mode — hidden on mobile, shown sm+ */}
-          <div className="hidden sm:flex items-center gap-1.5 shrink-0">
+          <div className="hidden sm:flex items-center gap-1 shrink-0">
             {/* Exam Phase — inline pill group */}
             <div className="flex items-center bg-stone-100 dark:bg-white/5 rounded-full p-0.5 border border-stone-200/80 dark:border-white/10 gap-0.5">
               {(['bot', 'mot', 'eot'] as const).map((phase) => (
@@ -882,7 +891,7 @@ export default function TheologyHubClient({
                   key={phase}
                   type="button"
                   onClick={() => setExamPhase(phase)}
-                  className={`h-7 px-2.5 rounded-full text-[11px] font-bold uppercase tracking-wide transition-all cursor-pointer ${examPhase === phase
+                  className={`h-7 px-2 2xl:px-2.5 rounded-full text-[11px] font-bold uppercase tracking-wide transition-all cursor-pointer ${examPhase === phase
                     ? phase === 'eot'
                       ? 'bg-[#0D5C3A] text-white shadow-xs'
                       : 'bg-stone-700 text-white shadow-xs'
@@ -899,7 +908,7 @@ export default function TheologyHubClient({
               <button
                 type="button"
                 onClick={() => handleTabChange('assessment')}
-                className={`h-7 px-2.5 rounded-full flex items-center gap-1 text-[11px] font-bold transition-all cursor-pointer ${activeTab === 'assessment'
+                className={`h-7 px-2 2xl:px-2.5 rounded-full flex items-center gap-1 text-[11px] font-bold transition-all cursor-pointer ${activeTab === 'assessment'
                   ? 'bg-[#D97706] text-white shadow-xs'
                   : 'text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-white'
                   }`}
@@ -910,7 +919,7 @@ export default function TheologyHubClient({
               <button
                 type="button"
                 onClick={() => handleTabChange('analysis')}
-                className={`h-7 px-2.5 rounded-full flex items-center gap-1 text-[11px] font-bold transition-all cursor-pointer ${activeTab === 'analysis'
+                className={`h-7 px-2 2xl:px-2.5 rounded-full flex items-center gap-1 text-[11px] font-bold transition-all cursor-pointer ${activeTab === 'analysis'
                   ? 'bg-[#D97706] text-white shadow-xs'
                   : 'text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-white'
                   }`}
@@ -921,7 +930,7 @@ export default function TheologyHubClient({
               <button
                 type="button"
                 onClick={() => handleTabChange('top_students')}
-                className={`h-7 px-2.5 rounded-full flex items-center gap-1 text-[11px] font-bold transition-all cursor-pointer ${activeTab === 'top_students'
+                className={`h-7 px-2 2xl:px-2.5 rounded-full flex items-center gap-1 text-[11px] font-bold transition-all cursor-pointer ${activeTab === 'top_students'
                   ? 'bg-[#D97706] text-white shadow-xs'
                   : 'text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-white'
                   }`}
@@ -933,13 +942,14 @@ export default function TheologyHubClient({
                 type="button"
                 data-testid="tab-detailed-report"
                 onClick={() => handleTabChange('detailed_report')}
-                className={`h-7 px-2.5 rounded-full flex items-center gap-1 text-[11px] font-bold transition-all cursor-pointer ${activeTab === 'detailed_report'
+                className={`h-7 px-2 2xl:px-2.5 rounded-full flex items-center gap-1 text-[11px] font-bold transition-all cursor-pointer ${activeTab === 'detailed_report'
                   ? 'bg-[#0F4D25] text-white shadow-xs'
                   : 'text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-white'
                   }`}
               >
                 <FileText className="w-3 h-3" strokeWidth={2.25} />
-                <span>Detailed Report</span>
+                <span className="2xl:hidden">Detailed</span>
+                <span className="hidden 2xl:inline">Detailed Report</span>
               </button>
             </div>
           </div>
@@ -971,10 +981,11 @@ export default function TheologyHubClient({
                 !assessmentData.students.length
               }
               title="Customize Sheet & Print Preview"
+              aria-label="Customize Sheet"
               className="h-8 px-2.5 rounded-full bg-[#D97706]/12 text-[#B45309] dark:bg-[#F59E0B]/20 dark:text-[#FCD34D] border border-[#D97706]/30 hover:bg-[#D97706]/20 dark:hover:bg-[#F59E0B]/30 text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer transition disabled:opacity-40 shrink-0 focus:outline-none focus:ring-2 focus:ring-[#D97706]"
             >
               <Sliders className="size-3.5" />
-              <span className="hidden xl:inline font-bold text-[11px]">Customize</span>
+              <span className="hidden 2xl:inline font-bold text-[11px]">Customize</span>
             </button>
 
             <button
@@ -1061,6 +1072,46 @@ export default function TheologyHubClient({
         </div>
       </div>
 
+      {/* 1-Click Quick-Filter Class Pills when a Section is active (visible on all viewports) */}
+      {activeSectionId && (sectionMapping.bySection[activeSectionId] || []).length > 0 && (
+        <div className="print:hidden shrink-0 w-full max-w-[1920px] mx-auto px-2 sm:px-4 lg:px-6 pb-2 pt-1.5">
+          <div
+            data-testid="theology-section-quick-pills"
+            dir="rtl"
+            className="flex items-center gap-1.5 overflow-x-auto scrollbar-none border-t border-stone-200/70 dark:border-white/10 pt-1.5 font-arabic"
+          >
+            <span className="text-[10px] font-bold text-stone-400 shrink-0 ml-1">
+              {activeSectionObj?.label_arabic || activeSectionObj?.label || activeSectionId}:
+            </span>
+            <button
+              type="button"
+              onClick={() => handleSelectClass('')}
+              className={`h-6.5 px-2.5 rounded-full text-[11px] font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
+                activeClassId === ''
+                  ? 'bg-[#0D5C3A] text-white shadow-xs'
+                  : 'bg-stone-100 dark:bg-white/5 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-white/10'
+              }`}
+            >
+              جميع فصول {activeSectionObj?.label_arabic || 'القسم'}
+            </button>
+            {(sectionMapping.bySection[activeSectionId] || []).map((cls) => (
+              <button
+                key={cls.id}
+                type="button"
+                onClick={() => handleSelectClass(cls.id)}
+                className={`h-6.5 px-2.5 rounded-full text-[11px] font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
+                  activeClassId === cls.id
+                    ? 'bg-[#0D5C3A] text-white shadow-xs'
+                    : 'bg-stone-100 dark:bg-white/5 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-white/10'
+                }`}
+              >
+                {cls.class_name_arabic || cls.class_name_english}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ======================================================== */}
       {/* 2. MAIN WORKSPACE AREA */}
       {/* ======================================================== */}
@@ -1145,6 +1196,10 @@ export default function TheologyHubClient({
                   rankingMethodLabelArabic={cohortMetrics.rankingMethodLabelArabic}
                   isNormalizedRanking={cohortMetrics.isNormalizedRanking}
                   showRankingMethod={isSectionMode || cohortMetrics.missingMarksList.length > 0}
+                  isSectionMode={isSectionMode}
+                  excludedRowsCount={excludedCandidateRowsCount}
+                  showExcludedCandidates={showExcludedCandidates}
+                  onToggleShowExcludedCandidates={() => setShowExcludedCandidates((prev) => !prev)}
                 />
 
                 {/* Search & Filter strip — Arabic labels */}
@@ -1202,18 +1257,18 @@ export default function TheologyHubClient({
                   dir="rtl"
                   className="flex-1 min-h-0 rounded-2xl border border-[#0D5C3A]/15 dark:border-white/10 bg-white dark:bg-[#151F1B] shadow-xs overflow-hidden flex flex-col"
                 >
-                  <div className="overflow-x-auto overflow-y-auto flex-1 min-h-0">
+                  <div className="overflow-x-auto overflow-y-auto flex-1 min-h-0 pb-16">
                     <table className="w-full text-right border-collapse text-[12px]">
                       {/* ——— HEADER ——— */}
-                      <thead className="sticky top-0 z-10 bg-stone-50/95 dark:bg-[#1A2621]/95 backdrop-blur-md border-b-2 border-[#0D5C3A]/20 dark:border-white/10">
+                      <thead className="sticky top-0 z-30 bg-stone-50 dark:bg-[#1A2621] border-b-2 border-[#0D5C3A]/20 dark:border-white/10">
                         <tr>
                           {/* م — sticky right */}
-                          <th className="sticky top-0 right-0 z-30 bg-stone-50 dark:bg-[#1A2621] py-2.5 sm:py-3 px-1.5 sm:px-2 font-extrabold text-center w-8 sm:w-10 border-l border-stone-200 dark:border-white/10 text-stone-600 dark:text-stone-300 font-arabic text-[11px] sm:text-[12px]">
+                          <th className="sticky top-0 right-0 z-40 bg-stone-50 dark:bg-[#1A2621] py-2.5 sm:py-3 px-1.5 sm:px-2 font-extrabold text-center w-8 sm:w-10 border-l border-stone-200 dark:border-white/10 text-stone-600 dark:text-stone-300 font-arabic text-[11px] sm:text-[12px]">
                             م
                           </th>
 
                           {/* Student Name — sticky */}
-                          <th className="sticky top-0 right-8 sm:right-10 z-30 bg-stone-50 dark:bg-[#1A2621] py-2.5 sm:py-3 px-2 sm:px-4 font-extrabold text-right min-w-[130px] sm:min-w-[180px] border-l border-stone-200 dark:border-white/10 text-stone-700 dark:text-stone-200 font-arabic text-[11px] sm:text-[12px]">
+                          <th className="sticky top-0 right-8 sm:right-10 z-40 bg-stone-50 dark:bg-[#1A2621] py-2.5 sm:py-3 px-2 sm:px-4 font-extrabold text-right min-w-[130px] sm:min-w-[180px] border-l border-stone-200 dark:border-white/10 text-stone-700 dark:text-stone-200 font-arabic text-[11px] sm:text-[12px]">
                             اسم التلميذ/ة
                           </th>
 
@@ -1221,30 +1276,30 @@ export default function TheologyHubClient({
                           {assessmentData.orderedSubjects.map((sub) => (
                             <th
                               key={sub.id}
-                              className="py-2.5 sm:py-3 px-1.5 sm:px-3 font-extrabold text-center border-l border-stone-200 dark:border-white/10 min-w-[65px] sm:min-w-[80px] text-[#0D5C3A] dark:text-emerald-400 font-arabic text-[11px] sm:text-[12px] leading-tight"
+                              className="bg-stone-50 dark:bg-[#1A2621] py-2.5 sm:py-3 px-1.5 sm:px-3 font-extrabold text-center border-l border-stone-200 dark:border-white/10 min-w-[65px] sm:min-w-[80px] text-[#0D5C3A] dark:text-emerald-400 font-arabic text-[11px] sm:text-[12px] leading-tight"
                             >
                               {sub.subject_name_arabic || sub.subject_name}
                             </th>
                           ))}
 
                           {/* المجموع */}
-                          <th className="py-2.5 sm:py-3 px-1.5 sm:px-3 font-extrabold text-center border-l border-stone-200 dark:border-white/10 min-w-[60px] sm:min-w-[72px] bg-emerald-50/60 dark:bg-emerald-950/20 text-[#0D5C3A] dark:text-emerald-400 font-arabic text-[11px] sm:text-[12px]">
+                          <th className="py-2.5 sm:py-3 px-1.5 sm:px-3 font-extrabold text-center border-l border-stone-200 dark:border-white/10 min-w-[60px] sm:min-w-[72px] bg-emerald-50 dark:bg-[#182E25] text-[#0D5C3A] dark:text-emerald-400 font-arabic text-[11px] sm:text-[12px]">
                             المجموع
                           </th>
 
                           {cohortMetrics.isNormalizedRanking && (
-                            <th className="py-2.5 sm:py-3 px-1.5 sm:px-3 font-extrabold text-center border-l border-stone-200 dark:border-white/10 min-w-[60px] bg-emerald-50/40 dark:bg-emerald-950/15 text-[#0F4D25] dark:text-emerald-300 font-arabic text-[11px] sm:text-[12px]">
+                            <th className="py-2.5 sm:py-3 px-1.5 sm:px-3 font-extrabold text-center border-l border-stone-200 dark:border-white/10 min-w-[60px] bg-emerald-50 dark:bg-[#182E25] text-[#0F4D25] dark:text-emerald-300 font-arabic text-[11px] sm:text-[12px]">
                               المعدل ٪
                             </th>
                           )}
 
                           {/* الترتيب */}
-                          <th className="py-2.5 sm:py-3 px-1.5 sm:px-3 font-extrabold text-center border-l border-stone-200 dark:border-white/10 min-w-[50px] sm:min-w-[60px] bg-amber-50/50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-400 font-arabic text-[11px] sm:text-[12px]">
+                          <th className="py-2.5 sm:py-3 px-1.5 sm:px-3 font-extrabold text-center border-l border-stone-200 dark:border-white/10 min-w-[50px] sm:min-w-[60px] bg-amber-50 dark:bg-[#2B2618] text-amber-800 dark:text-amber-400 font-arabic text-[11px] sm:text-[12px]">
                             الترتيب
                           </th>
 
                           {/* الملاحظات */}
-                          <th className="py-2.5 sm:py-3 px-1.5 sm:px-3 font-extrabold text-center border-l border-stone-200 dark:border-white/10 min-w-[60px] sm:min-w-[72px] text-[#57534E] dark:text-stone-400 font-arabic text-[11px] sm:text-[12px]">
+                          <th className="bg-stone-50 dark:bg-[#1A2621] py-2.5 sm:py-3 px-1.5 sm:px-3 font-extrabold text-center border-l border-stone-200 dark:border-white/10 min-w-[60px] sm:min-w-[72px] text-[#57534E] dark:text-stone-400 font-arabic text-[11px] sm:text-[12px]">
                             الملاحظات
                           </th>
                         </tr>
@@ -1273,12 +1328,12 @@ export default function TheologyHubClient({
                               }}
                             >
                               {/* م — sticky */}
-                              <td className="sticky right-0 z-10 bg-white dark:bg-[#151F1B] group-hover:bg-stone-50/80 dark:group-hover:bg-[#1A2621]/80 py-2 sm:py-2.5 px-1.5 sm:px-2 text-center font-bold text-[#57534E] dark:text-stone-400 text-[11px] sm:text-[12px] border-l border-stone-100 dark:border-white/[0.04] w-8 sm:w-10 font-arabic">
+                              <td className="sticky right-0 z-10 bg-white dark:bg-[#151F1B] group-hover:bg-stone-50 dark:group-hover:bg-[#1A2621] py-2 sm:py-2.5 px-1.5 sm:px-2 text-center font-bold text-[#57534E] dark:text-stone-400 text-[11px] sm:text-[12px] border-l border-stone-100 dark:border-white/[0.04] w-8 sm:w-10 font-arabic">
                                 {String(idx + 1).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)])}
                               </td>
 
                               {/* اسم التلميذ/ة — sticky */}
-                              <td className="sticky right-8 sm:right-10 z-10 bg-white dark:bg-[#151F1B] group-hover:bg-stone-50/80 dark:group-hover:bg-[#1A2621]/80 py-2 sm:py-2.5 px-2 sm:px-4 text-right border-l border-stone-100 dark:border-white/[0.04] min-w-[130px] sm:min-w-[180px] max-w-[160px] sm:max-w-none">
+                              <td className="sticky right-8 sm:right-10 z-10 bg-white dark:bg-[#151F1B] group-hover:bg-stone-50 dark:group-hover:bg-[#1A2621] py-2 sm:py-2.5 px-2 sm:px-4 text-right border-l border-stone-100 dark:border-white/[0.04] min-w-[130px] sm:min-w-[180px] max-w-[160px] sm:max-w-none">
                                 <div className="font-extrabold text-[#1C1917] dark:text-stone-100 font-arabic text-[12px] sm:text-[13px] leading-tight truncate sm:whitespace-normal">
                                   {st.arabic_name || st.name}
                                 </div>
@@ -1359,13 +1414,13 @@ export default function TheologyHubClient({
 
                       {/* ——— FOOTER: Class averages + pass rate ——— */}
                       {broadsheetSummary && (
-                        <tfoot className="sticky bottom-0 z-10 bg-stone-100/95 dark:bg-[#1A2621]/95 backdrop-blur-md border-t-2 border-[#0D5C3A]/30 font-arabic">
+                        <tfoot className="sticky bottom-0 z-20 bg-stone-100 dark:bg-[#1A2621] border-t-2 border-[#0D5C3A]/30 font-arabic">
                           <tr className="text-[11px] font-extrabold text-stone-700 dark:text-stone-200">
                             <td
                               colSpan={2}
-                              className="sticky right-0 z-20 bg-stone-100 dark:bg-[#1A2621] py-2 px-2 sm:px-4 text-right text-[10px] sm:text-[11px] text-[#0D5C3A] dark:text-emerald-400 border-l border-stone-200 dark:border-white/10"
+                              className="sticky right-0 z-30 bg-stone-100 dark:bg-[#1A2621] py-2 px-2 sm:px-4 text-right text-[10px] sm:text-[11px] text-[#0D5C3A] dark:text-emerald-400 border-l border-stone-200 dark:border-white/10"
                             >
-                              متوسط الفصل
+                              {isSectionMode ? 'متوسط القسم' : 'متوسط الفصل'}
                             </td>
                             {assessmentData.orderedSubjects.map((sub) => {
                               const stat = broadsheetSummary.subjectStats[sub.id]
@@ -1396,7 +1451,7 @@ export default function TheologyHubClient({
                           <tr className="text-[10px] text-[#57534E] dark:text-stone-400">
                             <td
                               colSpan={2}
-                              className="sticky right-0 z-20 bg-stone-100 dark:bg-[#1A2621] py-1.5 px-2 sm:px-4 text-right border-l border-stone-200 dark:border-white/10 font-arabic"
+                              className="sticky right-0 z-30 bg-stone-100 dark:bg-[#1A2621] py-1.5 px-2 sm:px-4 text-right border-l border-stone-200 dark:border-white/10 font-arabic"
                             >
                               نسبة النجاح (٥٠٪ فأعلى)
                             </td>

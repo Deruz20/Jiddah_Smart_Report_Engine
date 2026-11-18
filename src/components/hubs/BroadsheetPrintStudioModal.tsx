@@ -19,6 +19,7 @@ import {
   type BroadsheetCurriculum,
   type BroadsheetPrintConfig,
   type BroadsheetStudentLike,
+  type BroadsheetTableStyle,
   getDefaultBroadsheetPrintConfig,
   prepareBroadsheetStudents,
 } from '@/lib/broadsheet-print-config'
@@ -393,7 +394,7 @@ export function BroadsheetPrintStudioModal({
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         type="button"
-                        onClick={() => update({ colorTheme: 'emerald' })}
+                        onClick={() => update({ colorTheme: 'emerald', tableStyle: config.tableStyle === 'toner_saver' ? 'clean_grid' : config.tableStyle })}
                         className={`py-2 px-2.5 rounded-xl border text-xs font-bold cursor-pointer transition ${
                           config.colorTheme === 'emerald'
                             ? 'border-[#0D5C3A] bg-emerald-50/80 text-[#0D5C3A]'
@@ -404,7 +405,7 @@ export function BroadsheetPrintStudioModal({
                       </button>
                       <button
                         type="button"
-                        onClick={() => update({ colorTheme: 'monochrome' })}
+                        onClick={() => update({ colorTheme: 'monochrome', tableStyle: 'toner_saver' })}
                         className={`py-2 px-2.5 rounded-xl border text-xs font-bold cursor-pointer transition ${
                           config.colorTheme === 'monochrome'
                             ? 'border-stone-900 bg-stone-100 text-stone-900'
@@ -413,6 +414,46 @@ export function BroadsheetPrintStudioModal({
                       >
                         Crisp B&amp;W (Ink-Saver)
                       </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-extrabold uppercase tracking-wider text-stone-500 mb-2">
+                      Table Border &amp; Sheet Style
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {([
+                        { id: 'double_border', label: 'Double-Border', sub: 'Formal ledger frame' },
+                        { id: 'clean_grid', label: 'Clean Grid', sub: 'Crisp uniform lines' },
+                        { id: 'zebra_banded', label: 'Zebra Banded', sub: 'Soft alternating rows' },
+                        { id: 'toner_saver', label: 'Toner-Saver B&W', sub: 'Minimal ink white header' },
+                      ] as { id: BroadsheetTableStyle; label: string; sub: string }[]).map((styleOpt) => (
+                        <button
+                          key={styleOpt.id}
+                          type="button"
+                          data-testid={`table-style-${styleOpt.id}`}
+                          onClick={() => {
+                            if (styleOpt.id === 'toner_saver') {
+                              update({ tableStyle: 'toner_saver', colorTheme: 'monochrome', zebraStripes: false })
+                            } else if (styleOpt.id === 'zebra_banded') {
+                              update({ tableStyle: 'zebra_banded', zebraStripes: true, colorTheme: 'emerald' })
+                            } else {
+                              update({
+                                tableStyle: styleOpt.id,
+                                colorTheme: config.colorTheme === 'monochrome' ? 'emerald' : config.colorTheme,
+                              })
+                            }
+                          }}
+                          className={`p-2 rounded-xl border text-left cursor-pointer transition ${
+                            (config.tableStyle || 'clean_grid') === styleOpt.id
+                              ? 'border-[#0D5C3A] bg-emerald-50/80 dark:bg-emerald-950/30 text-[#0D5C3A] dark:text-emerald-300'
+                              : 'border-stone-200 dark:border-white/10 text-stone-700 dark:text-stone-300'
+                          }`}
+                        >
+                          <div className="text-xs font-bold">{styleOpt.label}</div>
+                          <div className="text-[10px] text-stone-500 mt-0.5">{styleOpt.sub}</div>
+                        </button>
+                      ))}
                     </div>
                   </div>
 

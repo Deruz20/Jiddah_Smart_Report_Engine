@@ -1,4 +1,6 @@
-import { createClient } from '@/utils/supabase/server'
+import { createAdminClient, createClient } from '@/utils/supabase/server'
+import { getServiceRoleKey } from '@/lib/supabase-env'
+import { upsertAndVerifyMarks } from '@/lib/marks-write'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
@@ -178,42 +180,21 @@ export async function POST(request: NextRequest) {
     if (mot_score !== undefined) updateData.mot_score = parseScore(mot_score)
     if (eot_score !== undefined) updateData.eot_score = parseScore(eot_score)
 
-    // Check if record already exists to handle re-entry update gracefully
-    const { data: existing, error: existErr } = await supabase
-      .from('theology_marks')
-      .select('id')
-      .eq('enrollment_id', enrollment_id)
-      .eq('subject_id', subject_id)
-      .eq('term_id', term_id)
-      .maybeSingle()
-
-    if (existErr) {
-      console.error('Check existing error:', existErr)
+    const dbWriteClient = getServiceRoleKey() ? createAdminClient(cookieStore) : supabase
+    const upsertRow = {
+      enrollment_id,
+      subject_id,
+      term_id,
+      ...updateData,
     }
+    const writeRes = await upsertAndVerifyMarks(dbWriteClient, 'theology_marks', [upsertRow], {
+      enrollmentId: enrollment_id,
+      termId: term_id,
+    })
 
-    let result
-    if (existing) {
-      result = await supabase
-        .from('theology_marks')
-        .update(updateData)
-        .eq('id', existing.id)
-        .select()
-    } else {
-      const insertData = {
-        enrollment_id,
-        subject_id,
-        term_id,
-        ...updateData
-      }
-      result = await supabase
-        .from('theology_marks')
-        .insert([insertData])
-        .select()
-    }
-
-    if (result.error) {
-      console.error('Supabase error:', result.error)
-      return NextResponse.json({ error: result.error.message }, { status: 400 })
+    if (writeRes.error) {
+      console.error('Theology marks write error:', writeRes.error)
+      return NextResponse.json({ error: writeRes.error }, { status: 500 })
     }
 
     await recordActivity(supabase, user.id, 'Entered Theology Marks', {
@@ -233,7 +214,7 @@ export async function POST(request: NextRequest) {
       type: 'marks',
     })
 
-    return NextResponse.json({ data: result.data }, { status: existing ? 200 : 201 })
+    return NextResponse.json({ data: writeRes.persistedRows }, { status: 200 })
   } catch (err) {
     console.error('API error:', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

@@ -8,6 +8,7 @@ export const CANONICAL_ACCOUNT_ROLES = [
   'Head Teacher',
   'DOS Secular',
   'DOS Theology',
+  'Secretary',
   'Class Teacher',
 ] as const;
 
@@ -20,6 +21,7 @@ export const ALL_STAFF_ROLES = [
   'Deputy Head Teacher',
   'DOS Secular',
   'DOS Theology',
+  'Secretary',
   'Class Teacher',
   'Theology Instructor',
   'Support Staff',
@@ -174,6 +176,11 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<StaffRoleName, PermissionKey[]> = 
     'edit_class_teacher_remarks',
     'read_reports',
   ],
+  Secretary: [
+    'read_students',
+    'read_marks',
+    'read_reports',
+  ],
   'Support Staff': [],
 };
 
@@ -194,6 +201,7 @@ export function resolveStaffRoleKey(
   if (rl === 'dos secular' || rl === 'dos_secular' || rl.includes('dos')) {
     return 'DOS Secular';
   }
+  if (rl === 'secretary' || rl === 'school secretary' || rl === 'print secretary') return 'Secretary';
   if (rl === 'theology instructor' || rl === 'theology teacher' || rl === 'teacher theology') {
     return 'Theology Instructor';
   }
@@ -267,6 +275,9 @@ export function normalizeAccountRole(
   if (rl === 'dos secular' || rl === 'dos_secular' || rl.includes('dos')) {
     return 'DOS Secular';
   }
+  if (rl === 'secretary' || rl === 'school secretary' || rl === 'print secretary') {
+    return 'Secretary';
+  }
   return 'Class Teacher';
 }
 
@@ -278,7 +289,15 @@ export function resolveRoleDepartment(
   const rl = (role ?? '').trim().toLowerCase();
   const s = (subject ?? '').trim().toLowerCase();
 
-  if (rl === 'administrator' || rl === 'admin' || rl === 'principal' || rl.includes('head')) {
+  if (
+    rl === 'administrator' ||
+    rl === 'admin' ||
+    rl === 'principal' ||
+    rl.includes('head') ||
+    rl === 'secretary' ||
+    rl === 'school secretary' ||
+    rl === 'print secretary'
+  ) {
     return 'both';
   }
   if (rl === 'dos theology' || (rl.includes('dos') && (rl.includes('theology') || s === 'theology'))) {
@@ -536,6 +555,30 @@ export function authorizeTeacherProfile(
       isAuthorized: false,
       role,
       message: 'Unauthorized: Support Staff do not have access to academic records.',
+    };
+  }
+
+  if (rl === 'secretary' || rl === 'school secretary' || rl === 'print secretary') {
+    if (action === 'write' && !effectivePermissions.includes('write_marks')) {
+      return {
+        isAuthorized: false,
+        message: 'Unauthorized: Secretary has read-only QA & print access across departments.',
+        role,
+        canonicalRole: 'Secretary',
+        filterByDepartment: 'both',
+        teacherId,
+        specialPermissions,
+        effectivePermissions,
+      };
+    }
+    return {
+      isAuthorized: true,
+      role,
+      canonicalRole: 'Secretary',
+      filterByDepartment: 'both',
+      teacherId,
+      specialPermissions,
+      effectivePermissions,
     };
   }
 

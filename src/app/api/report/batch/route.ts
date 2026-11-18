@@ -33,7 +33,12 @@ import { fetchMergedSchoolSettings } from '@/lib/school-settings-helper'
 import { getMarkScore } from '@/lib/mark-scores'
 import { fetchAllSupabaseRows } from '@/lib/supabase-pagination'
 import { getReportSignatures } from '@/utils/signatures'
-import { resolveEquivalentTerms } from '@/lib/marks-reconciliation'
+import {
+  resolveEquivalentTerms,
+  fetchAndReconcileSecularMarks,
+  fetchAndReconcileTheologyMarks,
+  findReconciledMark,
+} from '@/lib/marks-reconciliation'
 import { applyRateLimit, rateLimitResponse } from '@/utils/rate-limit'
 import { z } from 'zod'
 
@@ -125,6 +130,7 @@ export async function POST(request: NextRequest) {
       'enrollments',
       `
         id,
+        student_id,
         academic_year,
         is_active,
         circular_class_id,
@@ -167,7 +173,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. Fetch term info
-    const { data: term, error: termError } = await supabase
+    const { data: term, error: termError } = await supabaseAdmin
       .from('terms')
       .select('id, academic_year, term_number, label, is_current, start_date, end_date, next_term_start')
       .eq('id', term_id)
@@ -182,10 +188,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Reconcile equivalent terms by academic_year and term_number
-    const termInfo = await resolveEquivalentTerms(supabase, term_id)
+    const termInfo = await resolveEquivalentTerms(supabaseAdmin, term_id)
     const termIds = termInfo.termIds
 
     const isTerm3 = term.term_number === 3
+    const requestedStudentIds = [...new Set(requestedEnrollments.map((e: any) => e.student_id || (Array.isArray(e.students) ? e.students[0]?.id : e.students?.id)).filter(Boolean))] as string[]
 
     // 3. Identify all circular classes involved to fetch ALL their students for accurate ranking
     const circularClassIds = [...new Set(requestedEnrollments.map(e => e.circular_class_id).filter(Boolean))]
@@ -200,11 +207,15 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    // Fetch circular subjects for these sections
+    // Fetch circular subjects for these sections (with circular_subjects fallback)
     const circularSubjectsCache: Record<string, any[]> = {}
     if (curriculum !== 'theology') {
       for (const st of Array.from(sectionTypes)) {
-        const { data: subs } = await supabaseAdmin.from('subjects').select('id, subject_name').eq('curriculum', 'secular').eq('section', st)
+        let { data: subs } = await supabaseAdmin.from('subjects').select('id, subject_name').eq('curriculum', 'secular').eq('section', st)
+        if (!subs || subs.length === 0) {
+          const { data: circSubs } = await supabaseAdmin.from('circular_subjects').select('id, subject_name').eq('section', st)
+          subs = circSubs || []
+        }
         circularSubjectsCache[st] = subs || []
       }
     }
@@ -219,29 +230,51 @@ export async function POST(request: NextRequest) {
       if (circularClassIds.length > 0) {
         const { data: classmates } = await supabaseAdmin
           .from('enrollments')
-          .select('id, circular_class_id, students!inner(id, is_archived)')
+          .select('id, student_id, circular_class_id, circular_classes(class_name, section), students!inner(id, is_archived)')
           .in('circular_class_id', circularClassIds)
           .eq('is_active', true)
           .eq('students.is_archived', false)
         if (classmates) allClassmates = classmates
       }
 
-      const allClassmateIds = allClassmates.map(c => c.id)
+      const allClassmateIds = [...new Set([...allClassmates.map(c => c.id), ...enrollment_ids])]
+      const allClassmateStudentIds = [...new Set([...allClassmates.map((c: any) => c.student_id).filter(Boolean), ...requestedStudentIds])] as string[]
 
-      // Fetch circular marks for EVERYONE in the class in chunks
-      if (allClassmateIds.length > 0) {
-        allCircularMarks = await fetchInChunks('circular_marks', '*', 'enrollment_id', allClassmateIds, (q) => q.in('term_id', termIds))
+      // Reconcile secular marks across equivalent terms, sibling enrollments, legacy marks, and canonical codes
+      if (allClassmateIds.length > 0 || allClassmateStudentIds.length > 0) {
+        allCircularMarks = await fetchAndReconcileSecularMarks(supabaseAdmin, {
+          enrollmentIds: allClassmateIds,
+          studentIds: allClassmateStudentIds,
+          termIds,
+          termAliases: termInfo.termAliases,
+          academicYear: term.academic_year,
+        })
       }
 
       // Compute rankings per class
       // classRankings[circular_class_id] = [ { enrollment_id, total } ] sorted by total DESC
       for (const cId of circularClassIds) {
         const classMembers = allClassmates.filter(c => c.circular_class_id === cId)
+        const firstCircClass = Array.isArray(classMembers[0]?.circular_classes) ? classMembers[0]?.circular_classes[0] : classMembers[0]?.circular_classes
+        const memberSectionType = resolveSectionType(firstCircClass?.section, firstCircClass?.class_name)
+        const memberSubjects = circularSubjectsCache[memberSectionType] || []
         const memberTotals: { id: string, total: number }[] = []
 
         for (const member of classMembers) {
-          const memberMarks = allCircularMarks.filter(m => m.enrollment_id === member.id)
-          const memberScores = memberMarks.map(m => getMarkScore(m, score_type))
+          const memberScores = memberSubjects.length > 0
+            ? memberSubjects.map((sub: any) => {
+                const rec = findReconciledMark(allCircularMarks, {
+                  studentId: member.student_id,
+                  enrollmentId: member.id,
+                  subjectId: sub.id,
+                  subjectName: sub.subject_name,
+                  curriculum: 'secular',
+                })
+                return getMarkScore(rec, score_type)
+              })
+            : allCircularMarks
+                .filter(m => m.enrollment_id === member.id || (member.student_id && m.student_id === member.student_id))
+                .map(m => getMarkScore(m, score_type))
           const hasMarks = memberScores.some(score => score !== null)
           if (hasMarks) {
             const eTotal = memberScores.reduce((sum, score) => sum + (score ?? 0), 0)
@@ -262,17 +295,27 @@ export async function POST(request: NextRequest) {
     const theologySubjectsCache: Record<string, any[]> = {}
     for (const lvl of theologyLevels) {
       if (!lvl) continue;
-      const { data: subs } = await supabaseAdmin.from('theology_subjects').select('id, subject_name_arabic').eq('level', lvl)
+      let { data: subs } = await supabaseAdmin.from('theology_subjects').select('id, subject_name_arabic').eq('level', lvl)
+      if (!subs || subs.length === 0) {
+        const { data: fallbackSubs } = await supabaseAdmin.from('subjects').select('id, subject_name').eq('curriculum', 'theology').eq('section', lvl)
+        subs = fallbackSubs?.map((s: any) => ({ id: s.id, subject_name_arabic: s.subject_name })) || []
+      }
       theologySubjectsCache[lvl] = subs?.map(s => ({ id: s.id, subject_name_arabic: s.subject_name_arabic })) || []
     }
 
-    // Fetch theology marks for requested enrollments in chunks
+    // Fetch reconciled theology marks for requested enrollments & classmates
     let requestedTheologyMarks: any[] = []
     let theologyRankings: Record<string, { id: string, total: number }[]> = {}
     const theologyClassSizes: Record<string, number> = {}
 
     if (requestedEnrollments.length > 0) {
-      requestedTheologyMarks = await fetchInChunks('theology_marks', '*', 'enrollment_id', enrollment_ids, (q) => q.in('term_id', termIds))
+      requestedTheologyMarks = await fetchAndReconcileTheologyMarks(supabaseAdmin, {
+        enrollmentIds: enrollment_ids,
+        studentIds: requestedStudentIds,
+        termIds,
+        termAliases: termInfo.termAliases,
+        academicYear: term.academic_year,
+      })
     }
 
     // If we are in theology mode or dual mode, we need theology class rankings.
@@ -280,25 +323,55 @@ export async function POST(request: NextRequest) {
     if (theologyClassIds.length > 0) {
       const { data: theoClassmates } = await supabaseAdmin
         .from('enrollments')
-        .select('id, theology_class_id, students!inner(id, is_archived)')
+        .select('id, student_id, theology_class_id, theology_classes(level), students!inner(id, is_archived)')
         .in('theology_class_id', theologyClassIds)
         .eq('is_active', true)
         .eq('students.is_archived', false)
 
       if (theoClassmates) {
         const allTheoClassmateIds = theoClassmates.map(c => c.id)
+        const allTheoClassmateStudentIds = theoClassmates.map((c: any) => c.student_id).filter(Boolean) as string[]
         let allTheoMarks: any[] = []
         if (allTheoClassmateIds.length > 0) {
-          allTheoMarks = await fetchInChunks('theology_marks', '*', 'enrollment_id', allTheoClassmateIds, (q) => q.in('term_id', termIds))
+          allTheoMarks = await fetchAndReconcileTheologyMarks(supabaseAdmin, {
+            enrollmentIds: allTheoClassmateIds,
+            studentIds: allTheoClassmateStudentIds,
+            termIds,
+            termAliases: termInfo.termAliases,
+            academicYear: term.academic_year,
+          })
+          // Merge classmate reconciled marks so downstream rows have full coverage too
+          const seenIds = new Set(requestedTheologyMarks.map((m: any) => `${m.enrollment_id || m.student_id}:${m.subject_id}`))
+          for (const tm of allTheoMarks) {
+            const k = `${tm.enrollment_id || tm.student_id}:${tm.subject_id}`
+            if (!seenIds.has(k)) {
+              requestedTheologyMarks.push(tm)
+              seenIds.add(k)
+            }
+          }
         }
 
         for (const tId of theologyClassIds) {
           const classMembers = theoClassmates.filter(c => c.theology_class_id === tId)
+          const firstTheoClass = Array.isArray(classMembers[0]?.theology_classes) ? classMembers[0]?.theology_classes[0] : classMembers[0]?.theology_classes
+          const tSubjects = firstTheoClass?.level ? (theologySubjectsCache[firstTheoClass.level] || []) : []
           const memberTotals: { id: string, total: number }[] = []
 
           for (const member of classMembers) {
-            const memberMarks = allTheoMarks.filter(m => m.enrollment_id === member.id)
-            const memberScores = memberMarks.map(m => getMarkScore(m, score_type))
+            const memberScores = tSubjects.length > 0
+              ? tSubjects.map((sub: any) => {
+                  const rec = findReconciledMark(allTheoMarks, {
+                    studentId: member.student_id,
+                    enrollmentId: member.id,
+                    subjectId: sub.id,
+                    subjectName: sub.subject_name_arabic,
+                    curriculum: 'theology',
+                  })
+                  return getMarkScore(rec, score_type)
+                })
+              : allTheoMarks
+                  .filter(m => m.enrollment_id === member.id || (member.student_id && m.student_id === member.student_id))
+                  .map(m => getMarkScore(m, score_type))
             const hasMarks = memberScores.some(score => score !== null)
             if (hasMarks) {
               const eTotal = memberScores.reduce((sum, score) => sum + (score ?? 0), 0)
@@ -358,10 +431,19 @@ export async function POST(request: NextRequest) {
       const sectionType = (section || className) ? resolveSectionType(section, className) : 'unknown'
 
       const circularSubjects = circularSubjectsCache[sectionType] || []
-      const eCircularMarks = allCircularMarks.filter(m => m.enrollment_id === enrollment.id)
+      const enrollmentStudentId = enrollment.student_id || studentData?.id || null
+      const eCircularMarks = allCircularMarks.filter(
+        m => m.enrollment_id === enrollment.id || (enrollmentStudentId && m.student_id === enrollmentStudentId)
+      )
 
       const circularRows = circularSubjects.map((subject: any) => {
-        const existing = eCircularMarks.find(m => m.subject_id === subject.id)
+        const existing = findReconciledMark(allCircularMarks, {
+          studentId: enrollmentStudentId,
+          enrollmentId: enrollment.id,
+          subjectId: subject.id,
+          subjectName: subject.subject_name,
+          curriculum: 'secular',
+        })
         const score = getMarkScore(existing, score_type)
         const numericScore = typeof score === 'number' ? score : null
 
@@ -483,10 +565,15 @@ export async function POST(request: NextRequest) {
       const theologyLevel = Array.isArray(enrollment.theology_classes) ? enrollment.theology_classes[0]?.level : (enrollment.theology_classes as any)?.level
       if (enrollment.theology_class_id && theologyLevel) {
         const tSubjects = theologySubjectsCache[theologyLevel] || []
-        const eTheoMarks = requestedTheologyMarks.filter(m => m.enrollment_id === enrollment.id)
 
         const theoRows = tSubjects.map(sub => {
-          const existing = eTheoMarks.find(m => m.subject_id === sub.id)
+          const existing = findReconciledMark(requestedTheologyMarks, {
+            studentId: enrollmentStudentId,
+            enrollmentId: enrollment.id,
+            subjectId: sub.id,
+            subjectName: sub.subject_name_arabic,
+            curriculum: 'theology',
+          })
           const score = getMarkScore(existing, score_type)
           const numericScore = typeof score === 'number' ? score : null
           const defaultGrade = numericScore !== null ? getTheologyGradeDisplay(numericScore, (schoolSettings as any)?.theology_grading_scale) : '—'

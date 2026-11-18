@@ -60,7 +60,11 @@ export function BroadsheetPrintDocument({
   forPreview = false,
 }: BroadsheetPrintDocumentProps) {
   const isTheology = curriculum === 'theology'
-  const isMono = config.colorTheme === 'monochrome'
+  const effectiveTableStyle = config.tableStyle || (config.colorTheme === 'monochrome' ? 'toner_saver' : 'clean_grid')
+  const isTonerSaver = effectiveTableStyle === 'toner_saver' || config.colorTheme === 'monochrome'
+  const isMono = isTonerSaver
+  const isDoubleBorder = effectiveTableStyle === 'double_border'
+  const useZebra = config.zebraStripes || effectiveTableStyle === 'zebra_banded'
   const tokens = getBroadsheetTypographyTokens(config.fontScale, config.density)
 
   const formatNum = (val: number | string | null | undefined): string => {
@@ -95,9 +99,9 @@ export function BroadsheetPrintDocument({
   const goldAccent = isMono ? '#475569' : '#C59B27'
   const headerBg = isMono ? '#E5E7EB' : '#0D5C3A'
   const headerFg = isMono ? '#0F172A' : '#FFFFFF'
-  const subHeaderBg = isMono ? '#F1F5F9' : '#14532D'
+  const subHeaderBg = effectiveTableStyle === 'toner_saver' ? '#FFFFFF' : isMono ? '#F1F5F9' : '#14532D'
   const subHeaderFg = isMono ? '#0F172A' : '#FFFFFF'
-  const metaBg = isMono ? '#F8FAFC' : '#F0F9F4'
+  const metaBg = effectiveTableStyle === 'toner_saver' ? '#FFFFFF' : isMono ? '#F8FAFC' : '#F0F9F4'
   const metaBorder = isMono ? '#CBD5E1' : '#B7DFC7'
   const zebraBg = isMono ? '#F3F4F6' : '#F4F9F6'
   const cellBorder = isMono ? '#4B5563' : '#64748B'
@@ -353,12 +357,13 @@ export function BroadsheetPrintDocument({
 
         {/* MAIN BROADSHEET TABLE — FLOWING MULTI-PAGE WITH REPEATING THEAD */}
         <table
+          data-table-style={effectiveTableStyle}
           style={{
             width: '100%',
             borderCollapse: 'collapse',
             fontSize: `${tokens.bodyFontPx}px`,
             lineHeight: tokens.lineHeight,
-            border: `2px solid ${borderStrong}`,
+            border: isDoubleBorder ? `3px double ${borderStrong}` : `1.5px solid ${borderStrong}`,
           }}
         >
           <thead style={{ display: 'table-header-group' }}>
@@ -514,7 +519,7 @@ export function BroadsheetPrintDocument({
 
           <tbody>
             {students.map((st, idx) => {
-              const rowBg = config.zebraStripes && idx % 2 === 1 ? zebraBg : '#FFFFFF'
+              const rowBg = useZebra && effectiveTableStyle !== 'toner_saver' && idx % 2 === 1 ? zebraBg : '#FFFFFF'
               const validSubjectCount = visibleSubjects.reduce(
                 (cnt, sub) => (st.subjectScores[sub.id] != null ? cnt + 1 : cnt),
                 0

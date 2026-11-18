@@ -51,6 +51,7 @@ export interface ResolvedUserScope {
   isPrincipal: boolean;
   isHeadTeacher: boolean;
   isDOS: boolean;
+  isSecretary: boolean;
   isTeacher: boolean;
   isClassTeacher: boolean;
   isSubjectTeacher: boolean;
@@ -162,6 +163,7 @@ export function resolveUserScope(input: UserScopeInput | AuthAccessResult): Reso
       isPrincipal: false,
       isHeadTeacher: false,
       isDOS: false,
+      isSecretary: false,
       isTeacher: false,
       isClassTeacher: false,
       isSubjectTeacher: false,
@@ -204,7 +206,8 @@ export function resolveUserScope(input: UserScopeInput | AuthAccessResult): Reso
   const isPrincipal = isPrincipalRole(rawRole) || canonicalRole === 'Principal';
   const isHeadTeacher = canonicalRole === 'Head Teacher';
   const isDOS = canonicalRole === 'DOS Secular' || canonicalRole === 'DOS Theology';
-  const isFullAccess = isAdmin || isPrincipal || isHeadTeacher || isDOS;
+  const isSecretary = canonicalRole === 'Secretary';
+  const isFullAccess = isAdmin || isPrincipal || isHeadTeacher || isDOS || isSecretary;
   const isTeacher = !isFullAccess && isTeacherLevelRole(rawRole);
 
   const effectivePermissions =
@@ -380,6 +383,7 @@ export function resolveUserScope(input: UserScopeInput | AuthAccessResult): Reso
     isPrincipal,
     isHeadTeacher,
     isDOS,
+    isSecretary,
     isTeacher,
     isClassTeacher,
     isSubjectTeacher,
@@ -413,7 +417,7 @@ export function resolveUserScope(input: UserScopeInput | AuthAccessResult): Reso
     canViewStaff: permSet.has('view_staff') || permSet.has('manage_users'),
     canManageTeachers: permSet.has('manage_users'),
     canManageSettings: permSet.has('manage_settings'),
-    canManageUploads: isAdmin || isPrincipal || isHeadTeacher || isDOS || isClassTeacher || isTeacher,
+    canManageUploads: isAdmin || isPrincipal || isHeadTeacher || isDOS || isSecretary || isClassTeacher || isTeacher,
     canViewAuditLogs: permSet.has('view_activity_logs'),
   };
 }

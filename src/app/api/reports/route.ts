@@ -1,4 +1,4 @@
-import { createClient } from '@/utils/supabase/server'
+import { createAdminClient, createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { getSubjectGradeNumber } from '@/lib/grading'
@@ -44,8 +44,10 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ data: [] }))
     }
 
+    const supabaseAdmin = createAdminClient(cookieStore)
+
     // 1. Fetch Student & Class info
-    const { data: studentArr, error: studentError } = await supabase
+    const { data: studentArr, error: studentError } = await supabaseAdmin
       .from('students')
       .select(`
         id, 
@@ -87,14 +89,24 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 2. Fetch Term info
-    const { data: term, error: termError } = await supabase
+    // 2. Fetch Term info (check academic_terms then fallback to terms)
+    let { data: term, error: termError } = await supabaseAdmin
       .from('academic_terms')
       .select('*')
       .eq('id', term_id)
-      .single()
+      .maybeSingle()
 
-    if (termError) throw new Error('Term not found')
+    if (!term && term_id) {
+      const { data: modernTerm } = await supabaseAdmin
+        .from('terms')
+        .select('*')
+        .eq('id', term_id)
+        .maybeSingle()
+      term = modernTerm
+    }
+
+    if (termError && !term) throw new Error('Term not found')
+    if (!term) throw new Error('Term not found')
 
     const section = (student.classes as any).section
 
@@ -102,7 +114,7 @@ export async function GET(request: NextRequest) {
     // NURSERY LOGIC
     // ============================================
     if (section === 'nursery') {
-      const { data: assessments, error: assessmentsError } = await supabase
+      const { data: assessments, error: assessmentsError } = await supabaseAdmin
         .from('nursery_assessments')
         .select(`
           id,
@@ -137,7 +149,7 @@ export async function GET(request: NextRequest) {
     // ============================================
     
     // 3. Subject Completeness Validation
-    const { count: totalRequiredSubjects, error: countError } = await supabase
+    const { count: totalRequiredSubjects, error: countError } = await supabaseAdmin
       .from('subjects')
       .select('*', { count: 'exact', head: true })
       .eq('section', section)
@@ -145,7 +157,7 @@ export async function GET(request: NextRequest) {
     if (countError) throw countError
 
     // 4. Fetch Marks + Subjects for the student
-    const { data: marks, error: marksError } = await supabase
+    const { data: marks, error: marksError } = await supabaseAdmin
       .from('marks')
       .select(`
         student_id,
@@ -176,11 +188,12 @@ export async function GET(request: NextRequest) {
     }
 
     // 5. Ranking System (Position)
-    // Fetch all students in that class
-    const { data: classStudents, error: classStudentsError } = await supabase
+    // Fetch all active, non-archived students in that class
+    const { data: classStudents, error: classStudentsError } = await supabaseAdmin
       .from('students')
       .select('id')
       .eq('class_name', student.class_name)
+      .eq('is_archived', false)
     
     if (classStudentsError) throw classStudentsError
     
@@ -188,7 +201,7 @@ export async function GET(request: NextRequest) {
     const totalStudents = classStudentIds.length
 
     // Fetch all marks for these students
-    const { data: classMarks, error: classMarksError } = await supabase
+    const { data: classMarks, error: classMarksError } = await supabaseAdmin
       .from('marks')
       .select('student_id, score')
       .eq('term_id', term_id)
@@ -197,7 +210,7 @@ export async function GET(request: NextRequest) {
     if (classMarksError) throw classMarksError
 
     // Compute aggregates per student using configured school grading scale
-    const schoolSettings = await fetchMergedSchoolSettings(supabase)
+    const schoolSettings = await fetchMergedSchoolSettings(supabaseAdmin)
     const studentAggregates: Record<string, { totalAgg: number, totalScore: number }> = {}
     classStudentIds.forEach(id => {
       studentAggregates[id] = { totalAgg: 0, totalScore: 0 }

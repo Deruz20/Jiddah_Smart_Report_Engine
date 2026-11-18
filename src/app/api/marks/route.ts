@@ -1,4 +1,6 @@
-import { createClient } from '@/utils/supabase/server'
+import { createAdminClient, createClient } from '@/utils/supabase/server'
+import { getServiceRoleKey } from '@/lib/supabase-env'
+import { upsertAndVerifyMarks } from '@/lib/marks-write'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { isCoreSubject } from '@/lib/grading'
@@ -8,7 +10,7 @@ import { verifyDataAccess, hasPermission, resolveUserScope, canAccessSubjectInSc
 import { recordActivity } from '@/lib/api-server'
 import { canAccessClass, isAdministratorRole } from '@/lib/teacher-access'
 import { fetchMergedSchoolSettings, isExamSetLockedForUser } from '@/lib/school-settings-helper'
-import { resolveEquivalentTerms, fetchAndReconcileSecularMarks, fetchAndReconcileTheologyMarks } from '@/lib/marks-reconciliation'
+import { resolveEquivalentTerms, fetchAndReconcileSecularMarks, fetchAndReconcileTheologyMarks, findReconciledMark } from '@/lib/marks-reconciliation'
 
 export async function OPTIONS(request: NextRequest) {
   return apiOptions(request)
@@ -90,32 +92,34 @@ export async function GET(request: NextRequest) {
         : (enrollment.theology_classes as any)?.level
       : null
 
+    const dbReadClient = getServiceRoleKey() ? createAdminClient(cookieStore) : supabase
+
     const [
       subjectsRes,
       reconciledSecular,
       theologySubjectsRes,
       reconciledTheology,
     ] = await Promise.all([
-      supabase
+      dbReadClient
         .from('circular_subjects')
         .select('id, subject_name')
         .eq('section', sectionType)
         .order('subject_name', { ascending: true }),
-      fetchAndReconcileSecularMarks(supabase, {
+      fetchAndReconcileSecularMarks(dbReadClient, {
         enrollmentIds: [enrollment_id],
         studentIds: studentIdList,
         termIds: termInfo.termIds,
         termAliases: termInfo.termAliases,
       }),
       hasTheologyClass && theologyClassLevel
-        ? supabase
+        ? dbReadClient
             .from('theology_subjects')
             .select('id, subject_name_arabic')
             .eq('level', theologyClassLevel)
             .order('sort_order', { ascending: true })
         : Promise.resolve({ data: [], error: null }),
       hasTheologyClass && theologyClassLevel
-        ? fetchAndReconcileTheologyMarks(supabase, {
+        ? fetchAndReconcileTheologyMarks(dbReadClient, {
             enrollmentIds: [enrollment_id],
             studentIds: studentIdList,
             termIds: termInfo.termIds,
@@ -133,12 +137,14 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: theologySubjectsRes.error.message }, { status: 500 }))
     }
 
-    const circularMarkMap = new Map(
-      reconciledSecular.map((mark) => [mark.subject_id, mark])
-    )
-
     let circular_marks = (subjectsRes.data || []).map((subject: any) => {
-      const existingMark = circularMarkMap.get(subject.id)
+      const existingMark = findReconciledMark(reconciledSecular, {
+        studentId: enrollment.student_id,
+        enrollmentId: enrollment_id,
+        subjectId: subject.id,
+        subjectName: subject.subject_name,
+        curriculum: 'secular',
+      })
       return {
         subject_id: subject.id,
         subject_name: subject.subject_name,
@@ -151,12 +157,14 @@ export async function GET(request: NextRequest) {
 
     let theology_marks: any[] = []
     if (hasTheologyClass && theologyClassLevel) {
-      const theologyMarkMap = new Map(
-        reconciledTheology.map((mark) => [mark.subject_id, mark])
-      )
-
       theology_marks = (theologySubjectsRes.data || []).map((subject: any) => {
-        const existingMark = theologyMarkMap.get(subject.id)
+        const existingMark = findReconciledMark(reconciledTheology, {
+          studentId: enrollment.student_id,
+          enrollmentId: enrollment_id,
+          subjectId: subject.id,
+          subjectName: subject.subject_name_arabic,
+          curriculum: 'theology',
+        })
         return {
           subject_id: subject.id,
           subject_name_arabic: subject.subject_name_arabic,
@@ -291,6 +299,9 @@ export async function POST(request: NextRequest) {
       
     const expectedCircularSection = resolveSectionType(circularClassMeta?.section, circularClassMeta?.class_name)
     const expectedTheologyLevel = theologyClassMeta?.level
+    let savedCircularRows: any[] = []
+    let savedTheologyRows: any[] = []
+    const dbWriteClient = getServiceRoleKey() ? createAdminClient(cookieStore) : supabase
 
     // Upsert circular marks
     if (Array.isArray(circular_marks) && circular_marks.length > 0) {
@@ -342,14 +353,16 @@ export async function POST(request: NextRequest) {
           }, { status: 400 }))
         }
 
-        const { error: circularError } = await supabase
-          .from('circular_marks')
-          .upsert(circularUpsert, { onConflict: 'enrollment_id,subject_id,term_id' })
+        const writeRes = await upsertAndVerifyMarks(dbWriteClient, 'circular_marks', circularUpsert, {
+          enrollmentId: enrollment_id,
+          termId: term_id,
+        })
 
-        if (circularError) {
-          console.error('circular_marks upsert error:', circularError.message)
-          return withCors(request, NextResponse.json({ error: circularError.message }, { status: 500 }))
+        if (writeRes.error) {
+          console.error('circular_marks verified write error:', writeRes.error)
+          return withCors(request, NextResponse.json({ error: writeRes.error }, { status: 500 }))
         }
+        savedCircularRows = writeRes.persistedRows
       }
     }
 
@@ -377,7 +390,7 @@ export async function POST(request: NextRequest) {
         const subjects: any[] = []
         for (let i = 0; i < subjectIds.length; i += 30) {
           const chunk = subjectIds.slice(i, i + 30)
-          const { data: chunkSubjects, error: subjErr } = await supabase
+          const { data: chunkSubjects } = await supabase
             .from('theology_subjects')
             .select('id, level')
             .in('id', chunk)
@@ -391,24 +404,32 @@ export async function POST(request: NextRequest) {
           }, { status: 400 }))
         }
 
-        const { error: theologyError } = await supabase
-          .from('theology_marks')
-          .upsert(theologyUpsert, { onConflict: 'enrollment_id,subject_id,term_id' })
+        const theoWriteRes = await upsertAndVerifyMarks(dbWriteClient, 'theology_marks', theologyUpsert, {
+          enrollmentId: enrollment_id,
+          termId: term_id,
+        })
 
-        if (theologyError) {
-          console.error('theology_marks upsert error:', theologyError.message)
-          return withCors(request, NextResponse.json({ error: theologyError.message }, { status: 500 }))
+        if (theoWriteRes.error) {
+          console.error('theology_marks verified write error:', theoWriteRes.error)
+          return withCors(request, NextResponse.json({ error: theoWriteRes.error }, { status: 500 }))
         }
+        savedTheologyRows = theoWriteRes.persistedRows
       }
     }
 
     await recordActivity(supabase, user.id, 'Entered Marks', {
       enrollment_id,
       term_id,
-      score_type
+      score_type,
+      persisted_count: savedCircularRows.length + savedTheologyRows.length,
     })
 
-    return withCors(request, NextResponse.json({ success: true }))
+    return withCors(request, NextResponse.json({
+      success: true,
+      persistedCount: savedCircularRows.length + savedTheologyRows.length,
+      circular_marks: savedCircularRows,
+      theology_marks: savedTheologyRows,
+    }))
   } catch (err) {
     console.error('Marks API POST error:', err)
     return withCors(request, NextResponse.json({ error: 'Internal server error' }, { status: 500 }))

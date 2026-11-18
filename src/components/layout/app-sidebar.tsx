@@ -70,7 +70,7 @@ export const ROLE_GATED_NAV_ITEMS: NavItemConfig[] = [
     label: "Dashboard",
     id: "dashboard",
     href: "/admin",
-    roles: ["Administrator", "Principal", "Head Teacher", "DOS Secular", "DOS Theology", "Class Teacher"],
+    roles: ["Administrator", "Principal", "Head Teacher", "DOS Secular", "DOS Theology", "Secretary", "Class Teacher"],
   },
   {
     icon: ClipboardEdit,
@@ -86,7 +86,7 @@ export const ROLE_GATED_NAV_ITEMS: NavItemConfig[] = [
     teacherLabel: "Students",
     id: "students",
     href: "/admin/students",
-    roles: ["Administrator", "Principal", "Head Teacher", "DOS Secular", "DOS Theology", "Class Teacher"],
+    roles: ["Administrator", "Principal", "Head Teacher", "DOS Secular", "DOS Theology", "Secretary", "Class Teacher"],
   },
   {
     icon: Layers,
@@ -117,7 +117,7 @@ export const ROLE_GATED_NAV_ITEMS: NavItemConfig[] = [
     teacherLabel: "Report Center",
     id: "reports",
     href: "/admin/reports",
-    roles: ["Administrator", "Principal", "Head Teacher", "DOS Secular", "DOS Theology", "Class Teacher"],
+    roles: ["Administrator", "Principal", "Head Teacher", "DOS Secular", "DOS Theology", "Secretary", "Class Teacher"],
     children: [
       { label: "Report Center", href: "/admin/reports", id: "reports-overview" },
       { label: "Report Studio 2.0", href: "/admin/reports/studio", id: "reports-studio" },
@@ -128,7 +128,7 @@ export const ROLE_GATED_NAV_ITEMS: NavItemConfig[] = [
     label: "Secular Hub",
     id: "secular-hub",
     href: "/admin/secular-hub",
-    roles: ["Administrator", "Principal", "Head Teacher", "DOS Secular", "Class Teacher"],
+    roles: ["Administrator", "Principal", "Head Teacher", "DOS Secular", "Secretary", "Class Teacher"],
     department: "secular",
   },
   {
@@ -136,7 +136,7 @@ export const ROLE_GATED_NAV_ITEMS: NavItemConfig[] = [
     label: "Theology Hub",
     id: "theology-hub",
     href: "/admin/theology-hub",
-    roles: ["Administrator", "Principal", "Head Teacher", "DOS Theology", "Class Teacher"],
+    roles: ["Administrator", "Principal", "Head Teacher", "DOS Theology", "Secretary", "Class Teacher"],
     department: "theology",
   },
   {
@@ -151,7 +151,7 @@ export const ROLE_GATED_NAV_ITEMS: NavItemConfig[] = [
     label: "Upload Center",
     id: "uploads",
     href: "/admin/upload",
-    roles: ["Administrator", "Principal", "Head Teacher", "DOS Secular", "DOS Theology", "Class Teacher"],
+    roles: ["Administrator", "Principal", "Head Teacher", "DOS Secular", "DOS Theology", "Secretary", "Class Teacher"],
   },
 ];
 
@@ -318,8 +318,9 @@ export function AppSidebar() {
   const pathname = usePathname();
   const collapsed = state === "collapsed" && !isMobile;
 
-  const [canonicalRole, setCanonicalRole] = React.useState<CanonicalAccountRole>("Administrator");
-  const [rawRoleDisplay, setRawRoleDisplay] = React.useState("Administrator");
+  const [roleResolved, setRoleResolved] = React.useState(false);
+  const [canonicalRole, setCanonicalRole] = React.useState<CanonicalAccountRole>("Class Teacher");
+  const [rawRoleDisplay, setRawRoleDisplay] = React.useState("");
   const [rawSubject, setRawSubject] = React.useState("");
   const [userName, setUserName] = React.useState("Staff");
   const [avatarUrl, setAvatarUrl] = React.useState<string | null>(null);
@@ -351,40 +352,48 @@ export function AppSidebar() {
   }, []);
 
   React.useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getSession().then(async ({ data }: any) => {
-      const user = data.session?.user;
-      if (!user) return;
-      let rawRole = user.app_metadata?.role || user.user_metadata?.role || "Administrator";
-      let subject = user.user_metadata?.subject || "";
-      let displayName =
-        user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split("@")[0] || "Staff";
-      let resolvedAvatar = user.user_metadata?.avatar_url || null;
-
-      if (user.email) {
-        try {
-          const { data: teacherRow } = await supabase
-            .from("teachers")
-            .select("name, role, subject, avatar")
-            .or(`auth_user_id.eq.${user.id},email.eq.${user.email}`)
-            .maybeSingle();
-          if (teacherRow?.role) rawRole = teacherRow.role;
-          if (teacherRow?.subject) subject = teacherRow.subject;
-          if (teacherRow?.name) displayName = teacherRow.name;
-          if ((teacherRow as any)?.avatar) resolvedAvatar = (teacherRow as any).avatar;
-        } catch {
-          // fallback to session metadata
-        }
-      }
-
-      setCanonicalRole(normalizeAccountRole(rawRole, subject));
-      setRawRoleDisplay(rawRole);
-      setRawSubject(subject);
-      setUserName(displayName);
-      setAvatarUrl(resolvedAvatar);
-    });
-
     let active = true;
+    const supabase = createClient();
+    supabase.auth
+      .getSession()
+      .then(async ({ data }: any) => {
+        if (!active) return;
+        const user = data.session?.user;
+        if (!user) return;
+        let rawRole = user.app_metadata?.role || user.user_metadata?.role || "";
+        let subject = user.user_metadata?.subject || "";
+        let displayName =
+          user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split("@")[0] || "Staff";
+        let resolvedAvatar = user.user_metadata?.avatar_url || null;
+
+        if (user.email) {
+          try {
+            const { data: teacherRow } = await supabase
+              .from("teachers")
+              .select("name, role, subject, avatar")
+              .or(`auth_user_id.eq.${user.id},email.eq.${user.email}`)
+              .maybeSingle();
+            if (teacherRow?.role) rawRole = teacherRow.role;
+            if (teacherRow?.subject) subject = teacherRow.subject;
+            if (teacherRow?.name) displayName = teacherRow.name;
+            if ((teacherRow as any)?.avatar) resolvedAvatar = (teacherRow as any).avatar;
+          } catch {
+            // fallback to session metadata
+          }
+        }
+
+        if (!active) return;
+        setCanonicalRole(normalizeAccountRole(rawRole, subject));
+        setRawRoleDisplay(rawRole);
+        setRawSubject(subject);
+        setUserName(displayName);
+        setAvatarUrl(resolvedAvatar);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (active) setRoleResolved(true);
+      });
+
     fetchSchoolSettingsCached()
       .then((data) => {
         if (!active || !data) return;
@@ -400,7 +409,9 @@ export function AppSidebar() {
   }, []);
 
   const isTeacherOnly = canonicalRole === "Class Teacher";
-  const visible = getVisibleNavItemsForRole(rawRoleDisplay || canonicalRole, rawSubject);
+  const visible = roleResolved
+    ? getVisibleNavItemsForRole(rawRoleDisplay || canonicalRole, rawSubject)
+    : [];
   const initials =
     userName
       .split(/[\s._-]+/)
@@ -557,15 +568,29 @@ export function AppSidebar() {
       {/* ─── Navigation (Zero Uppercase Section Clutter) ────────────────── */}
       <SidebarContent className={cn("gap-0 overflow-x-hidden px-2.5 py-2", isMobile ? "bg-white dark:bg-[#1E1F20]" : "bg-[#F0F4F9] dark:bg-[#1E1F20]")}>
         <nav aria-label="Primary" className="flex flex-col">
-          <SidebarMenu className={cn("gap-0.5", isMobile && "space-y-1")}>
-            {visible.map((item) => (
-              <NavItem
-                key={item.id}
-                item={{ ...item, label: isTeacherOnly && item.teacherLabel ? item.teacherLabel : item.label }}
-                active={isRouteActive(pathname, item.href)}
-                collapsed={collapsed}
-              />
-            ))}
+          <SidebarMenu
+            data-role-resolved={roleResolved ? "true" : "false"}
+            className={cn("gap-0.5", isMobile && "space-y-1")}
+          >
+            {!roleResolved
+              ? [1, 2, 3, 4, 5].map((i) => (
+                  <div
+                    key={i}
+                    aria-hidden="true"
+                    className={cn(
+                      "rounded-full bg-black/[0.04] dark:bg-white/[0.05] animate-pulse",
+                      collapsed ? "h-10 w-10 mx-auto my-0.5" : "h-9 w-full my-0.5"
+                    )}
+                  />
+                ))
+              : visible.map((item) => (
+                  <NavItem
+                    key={item.id}
+                    item={{ ...item, label: isTeacherOnly && item.teacherLabel ? item.teacherLabel : item.label }}
+                    active={isRouteActive(pathname, item.href)}
+                    collapsed={collapsed}
+                  />
+                ))}
           </SidebarMenu>
         </nav>
       </SidebarContent>
@@ -574,35 +599,37 @@ export function AppSidebar() {
       <SidebarFooter className={cn("shrink-0 border-t border-black/[0.05] dark:border-white/[0.06] p-2 mt-auto", isMobile ? "bg-white dark:bg-[#1E1F20]" : "bg-[#F0F4F9] dark:bg-[#1E1F20]")}>
         {collapsed ? (
           <div className="flex flex-col items-center gap-1.5 py-1">
-            {/* School Settings Gear */}
-            <Tooltip delayDuration={150}>
-              <TooltipTrigger asChild>
-                <Link
-                  href="/admin/settings"
-                  aria-label="School Settings"
-                  aria-current={isSettingsActive ? "page" : undefined}
-                  className={cn(
-                    "relative size-10 rounded-full flex items-center justify-center transition-colors outline-none",
-                    "focus-visible:ring-2 focus-visible:ring-[#0D5C3A] dark:focus-visible:ring-[#34D399]",
-                    isSettingsActive
-                      ? "text-[#09472C] dark:text-[#FDE68A] font-semibold"
-                      : "text-[#444746] dark:text-[#C4C7C5] hover:bg-black/[0.08] dark:hover:bg-white/[0.08]"
-                  )}
-                >
-                  {isSettingsActive && (
-                    <motion.div
-                      layoutId="sidebar-active-pill-collapsed"
-                      className="absolute inset-0 rounded-full bg-gradient-to-r from-[#0D5C3A]/14 via-[#D97706]/10 to-[#EA580C]/12 ring-1 ring-[#0D5C3A]/20 dark:from-[#10B981]/20 dark:via-[#F59E0B]/15 dark:to-[#EA580C]/15 dark:ring-[#F59E0B]/25"
-                      transition={{ type: "spring", stiffness: 350, damping: 30 }}
-                    />
-                  )}
-                  <Settings className="relative z-10 size-[18px]" strokeWidth={1.75} />
-                </Link>
-              </TooltipTrigger>
-              <TooltipContent side="right" sideOffset={12}>
-                School Settings
-              </TooltipContent>
-            </Tooltip>
+            {/* School Settings Gear (Administrator only) */}
+            {roleResolved && canonicalRole === "Administrator" && (
+              <Tooltip delayDuration={150}>
+                <TooltipTrigger asChild>
+                  <Link
+                    href="/admin/settings"
+                    aria-label="School Settings"
+                    aria-current={isSettingsActive ? "page" : undefined}
+                    className={cn(
+                      "relative size-10 rounded-full flex items-center justify-center transition-colors outline-none",
+                      "focus-visible:ring-2 focus-visible:ring-[#0D5C3A] dark:focus-visible:ring-[#34D399]",
+                      isSettingsActive
+                        ? "text-[#09472C] dark:text-[#FDE68A] font-semibold"
+                        : "text-[#444746] dark:text-[#C4C7C5] hover:bg-black/[0.08] dark:hover:bg-white/[0.08]"
+                    )}
+                  >
+                    {isSettingsActive && (
+                      <motion.div
+                        layoutId="sidebar-active-pill-collapsed"
+                        className="absolute inset-0 rounded-full bg-gradient-to-r from-[#0D5C3A]/14 via-[#D97706]/10 to-[#EA580C]/12 ring-1 ring-[#0D5C3A]/20 dark:from-[#10B981]/20 dark:via-[#F59E0B]/15 dark:to-[#EA580C]/15 dark:ring-[#F59E0B]/25"
+                        transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                      />
+                    )}
+                    <Settings className="relative z-10 size-[18px]" strokeWidth={1.75} />
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent side="right" sideOffset={12}>
+                  School Settings
+                </TooltipContent>
+              </Tooltip>
+            )}
 
             {/* User Account Circle */}
             <Tooltip delayDuration={150}>
@@ -674,29 +701,31 @@ export function AppSidebar() {
               </span>
             </Link>
 
-            {/* School Settings Gear on Far-Right of the Exact Same Horizontal Row */}
-            <Tooltip delayDuration={150}>
-              <TooltipTrigger asChild>
-                <Link
-                  href="/admin/settings"
-                  aria-label="School Settings"
-                  aria-current={isSettingsActive ? "page" : undefined}
-                  onClick={() => isMobile && setOpenMobile(false)}
-                  className={cn(
-                    "size-9 shrink-0 rounded-full flex items-center justify-center transition-colors outline-none",
-                    "focus-visible:ring-2 focus-visible:ring-[#0D5C3A] dark:focus-visible:ring-[#34D399]",
-                    isSettingsActive
-                      ? "bg-gradient-to-r from-[#0D5C3A]/14 via-[#D97706]/10 to-[#EA580C]/12 text-[#09472C] dark:from-[#10B981]/20 dark:via-[#F59E0B]/15 dark:to-[#EA580C]/15 dark:text-[#FDE68A] font-semibold ring-1 ring-[#0D5C3A]/20 dark:ring-[#F59E0B]/25 shadow-xs"
-                      : "text-[#444746] dark:text-[#C4C7C5] hover:bg-black/[0.08] dark:hover:bg-white/[0.08]"
-                  )}
-                >
-                  <Settings className="size-5" strokeWidth={1.75} />
-                </Link>
-              </TooltipTrigger>
-              <TooltipContent side="top" sideOffset={6}>
-                School Settings
-              </TooltipContent>
-            </Tooltip>
+            {/* School Settings Gear on Far-Right of the Exact Same Horizontal Row (Administrator only) */}
+            {roleResolved && canonicalRole === "Administrator" && (
+              <Tooltip delayDuration={150}>
+                <TooltipTrigger asChild>
+                  <Link
+                    href="/admin/settings"
+                    aria-label="School Settings"
+                    aria-current={isSettingsActive ? "page" : undefined}
+                    onClick={() => isMobile && setOpenMobile(false)}
+                    className={cn(
+                      "size-9 shrink-0 rounded-full flex items-center justify-center transition-colors outline-none",
+                      "focus-visible:ring-2 focus-visible:ring-[#0D5C3A] dark:focus-visible:ring-[#34D399]",
+                      isSettingsActive
+                        ? "bg-gradient-to-r from-[#0D5C3A]/14 via-[#D97706]/10 to-[#EA580C]/12 text-[#09472C] dark:from-[#10B981]/20 dark:via-[#F59E0B]/15 dark:to-[#EA580C]/15 dark:text-[#FDE68A] font-semibold ring-1 ring-[#0D5C3A]/20 dark:ring-[#F59E0B]/25 shadow-xs"
+                        : "text-[#444746] dark:text-[#C4C7C5] hover:bg-black/[0.08] dark:hover:bg-white/[0.08]"
+                    )}
+                  >
+                    <Settings className="size-5" strokeWidth={1.75} />
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent side="top" sideOffset={6}>
+                  School Settings
+                </TooltipContent>
+              </Tooltip>
+            )}
           </div>
         )}
       </SidebarFooter>

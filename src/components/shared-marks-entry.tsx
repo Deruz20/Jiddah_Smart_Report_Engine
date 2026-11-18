@@ -390,6 +390,9 @@ export interface SharedMarksEntryProps {
     theology_grading_scale?: any[]
     theology_division_boundaries?: any[]
   }
+  pendingOutboxCount?: number
+  isFlushingOutbox?: boolean
+  onFlushOutbox?: () => void
 }
 
 function computeTheologyBadge(
@@ -619,6 +622,9 @@ export function SharedMarksEntry({
   assignedSubjects = [],
   roleLabel = 'Teacher',
   gradingConfig,
+  pendingOutboxCount = 0,
+  isFlushingOutbox = false,
+  onFlushOutbox,
 }: SharedMarksEntryProps) {
   const selectedEnrollment = (Array.isArray(enrollments) ? enrollments.find((e) => e.id === selectedEnrollmentId) : null) || null
 
@@ -676,6 +682,7 @@ export function SharedMarksEntry({
   useEffect(() => {
     if (success) {
       setHasUnsavedChanges(false)
+      setRawInputs({})
     }
   }, [success])
 
@@ -1716,6 +1723,38 @@ export function SharedMarksEntry({
           >
             <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
             <span>{error}</span>
+          </div>
+        )}
+
+        {/* Offline / Pending Outbox Sync Banner */}
+        {pendingOutboxCount > 0 && (
+          <div
+            data-testid="marks-outbox-sync-banner"
+            className="flex flex-wrap items-center justify-between gap-2.5 px-3.5 py-2.5 rounded-2xl bg-amber-500/12 border border-amber-500/35 text-amber-950 dark:text-amber-100 text-xs"
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+              <div className="min-w-0">
+                <span className="font-bold">
+                  {pendingOutboxCount} local mark batch{pendingOutboxCount === 1 ? '' : 'es'} queued on this device
+                </span>
+                <span className="hidden sm:inline text-[11px] opacity-85 ml-1.5">
+                  — scores shown include unsynced local saves awaiting server confirmation.
+                </span>
+              </div>
+            </div>
+            {onFlushOutbox && (
+              <button
+                type="button"
+                onClick={onFlushOutbox}
+                disabled={isFlushingOutbox}
+                data-testid="flush-local-marks-btn"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] shadow-xs transition active:scale-[0.98] cursor-pointer disabled:opacity-50 shrink-0"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isFlushingOutbox ? 'animate-spin' : ''}`} />
+                <span>{isFlushingOutbox ? 'Syncing...' : 'Sync Local Marks to Server'}</span>
+              </button>
+            )}
           </div>
         )}
 

@@ -6,7 +6,7 @@ import { MetricCard } from '@/components/figma-ui/MetricCard'
 import { RegistrationTips } from '@/components/figma-ui/RegistrationTips'
 import { UserPlus, ChevronDown } from 'lucide-react'
 
-import { verifyDataAccess, resolveUserScope } from '@/lib/auth-server'
+import { verifyDataAccess, hasPermission, resolveUserScope } from '@/lib/auth-server'
 import { classIdsForType } from '@/lib/teacher-access'
 import { UnassignedTeacherState } from '@/components/UnassignedTeacherState'
 
@@ -90,11 +90,13 @@ export default async function StudentsManagementPage() {
     }))
 
   const activeStudentsCount = students.filter((s: any) => !s.is_archived).length;
+  const canWriteStudents = hasPermission(authRes, 'write_students');
 
   return (
     <div className="w-full max-w-full text-stone-900 dark:text-[#E3E3E3] font-sans pb-6 relative overflow-x-hidden">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-3 sm:pt-4 space-y-4">
-        {/* Collapsible Student Registration Drawer — keeps Enrolled Students immediately visible above the fold */}
+        {/* Collapsible Student Registration Drawer — only shown to roles with write_students permission */}
+        {canWriteStudents && (
         <details className="group bg-white dark:bg-[#1E1F20] border border-[#0D5C3A]/10 dark:border-[#F59E0B]/12 rounded-2xl shadow-2xs overflow-hidden">
           <summary className="list-none cursor-pointer px-4 py-3 flex items-center justify-between gap-3 bg-[#FAF7F2] dark:bg-[#282A2C]/60 hover:bg-stone-100/70 dark:hover:bg-[#282A2C] transition-colors select-none">
             <div className="flex items-center gap-2.5 min-w-0">
@@ -129,6 +131,7 @@ export default async function StudentsManagementPage() {
             </div>
           </div>
         </details>
+        )}
 
         {/* Students Directory Table & Live Active vs Archived Metric Counters */}
         <section>

@@ -77,7 +77,13 @@ export default function RootLayout({
         <PowerSyncProvider>
           {children}
           <VersionChecker />
-          <Toaster position="bottom-right" richColors />
+          <Toaster
+          position="top-center"
+          richColors
+          toastOptions={{
+            className: "mt-1 sm:mt-2 shadow-lg",
+          }}
+        />
         </PowerSyncProvider>
         <SpeedInsights />
         <Analytics />

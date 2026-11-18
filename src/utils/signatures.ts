@@ -406,9 +406,11 @@ export async function resolveAllowedSignatureSlotsForUser(
     roleLower === 'administrator' ||
     roleLower === 'admin' ||
     access.canonicalRole === 'Administrator' ||
+    roleLower === 'secretary' ||
+    access.canonicalRole === 'Secretary' ||
     (access.effectivePermissions ?? []).includes('manage_settings')
   ) {
-    return null; // Unrestricted
+    return null; // Unrestricted (Admin & Secretary Print QA)
   }
 
   const allowed = new Set<string>();

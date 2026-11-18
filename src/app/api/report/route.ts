@@ -31,7 +31,7 @@ import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { evaluateCriteria, GradingCriterion } from '@/lib/grading-engine'
 import { fetchMergedSchoolSettings } from '@/lib/school-settings-helper'
 import { getReportSignatures } from '@/utils/signatures'
-import { resolveEquivalentTerms, fetchAndReconcileSecularMarks, fetchAndReconcileTheologyMarks } from '@/lib/marks-reconciliation'
+import { resolveEquivalentTerms, fetchAndReconcileSecularMarks, fetchAndReconcileTheologyMarks, findReconciledMark } from '@/lib/marks-reconciliation'
 import { isNonMuslimStudent } from '@/lib/student-religion'
 
 export const dynamic = 'force-dynamic'
@@ -165,7 +165,7 @@ export async function GET(request: NextRequest) {
     const className = reportCircularClass?.class_name ?? reportTheologyClass?.class_name_english
     const sectionType = resolveSectionType(section, className)
 
-    const { data: term, error: termError } = await supabase
+    const { data: term, error: termError } = await supabaseAdmin
       .from('terms')
       .select('id, academic_year, term_number, label, is_current, start_date, end_date, next_term_start')
       .eq('id', termId)
@@ -180,15 +180,27 @@ export async function GET(request: NextRequest) {
     }
 
     // Reconcile equivalent terms by academic_year and term_number
-    const termInfo = await resolveEquivalentTerms(supabase, termId)
+    const termInfo = await resolveEquivalentTerms(supabaseAdmin, termId)
     const termIds = termInfo.termIds
 
-    const { data: circularSubjects, error: circularSubjectsError } = await supabase
+    let { data: circularSubjects, error: circularSubjectsError } = await supabaseAdmin
       .from('subjects')
       .select('id, subject_name')
       .eq('curriculum', 'secular')
       .eq('section', sectionType)
       .order('subject_name', { ascending: true })
+
+    if (circularSubjectsError || !circularSubjects || circularSubjects.length === 0) {
+      const { data: circSubsFallback, error: circSubsFallbackErr } = await supabaseAdmin
+        .from('circular_subjects')
+        .select('id, subject_name')
+        .eq('section', sectionType)
+        .order('subject_name', { ascending: true })
+      if (!circSubsFallbackErr && circSubsFallback && circSubsFallback.length > 0) {
+        circularSubjects = circSubsFallback
+        circularSubjectsError = null
+      }
+    }
 
     if (circularSubjectsError) {
       return withCors(request, NextResponse.json({ error: circularSubjectsError.message }, { status: 500 }))
@@ -196,7 +208,7 @@ export async function GET(request: NextRequest) {
 
     const studentId = (Array.isArray(enrollment.students) ? enrollment.students[0]?.id : (enrollment.students as any)?.id) || null
 
-    const circularMarks = await fetchAndReconcileSecularMarks(supabase, {
+    const circularMarks = await fetchAndReconcileSecularMarks(supabaseAdmin, {
       enrollmentIds: [enrollmentId],
       studentIds: studentId ? [studentId] : [],
       termIds,
@@ -204,7 +216,7 @@ export async function GET(request: NextRequest) {
       academicYear: term.academic_year,
     })
 
-    const { data: initialsData } = await supabase.from('teacher_initials').select('*')
+    const { data: initialsData } = await supabaseAdmin.from('teacher_initials').select('*')
     const teacherInitialsMap: Record<string, string> = {}
     if (initialsData) {
       initialsData.forEach((item: any) => {
@@ -214,7 +226,13 @@ export async function GET(request: NextRequest) {
     }
 
     const circularRows = (circularSubjects || []).map((subject: any) => {
-      const existing = (circularMarks || []).find((m: any) => m.subject_id === subject.id)
+      const existing = findReconciledMark(circularMarks || [], {
+        studentId,
+        enrollmentId,
+        subjectId: subject.id,
+        subjectName: subject.subject_name,
+        curriculum: 'secular',
+      })
 
       const score = scoreType === 'mot'
         ? existing?.mot_score ?? null
@@ -363,7 +381,7 @@ export async function GET(request: NextRequest) {
     let total_students: number | null = null
 
     if (enrollment.circular_class_id && hasAnyRelevantMark && showClassPosition) {
-      const { data: classEnrollments } = await supabase
+      const { data: classEnrollments } = await supabaseAdmin
         .from('enrollments')
         .select('id, student_id, students!inner(id, is_archived)')
         .eq('circular_class_id', enrollment.circular_class_id)
@@ -371,21 +389,30 @@ export async function GET(request: NextRequest) {
         .eq('students.is_archived', false)
 
       if (classEnrollments && classEnrollments.length > 0) {
-        const enrollmentIds = classEnrollments.map((e) => e.id)
+        const classEnrollmentIds = classEnrollments.map((e) => e.id)
+        const classStudentIds = classEnrollments.map((e: any) => e.student_id).filter(Boolean)
 
-        const { data: classMarks } = await supabase
-          .from('circular_marks')
-          .select('enrollment_id, subject_id, bot_score, mot_score, eot_score')
-          .eq('term_id', termId)
-          .in('enrollment_id', enrollmentIds)
+        const classMarks = await fetchAndReconcileSecularMarks(supabaseAdmin, {
+          enrollmentIds: classEnrollmentIds,
+          studentIds: classStudentIds,
+          termIds,
+          termAliases: termInfo.termAliases,
+          academicYear: term.academic_year,
+        })
 
-        if (classMarks) {
+        if (classMarks && classMarks.length > 0) {
           const totals: number[] = []
 
           for (const e of classEnrollments) {
-            const eMarks = classMarks.filter((m) => m.enrollment_id === e.id)
+            const eStudentId = (e as any).student_id || null
             const eRows = (circularSubjects || []).map((subject: any) => {
-              const existing = eMarks.find((m) => m.subject_id === subject.id)
+              const existing = findReconciledMark(classMarks, {
+                studentId: eStudentId,
+                enrollmentId: e.id,
+                subjectId: subject.id,
+                subjectName: subject.subject_name,
+                curriculum: 'secular',
+              })
               const score = scoreType === 'mot'
                 ? existing?.mot_score ?? null
                 : scoreType === 'bot' ? existing?.bot_score ?? null : existing?.eot_score ?? null
@@ -423,10 +450,11 @@ export async function GET(request: NextRequest) {
       ? enrollment.theology_classes[0]?.level
       : (enrollment.theology_classes as any)?.level
     let existingTheologyMarks: any = null;
+    let cachedTheologySubjects: any[] = [];
 
     if (enrollment.theology_class_id && theologyLevel) {
       let theologySubjects: any[] = []
-      const { data: theologySubjectsRaw, error: theologySubjectsError } = await supabase
+      const { data: theologySubjectsRaw } = await supabaseAdmin
         .from('theology_subjects')
         .select('id, subject_name_arabic, level, sort_order')
         .eq('level', theologyLevel)
@@ -435,15 +463,16 @@ export async function GET(request: NextRequest) {
       if (theologySubjectsRaw && theologySubjectsRaw.length > 0) {
         theologySubjects = theologySubjectsRaw
       } else {
-        const { data: fallbackSubjects } = await supabase
+        const { data: fallbackSubjects } = await supabaseAdmin
           .from('subjects')
           .select('id, subject_name')
           .eq('curriculum', 'theology')
           .eq('section', theologyLevel)
         theologySubjects = fallbackSubjects?.map((s: any) => ({ id: s.id, subject_name_arabic: s.subject_name })) || []
       }
+      cachedTheologySubjects = theologySubjects
 
-      const theologyMarks = await fetchAndReconcileTheologyMarks(supabase, {
+      const theologyMarks = await fetchAndReconcileTheologyMarks(supabaseAdmin, {
         enrollmentIds: [enrollmentId],
         studentIds: studentId ? [studentId] : [],
         termIds,
@@ -454,7 +483,13 @@ export async function GET(request: NextRequest) {
       existingTheologyMarks = theologyMarks
 
       const theologyRows = (theologySubjects || []).map((subject: any) => {
-        const existing = (theologyMarks || []).find((m: any) => m.subject_id === subject.id)
+        const existing = findReconciledMark(theologyMarks || [], {
+          studentId,
+          enrollmentId,
+          subjectId: subject.id,
+          subjectName: subject.subject_name_arabic,
+          curriculum: 'theology',
+        })
 
         const score = scoreType === 'mot'
           ? existing?.mot_score ?? null
@@ -557,7 +592,7 @@ export async function GET(request: NextRequest) {
     let theologyPosition: number | null = null
     let totalTheologyStudents: number | null = null
     if (enrollment.theology_class_id && theologySectionData && typeof theologySectionData.total === 'number' && showClassPosition) {
-      const { data: theologyEnrollments } = await supabase
+      const { data: theologyEnrollments } = await supabaseAdmin
         .from('enrollments')
         .select('id, student_id, students!inner(id, is_archived)')
         .eq('theology_class_id', enrollment.theology_class_id)
@@ -566,25 +601,48 @@ export async function GET(request: NextRequest) {
 
       if (theologyEnrollments && theologyEnrollments.length > 0) {
         const tEnrollmentIds = theologyEnrollments.map(e => e.id)
-        const { data: allTheologyMarks } = await supabase
-          .from('theology_marks')
-          .select('enrollment_id, subject_id, mot_score, eot_score')
-          .eq('term_id', termId)
-          .in('enrollment_id', tEnrollmentIds)
+        const tStudentIds = theologyEnrollments.map((e: any) => e.student_id).filter(Boolean)
+        const allTheologyMarks = await fetchAndReconcileTheologyMarks(supabaseAdmin, {
+          enrollmentIds: tEnrollmentIds,
+          studentIds: tStudentIds,
+          termIds,
+          termAliases: termInfo.termAliases,
+          academicYear: term.academic_year,
+        })
 
-        if (allTheologyMarks) {
+        if (allTheologyMarks && allTheologyMarks.length > 0) {
           const totals: { id: string; total: number }[] = []
 
           for (const e of theologyEnrollments) {
-            const eMarks = allTheologyMarks.filter(m => m.enrollment_id === e.id)
+            const eStudentId = (e as any).student_id || null
             let eTotal = 0
             let hasMarks = false
 
-            for (const m of eMarks) {
-              const s = scoreType === 'mot' ? m.mot_score : m.eot_score
-              if (typeof s === 'number') {
-                eTotal += s
-                hasMarks = true
+            if (cachedTheologySubjects.length > 0) {
+              for (const sub of cachedTheologySubjects) {
+                const match = findReconciledMark(allTheologyMarks, {
+                  studentId: eStudentId,
+                  enrollmentId: e.id,
+                  subjectId: sub.id,
+                  subjectName: sub.subject_name_arabic,
+                  curriculum: 'theology',
+                })
+                const s = scoreType === 'mot' ? match?.mot_score : match?.eot_score
+                if (typeof s === 'number') {
+                  eTotal += s
+                  hasMarks = true
+                }
+              }
+            } else {
+              const eMarks = allTheologyMarks.filter(
+                m => m.enrollment_id === e.id || (eStudentId && m.student_id === eStudentId)
+              )
+              for (const m of eMarks) {
+                const s = scoreType === 'mot' ? m.mot_score : m.eot_score
+                if (typeof s === 'number') {
+                  eTotal += s
+                  hasMarks = true
+                }
               }
             }
 
@@ -607,7 +665,7 @@ export async function GET(request: NextRequest) {
         ; (theologySectionData as any).theology_total_students = totalTheologyStudents
     }
 
-    const { data: signatureObjects } = await supabase.storage.from('signatures').list('', { limit: 100 })
+    const { data: signatureObjects } = await supabaseAdmin.storage.from('signatures').list('', { limit: 100 })
     const signatures: Record<string, string | null> = {
       'head-teacher': null,
       'principal': null,
@@ -616,7 +674,7 @@ export async function GET(request: NextRequest) {
     for (const object of signatureObjects ?? []) {
       const match = object.name.match(/^([a-z0-9-]+)\.(?:png|jpe?g|webp)$/i)
       if (match) {
-        signatures[match[1]] = supabase.storage.from('signatures').getPublicUrl(object.name).data.publicUrl
+        signatures[match[1]] = supabaseAdmin.storage.from('signatures').getPublicUrl(object.name).data.publicUrl
       }
     }
 

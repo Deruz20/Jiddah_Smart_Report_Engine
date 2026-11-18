@@ -218,6 +218,10 @@ export async function getPendingOutboxCount(): Promise<number> {
   return items.length;
 }
 
+export async function getPendingOutboxItems(): Promise<OutboxMutation[]> {
+  return idbListOutbox();
+}
+
 function isBrowserOffline(): boolean {
   return typeof navigator !== "undefined" && navigator.onLine === false;
 }
@@ -443,15 +447,25 @@ export async function submitMutationWithOfflineFallback<T = unknown>(input: {
       return { queued: false, data };
     }
 
-    if (response.status >= 500) {
+    const errJson = await response.json().catch(() => null) as { error?: string } | null;
+    const explicitError =
+      errJson && typeof errJson.error === "string" && errJson.error.trim().length > 0
+        ? errJson.error.trim()
+        : null;
+
+    // Only treat transient gateway/proxy outages (502/503/504 without an app error message) as offline queue candidates.
+    // Real application/database/RLS 500 errors MUST surface immediately instead of being masked as "Saved locally".
+    if (response.status >= 502 && !explicitError) {
       await enqueueOfflineMutation({ url: input.url, method, body: input.body, label: input.label });
       return { queued: true };
     }
 
-    const errJson = await response.json().catch(() => ({}));
+    const finalError = explicitError || `Request failed (${response.status})`;
+    lastSyncError = finalError;
+    await notifySyncListeners();
     return {
       queued: false,
-      error: (errJson as { error?: string }).error || `Request failed (${response.status})`,
+      error: finalError,
     };
   } catch (err) {
     if (isLikelyNetworkFailure(err)) {

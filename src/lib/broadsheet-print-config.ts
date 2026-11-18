@@ -5,6 +5,7 @@ export type BroadsheetOrientation = 'landscape' | 'portrait'
 export type BroadsheetHeaderStyle = 'official' | 'compact' | 'none'
 export type BroadsheetFrameStyle = 'classic' | 'clean'
 export type BroadsheetColorTheme = 'emerald' | 'monochrome'
+export type BroadsheetTableStyle = 'double_border' | 'clean_grid' | 'zebra_banded' | 'toner_saver'
 export type BroadsheetRowScope = 'all' | 'filtered' | 'top_10' | 'top_20'
 export type BroadsheetSortBy = 'rank' | 'name' | 'aggregate'
 export type BroadsheetSubjectDisplayMode = 'split' | 'combined' | 'marks_only'
@@ -14,6 +15,7 @@ export interface BroadsheetPrintConfig {
   density: BroadsheetDensity
   orientation: BroadsheetOrientation
   colorTheme: BroadsheetColorTheme
+  tableStyle: BroadsheetTableStyle
   zebraStripes: boolean
 
   showSerialNumber: boolean
@@ -54,6 +56,7 @@ export function getDefaultBroadsheetPrintConfig(curriculum: BroadsheetCurriculum
       density: 'comfortable',
       orientation: 'landscape',
       colorTheme: 'emerald',
+      tableStyle: 'double_border',
       zebraStripes: true,
 
       showSerialNumber: true,
@@ -93,6 +96,7 @@ export function getDefaultBroadsheetPrintConfig(curriculum: BroadsheetCurriculum
     density: 'comfortable',
     orientation: 'landscape',
     colorTheme: 'emerald',
+    tableStyle: 'clean_grid',
     zebraStripes: true,
 
     showSerialNumber: true,

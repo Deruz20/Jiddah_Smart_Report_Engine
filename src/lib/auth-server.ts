@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js';
+import { getServiceRoleKey } from './supabase-env.ts';
 import {
   accessDeniedForLookupError,
   authorizeTeacherProfile,
@@ -109,7 +110,7 @@ export async function verifyDataAccess(
     }
   }
 
-  const adminKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const adminKey = getServiceRoleKey();
   const directory = !isMockClient && adminKey
     ? createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321', adminKey, {
         auth: { persistSession: false, autoRefreshToken: false },

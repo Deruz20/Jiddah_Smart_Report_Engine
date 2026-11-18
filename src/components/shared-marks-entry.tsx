@@ -1237,8 +1237,13 @@ export function SharedMarksEntry({
                   const matching =
                     nextClass === 'all'
                       ? enrollments
-                      : enrollments.filter((en) => en.circular_class === nextClass)
-                  if (matching.length > 0) {
+                      : enrollments.filter(
+                          (en) =>
+                            en.circular_class === nextClass ||
+                            en.theology_class_level === nextClass ||
+                            en.theology_class_arabic === nextClass
+                        )
+                  if (matching.length > 0 && !matching.some((en) => en.id === selectedEnrollmentId)) {
                     onSelectEnrollment(matching[0].id)
                   }
                 }}
@@ -1428,8 +1433,13 @@ export function SharedMarksEntry({
                   const matching =
                     nextClass === 'all'
                       ? enrollments
-                      : enrollments.filter((en) => en.circular_class === nextClass)
-                  if (matching.length > 0) {
+                      : enrollments.filter(
+                          (en) =>
+                            en.circular_class === nextClass ||
+                            en.theology_class_level === nextClass ||
+                            en.theology_class_arabic === nextClass
+                        )
+                  if (matching.length > 0 && !matching.some((en) => en.id === selectedEnrollmentId)) {
                     onSelectEnrollment(matching[0].id)
                   }
                 }}
@@ -1696,13 +1706,13 @@ export function SharedMarksEntry({
         )}
 
         {/* Unassigned teacher state */}
-        {!error && isUnassigned && enrollments.length === 0 ? (
+        {isUnassigned && enrollments.length === 0 ? (
           <UnassignedTeacherState
             moduleName="Marks Entry"
             department={allowedDepartment}
             roleLabel={roleLabel}
           />
-        ) : !error && (
+        ) : (
           !selectedEnrollmentId ? (
             <div className="flex flex-col items-center justify-center py-16 px-4 text-center rounded-2xl border border-dashed border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 bg-[var(--bg-card)]">
               <div className="w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-600 flex items-center justify-center mb-3">

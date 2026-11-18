@@ -14,7 +14,14 @@ import {
 import { isMissingTableError } from '@/lib/api-response'
 import { verifyDataAccess, hasPermission } from '@/lib/auth-server'
 import { CANONICAL_ACCOUNT_ROLES, ALL_STAFF_ROLES, normalizeAccountRole, isAdministratorRole } from '@/lib/teacher-access'
-import { isUsernameTaken, normalizeUsername, resolveUniqueUsernameFromEmail, validateUsernameFormat } from '@/lib/username'
+import {
+  isUsernameTaken,
+  normalizeUsername,
+  rememberTeacherUsernameMapping,
+  rememberTeacherUsernameMappings,
+  resolveUniqueUsernameFromEmail,
+  validateUsernameFormat,
+} from '@/lib/username'
 
 const validRoles = [
   ...ALL_STAFF_ROLES,
@@ -83,6 +90,9 @@ export async function GET(request: NextRequest) {
     }
 
     const { data, error } = await query
+    if (!error && Array.isArray(data)) {
+      rememberTeacherUsernameMappings(data)
+    }
     if (error) {
       if (isMissingTableError(error)) {
         return withCors(

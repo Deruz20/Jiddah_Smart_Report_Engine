@@ -267,6 +267,161 @@ BEGIN
   END IF;
 END $$;
 
+-- -----------------------------------------------------------------------------
+-- 4. USERNAME SIGN-IN RPC (`public.resolve_login_email`) & SELF-PROFILE RLS
+-- -----------------------------------------------------------------------------
+-- Allows unauthenticated (`anon`) login requests to safely resolve a staff
+-- username (e.g. `sysadmin`) to their official email even when
+-- `SUPABASE_SERVICE_ROLE_KEY` is omitted and RLS is active on `public.teachers`.
+CREATE OR REPLACE FUNCTION public.resolve_login_email(p_identifier text)
+RETURNS text
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_clean text := lower(trim(COALESCE(p_identifier, '')));
+  v_email text := NULL;
+BEGIN
+  IF v_clean = '' THEN
+    RETURN NULL;
+  END IF;
+
+  IF position('@' in v_clean) > 0 THEN
+    SELECT lower(trim(t.email))
+      INTO v_email
+      FROM public.teachers t
+     WHERE lower(trim(COALESCE(t.email, ''))) = v_clean
+       AND COALESCE(lower(trim(t.status)), 'active') NOT IN ('inactive', 'suspended', 'deactivated', 'banned')
+     LIMIT 1;
+  ELSE
+    -- 1. Match exact case-insensitive username on public.teachers
+    SELECT lower(trim(t.email))
+      INTO v_email
+      FROM public.teachers t
+     WHERE lower(trim(COALESCE(t.username, ''))) = v_clean
+       AND COALESCE(lower(trim(t.status)), 'active') NOT IN ('inactive', 'suspended', 'deactivated', 'banned')
+     LIMIT 1;
+
+    -- 2. Fallback: match email local-part prefix if username is not yet set
+    IF v_email IS NULL THEN
+      SELECT lower(trim(t.email))
+        INTO v_email
+        FROM public.teachers t
+       WHERE split_part(lower(trim(COALESCE(t.email, ''))), '@', 1) = v_clean
+         AND COALESCE(lower(trim(t.status)), 'active') NOT IN ('inactive', 'suspended', 'deactivated', 'banned')
+       ORDER BY t.created_at ASC NULLS LAST
+       LIMIT 1;
+    END IF;
+  END IF;
+
+  RETURN v_email;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.resolve_login_email(text) TO anon, authenticated, service_role;
+NOTIFY pgrst, 'reload schema';
+
+-- Update trigger so staff can update their own username, name, phone, and avatar
+-- while still blocking non-Administrators from elevating role, status, permissions, or classes.
+CREATE OR REPLACE FUNCTION public.prevent_teacher_self_role_elevation()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_is_admin boolean := false;
+  v_is_self boolean := false;
+BEGIN
+  IF current_setting('role', true) = 'service_role' OR current_user = 'postgres' THEN
+    RETURN NEW;
+  END IF;
+
+  SELECT EXISTS (
+    SELECT 1 FROM public.teachers t
+    WHERE (t.auth_user_id = auth.uid() OR (t.auth_user_id IS NULL AND t.id = auth.uid()))
+      AND COALESCE(t.status, 'active') = 'active'
+      AND t.role::text = ANY (ARRAY['Administrator'::text, 'admin'::text])
+  ) INTO v_is_admin;
+
+  v_is_self := (
+    OLD.auth_user_id = auth.uid()
+    OR (OLD.auth_user_id IS NULL AND OLD.id = auth.uid())
+    OR (
+      OLD.email IS NOT NULL
+      AND lower(trim(OLD.email)) = lower(trim(COALESCE(auth.jwt() ->> 'email', '')))
+    )
+  );
+
+  IF NOT v_is_admin THEN
+    IF NEW.role IS DISTINCT FROM OLD.role THEN
+      RAISE EXCEPTION 'Unauthorized: Only an Administrator can change a staff role.' USING ERRCODE = '42501';
+    END IF;
+    IF NEW.status IS DISTINCT FROM OLD.status THEN
+      RAISE EXCEPTION 'Unauthorized: Only an Administrator can change account status.' USING ERRCODE = '42501';
+    END IF;
+    IF NEW.auth_user_id IS DISTINCT FROM OLD.auth_user_id THEN
+      RAISE EXCEPTION 'Unauthorized: Only an Administrator can relink auth_user_id.' USING ERRCODE = '42501';
+    END IF;
+    IF NEW.permissions IS DISTINCT FROM OLD.permissions THEN
+      RAISE EXCEPTION 'Unauthorized: Only an Administrator can modify user permissions.' USING ERRCODE = '42501';
+    END IF;
+    IF NEW.classes IS DISTINCT FROM OLD.classes THEN
+      RAISE EXCEPTION 'Unauthorized: Only an Administrator can modify assigned classes.' USING ERRCODE = '42501';
+    END IF;
+    IF NOT v_is_self AND NEW.username IS DISTINCT FROM OLD.username THEN
+      RAISE EXCEPTION 'Unauthorized: Only an Administrator or the account owner can modify a staff username.' USING ERRCODE = '42501';
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_prevent_teacher_self_role_elevation ON public.teachers;
+CREATE TRIGGER trg_prevent_teacher_self_role_elevation
+  BEFORE UPDATE ON public.teachers
+  FOR EACH ROW
+  EXECUTE FUNCTION public.prevent_teacher_self_role_elevation();
+
+DROP POLICY IF EXISTS "teachers_update_admin_or_self" ON public.teachers;
+CREATE POLICY "teachers_update_admin_or_self"
+  ON public.teachers FOR UPDATE
+  TO authenticated
+  USING (
+    auth_user_id = auth.uid()
+    OR (auth_user_id IS NULL AND id = auth.uid())
+    OR lower(trim(COALESCE(email, ''))) = lower(trim(COALESCE(auth.jwt() ->> 'email', '')))
+    OR EXISTS (
+      SELECT 1 FROM public.teachers t
+      WHERE (t.auth_user_id = auth.uid() OR (t.auth_user_id IS NULL AND t.id = auth.uid()))
+        AND COALESCE(t.status, 'active') = 'active'
+        AND t.role::text = ANY (ARRAY['Administrator'::text, 'admin'::text])
+    )
+  )
+  WITH CHECK (
+    auth_user_id = auth.uid()
+    OR (auth_user_id IS NULL AND id = auth.uid())
+    OR lower(trim(COALESCE(email, ''))) = lower(trim(COALESCE(auth.jwt() ->> 'email', '')))
+    OR EXISTS (
+      SELECT 1 FROM public.teachers t
+      WHERE (t.auth_user_id = auth.uid() OR (t.auth_user_id IS NULL AND t.id = auth.uid()))
+        AND COALESCE(t.status, 'active') = 'active'
+        AND t.role::text = ANY (ARRAY['Administrator'::text, 'admin'::text])
+    )
+  );
+
+-- -----------------------------------------------------------------------------
+-- 5. REMOVE UNUSED `P.6` THEOLOGY CLASS (`e16b9c2c-ead3-45d6-94c6-98cd3285254c`)
+-- -----------------------------------------------------------------------------
+DELETE FROM public.theology_classes
+WHERE id = 'e16b9c2c-ead3-45d6-94c6-98cd3285254c'
+  AND NOT EXISTS (
+    SELECT 1 FROM public.enrollments
+    WHERE theology_class_id = 'e16b9c2c-ead3-45d6-94c6-98cd3285254c'
+  );
+
 COMMIT;
 
 -- =============================================================================

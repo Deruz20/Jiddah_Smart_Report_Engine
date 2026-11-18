@@ -69,11 +69,16 @@ export default function AccountClient({
   const [profile, setProfile] = useState<UserProfileData | null>(initialProfile);
   const [loadingProfile, setLoadingProfile] = useState(!initialProfile);
 
+  const defaultUsername =
+    initialProfile?.username ||
+    (initialProfile?.email ? initialProfile.email.split("@")[0] : "");
   const [fullName, setFullName] = useState(initialProfile?.full_name || "");
   const [phone, setPhone] = useState(initialProfile?.phone || "");
+  const [username, setUsername] = useState(defaultUsername);
   const [initialFormState, setInitialFormState] = useState({
     fullName: initialProfile?.full_name || "",
     phone: initialProfile?.phone || "",
+    username: defaultUsername,
   });
 
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -125,14 +130,18 @@ export default function AccountClient({
             avatar_url: data.avatar_url || initialProfile?.avatar_url || "",
             last_sign_in_at: data.last_sign_in_at || initialProfile?.last_sign_in_at || null,
           };
+          const resolvedUname =
+            merged.username || (merged.email ? merged.email.split("@")[0] : "");
           setProfile(merged);
           setInitialFormState({
             fullName: merged.full_name,
             phone: merged.phone || "",
+            username: resolvedUname,
           });
           if (!hasUserEditedProfileRef.current) {
             setFullName(merged.full_name);
             setPhone(merged.phone || "");
+            setUsername(resolvedUname);
             await syncOfflineUserProfileCache(merged as unknown as Record<string, unknown>);
           }
           if (merged.avatar_url && !avatarFile) {
@@ -215,7 +224,8 @@ export default function AccountClient({
 
   const isProfileDirty =
     fullName.trim() !== initialFormState.fullName.trim() ||
-    phone.trim() !== initialFormState.phone.trim();
+    phone.trim() !== initialFormState.phone.trim() ||
+    username.trim().toLowerCase() !== initialFormState.username.trim().toLowerCase();
 
   const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -227,6 +237,11 @@ export default function AccountClient({
       toast.error("Invalid phone number format. Use 7–20 digits (e.g. +256 700 000000).");
       return;
     }
+    const cleanUsername = username.trim().toLowerCase();
+    if (cleanUsername && (cleanUsername.length < 2 || cleanUsername.includes("@"))) {
+      toast.error("Username must be at least 2 characters and cannot contain '@'.");
+      return;
+    }
 
     setProfileSaving(true);
     try {
@@ -236,6 +251,7 @@ export default function AccountClient({
         body: JSON.stringify({
           full_name: fullName.trim(),
           phone: phone.trim(),
+          ...(cleanUsername ? { username: cleanUsername } : {}),
         }),
       });
       const payload = await res.json();
@@ -245,19 +261,23 @@ export default function AccountClient({
 
       const verifiedName = payload?.data?.full_name ?? fullName.trim();
       const verifiedPhone = payload?.data?.phone ?? phone.trim();
+      const verifiedUsername = payload?.data?.username ?? cleanUsername;
 
       hasUserEditedProfileRef.current = false;
       setFullName(verifiedName);
       setPhone(verifiedPhone);
+      setUsername(verifiedUsername);
       setInitialFormState({
         fullName: verifiedName,
         phone: verifiedPhone,
+        username: verifiedUsername,
       });
       const nextProfile = profile
         ? {
             ...profile,
             full_name: verifiedName,
             phone: verifiedPhone,
+            username: verifiedUsername,
           }
         : null;
       setProfile(nextProfile);
@@ -265,6 +285,7 @@ export default function AccountClient({
         ...(nextProfile || {}),
         full_name: verifiedName,
         phone: verifiedPhone,
+        username: verifiedUsername,
         avatar_url: avatarPreview || nextProfile?.avatar_url || "",
       });
       toast.success("Profile details saved and verified.");
@@ -605,18 +626,21 @@ export default function AccountClient({
 
             <div>
               <label className="block text-xs font-semibold text-[#1F1F1F] dark:text-[#CBD5E1] mb-1.5">
-                Sign-In Username (Read-Only)
+                Sign-In Username
               </label>
               <input
                 data-testid="account-username-input"
                 type="text"
-                value={profile?.username || (profile?.email ? profile.email.split("@")[0] : "")}
-                readOnly
-                disabled
-                className="w-full h-10 rounded-lg border border-[#E1E3E1] dark:border-[#3C4043] bg-[#F8FAFD] dark:bg-[#131314] px-3 text-sm font-mono text-[#444746] dark:text-[#E3E3E3] cursor-not-allowed"
+                value={username}
+                onChange={(e) => {
+                  hasUserEditedProfileRef.current = true;
+                  setUsername(e.target.value);
+                }}
+                placeholder="e.g. sysadmin"
+                className="w-full h-10 rounded-lg border border-[#E1E3E1] dark:border-[#3C4043] bg-white dark:bg-[#131314] px-3 text-sm font-mono text-[#1F1F1F] dark:text-[#E3E3E3] focus:border-[#0D5C3A] dark:focus:border-[#A8C7FA] outline-none"
               />
               <p className="text-[11px] text-[#747775] dark:text-[#8E918F] mt-1">
-                Use this username (or your email) with your password to sign in. Only an Administrator can change it.
+                Use this username (or your email) with your password to sign in.
               </p>
             </div>
 

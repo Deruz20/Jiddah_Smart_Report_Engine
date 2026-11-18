@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { executeTeacherDeactivation } from '@/lib/teacher-deactivation';
 import { isAdministratorRole, PERMISSION_KEYS } from '@/lib/teacher-access';
-import { isUsernameTaken, normalizeUsername, validateUsernameFormat } from '@/lib/username';
+import { isUsernameTaken, normalizeUsername, rememberTeacherUsernameMapping, validateUsernameFormat } from '@/lib/username';
 import { recordActivity } from '@/lib/api-server';
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -179,6 +179,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         { status: 500 }
       );
     }
+
+    rememberTeacherUsernameMapping(updatedRow);
 
     // Sync teacher_class_assignments AND circular_classes.class_teacher_id when classes array is provided
     let afterAssignments = beforeAssignments || [];

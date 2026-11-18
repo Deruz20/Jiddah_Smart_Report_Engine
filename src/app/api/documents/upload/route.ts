@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
     const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
     const filePath = `${Date.now()}-${sanitizedName}`
 
-    const supabaseAdmin = createAdminClient()
+    const supabaseAdmin = createAdminClient(cookieStore)
     const arrayBuffer = await file.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
     

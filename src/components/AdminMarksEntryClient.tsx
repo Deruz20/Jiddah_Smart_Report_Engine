@@ -60,6 +60,15 @@ export function AdminMarksEntryClient({
   const marksCacheRef = useRef<
     Map<string, { circular_marks: CircularMarkRow[]; theology_marks: TheologyMarkRow[] }>
   >(new Map())
+  const activeEnrollReqIdRef = useRef(0)
+  const activeMarksReqIdRef = useRef(0)
+
+  const isAbortLikeError = (err: any): boolean => {
+    if (!err) return false
+    const name = String(err?.name || '')
+    const msg = String(err?.message || '').toLowerCase()
+    return name === 'AbortError' || msg.includes('aborted')
+  }
 
   useEffect(() => {
     if (!selectedTermId && terms.length > 0) {
@@ -75,6 +84,7 @@ export function AdminMarksEntryClient({
     }
 
     let cancelled = false
+    const reqId = ++activeEnrollReqIdRef.current
     const mapEnrollments = (data: any[]): EnrollmentData[] =>
       (Array.isArray(data) ? data : []).map((e: any) => ({
         id: e.enrollment_id || e.id,
@@ -95,22 +105,26 @@ export function AdminMarksEntryClient({
       try {
         const { data } = await offlineFetchJson<any[]>('/api/enrollments', {
           cacheKey: 'marks_enrollments_v1',
+          timeoutMs: 25000,
           onBackgroundRefresh: (fresh) => {
-            if (cancelled || !Array.isArray(fresh)) return
+            if (cancelled || reqId !== activeEnrollReqIdRef.current || !Array.isArray(fresh)) return
             const mapped = mapEnrollments(fresh)
             setEnrollments(mapped)
           },
         })
-        if (cancelled) return
+        if (cancelled || reqId !== activeEnrollReqIdRef.current) return
         const mappedEnrollments = mapEnrollments(data)
         setEnrollments(mappedEnrollments)
         if (mappedEnrollments.length > 0) {
           setSelectedEnrollmentId((prev) => prev || mappedEnrollments[0].id)
         }
       } catch (err: any) {
-        if (!cancelled) setError(err.message || 'Failed to load enrollments')
+        if (cancelled || reqId !== activeEnrollReqIdRef.current || isAbortLikeError(err)) return
+        setError(err.message || 'Failed to load enrollments')
       } finally {
-        if (!cancelled) setIsFetching(false)
+        if (!cancelled && reqId === activeEnrollReqIdRef.current) {
+          setIsFetching(false)
+        }
       }
     }
 
@@ -135,23 +149,27 @@ export function AdminMarksEntryClient({
     }
 
     let cancelled = false
+    const reqId = ++activeMarksReqIdRef.current
     const loadMarks = async () => {
       if (!cached) setIsLoading(true)
       setError(null)
       setSuccess(false)
 
+      const params = new URLSearchParams({
+        enrollment_id: selectedEnrollmentId,
+        term_id: selectedTermId,
+      })
+      const url = `/api/marks?${params}`
+
       try {
-        const params = new URLSearchParams({
-          enrollment_id: selectedEnrollmentId,
-          term_id: selectedTermId,
-        })
         const { data } = await offlineFetchJson<{
           circular_marks?: CircularMarkRow[]
           theology_marks?: TheologyMarkRow[]
-        }>(`/api/marks?${params}`, {
+        }>(url, {
           cacheKey: `marks_sheet_${cacheKey}`,
+          timeoutMs: 25000,
           onBackgroundRefresh: (fresh: any) => {
-            if (cancelled || !fresh) return
+            if (cancelled || reqId !== activeMarksReqIdRef.current || !fresh) return
             const nextC = fresh.circular_marks ?? []
             const nextT = fresh.theology_marks ?? []
             setCircularMarks(nextC)
@@ -162,20 +180,49 @@ export function AdminMarksEntryClient({
             })
           },
         })
-        if (cancelled) return
+        if (cancelled || reqId !== activeMarksReqIdRef.current) return
         const nextCircular = data?.circular_marks ?? []
         const nextTheology = data?.theology_marks ?? []
         setCircularMarks(nextCircular)
         setTheologyMarks(nextTheology)
         marksCacheRef.current.set(cacheKey, {
           circular_marks: nextCircular,
-          theology_marks: nextTheology,
+          theology_marks: nextTOrEmpty(nextTheology),
         })
       } catch (err: any) {
-        if (!cancelled) setError(err.message || 'Failed to load marks')
+        if (cancelled || reqId !== activeMarksReqIdRef.current) return
+        if (isAbortLikeError(err)) {
+          // Silent direct retry without AbortController so an aborted fetch never blanks the table
+          try {
+            const retryRes = await fetch(url, { cache: 'no-store' })
+            if (cancelled || reqId !== activeMarksReqIdRef.current) return
+            if (retryRes.ok) {
+              const retryJson = await retryRes.json()
+              const nextCircular = retryJson?.circular_marks ?? []
+              const nextTheology = retryJson?.theology_marks ?? []
+              setCircularMarks(nextCircular)
+              setTheologyMarks(nextTheology)
+              marksCacheRef.current.set(cacheKey, {
+                circular_marks: nextCircular,
+                theology_marks: nextTheology,
+              })
+              return
+            }
+          } catch {
+            // Ignore secondary abort
+          }
+          return
+        }
+        setError(err.message || 'Failed to load marks')
       } finally {
-        if (!cancelled) setIsLoading(false)
+        if (!cancelled && reqId === activeMarksReqIdRef.current) {
+          setIsLoading(false)
+        }
       }
+    }
+
+    function nextTOrEmpty(arr: TheologyMarkRow[]) {
+      return Array.isArray(arr) ? arr : []
     }
 
     loadMarks()

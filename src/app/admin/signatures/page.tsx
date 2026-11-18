@@ -31,7 +31,7 @@ export default async function SignaturesPage() {
     return <main role="alert">Only administrators may manage official report images.</main>
   }
 
-  const admin = createAdminClient()
+  const admin = createAdminClient(cookieStore)
   const SIGNATURE_SLOTS = await getDynamicSignatureSlots(admin)
   const storage = admin.storage.from(BUCKET)
   const [activeResult, disabledResult] = await Promise.all([

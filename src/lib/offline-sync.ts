@@ -260,28 +260,43 @@ export interface OfflineFetchOptions {
   onBackgroundRefresh?: (data: unknown) => void;
 }
 
+function isAbortError(err: unknown): boolean {
+  if (!err) return false;
+  if (typeof DOMException !== "undefined" && err instanceof DOMException && err.name === "AbortError") {
+    return true;
+  }
+  const name = typeof err === "object" && "name" in err ? String((err as { name?: string }).name) : "";
+  const msg = err instanceof Error ? err.message : String(err ?? "");
+  return name === "AbortError" || msg.toLowerCase().includes("aborted");
+}
+
 /**
  * Stale-While-Revalidate JSON fetcher backed by IndexedDB (`jiddah_cache_v1`).
- * Never hangs more than `timeoutMs` (default 4500ms) when internet is weak.
+ * Uses a generous 25000ms default timeout (matching server-side Supabase timeout)
+ * and retries once on AbortError so remote DB round-trips never fail with
+ * "The operation was aborted."
  */
 export async function offlineFetchJson<T>(
   url: string,
   options: OfflineFetchOptions = {}
 ): Promise<{ data: T; fromCache: boolean; stale: boolean }> {
   const cacheKey = options.cacheKey ?? url;
-  const timeoutMs = options.timeoutMs ?? 4500;
+  const timeoutMs = options.timeoutMs ?? 25000;
   const cached = await idbGetReadCache<T>(cacheKey);
 
-  const fetchWithTimeout = async (): Promise<T> => {
+  const fetchWithTimeout = async (attemptTimeoutMs = timeoutMs): Promise<T> => {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const timer = setTimeout(() => controller.abort(), attemptTimeoutMs);
     try {
       const response = await fetch(url, {
         cache: "no-store",
         signal: controller.signal,
       });
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+        const errPayload = await response.json().catch(() => ({}));
+        const errMsg =
+          (errPayload as { error?: string })?.error || `HTTP ${response.status}`;
+        throw new Error(errMsg);
       }
       const json = (await response.json()) as T;
       await idbPutReadCache(cacheKey, json);
@@ -311,6 +326,18 @@ export async function offlineFetchJson<T>(
   } catch (err) {
     if (cached) {
       return { data: cached.data, fromCache: true, stale: true };
+    }
+    if (isAbortError(err)) {
+      // Retry once without aggressive timeout if first attempt was aborted/timed out
+      try {
+        const retryFresh = await fetchWithTimeout(Math.max(timeoutMs, 30000));
+        return { data: retryFresh, fromCache: false, stale: false };
+      } catch (retryErr) {
+        if (isAbortError(retryErr)) {
+          throw new Error("Connection timed out while loading records. Please try again.");
+        }
+        throw retryErr;
+      }
     }
     throw err;
   }
@@ -386,7 +413,7 @@ export async function submitMutationWithOfflineFallback<T = unknown>(input: {
   timeoutMs?: number;
 }): Promise<SubmitWithOfflineFallbackResult<T>> {
   const method = input.method ?? "POST";
-  const timeoutMs = input.timeoutMs ?? 6000;
+  const timeoutMs = input.timeoutMs ?? 25000;
 
   if (isBrowserOffline()) {
     await enqueueOfflineMutation({ url: input.url, method, body: input.body, label: input.label });

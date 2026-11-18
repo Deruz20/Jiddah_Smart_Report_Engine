@@ -31,7 +31,19 @@ export function getServerSupabaseKey(env: Record<string, string | undefined> = p
 
 export function getServiceRoleKey(env: Record<string, string | undefined> = process.env): string | undefined {
   const key = env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SECRET_KEY;
-  return typeof key === 'string' && key.trim().length > 0 ? key.trim() : undefined;
+  if (typeof key !== 'string') return undefined;
+  const trimmed = key.trim();
+  if (!trimmed) return undefined;
+  // Never treat a publishable or anon key as a service_role key
+  if (trimmed.startsWith('sb_publishable_')) return undefined;
+  const anonKey = (
+    env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+    env.SUPABASE_ANON_KEY ||
+    ''
+  ).trim();
+  if (anonKey && trimmed === anonKey) return undefined;
+  return trimmed;
 }
 
 export type SupabaseKeyFormat = 'publishable' | 'anon_jwt' | 'missing' | 'invalid';

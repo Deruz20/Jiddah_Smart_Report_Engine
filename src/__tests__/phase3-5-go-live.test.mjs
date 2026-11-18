@@ -636,4 +636,141 @@ describe('Phase 3.5 — Go-Live Role Defaults, Archived Student Exclusion, Anti-
       cookiesByRole['Principal'] = await loginAs('principal@test.local');
     }
   });
+
+  it('Workstream 6: Username Update to "sysadmin" in /admin/account, Anon Login via resolve_login_email RPC & Playwright /admin/marks Load as DOS Secular & Class Teacher with Zero "The operation was aborted." Errors', async () => {
+    const anonClient = createClient(SUPABASE_URL, creds.anonKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+
+    try {
+      // 1. Update username to "sysadmin" via PATCH /api/settings/user (cookie mode)
+      const patchUnameRes = await fetch(`${BASE_URL}/api/settings/user`, {
+        method: 'PATCH',
+        headers: {
+          Cookie: cookiesByRole['Administrator'],
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          full_name: 'Admin User',
+          username: 'sysadmin',
+        }),
+      });
+      const patchUnameJson = await patchUnameRes.json();
+      assert.equal(
+        patchUnameRes.status,
+        200,
+        `Expected 200 from PATCH /api/settings/user with username="sysadmin", got ${patchUnameRes.status}: ${JSON.stringify(patchUnameJson)}`
+      );
+      assert.equal(patchUnameJson.data?.username, 'sysadmin');
+
+      // 2. Verify Postgres `public.teachers` row has username = 'sysadmin' AND anon RPC `resolve_login_email('sysadmin')` returns 'admin@test.local'
+      const { data: rpcEmail, error: rpcErr } = await anonClient.rpc('resolve_login_email', {
+        p_identifier: 'sysadmin',
+      });
+      assert.equal(rpcErr, null, `resolve_login_email RPC error: ${rpcErr?.message}`);
+      assert.equal(rpcEmail, 'admin@test.local', 'Anon resolve_login_email("sysadmin") must return admin@test.local');
+
+      // 3. Sign in with identifier: "sysadmin" + password via POST /api/auth/login (no cookies)
+      const loginSysadminRes = await fetch(`${BASE_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier: 'sysadmin', password: DEFAULT_PASS }),
+      });
+      const loginSysadminJson = await loginSysadminRes.json();
+      assert.equal(
+        loginSysadminRes.status,
+        200,
+        `Expected 200 when logging in with username "sysadmin", got ${loginSysadminRes.status}: ${JSON.stringify(loginSysadminJson)}`
+      );
+      assert.equal(loginSysadminJson.user?.username, 'sysadmin');
+
+      // 4. Playwright E2E: Login with "sysadmin", then test /admin/marks as DOS Secular (P.2, MOT) & Class Teacher (P.1, MOT)
+      const launchOpts = fs.existsSync('/usr/bin/google-chrome')
+        ? { headless: true, executablePath: '/usr/bin/google-chrome' }
+        : { headless: true };
+      const browser = await chromium.launch(launchOpts);
+
+      try {
+        // 4A. Playwright login with "sysadmin"
+        const adminCtx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+        const adminPage = await adminCtx.newPage();
+        await adminPage.goto(`${BASE_URL}/login`, { waitUntil: 'networkidle' });
+        await adminPage.locator('input[type="text"]').first().fill('sysadmin');
+        await adminPage.locator('input[type="password"]').first().fill(DEFAULT_PASS);
+        await Promise.all([
+          adminPage.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 15000 }),
+          adminPage.locator('button[type="submit"]').click(),
+        ]);
+        await adminPage.goto(`${BASE_URL}/admin/account`, { waitUntil: 'networkidle' });
+        const unameInput = adminPage.getByTestId('account-username-input');
+        await unameInput.waitFor({ state: 'visible', timeout: 10000 });
+        assert.equal(await unameInput.inputValue(), 'sysadmin');
+        await adminCtx.close();
+
+        // 4B. Playwright /admin/marks as DOS Secular (dos@test.local -> Primary 2, MOT, All Subjects)
+        const dosCtx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+        const dosPage = await dosCtx.newPage();
+        await dosPage.goto(`${BASE_URL}/login`, { waitUntil: 'networkidle' });
+        await dosPage.locator('input[type="text"]').first().fill('dos');
+        await dosPage.locator('input[type="password"]').first().fill(DEFAULT_PASS);
+        await Promise.all([
+          dosPage.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 15000 }),
+          dosPage.locator('button[type="submit"]').click(),
+        ]);
+
+        await dosPage.goto(`${BASE_URL}/admin/marks`, { waitUntil: 'networkidle' });
+        const dosGrid = dosPage.getByTestId('marks-scroll-grid');
+        await dosGrid.waitFor({ state: 'visible', timeout: 15000 });
+        const bodyTextDos = await dosPage.locator('body').textContent();
+        assert.doesNotMatch(bodyTextDos || '', /The operation was aborted/i);
+        const dosRows = await dosGrid.locator('tbody tr').count();
+        assert.ok(dosRows > 0, `Expected Secular subject rows on /admin/marks for DOS Secular, got ${dosRows}`);
+        await dosCtx.close();
+
+        // 4C. Playwright /admin/marks as Class Teacher (teacher@test.local)
+        const ctCtx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+        const ctPage = await ctCtx.newPage();
+        await ctPage.goto(`${BASE_URL}/login`, { waitUntil: 'networkidle' });
+        await ctPage.locator('input[type="text"]').first().fill('teacher');
+        await ctPage.locator('input[type="password"]').first().fill(DEFAULT_PASS);
+        await Promise.all([
+          ctPage.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 15000 }),
+          ctPage.locator('button[type="submit"]').click(),
+        ]);
+
+        await ctPage.goto(`${BASE_URL}/admin/marks`, { waitUntil: 'networkidle' });
+        const ctGrid = ctPage.getByTestId('marks-scroll-grid');
+        await ctGrid.waitFor({ state: 'visible', timeout: 15000 });
+        const bodyTextCt = await ctPage.locator('body').textContent();
+        assert.doesNotMatch(bodyTextCt || '', /The operation was aborted/i);
+        const ctRows = await ctGrid.locator('tbody tr').count();
+        assert.ok(ctRows > 0, `Expected Secular subject rows on /admin/marks for Class Teacher, got ${ctRows}`);
+        await ctCtx.close();
+
+        console.log('[E1 WORKSTREAM 6 SYSADMIN & MARKS ENTRY PROOF]', JSON.stringify({
+          patchUsernameToSysadminStatus: patchUnameRes.status,
+          anonRpcResolveLoginEmail: rpcEmail,
+          loginWithSysadminStatus: loginSysadminRes.status,
+          dosSecularMarksSubjectRows: dosRows,
+          classTeacherMarksSubjectRows: ctRows,
+          abortedErrorsCount: 0,
+        }));
+      } finally {
+        await browser.close();
+      }
+    } finally {
+      // Restore admin username to 'admin'
+      await fetch(`${BASE_URL}/api/settings/user`, {
+        method: 'PATCH',
+        headers: {
+          Cookie: cookiesByRole['Administrator'],
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          full_name: 'Admin User',
+          username: 'admin',
+        }),
+      });
+    }
+  });
 });

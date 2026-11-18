@@ -1,5 +1,10 @@
 import { mapAuthError } from '@/lib/auth-errors'
-import { findTeacherByUsername, escapeIlikePattern } from '@/lib/username'
+import {
+  findTeacherByUsername,
+  escapeIlikePattern,
+  rememberTeacherUsernameMapping,
+  normalizeUsername,
+} from '@/lib/username'
 import { createAdminClient, createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
@@ -52,19 +57,39 @@ export async function POST(request: NextRequest) {
           )
         }
         resolvedUsername = teacherByEmail.username || null
+        rememberTeacherUsernameMapping(teacherByEmail)
       }
     } else {
-      const teacher = await findTeacherByUsername(supabaseAdmin, rawIdentifier)
-      const st = String(teacher?.status || 'active').toLowerCase()
-      if (!teacher || !teacher.email || BLOCKED_STATUSES.has(st)) {
-        // Generic error prevents username enumeration and keeps inactive accounts dark
-        return withCors(
-          request,
-          NextResponse.json({ error: INVALID_CREDENTIALS_MSG }, { status: 401 })
-        )
+      // 1. Primary: call SECURITY DEFINER RPC `resolve_login_email` so anon login resolves username even under RLS
+      let rpcResolvedEmail: string | null = null
+      try {
+        const { data: rpcData, error: rpcError } = await supabase.rpc('resolve_login_email', {
+          p_identifier: rawIdentifier,
+        })
+        if (!rpcError && typeof rpcData === 'string' && rpcData.trim().includes('@')) {
+          rpcResolvedEmail = rpcData.trim().toLowerCase()
+        }
+      } catch {
+        // Fallback to findTeacherByUsername below
       }
-      resolvedEmail = teacher.email.trim().toLowerCase()
-      resolvedUsername = teacher.username || rawIdentifier.toLowerCase()
+
+      if (rpcResolvedEmail) {
+        resolvedEmail = rpcResolvedEmail
+        resolvedUsername = normalizeUsername(rawIdentifier)
+      } else {
+        // 2. Fallback: findTeacherByUsername (uses service_role/admin client + verified server username directory cache)
+        const teacher = await findTeacherByUsername(supabaseAdmin, rawIdentifier)
+        const st = String(teacher?.status || 'active').toLowerCase()
+        if (!teacher || !teacher.email || BLOCKED_STATUSES.has(st)) {
+          // Generic error prevents username enumeration and keeps inactive accounts dark
+          return withCors(
+            request,
+            NextResponse.json({ error: INVALID_CREDENTIALS_MSG }, { status: 401 })
+          )
+        }
+        resolvedEmail = teacher.email.trim().toLowerCase()
+        resolvedUsername = teacher.username || normalizeUsername(rawIdentifier)
+      }
     }
 
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -82,6 +107,33 @@ export async function POST(request: NextRequest) {
     }
 
     const user = data.user
+
+    // Now that `supabase` is authenticated as `user`, check status and sync username mapping
+    try {
+      const { data: authedTeacher } = await supabase
+        .from('teachers')
+        .select('id, email, username, status, role, auth_user_id')
+        .or(`auth_user_id.eq.${user.id},id.eq.${user.id}${user.email ? `,email.ilike.${escapeIlikePattern(user.email)}` : ''}`)
+        .maybeSingle()
+
+      if (authedTeacher) {
+        const st = String(authedTeacher.status || 'active').toLowerCase()
+        if (BLOCKED_STATUSES.has(st)) {
+          await supabase.auth.signOut().catch(() => {})
+          return withCors(
+            request,
+            NextResponse.json({ error: INVALID_CREDENTIALS_MSG }, { status: 401 })
+          )
+        }
+        if (authedTeacher.username) {
+          resolvedUsername = authedTeacher.username
+        }
+        rememberTeacherUsernameMapping(authedTeacher)
+      }
+    } catch {
+      // Non-fatal post-login sync
+    }
+
     return withCors(
       request,
       NextResponse.json({

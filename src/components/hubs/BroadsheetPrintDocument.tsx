@@ -73,7 +73,7 @@ export function BroadsheetPrintDocument({
   }
 
   const visibleSubjects = subjects.filter((s) => !config.hiddenSubjectIds.includes(s.id))
-  const showAggCols = config.showAggregate && !(curriculum === 'secular' && isNursery)
+  const showAggCols = config.showAggregate && !(curriculum === 'secular' && isNursery) && !isTheology
   const showDivCols = config.showDivision && !(curriculum === 'secular' && isNursery)
   // Theology sheets display raw marks only (never D1-style individual subject grade columns)
   const showSubjectGradeSubCols =
@@ -119,8 +119,18 @@ export function BroadsheetPrintDocument({
   const resolvedTitle =
     config.customTitle.trim() ||
     (isTheology
-      ? 'كشف درجات الطلاب العام — قسم العلوم الشرعية واللغة العربية'
+      ? 'كشف التثمين / التقدير'
       : `ACADEMIC PERFORMANCE BROADSHEET — ${isNursery ? 'NURSERY SECTION' : 'PRIMARY CURRICULUM'}`)
+
+  const arabicMonthLabel = new Intl.DateTimeFormat('ar-EG', { month: 'long' }).format(new Date())
+
+  const formatTheologyRemark = (div: string | null | undefined): string => {
+    if (!div || div === '-') return '—'
+    if (div === 'راسب' || div.toUpperCase() === 'U') return 'ضعيف'
+    return div
+  }
+
+  const dataCellFontPx = Math.max(13, tokens.bodyFontPx)
 
   const examPhaseLabelAr =
     examPhase === 'eot'
@@ -141,6 +151,7 @@ export function BroadsheetPrintDocument({
     const isGoodPlus = normalized === 'II' || normalized === 'جيد جداً' || normalized === 'جيد جدا'
     const isGood = normalized === 'III' || normalized === 'جيد'
     const isFair = normalized === 'IV' || normalized === 'مقبول'
+    // Fail covers راسب, ضعيف, U, E
 
     const bg = isTop
       ? '#DCFCE7'
@@ -205,19 +216,29 @@ export function BroadsheetPrintDocument({
         <OfficialPrintSignaturesFooter rtl={isTheology} />
       </div>
 
-      {/* Outer Formal Accent Frame (block flow — never clips across multi-page tables) */}
+      {/* Outer Formal Double Institutional Frame (block flow — never clips across multi-page tables) */}
       <div
         style={{
           display: 'block',
-          borderTop: config.frameStyle === 'classic' ? `4px solid ${borderStrong}` : `2px solid ${borderStrong}`,
-          borderBottom: config.frameStyle === 'classic' ? `3px solid ${goldAccent}` : `2px solid ${borderStrong}`,
-          borderLeft: config.frameStyle === 'classic' ? `2px solid ${borderStrong}` : 'none',
-          borderRight: config.frameStyle === 'classic' ? `2px solid ${borderStrong}` : 'none',
-          padding: config.headerStyle === 'none' ? '4px' : '10px 14px',
+          border: config.frameStyle === 'classic'
+            ? `3px solid ${borderStrong}`
+            : `2px solid ${borderStrong}`,
+          padding: config.frameStyle === 'classic' ? '3px' : '0',
           backgroundColor: '#FFFFFF',
           boxSizing: 'border-box',
         }}
       >
+        <div
+          style={{
+            display: 'block',
+            border: config.frameStyle === 'classic'
+              ? `1.5px solid ${goldAccent}`
+              : 'none',
+            padding: config.headerStyle === 'none' ? '4px' : '10px 14px',
+            backgroundColor: '#FFFFFF',
+            boxSizing: 'border-box',
+          }}
+        >
         {/* HEADER SECTION */}
         {config.headerStyle === 'official' && (
           <header
@@ -227,44 +248,79 @@ export function BroadsheetPrintDocument({
               justifyContent: 'space-between',
               gap: '14px',
               paddingBottom: '8px',
-              borderBottom: `2.5px solid ${primary}`,
+              borderBottom: `2.5px solid ${borderStrong}`,
             }}
           >
             <img
               src="/logo-512h.png"
               alt="Jiddah Crest"
-              style={{ width: '56px', height: '56px', objectFit: 'contain', flexShrink: 0 }}
+              style={{ width: '58px', height: '58px', objectFit: 'contain', flexShrink: 0 }}
             />
             <div style={{ textAlign: 'center', flex: 1, minWidth: 0 }}>
-              <h1
-                style={{
-                  fontSize: `${tokens.titleFontPx}px`,
-                  fontWeight: 900,
-                  color: primary,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.4px',
-                  margin: 0,
-                  lineHeight: 1.2,
-                }}
-              >
-                JIDDAH ISLAMIC NURSERY &amp; PRIMARY SCHOOL
-              </h1>
-              <p
-                style={{
-                  fontSize: `${tokens.subtitleFontPx + 1}px`,
-                  fontWeight: 800,
-                  color: primary,
-                  margin: '2px 0 0',
-                  fontFamily: "'Amiri', 'Cairo', serif",
-                }}
-              >
-                مدرسة جدة الإسلامية للروضة والابتدائية
-              </p>
+              {isTheology ? (
+                <>
+                  <h1
+                    style={{
+                      fontSize: `${tokens.titleFontPx + 2}px`,
+                      fontWeight: 900,
+                      color: borderStrong,
+                      margin: 0,
+                      lineHeight: 1.25,
+                      fontFamily: "'Amiri', 'Cairo', serif",
+                    }}
+                  >
+                    مدرسة جدة الإسلامية للروضة والابتدائية
+                  </h1>
+                  <p
+                    style={{
+                      fontSize: `${Math.max(10.5, tokens.metaFontPx)}px`,
+                      fontWeight: 800,
+                      color: primary,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px',
+                      margin: '2px 0 0',
+                    }}
+                  >
+                    JIDDAH ISLAMIC NURSERY &amp; PRIMARY SCHOOL
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h1
+                    style={{
+                      fontSize: `${tokens.titleFontPx}px`,
+                      fontWeight: 900,
+                      color: borderStrong,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.4px',
+                      margin: 0,
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    JIDDAH ISLAMIC NURSERY &amp; PRIMARY SCHOOL
+                  </h1>
+                  <p
+                    style={{
+                      fontSize: `${tokens.subtitleFontPx + 1}px`,
+                      fontWeight: 800,
+                      color: primary,
+                      margin: '2px 0 0',
+                      fontFamily: "'Amiri', 'Cairo', serif",
+                    }}
+                  >
+                    مدرسة جدة الإسلامية للروضة والابتدائية
+                  </p>
+                </>
+              )}
               <p style={{ fontSize: '10.5px', color: '#334155', margin: '2px 0 0', fontWeight: 600 }}>
                 P.O. Box 34008, Kampala – Uganda • Tel: +256 705 316961 / +256 787 779909
               </p>
             </div>
-            <div style={{ width: '56px', height: '56px', flexShrink: 0 }} />
+            <img
+              src="/logo-512h.png"
+              alt=""
+              style={{ width: '58px', height: '58px', objectFit: 'contain', flexShrink: 0, opacity: 0.9 }}
+            />
           </header>
         )}
 
@@ -294,16 +350,16 @@ export function BroadsheetPrintDocument({
             style={{
               backgroundColor: headerBg,
               color: headerFg,
-              border: isMono ? '1.5px solid #111827' : 'none',
+              border: isMono ? '1.5px solid #111827' : `1.5px solid ${goldAccent}`,
               textAlign: 'center',
-              padding: '5px 12px',
+              padding: '6px 12px',
               margin: '8px 0 6px',
               borderRadius: '4px',
             }}
           >
             <h2
               style={{
-                fontSize: `${tokens.subtitleFontPx}px`,
+                fontSize: `${tokens.subtitleFontPx + (isTheology ? 2 : 0)}px`,
                 fontWeight: 900,
                 margin: 0,
                 letterSpacing: isTheology ? '0' : '0.4px',
@@ -311,6 +367,18 @@ export function BroadsheetPrintDocument({
             >
               {resolvedTitle}
             </h2>
+            {isTheology && !config.customTitle.trim() && (
+              <p
+                style={{
+                  fontSize: `${Math.max(10.5, tokens.metaFontPx - 0.5)}px`,
+                  fontWeight: 700,
+                  margin: '2px 0 0',
+                  opacity: 0.94,
+                }}
+              >
+                كشف درجات الطلاب العام — قسم العلوم الشرعية واللغة العربية
+              </p>
+            )}
           </div>
         )}
 
@@ -322,9 +390,9 @@ export function BroadsheetPrintDocument({
               flexWrap: 'wrap',
               alignItems: 'center',
               justifyContent: 'space-between',
-              gap: '10px',
+              gap: '8px',
               fontSize: `${tokens.metaFontPx}px`,
-              fontWeight: 700,
+              fontWeight: 800,
               padding: '6px 12px',
               backgroundColor: metaBg,
               border: `1px solid ${metaBorder}`,
@@ -335,10 +403,16 @@ export function BroadsheetPrintDocument({
           >
             {isTheology ? (
               <>
+                <span>للصف: {classNameLabel}</span>
+                <span style={{ color: '#94A3B8' }}>|</span>
                 <span>الفترة: {termLabel}</span>
-                <span>الصف: {classNameLabel}</span>
-                <span>السنة الدراسية: {formatNum(academicYear)}</span>
+                <span style={{ color: '#94A3B8' }}>|</span>
+                <span>في شهر: {arabicMonthLabel}</span>
+                <span style={{ color: '#94A3B8' }}>|</span>
+                <span>عام: {toArabicDigitsStr(academicYear)}م الموافق: ____________</span>
+                <span style={{ color: '#94A3B8' }}>|</span>
                 <span>الاختبار: {examPhaseLabelAr}</span>
+                <span style={{ color: '#94A3B8' }}>|</span>
                 <span>عدد الطلاب: {formatNum(students.length)}</span>
               </>
             ) : (
@@ -476,7 +550,7 @@ export function BroadsheetPrintDocument({
                 </th>
               )}
 
-              {showAggCols && (
+              {showAggCols && !isTheology && (
                 <th
                   style={{
                     border: `1px solid ${cellBorder}`,
@@ -485,34 +559,65 @@ export function BroadsheetPrintDocument({
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  {isTheology ? 'المعدل' : 'Agg'}
+                  Agg
                 </th>
               )}
 
-              {showDivCols && (
-                <th
-                  style={{
-                    border: `1px solid ${cellBorder}`,
-                    padding: tokens.headerPadding,
-                    textAlign: 'center',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {isTheology ? 'التقدير' : 'Div'}
-                </th>
-              )}
+              {isTheology ? (
+                <>
+                  {config.showRank && (
+                    <th
+                      style={{
+                        border: `1px solid ${cellBorder}`,
+                        padding: tokens.headerPadding,
+                        textAlign: 'center',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      الموقف / الدرجة
+                    </th>
+                  )}
+                  {showDivCols && (
+                    <th
+                      style={{
+                        border: `1px solid ${cellBorder}`,
+                        padding: tokens.headerPadding,
+                        textAlign: 'center',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      الملاحظات
+                    </th>
+                  )}
+                </>
+              ) : (
+                <>
+                  {showDivCols && (
+                    <th
+                      style={{
+                        border: `1px solid ${cellBorder}`,
+                        padding: tokens.headerPadding,
+                        textAlign: 'center',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      Div
+                    </th>
+                  )}
 
-              {config.showRank && (
-                <th
-                  style={{
-                    border: `1px solid ${cellBorder}`,
-                    padding: tokens.headerPadding,
-                    textAlign: 'center',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {isTheology ? 'الترتيب' : 'Rank'}
-                </th>
+                  {config.showRank && (
+                    <th
+                      style={{
+                        border: `1px solid ${cellBorder}`,
+                        padding: tokens.headerPadding,
+                        textAlign: 'center',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      Rank
+                    </th>
+                  )}
+                </>
               )}
             </tr>
           </thead>
@@ -545,6 +650,7 @@ export function BroadsheetPrintDocument({
                         padding: tokens.cellPadding,
                         textAlign: 'center',
                         fontWeight: 700,
+                        fontSize: `${dataCellFontPx}px`,
                       }}
                     >
                       {formatNum(idx + 1)}
@@ -572,6 +678,7 @@ export function BroadsheetPrintDocument({
                       padding: tokens.cellPadding,
                       textAlign: isTheology ? 'right' : 'left',
                       fontWeight: 800,
+                      fontSize: `${dataCellFontPx}px`,
                       color: '#0F172A',
                     }}
                   >
@@ -622,6 +729,7 @@ export function BroadsheetPrintDocument({
                               padding: tokens.cellPadding,
                               textAlign: 'center',
                               fontWeight: 800,
+                              fontSize: `${dataCellFontPx}px`,
                               fontVariantNumeric: 'tabular-nums',
                             }}
                           >
@@ -653,6 +761,7 @@ export function BroadsheetPrintDocument({
                           padding: tokens.cellPadding,
                           textAlign: 'center',
                           fontWeight: 800,
+                          fontSize: `${dataCellFontPx}px`,
                           fontVariantNumeric: 'tabular-nums',
                           whiteSpace: 'nowrap',
                         }}
@@ -688,6 +797,7 @@ export function BroadsheetPrintDocument({
                         padding: tokens.cellPadding,
                         textAlign: 'center',
                         fontWeight: 900,
+                        fontSize: `${dataCellFontPx}px`,
                         backgroundColor: isMono ? '#F8FAFC' : '#F1F5F9',
                         fontVariantNumeric: 'tabular-nums',
                       }}
@@ -703,6 +813,7 @@ export function BroadsheetPrintDocument({
                         padding: tokens.cellPadding,
                         textAlign: 'center',
                         fontWeight: 700,
+                        fontSize: `${dataCellFontPx}px`,
                         fontVariantNumeric: 'tabular-nums',
                       }}
                     >
@@ -717,6 +828,7 @@ export function BroadsheetPrintDocument({
                         padding: tokens.cellPadding,
                         textAlign: 'center',
                         fontWeight: 800,
+                        fontSize: `${dataCellFontPx}px`,
                         color: primary,
                         fontVariantNumeric: 'tabular-nums',
                       }}
@@ -725,37 +837,70 @@ export function BroadsheetPrintDocument({
                     </td>
                   )}
 
-                  {showDivCols && (
-                    <td
-                      style={{
-                        border: `1px solid ${cellBorder}`,
-                        padding: tokens.cellPadding,
-                        textAlign: 'center',
-                      }}
-                    >
-                      {renderDivisionBadge(
-                        isTheology
-                          ? st.division
-                          : st.division && st.division !== '-'
-                            ? `Div ${st.division}`
-                            : null
+                  {isTheology ? (
+                    <>
+                      {config.showRank && (
+                        <td
+                          style={{
+                            border: `1px solid ${cellBorder}`,
+                            padding: tokens.cellPadding,
+                            textAlign: 'center',
+                            fontWeight: 900,
+                            fontSize: `${dataCellFontPx}px`,
+                            color: isMono ? '#0F172A' : '#92400E',
+                            fontVariantNumeric: 'tabular-nums',
+                          }}
+                        >
+                          {st.position !== '-' && st.position != null ? formatNum(st.position) : '—'}
+                        </td>
                       )}
-                    </td>
-                  )}
 
-                  {config.showRank && (
-                    <td
-                      style={{
-                        border: `1px solid ${cellBorder}`,
-                        padding: tokens.cellPadding,
-                        textAlign: 'center',
-                        fontWeight: 900,
-                        color: isMono ? '#0F172A' : '#92400E',
-                        fontVariantNumeric: 'tabular-nums',
-                      }}
-                    >
-                      {st.position !== '-' && st.position != null ? formatNum(st.position) : '—'}
-                    </td>
+                      {showDivCols && (
+                        <td
+                          style={{
+                            border: `1px solid ${cellBorder}`,
+                            padding: tokens.cellPadding,
+                            textAlign: 'center',
+                            fontSize: `${dataCellFontPx}px`,
+                          }}
+                        >
+                          {renderDivisionBadge(formatTheologyRemark(st.division))}
+                        </td>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      {showDivCols && (
+                        <td
+                          style={{
+                            border: `1px solid ${cellBorder}`,
+                            padding: tokens.cellPadding,
+                            textAlign: 'center',
+                            fontSize: `${dataCellFontPx}px`,
+                          }}
+                        >
+                          {renderDivisionBadge(
+                            st.division && st.division !== '-' ? `Div ${st.division}` : null
+                          )}
+                        </td>
+                      )}
+
+                      {config.showRank && (
+                        <td
+                          style={{
+                            border: `1px solid ${cellBorder}`,
+                            padding: tokens.cellPadding,
+                            textAlign: 'center',
+                            fontWeight: 900,
+                            fontSize: `${dataCellFontPx}px`,
+                            color: isMono ? '#0F172A' : '#92400E',
+                            fontVariantNumeric: 'tabular-nums',
+                          }}
+                        >
+                          {st.position !== '-' && st.position != null ? formatNum(st.position) : '—'}
+                        </td>
+                      )}
+                    </>
                   )}
                 </tr>
               )
@@ -848,7 +993,7 @@ export function BroadsheetPrintDocument({
                 <span>جيد جداً: <strong>{formatNum(summary.divCounts.II)}</strong></span>
                 <span>جيد: <strong>{formatNum(summary.divCounts.III)}</strong></span>
                 <span>مقبول: <strong>{formatNum(summary.divCounts.IV)}</strong></span>
-                <span>راسب: <strong>{formatNum(summary.divCounts.U)}</strong></span>
+                <span>ضعيف: <strong>{formatNum(summary.divCounts.U)}</strong></span>
                 <span>
                   الممتحنون: <strong>{formatNum(summary.satCandidates)}</strong> من{' '}
                   <strong>{formatNum(summary.totalCandidates)}</strong>
@@ -889,47 +1034,71 @@ export function BroadsheetPrintDocument({
           </div>
         )}
 
-        {/* SIGNATURES & OFFICIAL STAMP BLOCK */}
+        {/* OFFICIAL 2-COLUMN SIGN-OFF BLOCK & OPTIONAL STAMP */}
         {(config.showSignatures || config.showStamp) && (
           <div
             className="hub-print-keep-together"
             style={{
-              marginTop: '14px',
-              paddingTop: '12px',
+              marginTop: '12px',
+              padding: '10px 14px',
+              border: `1.5px solid ${borderStrong}`,
+              borderRadius: '6px',
+              backgroundColor: '#FFFFFF',
               position: 'relative',
-              minHeight: config.showStamp ? '64px' : undefined,
+              display: 'grid',
+              gridTemplateColumns: '1.15fr 1fr',
+              gap: '22px',
+              alignItems: 'end',
+              fontSize: `${Math.max(11, tokens.footerFontPx)}px`,
             }}
           >
-            {config.showSignatures && (
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(3, 1fr)',
-                  gap: '24px',
-                  textAlign: 'center',
-                  fontSize: `${tokens.footerFontPx}px`,
-                  paddingTop: config.showStamp ? '34px' : '14px',
-                }}
-              >
-                {[config.signatory1, config.signatory2, config.signatory3].map((sigLabel, idx) => (
-                  <div key={idx} style={{ borderTop: '1.5px dashed #475569', paddingTop: '5px' }}>
-                    <p style={{ fontWeight: 800, margin: 0, color: '#0F172A' }}>{sigLabel}</p>
-                    <p style={{ fontSize: `${Math.max(9.5, tokens.footerFontPx - 1.5)}px`, color: '#475569', margin: '2px 0 0' }}>
-                      {isTheology ? 'التوقيع والتاريخ' : 'Signature & Date'}
-                    </p>
-                  </div>
-                ))}
+            {/* Column 1: Remarks Lines */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                <span style={{ fontWeight: 800, color: borderStrong, whiteSpace: 'nowrap' }}>
+                  {isTheology ? 'ملاحظات مربي الفصل:' : 'Class Teacher Remarks:'}
+                </span>
+                <span style={{ flex: 1, borderBottom: '1px dotted #475569', minHeight: '14px' }} />
               </div>
-            )}
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                <span style={{ fontWeight: 800, color: borderStrong, whiteSpace: 'nowrap' }}>
+                  {isTheology ? 'ملاحظات مشرف التعليم:' : 'DOS / Academic Remarks:'}
+                </span>
+                <span style={{ flex: 1, borderBottom: '1px dotted #475569', minHeight: '14px' }} />
+              </div>
+            </div>
+
+            {/* Column 2: Signature Lines + Official Circular Stamp */}
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px',
+                paddingInlineEnd: config.showStamp ? '108px' : '0',
+              }}
+            >
+              {config.showSignatures &&
+                [config.signatory1, config.signatory2, config.signatory3]
+                  .filter((lbl) => typeof lbl === 'string' && lbl.trim().length > 0)
+                  .map((sigLabel, idx) => (
+                    <div key={idx} style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                      <span style={{ fontWeight: 800, color: '#0F172A', whiteSpace: 'nowrap' }}>
+                        {sigLabel}:
+                      </span>
+                      <span style={{ flex: 1, borderBottom: '1px dashed #475569', minHeight: '14px' }} />
+                    </div>
+                  ))}
+            </div>
 
             {config.showStamp && (
               <div
                 style={{
                   position: 'absolute',
-                  left: isTheology ? '16px' : undefined,
-                  right: isTheology ? undefined : '16px',
-                  top: '0px',
-                  opacity: 0.9,
+                  left: isTheology ? '14px' : undefined,
+                  right: isTheology ? undefined : '14px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  opacity: 0.92,
                   pointerEvents: 'none',
                   zIndex: 10,
                 }}
@@ -971,6 +1140,7 @@ export function BroadsheetPrintDocument({
               ? `تاريخ الطباعة: ${new Date().toLocaleDateString('ar-EG')}`
               : `Printed on ${new Date().toLocaleDateString('en-GB')}`}
           </span>
+        </div>
         </div>
       </div>
     </div>

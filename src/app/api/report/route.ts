@@ -20,9 +20,12 @@ import {
   getClassTeacherReportComment,
   getHeadTeacherComment,
   getNurseryTeacherComment,
+  getNurseryTheologySubjectRemark,
   getTheologyComment,
   getGradingRemarkForScore,
   getGradingRemarkForScores,
+  resolveDistinctNurserySecularComments,
+  resolveDistinctNurseryTheologyComments,
 } from '@/lib/grading'
 import { resolveSectionType } from '@/lib/section-type'
 import { canAccessClass, isAdministratorRole } from '@/lib/teacher-access'
@@ -445,10 +448,15 @@ export async function GET(request: NextRequest) {
       aggregate: number | null
       division: string | null
       teacher_comment: string
+      head_teacher_comment: string
     } | null = null
-    const theologyLevel = Array.isArray(enrollment.theology_classes)
-      ? enrollment.theology_classes[0]?.level
-      : (enrollment.theology_classes as any)?.level
+    const theologyClassObjForType = Array.isArray(enrollment.theology_classes)
+      ? enrollment.theology_classes[0]
+      : (enrollment.theology_classes as any)
+    const theologyLevel = theologyClassObjForType?.level
+    const isTheologyNursery =
+      sectionType === 'nursery' ||
+      resolveSectionType(theologyLevel, theologyClassObjForType?.class_name_english || theologyClassObjForType?.class_name_arabic) === 'nursery'
     let existingTheologyMarks: any = null;
     let cachedTheologySubjects: any[] = [];
 
@@ -515,6 +523,10 @@ export async function GET(request: NextRequest) {
           getTheologySubjectRemark(getTheologyGradeNumber(existing.mot_score, (schoolSettings as any)?.theology_grading_scale), (schoolSettings as any)?.theology_grading_scale)
         ) : null
         const overrideRemark = evaluateCriteria(numericScore, 'subject_score', 'theology', enrollment.theology_class_id, gradingCriteria, 'comment')
+        const rawTheoRemark = overrideRemark || defaultRemark
+        const resolvedTheoRemark = isTheologyNursery
+          ? getNurseryTheologySubjectRemark(numericScore ?? existing?.eot_score ?? existing?.mot_score ?? null, rawTheoRemark)
+          : rawTheoRemark
 
         return {
           subject_name_arabic: subject.subject_name_arabic,
@@ -524,7 +536,7 @@ export async function GET(request: NextRequest) {
           eot_grade_display,
           score: numericScore,
           grade_display,
-          theology_remark: overrideRemark || defaultRemark
+          theology_remark: resolvedTheoRemark
         }
       })
 
@@ -577,6 +589,27 @@ export async function GET(request: NextRequest) {
             theoScoredCount
           )
         : ''
+      const theoHeadRule = evaluateCriteria(
+        theologyAggregate ?? null,
+        'head_comment',
+        'theology',
+        enrollment.theology_class_id,
+        gradingCriteria,
+        'comment'
+      )
+      const resolvedTheoComments = isTheologyNursery
+        ? resolveDistinctNurseryTheologyComments({
+            teacherComment: theologyComment,
+            headComment: theoHeadRule,
+            gender: studentDataForTheo?.gender,
+          })
+        : {
+            teacherComment: theologyComment,
+            headTeacherComment:
+              theoHeadRule && theoHeadRule !== theologyComment
+                ? theoHeadRule
+                : 'نتيجة مشرفة وجهد مبارك، نتمنى له/لها دوام التفوق والنجاح.',
+          }
 
       theologySectionData = {
         subjects: sortedTheologySubjects,
@@ -585,7 +618,8 @@ export async function GET(request: NextRequest) {
         eot_total: theoEotTotal,
         aggregate: theologyAggregate,
         division: theologyDivision,
-        teacher_comment: theologyComment,
+        teacher_comment: resolvedTheoComments.teacherComment,
+        head_teacher_comment: resolvedTheoComments.headTeacherComment,
       }
     }
 
@@ -759,15 +793,26 @@ export async function GET(request: NextRequest) {
       gradingCriteria,
       'comment'
     )
+    const rawHeadTeacherGradingRule = evaluateCriteria(
+      reportAggregate ?? null,
+      'head_comment',
+      'secular',
+      enrollment.circular_class_id,
+      gradingCriteria,
+      'comment'
+    )
     const headTeacherGradingRule =
-      evaluateCriteria(
-        reportAggregate ?? null,
-        'head_comment',
-        'secular',
-        enrollment.circular_class_id,
-        gradingCriteria,
-        'comment'
-      ) || classTeacherGradingRule
+      sectionType === 'nursery' ? rawHeadTeacherGradingRule : (rawHeadTeacherGradingRule || classTeacherGradingRule)
+    const distinctNurserySecularComments =
+      sectionType === 'nursery'
+        ? resolveDistinctNurserySecularComments({
+            classRule: classTeacherGradingRule,
+            headRule: rawHeadTeacherGradingRule,
+            defaultComment: nurseryCommentDefault,
+            grades: nurseryGradesForComments,
+            isTerm3,
+          })
+        : null
     const conductGradingRule = evaluateCriteria(
       reportAggregate ?? null,
       'conduct',
@@ -818,7 +863,7 @@ export async function GET(request: NextRequest) {
           : conductGradingRule ||
             getConductRemark(division, schoolSettings?.division_boundaries, schoolSettings?.promotion_comments?.default_conduct),
         class_teacher_comment: sectionType === 'nursery'
-          ? classTeacherGradingRule || nurseryCommentDefault
+          ? distinctNurserySecularComments?.classTeacherComment || nurseryCommentDefault
           : getClassTeacherReportComment({
               scoreType,
               termNumber: term.term_number,
@@ -831,7 +876,7 @@ export async function GET(request: NextRequest) {
               promotionComments: schoolSettings?.promotion_comments,
             }),
         head_teacher_comment: sectionType === 'nursery'
-          ? headTeacherGradingRule || nurseryCommentDefault
+          ? distinctNurserySecularComments?.headTeacherComment || ''
           : scoreType === 'mot'
             ? headTeacherGradingRule || getGradingRemarkForScores(sortedCircularSubjects.filter(row => row.is_core).map(row => row.score), schoolSettings?.grading_scale)
             : headTeacherGradingRule || (division ? getHeadTeacherComment(division, sortedCircularSubjects.filter(row => row.is_core).map(row => row.score), schoolSettings?.grading_scale, schoolSettings?.division_boundaries) : ''),

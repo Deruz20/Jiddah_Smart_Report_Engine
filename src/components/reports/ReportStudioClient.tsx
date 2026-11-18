@@ -832,11 +832,11 @@ export function ReportStudioClient({
       },
       theology: {
         subjects: [
-          { subject_name: 'القرآن الكريم', subject_name_arabic: 'القرآن الكريم', mot_score: 92, eot_score: 95, score: 95, grade: 'ت١', theology_remark: 'تفوق عالٍ', teacher_initials: 'ع.م' },
-          { subject_name: 'الفقه', subject_name_arabic: 'الفقه', mot_score: 86, eot_score: 89, score: 89, grade: 'ت١', theology_remark: 'تفوق عالٍ', teacher_initials: 'ح.س' },
-          { subject_name: 'التوحيد', subject_name_arabic: 'التوحيد', mot_score: 88, eot_score: 91, score: 91, grade: 'ت١', theology_remark: 'تفوق عالٍ', teacher_initials: 'م.أ' },
-          { subject_name: 'اللغة العربية', subject_name_arabic: 'اللغة العربية', mot_score: 84, eot_score: 88, score: 88, grade: 'ت١', theology_remark: 'تفوق عالٍ', teacher_initials: 'ي.ك' },
-          { subject_name: 'التربية الإسلامية', subject_name_arabic: 'التربية الإسلامية', mot_score: 90, eot_score: 93, score: 93, grade: 'ت١', theology_remark: 'تفوق عالٍ', teacher_initials: 'س.ن' },
+          { subject_name: 'القرآن الكريم', subject_name_arabic: 'القرآن الكريم', mot_score: 92, eot_score: 95, score: 95, grade: 'ت١', theology_remark: activeTemplate === 'nursery-theology-eot' ? 'ممتاز' : 'تفوق عالٍ', teacher_initials: 'ع.م' },
+          { subject_name: 'الفقه', subject_name_arabic: 'الفقه', mot_score: 86, eot_score: 89, score: 89, grade: 'ت١', theology_remark: activeTemplate === 'nursery-theology-eot' ? 'ممتاز' : 'تفوق عالٍ', teacher_initials: 'ح.س' },
+          { subject_name: 'التوحيد', subject_name_arabic: 'التوحيد', mot_score: 88, eot_score: 91, score: 91, grade: 'ت١', theology_remark: activeTemplate === 'nursery-theology-eot' ? 'ممتاز' : 'تفوق عالٍ', teacher_initials: 'م.أ' },
+          { subject_name: 'اللغة العربية', subject_name_arabic: 'اللغة العربية', mot_score: 84, eot_score: 88, score: 88, grade: 'ت١', theology_remark: activeTemplate === 'nursery-theology-eot' ? 'ممتاز' : 'تفوق عالٍ', teacher_initials: 'ي.ك' },
+          { subject_name: 'التربية الإسلامية', subject_name_arabic: 'التربية الإسلامية', mot_score: 90, eot_score: 93, score: 93, grade: 'ت١', theology_remark: activeTemplate === 'nursery-theology-eot' ? 'ممتاز' : 'تفوق عالٍ', teacher_initials: 'س.ن' },
         ],
         mot_total: 440,
         eot_total: 456,
@@ -844,6 +844,8 @@ export function ReportStudioClient({
         average: 91.2,
         aggregate: 4,
         division: 'ممتاز',
+        teacher_comment: 'ما شاء الله، تفاعل ممتاز وتقدم رائع في الحفظ والتعلم، بارك الله فيك.',
+        head_teacher_comment: 'نتيجة مشرفة وجهد مبارك، نتمنى له/لها دوام التفوق والنجاح.',
         position: 3,
         total_students: 38,
         theology_position: 3,
@@ -1615,6 +1617,33 @@ export function ReportStudioClient({
                           </button>
                         );
                       })}
+                    </div>
+
+                    <div className="space-y-1.5 pt-2 border-t border-amber-200/60 dark:border-amber-800/30">
+                      <span className="text-[10.5px] font-bold text-stone-800 dark:text-stone-100">
+                        Nursery EOT Card Illustration Style
+                      </span>
+                      <div className="grid grid-cols-3 gap-1.5" data-testid="studio-nursery-theme-selector">
+                        {([
+                          { id: 'playful', label: 'Playful Color' },
+                          { id: 'lineart', label: 'Line-Art B&W' },
+                          { id: 'classic', label: 'Classic' },
+                        ] as const).map((opt) => (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            data-testid={`studio-nursery-theme-${opt.id}`}
+                            onClick={() => updateStudio({ nurseryTheme: opt.id })}
+                            className={`py-1.5 px-2 rounded-lg text-[10.5px] font-bold border transition cursor-pointer ${
+                              (studioConfig.nurseryTheme || 'playful') === opt.id
+                                ? 'bg-[#0D5C3A] text-white border-[#0D5C3A]'
+                                : 'bg-white dark:bg-[#151D1A] text-stone-700 dark:text-stone-300 border-stone-200 dark:border-white/10'
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
 
                     <div className="flex items-center justify-between pt-2 border-t border-amber-200/60 dark:border-amber-800/30">

@@ -407,6 +407,42 @@ export interface DetailedReportResult {
   }
   omittedMetrics: OmittedMetricNote[]
   insights: DeterministicInsight[]
+  executivePacket: ExecutiveBreakdownPacket
+}
+
+export interface ExecutiveSectionMatrixClassColumn {
+  classId: string
+  className: string
+  classNameArabic: string
+  candidateExcluded: boolean
+  counts: { I: number; II: number; III: number; IV: number; U: number; total: number }
+}
+
+export interface ExecutiveSectionMatrix {
+  sectionId: HubSectionId
+  label: string
+  labelArabic: string
+  classes: ExecutiveSectionMatrixClassColumn[]
+  rowTotals: { I: number; II: number; III: number; IV: number; U: number; total: number }
+  rowPcts: { I: number; II: number; III: number; IV: number; U: number }
+}
+
+export interface ExecutiveSectionTopAchievers {
+  sectionId: HubSectionId
+  label: string
+  labelArabic: string
+  learners: Array<{
+    rank: number
+    name: string
+    arabicName: string | null
+    className: string
+    normalizedScore: number
+  }>
+}
+
+export interface ExecutiveBreakdownPacket {
+  sectionMatrices: ExecutiveSectionMatrix[]
+  topAchieversBySection: ExecutiveSectionTopAchievers[]
 }
 
 function round2(n: number): number {
@@ -1636,6 +1672,91 @@ export function computeHubDetailedReport(params: ComputeDetailedReportParams): D
         ? 'النطاق الحالي يغطي قسماً واحداً؛ اختر نطاق المدرسة كاملة لمقارنة جميع الأقسام.'
         : 'النطاق الحالي يغطي صفاً واحداً؛ اختر القسم أو المدرسة كاملة عند توفر الصلاحية.'
 
+  // Executive Breakdown Packet: Section Grade Distribution Matrices & Top 3 Achievers per Section
+  const executiveSectionOrder: HubSectionId[] = ['nursery', 'lower_primary', 'upper_primary']
+  const orderedExecutiveSections = [
+    ...executiveSectionOrder
+      .map((id) => effectiveSections.find((s) => s.id === id))
+      .filter((s): s is NonNullable<typeof s> => Boolean(s)),
+    ...effectiveSections.filter((s) => !executiveSectionOrder.includes(s.id)),
+  ]
+
+  const sectionMatrices: ExecutiveSectionMatrix[] = []
+  const topAchieversBySection: ExecutiveSectionTopAchievers[] = []
+
+  for (const secDef of orderedExecutiveSections) {
+    const secClassRows = classVsClass.filter((c) => c.sectionId === secDef.id)
+    if (secClassRows.length === 0) continue
+
+    const classCols: ExecutiveSectionMatrixClassColumn[] = secClassRows.map((c) => {
+      const counts = c.candidateExcluded
+        ? { I: 0, II: 0, III: 0, IV: 0, U: 0, total: 0 }
+        : {
+            I: c.divCounts.I,
+            II: c.divCounts.II,
+            III: c.divCounts.III,
+            IV: c.divCounts.IV,
+            U: c.divCounts.U,
+            total: c.divCounts.I + c.divCounts.II + c.divCounts.III + c.divCounts.IV + c.divCounts.U,
+          }
+      return {
+        classId: c.classId,
+        className: c.englishName || c.className,
+        classNameArabic: c.arabicName || c.className,
+        candidateExcluded: c.candidateExcluded,
+        counts,
+      }
+    })
+
+    const rowTotals = classCols.reduce(
+      (acc, col) => ({
+        I: acc.I + col.counts.I,
+        II: acc.II + col.counts.II,
+        III: acc.III + col.counts.III,
+        IV: acc.IV + col.counts.IV,
+        U: acc.U + col.counts.U,
+        total: acc.total + col.counts.total,
+      }),
+      { I: 0, II: 0, III: 0, IV: 0, U: 0, total: 0 }
+    )
+
+    const pct = (val: number) => (rowTotals.total > 0 ? round1((val / rowTotals.total) * 100) : 0)
+
+    sectionMatrices.push({
+      sectionId: secDef.id,
+      label: secDef.label,
+      labelArabic: secDef.label_arabic,
+      classes: classCols,
+      rowTotals,
+      rowPcts: {
+        I: pct(rowTotals.I),
+        II: pct(rowTotals.II),
+        III: pct(rowTotals.III),
+        IV: pct(rowTotals.IV),
+        U: pct(rowTotals.U),
+      },
+    })
+
+    const secTopLearners = cohort.students
+      .filter((s) => s.sectionId === secDef.id && !s.isCandidateExcluded && s.isCompleteMarks && s.normalizedScore !== null)
+      .sort((a, b) => (b.normalizedScore ?? 0) - (a.normalizedScore ?? 0) || (b.total ?? 0) - (a.total ?? 0))
+      .slice(0, 3)
+      .map((s, idx) => ({
+        rank: idx + 1,
+        name: s.name,
+        arabicName: s.arabic_name || null,
+        className: s.className,
+        normalizedScore: round1(s.normalizedScore as number),
+      }))
+
+    topAchieversBySection.push({
+      sectionId: secDef.id,
+      label: secDef.label,
+      labelArabic: secDef.label_arabic,
+      learners: secTopLearners,
+    })
+  }
+
   const partialReport: Omit<DetailedReportResult, 'insights'> = {
     meta: {
       curriculum,
@@ -1759,6 +1880,10 @@ export function computeHubDetailedReport(params: ComputeDetailedReportParams): D
       totalFlagCount,
     },
     omittedMetrics,
+    executivePacket: {
+      sectionMatrices,
+      topAchieversBySection,
+    },
   }
 
   return {

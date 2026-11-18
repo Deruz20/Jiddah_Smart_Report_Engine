@@ -389,7 +389,7 @@ export function AppSidebar() {
         setUserName(displayName);
         setAvatarUrl(resolvedAvatar);
       })
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => {
         if (active) setRoleResolved(true);
       });
@@ -402,7 +402,7 @@ export function AppSidebar() {
           setSchoolName(String(raw));
         }
       })
-      .catch(() => {});
+      .catch(() => { });
     return () => {
       active = false;
     };
@@ -509,25 +509,25 @@ export function AppSidebar() {
           </div>
         </SidebarHeader>
       ) : (
-        <SidebarHeader className="h-14 shrink-0 flex flex-row items-center justify-between px-3.5 border-b border-black/[0.05] dark:border-white/[0.06] bg-[#F0F4F9] dark:bg-[#1E1F20]">
+        <SidebarHeader className="h-14 shrink-0 overflow-hidden flex flex-row items-center justify-between gap-2 px-3.5 border-b border-black/[0.05] dark:border-white/[0.06] bg-[#F0F4F9] dark:bg-[#1E1F20]">
           <Link
             href="/admin"
             aria-label={`${schoolName} — dashboard`}
             onClick={() => isMobile && setOpenMobile(false)}
-            className="flex items-center gap-2.5 outline-none focus-visible:ring-2 focus-visible:ring-[#0D5C3A] rounded-lg"
+            className="flex items-center gap-2.5 min-w-0 flex-1 overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-[#0D5C3A] rounded-lg"
           >
             <Image
               src="/logo-512h.png"
               alt="Jiddah Emblem"
               width={24}
               height={24}
-              className="size-6 object-contain"
+              className="size-6 object-contain shrink-0"
             />
             <span className="text-[17px] font-semibold text-[#1F1F1F] dark:text-[#E3E3E3] tracking-tight truncate">
               {schoolName}
             </span>
           </Link>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 shrink-0">
             <Tooltip delayDuration={150}>
               <TooltipTrigger asChild>
                 <button
@@ -574,23 +574,23 @@ export function AppSidebar() {
           >
             {!roleResolved
               ? [1, 2, 3, 4, 5].map((i) => (
-                  <div
-                    key={i}
-                    aria-hidden="true"
-                    className={cn(
-                      "rounded-full bg-black/[0.04] dark:bg-white/[0.05] animate-pulse",
-                      collapsed ? "h-10 w-10 mx-auto my-0.5" : "h-9 w-full my-0.5"
-                    )}
-                  />
-                ))
+                <div
+                  key={i}
+                  aria-hidden="true"
+                  className={cn(
+                    "rounded-full bg-black/[0.04] dark:bg-white/[0.05] animate-pulse",
+                    collapsed ? "h-10 w-10 mx-auto my-0.5" : "h-9 w-full my-0.5"
+                  )}
+                />
+              ))
               : visible.map((item) => (
-                  <NavItem
-                    key={item.id}
-                    item={{ ...item, label: isTeacherOnly && item.teacherLabel ? item.teacherLabel : item.label }}
-                    active={isRouteActive(pathname, item.href)}
-                    collapsed={collapsed}
-                  />
-                ))}
+                <NavItem
+                  key={item.id}
+                  item={{ ...item, label: isTeacherOnly && item.teacherLabel ? item.teacherLabel : item.label }}
+                  active={isRouteActive(pathname, item.href)}
+                  collapsed={collapsed}
+                />
+              ))}
           </SidebarMenu>
         </nav>
       </SidebarContent>

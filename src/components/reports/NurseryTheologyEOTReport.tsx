@@ -1,18 +1,32 @@
-import { getTheologyComment } from '@/lib/grading'
+import {
+  getTheologyComment,
+  getNurseryTheologySubjectRemark,
+  resolveDistinctNurseryTheologyComments,
+} from '@/lib/grading'
 import { ReportContainer } from '@/components/reports/shared/ReportContainer'
 import { CleanSignatureImage } from '@/components/reports/CleanSignatureImage'
 import { OfficialReportStamp } from '@/components/reports/StampGenerator'
 import { normalizeSchoolLogoUrl } from '@/lib/school-settings-helper'
-import { transliterateEnglishToArabic } from '@/lib/transliterate'
-
 import { getClassTeacherSignatureKey } from '@/utils/signatures'
 import { NurseryEducativeWatermark } from '@/components/reports/NurseryEducativeWatermark'
+import { NurseryCornerDecor, NurseryPlayfulHeaderArt } from '@/components/reports/NurseryPlayfulVectorDecor'
 import { useStudioFormatting, resolveEffectiveStudioStyle } from '@/lib/studio-config-store'
+
+const THEO_PILL_PALETTES = [
+  { bg: '#ECFDF5', border: '#6EE7B7', iconBg: '#D1FAE5', badgeAccent: '#047857' },
+  { bg: '#FEFCE8', border: '#FDE047', iconBg: '#FEF08A', badgeAccent: '#B45309' },
+  { bg: '#EFF6FF', border: '#93C5FD', iconBg: '#DBEAFE', badgeAccent: '#1D4ED8' },
+  { bg: '#FDF2F8', border: '#F9A8D4', iconBg: '#FCE7F3', badgeAccent: '#BE185D' },
+  { bg: '#F5F3FF', border: '#C4B5FD', iconBg: '#EDE9FE', badgeAccent: '#6D28D9' },
+]
 
 export default function NurseryTheologyEOTReport({ reportData, studioFormatting: studioFormattingProp }: any) {
   const studioFormatting = useStudioFormatting(studioFormattingProp, reportData?.settings?.report_studio_config)
   const effective = resolveEffectiveStudioStyle(studioFormatting, reportData, 'nursery-theology-eot')
   const effectiveStudioPass = { ...studioFormatting, ...effective, stampInkColor: effective.stampColor }
+  const nurseryTheme = effective.nurseryTheme || 'playful'
+  const isLineArt = nurseryTheme === 'lineart' || studioFormatting.themeId === 'monochrome'
+  const isPlayful = nurseryTheme === 'playful' && !isLineArt
   const includeSignatures = effective.showSignatures
   const includeStamp = effective.showStamp
 
@@ -32,7 +46,9 @@ export default function NurseryTheologyEOTReport({ reportData, studioFormatting:
     sigMap['theology-teacher-baby'] ||
     sigMap['theology-teacher-middle'] ||
     sigMap['theology-teacher-top'] ||
-    Object.entries(sigMap).find(([k, v]) => (k.startsWith('class-teacher-') || k.startsWith('theology-teacher-')) && Boolean(v))?.[1] ||
+    Object.entries(sigMap).find(
+      ([k, v]) => (k.startsWith('class-teacher-') || k.startsWith('theology-teacher-')) && Boolean(v)
+    )?.[1] ||
     null
   const classTeacherSignatureUrl =
     (theoTeacherKey && sigMap[theoTeacherKey]) ||
@@ -41,38 +57,21 @@ export default function NurseryTheologyEOTReport({ reportData, studioFormatting:
     fallbackTeacherSig ||
     null
 
-  const getTheologyRemark = (score: number | null): string => {
-    if (score == null) return '--'
-    if (score >= 90) return 'ممتاز'
-    if (score >= 80) return 'جيد جداً'
-    if (score >= 70) return 'جيد'
-    if (score >= 60) return 'جيد'
-    if (score >= 50) return 'مقبول'
-    return 'ضعيف'
-  }
-
   const toAr = (val: number | string | null | undefined): string => {
     if (val == null) return '--'
-    return String(val).replace(/[0-9]/g, d => '٠١٢٣٤٥٦٧٨٩'[+d])
+    return String(val).replace(/[0-9]/g, (d) => '٠١٢٣٤٥٦٧٨٩'[+d])
   }
 
-  const toHijri = (gregorianYear: number): number =>
-    Math.round((gregorianYear - 622) * (33 / 32))
-
-  const termInArabic = (n: number): string => {
-    if (n === 1) return 'الأولى'
-    if (n === 2) return 'الثاني'
-    if (n === 3) return 'الثالث'
-    return String(n)
-  }
+  const toHijri = (gregorianYear: number): number => Math.round((gregorianYear - 622) * (33 / 32))
 
   const getGradeColor = (score: number | null) => {
-    if (score == null) return { bg: '#fff', border: 'var(--nursery-gold)', color: 'var(--nursery-gold)' }
-    if (score >= 90) return { bg: '#dcfce7', border: '#16a34a', color: '#16a34a' } // A - Green
-    if (score >= 80) return { bg: '#dbeafe', border: '#2563eb', color: '#2563eb' } // B - Blue
-    if (score >= 70) return { bg: '#fef3c7', border: '#d97706', color: '#d97706' } // C - Yellow
-    if (score >= 50) return { bg: '#ffedd5', border: '#ea580c', color: '#ea580c' } // D - Orange
-    return { bg: '#fee2e2', border: '#dc2626', color: '#dc2626' } // E - Red
+    if (isLineArt) return { bg: '#FFFFFF', border: '#1E293B', color: '#0F172A' }
+    if (score == null) return { bg: '#FFFFFF', border: '#D97706', color: '#B45309' }
+    if (score >= 85) return { bg: '#DCFCE7', border: '#16A34A', color: '#14532D' }
+    if (score >= 75) return { bg: '#DBEAFE', border: '#2563EB', color: '#1E3A8A' }
+    if (score >= 65) return { bg: '#FEF3C7', border: '#D97706', color: '#92400E' }
+    if (score >= 50) return { bg: '#FFEDD5', border: '#EA580C', color: '#9A3412' }
+    return { bg: '#FFE4E6', border: '#DC2626', color: '#9F1239' }
   }
 
   const getSubjectIcon = (arabicName: string) => {
@@ -80,32 +79,44 @@ export default function NurseryTheologyEOTReport({ reportData, studioFormatting:
     if (arabicName.includes('قرآن')) return '📖'
     if (arabicName.includes('حديث')) return '💬'
     if (arabicName.includes('فقه')) return '⚖️'
-    if (arabicName.includes('عقيدة')) return '❤️'
+    if (arabicName.includes('توحيد') || arabicName.includes('عقيدة')) return '❤️'
     if (arabicName.includes('سيرة')) return '🐪'
     if (arabicName.includes('أدعية') || arabicName.includes('دعاء')) return '🤲'
     if (arabicName.includes('لغة عربية') || arabicName.includes('عربي')) return '✍️'
     return '☪️'
   }
 
+  const computedDefaultTeacherComment = getTheologyComment(
+    reportData?.theology?.total ?? null,
+    reportData?.student?.gender,
+    reportData?.settings?.theology_remarks,
+    reportData?.theology?.division,
+    reportData?.theology?.subjects?.length || 4
+  )
+  const { teacherComment, headTeacherComment } = resolveDistinctNurseryTheologyComments({
+    teacherComment: reportData?.theology?.teacher_comment || computedDefaultTeacherComment,
+    headComment: reportData?.theology?.head_teacher_comment,
+    gender: reportData?.student?.gender,
+  })
+
+  const accentPrimary = isLineArt ? '#1E293B' : '#0D5C3A'
+  const accentGold = isLineArt ? '#334155' : '#D97706'
+  const paperBg = isPlayful ? '#FFFDF9' : '#FFFFFF'
+
   return (
     <ReportContainer reportType="NurseryTheologyEOTReport">
-      <style dangerouslySetInnerHTML={{
-        __html: `
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
 .nursery-theology-eot-report,
 .nursery-theology-eot-report * {
     box-sizing: border-box;
 }
 
 .nursery-theology-eot-report {
-    --nursery-blue: #e3f2fd;
-    --nursery-mint: #e8f5e9;
-    --nursery-gold: ${effective.secondaryColor};
-    --nursery-text: #2c3e50;
-    --primary-green: ${effective.primaryColor};
-    --secondary-green: ${effective.headerAccentColor};
-    --data-navy: #0f172a;
-    --data-indigo: #1e293b;
-    --data-teal: #0369a1;
+    --nursery-gold: ${accentGold};
+    --nursery-text: #1E293B;
+    --primary-green: ${accentPrimary};
     flex: 1 1 auto;
     width: 100%;
     height: 100%;
@@ -115,8 +126,9 @@ export default function NurseryTheologyEOTReport({ reportData, studioFormatting:
     flex-direction: column;
     justify-content: space-between;
     direction: rtl;
-    padding: 5mm 10mm;
+    padding: 12px 18px 10px 18px;
     margin: 0 auto;
+    background: ${paperBg};
     font-family: ${effective.arabicFontFamilyCss} !important;
     --report-font-scale: ${effective.arabicFontScaleMultiplier};
     font-size: calc(100% * var(--report-font-scale, 1));
@@ -127,77 +139,35 @@ export default function NurseryTheologyEOTReport({ reportData, studioFormatting:
     .nursery-theology-eot-report {
         box-shadow: none;
         margin: 0;
+        background: #FFFFFF !important;
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
     }
-    .nursery-theology-eot-report .info-grid {
-        gap: 8px;
-    }
-    .nursery-theology-eot-report .subject-row {
-        margin-bottom: 8px;
-    }
-    .nursery-theology-eot-report .remarks-area {
-        margin-top: 15px;
-    }
-    .nursery-theology-eot-report .remark-box {
-        margin-bottom: 8px;
-    }
-    .nursery-theology-eot-report .signature-row {
-        margin-top: 15px;
-    }
-    .nursery-theology-eot-report .footer-stamp {
-        margin-top: 20px;
-    }
-}
-
-.nursery-theology-eot-report::before {
-    content: "⭐";
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    font-size: 30px;
-    opacity: 0.5;
-}
-
-.nursery-theology-eot-report::after {
-    content: "🌙";
-    position: absolute;
-    bottom: 10px;
-    left: 10px;
-    font-size: 30px;
-    opacity: 0.5;
-}
-
-.nursery-theology-eot-report .watermark-bg {
-    position: absolute;
-    inset: 0;
-    background: url('${normalizeSchoolLogoUrl(effective.schoolHeader.logoUrl)}') center center no-repeat;
-    background-size: contain;
-    opacity: ${effective.watermarkOpacity};
-    pointer-events: none;
-    z-index: 0;
 }
 
 .nursery-theology-eot-report > *:not(.watermark-bg) {
     position: relative;
-    z-index: 1;
+    z-index: 2;
 }
 
+/* JOYFUL LIGHT HEADER WITH BASMALA & SCALLOPED CLOUD BORDER */
 .nursery-theology-eot-report .header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: 10px;
     text-align: center;
-    background: linear-gradient(135deg, var(--primary-green), var(--secondary-green));
-    padding: 10px 18px;
-    border-radius: 16px;
-    border: 3px solid var(--nursery-gold);
-    color: white;
+    background: ${isLineArt ? '#FFFFFF' : 'linear-gradient(180deg, #ECFDF5 0%, #FFFBEB 100%)'};
+    padding: 8px 14px 10px 14px;
+    border-radius: 18px;
+    border: 2.5px solid var(--nursery-gold);
+    color: var(--primary-green);
+    flex-shrink: 0;
 }
+
 .nursery-theology-eot-report .header-badge {
-    width: 60px;
-    height: 60px;
+    width: 48px;
+    height: 48px;
     flex-shrink: 0;
     display: flex;
     align-items: center;
@@ -211,168 +181,193 @@ export default function NurseryTheologyEOTReport({ reportData, studioFormatting:
 }
 .nursery-theology-eot-report .header-center {
     flex: 1;
+    min-width: 0;
     text-align: center;
 }
 
 .nursery-theology-eot-report .basmala {
     font-family: 'Amiri', serif;
-    font-size: 36px;
-    color: white;
-    margin-bottom: 10px;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+    font-size: 20px;
+    font-weight: 900;
+    color: ${accentPrimary};
+    margin-bottom: 2px;
+    line-height: 1.2;
 }
 
 .nursery-theology-eot-report .school-name {
-    font-size: 32px;
+    font-size: 20px;
     font-weight: 900;
-    color: white;
-    margin: 5px 0;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+    color: #0F172A;
+    margin: 2px 0 4px 0;
+    line-height: 1.2;
 }
 
 .nursery-theology-eot-report .report-badge {
-    background: rgba(255,255,255,0.2);
-    color: white;
+    background: ${isLineArt ? '#F8FAFC' : '#FEF3C7'};
+    color: ${isLineArt ? '#0F172A' : '#92400E'};
     display: inline-block;
-    padding: 5px 30px;
+    padding: 3px 18px;
     border-radius: 999px;
-    font-size: 22px;
-    font-weight: 700;
-    margin-top: 10px;
-    border: 1px solid rgba(255,255,255,0.3);
+    font-size: 14px;
+    font-weight: 900;
+    border: 1.5px solid var(--nursery-gold);
 }
 
+/* CHILD IDENTITY GRID */
 .nursery-theology-eot-report .info-grid {
     flex: 0 0 auto;
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin: 10px 0;
-    background: #f8fafc;
-    padding: 10px 15px;
-    border-radius: 12px;
-    border: 1px solid #e2e8f0;
-    box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+    gap: 8px 14px;
+    margin: 6px 0 0 0;
+    background: ${isLineArt ? '#FFFFFF' : '#F8FAFC'};
+    padding: 9px 14px;
+    border-radius: 14px;
+    border: 1.5px solid ${isLineArt ? '#334155' : '#CBD5E1'};
 }
 
 .nursery-theology-eot-report .info-item {
     display: flex;
     align-items: center;
-    gap: 10px;
-    font-size: 18px;
-    font-weight: 700;
+    gap: 8px;
+    font-size: 15px;
+    font-weight: 800;
 }
 
 .nursery-theology-eot-report .dot-line {
     flex: 1;
     min-width: 0;
-    border-bottom: 1.5px dotted #9ca3af;
-    height: 24px;
+    border-bottom: 1.5px dotted #94A3B8;
+    min-height: 22px;
     display: flex;
     align-items: center;
     justify-content: flex-start;
-    padding: 0 8px 2px 8px;
-    color: var(--data-navy);
-    font-weight: 900;
-    font-size: 17px;
+    padding: 0 6px 2px 6px;
+    color: #0F172A;
+    font-weight: 900; font-size: 17px;
 }
 
+/* SEPARATED PILL SUBJECT ROWS */
 .nursery-theology-eot-report .subjects-container {
     flex: 1 1 auto;
-    margin-top: 10px;
-    min-height: 0;
+    margin-top: 6px;
     display: flex;
     flex-direction: column;
-}
-
-.nursery-theology-eot-report .subject-row {
-    flex: 0 0 auto;
-    display: grid;
-    grid-template-columns: 1.5fr 1fr 2fr;
-    align-items: center;
-    background: #fff;
-    border: 2px solid var(--nursery-mint);
-    margin-bottom: 8px;
-    border-radius: 12px;
-    overflow: visible;
-    color: var(--primary-green);
-    border-right: 5px solid var(--nursery-gold);
-}
-
-.nursery-theology-eot-report .grade-circle-wrap {
-    display: flex;
-    justify-content: center;
-    padding: 5px;
-}
-
-.nursery-theology-eot-report .grade-circle {
-    width: 50px;
-    height: 50px;
-    border: 3px solid var(--nursery-gold);
-    border-radius: 50%;
-    background: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 900;
-    color: var(--nursery-gold);
-}
-
-.nursery-theology-eot-report .comment-text {
-    padding: 10px;
-    font-size: 16px;
-    color: var(--data-teal);
-    font-style: italic;
-    font-weight: 900;
-    text-align: right;
-    direction: rtl;
-    line-height: 1.4;
-    word-break: break-word;
-    white-space: normal;
+    justify-content: space-evenly;
+    gap: 8px;
 }
 
 .nursery-theology-eot-report .table-head {
     flex: 0 0 auto;
     display: grid;
-    grid-template-columns: 1.5fr 1fr 2fr;
+    grid-template-columns: 1.8fr 0.9fr 1.6fr;
     text-align: center;
     font-weight: 900;
-    font-size: 18px;
-    margin-bottom: 10px;
+    font-size: 14.5px;
+    padding: 3px 8px;
+    border-bottom: 1.5px solid ${isLineArt ? '#1E293B' : '#CBD5E1'};
     color: var(--primary-green);
     direction: rtl;
 }
 
-.nursery-theology-eot-report .subject-name {
-    word-break: break-word;
-    white-space: normal;
-    padding: 0.5rem;
+.nursery-theology-eot-report .subject-row {
+    flex: 0 0 auto;
+    display: grid;
+    grid-template-columns: 1.8fr 0.9fr 1.6fr;
+    align-items: center;
+    background: #FFFFFF;
+    border: 1.5px solid #CBD5E1;
+    border-radius: 14px;
+    padding: 9px 12px;
+    color: #0F172A;
 }
 
+.nursery-theology-eot-report .subject-name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 900;
+    font-size: 16px;
+    color: #0F172A;
+}
+
+.nursery-theology-eot-report .grade-circle-wrap {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.nursery-theology-eot-report .grade-circle {
+    position: relative;
+    width: 44px;
+    height: 44px;
+    border: 2.5px solid var(--nursery-gold);
+    border-radius: 50%;
+    background: #FFFFFF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    font-size: 17px;
+    color: var(--nursery-gold);
+}
+
+.nursery-theology-eot-report .comment-text {
+    padding: 2px 8px;
+    font-size: 16px;
+    color: ${isLineArt ? '#0F172A' : '#0D5C3A'};
+    font-weight: 900;
+    text-align: center;
+    direction: rtl;
+    line-height: 1.3;
+    word-break: break-word;
+    white-space: normal;
+}
+
+/* COMPACT ARABIC GRADING KEY */
+.nursery-theology-eot-report .grading-key-card {
+    flex: 0 0 auto;
+    margin-top: 6px;
+    background: ${isLineArt ? '#FFFFFF' : '#F8FAFC'};
+    border: 1.5px solid ${isLineArt ? '#334155' : '#93C5FD'};
+    border-radius: 12px;
+    padding: 6px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px;
+    font-size: 12.5px;
+    font-weight: 800;
+}
+
+/* DISTINCT REMARKS AREA */
 .nursery-theology-eot-report .remarks-area {
     flex: 0 0 auto;
-    margin-top: 20px;
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
 }
 
 .nursery-theology-eot-report .remark-box {
     border: 2px dashed var(--nursery-gold);
-    border-radius: 15px;
-    padding: 12px;
-    margin-bottom: 12px;
+    border-radius: 14px;
+    padding: 10px 14px 6px 14px;
     position: relative;
-    background: #fffaf0;
+    background: ${isLineArt ? '#FFFFFF' : '#FFFAF0'};
 }
 
 .nursery-theology-eot-report .remark-label {
     position: absolute;
-    top: -12px;
-    right: 20px;
+    top: -11px;
+    right: 16px;
     background: var(--nursery-gold);
-    color: white;
-    padding: 2px 15px;
-    border-radius: 10px;
-    font-size: 14px;
-    font-weight: 700;
+    color: #FFFFFF;
+    padding: 1px 12px;
+    border-radius: 999px;
+    font-size: 12.5px;
+    font-weight: 800;
 }
 
 .nursery-theology-eot-report .signature-row {
@@ -380,156 +375,320 @@ export default function NurseryTheologyEOTReport({ reportData, studioFormatting:
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
-    margin-top: 20px;
-    padding: 0 10px;
+    margin-top: 8px;
+    padding: 0 8px;
 }
 
 .nursery-theology-eot-report .sign-field {
     text-align: center;
-    font-weight: 700;
+    font-weight: 800;
+    font-size: 14px;
 }
 
 .nursery-theology-eot-report .sign-line {
-    width: 180px;
+    width: 170px;
     border-top: none;
-    margin-top: 8px;
+    margin-top: 4px;
 }
 
 .nursery-theology-eot-report .footer-stamp {
-    width: 140px;
-    height: 90px;
-    border: none;
-    background: transparent;
+    width: 135px;
+    height: 68px;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
 }
-        `
-      }} />
+        `,
+        }}
+      />
 
-      <div className="nursery-theology-eot-report font-cairo" dir="rtl" style={{ position: 'relative' }}>
-        <div className="watermark-bg"></div>
+      <div
+        className="nursery-theology-eot-report font-cairo"
+        dir="rtl"
+        data-nursery-theme={nurseryTheme}
+        style={{ position: 'relative' }}
+      >
+        <div className="watermark-bg" />
         <NurseryEducativeWatermark
           templateId="nursery-theology-eot"
           logoUrl={normalizeSchoolLogoUrl(reportData?.settings?.logo_url)}
           studioFormatting={effectiveStudioPass}
-          includeEducativeArt={false}
+          includeEducativeArt={nurseryTheme !== 'classic'}
         />
+        {nurseryTheme !== 'classic' && <NurseryCornerDecor lineArt={isLineArt} />}
+
+        {/* HEADER */}
         <div className="header">
-          <div className="header-badge">
-            <img
-              src={normalizeSchoolLogoUrl(reportData?.settings?.logo_url)}
-              alt="School Badge"
-              onError={(e) => {
-                if (!e.currentTarget.src.endsWith('/school_logo.svg')) {
-                  e.currentTarget.src = '/school_logo.svg';
-                }
-              }}
-            />
-          </div>
+          {nurseryTheme !== 'classic' ? (
+            <NurseryPlayfulHeaderArt side="right" lineArt={isLineArt} width={96} height={74} />
+          ) : (
+            <div style={{ width: '48px' }} />
+          )}
+
           <div className="header-center">
-            <div className="basmala">بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْم</div>
-            <div className="school-name">{effective.schoolHeader.nameArabic || reportData?.settings?.arabic_name || "مدرسة جدة الإسلامية للروضة والإبتدائية"}</div>
-            <div className="report-badge">بطاقة تقرير للروضة</div>
+            <div className="basmala">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+              <div className="header-badge">
+                <img
+                  src={normalizeSchoolLogoUrl(reportData?.settings?.logo_url)}
+                  alt="School Badge"
+                  onError={(e) => {
+                    if (!e.currentTarget.src.endsWith('/school_logo.svg')) {
+                      e.currentTarget.src = '/school_logo.svg'
+                    }
+                  }}
+                />
+              </div>
+              <div className="school-name">
+                {effective.schoolHeader.nameArabic ||
+                  reportData?.settings?.arabic_name ||
+                  'مدرسة جدة الإسلامية للروضة والإبتدائية'}
+              </div>
+            </div>
+            <div className="report-badge">بطاقة تقييم مرحلة الروضة — نجوم جدة الصغار</div>
           </div>
-          <div className="header-badge" style={{ visibility: 'hidden' }}>
-            <img src="/school_logo.svg" alt="" />
-          </div>
+
+          {nurseryTheme !== 'classic' ? (
+            <NurseryPlayfulHeaderArt side="left" lineArt={isLineArt} width={96} height={74} />
+          ) : (
+            <div className="header-badge" style={{ visibility: 'hidden' }}>
+              <img src="/school_logo.svg" alt="" />
+            </div>
+          )}
         </div>
 
+        {/* CHILD IDENTITY CARD */}
         <div className="info-grid">
           <div className="info-item" style={{ gridColumn: 'span 2' }}>
             <span>اسم الطفل/ة:</span>
-            <div className="dot-line pupil-name" style={{ fontSize: '21px', fontWeight: 900, color: '#0F172A' }}>{reportData?.student?.arabic_name || "___"}</div>
+            <div className="dot-line pupil-name" style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A' }}>
+              {reportData?.student?.arabic_name || reportData?.student?.name || '___'}
+            </div>
           </div>
           <div className="info-item">
             <span>الروضة:</span>
-            <div className="dot-line" style={{ fontSize: '16.5px', fontWeight: 900, color: '#0F172A' }}>{reportData?.student?.theology_class_arabic ?? reportData?.student?.class_name}</div>
+            <div className="dot-line" style={{ fontSize: '16.5px', fontWeight: 900, color: '#0F172A' }}>
+              {reportData?.student?.theology_class_arabic ?? reportData?.student?.class_name}
+            </div>
           </div>
           <div className="info-item">
             <span>الفترة:</span>
-            <div className="dot-line" style={{ fontSize: '16.5px', fontWeight: 900, color: '#0F172A' }}>{toAr(reportData?.term?.term_number)}</div>
+            <div className="dot-line" style={{ fontSize: '16.5px', fontWeight: 900, color: '#0F172A' }}>
+              {toAr(reportData?.term?.term_number)}
+            </div>
           </div>
           <div className="info-item">
             <span>السنة:</span>
-            <div className="dot-line medium" style={{ fontSize: '16.5px', fontWeight: 900, color: '#0F172A' }}>{toAr(toHijri(Number(reportData?.term?.academic_year)))}</div>
-            <span>هـ</span>
-            <div className="dot-line medium" style={{ fontSize: '16.5px', fontWeight: 900, color: '#0F172A' }}>{toAr(reportData?.term?.academic_year)}</div>
-            <span>م</span>
+            <div className="dot-line" style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A' }}>
+              {toAr(toHijri(Number(reportData?.term?.academic_year || 2026)))} هـ /{' '}
+              {toAr(reportData?.term?.academic_year || 2026)} م
+            </div>
           </div>
           <div className="info-item">
             <span>عدد الأطفال:</span>
-            <div className="dot-line" style={{ fontSize: '16.5px', fontWeight: 900, color: '#0F172A' }}>{toAr(reportData?.meta?.total_students)}</div>
+            <div className="dot-line" style={{ fontSize: '16.5px', fontWeight: 900, color: '#0F172A' }}>
+              {toAr(reportData?.meta?.total_students)}
+            </div>
           </div>
         </div>
 
+        {/* SEPARATED ROUNDED-PILL SUBJECT CARDS */}
         <div className="subjects-container">
           <div className="table-head">
-            <div>المادة</div>
+            <div style={{ textAlign: 'right', paddingRight: '8px' }}>المادة</div>
             <div>الدرجة</div>
-            <div>التعليق</div>
+            <div>التقدير / التعليق</div>
           </div>
 
-          {reportData?.theology?.subjects?.map((subject: any) => {
+          {(reportData?.theology?.subjects || []).map((subject: any, idx: number) => {
             const colors = getGradeColor(subject.score)
+            const pillPal = isLineArt
+              ? { bg: '#FFFFFF', border: '#334155', iconBg: '#F1F5F9', badgeAccent: '#1E293B' }
+              : THEO_PILL_PALETTES[idx % THEO_PILL_PALETTES.length]
+            const resolvedRemark = getNurseryTheologySubjectRemark(subject.score, subject.theology_remark)
+
             return (
-              <div key={subject.subject_name_arabic} className="subject-row">
+              <div
+                key={subject.subject_name_arabic || idx}
+                className="subject-row"
+                style={{
+                  background: pillPal.bg,
+                  borderColor: pillPal.border,
+                  borderRight: `5px solid ${pillPal.badgeAccent}`,
+                }}
+              >
                 <div className="subject-name">
-                  <span className="print:hidden" style={{ fontSize: '18px', marginLeft: '8px' }}>{getSubjectIcon(subject.subject_name_arabic)}</span>
-                  {subject.subject_name_arabic}
+                  <span
+                    style={{
+                      width: '28px',
+                      height: '28px',
+                      borderRadius: '999px',
+                      background: pillPal.iconBg,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '15px',
+                      flexShrink: 0,
+                    }}
+                  >
+                    {getSubjectIcon(subject.subject_name_arabic)}
+                  </span>
+                  <span>{subject.subject_name_arabic}</span>
                 </div>
+
                 <div className="grade-circle-wrap">
-                  <div className="grade-circle" style={{ background: colors.bg, borderColor: colors.border, color: colors.color, boxShadow: `0 0 10px ${colors.bg}` }}>
+                  <div
+                    className="grade-circle"
+                    style={{
+                      background: colors.bg,
+                      borderColor: colors.border,
+                      color: colors.color,
+                    }}
+                  >
+                    {!isLineArt && (
+                      <span
+                        aria-hidden="true"
+                        style={{
+                          position: 'absolute',
+                          top: '-6px',
+                          left: '-6px',
+                          fontSize: '11px',
+                          lineHeight: 1,
+                        }}
+                      >
+                        ★
+                      </span>
+                    )}
                     {toAr(subject.score)}
                   </div>
                 </div>
-                <div className="comment-text">
-                  {subject.theology_remark ?? ''}
-                </div>
+
+                <div className="comment-text">{resolvedRemark}</div>
               </div>
             )
           })}
         </div>
 
+        {/* COMPACT BALANCED ARABIC GRADING KEY */}
+        <div className="grading-key-card" data-testid="nursery-theology-grading-key">
+          <span style={{ color: accentPrimary, fontWeight: 900 }}>سلم التقديرات:</span>
+          <span>ممتاز: ٨٥ – ١٠٠</span>
+          <span>جيد جداً: ٧٥ – ٨٤</span>
+          <span>جيد: ٦٥ – ٧٤</span>
+          <span>مقبول: ٥٠ – ٦٤</span>
+          <span>ضعيف: أقل من ٥٠</span>
+        </div>
+
+        {/* DISTINCT CLASS TEACHER & HEAD TEACHER REMARKS */}
         <div className="remarks-area">
           <div className="remark-box">
-            <span className="remark-label">ملاحظات مرب الفصل</span>
-            <div style={{ minHeight: '42px', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', width: '100%' }}>
-              <span style={{ color: '#1E40AF', fontWeight: 800, fontSize: `${effective.arabicCommentFontSizePx}px`, lineHeight: 1.35, textAlign: 'center', direction: 'rtl' }}>
-                {reportData?.theology?.teacher_comment || getTheologyComment(reportData?.theology?.total ?? null, reportData?.student?.gender, reportData?.settings?.theology_remarks, reportData?.theology?.division, reportData?.theology?.subjects?.length || 4)}
+            <span className="remark-label">ملاحظات مربي الفصل</span>
+            <div style={{ minHeight: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', width: '100%' }}>
+              <span
+                data-testid="nursery-theology-teacher-comment"
+                style={{
+                  color: '#1E40AF',
+                  fontWeight: 800,
+                  fontSize: `${effective.arabicCommentFontSizePx}px`,
+                  lineHeight: 1.35,
+                  textAlign: 'center',
+                  direction: 'rtl',
+                }}
+              >
+                {teacherComment}
               </span>
             </div>
           </div>
+
           <div className="remark-box">
             <span className="remark-label">ملاحظات مدير المدرسة</span>
-            <div style={{ minHeight: '42px', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', width: '100%' }}>
-              <span style={{ color: '#1E40AF', fontWeight: 800, fontSize: `${effective.arabicCommentFontSizePx}px`, lineHeight: 1.35, textAlign: 'center', direction: 'rtl' }}>
-                {reportData?.theology?.teacher_comment || getTheologyComment(reportData?.theology?.total ?? null, reportData?.student?.gender, reportData?.settings?.theology_remarks, reportData?.theology?.division, reportData?.theology?.subjects?.length || 4)}
+            <div style={{ minHeight: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', width: '100%' }}>
+              <span
+                data-testid="nursery-theology-head-comment"
+                style={{
+                  color: '#0D5C3A',
+                  fontWeight: 800,
+                  fontSize: `${effective.arabicCommentFontSizePx}px`,
+                  lineHeight: 1.35,
+                  textAlign: 'center',
+                  direction: 'rtl',
+                }}
+              >
+                {headTeacherComment}
               </span>
             </div>
           </div>
         </div>
 
+        {/* SIGNATURES & OFFICIAL STAMP */}
         <div className="signature-row">
           <div className="sign-field">
-            <div>تقرير مرب الفصل</div>
-            <div className="sign-line" style={{ position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'flex-end', height: '36px', minWidth: '130px', borderBottom: '1.5px dotted #334155' }}>
+            <div>توقيع مربي الفصل</div>
+            <div
+              className="sign-line"
+              style={{
+                position: 'relative',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'flex-end',
+                height: '34px',
+                minWidth: '130px',
+                borderBottom: '1.5px dotted #334155',
+              }}
+            >
               {includeSignatures && classTeacherSignatureUrl && (
-                <CleanSignatureImage src={classTeacherSignatureUrl} alt="Signature" style={{ height: '36px', width: '112px', objectFit: 'contain', marginBottom: '-6px' }} studioFormatting={effectiveStudioPass} />
+                <CleanSignatureImage
+                  src={classTeacherSignatureUrl}
+                  alt="Signature"
+                  style={{ height: '34px', width: '112px', objectFit: 'contain', marginBottom: '-5px' }}
+                  studioFormatting={effectiveStudioPass}
+                />
               )}
             </div>
           </div>
-          <div className="footer-stamp" style={{ width: '135px', height: '64px', minWidth: '135px', minHeight: '64px', position: 'relative', overflow: 'visible', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+
+          <div
+            className="footer-stamp"
+            style={{
+              width: '135px',
+              height: '64px',
+              minWidth: '135px',
+              minHeight: '64px',
+              position: 'relative',
+              overflow: 'visible',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
             {includeStamp ? (
               <OfficialReportStamp reportData={reportData} studioFormatting={effectiveStudioPass} maxWidth={135} maxHeight={64} />
             ) : null}
           </div>
+
           <div className="sign-field">
-            <div>تقرير مدير المدرسة</div>
-            <div className="sign-line" style={{ position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'flex-end', height: '36px', minWidth: '130px', borderBottom: '1.5px dotted #334155' }}>
+            <div>توقيع مدير المدرسة</div>
+            <div
+              className="sign-line"
+              style={{
+                position: 'relative',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'flex-end',
+                height: '34px',
+                minWidth: '130px',
+                borderBottom: '1.5px dotted #334155',
+              }}
+            >
               {includeSignatures && reportData?.signatures?.['head-teacher'] && (
-                <CleanSignatureImage src={reportData.signatures['head-teacher']} alt="Signature" style={{ height: '36px', width: '112px', objectFit: 'contain', marginBottom: '-6px' }} studioFormatting={effectiveStudioPass} />
+                <CleanSignatureImage
+                  src={reportData.signatures['head-teacher']}
+                  alt="Signature"
+                  style={{ height: '34px', width: '112px', objectFit: 'contain', marginBottom: '-5px' }}
+                  studioFormatting={effectiveStudioPass}
+                />
               )}
             </div>
           </div>

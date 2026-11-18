@@ -33,7 +33,7 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover
 import { MoreActionsMenu } from '@/components/ui/more-actions-menu'
 import { useSidebar } from '@/components/figma-ui/ui/sidebar'
 import { getStoredThemeMode, setStoredThemeMode, type ThemeMode } from '@/lib/client-cache'
-import { persistStudioConfigGlobally, saveStudioConfigToStorage, normalizeStudioConfig, STUDIO_ENGLISH_FONT_FAMILIES } from '@/lib/studio-config-store'
+import { persistStudioConfigGlobally, saveStudioConfigToStorage, normalizeStudioConfig, STUDIO_ENGLISH_FONT_FAMILIES, type NurseryReportTheme } from '@/lib/studio-config-store'
 import { CustomPillSelect } from '@/components/ui/custom-pill-select'
 import { toast } from 'sonner'
 
@@ -49,6 +49,7 @@ export interface StudioFormattingState {
   signaturesEnabled: boolean
   watermarkOpacity: number
   showNurseryArt?: boolean
+  nurseryTheme?: NurseryReportTheme
   nurseryArtOpacity?: number
   signatureThreshold?: number
   stampScale?: number
@@ -66,6 +67,7 @@ export const DEFAULT_STUDIO_FORMATTING: StudioFormattingState = {
   signaturesEnabled: true,
   watermarkOpacity: 4,
   showNurseryArt: true,
+  nurseryTheme: 'playful',
   nurseryArtOpacity: 7,
   signatureThreshold: 210,
   stampScale: 100,
@@ -440,6 +442,34 @@ export function TopToolbar({
           >
             <span className="w-4 h-4 rounded-full bg-white shadow-xs" />
           </button>
+        </div>
+
+        {/* Nursery Card Style Selector */}
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[11px] font-medium text-stone-700 dark:text-stone-200">
+            Nursery Card Style
+          </span>
+          <div className="flex items-center bg-[#F0F4F9] dark:bg-[#1E2623] rounded-lg p-0.5 border border-black/[0.06] dark:border-white/[0.08] gap-0.5">
+            {([
+              { id: 'playful', label: 'Playful' },
+              { id: 'lineart', label: 'Line-Art B&W' },
+              { id: 'classic', label: 'Classic' },
+            ] as const).map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                data-testid={`toolbar-nursery-theme-${t.id}`}
+                onClick={() => updateFormatting({ nurseryTheme: t.id })}
+                className={`px-2 py-0.5 rounded text-[10px] font-bold cursor-pointer transition ${
+                  (studioFormatting.nurseryTheme || 'playful') === t.id
+                    ? 'bg-[#0D5C3A] text-white'
+                    : 'text-stone-600 dark:text-stone-300'
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Save as School Default + Open Full Report Studio 2.0 */}

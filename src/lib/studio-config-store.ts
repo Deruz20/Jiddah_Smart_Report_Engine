@@ -50,6 +50,7 @@ export type StudioArabicFontFamily =
 
 export type StudioCommentFontSize = 'normal' | 'large' | 'xlarge'
 export type StudioWatermarkStyle = 'crest' | 'crest-star' | 'laurel-seal' | 'none'
+export type NurseryReportTheme = 'playful' | 'lineart' | 'classic'
 export type StudioArtPreset =
   | 'default'
   | 'safari'
@@ -91,6 +92,7 @@ export interface StudioFormattingConfig {
   watermarkScale: number // 70 to 130, default 100
   watermarkOpacity: number // 0 to 20, default 5.5
   showNurseryArt: boolean // default true
+  nurseryTheme?: NurseryReportTheme // default 'playful'
   artPreset: StudioArtPreset // default 'default'
   nurseryArtOpacity: number // 4 to 15, default 7
   pageDensity?: 'compact' | 'balanced' | 'spacious'
@@ -361,6 +363,7 @@ export const DEFAULT_STUDIO_CONFIG: StudioFormattingConfig = {
   watermarkScale: 100,
   watermarkOpacity: 5.5,
   showNurseryArt: true,
+  nurseryTheme: 'playful',
   artPreset: 'default',
   nurseryArtOpacity: 7,
   pageDensity: 'balanced',
@@ -565,6 +568,8 @@ export function normalizeStudioConfig(
     : DEFAULT_STUDIO_CONFIG.watermarkOpacity
 
   const showNurseryArt = raw.showNurseryArt !== undefined ? Boolean(raw.showNurseryArt) : true
+  const nurseryTheme: NurseryReportTheme =
+    raw.nurseryTheme === 'lineart' || raw.nurseryTheme === 'classic' ? raw.nurseryTheme : 'playful'
   const artPreset: StudioArtPreset =
     raw.artPreset === 'safari' ||
     raw.artPreset === 'abc-literacy' ||
@@ -622,6 +627,7 @@ export function normalizeStudioConfig(
     watermarkScale,
     watermarkOpacity,
     showNurseryArt,
+    nurseryTheme,
     artPreset,
     nurseryArtOpacity,
     pageDensity: raw.pageDensity || 'balanced',
@@ -708,6 +714,7 @@ export interface EffectiveStudioStyle {
   watermarkOpacity: number
   watermarkOpacityPercent: number
   showNurseryArt: boolean
+  nurseryTheme: NurseryReportTheme
   artPreset: StudioArtPreset
   nurseryArtOpacity: number
   showStamp: boolean
@@ -841,6 +848,7 @@ export function resolveEffectiveStudioStyle(
     watermarkOpacity,
     watermarkOpacityPercent,
     showNurseryArt: normalized.showNurseryArt,
+    nurseryTheme: normalized.nurseryTheme || 'playful',
     artPreset: normalized.artPreset,
     nurseryArtOpacity: normalized.nurseryArtOpacity,
     showStamp: normalized.showStamp,

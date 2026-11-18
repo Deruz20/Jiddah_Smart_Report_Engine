@@ -796,3 +796,92 @@ export function getTheologyComment(
   if (normalizedTarget.includes('جيدجدا')) return 'بقيت خطوة إلى الامتياز'
   return isGirl ? 'أنتِ قادرة على الأفضل' : 'أنت قادر على الأفضل'
 }
+
+export function getNurseryTheologySubjectRemark(
+  score: number | null | undefined,
+  rawRemark?: string | null
+): string {
+  const num = typeof score === 'number' && Number.isFinite(score) ? score : null
+  if (num !== null) {
+    if (num >= 85) return 'ممتاز'
+    if (num >= 75) return 'جيد جداً'
+    if (num >= 65) return 'جيد'
+    if (num >= 50) return 'مقبول'
+    return 'ضعيف'
+  }
+  const cleaned = String(rawRemark || '').trim()
+  if (!cleaned) return ''
+  if (cleaned === 'تفوق عالٍ' || cleaned === 'تفوق عال' || cleaned === 'تفوق') return 'ممتاز'
+  if (cleaned === 'جدارة عالية') return 'جيد جداً'
+  if (cleaned === 'جدارة حسنة' || cleaned === 'جدارة متوسطة') return 'جيد'
+  if (cleaned === 'جدارة أساسية' || cleaned === 'اجتياز كافٍ' || cleaned === 'اجتياز حدّي') return 'مقبول'
+  if (cleaned === 'دون المستوى' || cleaned === 'راسب') return 'ضعيف'
+  return cleaned
+}
+
+export function resolveDistinctNurserySecularComments({
+  classRule,
+  headRule,
+  defaultComment,
+  grades = [],
+  isTerm3 = false,
+}: {
+  classRule?: string | null
+  headRule?: string | null
+  defaultComment?: string | null
+  grades?: string[]
+  isTerm3?: boolean
+}): { classTeacherComment: string; headTeacherComment: string } {
+  const classTeacherComment =
+    (classRule && classRule.trim()) ||
+    (defaultComment && defaultComment.trim()) ||
+    'Shows wonderful curiosity and joyful participation in class activities. Keep shining!'
+
+  const explicitHead = headRule && headRule.trim() ? headRule.trim() : ''
+  const gradeScore = (g: string) => ({ A: 5, B: 4, C: 3, D: 2, E: 1 }[g] ?? 4)
+  const avg = grades.length > 0 ? grades.reduce((s, g) => s + gradeScore(g), 0) / grades.length : 4
+
+  const fallbackHead = isTerm3
+    ? 'Impressive early-learning milestone achieved. Promoted with warm commendation.'
+    : avg >= 3.5
+      ? 'Delightful progress recorded across early learning domains. Keep soaring, little star!'
+      : 'Encouraging steady growth this term. Thank you for partnering closely in the learner\'s foundation.'
+
+  let headTeacherComment =
+    explicitHead && explicitHead !== classTeacherComment ? explicitHead : fallbackHead
+
+  if (headTeacherComment.trim() === classTeacherComment.trim()) {
+    headTeacherComment = 'Impressive early-learning milestone achieved. Keep shining brightly!'
+  }
+
+  return { classTeacherComment, headTeacherComment }
+}
+
+export function resolveDistinctNurseryTheologyComments({
+  teacherComment,
+  headComment,
+  gender,
+}: {
+  teacherComment?: string | null
+  headComment?: string | null
+  gender?: string | null
+}): { teacherComment: string; headTeacherComment: string } {
+  const isGirl = gender ? ['female', 'f', 'girl', 'بنت', 'أنثى'].includes(gender.trim().toLowerCase()) : false
+  const resolvedTeacher =
+    (teacherComment && teacherComment.trim()) ||
+    'ما شاء الله، تفاعل ممتاز وتقدم رائع في الحفظ والتعلم، بارك الله فيك.'
+
+  const explicitHead = headComment && headComment.trim() ? headComment.trim() : ''
+  const fallbackHead = isGirl
+    ? 'نتيجة مشرفة وجهد مبارك، نتمنى لها دوام التفوق والنجاح.'
+    : 'نتيجة مشرفة وجهد مبارك، نتمنى له/لها دوام التفوق والنجاح.'
+
+  let resolvedHead =
+    explicitHead && explicitHead !== resolvedTeacher ? explicitHead : fallbackHead
+
+  if (resolvedHead.trim() === resolvedTeacher.trim()) {
+    resolvedHead = 'أداء طيب وجهد مشكور، مع أطيب التمنيات بمزيد من التقدم والتميز.'
+  }
+
+  return { teacherComment: resolvedTeacher, headTeacherComment: resolvedHead }
+}

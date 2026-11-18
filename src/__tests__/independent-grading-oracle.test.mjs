@@ -162,14 +162,14 @@ describe('Wave 3: Independent Grading & Calculation Oracle', () => {
       assert.equal(getSubjectRemark(9), 'Poor / Pull Up');
     });
 
-    it('generates authentic Arabic remarks for Islamic theology', () => {
-      assert.equal(getTheologySubjectRemark(1), 'ممتاز');
-      assert.equal(getTheologySubjectRemark(2), 'جيد جداً');
-      assert.equal(getTheologySubjectRemark(3), 'جيد');
-      assert.equal(getTheologySubjectRemark(5), 'مقبول');
-      assert.equal(getTheologySubjectRemark(7), 'ضعيف');
-      assert.equal(getTheologySubjectRemark(8), 'ضعيف جداً');
-      assert.equal(getTheologySubjectRemark(9), 'راسب');
+    it('generates distinct Arabic IPLE attainment descriptors for individual theology subjects', () => {
+      assert.equal(getTheologySubjectRemark(1), 'تفوق عالٍ');
+      assert.equal(getTheologySubjectRemark(2), 'تفوق');
+      assert.equal(getTheologySubjectRemark(3), 'جدارة عالية');
+      assert.equal(getTheologySubjectRemark(5), 'جدارة متوسطة');
+      assert.equal(getTheologySubjectRemark(7), 'اجتياز كافٍ');
+      assert.equal(getTheologySubjectRemark(8), 'اجتياز حدّي');
+      assert.equal(getTheologySubjectRemark(9), 'دون المستوى');
     });
   });
 

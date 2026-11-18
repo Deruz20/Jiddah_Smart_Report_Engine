@@ -108,6 +108,46 @@
 
 @media print {
 
+  /* Force strict light-mode paper & ink tokens on ALL print surfaces even when UI is in Dark Mode */
+  :root,
+  html,
+  body,
+  .dark,
+  [data-theme="dark"],
+  html.dark,
+  body.dark,
+  #report-print-portal,
+  #print-portal,
+  #class-roster-print-root {
+    color-scheme: light !important;
+    --bg-canvas: #ffffff !important;
+    --bg-canvas-ambient: none !important;
+    --bg-card: #ffffff !important;
+    --bg-sunken: #f8fafc !important;
+    --bg-hover: #f1f5f9 !important;
+    --border: #cbd5e1 !important;
+    --border-strong: #94a3b8 !important;
+    --text-primary: #0f172a !important;
+    --text-secondary: #334155 !important;
+    --text-muted: #64748b !important;
+    --ui-canvas: #ffffff !important;
+    --ui-surface: #ffffff !important;
+    --ui-text: #0f172a !important;
+    --ui-muted: #475569 !important;
+    --ui-border: #cbd5e1 !important;
+    --background: #ffffff !important;
+    --foreground: #0f172a !important;
+    --card: #ffffff !important;
+    --card-foreground: #0f172a !important;
+    --popover: #ffffff !important;
+    --popover-foreground: #0f172a !important;
+    --muted: #f1f5f9 !important;
+    --muted-foreground: #475569 !important;
+    background-color: #ffffff !important;
+    background-image: none !important;
+    color: #0f172a !important;
+  }
+
   /* 0. Multi-Page Batch Print: Unconstrain all ancestors so Chrome prints all N sheets */
   html,
   body,
@@ -139,7 +179,7 @@
   }
 
   /* 1. Completely collapse screen app tree when #report-print-portal is present so Page 1 is NEVER blank */
-  html:has(#report-print-portal) body > *:not(#report-print-portal):not(style):not(script),
+  html:has(#report-print-portal) body>*:not(#report-print-portal):not(style):not(script),
   body:has(#report-print-portal) [data-slot="sidebar-wrapper"],
   body:has(#report-print-portal) [data-slot="sidebar-inset"],
   body:has(#report-print-portal) main,
@@ -168,6 +208,8 @@
     left: 0 !important;
     top: 0 !important;
     background: #ffffff !important;
+    color: #0F172A !important;
+    color-scheme: light !important;
   }
 
   /* 2. Reveal ONLY the print portal */
@@ -302,11 +344,49 @@
     max-width: none !important;
     height: auto !important;
     min-height: 0 !important;
+    max-height: none !important;
     margin: 0 !important;
     padding: 0 !important;
     overflow: visible !important;
+    page-break-inside: auto !important;
+    break-inside: auto !important;
     background: #ffffff !important;
-    color: #000000 !important;
+    color: #0F172A !important;
+    color-scheme: light !important;
+  }
+
+  #secular-hub-print-root table,
+  #theology-hub-print-root table,
+  #class-roster-print-root table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+  }
+
+  #secular-hub-print-root thead,
+  #theology-hub-print-root thead,
+  #class-roster-print-root thead {
+    display: table-header-group !important;
+  }
+
+  #secular-hub-print-root tfoot,
+  #theology-hub-print-root tfoot,
+  #class-roster-print-root tfoot {
+    display: table-row-group !important;
+  }
+
+  #secular-hub-print-root tr,
+  #theology-hub-print-root tr,
+  #class-roster-print-root tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  #secular-hub-print-root .hub-print-keep-together,
+  #theology-hub-print-root .hub-print-keep-together {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 
   #secular-hub-print-root,

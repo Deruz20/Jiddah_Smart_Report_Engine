@@ -87,85 +87,117 @@ function splitStampSchoolHeader(name: string): [string, string] {
 }
 
 export const stampCrestCache = new Map<string, string>();
+export const stampDataUrlCache = stampCrestCache;
+const inFlightCrestPromises = new Map<string, Promise<string>>();
+
+export function buildStampCrestCacheKey(
+  src: string = "/logo-512h.png",
+  inkColor: string = "#1B3B8B",
+  threshold: number = 215
+): string {
+  return `${src}|${(inkColor || "#1B3B8B").toUpperCase()}|${threshold}`;
+}
 
 /**
  * Singleton hook that converts /logo-512h.png to a transparent monochromatic emblem
- * matching the stamp's ink color via an offscreen canvas once, eliminating SVG filter clipping blocks.
+ * matching the stamp's ink color via an offscreen canvas once (deduplicating concurrent mounts),
+ * eliminating SVG filter clipping blocks and main-thread freezes during batch report printing.
  */
-export function useMonochromeStampCrest(inkColor: string = "#1B3B8B"): string {
-  const [crestUrl, setCrestUrl] = useState<string>(() => stampCrestCache.get(inkColor) || "/logo-512h.png");
+export function useMonochromeStampCrest(
+  inkColor: string = "#1B3B8B",
+  threshold: number = 215,
+  src: string = "/logo-512h.png"
+): string {
+  const cacheKey = buildStampCrestCacheKey(src, inkColor, threshold);
+  const [crestUrl, setCrestUrl] = useState<string>(
+    () => stampCrestCache.get(cacheKey) || stampCrestCache.get(inkColor) || src
+  );
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const cached = stampCrestCache.get(inkColor);
+    const cached = stampCrestCache.get(cacheKey) || stampCrestCache.get(inkColor);
     if (cached) {
       setCrestUrl(cached);
       return;
     }
 
     let active = true;
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-      try {
-        const canvas = document.createElement("canvas");
-        canvas.width = 120;
-        canvas.height = 120;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return;
+    let promise = inFlightCrestPromises.get(cacheKey);
+    if (!promise) {
+      promise = new Promise<string>((resolve) => {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => {
+          try {
+            const canvas = document.createElement("canvas");
+            canvas.width = 120;
+            canvas.height = 120;
+            const ctx = canvas.getContext("2d");
+            if (!ctx) {
+              resolve(src);
+              return;
+            }
 
-        ctx.drawImage(img, 0, 0, 120, 120);
-        const imgData = ctx.getImageData(0, 0, 120, 120);
-        const data = imgData.data;
+            ctx.drawImage(img, 0, 0, 120, 120);
+            const imgData = ctx.getImageData(0, 0, 120, 120);
+            const data = imgData.data;
 
-        let hex = inkColor.replace("#", "");
-        if (hex.length === 3) hex = hex.split("").map((c) => c + c).join("");
-        const inkR = parseInt(hex.slice(0, 2), 16) || 27;
-        const inkG = parseInt(hex.slice(2, 4), 16) || 59;
-        const inkB = parseInt(hex.slice(4, 6), 16) || 139;
+            let hex = inkColor.replace("#", "");
+            if (hex.length === 3) hex = hex.split("").map((c) => c + c).join("");
+            const inkR = parseInt(hex.slice(0, 2), 16) || 27;
+            const inkG = parseInt(hex.slice(2, 4), 16) || 59;
+            const inkB = parseInt(hex.slice(4, 6), 16) || 139;
 
-        for (let i = 0; i < data.length; i += 4) {
-          const a = data[i + 3];
-          if (a < 40) {
-            data[i + 3] = 0;
-            continue;
+            for (let i = 0; i < data.length; i += 4) {
+              const a = data[i + 3];
+              if (a < 40) {
+                data[i + 3] = 0;
+                continue;
+              }
+              const lum = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+              if (lum > threshold) {
+                data[i + 3] = 0;
+                continue;
+              }
+              data[i] = inkR;
+              data[i + 1] = inkG;
+              data[i + 2] = inkB;
+              const strokeAlpha = Math.min(255, Math.round(((threshold - lum) / 140) * 255));
+              data[i + 3] = Math.min(a, Math.max(0, strokeAlpha));
+            }
+
+            ctx.putImageData(imgData, 0, 0);
+            const resultUrl = canvas.toDataURL("image/png");
+            stampCrestCache.set(cacheKey, resultUrl);
+            stampCrestCache.set(inkColor, resultUrl);
+            resolve(resultUrl);
+          } catch {
+            resolve(src);
           }
-          const lum = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-          // Strip white canvas backing inside crest
-          if (lum > 215) {
-            data[i + 3] = 0;
-            continue;
-          }
-          // Recolor darker crest pixels to inkColor with antialiased alpha
-          data[i] = inkR;
-          data[i + 1] = inkG;
-          data[i + 2] = inkB;
-          const strokeAlpha = Math.min(255, Math.round(((215 - lum) / 140) * 255));
-          data[i + 3] = Math.min(a, Math.max(0, strokeAlpha));
-        }
+        };
+        img.onerror = () => resolve(src);
+        img.src = src;
+      }).finally(() => {
+        inFlightCrestPromises.delete(cacheKey);
+      });
+      inFlightCrestPromises.set(cacheKey, promise);
+    }
 
-        ctx.putImageData(imgData, 0, 0);
-        const resultUrl = canvas.toDataURL("image/png");
-        stampCrestCache.set(inkColor, resultUrl);
-        if (active) {
-          setCrestUrl(resultUrl);
-        }
-      } catch {
-        // Fallback to /logo-512h.png
+    promise.then((resultUrl) => {
+      if (active && resultUrl) {
+        setCrestUrl(resultUrl);
       }
-    };
-    img.onerror = () => {};
-    img.src = "/logo-512h.png";
+    });
 
     return () => {
       active = false;
     };
-  }, [inkColor]);
+  }, [cacheKey, inkColor, threshold, src]);
 
   return crestUrl;
 }
 
-export function VectorStamp({
+export const VectorStamp = React.memo(function VectorStamp({
   config,
   date,
   maxWidth,
@@ -577,9 +609,9 @@ export function VectorStamp({
       </svg>
     </div>
   );
-}
+});
 
-export function OfficialReportStamp({
+export const OfficialReportStamp = React.memo(function OfficialReportStamp({
   reportData,
   studioFormatting,
   maxWidth = 135,
@@ -700,7 +732,7 @@ export function OfficialReportStamp({
       </div>
     </div>
   );
-}
+});
 
 export function StampGeneratorPanel({
   config,

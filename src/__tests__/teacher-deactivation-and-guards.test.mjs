@@ -121,7 +121,7 @@ test('Item E: Teacher Deactivation, Session Revocation, Guards & Audit Suite', a
 
   // Helper for SSR cookie headers
   const getHeaders = (session) => {
-    const base64Session = Buffer.from(JSON.stringify(session)).toString('base64');
+    const base64Session = Buffer.from(JSON.stringify(session)).toString('base64url');
     return {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${session.access_token}`,
@@ -244,13 +244,15 @@ test('Item E: Teacher Deactivation, Session Revocation, Guards & Audit Suite', a
   // E-D & E-E: Playwright UI test verifies button is renamed "Deactivate" BEFORE deactivation
   await t.test('E-D & E-E: Playwright UI test verifies button is renamed "Deactivate"', async () => {
     const browser = await chromium.launch({
-      executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+      executablePath: (await import('node:fs')).default.existsSync('/usr/bin/google-chrome')
+        ? '/usr/bin/google-chrome'
+        : 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
       headless: true
     });
     const context = await browser.newContext();
 
     // Inject Admin session cookie directly
-    const ssrCookieValue = 'base64-' + Buffer.from(JSON.stringify(adminSession)).toString('base64');
+    const ssrCookieValue = 'base64-' + Buffer.from(JSON.stringify(adminSession)).toString('base64url');
     await context.addCookies([
       {
         name: 'sb-127-auth-token',

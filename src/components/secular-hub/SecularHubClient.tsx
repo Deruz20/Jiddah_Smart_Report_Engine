@@ -25,18 +25,39 @@ import {
   ExternalLink,
   Layers,
   ArrowLeft,
+  Sliders,
 } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { SecularHubEmptyState } from './SecularHubEmptyState'
-import { OfficialPrintLetterhead, OfficialPrintSignaturesFooter } from '@/components/print/OfficialPrintLetterhead'
-import { OfficialReportStamp } from '@/components/reports/StampGenerator'
 import { PrintPortal } from '@/components/reports/PrintPortal'
 import { CustomPillSelect } from '@/components/ui/custom-pill-select'
 import { JiddahLoader } from '@/components/ui/jiddah-loader'
+import { BroadsheetPrintDocument } from '@/components/hubs/BroadsheetPrintDocument'
+import { BroadsheetPrintStudioModal } from '@/components/hubs/BroadsheetPrintStudioModal'
+import {
+  type BroadsheetPrintConfig,
+  getDefaultBroadsheetPrintConfig,
+  loadBroadsheetPrintConfig,
+  saveBroadsheetPrintConfig,
+  prepareBroadsheetStudents,
+} from '@/lib/broadsheet-print-config'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { downloadCSV, escapeCSV } from '@/utils/csvExport'
 import { computeStandardRankings } from '@/lib/ranking'
+import { computeHubCohortMetrics } from '@/lib/hub-cohort-engine'
+import {
+  DEFAULT_HUB_SECTIONS,
+  mapClassesToSections,
+  normalizeHubSectionsConfig,
+  type HubSectionId,
+} from '@/lib/academic-sections'
+import {
+  HubCandidateNaCard,
+  HubClassBreakdownTable,
+  HubDataQualityBanners,
+  HubMissingMarksPanel,
+} from '@/components/hubs/HubCohortPanels'
 import {
   getSubjectGradeNumber,
   getGradeDisplay,
@@ -68,15 +89,17 @@ const SecularGradeBadge = memo(({
   mark,
   grade,
   isNursery,
+  customBands,
 }: {
   mark: number | null | undefined
   grade?: string | null
   isNursery?: boolean
+  customBands?: any[]
 }) => {
   if (mark == null || isNaN(Number(mark))) {
     return <span className="text-stone-300 dark:text-stone-700 font-bold">-</span>
   }
-  const g = grade || (isNursery ? getNurseryGrade(Number(mark)).grade : getGradeDisplay(getSubjectGradeNumber(Number(mark))))
+  const g = grade || (isNursery ? getNurseryGrade(Number(mark)).grade : getGradeDisplay(getSubjectGradeNumber(Number(mark), customBands)))
   if (g === 'D1' || g === 'D2' || g === 'A') {
     return (
       <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-black rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-300/40 print:border-none print:bg-transparent print:text-black">
@@ -124,11 +147,20 @@ export default function SecularHubClient({
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
+  const initialSectionParam = searchParams.get('section_id')
+  const validInitialSection: HubSectionId | '' =
+    initialSectionParam === 'nursery' ||
+    initialSectionParam === 'lower_primary' ||
+    initialSectionParam === 'upper_primary'
+      ? initialSectionParam
+      : ''
+
   const [activeTermId, setActiveTermId] = useState<string>(
     searchParams.get('term_id') || terms.find((t) => t.is_current)?.id || terms[0]?.id || ''
   )
+  const [activeSectionId, setActiveSectionId] = useState<HubSectionId | ''>(validInitialSection)
   const [activeClassId, setActiveClassId] = useState<string>(
-    searchParams.get('class_id') || circularClasses[0]?.id || ''
+    searchParams.get('class_id') || (validInitialSection ? '' : circularClasses[0]?.id || '')
   )
   const [activeTab, setActiveTab] = useState<'assessment' | 'analysis' | 'top_students'>(
     (searchParams.get('tab') as any) || 'assessment'
@@ -141,26 +173,81 @@ export default function SecularHubClient({
   const [divisionFilter, setDivisionFilter] = useState<string>('all')
   const [showGrades, setShowGrades] = useState(true)
 
+  // Advanced print & broadsheet customization state (persisted locally)
+  const [printConfig, setPrintConfig] = useState<BroadsheetPrintConfig>(() =>
+    getDefaultBroadsheetPrintConfig('secular')
+  )
+  const [printStudioOpen, setPrintStudioOpen] = useState(false)
+
+  useEffect(() => {
+    setPrintConfig(loadBroadsheetPrintConfig('secular'))
+  }, [])
+
+  const handleChangePrintConfig = (next: BroadsheetPrintConfig) => {
+    setPrintConfig(next)
+    saveBroadsheetPrintConfig('secular', next)
+  }
+
   const [isLoading, setIsLoading] = useState(false)
+  const [fetchError, setFetchError] = useState<string | null>(null)
+  const [reloadNonce, setReloadNonce] = useState(0)
   const [isPrinting, setIsPrinting] = useState(false)
   const [data, setData] = useState<{
     enrollments: any[]
     marks: any[]
     subjects: any[]
+    classes?: CircularClassData[]
+    termMeta?: TermData | null
+    unmappedClasses?: any[]
+    gradingConfig?: {
+      grading_scale?: any[]
+      division_boundaries?: any[]
+      hub_sections?: any[]
+      candidate_class_rules?: any[]
+    }
   } | null>(null)
+
+  const effectiveClasses = useMemo(
+    () => (data?.classes && data.classes.length > 0 ? data.classes : circularClasses),
+    [data?.classes, circularClasses]
+  )
+
+  const sectionMapping = useMemo(
+    () =>
+      mapClassesToSections(
+        effectiveClasses,
+        'secular',
+        data?.gradingConfig?.hub_sections,
+        data?.gradingConfig?.candidate_class_rules
+      ),
+    [effectiveClasses, data?.gradingConfig?.hub_sections, data?.gradingConfig?.candidate_class_rules]
+  )
+
+  const configuredSections = useMemo(
+    () => normalizeHubSectionsConfig(data?.gradingConfig?.hub_sections),
+    [data?.gradingConfig?.hub_sections]
+  )
+
+  const isSectionMode = Boolean(activeSectionId && !activeClassId)
+
+  const activeSectionObj = useMemo(
+    () => configuredSections.find((s) => s.id === activeSectionId) || null,
+    [configuredSections, activeSectionId]
+  )
 
   const activeTerm = useMemo(() => terms.find((t) => t.id === activeTermId), [terms, activeTermId])
   const activeClass = useMemo(
-    () => circularClasses.find((c) => c.id === activeClassId),
-    [circularClasses, activeClassId]
+    () => effectiveClasses.find((c) => c.id === activeClassId),
+    [effectiveClasses, activeClassId]
   )
 
   const isNursery = useMemo(() => {
+    if (isSectionMode) return activeSectionId === 'nursery'
     return (
       activeClass?.section?.toLowerCase() === 'nursery' ||
       isNurseryClass(activeClass?.class_name)
     )
-  }, [activeClass])
+  }, [activeClass, activeSectionId, isSectionMode])
 
   const termOptions = useMemo(
     () =>
@@ -171,24 +258,64 @@ export default function SecularHubClient({
     [terms]
   )
 
-  const classOptions = useMemo(
+  const sectionOptions = useMemo(
     () => [
-      { value: '', label: '-- Select a Class --' },
-      ...circularClasses.map((t) => ({ value: t.id, label: t.class_name })),
+      { value: '', label: 'All Sections (Class)' },
+      ...configuredSections.map((sec) => ({
+        value: sec.id,
+        label: sec.label,
+        count: sectionMapping.bySection[sec.id].length,
+      })),
     ],
-    [circularClasses]
+    [configuredSections, sectionMapping.bySection]
   )
+
+  const classOptions = useMemo(() => {
+    if (activeSectionId) {
+      const sectionClasses = sectionMapping.bySection[activeSectionId] || []
+      return [
+        { value: '', label: `All ${activeSectionObj?.label || 'Section'} Classes (${sectionClasses.length})` },
+        ...sectionClasses.map((t) => ({ value: t.id, label: t.class_name })),
+      ]
+    }
+    return [
+      { value: '', label: '-- Select a Class --' },
+      ...effectiveClasses.map((t) => ({ value: t.id, label: t.class_name })),
+    ]
+  }, [activeSectionId, activeSectionObj, sectionMapping.bySection, effectiveClasses])
+
+  const handleSelectSection = (val: string) => {
+    const nextSec = (val || '') as HubSectionId | ''
+    setActiveSectionId(nextSec)
+    if (nextSec) {
+      setActiveClassId('')
+    } else if (!activeClassId && effectiveClasses[0]?.id) {
+      setActiveClassId(effectiveClasses[0].id)
+    }
+  }
+
+  const handleSelectClass = (val: string) => {
+    setActiveClassId(val)
+    if (val && activeSectionId) {
+      const clsSec = sectionMapping.classToSection[val]
+      if (clsSec !== activeSectionId) {
+        setActiveSectionId('')
+      }
+    }
+  }
 
   // Fetch data cleanly
   useEffect(() => {
-    if (!activeTermId) return
+    if (!activeTermId || (!activeClassId && !activeSectionId)) return
 
     let cancelled = false
     const fetchData = async () => {
       setIsLoading(true)
+      setFetchError(null)
       try {
         const queryParams = new URLSearchParams({ term_id: activeTermId })
         if (activeClassId) queryParams.set('class_id', activeClassId)
+        else if (activeSectionId) queryParams.set('section_id', activeSectionId)
 
         const res = await fetch(`/api/secular-hub?${queryParams.toString()}`)
         const ct = res.headers.get('content-type') || ''
@@ -203,6 +330,8 @@ export default function SecularHubClient({
       } catch (err) {
         console.error('Secular Hub load error:', err)
         if (!cancelled) {
+          const msg = err instanceof Error ? err.message : 'Failed to load secular data.'
+          setFetchError(msg)
           toast.error('Failed to load secular data. Check database connections.')
         }
       } finally {
@@ -216,131 +345,71 @@ export default function SecularHubClient({
     return () => {
       cancelled = true
     }
-  }, [activeTermId, activeClassId])
+  }, [activeTermId, activeClassId, activeSectionId, reloadNonce])
 
   // Sync state to URL params
   useEffect(() => {
     const params = new URLSearchParams(searchParams.toString())
     if (activeTermId) params.set('term_id', activeTermId)
+    if (activeSectionId) params.set('section_id', activeSectionId)
+    else params.delete('section_id')
     if (activeClassId) params.set('class_id', activeClassId)
+    else params.delete('class_id')
     if (activeTab) params.set('tab', activeTab)
     if (examPhase) params.set('exam_phase', examPhase)
 
     router.replace(`${pathname}?${params.toString()}`, { scroll: false })
-  }, [activeTermId, activeClassId, activeTab, examPhase, pathname, router, searchParams])
+  }, [activeTermId, activeSectionId, activeClassId, activeTab, examPhase, pathname, router, searchParams])
 
   // ----------------------------------------------------
-  // Assessment Broadsheet Calculation
+  // Unified Cohort Metrics Engine (Class + Section + P.7 Term 3 EOT Guard)
   // ----------------------------------------------------
-  const assessmentData = useMemo(() => {
-    if (!data || !activeClassId) return { students: [], orderedSubjects: [] }
+  const cohortMetrics = useMemo(() => {
+    const scopeClasses = activeClassId
+      ? effectiveClasses.filter((c) => c.id === activeClassId)
+      : activeSectionId
+        ? sectionMapping.bySection[activeSectionId] || []
+        : []
 
-    const classEnrollments = data.enrollments.filter((e) => e.circular_class_id === activeClassId)
-    const classInfo = circularClasses.find((c) => c.id === activeClassId)
-    if (!classInfo) return { students: [], orderedSubjects: [] }
-
-    const assessmentSection = classInfo.section?.toLowerCase() || ''
-    const levelSubjects = (data.subjects || []).filter(
-      (s) => !s.section || s.section.toLowerCase() === assessmentSection
-    )
-
-    // Sort subjects canonically: Core first
-    const primaryCanonical = [
-      'english',
-      'eng',
-      'mathematics',
-      'math',
-      'mtc',
-      'science',
-      'integrated science',
-      'sci',
-      'social studies',
-      'sst',
-      'literacy 1',
-      'lit i',
-      'lit 1',
-      'literacy 2',
-      'lit ii',
-      'lit 2',
-      'islamic religious education',
-      'ire',
-      'religious education',
-      're',
-    ]
-
-    const orderedSubjects = [...levelSubjects].sort((a, b) => {
-      const nameA = (a.subject_name || '').toLowerCase()
-      const nameB = (b.subject_name || '').toLowerCase()
-      let aIdx = primaryCanonical.findIndex((t) => nameA.includes(t))
-      let bIdx = primaryCanonical.findIndex((t) => nameB.includes(t))
-      if (aIdx === -1) aIdx = 999
-      if (bIdx === -1) bIdx = 999
-      return aIdx - bIdx
+    return computeHubCohortMetrics({
+      curriculum: 'secular',
+      mode: isSectionMode ? 'section' : 'class',
+      sectionId: isSectionMode ? (activeSectionId as HubSectionId) : null,
+      classes: scopeClasses,
+      enrollments: data?.enrollments || [],
+      marks: data?.marks || [],
+      subjects: data?.subjects || [],
+      examPhase,
+      termNumber: data?.termMeta?.term_number ?? activeTerm?.term_number ?? null,
+      termLabel: data?.termMeta?.label ?? activeTerm?.label ?? null,
+      gradingConfig: data?.gradingConfig,
     })
+  }, [
+    data,
+    activeClassId,
+    activeSectionId,
+    isSectionMode,
+    effectiveClasses,
+    sectionMapping.bySection,
+    examPhase,
+    activeTerm?.term_number,
+    activeTerm?.label,
+  ])
 
-    const processed = classEnrollments.map((enrollment) => {
-      const eMarks = (data.marks || []).filter(
-        (m) => m.enrollment_id === enrollment.id || (m.student_id && m.student_id === enrollment.student_id)
-      )
+  const assessmentData = useMemo(
+    () => ({
+      orderedSubjects: cohortMetrics.orderedSubjects,
+      students: cohortMetrics.students,
+    }),
+    [cohortMetrics]
+  )
 
-      let total = 0
-      let hasMarks = false
-      const subjectScores: Record<string, number | null> = {}
-      const subjectGrades: Record<string, string | null> = {}
-      const scoresForAgg: { subject_name: string; score: number }[] = []
+  const broadsheetSummary = useMemo(
+    () => (assessmentData.students.length > 0 && assessmentData.orderedSubjects.length > 0 ? cohortMetrics.summary : null),
+    [assessmentData.students.length, assessmentData.orderedSubjects.length, cohortMetrics.summary]
+  )
 
-      orderedSubjects.forEach((sub) => {
-        const mark = eMarks.find((m) => m.subject_id === sub.id)
-        const scoreKey = `${examPhase}_score` as 'bot_score' | 'mot_score' | 'eot_score'
-        const score = mark?.[scoreKey] != null && !isNaN(Number(mark[scoreKey])) ? Number(mark[scoreKey]) : null
-        subjectScores[sub.id] = score
-
-        if (score != null) {
-          total += score
-          hasMarks = true
-          if (isNursery) {
-            subjectGrades[sub.id] = getNurseryGrade(score).grade
-          } else {
-            const gradeNum = getSubjectGradeNumber(score)
-            subjectGrades[sub.id] = getGradeDisplay(gradeNum)
-          }
-          scoresForAgg.push({ subject_name: sub.subject_name, score })
-        } else {
-          subjectGrades[sub.id] = null
-        }
-      })
-
-      const agg = isNursery ? null : calculateAggregate(scoresForAgg, assessmentSection)
-      const div = isNursery ? '-' : agg !== null ? getDivision(agg) : hasMarks ? 'U' : '-'
-
-      const studentObj = enrollment.students || {}
-      return {
-        id: enrollment.id,
-        student_id: enrollment.student_id,
-        name: studentObj.name || 'Unknown Student',
-        admission_number: studentObj.admission_number || '',
-        gender: studentObj.gender || '',
-        total: hasMarks ? total : null,
-        aggregate: agg,
-        division: div,
-        subjectScores,
-        subjectGrades,
-        rank: '-' as number | string,
-        position: '-' as number | string,
-      }
-    })
-
-    const ranked = computeStandardRankings(processed)
-
-    return {
-      orderedSubjects,
-      students: ranked.map((p) => ({
-        ...p,
-        total: p.total ?? 0,
-        position: p.rank,
-      })),
-    }
-  }, [data, activeClassId, circularClasses, isNursery, examPhase])
+  const top10Data = cohortMetrics.top10
 
   // Filtered students for search & division
   const filteredStudents = useMemo(() => {
@@ -349,6 +418,7 @@ export default function SecularHubClient({
       const matchesSearch =
         !q ||
         st.name.toLowerCase().includes(q) ||
+        st.className.toLowerCase().includes(q) ||
         (st.admission_number && st.admission_number.toLowerCase().includes(q))
 
       let matchesDiv = true
@@ -364,174 +434,22 @@ export default function SecularHubClient({
     })
   }, [assessmentData.students, searchQuery, divisionFilter, isNursery])
 
-  // Summary statistics for Broadsheet footer
-  const broadsheetSummary = useMemo(() => {
-    const students = assessmentData.students
-    const subjects = assessmentData.orderedSubjects
-    if (students.length === 0 || subjects.length === 0) return null
+  const printStudents = useMemo(
+    () => prepareBroadsheetStudents(assessmentData.students, filteredStudents, printConfig),
+    [assessmentData.students, filteredStudents, printConfig]
+  )
 
-    const subjectStats: Record<
-      string,
-      { avg: number; highest: number; lowest: number; passRate: number; count: number }
-    > = {}
-
-    subjects.forEach((sub) => {
-      const scores = students
-        .map((st) => st.subjectScores[sub.id])
-        .filter((s): s is number => typeof s === 'number' && !isNaN(s))
-
-      if (scores.length > 0) {
-        const sum = scores.reduce((a, b) => a + b, 0)
-        const avg = Math.round(sum / scores.length)
-        const highest = Math.max(...scores)
-        const lowest = Math.min(...scores)
-        const passCount = scores.filter((s) => s >= 50).length
-        const passRate = Math.round((passCount / scores.length) * 100)
-        subjectStats[sub.id] = { avg, highest, lowest, passRate, count: scores.length }
-      } else {
-        subjectStats[sub.id] = { avg: 0, highest: 0, lowest: 0, passRate: 0, count: 0 }
-      }
-    })
-
-    const totalScores = students
-      .map((st) => (typeof st.total === 'number' && st.total > 0 ? st.total : null))
-      .filter((t): t is number => t !== null)
-
-    const classAverageTotal =
-      totalScores.length > 0 ? Math.round(totalScores.reduce((a, b) => a + b, 0) / totalScores.length) : 0
-    const highestTotal = totalScores.length > 0 ? Math.max(...totalScores) : 0
-    const lowestTotal = totalScores.length > 0 ? Math.min(...totalScores) : 0
-
-    const divCounts = {
-      I: students.filter((s) => s.division === 'I').length,
-      II: students.filter((s) => s.division === 'II').length,
-      III: students.filter((s) => s.division === 'III').length,
-      IV: students.filter((s) => s.division === 'IV').length,
-      U: students.filter((s) => s.division === 'U').length,
-      unranked: students.filter((s) => s.division === '-' || !s.total).length,
-    }
-
-    // Nursery-specific analytics
-    const nurseryGradeCounts: Record<NurseryGrade, number> = {
-      A: 0,
-      B: 0,
-      C: 0,
-      D: 0,
-      E: 0,
-    }
-    let nurseryTotalPercentSum = 0
-    let nurseryScoredStudentCount = 0
-
-    students.forEach((st) => {
-      if (typeof st.total === 'number' && st.total > 0 && subjects.length > 0) {
-        const studentAvg = Math.round(st.total / subjects.length)
-        const g = getNurseryGrade(studentAvg).grade
-        nurseryGradeCounts[g]++
-        nurseryTotalPercentSum += studentAvg
-        nurseryScoredStudentCount++
-      }
-    })
-
-    const nurseryOverallAvg = nurseryScoredStudentCount > 0 ? Math.round(nurseryTotalPercentSum / nurseryScoredStudentCount) : 0
-    const nurseryExcellenceCount = nurseryGradeCounts.A + nurseryGradeCounts.B
-    const nurseryExcellencePct = students.length > 0 ? Math.round((nurseryExcellenceCount / students.length) * 100) : 0
-
-    return {
-      subjectStats,
-      classAverageTotal,
-      highestTotal,
-      lowestTotal,
-      divCounts,
-      nurseryGradeCounts,
-      nurseryOverallAvg,
-      nurseryExcellenceCount,
-      nurseryExcellencePct,
-      totalCandidates: students.length,
-      satCandidates: totalScores.length,
-    }
-  }, [assessmentData])
-
-  // ----------------------------------------------------
-  // Analysis View Calculation
-  // ----------------------------------------------------
-  const analysisData = useMemo(() => {
-    if (!data || !activeClass) return []
-    const section = activeClass.section?.toLowerCase() || ''
-    const sectionClasses = circularClasses.filter((c) => c.section?.toLowerCase() === section)
-    const levelSubjects = (data.subjects || []).filter(
-      (s) => !s.section || s.section.toLowerCase() === section
-    )
-
-    return sectionClasses.map((cls) => {
-      const classEnrollments = (data.enrollments || []).filter((e) => e.circular_class_id === cls.id)
-      let numStudents = 0
-      let divI = 0
-      let divII = 0
-      let divIII = 0
-      let divIV = 0
-      let divU = 0
-
-      classEnrollments.forEach((e) => {
-        const eMarks = (data.marks || []).filter(
-          (m) => m.enrollment_id === e.id || (m.student_id && m.student_id === e.student_id)
-        )
-        const scoresForAgg: { subject_name: string; score: number }[] = []
-        let hasMarks = false
-
-        levelSubjects.forEach((sub) => {
-          const mark = eMarks.find((m) => m.subject_id === sub.id)
-          const score = mark?.[`${examPhase}_score`] ?? null
-          if (score != null && !isNaN(Number(score))) {
-            hasMarks = true
-            scoresForAgg.push({ subject_name: sub.subject_name, score: Number(score) })
-          }
-        })
-
-        if (hasMarks) {
-          numStudents++
-          const agg = calculateAggregate(scoresForAgg, section)
-          const div = agg !== null ? getDivision(agg) : 'U'
-          if (div === 'I') divI++
-          else if (div === 'II') divII++
-          else if (div === 'III') divIII++
-          else if (div === 'IV') divIV++
-          else divU++
-        }
-      })
-
-      const passed = divI + divII + divIII + divIV
-      const passRate = numStudents > 0 ? Math.round((passed / numStudents) * 100) : 0
-
-      return {
-        id: cls.id,
-        className: cls.class_name,
-        section: cls.section,
-        numStudents,
-        totalEnrolled: classEnrollments.length,
-        divI,
-        divII,
-        divIII,
-        divIV,
-        divU,
-        passRate,
-      }
-    })
-  }, [data, activeClass, circularClasses, examPhase])
-
-  // ----------------------------------------------------
-  // Top 10 Merit Roll Calculation
-  // ----------------------------------------------------
-  const top10Data = useMemo(() => {
-    const valid = assessmentData.students.filter(
-      (st) => typeof st.total === 'number' && st.total > 0 && st.position !== '-'
-    )
-    return valid.slice(0, 10)
-  }, [assessmentData.students])
+  const currentScopeLabel = isSectionMode
+    ? `${activeSectionObj?.label || activeSectionId} Section`
+    : activeClass?.class_name || 'Class'
 
   // ----------------------------------------------------
   // Actions: Print & Export
   // ----------------------------------------------------
   const handlePrintBroadsheet = () => {
+    if (cohortMetrics.isSingleClassCandidateExcluded) {
+      return toast.info('N/A — candidate class: P.7 has no Term 3 EOT.')
+    }
     if (!assessmentData.students.length) {
       return toast.error('No student assessment data to print.')
     }
@@ -543,16 +461,20 @@ export default function SecularHubClient({
   }
 
   const handleExportCSV = () => {
+    if (cohortMetrics.isSingleClassCandidateExcluded) {
+      return toast.info('N/A — candidate class: P.7 has no Term 3 EOT.')
+    }
     if (!assessmentData.students.length) {
       return toast.error('No assessment data to export.')
     }
     const termLabel = activeTerm ? activeTerm.label.replace(/\s+/g, '_') : 'Term'
-    const classLabel = activeClass ? activeClass.class_name.replace(/\s+/g, '_') : 'Class'
+    const classLabel = currentScopeLabel.replace(/\s+/g, '_')
     const filename = `Jiddah_Secular_Broadsheet_${classLabel}_${termLabel}_${examPhase.toUpperCase()}_2026.csv`
 
     const headers = isNursery
       ? [
           'Rank',
+          ...(isSectionMode ? ['Class'] : []),
           'Admission No',
           'Student Full Name',
           'Gender',
@@ -565,31 +487,31 @@ export default function SecularHubClient({
         ]
       : [
           'Rank',
+          ...(isSectionMode ? ['Class'] : []),
           'Admission No',
           'Student Full Name',
           'Gender',
           ...assessmentData.orderedSubjects.map((s) => `${s.subject_name} (Mark)`),
           ...assessmentData.orderedSubjects.map((s) => `${s.subject_name} (Grade)`),
           'Total Score',
+          ...(cohortMetrics.isNormalizedRanking ? ['Avg %'] : []),
           'Aggregate',
           'Division',
         ]
 
     const rows = assessmentData.students.map((st) => {
       if (isNursery) {
-        const avg =
-          typeof st.total === 'number' && assessmentData.orderedSubjects.length > 0
-            ? Math.round(st.total / assessmentData.orderedSubjects.length)
-            : null
+        const avg = st.normalizedScore != null ? Math.round(st.normalizedScore) : null
         const gInfo = avg != null ? getNurseryGrade(avg) : null
         return [
           st.position,
+          ...(isSectionMode ? [st.className] : []),
           st.admission_number || '-',
           st.name,
           st.gender || '-',
           ...assessmentData.orderedSubjects.map((s) => st.subjectScores[s.id] ?? '-'),
           ...assessmentData.orderedSubjects.map((s) => st.subjectGrades[s.id] ?? '-'),
-          st.total || '-',
+          st.total != null ? st.total : '-',
           avg != null ? `${avg}%` : '-',
           gInfo?.grade || '-',
           gInfo?.remark || '-',
@@ -597,12 +519,16 @@ export default function SecularHubClient({
       }
       return [
         st.position,
+        ...(isSectionMode ? [st.className] : []),
         st.admission_number || '-',
         st.name,
         st.gender || '-',
         ...assessmentData.orderedSubjects.map((s) => st.subjectScores[s.id] ?? '-'),
         ...assessmentData.orderedSubjects.map((s) => st.subjectGrades[s.id] ?? '-'),
-        st.total || '-',
+        st.total != null ? st.total : '-',
+        ...(cohortMetrics.isNormalizedRanking
+          ? [st.normalizedScore != null ? `${st.normalizedScore}%` : '-']
+          : []),
         st.aggregate ?? '-',
         st.division || '-',
       ]
@@ -636,7 +562,7 @@ export default function SecularHubClient({
 
     const csvContent = [
       `"JIDDAH ISLAMIC NURSERY & PRIMARY SCHOOL — SECULAR ACADEMIC BROADSHEET"`,
-      `"Class: ${activeClass?.class_name || ''} | Section: ${activeClass?.section || ''} | Term: ${activeTerm?.label || ''} | Phase: ${examPhase.toUpperCase()} | Generated: ${new Date().toLocaleDateString()}"`,
+      `"Scope: ${currentScopeLabel} | Section: ${activeSectionObj?.label || activeClass?.section || ''} | Term: ${activeTerm?.label || ''} | Phase: ${examPhase.toUpperCase()} | Generated: ${new Date().toLocaleDateString()}"`,
       '',
       headers.map(escapeCSV).join(','),
       ...rows.map((row) => row.map(escapeCSV).join(',')),
@@ -647,7 +573,7 @@ export default function SecularHubClient({
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#F8F9FA] dark:bg-[#0D1411] text-stone-900 dark:text-stone-100 font-sans tabular-nums selection:bg-[#0D5C3A] selection:text-white overflow-hidden">
+    <div className="flex flex-col h-full bg-[#FAF7F2] dark:bg-[#0D1411] text-[#1C1917] dark:text-stone-100 font-sans tabular-nums selection:bg-[#0D5C3A] selection:text-white overflow-hidden">
       {/* ======================================================== */}
       {/* 1. REPORT-CENTER-STYLE SINGLE-ROW TOOLBAR */}
       {/* ======================================================== */}
@@ -656,7 +582,7 @@ export default function SecularHubClient({
           data-testid="secular-hub-banner"
           className="w-full h-12 bg-white dark:bg-[#151D1A] rounded-2xl px-3 border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 flex items-center justify-between gap-2 shadow-2xs overflow-hidden"
         >
-          {/* LEFT: Back + Title + Term + Class */}
+          {/* LEFT: Back + Title + Term + Section + Class */}
           <div className="flex items-center gap-1.5 min-w-0 shrink">
             <Link
               href="/admin"
@@ -671,7 +597,7 @@ export default function SecularHubClient({
               <div className="w-6 h-6 rounded-lg bg-[#0D5C3A] flex items-center justify-center shrink-0">
                 <LayoutDashboard className="w-3.5 h-3.5 text-white" strokeWidth={2.25} />
               </div>
-              <span className="hidden sm:inline text-xs font-black text-stone-800 dark:text-stone-100 tracking-tight whitespace-nowrap">
+              <span className="hidden xl:inline text-xs font-black text-stone-800 dark:text-stone-100 tracking-tight whitespace-nowrap">
                 Secular Hub
               </span>
             </div>
@@ -685,7 +611,19 @@ export default function SecularHubClient({
               value={activeTermId}
               onChange={(val) => setActiveTermId(val)}
               options={termOptions}
-              className="h-8 w-32 sm:w-40 rounded-xl bg-stone-50 dark:bg-white/5 border border-stone-200 dark:border-white/10 text-xs font-semibold text-stone-800 dark:text-stone-100"
+              className="h-8 w-28 sm:w-36 rounded-xl bg-stone-50 dark:bg-white/5 border border-stone-200 dark:border-white/10 text-xs font-semibold text-stone-800 dark:text-stone-100"
+            />
+
+            {/* Section Selector */}
+            <CustomPillSelect
+              id="secular-hub-section-select"
+              dataTestId="secular-hub-section-select"
+              ariaLabel="Academic Section"
+              value={activeSectionId}
+              onChange={handleSelectSection}
+              options={sectionOptions}
+              placeholder="Section..."
+              className="h-8 w-28 sm:w-36 rounded-xl bg-stone-50 dark:bg-white/5 border border-stone-200 dark:border-white/10 text-xs font-semibold text-stone-800 dark:text-stone-100"
             />
 
             {/* Class Selector */}
@@ -693,10 +631,10 @@ export default function SecularHubClient({
               id="secular-hub-class-select"
               ariaLabel="Class Cohort"
               value={activeClassId}
-              onChange={(val) => setActiveClassId(val)}
+              onChange={handleSelectClass}
               options={classOptions}
               placeholder="Select Class..."
-              className="h-8 w-36 sm:w-44 rounded-xl bg-stone-50 dark:bg-white/5 border border-stone-200 dark:border-white/10 text-xs font-semibold text-stone-800 dark:text-stone-100"
+              className="h-8 w-28 sm:w-40 rounded-xl bg-stone-50 dark:bg-white/5 border border-stone-200 dark:border-white/10 text-xs font-semibold text-stone-800 dark:text-stone-100"
             />
           </div>
 
@@ -763,20 +701,32 @@ export default function SecularHubClient({
             </div>
           </div>
 
-          {/* RIGHT: Export CSV + Print Broadsheet */}
+          {/* RIGHT: Export CSV + Customize + Print Broadsheet */}
           <div className="flex items-center gap-1.5 shrink-0">
             <button
               onClick={handleExportCSV}
-              disabled={isLoading || !assessmentData.students.length}
+              disabled={isLoading || cohortMetrics.isSingleClassCandidateExcluded || !assessmentData.students.length}
               title="Export Broadsheet CSV"
+              aria-label="Export Broadsheet CSV"
               className="w-8 h-8 rounded-full flex items-center justify-center bg-stone-100 dark:bg-white/5 text-stone-600 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-white/10 border border-stone-200 dark:border-white/10 transition cursor-pointer disabled:opacity-40 shrink-0"
             >
               <FileSpreadsheet className="w-4 h-4" strokeWidth={2.25} />
             </button>
 
             <button
+              type="button"
+              onClick={() => setPrintStudioOpen(true)}
+              disabled={isLoading || cohortMetrics.isSingleClassCandidateExcluded || !assessmentData.students.length}
+              title="Customize Sheet & Print Preview"
+              className="h-8 px-2.5 rounded-full bg-[#D97706]/12 text-[#B45309] dark:bg-[#F59E0B]/20 dark:text-[#FCD34D] border border-[#D97706]/30 hover:bg-[#D97706]/20 dark:hover:bg-[#F59E0B]/30 text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer transition disabled:opacity-40 shrink-0 focus:outline-none focus:ring-2 focus:ring-[#D97706]"
+            >
+              <Sliders className="size-3.5" />
+              <span className="hidden xl:inline font-bold text-[11px]">Customize</span>
+            </button>
+
+            <button
               onClick={handlePrintBroadsheet}
-              disabled={isLoading || !assessmentData.students.length}
+              disabled={isLoading || cohortMetrics.isSingleClassCandidateExcluded || !assessmentData.students.length}
               title="Print Official Broadsheet"
               className="h-8 px-3 rounded-full bg-gradient-to-r from-[#0D5C3A] to-[#117A4D] hover:from-[#09472C] hover:to-[#0D5C3A] text-white ring-1 ring-[#D97706]/50 shadow-md text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-40 transition shrink-0"
             >
@@ -854,12 +804,37 @@ export default function SecularHubClient({
         {isLoading ? (
           <div className="flex-1 flex flex-col items-center justify-center py-24">
             <JiddahLoader />
-            <p className="mt-4 text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
-              Loading Secular Broadsheet &amp; Calculating UNEB Aggregates...
+            <p className="mt-4 text-xs font-bold text-[#57534E] dark:text-stone-400 uppercase tracking-widest">
+              Loading Secular Broadsheet &amp; Calculating Cohort Analytics...
             </p>
           </div>
-        ) : !data || !activeClassId ? (
+        ) : fetchError && !data ? (
+          <div className="flex-1 flex flex-col items-center justify-center p-6">
+            <HubDataQualityBanners
+              curriculum="secular"
+              fetchError={fetchError}
+              onRetry={() => setReloadNonce((n) => n + 1)}
+              unmappedClasses={[]}
+              candidateExclusions={[]}
+              rankingMethodLabel=""
+              rankingMethodLabelArabic=""
+              isNormalizedRanking={false}
+              showRankingMethod={false}
+            />
+          </div>
+        ) : !data || (!activeClassId && !activeSectionId) ? (
           <SecularHubEmptyState />
+        ) : cohortMetrics.isSingleClassCandidateExcluded ? (
+          <div className="flex-1 overflow-y-auto px-2 py-4">
+            <HubCandidateNaCard
+              curriculum="secular"
+              classLabel={currentScopeLabel}
+              termLabel={activeTerm?.label || 'Term 3'}
+              badge={cohortMetrics.candidateExclusionBadge}
+              reason={cohortMetrics.candidateExclusionReason}
+              onSwitchExamPhase={(next) => setExamPhase(next)}
+            />
+          </div>
         ) : (
           <AnimatePresence mode="wait">
             {/* VIEW 1: BROADSHEET TABLE */}
@@ -872,8 +847,20 @@ export default function SecularHubClient({
                 transition={{ duration: 0.2 }}
                 className="flex-1 min-h-0 flex flex-col gap-2 min-w-0 overflow-hidden"
               >
+                <HubDataQualityBanners
+                  curriculum="secular"
+                  fetchError={fetchError}
+                  onRetry={() => setReloadNonce((n) => n + 1)}
+                  unmappedClasses={sectionMapping.unmappedClasses}
+                  candidateExclusions={cohortMetrics.candidateExclusions}
+                  rankingMethodLabel={cohortMetrics.rankingMethodLabel}
+                  rankingMethodLabelArabic={cohortMetrics.rankingMethodLabelArabic}
+                  isNormalizedRanking={cohortMetrics.isNormalizedRanking}
+                  showRankingMethod={isSectionMode || cohortMetrics.missingMarksList.length > 0}
+                />
+
                 {/* Search, Filter & Quick-Stats Strip */}
-                <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 p-2 sm:p-2.5 rounded-xl bg-white dark:bg-[#151F1B] border border-[#0D5C3A]/12 dark:border-white/10 shadow-xs">
+                <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 p-2 sm:p-2.5 rounded-xl bg-white dark:bg-[#151F1B] border border-[#E7E5E4] dark:border-white/10 shadow-xs">
                   <div className="flex items-center gap-2 flex-1 min-w-[200px]">
                     <div className="relative flex-1">
                       <Search
@@ -959,6 +946,11 @@ export default function SecularHubClient({
                           <th className="py-2.5 px-2.5 font-black text-[11px] text-center bg-stone-200/50 dark:bg-white/5 border-r border-stone-200 dark:border-white/10 min-w-[70px]">
                             Total
                           </th>
+                          {cohortMetrics.isNormalizedRanking && !isNursery && (
+                            <th className="py-2.5 px-2 font-black text-[11px] text-center bg-emerald-50/70 dark:bg-emerald-950/30 text-[#0F4D25] dark:text-emerald-300 border-r border-stone-200 dark:border-white/10 min-w-[65px]">
+                              Avg %
+                            </th>
+                          )}
                           {!isNursery && (
                             <>
                               <th className="py-2.5 px-2 font-black text-[11px] text-center bg-stone-200/50 dark:bg-white/5 border-r border-stone-200 dark:border-white/10 min-w-[60px]">
@@ -993,10 +985,12 @@ export default function SecularHubClient({
                         {filteredStudents.length === 0 ? (
                           <tr>
                             <td
-                              colSpan={assessmentData.orderedSubjects.length * (showGrades ? 2 : 1) + 6}
-                              className="text-center py-12 text-stone-400 font-medium text-xs"
+                              colSpan={assessmentData.orderedSubjects.length * (showGrades ? 2 : 1) + (cohortMetrics.isNormalizedRanking && !isNursery ? 7 : 6)}
+                              className="text-center py-12 text-[#57534E] dark:text-stone-400 font-medium text-xs"
                             >
-                              No students found matching current filters.
+                              {assessmentData.students.length === 0
+                                ? 'No enrolled pupils found in this scope for the selected term.'
+                                : 'No students found matching current search or division filters.'}
                             </td>
                           </tr>
                         ) : (
@@ -1009,17 +1003,27 @@ export default function SecularHubClient({
                               }}
                             >
                               {/* Sticky Index */}
-                              <td className="sticky left-0 z-10 bg-white dark:bg-[#151F1B] group-hover:bg-stone-50 dark:group-hover:bg-[#1A2621] py-2 px-1.5 sm:px-3 text-center font-bold text-stone-400 text-[11px] sm:text-xs border-r border-stone-100 dark:border-white/5 w-10 sm:w-12 min-w-[40px] sm:min-w-[48px] max-w-[40px] sm:max-w-[48px]">
+                              <td className="sticky left-0 z-10 bg-white dark:bg-[#151F1B] group-hover:bg-stone-50 dark:group-hover:bg-[#1A2621] py-2 px-1.5 sm:px-3 text-center font-bold text-[#57534E] dark:text-stone-400 text-[11px] sm:text-xs border-r border-stone-100 dark:border-white/5 w-10 sm:w-12 min-w-[40px] sm:min-w-[48px] max-w-[40px] sm:max-w-[48px]">
                                 {idx + 1}
                               </td>
 
                               {/* Sticky Student Name & ID */}
                               <td className="sticky left-10 sm:left-12 z-10 bg-white dark:bg-[#151F1B] group-hover:bg-stone-50 dark:group-hover:bg-[#1A2621] py-2 px-2 sm:px-3 border-r border-stone-100 dark:border-white/5 min-w-[130px] sm:min-w-[200px] max-w-[160px] sm:max-w-none">
-                                <div className="font-bold text-stone-900 dark:text-stone-100 text-xs truncate sm:whitespace-normal">
+                                <div className="font-bold text-[#1C1917] dark:text-stone-100 text-xs truncate sm:whitespace-normal">
                                   {st.name}
                                 </div>
-                                <div className="text-[10px] text-stone-400 font-mono truncate">
-                                  {st.admission_number || 'No ID'}
+                                <div className="flex items-center gap-1.5 text-[10px] text-[#57534E] dark:text-stone-400 font-mono truncate">
+                                  <span>{st.admission_number || 'No ID'}</span>
+                                  {isSectionMode && (
+                                    <span className="px-1.5 py-0.2 rounded bg-[#EFE9DF] dark:bg-white/10 text-[#1C1917] dark:text-stone-200 font-sans font-semibold">
+                                      {st.className}
+                                    </span>
+                                  )}
+                                  {!st.isCompleteMarks && !st.isCandidateExcluded && st.expectedSubjectCount > 0 && (
+                                    <span className="px-1 py-0.2 rounded bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-300 font-sans font-bold">
+                                      {st.satSubjectCount}/{st.expectedSubjectCount}
+                                    </span>
+                                  )}
                                 </div>
                               </td>
 
@@ -1041,23 +1045,27 @@ export default function SecularHubClient({
                               })}
 
                               {/* Total */}
-                              <td className="py-2 px-2.5 text-center font-mono font-black text-xs text-stone-900 dark:text-white bg-stone-50/50 dark:bg-white/[0.02] border-r border-stone-100 dark:border-white/5">
-                                {st.total ? st.total : '-'}
+                              <td className="py-2 px-2.5 text-center font-mono font-black text-xs text-[#1C1917] dark:text-white bg-stone-50/50 dark:bg-white/[0.02] border-r border-stone-100 dark:border-white/5">
+                                {st.total != null ? st.total : '-'}
                               </td>
+
+                              {cohortMetrics.isNormalizedRanking && !isNursery && (
+                                <td className="py-2 px-2 text-center font-mono font-extrabold text-xs text-[#0F4D25] dark:text-emerald-400 bg-emerald-50/40 dark:bg-emerald-950/15 border-r border-stone-100 dark:border-white/5">
+                                  {st.normalizedScore != null ? `${st.normalizedScore}%` : '-'}
+                                </td>
+                              )}
 
                               {isNursery ? (
                                 <>
                                   {/* Nursery Average Score */}
                                   <td className="py-2 px-2 text-center font-mono font-black text-xs text-[#0D5C3A] dark:text-emerald-400 bg-stone-50/50 dark:bg-white/[0.02] border-r border-stone-100 dark:border-white/5">
-                                    {typeof st.total === 'number' && assessmentData.orderedSubjects.length > 0
-                                      ? `${Math.round(st.total / assessmentData.orderedSubjects.length)}%`
-                                      : '-'}
+                                    {st.normalizedScore != null ? `${Math.round(st.normalizedScore)}%` : '-'}
                                   </td>
                                   {/* Nursery Letter Grade Badge */}
                                   <td className="py-2 px-2 text-center border-r border-stone-100 dark:border-white/5">
-                                    {typeof st.total === 'number' && assessmentData.orderedSubjects.length > 0 ? (
+                                    {st.normalizedScore != null ? (
                                       (() => {
-                                        const avg = Math.round(st.total / assessmentData.orderedSubjects.length)
+                                        const avg = Math.round(st.normalizedScore)
                                         const badge = computeNurseryBadge(avg)
                                         return badge ? (
                                           <span
@@ -1148,7 +1156,7 @@ export default function SecularHubClient({
                                   </td>
                                   {showGrades && (
                                     <td className="py-2 px-1 text-center border-r border-stone-200 dark:border-white/10">
-                                      <SecularGradeBadge mark={stat?.avg} isNursery={isNursery} />
+                                      <SecularGradeBadge mark={stat?.avg} isNursery={isNursery} customBands={data?.gradingConfig?.grading_scale} />
                                     </td>
                                   )}
                                 </React.Fragment>
@@ -1157,7 +1165,14 @@ export default function SecularHubClient({
                             <td className="py-2 px-2.5 text-center font-mono font-black text-xs text-[#0D5C3A] dark:text-emerald-400 border-r border-stone-200 dark:border-white/10">
                               {broadsheetSummary.classAverageTotal}
                             </td>
-                            <td colSpan={3} className="py-2 px-2 text-center text-[10px] text-stone-400">
+                            {cohortMetrics.isNormalizedRanking && !isNursery && (
+                              <td className="py-2 px-2 text-center font-mono font-extrabold text-xs text-[#0F4D25] dark:text-emerald-400 border-r border-stone-200 dark:border-white/10">
+                                {broadsheetSummary.meanNormalizedPct != null
+                                  ? `${broadsheetSummary.meanNormalizedPct}%`
+                                  : '-'}
+                              </td>
+                            )}
+                            <td colSpan={4} className="py-2 px-2 text-center text-[10px] text-[#57534E] dark:text-stone-400">
                               {isNursery
                                 ? `Class Mean: ${broadsheetSummary.nurseryOverallAvg}% • A+B: ${broadsheetSummary.nurseryExcellenceCount}`
                                 : `Mean: ${broadsheetSummary.classAverageTotal}`}
@@ -1186,10 +1201,10 @@ export default function SecularHubClient({
                               )
                             })}
                             <td
-                              colSpan={4}
-                              className="py-1.5 px-2 text-center text-[10px] text-stone-500"
+                              colSpan={cohortMetrics.isNormalizedRanking && !isNursery ? 6 : 5}
+                              className="py-1.5 px-2 text-center text-[10px] text-[#57534E] dark:text-stone-400"
                             >
-                              Candidates Sat: {broadsheetSummary.satCandidates} / {broadsheetSummary.totalCandidates}
+                              Complete Marks: {broadsheetSummary.satCandidates} / {broadsheetSummary.totalCandidates}
                             </td>
                           </tr>
                         </tfoot>
@@ -1211,14 +1226,29 @@ export default function SecularHubClient({
                 className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-5 min-w-0 pr-1 pb-4"
               >
                 {/* 4 Executive KPI Cards */}
+                <HubDataQualityBanners
+                  curriculum="secular"
+                  fetchError={fetchError}
+                  onRetry={() => setReloadNonce((n) => n + 1)}
+                  unmappedClasses={sectionMapping.unmappedClasses}
+                  candidateExclusions={cohortMetrics.candidateExclusions}
+                  rankingMethodLabel={cohortMetrics.rankingMethodLabel}
+                  rankingMethodLabelArabic={cohortMetrics.rankingMethodLabelArabic}
+                  isNormalizedRanking={cohortMetrics.isNormalizedRanking}
+                />
+
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                   <div className="rounded-2xl p-4 bg-white dark:bg-[#151F1B] border border-[#0D5C3A]/12 dark:border-white/10 shadow-xs flex items-center justify-between">
                     <div>
-                      <p className="text-[10px] font-extrabold uppercase tracking-wider text-stone-400">Total Enrolled</p>
-                      <h3 className="text-2xl font-black text-stone-900 dark:text-white mt-1">
+                      <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#57534E] dark:text-stone-400">Total Enrolled</p>
+                      <h3 className="text-2xl font-black text-[#1C1917] dark:text-white mt-1">
                         {broadsheetSummary ? broadsheetSummary.totalCandidates : 0}
                       </h3>
-                      <p className="text-[10px] text-stone-500 mt-0.5">{activeClass?.section || 'Secular'} Section</p>
+                      <p className="text-[10px] text-[#57534E] dark:text-stone-400 mt-0.5">
+                        {isSectionMode
+                          ? `${activeSectionObj?.label || activeSectionId} (${cohortMetrics.classBreakdown.filter((c) => !c.isCandidateExcluded).length} active classes)`
+                          : `${activeClass?.section || 'Secular'} Section`}
+                      </p>
                     </div>
                     <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center text-[#0D5C3A] dark:text-emerald-400">
                       <Users className="w-5 h-5" strokeWidth={2.25} />
@@ -1227,11 +1257,19 @@ export default function SecularHubClient({
 
                   <div className="rounded-2xl p-4 bg-white dark:bg-[#151F1B] border border-[#0D5C3A]/12 dark:border-white/10 shadow-xs flex items-center justify-between">
                     <div>
-                      <p className="text-[10px] font-extrabold uppercase tracking-wider text-stone-400">Class Mean Total</p>
-                      <h3 className="text-2xl font-black text-stone-900 dark:text-white mt-1">
-                        {broadsheetSummary ? broadsheetSummary.classAverageTotal : 0}
+                      <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#57534E] dark:text-stone-400">
+                        {cohortMetrics.isNormalizedRanking ? 'Mean Normalized %' : 'Class Mean Total'}
+                      </p>
+                      <h3 className="text-2xl font-black text-[#1C1917] dark:text-white mt-1">
+                        {cohortMetrics.isNormalizedRanking
+                          ? `${broadsheetSummary?.meanNormalizedPct ?? 0}%`
+                          : broadsheetSummary
+                            ? broadsheetSummary.classAverageTotal
+                            : 0}
                       </h3>
-                      <p className="text-[10px] text-stone-500 mt-0.5">High: {broadsheetSummary?.highestTotal || 0}</p>
+                      <p className="text-[10px] text-[#57534E] dark:text-stone-400 mt-0.5">
+                        High: {broadsheetSummary?.highestTotal || 0} · Sat: {broadsheetSummary?.satCandidates || 0}
+                      </p>
                     </div>
                     <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/50 flex items-center justify-center text-amber-600 dark:text-amber-400">
                       <TrendingUp className="w-5 h-5" strokeWidth={2.25} />
@@ -1241,12 +1279,12 @@ export default function SecularHubClient({
                   {isNursery ? (
                     <div className="rounded-2xl p-4 bg-white dark:bg-[#151F1B] border border-[#0D5C3A]/12 dark:border-white/10 shadow-xs flex items-center justify-between">
                       <div>
-                        <p className="text-[10px] font-extrabold uppercase tracking-wider text-stone-400">Grade A &amp; B Excellence</p>
+                        <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#57534E] dark:text-stone-400">Grade A &amp; B Excellence</p>
                         <h3 className="text-2xl font-black text-[#0D5C3A] dark:text-emerald-400 mt-1">
                           {broadsheetSummary?.nurseryExcellenceCount ?? 0}
                         </h3>
-                        <p className="text-[10px] text-stone-500 mt-0.5">
-                          {broadsheetSummary?.nurseryExcellencePct ?? 0}% of class (Mastery Tier)
+                        <p className="text-[10px] text-[#57534E] dark:text-stone-400 mt-0.5">
+                          {broadsheetSummary?.nurseryExcellencePct ?? 0}% of cohort (Mastery Tier)
                         </p>
                       </div>
                       <div className="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-950/50 flex items-center justify-center text-teal-600 dark:text-teal-400">
@@ -1256,19 +1294,19 @@ export default function SecularHubClient({
                   ) : (
                     <div className="rounded-2xl p-4 bg-white dark:bg-[#151F1B] border border-[#0D5C3A]/12 dark:border-white/10 shadow-xs flex items-center justify-between">
                       <div>
-                        <p className="text-[10px] font-extrabold uppercase tracking-wider text-stone-400">Div I &amp; II Distinction</p>
+                        <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#57534E] dark:text-stone-400">Div I &amp; II Distinction</p>
                         <h3 className="text-2xl font-black text-[#0D5C3A] dark:text-emerald-400 mt-1">
                           {(broadsheetSummary?.divCounts.I || 0) + (broadsheetSummary?.divCounts.II || 0)}
                         </h3>
-                        <p className="text-[10px] text-stone-500 mt-0.5">
-                          {broadsheetSummary && broadsheetSummary.totalCandidates > 0
+                        <p className="text-[10px] text-[#57534E] dark:text-stone-400 mt-0.5">
+                          {broadsheetSummary && broadsheetSummary.satCandidates > 0
                             ? Math.round(
                                 (((broadsheetSummary.divCounts.I || 0) + (broadsheetSummary.divCounts.II || 0)) /
-                                  broadsheetSummary.totalCandidates) *
+                                  broadsheetSummary.satCandidates) *
                                   100
                               )
                             : 0}
-                          % of class
+                          % of ranked pupils
                         </p>
                       </div>
                       <div className="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-950/50 flex items-center justify-center text-teal-600 dark:text-teal-400">
@@ -1279,17 +1317,30 @@ export default function SecularHubClient({
 
                   <div className="rounded-2xl p-4 bg-white dark:bg-[#151F1B] border border-[#0D5C3A]/12 dark:border-white/10 shadow-xs flex items-center justify-between">
                     <div>
-                      <p className="text-[10px] font-extrabold uppercase tracking-wider text-stone-400">Exam Phase</p>
+                      <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#57534E] dark:text-stone-400">Marks Completion ({examPhase.toUpperCase()})</p>
                       <h3 className="text-2xl font-black text-amber-600 dark:text-amber-400 mt-1">
-                        {examPhase.toUpperCase()}
+                        {broadsheetSummary ? `${broadsheetSummary.completionPct}%` : '0%'}
                       </h3>
-                      <p className="text-[10px] text-stone-500 mt-0.5">{activeClass?.class_name || 'Class'}</p>
+                      <p className="text-[10px] text-[#57534E] dark:text-stone-400 mt-0.5">{currentScopeLabel}</p>
                     </div>
                     <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950/50 flex items-center justify-center text-rose-600 dark:text-rose-400">
                       <Sparkles className="w-5 h-5" strokeWidth={2.25} />
                     </div>
                   </div>
                 </div>
+
+                {/* Class-by-Class Comparison & Reconciliation Table */}
+                <HubClassBreakdownTable
+                  curriculum="secular"
+                  classBreakdown={cohortMetrics.classBreakdown}
+                  sectionTitle={isSectionMode ? activeSectionObj?.label || String(activeSectionId) : activeClass?.class_name}
+                />
+
+                {/* Missing Marks List (Excluded from Rank) */}
+                <HubMissingMarksPanel
+                  curriculum="secular"
+                  missingMarksList={cohortMetrics.missingMarksList}
+                />
 
                 {/* Subject Performance Matrix Table */}
                 <div className="rounded-2xl border border-[#0D5C3A]/12 dark:border-white/10 bg-white dark:bg-[#151F1B] shadow-xs p-5">
@@ -1427,6 +1478,17 @@ export default function SecularHubClient({
                 transition={{ duration: 0.2 }}
                 className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-5 min-w-0 pr-1 pb-4"
               >
+                <HubDataQualityBanners
+                  curriculum="secular"
+                  fetchError={fetchError}
+                  onRetry={() => setReloadNonce((n) => n + 1)}
+                  unmappedClasses={sectionMapping.unmappedClasses}
+                  candidateExclusions={cohortMetrics.candidateExclusions}
+                  rankingMethodLabel={cohortMetrics.rankingMethodLabel}
+                  rankingMethodLabelArabic={cohortMetrics.rankingMethodLabelArabic}
+                  isNormalizedRanking={cohortMetrics.isNormalizedRanking}
+                />
+
                 {/* Podium Cards for Top 3 */}
                 {top10Data.length >= 3 && (
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end pt-4">
@@ -1436,10 +1498,19 @@ export default function SecularHubClient({
                         <Medal className="w-6 h-6" strokeWidth={2.25} />
                       </div>
                       <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">2nd Place</span>
-                      <h4 className="font-bold text-stone-900 dark:text-white text-sm mt-1">{top10Data[1].name}</h4>
-                      <p className="text-xs text-stone-400 font-mono mt-0.5">{top10Data[1].admission_number || 'ID'}</p>
+                      <h4 className="font-bold text-[#1C1917] dark:text-white text-sm mt-1">{top10Data[1].name}</h4>
+                      <p className="text-xs text-[#57534E] dark:text-stone-400 font-mono mt-0.5">
+                        {isSectionMode ? `${top10Data[1].className} · ` : ''}{top10Data[1].admission_number || 'ID'}
+                      </p>
                       <div className="mt-2 text-xs font-mono font-black text-slate-700 dark:text-slate-300">
-                        {top10Data[1].total} pts{isNursery && assessmentData.orderedSubjects.length > 0 ? ` • ${computeNurseryBadge(Math.round(top10Data[1].total / assessmentData.orderedSubjects.length))?.grade ?? ''}` : !isNursery ? ` • Div ${top10Data[1].division}` : ''}
+                        {cohortMetrics.isNormalizedRanking && top10Data[1].normalizedScore != null
+                          ? `${top10Data[1].normalizedScore}% (${top10Data[1].total} pts)`
+                          : `${top10Data[1].total} pts`}
+                        {isNursery && top10Data[1].normalizedScore != null
+                          ? ` • ${computeNurseryBadge(Math.round(top10Data[1].normalizedScore))?.grade ?? ''}`
+                          : !isNursery
+                            ? ` • Div ${top10Data[1].division}`
+                            : ''}
                       </div>
                     </div>
 
@@ -1449,14 +1520,21 @@ export default function SecularHubClient({
                         <Trophy className="w-7 h-7" strokeWidth={2.25} />
                       </div>
                       <span className="text-[11px] font-black uppercase tracking-wider text-amber-900 dark:text-amber-200">
-                        Class Champion — 1st Place
+                        {isSectionMode ? `${activeSectionObj?.label || 'Section'} Champion — 1st Place` : 'Class Champion — 1st Place'}
                       </span>
-                      <h3 className="font-black text-stone-900 dark:text-white text-base mt-1">{top10Data[0].name}</h3>
-                      <p className="text-xs text-amber-800 dark:text-amber-300 font-mono mt-0.5">
-                        {top10Data[0].admission_number || 'ID'}
+                      <h3 className="font-black text-[#1C1917] dark:text-white text-base mt-1">{top10Data[0].name}</h3>
+                      <p className="text-xs text-amber-900 dark:text-amber-300 font-mono mt-0.5">
+                        {isSectionMode ? `${top10Data[0].className} · ` : ''}{top10Data[0].admission_number || 'ID'}
                       </p>
                       <div className="mt-2.5 px-3 py-1 rounded-full bg-amber-500/20 text-amber-950 dark:text-amber-200 text-xs font-mono font-black">
-                        {top10Data[0].total} pts{isNursery && assessmentData.orderedSubjects.length > 0 ? ` • ${computeNurseryBadge(Math.round(top10Data[0].total / assessmentData.orderedSubjects.length))?.grade ?? ''}` : !isNursery ? ` • Div ${top10Data[0].division} (Agg ${top10Data[0].aggregate ?? '-'})` : ''}
+                        {cohortMetrics.isNormalizedRanking && top10Data[0].normalizedScore != null
+                          ? `${top10Data[0].normalizedScore}% (${top10Data[0].total} pts)`
+                          : `${top10Data[0].total} pts`}
+                        {isNursery && top10Data[0].normalizedScore != null
+                          ? ` • ${computeNurseryBadge(Math.round(top10Data[0].normalizedScore))?.grade ?? ''}`
+                          : !isNursery
+                            ? ` • Div ${top10Data[0].division} (Agg ${top10Data[0].aggregate ?? '-'})`
+                            : ''}
                       </div>
                     </div>
 
@@ -1466,10 +1544,19 @@ export default function SecularHubClient({
                         <Award className="w-6 h-6" strokeWidth={2.25} />
                       </div>
                       <span className="text-[10px] font-black uppercase tracking-wider text-amber-700">3rd Place</span>
-                      <h4 className="font-bold text-stone-900 dark:text-white text-sm mt-1">{top10Data[2].name}</h4>
-                      <p className="text-xs text-stone-400 font-mono mt-0.5">{top10Data[2].admission_number || 'ID'}</p>
+                      <h4 className="font-bold text-[#1C1917] dark:text-white text-sm mt-1">{top10Data[2].name}</h4>
+                      <p className="text-xs text-[#57534E] dark:text-stone-400 font-mono mt-0.5">
+                        {isSectionMode ? `${top10Data[2].className} · ` : ''}{top10Data[2].admission_number || 'ID'}
+                      </p>
                       <div className="mt-2 text-xs font-mono font-black text-amber-800 dark:text-amber-400">
-                        {top10Data[2].total} pts{isNursery && assessmentData.orderedSubjects.length > 0 ? ` • ${computeNurseryBadge(Math.round(top10Data[2].total / assessmentData.orderedSubjects.length))?.grade ?? ''}` : !isNursery ? ` • Div ${top10Data[2].division}` : ''}
+                        {cohortMetrics.isNormalizedRanking && top10Data[2].normalizedScore != null
+                          ? `${top10Data[2].normalizedScore}% (${top10Data[2].total} pts)`
+                          : `${top10Data[2].total} pts`}
+                        {isNursery && top10Data[2].normalizedScore != null
+                          ? ` • ${computeNurseryBadge(Math.round(top10Data[2].normalizedScore))?.grade ?? ''}`
+                          : !isNursery
+                            ? ` • Div ${top10Data[2].division}`
+                            : ''}
                       </div>
                     </div>
                   </div>
@@ -1477,22 +1564,30 @@ export default function SecularHubClient({
 
                 {/* Top 10 Table */}
                 <div className="rounded-2xl border border-[#0D5C3A]/15 dark:border-white/10 bg-white dark:bg-[#151F1B] shadow-xs overflow-hidden">
-                  <div className="p-4 border-b border-stone-200 dark:border-white/10 flex items-center justify-between">
-                    <h3 className="text-sm font-extrabold uppercase tracking-wider text-stone-900 dark:text-white flex items-center gap-2">
+                  <div className="p-4 border-b border-[#E7E5E4] dark:border-white/10 flex items-center justify-between">
+                    <h3 className="text-sm font-extrabold uppercase tracking-wider text-[#1C1917] dark:text-white flex items-center gap-2">
                       <Award className="w-4 h-4 text-amber-500" strokeWidth={2.25} />
-                      <span>Official Top 10 Academic Merit Roll</span>
+                      <span>
+                        {isSectionMode
+                          ? `Official Top 10 Merit Roll — ${activeSectionObj?.label || activeSectionId}`
+                          : 'Official Top 10 Academic Merit Roll'}
+                      </span>
                     </h3>
                   </div>
 
                   <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse text-xs">
                       <thead>
-                        <tr className="border-b border-stone-200 dark:border-white/10 text-stone-400 text-[10px] font-extrabold uppercase tracking-wider bg-stone-50 dark:bg-white/[0.02]">
+                        <tr className="border-b border-[#E7E5E4] dark:border-white/10 text-[#57534E] dark:text-stone-400 text-[10px] font-extrabold uppercase tracking-wider bg-[#FAF7F2] dark:bg-white/[0.02]">
                           <th className="py-2.5 px-3 text-center w-12">Rank</th>
                           <th className="py-2.5 px-3">Student Name</th>
+                          {isSectionMode && <th className="py-2.5 px-3 text-center">Class</th>}
                           <th className="py-2.5 px-3 text-center">Admission #</th>
                           <th className="py-2.5 px-3 text-center">Gender</th>
                           <th className="py-2.5 px-3 text-center">Total Marks</th>
+                          {cohortMetrics.isNormalizedRanking && !isNursery && (
+                            <th className="py-2.5 px-3 text-center">Avg %</th>
+                          )}
                           {isNursery ? (
                             <>
                               <th className="py-2.5 px-3 text-center">Average Score</th>
@@ -1508,67 +1603,95 @@ export default function SecularHubClient({
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-stone-100 dark:divide-white/5 font-medium">
-                        {top10Data.map((st) => (
-                          <tr
-                            key={st.id}
-                            className="hover:bg-amber-50/40 dark:hover:bg-white/[0.02] cursor-pointer"
-                            onClick={() =>
-                              router.push(
-                                `/admin/reports?student_id=${st.student_id}&term_id=${activeTermId}&curriculum=secular`
-                              )
-                            }
-                          >
-                            <td className="py-2.5 px-3 text-center font-mono font-black text-amber-700 dark:text-amber-400 text-xs">
-                              {st.position}
-                            </td>
-                            <td className="py-2.5 px-3 font-bold text-stone-900 dark:text-white">{st.name}</td>
-                            <td className="py-2.5 px-3 text-center font-mono text-stone-400">{st.admission_number || '-'}</td>
-                            <td className="py-2.5 px-3 text-center text-stone-500">{st.gender || '-'}</td>
-                            <td className="py-2.5 px-3 text-center font-mono font-black text-stone-900 dark:text-white">
-                              {st.total}
-                            </td>
-                            {isNursery ? (
-                              <>
-                                <td className="py-2.5 px-3 text-center font-mono font-extrabold text-[#0D5C3A] dark:text-emerald-400">
-                                  {typeof st.total === 'number' && assessmentData.orderedSubjects.length > 0
-                                    ? `${Math.round(st.total / assessmentData.orderedSubjects.length)}%`
-                                    : '-'}
-                                </td>
-                                <td className="py-2.5 px-3 text-center">
-                                  {typeof st.total === 'number' && assessmentData.orderedSubjects.length > 0 ? (
-                                    (() => {
-                                      const avg = Math.round(st.total / assessmentData.orderedSubjects.length)
-                                      const badge = computeNurseryBadge(avg)
-                                      return badge ? (
-                                        <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded-md text-[10px] font-black ${badge.bg} ${badge.text}`}>
-                                          Grade {badge.grade}
-                                        </span>
-                                      ) : <span className="text-stone-400">-</span>
-                                    })()
-                                  ) : <span className="text-stone-400">-</span>}
-                                </td>
-                              </>
-                            ) : (
-                              <>
-                                <td className="py-2.5 px-3 text-center font-mono font-extrabold text-[#0D5C3A] dark:text-emerald-400">
-                                  {st.aggregate ?? '-'}
-                                </td>
-                                <td className="py-2.5 px-3 text-center">
-                                  <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-md text-[10px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                                    Div {st.division}
-                                  </span>
-                                </td>
-                              </>
-                            )}
-                            <td className="py-2.5 px-3 text-center">
-                              <ExternalLink className="w-3.5 h-3.5 text-stone-400 inline-block" strokeWidth={2.25} />
+                        {top10Data.length === 0 ? (
+                          <tr>
+                            <td
+                              colSpan={isSectionMode ? 10 : 8}
+                              className="py-10 text-center text-[#57534E] dark:text-stone-400 text-xs"
+                            >
+                              No pupils with complete marks in this scope yet. Missing marks are excluded from ranking.
                             </td>
                           </tr>
-                        ))}
+                        ) : (
+                          top10Data.map((st) => (
+                            <tr
+                              key={st.id}
+                              className="hover:bg-amber-50/40 dark:hover:bg-white/[0.02] cursor-pointer"
+                              onClick={() =>
+                                router.push(
+                                  `/admin/reports?student_id=${st.student_id}&term_id=${activeTermId}&curriculum=secular`
+                                )
+                              }
+                            >
+                              <td className="py-2.5 px-3 text-center font-mono font-black text-amber-700 dark:text-amber-400 text-xs">
+                                {st.position}
+                              </td>
+                              <td className="py-2.5 px-3 font-bold text-[#1C1917] dark:text-white">{st.name}</td>
+                              {isSectionMode && (
+                                <td className="py-2.5 px-3 text-center text-xs font-semibold text-[#57534E] dark:text-stone-300">
+                                  {st.className}
+                                </td>
+                              )}
+                              <td className="py-2.5 px-3 text-center font-mono text-[#57534E] dark:text-stone-400">
+                                {st.admission_number || '-'}
+                              </td>
+                              <td className="py-2.5 px-3 text-center text-[#57534E] dark:text-stone-400">
+                                {st.gender || '-'}
+                              </td>
+                              <td className="py-2.5 px-3 text-center font-mono font-black text-[#1C1917] dark:text-white">
+                                {st.total ?? '-'}
+                              </td>
+                              {cohortMetrics.isNormalizedRanking && !isNursery && (
+                                <td className="py-2.5 px-3 text-center font-mono font-extrabold text-[#0F4D25] dark:text-emerald-400">
+                                  {st.normalizedScore != null ? `${st.normalizedScore}%` : '-'}
+                                </td>
+                              )}
+                              {isNursery ? (
+                                <>
+                                  <td className="py-2.5 px-3 text-center font-mono font-extrabold text-[#0D5C3A] dark:text-emerald-400">
+                                    {st.normalizedScore != null ? `${Math.round(st.normalizedScore)}%` : '-'}
+                                  </td>
+                                  <td className="py-2.5 px-3 text-center">
+                                    {st.normalizedScore != null ? (
+                                      (() => {
+                                        const avg = Math.round(st.normalizedScore)
+                                        const badge = computeNurseryBadge(avg)
+                                        return badge ? (
+                                          <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded-md text-[10px] font-black ${badge.bg} ${badge.text}`}>
+                                            Grade {badge.grade}
+                                          </span>
+                                        ) : <span className="text-stone-400">-</span>
+                                      })()
+                                    ) : <span className="text-stone-400">-</span>}
+                                  </td>
+                                </>
+                              ) : (
+                                <>
+                                  <td className="py-2.5 px-3 text-center font-mono font-extrabold text-[#0D5C3A] dark:text-emerald-400">
+                                    {st.aggregate ?? '-'}
+                                  </td>
+                                  <td className="py-2.5 px-3 text-center">
+                                    <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-md text-[10px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                      Div {st.division}
+                                    </span>
+                                  </td>
+                                </>
+                              )}
+                              <td className="py-2.5 px-3 text-center">
+                                <ExternalLink className="w-3.5 h-3.5 text-stone-400 inline-block" strokeWidth={2.25} />
+                              </td>
+                            </tr>
+                          ))
+                        )}
                       </tbody>
                     </table>
                   </div>
                 </div>
+
+                <HubMissingMarksPanel
+                  curriculum="secular"
+                  missingMarksList={cohortMetrics.missingMarksList}
+                />
               </motion.div>
             )}
           </AnimatePresence>
@@ -1577,138 +1700,43 @@ export default function SecularHubClient({
 
       {/* ======================================================== */}
       {/* 3. FORMAL INSTITUTIONAL LANDSCAPE PRINT BROADSHEET */}
-      {/* Mounted via <PrintPortal pageOrientation="landscape"> */}
-      {/* ======================================================== */}
-      <PrintPortal pageOrientation="landscape">
-        <div className="p-8 bg-white text-black font-sans text-xs w-full min-h-screen">
-          {/* Institutional Letterhead Header */}
-          <OfficialPrintLetterhead
-            documentTitle="ACADEMIC PERFORMANCE BROADSHEET — SECULAR CURRICULUM"
-            metadata={[
-              { label: 'Term', value: activeTerm?.label || 'Term 3' },
-              { label: 'Class', value: activeClass?.class_name || 'Class' },
-              { label: 'Section', value: activeClass?.section || 'Secular' },
-              { label: 'Phase', value: examPhase.toUpperCase() },
-              { label: 'Year', value: activeTerm?.academic_year || 2026 },
-              { label: 'Total Candidates', value: assessmentData.students.length },
-              { label: 'Date Printed', value: new Date().toLocaleDateString('en-GB') },
-            ]}
-          />
+      {/* Advanced Broadsheet Customization Studio & Multi-Page Flowing Print Portal */}
+      <BroadsheetPrintStudioModal
+        open={printStudioOpen}
+        onClose={() => setPrintStudioOpen(false)}
+        onPrint={() => {
+          setPrintStudioOpen(false)
+          handlePrintBroadsheet()
+        }}
+        curriculum="secular"
+        config={printConfig}
+        onChangeConfig={handleChangePrintConfig}
+        allStudents={assessmentData.students}
+        filteredStudents={filteredStudents}
+        subjects={assessmentData.orderedSubjects}
+        termLabel={activeTerm?.label || 'Term 3'}
+        academicYear={activeTerm?.academic_year || 2026}
+        classNameLabel={currentScopeLabel}
+        sectionLabel={activeSectionObj?.label || activeClass?.section || 'Secular'}
+        examPhase={examPhase}
+        isNursery={isNursery}
+        summary={broadsheetSummary}
+      />
 
-          {/* Complete Institutional Broadsheet Table */}
-          <table className="w-full border-collapse border border-black text-[9px] mt-4">
-            <thead>
-              <tr className="bg-stone-100 text-black border-b border-black font-extrabold">
-                <th className="border border-black p-1 text-center w-6">#</th>
-                <th className="border border-black p-1 text-center min-w-[50px]">Adm No</th>
-                <th className="border border-black p-1 text-left min-w-[150px]">Student Full Name</th>
-                {assessmentData.orderedSubjects.map((sub) => (
-                  <th key={sub.id} colSpan={2} className="border border-black p-1 text-center">
-                    <div className="font-bold text-[9px] truncate max-w-[80px]">
-                      {sub.subject_name}
-                    </div>
-                    <div className="text-[7.5px] uppercase">Mark / Grd</div>
-                  </th>
-                ))}
-                <th className="border border-black p-1 text-center font-black min-w-[40px]">Total</th>
-                {!isNursery && (
-                  <>
-                    <th className="border border-black p-1 text-center font-black min-w-[32px]">Agg</th>
-                    <th className="border border-black p-1 text-center font-black min-w-[30px]">Div</th>
-                  </>
-                )}
-                <th className="border border-black p-1 text-center font-black min-w-[32px]">Rank</th>
-              </tr>
-            </thead>
-            <tbody>
-              {assessmentData.students.map((st, idx) => (
-                <tr key={st.id} className="border-b border-stone-300">
-                  <td className="border border-black p-1 text-center font-bold">{idx + 1}</td>
-                  <td className="border border-black p-1 text-center font-mono">{st.admission_number || '-'}</td>
-                  <td className="border border-black p-1 font-bold">{st.name}</td>
-                  {assessmentData.orderedSubjects.map((sub) => {
-                    const score = st.subjectScores[sub.id]
-                    const grade = st.subjectGrades[sub.id]
-                    return (
-                      <React.Fragment key={sub.id}>
-                        <td className="border border-black p-1 text-center font-mono font-bold">
-                          {score != null ? score : '-'}
-                        </td>
-                        <td className="border border-black p-1 text-center font-bold text-[8px]">
-                          {grade || '-'}
-                        </td>
-                      </React.Fragment>
-                    )
-                  })}
-                  <td className="border border-black p-1 text-center font-mono font-black">{st.total || '-'}</td>
-                  {!isNursery && (
-                    <>
-                      <td className="border border-black p-1 text-center font-mono font-black">{st.aggregate ?? '-'}</td>
-                      <td className="border border-black p-1 text-center font-black">Div {st.division}</td>
-                    </>
-                  )}
-                  <td className="border border-black p-1 text-center font-mono font-black">{st.position}</td>
-                </tr>
-              ))}
-            </tbody>
-            {broadsheetSummary && (
-              <tfoot>
-                <tr className="bg-stone-100 font-black border-t-2 border-black">
-                  <td colSpan={3} className="border border-black p-1.5 text-right uppercase tracking-wider">
-                    Class Average
-                  </td>
-                  {assessmentData.orderedSubjects.map((sub) => (
-                    <td key={sub.id} colSpan={2} className="border border-black p-1.5 text-center font-mono">
-                      {broadsheetSummary.subjectStats[sub.id]?.avg ?? '-'}
-                    </td>
-                  ))}
-                  <td className="border border-black p-1.5 text-center font-mono">
-                    {broadsheetSummary.classAverageTotal}
-                  </td>
-                  {!isNursery ? (
-                    <td colSpan={3} className="border border-black p-1.5 text-center text-[8px] text-stone-600">
-                      Mean Total: {broadsheetSummary.classAverageTotal}
-                    </td>
-                  ) : (
-                    <td colSpan={1} className="border border-black p-1.5 text-center text-[8px] text-stone-600">
-                      Mean: {broadsheetSummary.nurseryOverallAvg}%
-                    </td>
-                  )}
-                </tr>
-              </tfoot>
-            )}
-          </table>
-
-          {/* Division Summary Box */}
-          {broadsheetSummary && !isNursery && (
-            <div className="mt-4 p-2.5 border border-black flex items-center justify-between text-[9px] bg-stone-50">
-              <span className="font-bold uppercase tracking-wider">Official Cohort Summary:</span>
-              <span>Div I: <strong>{broadsheetSummary.divCounts.I}</strong></span>
-              <span>Div II: <strong>{broadsheetSummary.divCounts.II}</strong></span>
-              <span>Div III: <strong>{broadsheetSummary.divCounts.III}</strong></span>
-              <span>Div IV: <strong>{broadsheetSummary.divCounts.IV}</strong></span>
-              <span>Div U: <strong>{broadsheetSummary.divCounts.U}</strong></span>
-              <span>Total Sat: <strong>{broadsheetSummary.satCandidates}</strong></span>
-            </div>
-          )}
-
-          {/* Signatures & Official Stamp Footer */}
-          <div className="mt-8 relative">
-            <OfficialPrintSignaturesFooter />
-            <div className="absolute right-12 -top-4 pointer-events-none">
-              <OfficialReportStamp
-                reportData={{
-                  stamp_config: {
-                    ink_color: '#0D5C3A',
-                    scale: 85,
-                  },
-                }}
-                maxWidth={110}
-                maxHeight={52}
-              />
-            </div>
-          </div>
-        </div>
+      <PrintPortal pageOrientation={printConfig.orientation} pageMargin="8mm">
+        <BroadsheetPrintDocument
+          curriculum="secular"
+          config={printConfig}
+          students={printStudents}
+          subjects={assessmentData.orderedSubjects}
+          termLabel={activeTerm?.label || 'Term 3'}
+          academicYear={activeTerm?.academic_year || 2026}
+          classNameLabel={currentScopeLabel}
+          sectionLabel={activeSectionObj?.label || activeClass?.section || 'Secular'}
+          examPhase={examPhase}
+          isNursery={isNursery}
+          summary={broadsheetSummary}
+        />
       </PrintPortal>
     </div>
   )

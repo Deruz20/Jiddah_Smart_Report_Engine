@@ -1,6 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
-import { verifyDataAccess } from '@/lib/auth-server'
+import { verifyDataAccess, hasPermission } from '@/lib/auth-server'
+import { isAdministratorRole } from '@/lib/teacher-access'
 import { format } from 'date-fns'
 
 export const dynamic = "force-dynamic";
@@ -13,19 +14,8 @@ export default async function InvitesPage() {
   if (!user) return <div className="p-10">Unauthorized</div>
 
   const authRes = await verifyDataAccess(supabase, user, 'read')
-  if (!authRes.isAuthorized) {
-    return <div className="p-10 text-rose-600 font-medium">Access Denied: {authRes.message}</div>
-  }
-
-  const normalizedRole = (authRes.role || '').toLowerCase()
-  const canViewInvites =
-    normalizedRole === 'administrator' ||
-    normalizedRole === 'admin' ||
-    normalizedRole.includes('head') ||
-    normalizedRole.includes('dos')
-
-  if (!canViewInvites) {
-    return <div className="p-10 text-rose-600 font-medium">Access Denied: You must be an Administrator or DOS to access Teacher Invites.</div>
+  if (!authRes.isAuthorized || !isAdministratorRole(authRes.role) || !hasPermission(authRes, 'manage_users')) {
+    return <div className="p-10 text-rose-600 font-medium">Access Denied: Administrator access is required to access Teacher Invites.</div>
   }
 
   // Invites are admin visible

@@ -1,3 +1,8 @@
+import {
+  normalizeHubSectionsConfig,
+  normalizeCandidateClassRules,
+} from './academic-sections';
+
 export const SCHOOL_CUSTOMIZATION_ACTION = 'school_customization_config';
 export const CANONICAL_SCHOOL_LOGO = '/logo-512h.png';
 
@@ -122,6 +127,16 @@ export interface DivisionBoundaryItem {
   conductRemark?: string;
 }
 
+export interface TheologyDivisionBoundaryItem {
+  division: string;
+  equivalentDivision: 'I' | 'II' | 'III' | 'IV' | 'U';
+  label: string;
+  min: number;
+  max: number;
+  boysRemark: string;
+  girlsRemark: string;
+}
+
 export interface PromotionCommentsConfig {
   promoted: string;
   promoted_probation: string;
@@ -236,6 +251,54 @@ export const DEFAULT_DIVISION_BOUNDARIES: DivisionBoundaryItem[] = [
   },
 ];
 
+export const DEFAULT_THEOLOGY_DIVISION_BOUNDARIES: TheologyDivisionBoundaryItem[] = [
+  {
+    division: 'ممتاز',
+    equivalentDivision: 'I',
+    label: 'الدرجة الأولى — ممتاز (First Grade / Mamtaz)',
+    min: 4,
+    max: 12,
+    boysRemark: 'جهد مميز، شكرا',
+    girlsRemark: 'جهد مميز، شكرا',
+  },
+  {
+    division: 'جيد جداً',
+    equivalentDivision: 'II',
+    label: 'الدرجة الثانية — جيد جداً (Second Grade / Jayyid Jidd)',
+    min: 13,
+    max: 23,
+    boysRemark: 'بقيت خطوة إلى الامتياز',
+    girlsRemark: 'بقيت خطوة إلى الامتياز',
+  },
+  {
+    division: 'جيد',
+    equivalentDivision: 'III',
+    label: 'الدرجة الثالثة — جيد (Third Grade / Jayyid)',
+    min: 24,
+    max: 29,
+    boysRemark: 'أنت قادر على الأفضل',
+    girlsRemark: 'أنتِ قادرة على الأفضل',
+  },
+  {
+    division: 'مقبول',
+    equivalentDivision: 'IV',
+    label: 'الدرجة الرابعة — مقبول (Fourth Grade / Maqbool)',
+    min: 30,
+    max: 34,
+    boysRemark: 'أنت قادر على الأفضل',
+    girlsRemark: 'أنتِ قادرة على الأفضل',
+  },
+  {
+    division: 'راسب',
+    equivalentDivision: 'U',
+    label: 'غير مصنف — راسب (Ungraded / Fail)',
+    min: 35,
+    max: 36,
+    boysRemark: 'يحتاج إلى مزيد من الجهد والمثابرة',
+    girlsRemark: 'تحتاج إلى مزيد من الجهد والمثابرة',
+  },
+];
+
 export const DEFAULT_UNEB_GRADING_BANDS: GradingBand[] = [
   { grade: 'D1', range: '85-100', min: 85, max: 100, remark: 'Excellent' },
   { grade: 'D2', range: '75-84', min: 75, max: 84, remark: 'Very Good' },
@@ -254,30 +317,85 @@ export type GradingBandItem = GradingBand;
 export type MergedSchoolSettings = Awaited<ReturnType<typeof fetchMergedSchoolSettings>>;
 
 export interface TheologyRemarkItem {
-  level: string; // 'ممتاز' | 'جيد جدا' | 'جيد' | 'مقبول' | 'ضعيف'
+  level: string; // 'ممتاز' | 'جيد جدا' | 'جيد' | 'مقبول' | 'راسب'
   boys: string;
   girls: string;
 }
 
+// Official IPLE Individual Subject Attainment Bands (1-9 points):
+// Distinction (تفوق ١-٢), Credit (جدارة ٣-٦), Pass (اجتياز ٧-٨), Fail (دون المستوى ٩).
+// Intentionally distinct from overall candidate division titles (ممتاز / جيد جداً / جيد / مقبول / راسب).
 export const DEFAULT_THEOLOGY_GRADING_BANDS: GradingBand[] = [
-  { grade: 'D1', range: '85-100', min: 85, max: 100, remark: 'ممتاز' },
-  { grade: 'D2', range: '75-84', min: 75, max: 84, remark: 'جيد جدا' },
-  { grade: 'C3', range: '65-74', min: 65, max: 74, remark: 'جيد' },
-  { grade: 'C4', range: '60-64', min: 60, max: 64, remark: 'جيد' },
-  { grade: 'C5', range: '55-59', min: 55, max: 59, remark: 'مقبول' },
-  { grade: 'C6', range: '50-54', min: 50, max: 54, remark: 'مقبول' },
-  { grade: 'P7', range: '40-49', min: 40, max: 49, remark: 'ضعيف' },
-  { grade: 'P8', range: '30-39', min: 30, max: 39, remark: 'ضعيف' },
-  { grade: 'F9', range: '0-29', min: 0, max: 29, remark: 'ضعيف' },
+  { grade: 'ت١', range: '85-100', min: 85, max: 100, remark: 'تفوق عالٍ' },
+  { grade: 'ت٢', range: '75-84', min: 75, max: 84, remark: 'تفوق' },
+  { grade: 'ج٣', range: '65-74', min: 65, max: 74, remark: 'جدارة عالية' },
+  { grade: 'ج٤', range: '60-64', min: 60, max: 64, remark: 'جدارة حسنة' },
+  { grade: 'ج٥', range: '55-59', min: 55, max: 59, remark: 'جدارة متوسطة' },
+  { grade: 'ج٦', range: '50-54', min: 50, max: 54, remark: 'جدارة أساسية' },
+  { grade: 'ن٧', range: '40-49', min: 40, max: 49, remark: 'اجتياز كافٍ' },
+  { grade: 'ن٨', range: '30-39', min: 30, max: 39, remark: 'اجتياز حدّي' },
+  { grade: 'خ٩', range: '0-29', min: 0, max: 29, remark: 'دون المستوى' },
 ];
 export const DEFAULT_THEOLOGY_GRADING_SCALE = DEFAULT_THEOLOGY_GRADING_BANDS;
+
+const LEGACY_COLLIDING_THEOLOGY_REMARKS = new Set([
+  'ممتاز',
+  'جيد جدا',
+  'جيد جداً',
+  'جيد',
+  'مقبول',
+  'ضعيف',
+  'ضعيف جداً',
+  'راسب',
+]);
+
+const LEGACY_LATIN_TO_IPLE_INDEX: Record<string, number> = {
+  D1: 0,
+  D2: 1,
+  C3: 2,
+  C4: 3,
+  C5: 4,
+  C6: 5,
+  P7: 6,
+  P8: 7,
+  F9: 8,
+};
+
+/**
+ * Upgrades pre-Phase-1.5 saved theology_grading_scale snapshots that still mix
+ * secular UNEB codes (D1-F9) and overall division terms (ممتاز/جيد جدا/...)
+ * into distinct IPLE single-subject grades while preserving saved min/max cutoffs.
+ */
+export function normalizeLegacyTheologyGradingScale(bands: GradingBand[]): GradingBand[] {
+  if (!Array.isArray(bands) || bands.length === 0) return DEFAULT_THEOLOGY_GRADING_BANDS;
+  const hasLegacyLatinAndOverloadedRemark = bands.some(
+    (b) =>
+      String(b?.grade || '').trim().toUpperCase() in LEGACY_LATIN_TO_IPLE_INDEX &&
+      LEGACY_COLLIDING_THEOLOGY_REMARKS.has(String(b?.remark || '').trim())
+  );
+  if (!hasLegacyLatinAndOverloadedRemark) return bands;
+
+  return bands.map((b, idx) => {
+    const mappedIdx = LEGACY_LATIN_TO_IPLE_INDEX[String(b.grade || '').trim().toUpperCase()];
+    const target = DEFAULT_THEOLOGY_GRADING_BANDS[mappedIdx ?? idx] || DEFAULT_THEOLOGY_GRADING_BANDS[8];
+    const remarkTrimmed = String(b.remark || '').trim();
+    return {
+      ...b,
+      grade: mappedIdx !== undefined ? target.grade : String(b.grade || target.grade),
+      remark:
+        !remarkTrimmed || LEGACY_COLLIDING_THEOLOGY_REMARKS.has(remarkTrimmed)
+          ? target.remark
+          : b.remark,
+    };
+  });
+}
 
 export const DEFAULT_THEOLOGY_REMARKS: TheologyRemarkItem[] = [
   { level: 'ممتاز', boys: 'جهد مميز،شكرا', girls: 'جهد مميز،شكرا' },
   { level: 'جيد جدا', boys: 'بقيت خطوة إلى الامتياز', girls: 'بقيت خطوة إلى الامتياز' },
   { level: 'جيد', boys: 'أنت قادر على الأفضل', girls: 'أنتِ قادرة على الأفضل' },
   { level: 'مقبول', boys: 'أنت قادر على الأفضل', girls: 'أنتِ قادرة على الأفضل' },
-  { level: 'ضعيف', boys: 'أنت قادر على الأفضل', girls: 'أنتِ قادرة على الأفضل' },
+  { level: 'راسب', boys: 'أنت قادر على الأفضل', girls: 'أنتِ قادرة على الأفضل' },
 ];
 
 /**
@@ -334,6 +452,71 @@ export function validateGradingBands(
 }
 
 /**
+ * Validates that a set of division aggregate boundaries covers 4..36 continuously with no overlaps or gaps.
+ */
+export function validateDivisionBoundaries(
+  boundaries: { division: string; min: number; max: number }[]
+): { valid: boolean; error?: string } {
+  if (!Array.isArray(boundaries) || boundaries.length === 0) {
+    return { valid: false, error: 'Division boundaries cannot be empty.' };
+  }
+
+  for (const b of boundaries) {
+    if (!String(b.division || '').trim()) {
+      return { valid: false, error: 'Every division boundary must have a division label.' };
+    }
+    if (!Number.isFinite(b.min) || !Number.isFinite(b.max)) {
+      return { valid: false, error: `Division ${b.division} has non-numeric aggregate bounds.` };
+    }
+    if (b.min < 4 || b.max > 36) {
+      return {
+        valid: false,
+        error: `Division ${b.division} bounds (${b.min}–${b.max}) must stay within 4 and 36.`,
+      };
+    }
+    if (b.min > b.max) {
+      return {
+        valid: false,
+        error: `Division ${b.division} min aggregate (${b.min}) cannot exceed max aggregate (${b.max}).`,
+      };
+    }
+  }
+
+  const sorted = [...boundaries].sort((a, b) => a.min - b.min);
+  if (sorted[0].min !== 4) {
+    return {
+      valid: false,
+      error: `Top division (${sorted[0].division}) must start at aggregate 4 (currently ${sorted[0].min}).`,
+    };
+  }
+  if (sorted[sorted.length - 1].max !== 36) {
+    return {
+      valid: false,
+      error: `Lowest division (${sorted[sorted.length - 1].division}) must end at aggregate 36 (currently ${sorted[sorted.length - 1].max}).`,
+    };
+  }
+
+  for (let i = 0; i < sorted.length - 1; i++) {
+    const better = sorted[i];
+    const worse = sorted[i + 1];
+    if (better.max >= worse.min) {
+      return {
+        valid: false,
+        error: `Overlapping aggregate range between ${better.division} (${better.min}–${better.max}) and ${worse.division} (${worse.min}–${worse.max}).`,
+      };
+    }
+    if (worse.min - better.max > 1) {
+      return {
+        valid: false,
+        error: `Aggregate gap detected between ${better.division} (max ${better.max}) and ${worse.division} (min ${worse.min}).`,
+      };
+    }
+  }
+
+  return { valid: true };
+}
+
+/**
  * Checks whether a given exam set ('bot' | 'mot' | 'eot' | 'all') is locked for non-admin staff.
  */
 export function isExamSetLockedForUser(
@@ -381,32 +564,107 @@ export function isExamSetLockedForUser(
   return { locked: false };
 }
 
-export async function fetchMergedSchoolSettings(supabase: any, gradingCriteria: any[] = []) {
-  const [schoolRes, logsRes] = await Promise.all([
-    supabase.from('school_settings').select('*').limit(1).maybeSingle(),
-    supabase
-      .from('activity_logs')
-      .select('metadata, details')
-      .eq('action', SCHOOL_CUSTOMIZATION_ACTION)
-      .order('created_at', { ascending: false })
-      .limit(1),
+export function parseActivityMetadataObject(raw: unknown): Record<string, any> | null {
+  let current: unknown = raw;
+  for (let depth = 0; depth < 3; depth++) {
+    if (typeof current === 'string') {
+      const trimmed = current.trim();
+      if (!trimmed) return null;
+      try {
+        current = JSON.parse(trimmed);
+      } catch {
+        return null;
+      }
+    } else {
+      break;
+    }
+  }
+  if (current && typeof current === 'object' && !Array.isArray(current)) {
+    return current as Record<string, any>;
+  }
+  return null;
+}
+
+let cachedCustomizationRowFingerprint: string | null = null;
+let cachedCustomizationObject: Record<string, any> = {};
+let cachedMergedSettingsEntry: {
+  fingerprint: string;
+  expiresAt: number;
+  data: any;
+} | null = null;
+
+export function invalidateSchoolSettingsCache(): void {
+  cachedCustomizationRowFingerprint = null;
+  cachedCustomizationObject = {};
+  cachedMergedSettingsEntry = null;
+}
+
+export async function readLatestSchoolCustomizationConfig(reader: any): Promise<Record<string, any>> {
+  const { data, error } = await reader
+    .from('activity_logs')
+    .select('id, metadata, created_at')
+    .eq('action', SCHOOL_CUSTOMIZATION_ACTION)
+    .order('created_at', { ascending: false })
+    .limit(5);
+
+  if (error) {
+    console.error('readLatestSchoolCustomizationConfig query error:', error.message);
+    return {};
+  }
+
+  const rows = Array.isArray(data) ? data : data ? [data] : [];
+  if (rows.length === 0) {
+    cachedCustomizationRowFingerprint = 'empty';
+    cachedCustomizationObject = {};
+    return {};
+  }
+
+  const topRow = rows[0];
+  const fingerprint = `${topRow?.id || ''}|${topRow?.created_at || ''}|${rows.length}`;
+  if (cachedCustomizationRowFingerprint === fingerprint) {
+    return cachedCustomizationObject;
+  }
+
+  for (const row of rows) {
+    const parsed = parseActivityMetadataObject(row?.metadata ?? row?.details);
+    if (parsed && Object.keys(parsed).length > 0) {
+      cachedCustomizationRowFingerprint = fingerprint;
+      cachedCustomizationObject = parsed;
+      return parsed;
+    }
+  }
+  cachedCustomizationRowFingerprint = fingerprint;
+  cachedCustomizationObject = {};
+  return {};
+}
+
+export async function fetchMergedSchoolSettings(
+  supabase: any,
+  gradingCriteria: any[] = [],
+  readClient?: any
+) {
+  const reader = readClient || supabase;
+  const [schoolRes, customConfig] = await Promise.all([
+    reader.from('school_settings').select('*').limit(1).maybeSingle(),
+    readLatestSchoolCustomizationConfig(reader),
   ]);
 
-  const rawSchoolSettings = schoolRes?.data || null;
-  const rawLogs = Array.isArray(logsRes?.data)
-    ? logsRes.data[0]
-    : logsRes?.data || null;
+  if (schoolRes?.error) {
+    console.error('fetchMergedSchoolSettings school_settings query error:', schoolRes.error.message);
+  }
 
-  const rawPayload = rawLogs?.metadata || rawLogs?.details || null;
-  let customConfig: Record<string, any> = {};
-  if (rawPayload && typeof rawPayload === 'object') {
-    customConfig = rawPayload as Record<string, any>;
-  } else if (typeof rawPayload === 'string') {
-    try {
-      customConfig = JSON.parse(rawPayload);
-    } catch {
-      customConfig = {};
-    }
+  const rawSchoolSettings = schoolRes?.data || null;
+  const criteriaKey = Array.isArray(gradingCriteria) && gradingCriteria.length > 0
+    ? gradingCriteria.map((c: any) => `${c?.id || ''}:${c?.updated_at || c?.remark || ''}`).join(',')
+    : 'none';
+  const mergedFingerprint = `${rawSchoolSettings?.id || ''}|${rawSchoolSettings?.updated_at || ''}|${cachedCustomizationRowFingerprint || ''}|${criteriaKey}`;
+
+  if (
+    cachedMergedSettingsEntry &&
+    cachedMergedSettingsEntry.fingerprint === mergedFingerprint &&
+    Date.now() < cachedMergedSettingsEntry.expiresAt
+  ) {
+    return cachedMergedSettingsEntry.data;
   }
 
   const merged = {
@@ -440,6 +698,26 @@ export async function fetchMergedSchoolSettings(supabase: any, gradingCriteria: 
         conductRemark: b.conductRemark ?? def?.conductRemark ?? 'Good conduct.',
       };
     }),
+    theology_division_boundaries: (
+      Array.isArray(customConfig?.theology_division_boundaries) && customConfig.theology_division_boundaries.length > 0
+        ? customConfig.theology_division_boundaries
+        : Array.isArray(rawSchoolSettings?.theology_division_boundaries) && rawSchoolSettings.theology_division_boundaries.length > 0
+          ? rawSchoolSettings.theology_division_boundaries
+          : DEFAULT_THEOLOGY_DIVISION_BOUNDARIES
+    ).map((b: any) => {
+      const def =
+        DEFAULT_THEOLOGY_DIVISION_BOUNDARIES.find((d) => d.division === b.division) ||
+        DEFAULT_THEOLOGY_DIVISION_BOUNDARIES.find((d) => d.equivalentDivision === b.equivalentDivision);
+      return {
+        division: String(b.division || def?.division || 'ممتاز'),
+        equivalentDivision: (b.equivalentDivision || def?.equivalentDivision || 'I') as 'I' | 'II' | 'III' | 'IV' | 'U',
+        label: b.label || def?.label || String(b.division || ''),
+        min: Number(b.min ?? def?.min ?? 4),
+        max: Number(b.max ?? def?.max ?? 36),
+        boysRemark: b.boysRemark ?? def?.boysRemark ?? '',
+        girlsRemark: b.girlsRemark ?? def?.girlsRemark ?? '',
+      };
+    }),
     promotion_comments: {
       ...DEFAULT_PROMOTION_COMMENTS,
       ...(rawSchoolSettings?.promotion_comments || {}),
@@ -457,18 +735,25 @@ export async function fetchMergedSchoolSettings(supabase: any, gradingCriteria: 
         : Array.isArray(rawSchoolSettings?.grading_scale) && rawSchoolSettings.grading_scale.length > 0
           ? rawSchoolSettings.grading_scale
           : DEFAULT_UNEB_GRADING_BANDS,
-    theology_grading_scale:
+    theology_grading_scale: normalizeLegacyTheologyGradingScale(
       Array.isArray(customConfig?.theology_grading_scale) && customConfig.theology_grading_scale.length > 0
         ? customConfig.theology_grading_scale
         : Array.isArray(rawSchoolSettings?.theology_grading_scale) && rawSchoolSettings.theology_grading_scale.length > 0
           ? rawSchoolSettings.theology_grading_scale
-          : DEFAULT_THEOLOGY_GRADING_BANDS,
+          : DEFAULT_THEOLOGY_GRADING_BANDS
+    ),
     theology_remarks:
       Array.isArray(customConfig?.theology_remarks) && customConfig.theology_remarks.length > 0
         ? customConfig.theology_remarks
         : Array.isArray(rawSchoolSettings?.theology_remarks) && rawSchoolSettings.theology_remarks.length > 0
           ? rawSchoolSettings.theology_remarks
           : DEFAULT_THEOLOGY_REMARKS,
+    hub_sections: normalizeHubSectionsConfig(
+      customConfig?.hub_sections ?? rawSchoolSettings?.hub_sections
+    ),
+    candidate_class_rules: normalizeCandidateClassRules(
+      customConfig?.candidate_class_rules ?? rawSchoolSettings?.candidate_class_rules
+    ),
     ...(rawSchoolSettings?.name ? { name: rawSchoolSettings.name, school_name: rawSchoolSettings.name } : {}),
     ...(rawSchoolSettings?.school_name ? { name: rawSchoolSettings.school_name, school_name: rawSchoolSettings.school_name } : {}),
     ...(customConfig?.school_name ? { name: customConfig.school_name, school_name: customConfig.school_name } : {}),
@@ -485,6 +770,12 @@ export async function fetchMergedSchoolSettings(supabase: any, gradingCriteria: 
     logo_url: normalizeSchoolLogoUrl(
       customConfig?.logo_url || rawSchoolSettings?.logo_url
     ),
+  };
+
+  cachedMergedSettingsEntry = {
+    fingerprint: mergedFingerprint,
+    expiresAt: Date.now() + 8000,
+    data: merged,
   };
 
   return merged;
@@ -609,4 +900,12 @@ export function resolveDivisionBoundaries(reportData: any): DivisionBoundaryItem
     return s.division_boundaries;
   }
   return DEFAULT_DIVISION_BOUNDARIES;
+}
+
+export function resolveTheologyDivisionBoundaries(reportData: any): TheologyDivisionBoundaryItem[] {
+  const s = reportData?.settings || {};
+  if (Array.isArray(s.theology_division_boundaries) && s.theology_division_boundaries.length > 0) {
+    return s.theology_division_boundaries;
+  }
+  return DEFAULT_THEOLOGY_DIVISION_BOUNDARIES;
 }

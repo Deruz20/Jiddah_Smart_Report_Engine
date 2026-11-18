@@ -22,10 +22,10 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
-    const { verifyDataAccess } = await import('@/lib/auth-server')
+    const { verifyDataAccess, hasPermission } = await import('@/lib/auth-server')
     const authRes = await verifyDataAccess(supabase, user, 'read')
     const { isAdministratorRole } = await import('@/lib/teacher-access')
-    if (!authRes.isAuthorized || (!isAdministratorRole(authRes.canonicalRole || authRes.role) && authRes.role !== 'Administrator' && authRes.role !== 'admin')) {
+    if (!authRes.isAuthorized || !isAdministratorRole(authRes.canonicalRole || authRes.role) || !hasPermission(authRes, 'manage_settings')) {
       return withCors(request, NextResponse.json({ error: 'Access Denied: Administrator only' }, { status: 403 }))
     }
 
@@ -59,10 +59,10 @@ export async function POST(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
-    const { verifyDataAccess } = await import('@/lib/auth-server')
+    const { verifyDataAccess, hasPermission } = await import('@/lib/auth-server')
     const authRes = await verifyDataAccess(supabase, user, 'write')
     const { isAdministratorRole } = await import('@/lib/teacher-access')
-    if (!authRes.isAuthorized || (!isAdministratorRole(authRes.canonicalRole || authRes.role) && authRes.role !== 'Administrator' && authRes.role !== 'admin')) {
+    if (!authRes.isAuthorized || !isAdministratorRole(authRes.canonicalRole || authRes.role) || !hasPermission(authRes, 'manage_settings')) {
       return withCors(request, NextResponse.json({ error: 'Access Denied: Administrator only' }, { status: 403 }))
     }
 
@@ -120,10 +120,10 @@ export async function PATCH(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
-    const { verifyDataAccess } = await import('@/lib/auth-server')
+    const { verifyDataAccess, hasPermission } = await import('@/lib/auth-server')
     const authRes = await verifyDataAccess(supabase, user, 'write')
     const { isAdministratorRole } = await import('@/lib/teacher-access')
-    if (!authRes.isAuthorized || (!isAdministratorRole(authRes.canonicalRole || authRes.role) && authRes.role !== 'Administrator' && authRes.role !== 'admin')) {
+    if (!authRes.isAuthorized || !isAdministratorRole(authRes.canonicalRole || authRes.role) || !hasPermission(authRes, 'manage_settings')) {
       return withCors(request, NextResponse.json({ error: 'Access Denied: Administrator only' }, { status: 403 }))
     }
 
@@ -170,10 +170,10 @@ export async function DELETE(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
-    const { verifyDataAccess } = await import('@/lib/auth-server')
+    const { verifyDataAccess, hasPermission } = await import('@/lib/auth-server')
     const authRes = await verifyDataAccess(supabase, user, 'write')
     const { isAdministratorRole } = await import('@/lib/teacher-access')
-    if (!authRes.isAuthorized || (!isAdministratorRole(authRes.canonicalRole || authRes.role) && authRes.role !== 'Administrator' && authRes.role !== 'admin')) {
+    if (!authRes.isAuthorized || !isAdministratorRole(authRes.canonicalRole || authRes.role) || !hasPermission(authRes, 'manage_settings')) {
       return withCors(request, NextResponse.json({ error: 'Access Denied: Administrator only' }, { status: 403 }))
     }
 

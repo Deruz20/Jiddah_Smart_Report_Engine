@@ -1,11 +1,30 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { cookies } from 'next/headers';
+import { createClient, createAdminClient } from '@/utils/supabase/server';
+import { verifyDataAccess, hasPermission } from '@/lib/auth-server';
 import { GoogleGenAI, Type, Schema } from '@google/genai';
 
 export async function POST(request: Request) {
   try {
+    const cookieStore = await cookies();
+    const supabase = createClient(cookieStore);
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const authRes = await verifyDataAccess(supabase, user, 'read');
+    if (!authRes.isAuthorized || !hasPermission(authRes, 'manage_settings')) {
+      return NextResponse.json(
+        { error: authRes.message || 'Forbidden: Administrator permissions required for batch transliteration.' },
+        { status: 403 }
+      );
+    }
+
+    const supabaseAdmin = createAdminClient(cookieStore);
+
     // 1. Fetch all students where arabic_name is null or empty
-    const { data: students, error } = await supabase
+    const { data: students, error } = await supabaseAdmin
       .from('students')
       .select('id, name, arabic_name')
       .or('arabic_name.is.null,arabic_name.eq.')
@@ -76,7 +95,7 @@ ${names.join('\\n')}
         const arabicName = transliterated[j];
         
         if (arabicName) {
-          await supabase
+          await supabaseAdmin
             .from('students')
             .update({ arabic_name: arabicName })
             .eq('id', student.id);

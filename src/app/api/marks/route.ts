@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { isCoreSubject } from '@/lib/grading'
 import { resolveSectionType } from '@/lib/section-type'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
-import { verifyDataAccess, resolveUserScope, canAccessSubjectInScope } from '@/lib/auth-server'
+import { verifyDataAccess, hasPermission, resolveUserScope, canAccessSubjectInScope } from '@/lib/auth-server'
 import { recordActivity } from '@/lib/api-server'
 import { canAccessClass, isAdministratorRole } from '@/lib/teacher-access'
 import { fetchMergedSchoolSettings, isExamSetLockedForUser } from '@/lib/school-settings-helper'
@@ -47,8 +47,10 @@ export async function GET(request: NextRequest) {
 
     const { data: enrollment, error: enrollmentError } = await supabase
       .from('enrollments')
-      .select('id, student_id, circular_class_id, theology_class_id, circular_classes(section, class_name), theology_classes(level)')
+      .select('id, student_id, is_active, circular_class_id, theology_class_id, circular_classes(section, class_name), theology_classes(level), students!inner(id, is_archived)')
       .eq('id', enrollment_id)
+      .eq('is_active', true)
+      .eq('students.is_archived', false)
       .single()
 
     if (enrollmentError || !enrollment) {
@@ -57,8 +59,8 @@ export async function GET(request: NextRequest) {
 
     // Security Check
     const authRes = await verifyDataAccess(supabase, user, 'read');
-    if (!authRes.isAuthorized) {
-      return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
+    if (!authRes.isAuthorized || !hasPermission(authRes, 'read_marks')) {
+      return withCors(request, NextResponse.json({ error: authRes.message || 'Forbidden: Insufficient permissions to read marks.' }, { status: 403 }))
     }
     const canReadCircular = canAccessClass(authRes, 'circular', enrollment.circular_class_id)
     const canReadTheology = canAccessClass(
@@ -204,11 +206,13 @@ export async function POST(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Authentication required. Please log in.' }, { status: 401 }))
     }
 
-    // 1. Fetch enrollment's sections
+    // 1. Fetch enrollment's sections (strictly active, non-archived students only)
     const { data: enrollment, error: enrollmentError } = await supabase
       .from('enrollments')
-      .select('circular_class_id, theology_class_id, circular_classes(section, class_name), theology_classes(level)')
+      .select('circular_class_id, theology_class_id, is_active, circular_classes(section, class_name), theology_classes(level), students!inner(id, is_archived)')
       .eq('id', enrollment_id)
+      .eq('is_active', true)
+      .eq('students.is_archived', false)
       .single()
       
     if (enrollmentError || !enrollment) {

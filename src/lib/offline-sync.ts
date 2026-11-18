@@ -36,6 +36,8 @@ export interface OfflineSyncStatusSnapshot {
 // Fallback memory store when running in restricted/non-IndexedDB environments (SSR/Node tests)
 const memoryReadStore = new Map<string, ReadCacheEntry>();
 const memoryOutboxStore = new Map<string, OutboxMutation>();
+const pendingIdbWriteTimers = new Map<string, ReturnType<typeof setTimeout>>();
+let cachedDbPromise: Promise<IDBDatabase> | null = null;
 
 let syncInFlight = false;
 let lastSyncError: string | null = null;
@@ -46,12 +48,14 @@ function hasIndexedDb(): boolean {
 }
 
 function openOfflineDb(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    if (!hasIndexedDb()) {
-      reject(new Error("IndexedDB unavailable"));
-      return;
-    }
+  if (!hasIndexedDb()) {
+    return Promise.reject(new Error("IndexedDB unavailable"));
+  }
+  if (cachedDbPromise) {
+    return cachedDbPromise;
+  }
 
+  cachedDbPromise = new Promise((resolve, reject) => {
     const request = window.indexedDB.open(OFFLINE_CACHE_DB, 1);
     request.onupgradeneeded = () => {
       const db = request.result;
@@ -62,14 +66,26 @@ function openOfflineDb(): Promise<IDBDatabase> {
         db.createObjectStore(OFFLINE_OUTBOX_STORE, { keyPath: "id" });
       }
     };
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error ?? new Error("Failed to open IndexedDB"));
+    request.onsuccess = () => {
+      const db = request.result;
+      db.onclose = () => {
+        cachedDbPromise = null;
+      };
+      resolve(db);
+    };
+    request.onerror = () => {
+      cachedDbPromise = null;
+      reject(request.error ?? new Error("Failed to open IndexedDB"));
+    };
   });
+  return cachedDbPromise;
 }
 
 async function idbGetReadCache<T>(key: string): Promise<ReadCacheEntry<T> | null> {
+  const memHit = memoryReadStore.get(key) as ReadCacheEntry<T> | undefined;
+  if (memHit) return memHit;
   if (!hasIndexedDb()) {
-    return (memoryReadStore.get(key) as ReadCacheEntry<T> | undefined) ?? null;
+    return null;
   }
   try {
     const db = await openOfflineDb();
@@ -77,7 +93,11 @@ async function idbGetReadCache<T>(key: string): Promise<ReadCacheEntry<T> | null
       const tx = db.transaction(OFFLINE_READ_STORE, "readonly");
       const store = tx.objectStore(OFFLINE_READ_STORE);
       const req = store.get(key);
-      req.onsuccess = () => resolve((req.result as ReadCacheEntry<T> | undefined) ?? null);
+      req.onsuccess = () => {
+        const res = (req.result as ReadCacheEntry<T> | undefined) ?? null;
+        if (res) memoryReadStore.set(key, res);
+        resolve(res);
+      };
       req.onerror = () => reject(req.error);
     });
   } catch {
@@ -89,18 +109,30 @@ async function idbPutReadCache<T>(key: string, data: T): Promise<void> {
   const entry: ReadCacheEntry<T> = { key, data, updatedAt: Date.now() };
   memoryReadStore.set(key, entry);
   if (!hasIndexedDb()) return;
-  try {
-    const db = await openOfflineDb();
-    await new Promise<void>((resolve, reject) => {
-      const tx = db.transaction(OFFLINE_READ_STORE, "readwrite");
-      const store = tx.objectStore(OFFLINE_READ_STORE);
-      const req = store.put(entry);
-      req.onsuccess = () => resolve();
-      req.onerror = () => reject(req.error);
-    });
-  } catch {
-    // Non-fatal cache write failure
+
+  const existingTimer = pendingIdbWriteTimers.get(key);
+  if (existingTimer) {
+    clearTimeout(existingTimer);
   }
+
+  // Debounce IndexedDB disk transactions so rapid state/mark updates never block the UI thread
+  const timer = setTimeout(async () => {
+    pendingIdbWriteTimers.delete(key);
+    const latest = memoryReadStore.get(key) ?? entry;
+    try {
+      const db = await openOfflineDb();
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction(OFFLINE_READ_STORE, "readwrite");
+        const store = tx.objectStore(OFFLINE_READ_STORE);
+        const req = store.put(latest);
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req.error);
+      });
+    } catch {
+      // Non-fatal cache write failure
+    }
+  }, 250);
+  pendingIdbWriteTimers.set(key, timer);
 }
 
 async function idbListOutbox(): Promise<OutboxMutation[]> {
@@ -210,6 +242,15 @@ export function broadcastMarksUpdated(detail?: Record<string, unknown>): void {
   invalidateClientCache();
   if (typeof window === "undefined") return;
   window.dispatchEvent(new CustomEvent(MARKS_UPDATED_EVENT, { detail: detail ?? {} }));
+}
+
+export async function syncOfflineUserProfileCache(profile: Record<string, unknown>): Promise<void> {
+  await idbPutReadCache("/api/settings/user", { data: profile });
+  invalidateClientCache();
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("jiddah:profile-updated", { detail: profile }));
+  }
+  await notifySyncListeners();
 }
 
 export interface OfflineFetchOptions {

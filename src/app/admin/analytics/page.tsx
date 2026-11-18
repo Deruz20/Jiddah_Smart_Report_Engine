@@ -2,12 +2,22 @@ import React from "react";
 import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import AnalyticsContent, { AnalyticsData } from "@/components/layout/analytics-content";
+import { verifyDataAccess, hasPermission } from "@/lib/auth-server";
 
 export const dynamic = "force-dynamic";
 
 export default async function AnalyticsDashboard() {
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return <div className="p-10 text-rose-600 font-medium">Unauthorized</div>;
+  }
+  const authRes = await verifyDataAccess(supabase, user, "read");
+  if (!authRes.isAuthorized || !hasPermission(authRes, "read_marks")) {
+    return <div className="p-10 text-rose-600 font-medium">Access Denied: Insufficient permissions to view academic analytics.</div>;
+  }
 
   // Fetch real classes, subjects, and marks from Supabase
   const [

@@ -2,8 +2,9 @@ import { createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { getSubjectGradeNumber } from '@/lib/grading'
+import { fetchMergedSchoolSettings } from '@/lib/school-settings-helper'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
-import { verifyDataAccess } from '@/lib/auth-server'
+import { verifyDataAccess, hasPermission } from '@/lib/auth-server'
 
 export async function OPTIONS(request: NextRequest) {
   return apiOptions(request)
@@ -18,13 +19,30 @@ export async function GET(request: NextRequest) {
   const term_id = searchParams.get('term_id')
   const examMode = searchParams.get('examMode') || 'EOT'
 
-  if (!student_id) {
-    return withCors(request, NextResponse.json({ data: [] }))
-  }
-
   try {
     const cookieStore = await cookies()
     const supabase = createClient(cookieStore)
+
+    // Security Check before querying student data
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      return withCors(request, NextResponse.json({ error: 'Authentication required. Please log in.' }, { status: 401 }))
+    }
+
+    const baseAuthRes = await verifyDataAccess(supabase, user, 'read')
+    if (!baseAuthRes.isAuthorized || !hasPermission(baseAuthRes, 'read_reports')) {
+      return withCors(
+        request,
+        NextResponse.json(
+          { error: baseAuthRes.message || 'Forbidden: Insufficient permissions to access report data.' },
+          { status: 403 }
+        )
+      )
+    }
+
+    if (!student_id) {
+      return withCors(request, NextResponse.json({ data: [] }))
+    }
 
     // 1. Fetch Student & Class info
     const { data: studentArr, error: studentError } = await supabase
@@ -44,30 +62,22 @@ export async function GET(request: NextRequest) {
         )
       `)
       .eq('id', student_id)
+      .eq('is_archived', false)
       .eq('enrollments.is_active', true)
       .limit(1)
 
     if (studentError || !studentArr || studentArr.length === 0) throw new Error('Student not found')
     const student = studentArr[0]
 
-    // Security Check
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      return withCors(request, NextResponse.json({ error: 'Authentication required. Please log in.' }, { status: 401 }))
-    }
-
-    const metaRole = user.app_metadata?.role || user.user_metadata?.role;
-    const { isAdministratorRole } = await import('@/lib/teacher-access');
-    const isAdmin = isAdministratorRole(metaRole);
-
-    if (!isAdmin) {
-      const authRes = await verifyDataAccess(supabase, user, 'read', student.class_name);
-      if (!authRes.isAuthorized) {
-        return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
+    const { isAdministratorRole } = await import('@/lib/teacher-access')
+    if (!isAdministratorRole(baseAuthRes.role)) {
+      const authRes = await verifyDataAccess(supabase, user, 'read', student.class_name)
+      if (!authRes.isAuthorized || !hasPermission(authRes, 'read_reports')) {
+        return withCors(request, NextResponse.json({ error: authRes.message || 'Forbidden' }, { status: 403 }))
       }
 
       if (authRes.filterByDepartment) {
-        const hasTheologyClass = student.enrollments?.[0]?.theology_class_id != null;
+        const hasTheologyClass = student.enrollments?.[0]?.theology_class_id != null
         if (authRes.filterByDepartment === 'theology' && !hasTheologyClass) {
           return withCors(request, NextResponse.json({ error: 'Unauthorized: Student is not in the Theology department' }, { status: 403 }))
         }
@@ -186,7 +196,8 @@ export async function GET(request: NextRequest) {
     
     if (classMarksError) throw classMarksError
 
-    // Compute aggregates per student
+    // Compute aggregates per student using configured school grading scale
+    const schoolSettings = await fetchMergedSchoolSettings(supabase)
     const studentAggregates: Record<string, { totalAgg: number, totalScore: number }> = {}
     classStudentIds.forEach(id => {
       studentAggregates[id] = { totalAgg: 0, totalScore: 0 }
@@ -194,7 +205,7 @@ export async function GET(request: NextRequest) {
 
     ;(classMarks || []).forEach(m => {
       if (typeof m.score === 'number') {
-        const gradeNumber = getSubjectGradeNumber(m.score)
+        const gradeNumber = getSubjectGradeNumber(m.score, schoolSettings?.grading_scale)
         studentAggregates[m.student_id].totalAgg += gradeNumber
         studentAggregates[m.student_id].totalScore += m.score
       }

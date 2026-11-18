@@ -1,9 +1,19 @@
-import { createClient } from '@/utils/supabase/server'
+import { createAdminClient, createClient } from '@/utils/supabase/server'
+import { revalidatePath } from 'next/cache'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { getAuthenticatedUser, isValidEmail, normalizePhone, normalizeString, recordActivity } from '@/lib/api-server'
-import { fetchMergedSchoolSettings, validateGradingBands } from '@/lib/school-settings-helper'
+import {
+  fetchMergedSchoolSettings,
+  invalidateSchoolSettingsCache,
+  readLatestSchoolCustomizationConfig,
+  SCHOOL_CUSTOMIZATION_ACTION,
+  validateGradingBands,
+} from '@/lib/school-settings-helper'
+
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 const baseDbColumns = [
   'school_name',
@@ -48,9 +58,12 @@ const allowedJsonKeys = [
   'theology_remarks',
   'print_preferences',
   'division_boundaries',
+  'theology_division_boundaries',
   'fee_structure',
   'marks_locks',
   'promotion_comments',
+  'hub_sections',
+  'candidate_class_rules',
 ]
 
 export async function OPTIONS(request: NextRequest) {
@@ -66,20 +79,21 @@ export async function GET(request: NextRequest) {
     const supabase = createClient(cookieStore)
 
     const user = await getAuthenticatedUser(supabase)
-    if (user) {
-      const metaRole = user.app_metadata?.role || user.user_metadata?.role
-      const { isAdministratorRole } = await import('@/lib/teacher-access')
-      if (!isAdministratorRole(metaRole)) {
-        const { verifyDataAccess } = await import('@/lib/auth-server')
-        try {
-          await verifyDataAccess(supabase, user, 'read')
-        } catch {
-          // Allow read to proceed for authenticated staff
-        }
-      }
+    if (!user) {
+      return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
-    const { data: gradingCriteria, error: criteriaErr } = await supabase
+    const { verifyDataAccess, hasPermission } = await import('@/lib/auth-server')
+    const authRes = await verifyDataAccess(supabase, user, 'read')
+    if (!authRes.isAuthorized || !hasPermission(authRes, 'manage_settings')) {
+      return withCors(
+        request,
+        NextResponse.json({ error: 'Access Denied: Administrator only' }, { status: 403 })
+      )
+    }
+
+    const supabaseAdmin = createAdminClient(cookieStore)
+    const { data: gradingCriteria, error: criteriaErr } = await supabaseAdmin
       .from('grading_criteria')
       .select('*')
       .order('max_value', { ascending: false })
@@ -88,7 +102,7 @@ export async function GET(request: NextRequest) {
       console.error('settings/school grading_criteria error:', criteriaErr.message)
     }
 
-    const merged = await fetchMergedSchoolSettings(supabase, gradingCriteria || [])
+    const merged = await fetchMergedSchoolSettings(supabaseAdmin, gradingCriteria || [])
 
     const formattedData = {
       ...merged,
@@ -99,7 +113,9 @@ export async function GET(request: NextRequest) {
       grading_criteria: gradingCriteria || [],
     }
 
-    return withCors(request, NextResponse.json({ data: formattedData }))
+    const response = NextResponse.json({ data: formattedData })
+    response.headers.set('Cache-Control', 'no-store, max-age=0')
+    return withCors(request, response)
   } catch (err: any) {
     console.error('settings/school GET exception:', err)
     return withCors(request, NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 }))
@@ -119,27 +135,26 @@ export async function PATCH(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
-    const { verifyDataAccess } = await import('@/lib/auth-server')
-    const authRes = await verifyDataAccess(supabase, user, 'write')
-    const { isAdministratorRole } = await import('@/lib/teacher-access')
-    const isAllowedRole =
-      authRes.isAuthorized &&
-      (isAdministratorRole(authRes.canonicalRole || authRes.role) ||
-        authRes.role === 'Administrator' ||
-        authRes.role === 'admin' ||
-        authRes.role === 'Head Teacher' ||
-        authRes.role === 'DOS Secular' ||
-        authRes.role === 'DOS Theology' ||
-        authRes.canonicalRole === 'DOS Secular' ||
-        authRes.canonicalRole === 'DOS Theology')
-
-    if (!isAllowedRole) {
-      return withCors(request, NextResponse.json({ error: 'Access Denied: Administrator or DOS only' }, { status: 403 }))
-    }
-
     const body = await request.json()
     if (!body || typeof body !== 'object') {
       return withCors(request, NextResponse.json({ error: 'Invalid payload' }, { status: 400 }))
+    }
+
+    const { verifyDataAccess, hasPermission } = await import('@/lib/auth-server')
+    const authRes = await verifyDataAccess(supabase, user, 'read')
+    const bodyKeys = Object.keys(body)
+    const isMarksLockOnly = bodyKeys.length === 1 && bodyKeys[0] === 'marks_locks'
+
+    const isAllowed =
+      authRes.isAuthorized &&
+      (hasPermission(authRes, 'manage_settings') ||
+        (isMarksLockOnly && hasPermission(authRes, 'lock_marks')))
+
+    if (!isAllowed) {
+      return withCors(
+        request,
+        NextResponse.json({ error: 'Access Denied: Insufficient permissions to modify school settings' }, { status: 403 })
+      )
     }
 
     const updatePayload: Record<string, any> = {}
@@ -165,7 +180,7 @@ export async function PATCH(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Invalid school email address' }, { status: 400 }))
     }
 
-    // Validate grading scales if provided
+    // Validate grading scales & division boundaries if provided
     if (Array.isArray(jsonCustomizationPayload.grading_scale)) {
       const check = validateGradingBands(jsonCustomizationPayload.grading_scale)
       if (!check.valid) {
@@ -176,6 +191,20 @@ export async function PATCH(request: NextRequest) {
       const check = validateGradingBands(jsonCustomizationPayload.theology_grading_scale)
       if (!check.valid) {
         return withCors(request, NextResponse.json({ error: `Theology grading scale invalid: ${check.error}` }, { status: 400 }))
+      }
+    }
+    if (Array.isArray(jsonCustomizationPayload.division_boundaries)) {
+      const { validateDivisionBoundaries } = await import('@/lib/school-settings-helper')
+      const check = validateDivisionBoundaries(jsonCustomizationPayload.division_boundaries)
+      if (!check.valid) {
+        return withCors(request, NextResponse.json({ error: `Secular division boundaries invalid: ${check.error}` }, { status: 400 }))
+      }
+    }
+    if (Array.isArray(jsonCustomizationPayload.theology_division_boundaries)) {
+      const { validateDivisionBoundaries } = await import('@/lib/school-settings-helper')
+      const check = validateDivisionBoundaries(jsonCustomizationPayload.theology_division_boundaries)
+      if (!check.valid) {
+        return withCors(request, NextResponse.json({ error: `Theology division boundaries invalid: ${check.error}` }, { status: 400 }))
       }
     }
 
@@ -198,15 +227,17 @@ export async function PATCH(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'No valid settings provided' }, { status: 400 }))
     }
 
+    const supabaseAdmin = createAdminClient(cookieStore)
+
     // 1. Update school_settings table if any scalar fields were sent
     if (Object.keys(updatePayload).length > 0) {
-      const { data: existing } = await supabase.from('school_settings').select('id').limit(1).maybeSingle()
+      const { data: existing } = await supabaseAdmin.from('school_settings').select('id').limit(1).maybeSingle()
       const targetId = existing?.id || 'current'
       const fullRecord = { id: targetId, ...updatePayload, updated_at: new Date().toISOString() }
-      const { error } = await supabase.from('school_settings').upsert([fullRecord], { onConflict: 'id' })
+      const { error } = await supabaseAdmin.from('school_settings').upsert([fullRecord], { onConflict: 'id' })
 
       if (error) {
-        // Fallback if rehearsal schema only has base columns on school_settings
+        // Fallback if schema only has base columns on school_settings
         const baseOnlyPayload: Record<string, any> = {}
         for (const col of baseDbColumns) {
           if (col in updatePayload) {
@@ -215,7 +246,7 @@ export async function PATCH(request: NextRequest) {
         }
         if (Object.keys(baseOnlyPayload).length > 0) {
           const fallbackRecord = { id: targetId, ...baseOnlyPayload, updated_at: new Date().toISOString() }
-          const { error: fallbackError } = await supabase
+          const { error: fallbackError } = await supabaseAdmin
             .from('school_settings')
             .upsert([fallbackRecord], { onConflict: 'id' })
           if (fallbackError) {
@@ -226,87 +257,74 @@ export async function PATCH(request: NextRequest) {
       }
     }
 
-    // 2. Sync grading_scale to grading_criteria table if provided
-    if (Array.isArray(jsonCustomizationPayload.grading_scale) && jsonCustomizationPayload.grading_scale.length > 0) {
-      try {
-        for (const rule of jsonCustomizationPayload.grading_scale) {
-          if (rule && typeof rule.grade === 'string' && typeof rule.min === 'number' && typeof rule.max === 'number') {
-            await supabase.from('grading_criteria').upsert(
-              [
-                {
-                  id: rule.id || undefined,
-                  curriculum: rule.curriculum || 'secular',
-                  class_id: rule.class_id || null,
-                  metric_type: rule.metric_type || 'subject_score',
-                  min_value: Number(rule.min),
-                  max_value: Number(rule.max),
-                  output_type: 'grade_label',
-                  output_text: String(rule.grade),
-                },
-              ],
-              { onConflict: 'id' }
-            )
-          }
-        }
-      } catch {
-        // Continue — full grading_scale is also persisted in school_customization_config
-      }
-    }
-
-    if (Array.isArray(jsonCustomizationPayload.theology_grading_scale) && jsonCustomizationPayload.theology_grading_scale.length > 0) {
-      try {
-        for (const rule of jsonCustomizationPayload.theology_grading_scale) {
-          if (rule && typeof rule.grade === 'string' && typeof rule.min === 'number' && typeof rule.max === 'number') {
-            await supabase.from('grading_criteria').upsert(
-              [
-                {
-                  id: rule.id || undefined,
-                  curriculum: 'theology',
-                  class_id: rule.class_id || null,
-                  metric_type: rule.metric_type || 'subject_score',
-                  min_value: Number(rule.min),
-                  max_value: Number(rule.max),
-                  output_type: 'grade_label',
-                  output_text: String(rule.grade),
-                },
-              ],
-              { onConflict: 'id' }
-            )
-          }
-        }
-      } catch {
-        // Continue
-      }
-    }
-
-    // 3. Merge and persist customization snapshot in activity_logs so extended fields, themes,
-    // ranking preferences, grading scales, division boundaries, fee structure, and marks locks round-trip reliably
-    const { data: prevConfigLogs } = await supabase
-      .from('activity_logs')
-      .select('details')
-      .eq('action', 'school_customization_config')
-      .order('created_at', { ascending: false })
-      .limit(1)
-
-    const prevConfig =
-      prevConfigLogs && prevConfigLogs.length > 0 && prevConfigLogs[0]?.details && typeof prevConfigLogs[0].details === 'object'
-        ? (prevConfigLogs[0].details as Record<string, any>)
-        : {}
+    // 2. Merge and persist full customization snapshot cleanly in activity_logs.metadata
+    const prevConfig = await readLatestSchoolCustomizationConfig(supabaseAdmin)
+    const savedAt = new Date().toISOString()
 
     const nextConfig = {
       ...prevConfig,
       ...updatePayload,
       ...jsonCustomizationPayload,
-      updated_at: new Date().toISOString(),
+      updated_at: savedAt,
     }
 
-    await recordActivity(supabase, user.id, 'school_customization_config', nextConfig)
-    await recordActivity(supabase, user.id, 'update_school_settings', {
+    const { error: saveConfigError } = await recordActivity(
+      supabaseAdmin,
+      user.id,
+      SCHOOL_CUSTOMIZATION_ACTION,
+      nextConfig
+    )
+    if (saveConfigError) {
+      return withCors(
+        request,
+        NextResponse.json(
+          { error: saveConfigError.message || 'Failed to persist school settings snapshot.' },
+          { status: 500 }
+        )
+      )
+    }
+
+    await recordActivity(supabaseAdmin, user.id, 'update_school_settings', {
       ...updatePayload,
       ...Object.keys(jsonCustomizationPayload).reduce((acc, k) => ({ ...acc, [k]: 'updated' }), {}),
     })
 
-    return withCors(request, NextResponse.json({ success: true, data: nextConfig }))
+    // 3. Mandatory read-back verification before reporting success
+    invalidateSchoolSettingsCache()
+    const { data: gradingCriteria } = await supabaseAdmin
+      .from('grading_criteria')
+      .select('*')
+      .order('max_value', { ascending: false })
+
+    const verifiedMerged = await fetchMergedSchoolSettings(supabaseAdmin, gradingCriteria || [])
+    if ((verifiedMerged as any).updated_at !== savedAt) {
+      return withCors(
+        request,
+        NextResponse.json(
+          { error: 'Settings write did not verify cleanly on database read-back.' },
+          { status: 500 }
+        )
+      )
+    }
+
+    const formattedData = {
+      ...verifiedMerged,
+      name: verifiedMerged.school_name || verifiedMerged.name || 'Jiddah Islamic Schools',
+      school_name: verifiedMerged.school_name || verifiedMerged.name || 'Jiddah Islamic Schools',
+      phone: verifiedMerged.phone_1 || verifiedMerged.phone || '',
+      phone_1: verifiedMerged.phone_1 || verifiedMerged.phone || '',
+      grading_criteria: gradingCriteria || [],
+    }
+
+    revalidatePath('/admin/settings')
+    revalidatePath('/admin/reports')
+    revalidatePath('/admin/secular-hub')
+    revalidatePath('/admin/theology-hub')
+    revalidatePath('/admin/marks')
+
+    const response = NextResponse.json({ success: true, data: formattedData })
+    response.headers.set('Cache-Control', 'no-store, max-age=0')
+    return withCors(request, response)
   } catch (err: any) {
     console.error('settings/school PATCH exception:', err)
     return withCors(request, NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 }))

@@ -133,11 +133,11 @@ describe('4. Theology Aggregates & Remarks', () => {
     assert.equal(calculateTheologyAggregate([85, 75, 70]), null);
   });
 
-  it('Arabic theology remarks conform to school standards', () => {
-    assert.equal(getTheologySubjectRemark(1), 'ممتاز');
-    assert.equal(getTheologySubjectRemark(2), 'جيد جداً');
-    assert.equal(getTheologySubjectRemark(3), 'جيد');
-    assert.equal(getTheologySubjectRemark(9), 'راسب');
+  it('Arabic theology subject remarks are distinct from overall divisions (IPLE standard)', () => {
+    assert.equal(getTheologySubjectRemark(1), 'تفوق عالٍ');
+    assert.equal(getTheologySubjectRemark(2), 'تفوق');
+    assert.equal(getTheologySubjectRemark(3), 'جدارة عالية');
+    assert.equal(getTheologySubjectRemark(9), 'دون المستوى');
   });
 });
 

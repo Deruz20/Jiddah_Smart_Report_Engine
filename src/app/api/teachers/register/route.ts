@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
+import { resolveUniqueUsernameFromEmail } from '@/lib/username';
 
 export async function POST(req: Request) {
   try {
@@ -69,6 +70,7 @@ export async function POST(req: Request) {
 
     // 3. Create the teachers profile row using the invite details
     // Ignore any frontend-submitted profile details except phone if not provided in invite
+    const derivedUsername = await resolveUniqueUsernameFromEmail(supabaseAdmin, invite.email);
     const { error: profileError } = await supabaseAdmin
       .from('teachers')
       .insert([
@@ -76,6 +78,7 @@ export async function POST(req: Request) {
           id: userId,
           auth_user_id: userId,
           email: String(invite.email).trim().toLowerCase(),
+          username: derivedUsername,
           role: finalRole,
           subject: finalSubject,
           name: finalName,

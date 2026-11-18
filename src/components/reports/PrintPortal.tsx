@@ -14,13 +14,46 @@ import { createPortal } from 'react-dom'
 interface PrintPortalProps {
   children: React.ReactNode
   pageOrientation?: 'portrait' | 'landscape' | 'mixed'
+  pageMargin?: string
 }
 
-export function PrintPortal({ children, pageOrientation = 'portrait' }: PrintPortalProps) {
+export function PrintPortal({
+  children,
+  pageOrientation = 'portrait',
+  pageMargin = '0mm',
+}: PrintPortalProps) {
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     setMounted(true)
+
+    if (typeof document === 'undefined' || typeof window === 'undefined') return
+    let hadDarkClass = false
+    let prevTheme: string | null = null
+
+    const handleBeforePrint = () => {
+      const root = document.documentElement
+      hadDarkClass = root.classList.contains('dark')
+      prevTheme = root.getAttribute('data-theme')
+      if (hadDarkClass) root.classList.remove('dark')
+      if (prevTheme === 'dark') root.setAttribute('data-theme', 'light')
+    }
+
+    const handleAfterPrint = () => {
+      const root = document.documentElement
+      if (hadDarkClass) root.classList.add('dark')
+      if (prevTheme !== null) root.setAttribute('data-theme', prevTheme)
+      hadDarkClass = false
+      prevTheme = null
+    }
+
+    window.addEventListener('beforeprint', handleBeforePrint)
+    window.addEventListener('afterprint', handleAfterPrint)
+    return () => {
+      handleAfterPrint()
+      window.removeEventListener('beforeprint', handleBeforePrint)
+      window.removeEventListener('afterprint', handleAfterPrint)
+    }
   }, [])
 
   if (!mounted || typeof document === 'undefined') {
@@ -39,8 +72,8 @@ export function PrintPortal({ children, pageOrientation = 'portrait' }: PrintPor
         {pageOrientation !== 'mixed' && (
           <style>
             {pageOrientation === 'landscape'
-              ? `@page { size: 297mm 210mm !important; margin: 0mm !important; }`
-              : `@page { size: 210mm 297mm !important; margin: 0mm !important; }`}
+              ? `@page { size: 297mm 210mm !important; margin: ${pageMargin} !important; }`
+              : `@page { size: 210mm 297mm !important; margin: ${pageMargin} !important; }`}
           </style>
         )}
         {children}

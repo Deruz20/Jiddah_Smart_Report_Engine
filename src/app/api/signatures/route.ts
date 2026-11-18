@@ -9,6 +9,7 @@ import {
   getDynamicSignatureSlots,
   getLatestSignatureObjectNameForSlot,
   getSignatureObjectNamesForSlot,
+  resolveAllowedSignatureSlotsForUser,
   setSignatureObjectActiveState,
   withSignatureVersion,
 } from '@/utils/signatures'
@@ -37,11 +38,15 @@ export async function GET(request: NextRequest) {
     }
 
     const access = await verifyDataAccess(supabase, user, 'read')
-    if (!access.isAuthorized || access.canonicalRole !== 'Administrator') {
-      return withCors(request, NextResponse.json({ error: 'Only administrators may manage official report images.' }, { status: 403 }))
+    if (!access.isAuthorized) {
+      return withCors(request, NextResponse.json({ error: access.message || 'Forbidden' }, { status: 403 }))
     }
 
     const admin = createAdminClient(cookieStore)
+    const allowedSlots = await resolveAllowedSignatureSlotsForUser(admin, access)
+    if (allowedSlots !== null && allowedSlots.size === 0) {
+      return withCors(request, NextResponse.json({ error: 'No signature slots are assigned to your account.' }, { status: 403 }))
+    }
     const storage = admin.storage.from(BUCKET)
     let activeFiles: any[] = []
     let disabledFiles: any[] = []
@@ -93,21 +98,23 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const slots = SIGNATURE_SLOTS.map((slot) => {
-      const activeEntry = activeBySlot.get(slot.slot_key)
-      const disabledEntry = disabledBySlot.get(slot.slot_key)
-      const activePath = activeEntry?.name
-      const disabledPath = disabledEntry?.name
-      const public_url = activePath ? buildPublicUrl(admin, activePath) : null
-      return {
-        ...slot,
-        public_url,
-        size: activeEntry?.size ?? disabledEntry?.size ?? 0,
-        updated_at: activeEntry?.updated_at ?? disabledEntry?.updated_at ?? null,
-        uploaded: Boolean(activePath || disabledPath),
-        active: Boolean(activePath),
-      }
-    })
+    const slots = SIGNATURE_SLOTS
+      .filter((slot) => allowedSlots === null || allowedSlots.has(slot.slot_key))
+      .map((slot) => {
+        const activeEntry = activeBySlot.get(slot.slot_key)
+        const disabledEntry = disabledBySlot.get(slot.slot_key)
+        const activePath = activeEntry?.name
+        const disabledPath = disabledEntry?.name
+        const public_url = activePath ? buildPublicUrl(admin, activePath) : null
+        return {
+          ...slot,
+          public_url,
+          size: activeEntry?.size ?? disabledEntry?.size ?? 0,
+          updated_at: activeEntry?.updated_at ?? disabledEntry?.updated_at ?? null,
+          uploaded: Boolean(activePath || disabledPath),
+          active: Boolean(activePath),
+        }
+      })
 
     return withCors(request, NextResponse.json({ data: slots }, {
       headers: { 'Cache-Control': 'no-store' },
@@ -131,9 +138,9 @@ export async function PATCH(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
-    const access = await verifyDataAccess(supabase, user, 'write')
-    if (!access.isAuthorized || access.canonicalRole !== 'Administrator') {
-      return withCors(request, NextResponse.json({ error: 'Only administrators may manage official report images.' }, { status: 403 }))
+    const access = await verifyDataAccess(supabase, user, 'read')
+    if (!access.isAuthorized) {
+      return withCors(request, NextResponse.json({ error: access.message || 'Forbidden' }, { status: 403 }))
     }
 
     const body = await request.json()
@@ -142,6 +149,17 @@ export async function PATCH(request: NextRequest) {
     }
 
     const admin = createAdminClient(cookieStore)
+    const allowedSlots = await resolveAllowedSignatureSlotsForUser(admin, access)
+    if (allowedSlots !== null && !allowedSlots.has(body.slot_key)) {
+      return withCors(
+        request,
+        NextResponse.json(
+          { error: 'Forbidden: You may only manage signature assets for your own assigned role or class.' },
+          { status: 403 }
+        )
+      )
+    }
+
     const SIGNATURE_SLOTS = await getDynamicSignatureSlots(admin)
     const slotExists = SIGNATURE_SLOTS.some((slot) => slot.slot_key === body.slot_key)
     if (!slotExists) {
@@ -184,9 +202,9 @@ export async function DELETE(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
-    const access = await verifyDataAccess(supabase, user, 'write')
-    if (!access.isAuthorized || access.canonicalRole !== 'Administrator') {
-      return withCors(request, NextResponse.json({ error: 'Only administrators may remove official report images.' }, { status: 403 }))
+    const access = await verifyDataAccess(supabase, user, 'read')
+    if (!access.isAuthorized) {
+      return withCors(request, NextResponse.json({ error: access.message || 'Forbidden' }, { status: 403 }))
     }
 
     let slotKey: string | null = null
@@ -207,6 +225,16 @@ export async function DELETE(request: NextRequest) {
     }
 
     const admin = createAdminClient(cookieStore)
+    const allowedSlots = await resolveAllowedSignatureSlotsForUser(admin, access)
+    if (allowedSlots !== null && !allowedSlots.has(slotKey)) {
+      return withCors(
+        request,
+        NextResponse.json(
+          { error: 'Forbidden: You may only remove signature assets for your own assigned role or class.' },
+          { status: 403 }
+        )
+      )
+    }
     const result = await deleteSignatureSlotObject(admin.storage.from(BUCKET), slotKey)
     if (result.error) {
       console.error('signatures DELETE error:', result.error)

@@ -71,15 +71,17 @@ export async function POST(request: NextRequest) {
       existing = created.user;
     }
 
-    // Ensure matching record in public.teachers
+    // Ensure matching record in public.teachers with deterministic username fallback
     const teacherId = existing.id;
     const role = existing.user_metadata?.role || 'Administrator';
     const name = existing.user_metadata?.name || (email === 'hassanhatima20@gmail.com' ? 'Hassan Hatima' : email.split('@')[0]);
+    const derivedUsername = email.split('@')[0].replace(/[^a-z0-9._-]+/gi, '').toLowerCase() || `staff_${teacherId.slice(0, 6)}`;
 
     await supabaseAdmin.from('teachers').upsert({
       id: teacherId,
       auth_user_id: teacherId,
       email,
+      username: derivedUsername,
       role,
       name,
       status: 'active',

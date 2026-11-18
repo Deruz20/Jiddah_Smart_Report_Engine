@@ -11,6 +11,21 @@ import {
 export const extractSignatureInk = cleanSignatureImageUrl;
 export { extractCleanSignaturePixels };
 
+/**
+ * In-memory cache of processed signature data URLs keyed by `${src}|${inkColor}|${threshold}`
+ * so HTML5 Canvas pixel-by-pixel extraction NEVER re-runs on React re-renders or batch printing.
+ */
+export const signatureDataUrlCache = new Map<string, string>();
+const MAX_SIGNATURE_MEMO_ENTRIES = 250;
+
+export function buildSignatureCacheKey(
+  src: string,
+  inkColor: string = '#0C2A84',
+  threshold: number = 225
+): string {
+  return `${src}|${(inkColor || '#0C2A84').toUpperCase()}|${threshold}`;
+}
+
 export interface CleanSignatureImageProps {
   src?: string | null;
   alt?: string;
@@ -83,7 +98,7 @@ export function CleanSignatureSvgFilter() {
  * Renders an official signature with high-contrast ink extraction and transparent paper removal.
  * Photographed grey camera paper backgrounds are stripped, blending seamlessly with report cards.
  */
-export function CleanSignatureImage({
+function CleanSignatureImageInner({
   src,
   alt = 'Signature',
   style,
@@ -109,10 +124,14 @@ export function CleanSignatureImage({
           : 1.3
       : propBoldness;
 
+  const memoKey = src ? buildSignatureCacheKey(src, sigInkHex, thresholdVal) : '';
+
   const [resolvedSrc, setResolvedSrc] = useState<string | null>(() => {
     if (!src) return null;
     if (!cleanEnabled) return src;
     if (src.startsWith('data:')) return src;
+    const directHit = signatureDataUrlCache.get(memoKey);
+    if (directHit) return directHit;
     return getCachedSignatureUrl(src, { inkMode: resolvedInkMode, boldness: effectiveBoldness }) ?? null;
   });
   const [hidden, setHidden] = useState(false);
@@ -133,8 +152,12 @@ export function CleanSignatureImage({
 
     const cached = src.startsWith('data:')
       ? src
-      : getCachedSignatureUrl(src, { inkMode: resolvedInkMode, boldness: effectiveBoldness });
+      : signatureDataUrlCache.get(memoKey) ??
+        getCachedSignatureUrl(src, { inkMode: resolvedInkMode, boldness: effectiveBoldness });
     if (cached) {
+      if (!src.startsWith('data:') && memoKey && !signatureDataUrlCache.has(memoKey)) {
+        signatureDataUrlCache.set(memoKey, cached);
+      }
       setResolvedSrc(cached);
       return;
     }
@@ -143,6 +166,13 @@ export function CleanSignatureImage({
 
     extractSignatureInk(src, { inkMode: resolvedInkMode, boldness: effectiveBoldness })
       .then((cleaned) => {
+        if (cleaned && memoKey) {
+          if (signatureDataUrlCache.size >= MAX_SIGNATURE_MEMO_ENTRIES) {
+            const oldestKey = signatureDataUrlCache.keys().next().value;
+            if (oldestKey) signatureDataUrlCache.delete(oldestKey);
+          }
+          signatureDataUrlCache.set(memoKey, cleaned);
+        }
         if (active && cleaned) {
           setResolvedSrc(cleaned);
         }
@@ -156,7 +186,7 @@ export function CleanSignatureImage({
     return () => {
       active = false;
     };
-  }, [src, resolvedInkMode, effectiveBoldness, cleanEnabled]);
+  }, [src, memoKey, resolvedInkMode, effectiveBoldness, cleanEnabled]);
 
   if (!resolvedSrc || hidden) return null;
 
@@ -179,7 +209,7 @@ export function CleanSignatureImage({
 
   return (
     <>
-      <CleanSignatureSvgFilter />
+      {!isProcessed && <CleanSignatureSvgFilter />}
       {useCustomInkFilter && (
         <svg className="sr-only" aria-hidden="true" style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden' }}>
           <defs>
@@ -222,5 +252,6 @@ export function CleanSignatureImage({
   );
 }
 
+export const CleanSignatureImage = React.memo(CleanSignatureImageInner);
 export const CleanSignatureImg = CleanSignatureImage;
 export default CleanSignatureImage;

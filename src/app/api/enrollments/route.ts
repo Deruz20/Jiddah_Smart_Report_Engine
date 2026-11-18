@@ -3,7 +3,7 @@ import { createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
-import { verifyDataAccess } from '@/lib/auth-server'
+import { verifyDataAccess, hasPermission } from '@/lib/auth-server'
 import { classIdsForType } from '@/lib/teacher-access'
 
 export async function OPTIONS(request: NextRequest) {
@@ -23,8 +23,11 @@ export async function GET(request: NextRequest) {
     }
 
     const authRes = await verifyDataAccess(supabase, user, 'read')
-    if (!authRes.isAuthorized) {
-      return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
+    if (!authRes.isAuthorized || !hasPermission(authRes, 'read_students')) {
+      return withCors(
+        request,
+        NextResponse.json({ error: authRes.message || 'Forbidden: Insufficient permissions to read enrollments.' }, { status: 403 })
+      )
     }
 
     let query = supabase

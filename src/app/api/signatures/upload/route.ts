@@ -8,6 +8,7 @@ import { verifyDataAccess } from '@/lib/auth-server'
 import {
   getDynamicSignatureSlots,
   getSignatureObjectNamesForSlot,
+  resolveAllowedSignatureSlotsForUser,
   withSignatureVersion,
 } from '@/utils/signatures'
 import { sniffImageMimeType } from '@/lib/image-sniff'
@@ -33,9 +34,9 @@ export async function POST(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
-    const access = await verifyDataAccess(supabase, user, 'write')
-    if (!access.isAuthorized || access.canonicalRole !== 'Administrator') {
-      return withCors(request, NextResponse.json({ error: 'Only administrators may upload or replace official report images.' }, { status: 403 }))
+    const access = await verifyDataAccess(supabase, user, 'read')
+    if (!access.isAuthorized) {
+      return withCors(request, NextResponse.json({ error: access.message || 'Forbidden' }, { status: 403 }))
     }
 
     const formData = await request.formData()
@@ -51,8 +52,22 @@ export async function POST(request: NextRequest) {
     }
 
     const supabaseAdmin = createAdminClient(cookieStore)
+    const allowedSlots = await resolveAllowedSignatureSlotsForUser(supabaseAdmin, access)
+    if (allowedSlots !== null && !allowedSlots.has(slotKey)) {
+      return withCors(
+        request,
+        NextResponse.json(
+          { error: 'Forbidden: You may only upload or replace signatures for your own assigned role or class.' },
+          { status: 403 }
+        )
+      )
+    }
+
     const SIGNATURE_SLOTS = await getDynamicSignatureSlots(supabaseAdmin)
-    const isValidSlot = SIGNATURE_SLOTS.some(slot => slot.slot_key === slotKey) || slotKey === 'school-logo'
+    const isValidSlot =
+      SIGNATURE_SLOTS.some((slot) => slot.slot_key === slotKey) ||
+      slotKey === 'school-logo' ||
+      (allowedSlots !== null && allowedSlots.has(slotKey))
     if (!isValidSlot) {
       return withCors(request, NextResponse.json({ error: 'Invalid signature slot' }, { status: 400 }))
     }

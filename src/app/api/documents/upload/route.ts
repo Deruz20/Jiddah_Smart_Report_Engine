@@ -3,6 +3,7 @@ import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { getAuthenticatedUser } from '@/lib/api-server'
+import { verifyDataAccess, hasPermission } from '@/lib/auth-server'
 
 const BUCKET = 'documents'
 const ACCEPTED_TYPES = [
@@ -31,6 +32,19 @@ export async function POST(request: NextRequest) {
 
     if (!user) {
       return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+    }
+
+    const authRes = await verifyDataAccess(supabase, user, 'read')
+    const canUploadDocs =
+      authRes.isAuthorized &&
+      (hasPermission(authRes, 'manage_settings') ||
+        hasPermission(authRes, 'lock_marks') ||
+        Boolean(authRes.canonicalRole?.startsWith('DOS')))
+    if (!canUploadDocs) {
+      return withCors(
+        request,
+        NextResponse.json({ error: authRes.message || 'Forbidden: Supervisory or Administrator permissions required.' }, { status: 403 })
+      )
     }
 
     const formData = await request.formData()

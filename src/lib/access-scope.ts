@@ -1,13 +1,16 @@
 import {
   normalizeAccountRole,
   resolveRoleDepartment,
+  resolveEffectivePermissions,
   isAdministratorRole,
+  isPrincipalRole,
   isTeacherLevelRole,
   type CanonicalAccountRole,
   type Department,
   type ClassType,
   type ClassAssignment,
   type AuthAccessResult,
+  type PermissionKey,
 } from './teacher-access.ts';
 
 export type TeacherScopeType = 'leadership' | 'class_teacher' | 'subject_teacher' | 'unrestricted';
@@ -29,6 +32,8 @@ export interface UserScopeInput {
   classAssignments?: ClassAssignment[];
   homeroomClassIds?: string[];
   specialPermissions?: string[] | null;
+  effectivePermissions?: PermissionKey[] | null;
+  rolePermissionsMap?: Record<string, string[]> | null;
   isAuthorized?: boolean;
   message?: string;
 }
@@ -43,6 +48,7 @@ export interface ResolvedUserScope {
   department: Department;
   isFullAccess: boolean;
   isAdmin: boolean;
+  isPrincipal: boolean;
   isHeadTeacher: boolean;
   isDOS: boolean;
   isTeacher: boolean;
@@ -59,18 +65,23 @@ export interface ResolvedUserScope {
   defaultCircularClassId: string | null;
   defaultTheologyClassId: string | null;
   defaultSubjectId: string | null;
+  effectivePermissions: PermissionKey[];
   canAccessSecular: boolean;
   canAccessTheology: boolean;
   // Module capabilities
   canAccessClasses: boolean;
   canAccessStudents: boolean;
+  canWriteStudents: boolean;
   canAccessReports: boolean;
   canEditClassTeacherRemarks: boolean;
   canEditHeadTeacherRemarks: boolean;
   canAccessMarksEntry: boolean;
+  canWriteMarks: boolean;
+  canLockMarks: boolean;
   canAccessSubjects: boolean;
   canAccessSecularHub: boolean;
   canAccessTheologyHub: boolean;
+  canViewStaff: boolean;
   canManageTeachers: boolean;
   canManageSettings: boolean;
   canManageUploads: boolean;
@@ -148,6 +159,7 @@ export function resolveUserScope(input: UserScopeInput | AuthAccessResult): Reso
       department: 'secular',
       isFullAccess: false,
       isAdmin: false,
+      isPrincipal: false,
       isHeadTeacher: false,
       isDOS: false,
       isTeacher: false,
@@ -164,17 +176,22 @@ export function resolveUserScope(input: UserScopeInput | AuthAccessResult): Reso
       defaultCircularClassId: null,
       defaultTheologyClassId: null,
       defaultSubjectId: null,
+      effectivePermissions: [],
       canAccessSecular: false,
       canAccessTheology: false,
       canAccessClasses: false,
       canAccessStudents: false,
+      canWriteStudents: false,
       canAccessReports: false,
       canEditClassTeacherRemarks: false,
       canEditHeadTeacherRemarks: false,
       canAccessMarksEntry: false,
+      canWriteMarks: false,
+      canLockMarks: false,
       canAccessSubjects: false,
       canAccessSecularHub: false,
       canAccessTheologyHub: false,
+      canViewStaff: false,
       canManageTeachers: false,
       canManageSettings: false,
       canManageUploads: false,
@@ -184,10 +201,22 @@ export function resolveUserScope(input: UserScopeInput | AuthAccessResult): Reso
 
   const canonicalRole = normalizeAccountRole(rawRole, rawSubject);
   const isAdmin = isAdministratorRole(rawRole) || canonicalRole === 'Administrator';
+  const isPrincipal = isPrincipalRole(rawRole) || canonicalRole === 'Principal';
   const isHeadTeacher = canonicalRole === 'Head Teacher';
   const isDOS = canonicalRole === 'DOS Secular' || canonicalRole === 'DOS Theology';
-  const isFullAccess = isAdmin || isHeadTeacher || isDOS;
+  const isFullAccess = isAdmin || isPrincipal || isHeadTeacher || isDOS;
   const isTeacher = !isFullAccess && isTeacherLevelRole(rawRole);
+
+  const effectivePermissions =
+    'effectivePermissions' in input && Array.isArray(input.effectivePermissions)
+      ? input.effectivePermissions
+      : resolveEffectivePermissions(
+          rawRole,
+          rawSubject,
+          input.specialPermissions ?? null,
+          'rolePermissionsMap' in input ? input.rolePermissionsMap : null
+        );
+  const permSet = new Set<PermissionKey>(effectivePermissions);
 
   const classAssignments: ClassAssignment[] = input.classAssignments ?? [];
   const legacyClasses = 'classes' in input ? parseClassTokens(input.classes) : [];
@@ -348,6 +377,7 @@ export function resolveUserScope(input: UserScopeInput | AuthAccessResult): Reso
     department,
     isFullAccess,
     isAdmin,
+    isPrincipal,
     isHeadTeacher,
     isDOS,
     isTeacher,
@@ -364,22 +394,27 @@ export function resolveUserScope(input: UserScopeInput | AuthAccessResult): Reso
     defaultCircularClassId,
     defaultTheologyClassId,
     defaultSubjectId,
+    effectivePermissions,
     canAccessSecular,
     canAccessTheology,
     // Module capabilities
-    canAccessClasses: isFullAccess || isClassTeacher,
-    canAccessStudents: isFullAccess || isClassTeacher,
-    canAccessReports: isFullAccess || isClassTeacher,
-    canEditClassTeacherRemarks: isAdmin || isDOS || isClassTeacher,
-    canEditHeadTeacherRemarks: isAdmin || isHeadTeacher || isDOS,
-    canAccessMarksEntry: isFullAccess || isTeacher,
+    canAccessClasses: isFullAccess || isClassTeacher || isTeacher,
+    canAccessStudents: (isFullAccess || isClassTeacher || isTeacher) && permSet.has('read_students'),
+    canWriteStudents: permSet.has('write_students'),
+    canAccessReports: (isFullAccess || isClassTeacher || isTeacher) && permSet.has('read_reports'),
+    canEditClassTeacherRemarks: permSet.has('edit_class_teacher_remarks'),
+    canEditHeadTeacherRemarks: permSet.has('edit_head_teacher_remarks'),
+    canAccessMarksEntry: (isFullAccess || isTeacher) && (permSet.has('read_marks') || permSet.has('write_marks')),
+    canWriteMarks: permSet.has('write_marks'),
+    canLockMarks: permSet.has('lock_marks'),
     canAccessSubjects: isFullAccess || isTeacher,
-    canAccessSecularHub: canAccessSecular && (isFullAccess || isTeacher),
-    canAccessTheologyHub: canAccessTheology && (isFullAccess || isTeacher),
-    canManageTeachers: isAdmin || isHeadTeacher || isDOS,
-    canManageSettings: isAdmin || isHeadTeacher || isDOS,
-    canManageUploads: isAdmin || isDOS || isClassTeacher,
-    canViewAuditLogs: isAdmin || isHeadTeacher || isDOS,
+    canAccessSecularHub: canAccessSecular && (isFullAccess || isTeacher) && permSet.has('read_marks'),
+    canAccessTheologyHub: canAccessTheology && (isFullAccess || isTeacher) && permSet.has('read_marks'),
+    canViewStaff: permSet.has('view_staff') || permSet.has('manage_users'),
+    canManageTeachers: permSet.has('manage_users'),
+    canManageSettings: permSet.has('manage_settings'),
+    canManageUploads: isAdmin || isPrincipal || isHeadTeacher || isDOS || isClassTeacher || isTeacher,
+    canViewAuditLogs: permSet.has('view_activity_logs'),
   };
 }
 

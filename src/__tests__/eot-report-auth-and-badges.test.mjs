@@ -111,14 +111,13 @@ describe('Report Badge Styling & Shape Preservation', () => {
 });
 
 describe('Marks Entry & Floating Controls Refinement', () => {
-  test('shared-marks-entry has computeTheologyBadge with official Arabic remarks', () => {
+  test('shared-marks-entry uses configurable IPLE single-subject grades & overall divisions', () => {
     const marks = fs.readFileSync('src/components/shared-marks-entry.tsx', 'utf8');
     assert.equal(marks.includes('function computeTheologyBadge'), true);
-    assert.equal(marks.includes("'ممتاز'"), true);
-    assert.equal(marks.includes("'جيد جدا'"), true);
-    assert.equal(marks.includes("'جيد'"), true);
-    assert.equal(marks.includes("'مقبول'"), true);
-    assert.equal(marks.includes("'ضعيف'"), true);
+    assert.equal(marks.includes('getTheologyGradeDisplay'), true);
+    assert.equal(marks.includes('getTheologySubjectRemark'), true);
+    assert.equal(marks.includes('calculateTheologyAggregateFromMarks'), true);
+    assert.equal(marks.includes('getTheologyDivision'), true);
     assert.equal(marks.includes('sticky bottom-14'), false, 'Floating sticky save bar must be removed');
   });
 

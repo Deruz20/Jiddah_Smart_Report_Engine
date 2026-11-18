@@ -1,7 +1,12 @@
-import { createClient } from '@/utils/supabase/server'
+import { createClient, createAdminClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import AccountClient, { UserProfileData } from '@/components/layout/account-client'
-import { normalizeAccountRole, resolveRoleDepartment } from '@/lib/teacher-access'
+import {
+  normalizeAccountRole,
+  resolveAssignedClassDisplayForTeacher,
+  resolveRoleDepartment,
+  resolveStaffRoleKey,
+} from '@/lib/teacher-access'
 
 export const dynamic = "force-dynamic";
 
@@ -16,18 +21,28 @@ export default async function AccountPage() {
 
   if (user) {
     email = user.email || ''
-    const [{ data: profileData }, { data: teacherRow }] = await Promise.all([
-      supabase
+    const supabaseAdmin = createAdminClient(cookieStore)
+    const [{ data: profileData }, { data: teacherRowByAuth }, { data: teacherRowByEmail }] = await Promise.all([
+      supabaseAdmin
         .from('profiles')
         .select('id, full_name, phone, role, avatar_url')
         .eq('id', user.id)
         .maybeSingle(),
-      supabase
+      supabaseAdmin
         .from('teachers')
-        .select('id, name, phone, role, subject, classes')
-        .or(`auth_user_id.eq.${user.id}${email ? `,email.eq.${email}` : ''}`)
+        .select('*')
+        .or(`auth_user_id.eq.${user.id},id.eq.${user.id}`)
         .maybeSingle(),
+      email
+        ? supabaseAdmin
+            .from('teachers')
+            .select('*')
+            .ilike('email', email)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
     ])
+
+    const teacherRow = teacherRowByAuth || teacherRowByEmail
 
     const rawRole =
       teacherRow?.role ||
@@ -37,25 +52,45 @@ export default async function AccountPage() {
       'Administrator'
     const subjectStr = teacherRow?.subject || user.user_metadata?.subject || ''
     const canonicalRole = normalizeAccountRole(rawRole, subjectStr)
+    const staffRole = resolveStaffRoleKey(rawRole, subjectStr)
     const dept = resolveRoleDepartment(rawRole, subjectStr)
     const departmentDisplay =
-      canonicalRole === 'Administrator' || canonicalRole === 'Head Teacher' || dept === 'both'
+      canonicalRole === 'Administrator' ||
+      canonicalRole === 'Principal' ||
+      canonicalRole === 'Head Teacher' ||
+      dept === 'both'
         ? 'All Departments'
         : dept === 'theology'
           ? 'Theology Track'
           : 'Secular Track'
 
+    const { assignedClasses } = await resolveAssignedClassDisplayForTeacher(
+      supabaseAdmin,
+      canonicalRole,
+      staffRole,
+      teacherRow
+    )
+
     profile = {
       id: profileData?.id || user.id,
       email,
-      full_name: profileData?.full_name || teacherRow?.name || user.user_metadata?.full_name || user.user_metadata?.name || email.split('@')[0] || '',
-      phone: profileData?.phone || teacherRow?.phone || '',
-      role: canonicalRole,
+      username: teacherRow?.username || '',
+      pending_email: (user as any).new_email || teacherRow?.pending_email || user.user_metadata?.pending_email || null,
+      full_name:
+        teacherRow?.name ||
+        profileData?.full_name ||
+        user.user_metadata?.full_name ||
+        user.user_metadata?.name ||
+        email.split('@')[0] ||
+        '',
+      phone: teacherRow?.phone ?? profileData?.phone ?? '',
+      role: staffRole,
       canonical_role: canonicalRole,
       department: departmentDisplay,
-      assigned_classes: Array.isArray(teacherRow?.classes) ? teacherRow.classes : [],
+      assigned_classes: assignedClasses,
       assigned_subjects: subjectStr ? [subjectStr] : [],
-      avatar_url: user.user_metadata?.avatar_url || profileData?.avatar_url || ''
+      avatar_url: teacherRow?.avatar || profileData?.avatar_url || user.user_metadata?.avatar_url || '',
+      last_sign_in_at: (user as any).last_sign_in_at || null,
     }
   }
 

@@ -15,9 +15,9 @@ export interface DeactivationResult {
  * 1. Admin/Administrator authorization guard (via auth_user_id/id or email, never user_metadata)
  * 2. Self-deactivation prevention guard (HTTP 400)
  * 3. Last active Administrator prevention guard (HTTP 409)
- * 4. Referential-integrity-preserving soft delete (status = 'inactive')
+ * 4. Referential-integrity-preserving soft delete (status = 'inactive') + read-back verification
  * 5. Immediate session revocation / auth ban (ban_duration: '876600h')
- * 6. Audit logging into public.activity_logs
+ * 6. Audit logging into public.activity_logs with before -> after state
  */
 export async function executeTeacherDeactivation(
   supabaseAdmin: SupabaseClient,
@@ -94,41 +94,51 @@ export async function executeTeacherDeactivation(
     }
   }
 
-  // 5. Soft delete (deactivate) teacher record to preserve historical referential integrity
-  const { error: updateError } = await supabaseAdmin
+  // 5. Soft delete (deactivate) teacher record to preserve historical referential integrity, reading back row
+  const { data: updatedTeacher, error: updateError } = await supabaseAdmin
     .from('teachers')
     .update({ status: 'inactive' })
-    .eq('id', targetTeacherId);
+    .eq('id', targetTeacherId)
+    .select('id, status')
+    .single();
 
-  if (updateError) {
-    return { success: false, status: 500, error: updateError.message };
+  if (updateError || !updatedTeacher || updatedTeacher.status !== 'inactive') {
+    return {
+      success: false,
+      status: 500,
+      error: updateError?.message || 'Failed to verify teacher deactivation in database',
+    };
   }
 
   // 6. Revoke Auth login access by banning auth user via authoritative teachers.auth_user_id
-  const authUserIdToBan = targetTeacher.auth_user_id || (targetTeacher.id.length === 36 ? targetTeacher.id : null);
+  const authUserIdToBan =
+    targetTeacher.auth_user_id || (targetTeacher.id.length === 36 ? targetTeacher.id : null);
   if (authUserIdToBan) {
     try {
       await supabaseAdmin.auth.admin.updateUserById(authUserIdToBan, {
-        ban_duration: '876600h' // 100 years
+        ban_duration: '876600h', // 100 years
       });
     } catch (authBanErr: any) {
       console.warn('Warning: Failed to ban auth user:', authBanErr.message);
     }
   }
 
-  // 7. Record audit activity in public.activity_logs
+  // 7. Record audit activity in public.activity_logs with before -> after
   await recordActivity(supabaseAdmin, callerUser.id, 'deactivate_teacher', {
+    actor_id: callerUser.id,
     target_teacher_id: targetTeacherId,
     target_teacher_name: targetTeacher.name,
     target_teacher_email: targetTeacher.email,
     target_teacher_role: targetTeacher.role,
-    deactivated_at: new Date().toISOString()
+    before: { status: targetTeacher.status || 'active' },
+    after: { status: 'inactive', banned: true },
+    deactivated_at: new Date().toISOString(),
   });
 
   return {
     success: true,
     status: 200,
     message: 'Teacher deactivated successfully',
-    data: { id: targetTeacherId, status: 'inactive' }
+    data: { id: targetTeacherId, status: updatedTeacher.status },
   };
 }

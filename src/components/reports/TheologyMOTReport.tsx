@@ -507,7 +507,7 @@ export function TheologyCard({
               <div className="tc-comment">
                 <span className="tc-comment-label">تقرير مرب الفصل :</span>
                 <div className="tc-comment-field">
-                  {getTheologyComment(totalScore, reportData?.student?.gender, reportData?.settings?.theology_remarks)}
+                  {reportData?.theology?.teacher_comment || getTheologyComment(totalScore, reportData?.student?.gender, reportData?.settings?.theology_remarks, reportData?.theology?.division, subjects.length || 4)}
                 </div>
               </div>
               <div className="tc-stamp" style={{ width: '135px', height: '64px', minWidth: '135px', minHeight: '64px', position: 'relative', overflow: 'visible', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>

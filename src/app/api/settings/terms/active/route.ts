@@ -24,7 +24,10 @@ export async function GET(request: NextRequest) {
     }
 
     const authRes = await verifyDataAccess(supabase, user, 'read')
-    if (!authRes.isAuthorized) {
+    const isActiveSupportStaff =
+      !authRes.isAuthorized &&
+      (authRes.role || '').trim().toLowerCase() === 'support staff'
+    if (!authRes.isAuthorized && !isActiveSupportStaff) {
       return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
     }
 
@@ -66,7 +69,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { termId } = body
+    const termId = body.termId || body.term_id
 
     if (!termId) {
       return withCors(request, NextResponse.json({ error: 'termId is required' }, { status: 400 }))

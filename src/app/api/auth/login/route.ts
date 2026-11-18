@@ -1,8 +1,12 @@
 import { mapAuthError } from '@/lib/auth-errors'
-import { createClient } from '@/utils/supabase/server'
+import { findTeacherByUsername, escapeIlikePattern } from '@/lib/username'
+import { createAdminClient, createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { corsPreflight, withCors } from '@/lib/api-cors'
+
+const INVALID_CREDENTIALS_MSG = 'Invalid login credentials'
+const BLOCKED_STATUSES = new Set(['inactive', 'suspended', 'deactivated', 'banned'])
 
 export async function OPTIONS(request: NextRequest) {
   return corsPreflight(request) ?? new NextResponse(null, { status: 204 })
@@ -14,28 +18,66 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json()
-    const { email, password } = body
+    const rawIdentifier = String(body?.identifier ?? body?.email ?? '').trim()
+    const password = String(body?.password ?? '')
 
-    if (!email || !password) {
+    if (!rawIdentifier || !password) {
       return withCors(
         request,
-        NextResponse.json({ error: 'Email and password are required' }, { status: 400 })
+        NextResponse.json({ error: 'Email or username and password are required' }, { status: 400 })
       )
     }
 
     const cookieStore = await cookies()
     const supabase = createClient(cookieStore)
+    const supabaseAdmin = createAdminClient(cookieStore)
+
+    let resolvedEmail = ''
+    let resolvedUsername: string | null = null
+
+    if (rawIdentifier.includes('@')) {
+      resolvedEmail = rawIdentifier.toLowerCase()
+      const { data: teacherByEmail } = await supabaseAdmin
+        .from('teachers')
+        .select('id, email, username, status')
+        .ilike('email', escapeIlikePattern(resolvedEmail))
+        .maybeSingle()
+
+      if (teacherByEmail) {
+        const st = String(teacherByEmail.status || 'active').toLowerCase()
+        if (BLOCKED_STATUSES.has(st)) {
+          return withCors(
+            request,
+            NextResponse.json({ error: INVALID_CREDENTIALS_MSG }, { status: 401 })
+          )
+        }
+        resolvedUsername = teacherByEmail.username || null
+      }
+    } else {
+      const teacher = await findTeacherByUsername(supabaseAdmin, rawIdentifier)
+      const st = String(teacher?.status || 'active').toLowerCase()
+      if (!teacher || !teacher.email || BLOCKED_STATUSES.has(st)) {
+        // Generic error prevents username enumeration and keeps inactive accounts dark
+        return withCors(
+          request,
+          NextResponse.json({ error: INVALID_CREDENTIALS_MSG }, { status: 401 })
+        )
+      }
+      resolvedEmail = teacher.email.trim().toLowerCase()
+      resolvedUsername = teacher.username || rawIdentifier.toLowerCase()
+    }
 
     const { data, error } = await supabase.auth.signInWithPassword({
-      email: String(email).trim(),
-      password: String(password),
+      email: resolvedEmail,
+      password,
     })
 
     if (error) {
       const mapped = mapAuthError(error)
+      const safeError = mapped.status === 401 ? INVALID_CREDENTIALS_MSG : mapped.message
       return withCors(
         request,
-        NextResponse.json({ error: mapped.message }, { status: mapped.status })
+        NextResponse.json({ error: safeError }, { status: mapped.status })
       )
     }
 
@@ -46,16 +88,19 @@ export async function POST(request: NextRequest) {
         user: {
           id: user.id,
           email: user.email,
-          name: user.user_metadata?.full_name ?? user.email?.split('@')[0] ?? 'Admin',
+          username: resolvedUsername,
+          name: user.user_metadata?.full_name ?? user.user_metadata?.name ?? user.email?.split('@')[0] ?? 'Admin',
           role: user.user_metadata?.role ?? 'admin',
+          onboarding_completed: Boolean(user.user_metadata?.onboarding_completed),
         },
       })
     )
   } catch (err) {
     const mapped = mapAuthError(err)
+    const safeError = mapped.status === 401 ? INVALID_CREDENTIALS_MSG : mapped.message
     return withCors(
       request,
-      NextResponse.json({ error: mapped.message }, { status: mapped.status })
+      NextResponse.json({ error: safeError }, { status: mapped.status })
     )
   }
 }

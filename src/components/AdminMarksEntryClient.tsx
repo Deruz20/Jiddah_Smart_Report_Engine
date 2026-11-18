@@ -20,6 +20,12 @@ interface AdminMarksEntryClientProps {
   isUnassigned?: boolean
   assignedSubjects?: string[]
   roleLabel?: string
+  gradingConfig?: {
+    grading_scale?: any[]
+    division_boundaries?: any[]
+    theology_grading_scale?: any[]
+    theology_division_boundaries?: any[]
+  }
 }
 
 export function AdminMarksEntryClient({
@@ -29,6 +35,7 @@ export function AdminMarksEntryClient({
   isUnassigned = false,
   assignedSubjects = [],
   roleLabel = 'Teacher',
+  gradingConfig,
 }: AdminMarksEntryClientProps) {
   const router = useRouter()
   const hasInitial = Array.isArray(initialEnrollments) && initialEnrollments.length > 0
@@ -278,6 +285,7 @@ export function AdminMarksEntryClient({
       isUnassigned={isUnassigned}
       assignedSubjects={assignedSubjects}
       roleLabel={roleLabel}
+      gradingConfig={gradingConfig}
     />
   )
 }

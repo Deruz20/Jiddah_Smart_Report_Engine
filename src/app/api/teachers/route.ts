@@ -12,16 +12,14 @@ import {
   recordActivity,
 } from '@/lib/api-server'
 import { isMissingTableError } from '@/lib/api-response'
-import { verifyDataAccess } from '@/lib/auth-server'
-import { CANONICAL_ACCOUNT_ROLES, normalizeAccountRole } from '@/lib/teacher-access'
+import { verifyDataAccess, hasPermission } from '@/lib/auth-server'
+import { CANONICAL_ACCOUNT_ROLES, ALL_STAFF_ROLES, normalizeAccountRole, isAdministratorRole } from '@/lib/teacher-access'
+import { isUsernameTaken, normalizeUsername, resolveUniqueUsernameFromEmail, validateUsernameFormat } from '@/lib/username'
 
 const validRoles = [
-  ...CANONICAL_ACCOUNT_ROLES,
-  'Deputy Head Teacher',
+  ...ALL_STAFF_ROLES,
   'Teacher',
-  'Theology Instructor',
   'DOS',
-  'Support Staff',
 ]
 const validStatuses = ['active', 'inactive']
 
@@ -41,8 +39,14 @@ export async function GET(request: NextRequest) {
     if (!user) return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
 
     const authRes = await verifyDataAccess(supabase, user, 'read');
-    if (!authRes.isAuthorized) {
-      return withCors(request, NextResponse.json({ error: authRes.message || 'Forbidden' }, { status: 403 }));
+    if (
+      !authRes.isAuthorized ||
+      (!hasPermission(authRes, 'view_staff') && !hasPermission(authRes, 'manage_users'))
+    ) {
+      return withCors(
+        request,
+        NextResponse.json({ error: authRes.message || 'Forbidden: Insufficient permissions to view staff directory' }, { status: 403 })
+      );
     }
 
     const role = request.nextUrl.searchParams.get('role')?.trim()
@@ -75,7 +79,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (search) {
-      query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%`)
+      query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%,username.ilike.%${search}%`)
     }
 
     const { data, error } = await query
@@ -123,10 +127,12 @@ export async function GET(request: NextRequest) {
         classes: [...new Set(resolvedClasses)],
         class_ids: allTokens.filter((token) => classMap.has(token)),
         email: teacher.email || '',
+        username: teacher.username || '',
         phone: teacher.phone || '',
         status: validStatuses.includes(teacher.status) ? teacher.status : 'active',
         joined: teacher.joined || teacher.created_at || '',
         avatar: teacher.avatar ?? null,
+        permissions: Array.isArray(teacher.permissions) ? teacher.permissions : [],
       };
     })
 
@@ -153,10 +159,16 @@ export async function POST(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
+    const authRes = await verifyDataAccess(supabase, user, 'write')
+    if (!authRes.isAuthorized || !isAdministratorRole(authRes.role)) {
+      return withCors(request, NextResponse.json({ error: 'Administrator access required' }, { status: 403 }))
+    }
+
     const body = await request.json()
     const name = normalizeString(body?.full_name ?? body?.name)
     const role = normalizeString(body?.role)
     const email = normalizeString(body?.email)
+    const rawUsername = body?.username !== undefined ? normalizeUsername(body.username) : ''
     const phone = normalizePhone(body?.phone)
     const subject = normalizeString(body?.subject_specialization ?? body?.subject)
     const classes = parseStringArray(body?.class_assigned ?? body?.classes)
@@ -178,10 +190,25 @@ export async function POST(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Invalid teacher status' }, { status: 400 }))
     }
 
+    const supabaseAdmin = createAdminClient(cookieStore)
+    let resolvedUsername = rawUsername
+    if (resolvedUsername) {
+      const checkUname = validateUsernameFormat(resolvedUsername)
+      if (!checkUname.valid) {
+        return withCors(request, NextResponse.json({ error: checkUname.error }, { status: 400 }))
+      }
+      if (await isUsernameTaken(supabaseAdmin, resolvedUsername)) {
+        return withCors(request, NextResponse.json({ error: 'Username already exists' }, { status: 409 }))
+      }
+    } else if (email) {
+      resolvedUsername = await resolveUniqueUsernameFromEmail(supabaseAdmin, email)
+    }
+
     const insertData: any = {
       name,
       role,
       email: email || '',
+      username: resolvedUsername || null,
       phone,
       subject,
       classes,
@@ -232,15 +259,33 @@ export async function PATCH(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Teacher id is required' }, { status: 400 }))
     }
 
+    const authRes = await verifyDataAccess(supabase, user, 'write')
+    if (!authRes.isAuthorized || !isAdministratorRole(authRes.role)) {
+      return withCors(request, NextResponse.json({ error: 'Administrator access required' }, { status: 403 }))
+    }
+
     const body = await request.json()
     const updates: any = {}
     const fullName = normalizeString(body?.full_name ?? body?.name)
     const role = normalizeString(body?.role)
     const email = normalizeString(body?.email)
+    const rawUsername = body?.username !== undefined ? normalizeUsername(body.username) : ''
     const phone = normalizePhone(body?.phone)
     const subject = normalizeString(body?.subject_specialization ?? body?.subject)
     const classes = parseStringArray(body?.class_assigned ?? body?.classes)
     const status = normalizeString(body?.status).toLowerCase()
+
+    if (body?.username !== undefined && rawUsername) {
+      const checkUname = validateUsernameFormat(rawUsername)
+      if (!checkUname.valid) {
+        return withCors(request, NextResponse.json({ error: checkUname.error }, { status: 400 }))
+      }
+      const supabaseAdmin = createAdminClient(cookieStore)
+      if (await isUsernameTaken(supabaseAdmin, rawUsername, teacherId)) {
+        return withCors(request, NextResponse.json({ error: 'Username already exists' }, { status: 409 }))
+      }
+      updates.username = rawUsername
+    }
 
     if (fullName) updates.name = fullName
     if (role) {

@@ -1,7 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import ActivityClient from '@/components/layout/activity-client'
-import { verifyDataAccess } from '@/lib/auth-server'
+import { verifyDataAccess, hasPermission } from '@/lib/auth-server'
 import { isAdministratorRole } from '@/lib/teacher-access'
 
 export const dynamic = 'force-dynamic'
@@ -27,8 +27,8 @@ export default async function ActivityPage() {
   if (!user) return <div className="p-10">Unauthorized</div>
 
   const authRes = await verifyDataAccess(supabase, user, 'read')
-  if (!authRes.isAuthorized) {
-    return <div className="p-10 text-rose-600">Access Denied: {authRes.message}</div>
+  if (!authRes.isAuthorized || !hasPermission(authRes, 'view_activity_logs')) {
+    return <div className="p-10 text-rose-600">Access Denied: {authRes.message || 'Insufficient permissions to view audit logs.'}</div>
   }
 
   // Fetch from both `activity_logs` (primary audit stream) and legacy `activity_log` in parallel

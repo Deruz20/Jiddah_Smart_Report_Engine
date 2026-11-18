@@ -1,7 +1,8 @@
-import { createClient } from '@/utils/supabase/server'
+import { createAdminClient, createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { getGradeDisplay, getSubjectGradeNumber, getSubjectRemark } from '@/lib/grading'
+import { fetchMergedSchoolSettings } from '@/lib/school-settings-helper'
 
 export async function GET(request: NextRequest) {
   try {
@@ -77,10 +78,11 @@ export async function POST(request: NextRequest) {
 
     if (body.eot_mark !== undefined) {
       insertData.eot_mark = parseFloat(body.eot_mark)
-      // Auto-generate grade and remark for EOT
-      const gradeNumber = getSubjectGradeNumber(insertData.eot_mark)
+      const schoolSettings = await fetchMergedSchoolSettings(createAdminClient(cookieStore))
+      // Auto-generate grade and remark for EOT using configured school grading scale
+      const gradeNumber = getSubjectGradeNumber(insertData.eot_mark, schoolSettings?.grading_scale)
       insertData.grade = getGradeDisplay(gradeNumber)
-      insertData.remark = getSubjectRemark(gradeNumber)
+      insertData.remark = getSubjectRemark(gradeNumber, schoolSettings?.grading_scale)
     }
 
     if (body.teacher_initials) {

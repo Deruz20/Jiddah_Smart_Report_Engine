@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useDeferredValue, useEffect } from 'react';
-import { Search, Filter, Download, ChevronDown, ChevronUp, ChevronsUpDown, UserX, Edit2, Archive, RotateCcw, Trash2, User, FileText, ArrowRightLeft } from 'lucide-react';
+import { Search, Filter, Download, ChevronDown, ChevronUp, ChevronsUpDown, UserX, Edit2, Archive, RotateCcw, Trash2, User, FileText, ArrowRightLeft, GraduationCap, BookOpen, Calendar } from 'lucide-react';
 import { MoreActionsMenu } from '@/components/ui/more-actions-menu';
 import { CustomPillSelect } from '@/components/ui/custom-pill-select';
 import { Badge } from './figma-ui/Badge';
@@ -59,9 +59,14 @@ function avatarColors(name: string) {
 interface StudentsTableProps {
   students: Student[];
   department?: string;
+  currentAcademicYear?: string;
 }
 
-export function StudentsListClient({ students, department }: StudentsTableProps) {
+export function StudentsListClient({ students: initialStudents, department, currentAcademicYear = '2026' }: StudentsTableProps) {
+  const [students, setStudents] = useState<Student[]>(initialStudents);
+  useEffect(() => {
+    setStudents(initialStudents);
+  }, [initialStudents]);
   const searchParams = useSearchParams();
   const initialSearch = searchParams?.get('search') || '';
   const [searchTerm, setSearchTerm] = useState(initialSearch);
@@ -174,6 +179,10 @@ export function StudentsListClient({ students, department }: StudentsTableProps)
     try {
       const res = await fetch(`/api/students/${student.id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to archive student');
+      setStudents((prev) =>
+        prev.map((s) => (s.id === student.id ? { ...s, is_archived: true } : s))
+      );
+      setDestructiveDialog({ open: false, student: null, mode: 'archive' });
       toast.success(`${student.name} has been archived`);
       router.refresh();
     } catch {
@@ -185,6 +194,8 @@ export function StudentsListClient({ students, department }: StudentsTableProps)
     try {
       const res = await fetch(`/api/students/${student.id}?hard_delete=true`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to delete student permanently');
+      setStudents((prev) => prev.filter((s) => s.id !== student.id));
+      setDestructiveDialog({ open: false, student: null, mode: 'delete' });
       toast.success(`${student.name} has been permanently deleted`);
       router.refresh();
     } catch {
@@ -208,7 +219,10 @@ export function StudentsListClient({ students, department }: StudentsTableProps)
         body: JSON.stringify({ is_archived: false })
       });
       if (!res.ok) throw new Error('Failed to restore student');
-      toast.success(`${student.name} has been restored`);
+      setStudents((prev) =>
+        prev.map((s) => (s.id === student.id ? { ...s, is_archived: false } : s))
+      );
+      toast.success(`${student.name} has been restored to the active roster`);
       router.refresh();
     } catch {
       toast.error('Failed to restore student');
@@ -242,33 +256,164 @@ export function StudentsListClient({ students, department }: StudentsTableProps)
     </th>
   );
 
-  return (
-    <div className="bg-white rounded-2xl shadow-xs border border-stone-200/90 overflow-hidden flex flex-col w-full min-w-0">
+  const runningClassesCount = useMemo(
+    () =>
+      new Set(
+        students
+          .filter((s) => !s.is_archived)
+          .map((s) =>
+            s.circular_class && s.circular_class !== '—'
+              ? s.circular_class
+              : s.theology_class_english || s.theology_class_arabic
+          )
+          .filter(Boolean)
+      ).size,
+    [students]
+  );
 
-      {/* Filter tabs */}
-      <div className="px-3 sm:px-4 pt-2.5 pb-0 border-b border-stone-200/80">
-        <div className="flex items-center gap-1 overflow-x-auto pb-0 hide-scrollbar">
-          {tabs.map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              onClick={() => { setActiveTab(tab); setPage(1); }}
-              className={`flex items-center gap-1.5 px-2.5 py-2 text-xs font-bold rounded-t-lg whitespace-nowrap transition-all border-b-2 cursor-pointer ${
-                activeTab === tab
-                  ? 'text-[#059669] border-[#059669] bg-emerald-50/50'
-                  : 'text-stone-500 border-transparent hover:text-stone-800 hover:bg-stone-50'
-              }`}
+  return (
+    <div className="space-y-4">
+      {/* Live-updating 4-pill KPI strip: Active Students vs Archived Students */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5" data-testid="students-kpi-strip">
+        <button
+          type="button"
+          data-testid="metric-active-students"
+          onClick={() => {
+            setActiveTab('All');
+            setPage(1);
+          }}
+          className={`bg-white dark:bg-[#1E1F20] border rounded-xl px-3 py-2.5 flex items-center gap-2.5 shadow-2xs text-left transition cursor-pointer ${
+            activeTab !== 'Archived'
+              ? 'border-[#059669]/40 ring-1 ring-[#059669]/20'
+              : 'border-[#0D5C3A]/10 dark:border-[#F59E0B]/12 hover:border-[#059669]/30'
+          }`}
+        >
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 bg-emerald-50 dark:bg-emerald-950/40 text-[#059669] dark:text-[#34D399]">
+            <GraduationCap size={14} />
+          </div>
+          <div className="min-w-0">
+            <div
+              data-testid="metric-active-students-value"
+              className="text-sm sm:text-base font-extrabold text-stone-900 dark:text-white leading-none tabular-nums"
             >
-              {tab}
-              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold tabular-nums ${
-                activeTab === tab ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-100 text-stone-500'
-              }`}>
-                {tabCounts[tab]}
-              </span>
-            </button>
-          ))}
+              {tabCounts.All}
+            </div>
+            <div className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5 truncate">
+              Active Students
+            </div>
+          </div>
+        </button>
+
+        <button
+          type="button"
+          data-testid="metric-archived-students"
+          onClick={() => {
+            setActiveTab(activeTab === 'Archived' ? 'All' : 'Archived');
+            setPage(1);
+          }}
+          className={`bg-white dark:bg-[#1E1F20] border rounded-xl px-3 py-2.5 flex items-center gap-2.5 shadow-2xs text-left transition cursor-pointer ${
+            activeTab === 'Archived'
+              ? 'border-amber-500/50 ring-1 ring-amber-500/25 bg-amber-50/20'
+              : 'border-[#0D5C3A]/10 dark:border-[#F59E0B]/12 hover:border-amber-400/40'
+          }`}
+        >
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400">
+            <Archive size={14} />
+          </div>
+          <div className="min-w-0">
+            <div
+              data-testid="metric-archived-students-value"
+              className="text-sm sm:text-base font-extrabold text-stone-900 dark:text-white leading-none tabular-nums"
+            >
+              {tabCounts.Archived}
+            </div>
+            <div className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5 truncate">
+              Archived Students
+            </div>
+          </div>
+        </button>
+
+        <div className="bg-white dark:bg-[#1E1F20] border border-[#0D5C3A]/10 dark:border-[#F59E0B]/12 rounded-xl px-3 py-2.5 flex items-center gap-2.5 shadow-2xs">
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 bg-emerald-50 dark:bg-emerald-950/40 text-[#059669] dark:text-[#34D399]">
+            <BookOpen size={14} />
+          </div>
+          <div className="min-w-0">
+            <div className="text-sm sm:text-base font-extrabold text-stone-900 dark:text-white leading-none tabular-nums">
+              {runningClassesCount}
+            </div>
+            <div className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5 truncate">
+              Active Classes Running
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-[#1E1F20] border border-[#0D5C3A]/10 dark:border-[#F59E0B]/12 rounded-xl px-3 py-2.5 flex items-center gap-2.5 shadow-2xs">
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 bg-stone-100 dark:bg-[#282A2C] text-stone-600 dark:text-stone-300">
+            <Calendar size={14} />
+          </div>
+          <div className="min-w-0">
+            <div className="text-sm sm:text-base font-extrabold text-stone-900 dark:text-white leading-none tabular-nums">
+              {currentAcademicYear}
+            </div>
+            <div className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5 truncate">
+              Academic Year
+            </div>
+          </div>
         </div>
       </div>
+
+      <div className="bg-white rounded-2xl shadow-xs border border-stone-200/90 overflow-hidden flex flex-col w-full min-w-0">
+
+        {/* Filter tabs + explicit Active/Archived quick toggle */}
+        <div className="px-3 sm:px-4 pt-2.5 pb-0 border-b border-stone-200/80 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-1 overflow-x-auto pb-0 hide-scrollbar">
+            {tabs.map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                data-testid={`students-tab-${tab.toLowerCase()}`}
+                onClick={() => { setActiveTab(tab); setPage(1); }}
+                className={`flex items-center gap-1.5 px-2.5 py-2 text-xs font-bold rounded-t-lg whitespace-nowrap transition-all border-b-2 cursor-pointer ${
+                  activeTab === tab
+                    ? 'text-[#059669] border-[#059669] bg-emerald-50/50'
+                    : 'text-stone-500 border-transparent hover:text-stone-800 hover:bg-stone-50'
+                }`}
+              >
+                {tab === 'All' ? 'Active Roster' : tab}
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold tabular-nums ${
+                  activeTab === tab ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-100 text-stone-500'
+                }`}>
+                  {tabCounts[tab]}
+                </span>
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            data-testid="toggle-archived-view-btn"
+            onClick={() => {
+              setActiveTab(activeTab === 'Archived' ? 'All' : 'Archived');
+              setPage(1);
+            }}
+            className={`mb-1.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border transition cursor-pointer ${
+              activeTab === 'Archived'
+                ? 'bg-emerald-50 border-emerald-200 text-[#059669] hover:bg-emerald-100'
+                : 'bg-amber-50/80 border-amber-200 text-amber-800 hover:bg-amber-100'
+            }`}
+          >
+            {activeTab === 'Archived' ? (
+              <>
+                <RotateCcw size={12} />
+                <span>Back to Active Roster ({tabCounts.All})</span>
+              </>
+            ) : (
+              <>
+                <Archive size={12} />
+                <span>View Archived ({tabCounts.Archived})</span>
+              </>
+            )}
+          </button>
+        </div>
 
       {/* Search + actions bar */}
       <div className="px-3 sm:px-4 py-2.5 flex flex-col sm:flex-row justify-between items-center gap-2 bg-[#F8FAFC] border-b border-stone-200/80">
@@ -407,44 +552,57 @@ export function StudentsListClient({ students, department }: StudentsTableProps)
                   </div>
                 </td>
                 <td className="px-2 sm:px-3 py-2.5 whitespace-nowrap text-right">
-                  <MoreActionsMenu
-                    items={[
-                      {
-                        label: 'View Profile',
-                        icon: User,
-                        onClick: () => setEditingStudent(student),
-                      },
-                      {
-                        label: 'Edit Details',
-                        icon: Edit2,
-                        onClick: () => setEditingStudent(student),
-                      },
-                      {
-                        label: 'Print Report Card',
-                        icon: FileText,
-                        onClick: () => {
-                          window.location.href = `/admin/reports?student=${student.id}`;
+                  <div className="inline-flex items-center justify-end gap-1.5">
+                    {student.is_archived && (
+                      <button
+                        type="button"
+                        data-testid={`restore-student-btn-${student.id}`}
+                        onClick={() => handleRestore(student)}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-xs font-bold text-[#059669] hover:bg-emerald-100 transition cursor-pointer"
+                      >
+                        <RotateCcw size={12} />
+                        <span>Restore</span>
+                      </button>
+                    )}
+                    <MoreActionsMenu
+                      items={[
+                        {
+                          label: 'View Profile',
+                          icon: User,
+                          onClick: () => setEditingStudent(student),
                         },
-                      },
-                      {
-                        label: 'Transfer Class',
-                        icon: ArrowRightLeft,
-                        onClick: () => setEditingStudent(student),
-                      },
-                      {
-                        label: student.is_archived ? 'Restore Student' : 'Archive Student',
-                        icon: student.is_archived ? RotateCcw : Archive,
-                        onClick: () => (student.is_archived ? handleRestore(student) : handleArchive(student)),
-                      },
-                      {
-                        label: 'Remove',
-                        icon: Trash2,
-                        destructive: true,
-                        onClick: () => handleHardDelete(student),
-                      },
-                    ]}
-                    align="end"
-                  />
+                        {
+                          label: 'Edit Details',
+                          icon: Edit2,
+                          onClick: () => setEditingStudent(student),
+                        },
+                        {
+                          label: 'Print Report Card',
+                          icon: FileText,
+                          onClick: () => {
+                            window.location.href = `/admin/reports?student=${student.id}`;
+                          },
+                        },
+                        {
+                          label: 'Transfer Class',
+                          icon: ArrowRightLeft,
+                          onClick: () => setEditingStudent(student),
+                        },
+                        {
+                          label: student.is_archived ? 'Restore Student' : 'Archive Student',
+                          icon: student.is_archived ? RotateCcw : Archive,
+                          onClick: () => (student.is_archived ? handleRestore(student) : handleArchive(student)),
+                        },
+                        {
+                          label: 'Remove',
+                          icon: Trash2,
+                          destructive: true,
+                          onClick: () => handleHardDelete(student),
+                        },
+                      ]}
+                      align="end"
+                    />
+                  </div>
                 </td>
               </tr>
             ))}
@@ -537,6 +695,7 @@ export function StudentsListClient({ students, department }: StudentsTableProps)
           }
         }}
       />
+      </div>
     </div>
   );
 }

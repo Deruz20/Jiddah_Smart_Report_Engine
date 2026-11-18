@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
+import { verifyDataAccess, hasPermission } from '@/lib/auth-server'
 
 export async function GET(request: Request) {
   try {
@@ -10,6 +11,11 @@ export async function GET(request: Request) {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const authRes = await verifyDataAccess(supabase, user, 'read')
+    if (!authRes.isAuthorized) {
+      return NextResponse.json({ error: authRes.message || 'Forbidden' }, { status: 403 })
     }
 
     const { data, error } = await supabase
@@ -32,6 +38,14 @@ export async function POST(request: Request) {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const authRes = await verifyDataAccess(supabase, user, 'read')
+    if (!authRes.isAuthorized || !hasPermission(authRes, 'manage_settings')) {
+      return NextResponse.json(
+        { error: authRes.message || 'Forbidden: Administrator settings permission required.' },
+        { status: 403 }
+      )
     }
 
     const body = await request.json()

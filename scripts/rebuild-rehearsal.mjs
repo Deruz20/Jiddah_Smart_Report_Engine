@@ -103,7 +103,13 @@ const migrationFiles = fs.readdirSync(migrationsDir)
   .filter(f => !f.includes('local_only'))
   .filter(f => !productionShape || f !== 'stage1_security_lockdown.sql')
   .filter(f => !isBaselineOnly || !f.includes('20261018_class_teacher_theology_marks_policy'))
-  .sort();
+  .sort((a, b) => {
+    const aIsPhase1 = a.includes('20261117000001_phase1_rbac_principal_and_permissions');
+    const bIsPhase1 = b.includes('20261117000001_phase1_rbac_principal_and_permissions');
+    if (aIsPhase1 && !bIsPhase1) return 1;
+    if (!aIsPhase1 && bIsPhase1) return -1;
+    return a.localeCompare(b);
+  });
 
 console.log(`\n[3/4] Applying ${migrationFiles.length} canonical migrations in order...`);
 for (const file of migrationFiles) {

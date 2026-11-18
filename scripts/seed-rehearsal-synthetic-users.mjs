@@ -8,19 +8,22 @@ const serviceKey = creds.serviceRoleKey;
 const supabase = createClient(SUPABASE_URL, serviceKey);
 
 const ROLES_TO_SEED = [
-  { id: 'f0a1b2c3-d4e5-4f6a-8b9c-0d1e2f3a4b5c', email: 'hassanhatima20@gmail.com', password: 'Jiddah', role: 'Administrator', name: 'Hassan Hatima' },
-  { id: '972af107-555f-4289-9357-5c14119328e5', email: 'admin@test.local', password: 'Password123!', role: 'Administrator', name: 'Synthetic Admin' },
-  { id: '47ccf9d7-f514-4e4b-a765-536e29deed84', email: 'head@test.local', password: 'Password123!', role: 'Head Teacher', name: 'Synthetic Head Teacher' },
-  { id: '0811a4f1-efab-442e-8f17-dad3adbb82ee', email: 'dos@test.local', password: 'Password123!', role: 'DOS', name: 'Synthetic DOS' },
-  { id: 'c599cb13-fb3d-4e5d-8e27-253cb7e5ac1a', email: 'teacher@test.local', password: 'Password123!', role: 'Class Teacher', name: 'Synthetic Class Teacher' },
-  { id: '806118f0-3385-47f7-8858-ea4f66f846a6', email: 'theology@test.local', password: 'Password123!', role: 'Theology Instructor', name: 'Synthetic Theology' },
-  { id: 'df597ee0-b400-4e46-8d25-2860e07da95b', email: 'staff@test.local', password: 'Password123!', role: 'Support Staff', name: 'Synthetic Support Staff' }
+  { id: 'f0a1b2c3-d4e5-4f6a-8b9c-0d1e2f3a4b5c', email: 'hassanhatima20@gmail.com', password: 'Jiddah', role: 'Administrator', subject: 'Administration', name: 'Hassan Hatima' },
+  { id: '972af107-555f-4289-9357-5c14119328e5', email: 'admin@test.local', password: 'Password123!', role: 'Administrator', subject: 'Administration', name: 'Synthetic Admin' },
+  { id: '11111111-2222-4333-8444-555555555551', email: 'principal@test.local', password: 'Password123!', role: 'Principal', subject: 'Both', name: 'Synthetic Principal' },
+  { id: '47ccf9d7-f514-4e4b-a765-536e29deed84', email: 'head@test.local', password: 'Password123!', role: 'Head Teacher', subject: 'Both', name: 'Synthetic Head Teacher' },
+  { id: '11111111-2222-4333-8444-555555555552', email: 'deputy@test.local', password: 'Password123!', role: 'Deputy Head Teacher', subject: 'Both', name: 'Synthetic Deputy Head Teacher' },
+  { id: '0811a4f1-efab-442e-8f17-dad3adbb82ee', email: 'dos@test.local', password: 'Password123!', role: 'DOS', subject: 'Secular', name: 'Synthetic DOS Secular' },
+  { id: '11111111-2222-4333-8444-555555555553', email: 'dos_theology@test.local', password: 'Password123!', role: 'DOS', subject: 'Theology', name: 'Synthetic DOS Theology' },
+  { id: 'c599cb13-fb3d-4e5d-8e27-253cb7e5ac1a', email: 'teacher@test.local', password: 'Password123!', role: 'Class Teacher', subject: 'Secular', name: 'Synthetic Class Teacher' },
+  { id: '806118f0-3385-47f7-8858-ea4f66f846a6', email: 'theology@test.local', password: 'Password123!', role: 'Theology Instructor', subject: 'Theology', name: 'Synthetic Theology' },
+  { id: 'df597ee0-b400-4e46-8d25-2860e07da95b', email: 'staff@test.local', password: 'Password123!', role: 'Support Staff', subject: 'Administration', name: 'Synthetic Support Staff' }
 ];
 
 export async function seedRehearsalDatabase() {
   console.log('Seeding complete deterministic fixture dataset into rehearsal stack...');
 
-  // 1. School settings
+  // 1. School settings & default Role Permissions
   await supabase.from('school_settings').upsert({
     id: 'current',
     school_name: 'Jiddah Islamic Schools',
@@ -29,6 +32,113 @@ export async function seedRehearsalDatabase() {
     report_theme_preset: 'emerald',
     theme_color: '#0f766e'
   });
+
+  await supabase.from('role_permissions').upsert([
+    {
+      role: 'Administrator',
+      permissions: [
+        'read_students',
+        'write_students',
+        'read_marks',
+        'write_marks',
+        'edit_class_teacher_remarks',
+        'edit_head_teacher_remarks',
+        'read_reports',
+        'lock_marks',
+        'view_activity_logs',
+        'view_staff',
+        'manage_settings',
+        'manage_users'
+      ]
+    },
+    {
+      role: 'Principal',
+      permissions: [
+        'read_students',
+        'write_students',
+        'read_marks',
+        'edit_head_teacher_remarks',
+        'read_reports',
+        'lock_marks',
+        'view_activity_logs',
+        'view_staff'
+      ]
+    },
+    {
+      role: 'Head Teacher',
+      permissions: [
+        'read_students',
+        'write_students',
+        'read_marks',
+        'edit_head_teacher_remarks',
+        'read_reports',
+        'lock_marks',
+        'view_activity_logs'
+      ]
+    },
+    {
+      role: 'Deputy Head Teacher',
+      permissions: [
+        'read_students',
+        'write_students',
+        'read_marks',
+        'edit_head_teacher_remarks',
+        'read_reports',
+        'lock_marks',
+        'view_activity_logs'
+      ]
+    },
+    {
+      role: 'DOS Secular',
+      permissions: [
+        'read_students',
+        'write_students',
+        'read_marks',
+        'write_marks',
+        'edit_class_teacher_remarks',
+        'read_reports',
+        'view_activity_logs'
+      ]
+    },
+    {
+      role: 'DOS Theology',
+      permissions: [
+        'read_students',
+        'write_students',
+        'read_marks',
+        'write_marks',
+        'edit_class_teacher_remarks',
+        'read_reports',
+        'view_activity_logs'
+      ]
+    },
+    {
+      role: 'Class Teacher',
+      permissions: [
+        'read_students',
+        'write_students',
+        'read_marks',
+        'write_marks',
+        'edit_class_teacher_remarks',
+        'read_reports'
+      ]
+    },
+    {
+      role: 'Theology Instructor',
+      permissions: [
+        'read_students',
+        'write_students',
+        'read_marks',
+        'write_marks',
+        'edit_class_teacher_remarks',
+        'read_reports'
+      ]
+    },
+    {
+      role: 'Support Staff',
+      permissions: []
+    }
+  ], { onConflict: 'role' });
 
   // 2. Academic terms
   await supabase.from('terms').upsert([
@@ -96,7 +206,17 @@ export async function seedRehearsalDatabase() {
     }
   ]);
 
-  // 5. Subjects & Theology Subjects
+  // 5. Subjects, Circular Subjects & Theology Subjects
+  await supabase.from('circular_subjects').upsert([
+    {
+      id: 'c2000000-0000-0000-0000-000000000001',
+      subject_name: 'Mathematics',
+      section: 'lower_primary',
+      is_core: true,
+      is_gradable: true
+    }
+  ]);
+
   await supabase.from('subjects').upsert([
     {
       id: 'b0000000-0000-0000-0000-000000000001',
@@ -165,27 +285,41 @@ export async function seedRehearsalDatabase() {
       });
     }
 
-    await supabase.from('teachers').upsert({
+    const { error: teacherUpsertErr } = await supabase.from('teachers').upsert({
       id: item.id,
       auth_user_id: item.id,
       email: item.email,
       role: item.role,
+      subject: item.subject || null,
       name: item.name,
       status: 'active'
     });
 
-    console.log(`✔ Synced ${item.role} (${item.email})`);
+    if (teacherUpsertErr) {
+      console.warn(`⚠ Skipped teachers row for ${item.role} (${item.email}) under current constraint: ${teacherUpsertErr.message}`);
+    } else {
+      console.log(`✔ Synced ${item.role} (${item.email})`);
+    }
   }
 
-  // 7. Teacher class assignment (Assign Class Teacher to circular class Primary 1)
+  // 7. Teacher class assignment (Assign Class Teacher to circular class Primary 1; Theology Instructor to P.1 Theology)
   const teacherId = 'c599cb13-fb3d-4e5d-8e27-253cb7e5ac1a';
+  const theologyTeacherId = '806118f0-3385-47f7-8858-ea4f66f846a6';
   await supabase.from('circular_classes').update({ class_teacher_id: teacherId }).eq('id', 'c1000000-0000-0000-0000-000000000001');
-  await supabase.from('teacher_class_assignments').delete().eq('teacher_id', teacherId);
-  await supabase.from('teacher_class_assignments').insert({
-    teacher_id: teacherId,
-    class_id: 'c1000000-0000-0000-0000-000000000001',
-    class_type: 'circular'
-  });
+  await supabase.from('teachers').update({ classes: ['c1000000-0000-0000-0000-000000000001'] }).eq('id', teacherId);
+  await supabase.from('teacher_class_assignments').delete().in('teacher_id', [teacherId, theologyTeacherId]);
+  await supabase.from('teacher_class_assignments').insert([
+    {
+      teacher_id: teacherId,
+      class_id: 'c1000000-0000-0000-0000-000000000001',
+      class_type: 'circular'
+    },
+    {
+      teacher_id: theologyTeacherId,
+      class_id: 'c0000000-0000-0000-0000-000000000002',
+      class_type: 'theology'
+    }
+  ]);
 
   // 8. Students & Subjects Cleanup
   // Clean up any extraneous students, enrollments, and test subjects from prior runs

@@ -3,7 +3,7 @@ import { createAdminClient, createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
-import { verifyDataAccess } from '@/lib/auth-server'
+import { verifyDataAccess, hasPermission } from '@/lib/auth-server'
 import { recordActivity } from '@/lib/api-server'
 import { canAssignEnrollmentClasses, enrollmentMatchesRosterFilters, rosterClassFilters } from '@/lib/teacher-access'
 
@@ -24,12 +24,19 @@ export async function GET(request: NextRequest) {
     }
 
     const authRes = await verifyDataAccess(supabase, user, 'read')
-    if (!authRes.isAuthorized) {
-      return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
+    if (!authRes.isAuthorized || !hasPermission(authRes, 'read_students')) {
+      return withCors(
+        request,
+        NextResponse.json(
+          { error: authRes.message || 'Forbidden: Insufficient permissions to read students.' },
+          { status: 403 }
+        )
+      )
     }
 
     const { searchParams } = new URL(request.url)
     const archivedParam = searchParams.get('archived')
+    const includeAll = archivedParam === 'all'
     const isArchived = archivedParam === 'true'
 
     let query = supabase
@@ -43,8 +50,11 @@ export async function GET(request: NextRequest) {
         students!inner ( id, name, admission_number, created_at, is_archived )
       `)
       .eq('is_active', true)
-      .eq('students.is_archived', isArchived)
       .order('academic_year', { ascending: false })
+
+    if (!includeAll) {
+      query = query.eq('students.is_archived', isArchived)
+    }
 
     if (authRes.filterByClasses) {
       const classFilters = rosterClassFilters(authRes)
@@ -83,6 +93,25 @@ export async function POST(request: NextRequest) {
   const preflight = corsPreflight(request)
   if (preflight) return preflight
   try {
+    const cookieStore = await cookies()
+    const supabase = createClient(cookieStore)
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+    }
+
+    const authRes = await verifyDataAccess(supabase, user, 'read')
+    if (!authRes.isAuthorized || !hasPermission(authRes, 'write_students')) {
+      return withCors(
+        request,
+        NextResponse.json(
+          { error: authRes.message || 'Forbidden: Insufficient permissions to register or edit students.' },
+          { status: 403 }
+        )
+      )
+    }
+
     const body = await request.json()
 
     // Validate required fields
@@ -94,19 +123,6 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         )
       )
-    }
-
-    const cookieStore = await cookies()
-    const supabase = createClient(cookieStore)
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return withCors(request, NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
-    }
-
-    const authRes = await verifyDataAccess(supabase, user, 'write')
-    if (!authRes.isAuthorized) {
-      return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
     }
 
     const supabaseAdmin = createAdminClient(cookieStore);

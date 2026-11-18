@@ -271,9 +271,101 @@ When application code is deployed to Vercel with **zero database migrations appl
 ### EMERGENCY ROLLBACK RUNBOOK
 If any unexpected failure or regression occurs:
 1. Open Supabase Dashboard -> **SQL Editor**.
-2. Run [`supabase/migrations/20261018_class_teacher_theology_marks_policy_rollback.sql`](file:///c:/Users/USER/Desktop/school_management_system/jiddah_repo_clean_room/supabase/migrations/20261018_class_teacher_theology_marks_policy_rollback.sql) (Single transaction; restores exact prior theology marks policy).
-3. Run [`supabase/migrations/stage1_security_rollback.sql`](file:///c:/Users/USER/Desktop/school_management_system/jiddah_repo_clean_room/supabase/migrations/stage1_security_rollback.sql) (Single transaction; restores exact prior catalog policies).
-4. Run [`supabase/migrations/stage2_legacy_rollback.sql`](file:///c:/Users/USER/Desktop/school_management_system/jiddah_repo_clean_room/supabase/migrations/stage2_legacy_rollback.sql) (Restores legacy grants and policies).
-5. Revert code via: `git checkout main`.
+2. Run [`supabase/migrations/20261117000001_phase1_rbac_principal_and_permissions_rollback.sql`](file:///home/hassan-hatim/school_management_system/jiddah_repo_clean_room/supabase/migrations/20261117000001_phase1_rbac_principal_and_permissions_rollback.sql) (Single transaction; rolls back `Principal` enum/role permissions/pending_email/RLS policies).
+3. Run [`supabase/migrations/20261018_class_teacher_theology_marks_policy_rollback.sql`](file:///home/hassan-hatim/school_management_system/jiddah_repo_clean_room/supabase/migrations/20261018_class_teacher_theology_marks_policy_rollback.sql) (Single transaction; restores exact prior theology marks policy).
+4. Run [`supabase/migrations/stage1_security_rollback.sql`](file:///home/hassan-hatim/school_management_system/jiddah_repo_clean_room/supabase/migrations/stage1_security_rollback.sql) (Single transaction; restores exact prior catalog policies).
+5. Run [`supabase/migrations/stage2_legacy_rollback.sql`](file:///home/hassan-hatim/school_management_system/jiddah_repo_clean_room/supabase/migrations/stage2_legacy_rollback.sql) (Restores legacy grants and policies).
+6. Revert code via: `git checkout main`.
+
+---
+
+## 4. PHASE 1 CUT-OVER PLAN (1G) — MOVING STAFF OFF THE SHARED ADMIN ACCOUNT
+
+**DO NOT EXECUTE UNTIL OWNER GATE 1 IS APPROVED AND CSV EXPORTS (STEP 1) ARE COMPLETED.**
+
+1. **Pre-Cutover Diagnostic & CSV Export (Owner Only):**
+   - Export to CSV from Supabase Table Editor: `teachers`, `teacher_invites`, `teacher_class_assignments`, `circular_classes`, `theology_classes`, `circular_marks`, `theology_marks`, `students`, `enrollments`, `school_settings`, `profiles`, plus `auth.users` snapshot via SQL Editor.
+   - Run `docs/PHASE1_PRODUCTION_DIAGNOSTIC_SELECT_ONLY.sql` in Supabase SQL Editor (read-only) to inspect any mismatched `auth_user_id` / `role` / assignment rows and leftover `@jiddah.local` seed accounts.
+2. **Apply Phase 1 Migration & Auth Settings (Owner Only):**
+   - Run `supabase/migrations/20261117000001_phase1_rbac_principal_and_permissions.sql` in Supabase SQL Editor (`BEGIN; ... COMMIT;`).
+   - Run `docs/PHASE1_PRODUCTION_DIAGNOSTIC_SELECT_ONLY.sql` (read-only) before provisioning staff to catch any legacy `auth_user_id` mismatches or leftover `@jiddah.local` test rows.
+   - In Supabase Dashboard → **Authentication → Providers → Email**, set **Minimum password length = 8** and keep **Enable Email Signups = OFF**.
+   - In Supabase Dashboard → **Authentication → URL Configuration**, set **Site URL** to your production domain (`https://<prod-domain>`) and add `https://<prod-domain>/**` and `https://<prod-domain>/reset-password` under **Redirect URLs** (misconfigured Site URL/Redirect URLs + Free-tier SMTP rate limits [`email_sent = 2/hr` without Custom SMTP] cause password reset & email-change confirmation failures).
+   - In Supabase Dashboard → **Authentication → SMTP Settings**, configure Custom SMTP so password resets (`forgot-password`) and Administrator email-change confirmations deliver reliably to real inboxes (`@jiddah.local` non-deliverable accounts must be updated directly by Administrator on `/admin/teachers`).
+3. **Provision Individual Accounts by Role Hierarchy (`/admin/teachers`):**
+   - Log in with the existing working Administrator account (never disable, rotate, or demote this account during cut-over).
+   - Open `/admin/teachers` → **Users & Access Directory** → **Add / Provision Staff** → choose **Create Account Directly (Initial Password)**:
+     1. Create **1 Principal** account (`Role = Principal`).
+     2. Create **1 Head Teacher** and **1 Deputy Head Teacher** account.
+     3. Create **1 DOS Secular** (`Department = Secular`) and **1 DOS Theology** (`Department = Theology`) account.
+     4. Create **Class Teacher** and **Theology Instructor** accounts, selecting their exact Secular and/or Theology class chips in the modal.
+4. **Smoke-Test One Real Account Per Role (In Incognito Window Before Handing Out Credentials):**
+   - **Principal:** Sign in → verify Dashboard, Secular Hub, Theology Hub, Report Center, Activity Logs, and Head Teacher remarks/exam locking work across all classes; verify `/admin/teachers` and `/admin/settings` return 403/redirect.
+   - **Head Teacher:** Sign in → verify school-wide read + Head Teacher remarks + Report Center work; verify marks entry is read-only and `/admin/teachers` is blocked.
+   - **DOS Secular / DOS Theology:** Sign in → verify own-department classes/marks/hub/reports load and save; verify cross-department hub/marks return 403.
+   - **Class Teacher:** Sign in → verify only assigned class(es) appear in Marks Entry, Students, and Report Center; verify saving Secular & Theology marks for assigned class succeeds (HTTP 200) and unassigned class returns 403.
+5. **Hand Off & Rotate Shared Admin Password:**
+   - Distribute individual credentials to each teacher and confirm they have signed in on their devices.
+   - Once all staff are operating on individual accounts, open `/admin/account` on the Administrator account → **Change Password** (entering current password + new ≥8-char password), which automatically revokes all other open sessions still using the old shared Administrator session.
+   - **Rollback:** If any issue arises during cut-over, teachers can immediately resume work while `supabase/migrations/20261117000001_phase1_rbac_principal_and_permissions_rollback.sql` is run in SQL Editor.
+
+---
+
+## 5. MANUAL TEST STEPS — MY ACCOUNT & SECURITY (`/admin/account`, Amendment 3 A7)
+
+- [ ] **5.1 Profile Name, Phone & Assigned Classes Check:**
+  1. Sign in and open `/admin/account`.
+  2. Verify **Assigned Classes** shows `"All classes"` for Administrator, `"All School Classes"` for Principal/Head Teacher, or resolved class names (e.g. `P.1, P.1 (Theology)`) for Class Teachers — never a raw UUID.
+  3. Update **Full Name** and **Phone Number** (`+256 700 123456`) and click **Save Changes** → confirm toast `"Profile details saved and verified"`, sidebar name updates immediately without signing out, and values persist after `F5` reload.
+- [ ] **5.2 Profile Photo Upload Check:**
+  1. Click **Choose Image** → select a PNG/JPG/WEBP under 2MB → click **Save Photo**.
+  2. Verify avatar image updates in the card and in the bottom-left sidebar immediately without signing out, and survives page reload.
+- [ ] **5.3 Password Change & Session Revocation Check:**
+  1. In **Change Password**, enter a wrong **Current Password** and a new 8-character password → click **Update Password** → confirm error `"Current password is incorrect."`.
+  2. Enter the correct **Current Password** and a new ≥8-character password → click **Update Password** → confirm success toast, sign out, verify old password fails to sign in, and verify new password signs in.
+- [ ] **5.4 Administrator Self-Service Email Change Check:**
+  1. As Administrator on `/admin/account`, locate **Change Administrator Email** (confirm this card is hidden for non-Administrators).
+  2. Enter `newEmail`, matching `confirmEmail`, and `currentPassword` → click **Send Confirmation Email** → verify the amber **Pending confirmation** banner appears with **Resend** and **Cancel** buttons while the current email remains active.
+  3. Click **Cancel** to abort a pending change (or click the confirmation link in the new email inbox to finalize, which automatically mirrors the confirmed email into `public.teachers.email`).
+- [ ] **5.5 Session Management Check:**
+  1. Verify **Last sign-in** timestamp is displayed on the **Session Management** card.
+  2. Click **Sign Out Other Devices** → confirm toast `"All other active devices and sessions have been signed out"` while the current tab stays signed in.
+
+---
+
+## 6. MANUAL TEST STEPS — COMMENTS, CONDUCT & REMARKS SETTINGS (PHASE 2E)
+
+### Pending Owner SQL Scripts (Apply in Supabase Dashboard SQL Editor After Exporting CSV Backups):
+1. **Production Teacher Alignment & Cleanup (`docs/PHASE1_PRODUCTION_TEACHER_FIXES.sql`):** Fixed to use dynamic `pg_constraint` FK discovery + `information_schema.columns` checks (fixes `activity_log.teacher_id` error).
+2. **Username Sign-In Migration (`supabase/migrations/20261117000002_add_teacher_username.sql`):** Adds case-insensitive unique `teachers.username`, seeds defaults from email prefix before `@`, and prevents non-admin self-modification. Rollback: `20261117000002_add_teacher_username_rollback.sql`.
+
+### 5-Step Manual Verification (Comments, Conduct & Remarks):
+- [ ] **6.1 Edit Comments & Conduct in Settings and Confirm Read-Back:**
+  1. Sign in as **Administrator** (via username or email) → open `/admin/settings` → click **Grading & Remarks Engine** in the left rail.
+  2. In **Division Aggregate Boundaries & Automated Comments**, change Division I **Class Teacher Comment Template**, **Headteacher Comment Template**, and **Conduct Remark Template**, then click **Save Secular Divisions** → verify toast `"Division aggregate boundaries and comment templates saved and verified."` appears (and if you toggle a Marks Lock switch afterward under **Marks & Access Locks**, pressing `F5` reload still retains your edited Division I templates).
+- [ ] **6.2 Edit Theology Remarks & Grading Subject Descriptors:**
+  1. In **Theology Aggregate Weight Scale & Overall Arabic Remarks**, modify the **Boys Remark** and **Girls Remark** for **ممتاز** or **جيد جدا** (and optionally a subject band remark), then click **Save Changes** → verify toast `"Theology grading scale and Arabic descriptors saved and verified."` appears and survives `F5` reload.
+- [ ] **6.3 Edit Term 3 Promotion & Default Nursery Conduct:**
+  1. In **Term 3 Promotion Remarks & General Conduct**, update **Promoted Remark (Division I, II, III)** and **Default General Conduct Remark (Nursery / Unclassified)**, then click **Save Changes** → verify toast `"Promotion comments and conduct settings saved and verified."` appears and survives `F5` reload.
+- [ ] **6.4 Verify Reflection in Report Center (`/admin/reports`):**
+  1. Open `/admin/reports`, select a Primary EOT pupil (and a Nursery EOT pupil + a Theology MOT/EOT pupil), click **Preview / Generate** → confirm the printed/previewed report displays your newly saved **Conduct**, **Class Teacher's Comment**, **Head Teacher's Comment**, and **Arabic Theology Teacher Remark** (boys vs girls matching pupil gender), and confirm the same updated templates load when signed in as a **Class Teacher** or **DOS**.
+- [ ] **6.5 Verify Role Guard & Error Surfacing:**
+  1. Attempt to open `/admin/settings` (or call `PATCH /api/settings/school`) while signed in as a non-Administrator (**Class Teacher** / **Principal**) → confirm access is denied (`Access Denied` / HTTP `403`) rather than silently showing success.
+
+---
+
+## 7. MANUAL TEST STEPS — P.7 CANDIDATE GUARD & SECTION FILTER ON BOTH HUBS (PHASE 3)
+
+**Database Migrations Required:** None (Section definitions & P.7 candidate-class rules are seeded centrally in `src/lib/academic-sections.ts` and persisted via `school_customization_config` in `src/lib/school-settings-helper.ts`).
+
+- [ ] **7.1 P.7 Term 3 EOT Candidate Guard Check:**
+  1. Open `/admin/secular-hub` (and `/admin/theology-hub`), select **Term 3**, select **P.7** (or **الصف السابع**), and click **EOT** → confirm `"N/A — candidate class"` card appears with zero missing-marks warnings and zero 0-filled totals.
+  2. Click **View Term 3 BOT** or **View Term 3 MOT** → confirm P.7 BOT and MOT broadsheets, analysis, and Top 10 still load normally.
+- [ ] **7.2 Section Aggregation & Top 10 Check (Secular & Theology Hubs):**
+  1. Use the **Section** pill selector beside **Class** on `/admin/secular-hub` and `/admin/theology-hub` to select **Nursery**, **Lower Primary**, or **Upper Primary**.
+  2. Switch between **Sheet**, **Analysis**, and **Top 10** → confirm all permitted classes in that section are aggregated, the active ranking method (e.g., Normalized Avg % across subjects sat, ties `1, 2, 2, 4`) is stated on screen, any pupil missing marks is excluded from rank and listed in the **Missing Marks** panel, and in **Upper Primary Term 3 EOT** P.7 appears as `"N/A — candidate class"` in the Class-by-Class table without distorting section averages, completion %, or Top 10.
+
+
+
 
 

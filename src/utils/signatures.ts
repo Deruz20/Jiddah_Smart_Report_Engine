@@ -164,19 +164,19 @@ export function getClassTeacherSignatureKey(className: string | undefined | null
     baseClass = 'middle';
   } else if (c.includes('top') || c.includes('upper kindergarten') || c.includes('الروضة العليا')) {
     baseClass = 'top';
-  } else if (c.includes('p.1') || c.includes('p1') || c.includes('primary 1') || c.includes('primary one') || c.includes('الصف الأول')) {
+  } else if (c === '1' || c.includes('p.1') || c.includes('p1') || c.includes('primary 1') || c.includes('primary one') || c.includes('الصف الأول') || c.includes('الأول') || c.includes('الأولى')) {
     baseClass = 'p1';
-  } else if (c.includes('p.2') || c.includes('p2') || c.includes('primary 2') || c.includes('primary two') || c.includes('الصف الثاني')) {
+  } else if (c === '2' || c.includes('p.2') || c.includes('p2') || c.includes('primary 2') || c.includes('primary two') || c.includes('الصف الثاني') || c.includes('الثاني') || c.includes('الثانية')) {
     baseClass = 'p2';
-  } else if (c.includes('p.3') || c.includes('p3') || c.includes('primary 3') || c.includes('primary three') || c.includes('الصف الثالث')) {
+  } else if (c === '3' || c.includes('p.3') || c.includes('p3') || c.includes('primary 3') || c.includes('primary three') || c.includes('الصف الثالث') || c.includes('الثالث') || c.includes('الثالثة')) {
     baseClass = 'p3';
-  } else if (c.includes('p.4') || c.includes('p4') || c.includes('primary 4') || c.includes('primary four') || c.includes('الصف الرابع')) {
+  } else if (c === '4' || c.includes('p.4') || c.includes('p4') || c.includes('primary 4') || c.includes('primary four') || c.includes('الصف الرابع') || c.includes('الرابع') || c.includes('الرابعة')) {
     baseClass = 'p4';
-  } else if (c.includes('p.5') || c.includes('p5') || c.includes('primary 5') || c.includes('primary five') || c.includes('الصف الخامس')) {
+  } else if (c === '5' || c.includes('p.5') || c.includes('p5') || c.includes('primary 5') || c.includes('primary five') || c.includes('الصف الخامس') || c.includes('الخامس') || c.includes('الخامسة')) {
     baseClass = 'p5';
-  } else if (c.includes('p.6') || c.includes('p6') || c.includes('primary 6') || c.includes('primary six') || c.includes('الصف السادس')) {
+  } else if (c === '6' || c.includes('p.6') || c.includes('p6') || c.includes('primary 6') || c.includes('primary six') || c.includes('الصف السادس') || c.includes('السادس') || c.includes('السادسة')) {
     baseClass = 'p6';
-  } else if (c.includes('p.7') || c.includes('p7') || c.includes('primary 7') || c.includes('primary seven') || c.includes('الصف السابع')) {
+  } else if (c === '7' || c.includes('p.7') || c.includes('p7') || c.includes('primary 7') || c.includes('primary seven') || c.includes('الصف السابع') || c.includes('السابع') || c.includes('السابعة')) {
     baseClass = 'p7';
   } else {
     return null;
@@ -265,6 +265,13 @@ export async function getReportSignatures(supabase: SupabaseClient) {
 export async function getDynamicSignatureSlots(supabase: SupabaseClient) {
   const slots = [
     {
+      slot_key: 'principal',
+      label: 'Principal Signature',
+      role: 'Principal',
+      description: 'Authorized signature of the School Principal.',
+      required: false,
+    },
+    {
       slot_key: 'head-teacher',
       label: 'Headteacher Signature',
       role: 'Head Teacher',
@@ -280,23 +287,34 @@ export async function getDynamicSignatureSlots(supabase: SupabaseClient) {
     },
   ];
 
-  const { data: enrollments, error } = await supabase
-    .from('enrollments')
-    .select(`
-      circular_classes ( class_name ),
-      theology_classes ( class_name_english ),
-      students!inner ( is_archived )
-    `)
-    .eq('is_active', true)
-    .eq('students.is_archived', false);
+  const [enrollmentsRes, circularClassesRes, theologyClassesRes] = await Promise.all([
+    supabase
+      .from('enrollments')
+      .select(`
+        circular_classes ( class_name ),
+        theology_classes ( class_name_english, class_name_arabic ),
+        students!inner ( is_archived )
+      `)
+      .eq('is_active', true)
+      .eq('students.is_archived', false),
+    supabase.from('circular_classes').select('class_name'),
+    supabase.from('theology_classes').select('class_name_english, class_name_arabic'),
+  ]);
 
-  if (error) {
-    throw new Error(`Unable to load active enrollments for signature slots: ${error.message}`);
+  if (enrollmentsRes.error) {
+    throw new Error(`Unable to load active enrollments for signature slots: ${enrollmentsRes.error.message}`);
   }
 
   const circularClassNames = new Set<string>();
   const theologyClassNames = new Set<string>();
-  for (const enrollment of enrollments ?? []) {
+  for (const c of circularClassesRes.data ?? []) {
+    if (c?.class_name) circularClassNames.add(c.class_name);
+  }
+  for (const t of theologyClassesRes.data ?? []) {
+    const label = t?.class_name_english || t?.class_name_arabic;
+    if (label) theologyClassNames.add(label);
+  }
+  for (const enrollment of enrollmentsRes.data ?? []) {
     const circularClass = Array.isArray(enrollment.circular_classes)
       ? enrollment.circular_classes[0]
       : enrollment.circular_classes;
@@ -304,7 +322,11 @@ export async function getDynamicSignatureSlots(supabase: SupabaseClient) {
       ? enrollment.theology_classes[0]
       : enrollment.theology_classes;
     if (circularClass?.class_name) circularClassNames.add(circularClass.class_name);
-    if (theologyClass?.class_name_english) theologyClassNames.add(theologyClass.class_name_english);
+    if ((theologyClass as any)?.class_name_english) {
+      theologyClassNames.add((theologyClass as any).class_name_english);
+    } else if ((theologyClass as any)?.class_name_arabic) {
+      theologyClassNames.add((theologyClass as any).class_name_arabic);
+    }
   }
 
   const getClassSortWeight = (name: string) => {
@@ -360,3 +382,114 @@ export async function getDynamicSignatureSlots(supabase: SupabaseClient) {
 
   return slots;
 }
+
+/**
+ * Resolves the exact set of signature slot keys a user is authorized to view and upload/manage.
+ * Returns `null` for Administrators (unrestricted access to all slots including school-stamp and school-logo).
+ * Returns a Set<string> for Principal, Head Teacher, DOS, Class Teacher, and Theology Instructor.
+ */
+export async function resolveAllowedSignatureSlotsForUser(
+  supabaseAdmin: SupabaseClient,
+  access: {
+    isAuthorized: boolean;
+    role?: string | null;
+    canonicalRole?: string | null;
+    filterByDepartment?: 'secular' | 'theology' | 'both';
+    filterByClasses?: string[];
+    classAssignments?: Array<{ classId: string; classType: 'circular' | 'theology' }>;
+    effectivePermissions?: string[];
+  }
+): Promise<Set<string> | null> {
+  if (!access.isAuthorized) return new Set();
+  const roleLower = (access.role ?? '').trim().toLowerCase();
+  if (
+    roleLower === 'administrator' ||
+    roleLower === 'admin' ||
+    access.canonicalRole === 'Administrator' ||
+    (access.effectivePermissions ?? []).includes('manage_settings')
+  ) {
+    return null; // Unrestricted
+  }
+
+  const allowed = new Set<string>();
+  const canonical = access.canonicalRole || '';
+
+  if (canonical === 'Principal' || roleLower === 'principal') {
+    allowed.add('principal');
+    allowed.add('head-teacher');
+    return allowed;
+  }
+
+  if (
+    canonical === 'Head Teacher' ||
+    roleLower === 'head teacher' ||
+    roleLower === 'headteacher' ||
+    roleLower === 'deputy head teacher' ||
+    roleLower === 'deputy headteacher'
+  ) {
+    allowed.add('head-teacher');
+    return allowed;
+  }
+
+  const [circRes, theoRes] = await Promise.all([
+    supabaseAdmin.from('circular_classes').select('id, class_name'),
+    supabaseAdmin.from('theology_classes').select('id, class_name_english, class_name_arabic, level'),
+  ]);
+  const circClasses = circRes.data ?? [];
+  const theoClasses = theoRes.data ?? [];
+
+  if (canonical === 'DOS Secular') {
+    for (const c of circClasses) {
+      const key = getClassTeacherSignatureKey(c.class_name, false);
+      if (key) allowed.add(key);
+    }
+    for (const base of ['baby', 'middle', 'top', 'p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7']) {
+      allowed.add(`class-teacher-${base}`);
+    }
+    return allowed;
+  }
+
+  if (canonical === 'DOS Theology') {
+    for (const t of theoClasses) {
+      const key =
+        getClassTeacherSignatureKey(t.class_name_english, true) ||
+        getClassTeacherSignatureKey(t.class_name_arabic, true) ||
+        (t.level ? getClassTeacherSignatureKey(String(t.level), true) : null);
+      if (key && key !== 'theology-teacher-p7') allowed.add(key);
+    }
+    for (const base of ['baby', 'middle', 'top', 'p1', 'p2', 'p3', 'p4', 'p5', 'p6']) {
+      allowed.add(`theology-teacher-${base}`);
+    }
+    return allowed;
+  }
+
+  // Class Teacher / Theology Instructor — strictly scoped to their assigned class(es) and department
+  const assignedIds = new Set<string>(access.filterByClasses ?? []);
+  for (const a of access.classAssignments ?? []) {
+    if (a?.classId) assignedIds.add(a.classId);
+  }
+
+  const dept = access.filterByDepartment ?? 'both';
+  if (dept === 'secular' || dept === 'both') {
+    for (const c of circClasses) {
+      if (assignedIds.has(c.id)) {
+        const key = getClassTeacherSignatureKey(c.class_name, false);
+        if (key) allowed.add(key);
+      }
+    }
+  }
+  if (dept === 'theology' || dept === 'both') {
+    for (const t of theoClasses) {
+      if (assignedIds.has(t.id)) {
+        const key =
+          getClassTeacherSignatureKey(t.class_name_english, true) ||
+          getClassTeacherSignatureKey(t.class_name_arabic, true) ||
+          (t.level ? getClassTeacherSignatureKey(String(t.level), true) : null);
+        if (key && key !== 'theology-teacher-p7') allowed.add(key);
+      }
+    }
+  }
+
+  return allowed;
+}
+

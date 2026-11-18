@@ -23,6 +23,7 @@ import {
   Eye,
   EyeOff,
   Check,
+  FileText,
 } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
@@ -32,6 +33,14 @@ import { CustomPillSelect } from '@/components/ui/custom-pill-select'
 import { JiddahLoader } from '@/components/ui/jiddah-loader'
 import { BroadsheetPrintDocument } from '@/components/hubs/BroadsheetPrintDocument'
 import { BroadsheetPrintStudioModal } from '@/components/hubs/BroadsheetPrintStudioModal'
+import { HubDetailedReportView } from '@/components/hubs/HubDetailedReportView'
+import { DetailedReportPrintDocument } from '@/components/hubs/DetailedReportPrintDocument'
+import {
+  buildDetailedReportCsv,
+  clampSupportThreshold,
+  type DetailedReportResult,
+  type DetailedReportScope,
+} from '@/lib/hub-detailed-report'
 import {
   type BroadsheetPrintConfig,
   getDefaultBroadsheetPrintConfig,
@@ -134,9 +143,11 @@ RemarkBadge.displayName = 'RemarkBadge'
 export default function TheologyHubClient({
   terms,
   theologyClasses,
+  canViewSchoolWideScope = false,
 }: {
   terms: TermData[]
   theologyClasses: TheologyClassData[]
+  canViewSchoolWideScope?: boolean
 }) {
   const router = useRouter()
   const pathname = usePathname()
@@ -150,22 +161,55 @@ export default function TheologyHubClient({
       ? initialSectionParam
       : ''
 
+  const initialScopeParam = searchParams.get('scope')
+  const initialScope: DetailedReportScope =
+    initialScopeParam === 'school' && canViewSchoolWideScope
+      ? 'school'
+      : initialScopeParam === 'section' && validInitialSection
+        ? 'section'
+        : initialScopeParam === 'class'
+          ? 'class'
+          : validInitialSection
+            ? 'section'
+            : canViewSchoolWideScope && searchParams.get('tab') === 'detailed_report' && !searchParams.get('class_id')
+              ? 'school'
+              : 'class'
+
   const [activeTermId, setActiveTermId] = useState<string>(
     searchParams.get('term_id') || terms.find((t) => t.is_current)?.id || terms[0]?.id || ''
   )
   const [activeSectionId, setActiveSectionId] = useState<HubSectionId | ''>(validInitialSection)
   const [activeClassId, setActiveClassId] = useState<string>(
-    searchParams.get('class_id') || (validInitialSection ? '' : theologyClasses[0]?.id || '')
+    searchParams.get('class_id') ||
+      (validInitialSection || initialScope === 'school' ? '' : theologyClasses[0]?.id || '')
   )
   const [activeLevel, setActiveLevel] = useState<string>(
     searchParams.get('level') || (theologyClasses[0]?.level != null ? String(theologyClasses[0].level) : 'raudha')
   )
-  const [activeTab, setActiveTab] = useState<'assessment' | 'analysis' | 'top_students'>(
+  const [activeTab, setActiveTab] = useState<'assessment' | 'analysis' | 'top_students' | 'detailed_report'>(
     (searchParams.get('tab') as any) || 'assessment'
   )
   const [examPhase, setExamPhase] = useState<'bot' | 'mot' | 'eot'>(
     (searchParams.get('exam_phase') as any) || 'eot'
   )
+  const [reportScope, setReportScope] = useState<DetailedReportScope>(initialScope)
+  const [supportThreshold, setSupportThreshold] = useState<number>(
+    clampSupportThreshold(searchParams.get('support_threshold'))
+  )
+  const [detailedReport, setDetailedReport] = useState<DetailedReportResult | null>(null)
+  const [detailedLoading, setDetailedLoading] = useState(false)
+  const [detailedError, setDetailedError] = useState<string | null>(null)
+  const [detailedReloadNonce, setDetailedReloadNonce] = useState(0)
+  const [detailedAvailableScopes, setDetailedAvailableScopes] = useState<{
+    school: boolean
+    sections: HubSectionId[]
+    classCount: number
+  }>({
+    school: canViewSchoolWideScope,
+    sections: canViewSchoolWideScope ? ['nursery', 'lower_primary', 'upper_primary'] : [],
+    classCount: theologyClasses.length,
+  })
+  const [printMode, setPrintMode] = useState<'broadsheet' | 'detailed_report'>('broadsheet')
 
   const [searchQuery, setSearchQuery] = useState('')
   const [divisionFilter, setDivisionFilter] = useState<string>('all')
@@ -286,13 +330,20 @@ export default function TheologyHubClient({
     setActiveSectionId(nextSec)
     if (nextSec) {
       setActiveClassId('')
+      setReportScope('section')
     } else if (!activeClassId && effectiveClasses[0]?.id) {
       setActiveClassId(effectiveClasses[0].id)
+      setReportScope('class')
     }
   }
 
   const handleSelectClass = (val: string) => {
     setActiveClassId(val)
+    if (val) {
+      setReportScope('class')
+    } else if (activeSectionId) {
+      setReportScope('section')
+    }
     if (val && activeSectionId) {
       const clsSec = sectionMapping.classToSection[val]
       if (clsSec !== activeSectionId) {
@@ -300,6 +351,101 @@ export default function TheologyHubClient({
       }
     }
   }
+
+  const handleTabChange = (nextTab: 'assessment' | 'analysis' | 'top_students' | 'detailed_report') => {
+    setActiveTab(nextTab)
+    if (nextTab !== 'detailed_report' && !activeClassId && !activeSectionId && effectiveClasses[0]?.id) {
+      setActiveClassId(effectiveClasses[0].id)
+    }
+  }
+
+  const handleChangeReportScope = (
+    nextScope: DetailedReportScope,
+    nextSectionId?: HubSectionId | '',
+    nextClassId?: string
+  ) => {
+    setReportScope(nextScope)
+    if (nextScope === 'school') {
+      setActiveSectionId('')
+      setActiveClassId('')
+    } else if (nextScope === 'section') {
+      const resolvedSec =
+        nextSectionId ||
+        activeSectionId ||
+        detailedAvailableScopes.sections[0] ||
+        'upper_primary'
+      setActiveSectionId(resolvedSec)
+      setActiveClassId('')
+    } else {
+      const resolvedCls = nextClassId || activeClassId || effectiveClasses[0]?.id || ''
+      setActiveClassId(resolvedCls)
+      setActiveSectionId('')
+    }
+  }
+
+  const handleChangeReportYear = (nextYear: number) => {
+    const inYear = terms.filter((t) => Number(t.academic_year) === Number(nextYear))
+    const picked = inYear.find((t) => t.is_current) || inYear[0]
+    if (picked?.id) {
+      setActiveTermId(picked.id)
+    }
+  }
+
+  // Fetch Detailed Report whenever Detailed Report tab is active
+  useEffect(() => {
+    if (activeTab !== 'detailed_report' || !activeTermId) return
+    if (reportScope === 'class' && !activeClassId) return
+    if (reportScope === 'section' && !activeSectionId) return
+
+    const controller = new AbortController()
+    const loadDetailed = async () => {
+      setDetailedLoading(true)
+      setDetailedError(null)
+      try {
+        const params = new URLSearchParams({
+          curriculum: 'theology',
+          scope: reportScope,
+          term_id: activeTermId,
+          exam_phase: examPhase,
+          support_threshold: String(supportThreshold),
+        })
+        if (activeTerm?.academic_year) params.set('year', String(activeTerm.academic_year))
+        if (reportScope === 'section' && activeSectionId) params.set('section_id', activeSectionId)
+        if (reportScope === 'class' && activeClassId) params.set('class_id', activeClassId)
+
+        const res = await fetch(`/api/hub-detailed-report?${params.toString()}`, {
+          signal: controller.signal,
+        })
+        const json = await res.json().catch(() => ({}))
+        if (!res.ok) {
+          throw new Error(json?.error || `Failed to load detailed report (${res.status})`)
+        }
+        setDetailedReport(json.report || null)
+        if (json.availableScopes) {
+          setDetailedAvailableScopes(json.availableScopes)
+        }
+      } catch (err: any) {
+        if (err?.name === 'AbortError') return
+        setDetailedError(err?.message || 'Failed to load detailed report.')
+      } finally {
+        if (!controller.signal.aborted) {
+          setDetailedLoading(false)
+        }
+      }
+    }
+
+    loadDetailed()
+    return () => controller.abort()
+  }, [
+    activeTab,
+    reportScope,
+    activeSectionId,
+    activeClassId,
+    activeTermId,
+    activeTerm?.academic_year,
+    examPhase,
+    detailedReloadNonce,
+  ])
 
   // Fetch data cleanly
   useEffect(() => {
@@ -356,9 +502,16 @@ export default function TheologyHubClient({
     if (activeLevel) params.set('level', String(activeLevel))
     if (activeTab) params.set('tab', activeTab)
     if (examPhase) params.set('exam_phase', examPhase)
+    if (activeTab === 'detailed_report') {
+      params.set('scope', reportScope)
+      params.set('support_threshold', String(supportThreshold))
+    } else {
+      params.delete('scope')
+      params.delete('support_threshold')
+    }
 
     router.replace(`${pathname}?${params.toString()}`, { scroll: false })
-  }, [activeTermId, activeSectionId, activeClassId, activeLevel, activeTab, examPhase, pathname, router, searchParams])
+  }, [activeTermId, activeSectionId, activeClassId, activeLevel, activeTab, examPhase, reportScope, supportThreshold, pathname, router, searchParams])
 
   // Update level when class changes
   useEffect(() => {
@@ -459,11 +612,31 @@ export default function TheologyHubClient({
     if (!assessmentData.students.length) {
       return toast.error('No student assessment data to print.')
     }
+    setPrintMode('broadsheet')
     setIsPrinting(true)
     setTimeout(() => {
       window.print()
       setIsPrinting(false)
-    }, 400)
+    }, 350)
+  }
+
+  const handlePrintDetailedReport = () => {
+    if (!detailedReport) {
+      return toast.error('No detailed report loaded to print.')
+    }
+    setPrintMode('detailed_report')
+    setIsPrinting(true)
+    setTimeout(() => {
+      window.print()
+      setIsPrinting(false)
+    }, 250)
+  }
+
+  const handleExportDetailedReportCsv = () => {
+    if (!detailedReport) return
+    const csv = buildDetailedReportCsv(detailedReport, supportThreshold)
+    const safeScope = detailedReport.meta.scopeLabel.replace(/[^a-zA-Z0-9_-]/g, '_')
+    downloadCSV(csv, `Jiddah_Theology_Detailed_Report_${safeScope}_${examPhase.toUpperCase()}.csv`)
   }
 
   const handleExportCSV = () => {
@@ -559,61 +732,144 @@ export default function TheologyHubClient({
       <div className="print:hidden shrink-0 px-2 sm:px-4 lg:px-6 pt-2 pb-0 w-full max-w-[1920px] mx-auto">
         <div
           data-testid="theology-hub-banner"
-          className="w-full h-12 bg-white dark:bg-[#151D1A] rounded-2xl px-3 border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 flex items-center justify-between gap-2 shadow-2xs overflow-hidden"
+          className="w-full h-auto py-2 sm:py-0 sm:h-12 bg-white dark:bg-[#151D1A] rounded-2xl px-2.5 sm:px-3 border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 shadow-2xs"
         >
-          {/* LEFT: Back + Title + Term + Section + Class */}
-          <div className="flex items-center gap-1.5 min-w-0 shrink">
-            <Link
-              href="/admin"
-              className="w-8 h-8 rounded-full flex items-center justify-center text-stone-500 dark:text-stone-400 hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer shrink-0"
-              aria-label="Back to Dashboard"
-            >
-              <ArrowLeft size={16} />
-            </Link>
+          {/* Row 1 (Mobile) / Left+Right Container */}
+          <div className="flex items-center justify-between gap-2 min-w-0 w-full sm:w-auto sm:flex-1">
+            {/* Brand + Back (+ inline desktop selectors) */}
+            <div className="flex items-center gap-1.5 min-w-0 shrink">
+              <Link
+                href="/admin"
+                className="w-8 h-8 rounded-full flex items-center justify-center text-stone-500 dark:text-stone-400 hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer shrink-0"
+                aria-label="Back to Dashboard"
+              >
+                <ArrowLeft size={16} />
+              </Link>
 
-            {/* Title pill */}
-            <div className="flex items-center gap-1.5 shrink-0 bg-[#D97706]/15 dark:bg-[#D97706]/10 rounded-lg px-1.5 py-0.5">
-              <div className="w-6 h-6 rounded-lg bg-[#0D5C3A] flex items-center justify-center shrink-0">
-                <BookOpen className="w-3.5 h-3.5 text-white" strokeWidth={2.25} />
+              {/* Title pill */}
+              <div className="flex items-center gap-1.5 shrink-0 bg-[#D97706]/15 dark:bg-[#D97706]/10 rounded-lg px-1.5 py-0.5">
+                <div className="w-6 h-6 rounded-lg bg-[#0D5C3A] flex items-center justify-center shrink-0">
+                  <BookOpen className="w-3.5 h-3.5 text-white" strokeWidth={2.25} />
+                </div>
+                <span className="inline sm:hidden xl:inline text-[11px] sm:text-xs font-black text-stone-800 dark:text-stone-100 tracking-tight whitespace-nowrap">
+                  Theology Hub
+                </span>
               </div>
-              <span className="hidden xl:inline text-xs font-black text-stone-800 dark:text-stone-100 tracking-tight whitespace-nowrap">
-                Theology Hub
-              </span>
+
+              <div className="hidden sm:block w-px h-5 bg-stone-200 dark:bg-white/10 mx-0.5 shrink-0" />
+
+              {/* Desktop inline selectors */}
+              <div className="hidden sm:flex items-center gap-1.5 min-w-0">
+                <CustomPillSelect
+                  id="theology-hub-term-select-desktop"
+                  ariaLabel="Academic Term"
+                  value={activeTermId}
+                  onChange={(val) => setActiveTermId(val)}
+                  options={termOptions}
+                  className="h-8 w-36 rounded-xl bg-stone-50 dark:bg-white/5 border border-stone-200 dark:border-white/10 text-xs font-semibold text-stone-800 dark:text-stone-100"
+                />
+
+                <CustomPillSelect
+                  id="theology-hub-section-select-desktop"
+                  dataTestId="theology-hub-section-select"
+                  ariaLabel="Academic Section"
+                  value={activeSectionId}
+                  onChange={handleSelectSection}
+                  options={sectionOptions}
+                  placeholder="Section..."
+                  className="h-8 w-36 rounded-xl bg-stone-50 dark:bg-white/5 border border-stone-200 dark:border-white/10 text-xs font-semibold text-stone-800 dark:text-stone-100"
+                />
+
+                <CustomPillSelect
+                  id="theology-hub-class-select-desktop"
+                  ariaLabel="Theology Class"
+                  value={activeClassId}
+                  onChange={handleSelectClass}
+                  options={classOptions}
+                  placeholder="Select Class..."
+                  className="h-8 w-40 rounded-xl bg-stone-50 dark:bg-white/5 border border-stone-200 dark:border-white/10 text-xs font-semibold text-stone-800 dark:text-stone-100"
+                />
+              </div>
             </div>
 
-            <div className="w-px h-5 bg-stone-200 dark:bg-white/10 mx-0.5 shrink-0" />
+            {/* Mobile right actions */}
+            <div className="flex sm:hidden items-center gap-1 shrink-0">
+              <button
+                onClick={activeTab === 'detailed_report' ? handleExportDetailedReportCsv : handleExportCSV}
+                disabled={
+                  activeTab === 'detailed_report'
+                    ? detailedLoading || !detailedReport
+                    : isLoading || cohortMetrics.isSingleClassCandidateExcluded || !assessmentData.students.length
+                }
+                title={activeTab === 'detailed_report' ? 'Export Detailed Report CSV' : 'Export Broadsheet CSV'}
+                aria-label={activeTab === 'detailed_report' ? 'Export Detailed Report CSV' : 'Export Broadsheet CSV'}
+                className="w-8 h-8 rounded-full flex items-center justify-center bg-stone-100 dark:bg-white/5 text-stone-600 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-white/10 border border-stone-200 dark:border-white/10 transition cursor-pointer disabled:opacity-40 shrink-0"
+              >
+                <FileSpreadsheet className="w-4 h-4" strokeWidth={2.25} />
+              </button>
 
-            {/* Term Selector */}
+              <button
+                type="button"
+                onClick={() => setPrintStudioOpen(true)}
+                disabled={
+                  activeTab === 'detailed_report' ||
+                  isLoading ||
+                  cohortMetrics.isSingleClassCandidateExcluded ||
+                  !assessmentData.students.length
+                }
+                title="Customize Sheet & Print Preview"
+                aria-label="Customize Sheet"
+                className="w-8 h-8 rounded-full bg-[#D97706]/12 text-[#B45309] dark:bg-[#F59E0B]/20 dark:text-[#FCD34D] border border-[#D97706]/30 text-xs font-semibold inline-flex items-center justify-center cursor-pointer transition disabled:opacity-40 shrink-0"
+              >
+                <Sliders className="size-3.5" />
+              </button>
+
+              <button
+                onClick={activeTab === 'detailed_report' ? handlePrintDetailedReport : handlePrintBroadsheet}
+                disabled={
+                  activeTab === 'detailed_report'
+                    ? detailedLoading || !detailedReport
+                    : isLoading || cohortMetrics.isSingleClassCandidateExcluded || !assessmentData.students.length
+                }
+                title={activeTab === 'detailed_report' ? 'Print A4 Detailed Report' : 'Print Official Broadsheet'}
+                className="h-8 px-2.5 rounded-full bg-gradient-to-r from-[#0D5C3A] to-[#117A4D] text-white ring-1 ring-[#D97706]/50 shadow-sm text-[11px] font-bold inline-flex items-center gap-1 cursor-pointer disabled:opacity-40 transition shrink-0"
+              >
+                <Printer className="w-3.5 h-3.5" strokeWidth={2.25} />
+                <span>Print</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Mobile Row 2: 3-column selectors without overlap or clipping */}
+          <div className="grid sm:hidden grid-cols-3 gap-1.5 w-full">
             <CustomPillSelect
               id="theology-hub-term-select"
               ariaLabel="Academic Term"
               value={activeTermId}
               onChange={(val) => setActiveTermId(val)}
               options={termOptions}
-              className="h-8 w-28 sm:w-36 rounded-xl bg-stone-50 dark:bg-white/5 border border-stone-200 dark:border-white/10 text-xs font-semibold text-stone-800 dark:text-stone-100"
+              className="h-8 w-full min-w-0 rounded-xl bg-stone-50 dark:bg-white/5 border border-stone-200 dark:border-white/10 text-[11px] font-semibold text-stone-800 dark:text-stone-100"
             />
 
-            {/* Section Selector */}
             <CustomPillSelect
               id="theology-hub-section-select"
-              dataTestId="theology-hub-section-select"
+              dataTestId="theology-hub-section-select-mobile"
               ariaLabel="Academic Section"
               value={activeSectionId}
               onChange={handleSelectSection}
               options={sectionOptions}
               placeholder="Section..."
-              className="h-8 w-28 sm:w-36 rounded-xl bg-stone-50 dark:bg-white/5 border border-stone-200 dark:border-white/10 text-xs font-semibold text-stone-800 dark:text-stone-100"
+              className="h-8 w-full min-w-0 rounded-xl bg-stone-50 dark:bg-white/5 border border-stone-200 dark:border-white/10 text-[11px] font-semibold text-stone-800 dark:text-stone-100"
             />
 
-            {/* Class Selector */}
             <CustomPillSelect
               id="theology-hub-class-select"
               ariaLabel="Theology Class"
               value={activeClassId}
               onChange={handleSelectClass}
               options={classOptions}
-              placeholder="Select Class..."
-              className="h-8 w-28 sm:w-40 rounded-xl bg-stone-50 dark:bg-white/5 border border-stone-200 dark:border-white/10 text-xs font-semibold text-stone-800 dark:text-stone-100"
+              placeholder="Class..."
+              className="h-8 w-full min-w-0 rounded-xl bg-stone-50 dark:bg-white/5 border border-stone-200 dark:border-white/10 text-[11px] font-semibold text-stone-800 dark:text-stone-100"
             />
           </div>
 
@@ -638,11 +894,11 @@ export default function TheologyHubClient({
               ))}
             </div>
 
-            {/* View Mode — Sheet / Analysis / Top 10 */}
+            {/* View Mode — Sheet / Analysis / Top 10 / Detailed Report */}
             <div className="flex items-center bg-stone-100 dark:bg-white/5 rounded-full p-0.5 border border-stone-200/80 dark:border-white/10 gap-0.5">
               <button
                 type="button"
-                onClick={() => setActiveTab('assessment')}
+                onClick={() => handleTabChange('assessment')}
                 className={`h-7 px-2.5 rounded-full flex items-center gap-1 text-[11px] font-bold transition-all cursor-pointer ${activeTab === 'assessment'
                   ? 'bg-[#D97706] text-white shadow-xs'
                   : 'text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-white'
@@ -653,7 +909,7 @@ export default function TheologyHubClient({
               </button>
               <button
                 type="button"
-                onClick={() => setActiveTab('analysis')}
+                onClick={() => handleTabChange('analysis')}
                 className={`h-7 px-2.5 rounded-full flex items-center gap-1 text-[11px] font-bold transition-all cursor-pointer ${activeTab === 'analysis'
                   ? 'bg-[#D97706] text-white shadow-xs'
                   : 'text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-white'
@@ -664,7 +920,7 @@ export default function TheologyHubClient({
               </button>
               <button
                 type="button"
-                onClick={() => setActiveTab('top_students')}
+                onClick={() => handleTabChange('top_students')}
                 className={`h-7 px-2.5 rounded-full flex items-center gap-1 text-[11px] font-bold transition-all cursor-pointer ${activeTab === 'top_students'
                   ? 'bg-[#D97706] text-white shadow-xs'
                   : 'text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-white'
@@ -673,16 +929,32 @@ export default function TheologyHubClient({
                 <Award className="w-3 h-3" strokeWidth={2.25} />
                 <span>Top 10</span>
               </button>
+              <button
+                type="button"
+                data-testid="tab-detailed-report"
+                onClick={() => handleTabChange('detailed_report')}
+                className={`h-7 px-2.5 rounded-full flex items-center gap-1 text-[11px] font-bold transition-all cursor-pointer ${activeTab === 'detailed_report'
+                  ? 'bg-[#0F4D25] text-white shadow-xs'
+                  : 'text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-white'
+                  }`}
+              >
+                <FileText className="w-3 h-3" strokeWidth={2.25} />
+                <span>Detailed Report</span>
+              </button>
             </div>
           </div>
 
-          {/* RIGHT: Export CSV + Customize + Print Broadsheet */}
-          <div className="flex items-center gap-1.5 shrink-0">
+          {/* RIGHT: Export CSV + Customize + Print Broadsheet (Desktop sm+) */}
+          <div className="hidden sm:flex items-center gap-1.5 shrink-0">
             <button
-              onClick={handleExportCSV}
-              disabled={isLoading || cohortMetrics.isSingleClassCandidateExcluded || !assessmentData.students.length}
-              title="Export Broadsheet CSV"
-              aria-label="Export Broadsheet CSV"
+              onClick={activeTab === 'detailed_report' ? handleExportDetailedReportCsv : handleExportCSV}
+              disabled={
+                activeTab === 'detailed_report'
+                  ? detailedLoading || !detailedReport
+                  : isLoading || cohortMetrics.isSingleClassCandidateExcluded || !assessmentData.students.length
+              }
+              title={activeTab === 'detailed_report' ? 'Export Detailed Report CSV' : 'Export Broadsheet CSV'}
+              aria-label={activeTab === 'detailed_report' ? 'Export Detailed Report CSV' : 'Export Broadsheet CSV'}
               className="w-8 h-8 rounded-full flex items-center justify-center bg-stone-100 dark:bg-white/5 text-stone-600 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-white/10 border border-stone-200 dark:border-white/10 transition cursor-pointer disabled:opacity-40 shrink-0"
             >
               <FileSpreadsheet className="w-4 h-4" strokeWidth={2.25} />
@@ -692,7 +964,12 @@ export default function TheologyHubClient({
             <button
               type="button"
               onClick={() => setPrintStudioOpen(true)}
-              disabled={isLoading || cohortMetrics.isSingleClassCandidateExcluded || !assessmentData.students.length}
+              disabled={
+                activeTab === 'detailed_report' ||
+                isLoading ||
+                cohortMetrics.isSingleClassCandidateExcluded ||
+                !assessmentData.students.length
+              }
               title="Customize Sheet & Print Preview"
               className="h-8 px-2.5 rounded-full bg-[#D97706]/12 text-[#B45309] dark:bg-[#F59E0B]/20 dark:text-[#FCD34D] border border-[#D97706]/30 hover:bg-[#D97706]/20 dark:hover:bg-[#F59E0B]/30 text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer transition disabled:opacity-40 shrink-0 focus:outline-none focus:ring-2 focus:ring-[#D97706]"
             >
@@ -701,9 +978,13 @@ export default function TheologyHubClient({
             </button>
 
             <button
-              onClick={handlePrintBroadsheet}
-              disabled={isLoading || cohortMetrics.isSingleClassCandidateExcluded || !assessmentData.students.length}
-              title="Print Official Broadsheet"
+              onClick={activeTab === 'detailed_report' ? handlePrintDetailedReport : handlePrintBroadsheet}
+              disabled={
+                activeTab === 'detailed_report'
+                  ? detailedLoading || !detailedReport
+                  : isLoading || cohortMetrics.isSingleClassCandidateExcluded || !assessmentData.students.length
+              }
+              title={activeTab === 'detailed_report' ? 'Print A4 Detailed Report' : 'Print Official Broadsheet'}
               className="h-8 px-3 rounded-full bg-gradient-to-r from-[#0D5C3A] to-[#117A4D] hover:from-[#09472C] hover:to-[#0D5C3A] text-white ring-1 ring-[#D97706]/50 shadow-md text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-40 transition shrink-0"
             >
               <Printer className="w-3.5 h-3.5" strokeWidth={2.25} />
@@ -713,15 +994,15 @@ export default function TheologyHubClient({
         </div>
       </div>
 
-      {/* Mobile-only phase + view strip */}
-      <div className="print:hidden sm:hidden flex items-center gap-2 px-2 sm:px-4 pt-1.5 pb-0 w-full max-w-[1920px] mx-auto overflow-x-auto shrink-0">
-        <div className="flex items-center bg-stone-100 dark:bg-white/5 rounded-full p-0.5 border border-stone-200/80 dark:border-white/10 gap-0.5 shrink-0">
+      {/* Mobile-only phase + view strip (2 clean stacked rows) */}
+      <div className="print:hidden sm:hidden flex flex-col gap-1.5 px-2 pt-1.5 pb-0 w-full max-w-full mx-auto shrink-0">
+        <div className="flex items-center bg-stone-100 dark:bg-white/5 rounded-full p-0.5 border border-stone-200/80 dark:border-white/10 gap-0.5 w-fit max-w-full">
           {(['bot', 'mot', 'eot'] as const).map((phase) => (
             <button
               key={phase}
               type="button"
               onClick={() => setExamPhase(phase)}
-              className={`h-7 px-2.5 rounded-full text-[11px] font-bold uppercase tracking-wide transition-all cursor-pointer ${examPhase === phase
+              className={`h-7 px-3 rounded-full text-[11px] font-bold uppercase tracking-wide whitespace-nowrap transition-all cursor-pointer shrink-0 ${examPhase === phase
                 ? phase === 'eot'
                   ? 'bg-[#0D5C3A] text-white shadow-xs'
                   : 'bg-stone-700 text-white shadow-xs'
@@ -732,11 +1013,11 @@ export default function TheologyHubClient({
             </button>
           ))}
         </div>
-        <div className="flex items-center bg-stone-100 dark:bg-white/5 rounded-full p-0.5 border border-stone-200/80 dark:border-white/10 gap-0.5 shrink-0">
+        <div className="flex items-center bg-stone-100 dark:bg-white/5 rounded-full p-0.5 border border-stone-200/80 dark:border-white/10 gap-0.5 overflow-x-auto no-scrollbar max-w-full">
           <button
             type="button"
-            onClick={() => setActiveTab('assessment')}
-            className={`h-7 px-2.5 rounded-full flex items-center gap-1 text-[11px] font-bold transition-all cursor-pointer ${activeTab === 'assessment'
+            onClick={() => handleTabChange('assessment')}
+            className={`h-7 px-2.5 rounded-full flex items-center gap-1 text-[11px] font-bold whitespace-nowrap shrink-0 transition-all cursor-pointer ${activeTab === 'assessment'
               ? 'bg-[#D97706] text-white shadow-xs'
               : 'text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-white'
               }`}
@@ -746,8 +1027,8 @@ export default function TheologyHubClient({
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab('analysis')}
-            className={`h-7 px-2.5 rounded-full flex items-center gap-1 text-[11px] font-bold transition-all cursor-pointer ${activeTab === 'analysis'
+            onClick={() => handleTabChange('analysis')}
+            className={`h-7 px-2.5 rounded-full flex items-center gap-1 text-[11px] font-bold whitespace-nowrap shrink-0 transition-all cursor-pointer ${activeTab === 'analysis'
               ? 'bg-[#D97706] text-white shadow-xs'
               : 'text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-white'
               }`}
@@ -757,14 +1038,25 @@ export default function TheologyHubClient({
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab('top_students')}
-            className={`h-7 px-2.5 rounded-full flex items-center gap-1 text-[11px] font-bold transition-all cursor-pointer ${activeTab === 'top_students'
+            onClick={() => handleTabChange('top_students')}
+            className={`h-7 px-2.5 rounded-full flex items-center gap-1 text-[11px] font-bold whitespace-nowrap shrink-0 transition-all cursor-pointer ${activeTab === 'top_students'
               ? 'bg-[#D97706] text-white shadow-xs'
               : 'text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-white'
               }`}
           >
             <Award className="w-3 h-3" strokeWidth={2.25} />
             <span>Top 10</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleTabChange('detailed_report')}
+            className={`h-7 px-2.5 rounded-full flex items-center gap-1 text-[11px] font-bold whitespace-nowrap shrink-0 transition-all cursor-pointer ${activeTab === 'detailed_report'
+              ? 'bg-[#0F4D25] text-white shadow-xs'
+              : 'text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-white'
+              }`}
+          >
+            <FileText className="w-3 h-3" strokeWidth={2.25} />
+            <span>Detailed Report</span>
           </button>
         </div>
       </div>
@@ -773,7 +1065,31 @@ export default function TheologyHubClient({
       {/* 2. MAIN WORKSPACE AREA */}
       {/* ======================================================== */}
       <main className="flex-1 min-h-0 w-full max-w-[1920px] mx-auto px-2 sm:px-4 lg:px-6 pt-2 pb-2 flex flex-col min-w-0 overflow-hidden">
-        {isLoading ? (
+        {activeTab === 'detailed_report' ? (
+          <HubDetailedReportView
+            curriculum="theology"
+            report={detailedReport}
+            isLoading={detailedLoading}
+            error={detailedError}
+            onRetry={() => setDetailedReloadNonce((n) => n + 1)}
+            scope={reportScope}
+            sectionId={activeSectionId}
+            classId={activeClassId}
+            termId={activeTermId}
+            year={Number(activeTerm?.academic_year || terms[0]?.academic_year || 2026)}
+            examPhase={examPhase}
+            supportThreshold={supportThreshold}
+            terms={terms}
+            classes={effectiveClasses}
+            availableScopes={detailedAvailableScopes}
+            onChangeScope={handleChangeReportScope}
+            onChangeYear={handleChangeReportYear}
+            onChangeTermId={(id) => setActiveTermId(id)}
+            onChangeExamPhase={(p) => setExamPhase(p)}
+            onChangeSupportThreshold={(next) => setSupportThreshold(clampSupportThreshold(next))}
+            onPrintReport={handlePrintDetailedReport}
+          />
+        ) : isLoading ? (
           <div className="flex-1 flex flex-col items-center justify-center py-24">
             <JiddahLoader />
             <p className="mt-4 text-xs font-bold text-[#57534E] dark:text-stone-400 uppercase tracking-widest font-sans">
@@ -1557,19 +1873,37 @@ export default function TheologyHubClient({
         summary={broadsheetSummary}
       />
 
-      <PrintPortal pageOrientation={printConfig.orientation} pageMargin="8mm">
-        <BroadsheetPrintDocument
-          curriculum="theology"
-          config={printConfig}
-          students={printStudents}
-          subjects={assessmentData.orderedSubjects}
-          termLabel={activeTerm?.label || 'الفترة الثالثة'}
-          academicYear={activeTerm?.academic_year || 2026}
-          classNameLabel={currentScopeLabel}
-          sectionLabel={activeSectionObj?.label_arabic || activeSectionObj?.label || undefined}
-          examPhase={examPhase}
-          summary={broadsheetSummary}
-        />
+      <PrintPortal
+        pageOrientation={
+          activeTab === 'detailed_report' || printMode === 'detailed_report'
+            ? 'portrait'
+            : printConfig.orientation
+        }
+        pageMargin={
+          activeTab === 'detailed_report' || printMode === 'detailed_report'
+            ? '10mm'
+            : '8mm'
+        }
+      >
+        {activeTab === 'detailed_report' || printMode === 'detailed_report' ? (
+          <DetailedReportPrintDocument
+            report={detailedReport}
+            supportThreshold={supportThreshold}
+          />
+        ) : (
+          <BroadsheetPrintDocument
+            curriculum="theology"
+            config={printConfig}
+            students={printStudents}
+            subjects={assessmentData.orderedSubjects}
+            termLabel={activeTerm?.label || 'الفترة الثالثة'}
+            academicYear={activeTerm?.academic_year || 2026}
+            classNameLabel={currentScopeLabel}
+            sectionLabel={activeSectionObj?.label_arabic || activeSectionObj?.label || undefined}
+            examPhase={examPhase}
+            summary={broadsheetSummary}
+          />
+        )}
       </PrintPortal>
     </div>
   )

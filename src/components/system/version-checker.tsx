@@ -11,6 +11,8 @@ export function VersionChecker() {
     let currentVersion: string | null = null;
 
     const checkVersion = async () => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+      if (typeof navigator !== "undefined" && navigator.onLine === false) return;
       try {
         const res = await fetch("/api/version", { cache: "no-store" });
         if (!res.ok) return;
@@ -32,9 +34,9 @@ export function VersionChecker() {
       }
     };
 
-    // Check after 10s and then periodically every 5 minutes
-    const initialTimer = setTimeout(checkVersion, 10000);
-    const interval = setInterval(checkVersion, 5 * 60 * 1000);
+    // Check after 20s and then periodically every 15 minutes (battery & mobile friendly)
+    const initialTimer = setTimeout(checkVersion, 20000);
+    const interval = setInterval(checkVersion, 15 * 60 * 1000);
 
     return () => {
       clearTimeout(initialTimer);

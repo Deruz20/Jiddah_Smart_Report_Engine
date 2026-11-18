@@ -36,7 +36,6 @@ import {
   getSubjectRemark,
   getTheologySubjectRemark,
   getTheologyGradeNumber,
-  getTheologyGradeDisplay,
   calculateTheologyAggregateFromMarks,
   getTheologyDivision,
 } from '@/lib/grading'
@@ -406,12 +405,11 @@ function computeTheologyBadge(
   const n = Number(score)
   if (n < 0 || n > 100) return null
   const gradeNum = getTheologyGradeNumber(n, customTheologyScale)
-  const grade = getTheologyGradeDisplay(n, customTheologyScale)
-  if (gradeNum <= 1) return { grade, bg: 'bg-emerald-500/15', text: 'text-emerald-800 dark:text-emerald-300 font-bold', border: 'border-emerald-500/30' }
-  if (gradeNum === 2) return { grade, bg: 'bg-emerald-500/10', text: 'text-emerald-700 dark:text-emerald-400 font-bold', border: 'border-emerald-500/20' }
-  if (gradeNum <= 6) return { grade, bg: 'bg-blue-500/15', text: 'text-blue-800 dark:text-blue-300 font-bold', border: 'border-blue-500/30' }
-  if (gradeNum <= 8) return { grade, bg: 'bg-amber-500/15', text: 'text-amber-800 dark:text-amber-300 font-bold', border: 'border-amber-500/30' }
-  return { grade, bg: 'bg-rose-500/15', text: 'text-rose-800 dark:text-rose-300 font-bold', border: 'border-rose-500/30' }
+  if (gradeNum <= 2) return { grade: 'ممتاز', bg: 'bg-emerald-500/15', text: 'text-emerald-800 dark:text-emerald-300 font-bold', border: 'border-emerald-500/30' }
+  if (gradeNum <= 4) return { grade: 'جيد جداً', bg: 'bg-emerald-500/10', text: 'text-emerald-700 dark:text-emerald-400 font-bold', border: 'border-emerald-500/20' }
+  if (gradeNum <= 6) return { grade: 'جيد', bg: 'bg-blue-500/15', text: 'text-blue-800 dark:text-blue-300 font-bold', border: 'border-blue-500/30' }
+  if (gradeNum <= 8) return { grade: 'مقبول', bg: 'bg-amber-500/15', text: 'text-amber-800 dark:text-amber-300 font-bold', border: 'border-amber-500/30' }
+  return { grade: 'راسب', bg: 'bg-rose-500/15', text: 'text-rose-800 dark:text-rose-300 font-bold', border: 'border-rose-500/30' }
 }
 
 function computeGradeBadge(
@@ -1065,16 +1063,26 @@ export function SharedMarksEntry({
       <div className={`flex flex-col ${isAllPhases ? 'items-center sm:items-end' : 'items-end'} justify-center w-full`}>
         <div className={isAllPhases ? 'inline-flex items-center justify-center sm:justify-end gap-1 max-w-full' : 'flex items-center justify-end gap-1.5 w-full'}>
           <input
-            type="number"
+            type="text"
             inputMode="numeric"
             pattern="[0-9]*"
-            min={0}
-            max={100}
+            maxLength={3}
             aria-label={`${subjectLabel} ${type.toUpperCase()} score`}
             data-testid={`score-input-${curriculum}-${subjectId}-${type}`}
             placeholder={isAllPhases ? '--' : '0-100'}
             value={val}
-            onChange={(e) => validateAndApplyScore(curriculum, subjectId, subjectLabel, type, e.target.value)}
+            onChange={(e) => {
+              const raw = e.target.value
+              if (raw === '') {
+                validateAndApplyScore(curriculum, subjectId, subjectLabel, type, '')
+                return
+              }
+              if (!/^[0-9]+$/.test(raw)) return
+              if (raw.length > 2 && raw !== '100') return
+              const parsed = Number(raw)
+              if (Number.isNaN(parsed) || parsed < 0 || parsed > 100) return
+              validateAndApplyScore(curriculum, subjectId, subjectLabel, type, raw)
+            }}
             data-col={type.toUpperCase()}
             data-row={rowIndex}
             data-table={curriculum}
@@ -1114,6 +1122,8 @@ export function SharedMarksEntry({
                     }
                   }
                 }
+              } else if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.length === 1 && !/^[0-9]$/.test(e.key)) {
+                e.preventDefault()
               }
             }}
             disabled={isExamSetLocked}
@@ -1136,10 +1146,14 @@ export function SharedMarksEntry({
           {badge && (
             <span
               className={`inline-flex items-center justify-center ${
-                isAllPhases
+                curriculum === 'theology'
+                  ? isAllPhases
+                    ? 'min-w-[40px] sm:min-w-[52px] h-6 sm:h-7 px-1.5 text-[10px] sm:text-[11px] font-bold rounded-md sm:rounded-lg'
+                    : 'min-w-[48px] sm:min-w-[58px] h-7 px-2 rounded-lg text-[11px] sm:text-xs font-bold'
+                  : isAllPhases
                   ? 'min-w-[22px] sm:min-w-[32px] h-6 sm:h-7 px-1 text-[10px] sm:text-[11px] font-bold rounded-md sm:rounded-lg'
                   : 'min-w-[32px] sm:min-w-[40px] h-7 px-1.5 rounded-lg text-[11px] sm:text-xs font-bold'
-              } border-0 ${badge.bg} ${badge.text} shrink-0`}
+              } border-0 ${badge.bg} ${badge.text} shrink-0 whitespace-nowrap`}
               dir={curriculum === 'theology' ? 'rtl' : 'ltr'}
             >
               {badge.grade}
@@ -1466,10 +1480,10 @@ export function SharedMarksEntry({
               />
             </div>
 
-            {/* Row 2: Phase Track + Department View */}
-            <div className="flex items-center gap-1.5 w-full">
+            {/* Row 2: Phase Track + Department View (wraps cleanly on 320px phones) */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5 w-full">
               {/* Phase Track (BOT | MOT | EOT | ALL) */}
-              <div className={`flex-[4] grid ${hideBotPhase ? 'grid-cols-3' : 'grid-cols-4'} bg-white dark:bg-[#1E1F20] p-0.5 rounded-full border border-black/[0.06] dark:border-white/[0.06] h-[34px] items-center`} aria-label="Exam Phase Mobile">
+              <div className={`w-full sm:flex-[4] grid ${hideBotPhase ? 'grid-cols-3' : 'grid-cols-4'} bg-white dark:bg-[#1E1F20] p-0.5 rounded-full border border-black/[0.06] dark:border-white/[0.06] h-[34px] items-center`} aria-label="Exam Phase Mobile">
                 {availableExamTypes.map((type) => (
                   <button
                     key={type}
@@ -1491,7 +1505,7 @@ export function SharedMarksEntry({
 
               {/* Department Pill (Both | Sec | Theo) */}
               {allowedDepartment === 'both' ? (
-                <div className="flex-[3] grid grid-cols-3 bg-white dark:bg-[#1E1F20] p-0.5 rounded-full border border-black/[0.06] dark:border-white/[0.06] h-[34px] items-center text-[11px] font-semibold shrink-0" aria-label="Department View Mobile">
+                <div className="w-full sm:flex-[3] grid grid-cols-3 bg-white dark:bg-[#1E1F20] p-0.5 rounded-full border border-black/[0.06] dark:border-white/[0.06] h-[34px] items-center text-[11px] font-semibold shrink-0" aria-label="Department View Mobile">
                   {(['both', 'secular', 'theology'] as const).map((view) => (
                     <button
                       key={view}

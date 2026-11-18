@@ -37,6 +37,8 @@ export interface OfflineSyncStatusSnapshot {
 const memoryReadStore = new Map<string, ReadCacheEntry>();
 const memoryOutboxStore = new Map<string, OutboxMutation>();
 const pendingIdbWriteTimers = new Map<string, ReturnType<typeof setTimeout>>();
+const recentRevalidateAt = new Map<string, number>();
+const REVALIDATE_COOLDOWN_MS = 30000;
 let cachedDbPromise: Promise<IDBDatabase> | null = null;
 
 let syncInFlight = false;
@@ -272,16 +274,15 @@ function isAbortError(err: unknown): boolean {
 
 /**
  * Stale-While-Revalidate JSON fetcher backed by IndexedDB (`jiddah_cache_v1`).
- * Uses a generous 25000ms default timeout (matching server-side Supabase timeout)
- * and retries once on AbortError so remote DB round-trips never fail with
- * "The operation was aborted."
+ * Uses a mobile-safe 35000ms default timeout and throttled background
+ * revalidation so weak mobile data does not falsely flip offline or spam requests.
  */
 export async function offlineFetchJson<T>(
   url: string,
   options: OfflineFetchOptions = {}
 ): Promise<{ data: T; fromCache: boolean; stale: boolean }> {
   const cacheKey = options.cacheKey ?? url;
-  const timeoutMs = options.timeoutMs ?? 25000;
+  const timeoutMs = options.timeoutMs ?? 35000;
   const cached = await idbGetReadCache<T>(cacheKey);
 
   const fetchWithTimeout = async (attemptTimeoutMs = timeoutMs): Promise<T> => {
@@ -307,8 +308,11 @@ export async function offlineFetchJson<T>(
   };
 
   if (cached && !options.forceNetwork) {
-    // Revalidate in background when online
-    if (!isBrowserOffline()) {
+    // Revalidate in background when online (throttled per key on weak connections)
+    const now = Date.now();
+    const lastReval = recentRevalidateAt.get(cacheKey) ?? 0;
+    if (!isBrowserOffline() && now - lastReval > REVALIDATE_COOLDOWN_MS) {
+      recentRevalidateAt.set(cacheKey, now);
       fetchWithTimeout()
         .then((fresh) => {
           options.onBackgroundRefresh?.(fresh);
@@ -328,9 +332,9 @@ export async function offlineFetchJson<T>(
       return { data: cached.data, fromCache: true, stale: true };
     }
     if (isAbortError(err)) {
-      // Retry once without aggressive timeout if first attempt was aborted/timed out
+      // Retry once with an extended timeout on weak mobile links
       try {
-        const retryFresh = await fetchWithTimeout(Math.max(timeoutMs, 30000));
+        const retryFresh = await fetchWithTimeout(Math.max(timeoutMs, 45000));
         return { data: retryFresh, fromCache: false, stale: false };
       } catch (retryErr) {
         if (isAbortError(retryErr)) {

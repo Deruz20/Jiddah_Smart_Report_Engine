@@ -24,6 +24,7 @@ export const dynamic = 'force-dynamic'
 export default async function SecularHubPage() {
   let terms: TermData[] = []
   let circularClasses: CircularClassData[] = []
+  let canViewSchoolWideScope = false
   let error: string | null = null
 
   try {
@@ -58,6 +59,7 @@ export default async function SecularHubPage() {
     }
 
     const allowedClassIds = classIdsForType(access, 'circular')
+    canViewSchoolWideScope = allowedClassIds === null
 
     let classesQuery = supabase
       .from('circular_classes')
@@ -102,5 +104,11 @@ export default async function SecularHubPage() {
     )
   }
 
-  return <SecularHubClient terms={terms} circularClasses={circularClasses as any} />
+  return (
+    <SecularHubClient
+      terms={terms}
+      circularClasses={circularClasses as any}
+      canViewSchoolWideScope={canViewSchoolWideScope}
+    />
+  )
 }

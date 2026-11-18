@@ -322,8 +322,8 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
   }, [examBreakdown]);
 
   return (
-    <div className="w-full min-h-full pt-4 sm:pt-6 px-3 sm:px-5 lg:px-6 pb-6 space-y-4 lg:space-y-5 max-w-[1500px] mx-auto font-sans transition-colors">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#E4EAE6] dark:border-[#1E2B26]">
+    <div className="w-full min-h-full pt-6 sm:pt-6 px-3 sm:px-5 lg:px-6 pb-6 space-y-4 lg:space-y-5 max-w-[1500px] mx-auto font-sans transition-colors">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1 pb-3 border-b border-[#E4EAE6] dark:border-[#1E2B26]">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2 mb-1.5">
             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-300 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/30">
@@ -346,7 +346,7 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 mt-2 sm:mt-0 w-full sm:w-auto shrink-0">
           <button
             type="button"
             onClick={refreshTelemetry}

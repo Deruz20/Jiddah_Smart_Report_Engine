@@ -3,6 +3,12 @@ import {
   doesExamApplyToClassInTerm,
   type CandidateClassExclusionRule,
 } from "./academic-sections";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  fetchAndReconcileSecularMarks,
+  fetchAndReconcileTheologyMarks,
+  type ReconciledMarkEntry,
+} from "./marks-reconciliation";
 
 export interface TermRecord {
   id: string;
@@ -106,16 +112,96 @@ export function resolveActiveTermAndMatchingIds(terms: TermRecord[] | null | und
   const matchingTermIds = new Set<string>([active.id]);
   const activeName = normalizeTermToken(active.label || active.name);
   const activeYear = normalizeTermToken(active.academic_year);
+  const activeNum = active.term_number != null ? Number(active.term_number) : null;
 
   for (const t of list) {
     const tName = normalizeTermToken(t.label || t.name);
     const tYear = normalizeTermToken(t.academic_year);
-    if (activeName && tName === activeName && (!activeYear || !tYear || tYear === activeYear)) {
+    const tNum = t.term_number != null ? Number(t.term_number) : null;
+    const sameYear = !activeYear || !tYear || tYear === activeYear;
+    const matchesByName = Boolean(activeName && tName === activeName && sameYear);
+    const matchesByNum = Boolean(activeNum && tNum === activeNum && activeYear && tYear === activeYear);
+    if (matchesByName || matchesByNum) {
       matchingTermIds.add(t.id);
     }
   }
 
   return { activeTerm: active, matchingTermIds };
+}
+
+function mapAndDedupeDashboardMarks(
+  marks: ReconciledMarkEntry[],
+  activeEnrollmentSet: Set<string>,
+  studentToActiveEnrollment: Map<string, string>
+): MarkRowRecord[] {
+  const deduped = new Map<string, MarkRowRecord>();
+  for (const m of marks) {
+    const targetEnrollmentId =
+      (m.enrollment_id && activeEnrollmentSet.has(m.enrollment_id) ? m.enrollment_id : null) ||
+      (m.student_id ? studentToActiveEnrollment.get(m.student_id) || null : null);
+    if (!targetEnrollmentId) continue;
+
+    const subjectKey = m.subject_code || m.subject_id;
+    const key = `${targetEnrollmentId}:${subjectKey}`;
+    const existing = deduped.get(key);
+    if (!existing) {
+      deduped.set(key, {
+        id: m.id,
+        enrollment_id: targetEnrollmentId,
+        subject_id: m.subject_id,
+        bot_score: m.bot_score,
+        mot_score: m.mot_score,
+        eot_score: m.eot_score,
+      });
+    } else {
+      if (existing.bot_score == null && m.bot_score != null) existing.bot_score = m.bot_score;
+      if (existing.mot_score == null && m.mot_score != null) existing.mot_score = m.mot_score;
+      if (existing.eot_score == null && m.eot_score != null) existing.eot_score = m.eot_score;
+    }
+  }
+  return Array.from(deduped.values());
+}
+
+export async function fetchScopedReconciledDashboardMarks(
+  reader: SupabaseClient,
+  params: {
+    enrollments: EnrollmentRecord[];
+    termIds: string[];
+    canAccessSecular: boolean;
+    canAccessTheology: boolean;
+  }
+): Promise<{
+  circularMarks: MarkRowRecord[];
+  theologyMarks: MarkRowRecord[];
+}> {
+  const { enrollments, termIds, canAccessSecular, canAccessTheology } = params;
+  if (enrollments.length === 0 || termIds.length === 0) {
+    return { circularMarks: [], theologyMarks: [] };
+  }
+
+  const enrollmentIds = enrollments.map((e) => e.id).filter(Boolean);
+  const studentIds = [...new Set(enrollments.map((e) => e.student_id).filter((s): s is string => Boolean(s)))];
+  const activeEnrollmentSet = new Set(enrollmentIds);
+  const studentToActiveEnrollment = new Map<string, string>();
+  for (const e of enrollments) {
+    if (e.student_id && e.id && !studentToActiveEnrollment.has(e.student_id)) {
+      studentToActiveEnrollment.set(e.student_id, e.id);
+    }
+  }
+
+  const [reconciledCircular, reconciledTheology] = await Promise.all([
+    canAccessSecular
+      ? fetchAndReconcileSecularMarks(reader, { enrollmentIds, studentIds, termIds })
+      : Promise.resolve([]),
+    canAccessTheology
+      ? fetchAndReconcileTheologyMarks(reader, { enrollmentIds, studentIds, termIds })
+      : Promise.resolve([]),
+  ]);
+
+  return {
+    circularMarks: mapAndDedupeDashboardMarks(reconciledCircular, activeEnrollmentSet, studentToActiveEnrollment),
+    theologyMarks: mapAndDedupeDashboardMarks(reconciledTheology, activeEnrollmentSet, studentToActiveEnrollment),
+  };
 }
 
 export function toNumericScore(val: unknown): number | null {

@@ -8,6 +8,9 @@ import { SharedMarksEntry, ExamType } from './shared-marks-entry'
 import { TermData, EnrollmentData, CircularMarkRow, TheologyMarkRow } from '@/types/models'
 import {
   broadcastMarksUpdated,
+  flushOfflineOutbox,
+  getPendingOutboxItems,
+  OFFLINE_SYNC_EVENT,
   offlineFetchJson,
   submitMutationWithOfflineFallback,
 } from '@/lib/offline-sync'
@@ -55,6 +58,9 @@ export function AdminMarksEntryClient({
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [pendingOutboxCount, setPendingOutboxCount] = useState(0)
+  const [isFlushingOutbox, setIsFlushingOutbox] = useState(false)
+  const [reloadNonce, setReloadNonce] = useState(0)
   const [isPending] = useTransition()
 
   const marksCacheRef = useRef<
@@ -68,6 +74,84 @@ export function AdminMarksEntryClient({
     const name = String(err?.name || '')
     const msg = String(err?.message || '').toLowerCase()
     return name === 'AbortError' || msg.includes('aborted')
+  }
+
+  const refreshPendingOutboxAndFlush = async (autoFlushIfOnline = false) => {
+    try {
+      const items = await getPendingOutboxItems()
+      const markItems = items.filter((item) => item.url.includes('/api/marks') || item.url.includes('-marks'))
+      setPendingOutboxCount(markItems.length)
+      if (autoFlushIfOnline && markItems.length > 0 && (typeof navigator === 'undefined' || navigator.onLine !== false)) {
+        const res = await flushOfflineOutbox()
+        const after = await getPendingOutboxItems()
+        setPendingOutboxCount(after.filter((item) => item.url.includes('/api/marks') || item.url.includes('-marks')).length)
+        if (res.synced > 0) {
+          marksCacheRef.current.clear()
+          invalidateClientCache()
+          setReloadNonce((n) => n + 1)
+          toast.success(`Auto-synced ${res.synced} queued mark save(s) to Postgres.`)
+        }
+      }
+    } catch {
+      // Non-fatal outbox inspection error
+    }
+  }
+
+  useEffect(() => {
+    refreshPendingOutboxAndFlush(true)
+    const onSyncChanged = () => {
+      refreshPendingOutboxAndFlush(false)
+    }
+    if (typeof window !== 'undefined') {
+      window.addEventListener(OFFLINE_SYNC_EVENT, onSyncChanged)
+      return () => window.removeEventListener(OFFLINE_SYNC_EVENT, onSyncChanged)
+    }
+  }, [])
+
+  const applyPendingOutboxOverlay = async (
+    enrollmentId: string,
+    termId: string,
+    circRows: CircularMarkRow[],
+    theoRows: TheologyMarkRow[]
+  ): Promise<{ circular: CircularMarkRow[]; theology: TheologyMarkRow[] }> => {
+    try {
+      const items = await getPendingOutboxItems()
+      const markItems = items.filter((item) => item.url.includes('/api/marks') || item.url.includes('-marks'))
+      setPendingOutboxCount(markItems.length)
+      const matching = markItems.filter((item) => {
+        const b = item.body as Record<string, any> | null
+        return b && b.enrollment_id === enrollmentId && b.term_id === termId
+      })
+      if (matching.length === 0) return { circular: circRows, theology: theoRows }
+
+      const nextC = circRows.map((r) => ({ ...r }))
+      const nextT = theoRows.map((r) => ({ ...r }))
+      for (const item of matching) {
+        const b = item.body as Record<string, any>
+        if (Array.isArray(b.circular_marks)) {
+          for (const pm of b.circular_marks) {
+            const target = nextC.find((r) => r.subject_id === pm.subject_id)
+            if (target) {
+              if (pm.bot_score !== undefined) target.bot_score = pm.bot_score
+              if (pm.mot_score !== undefined) target.mot_score = pm.mot_score
+              if (pm.eot_score !== undefined) target.eot_score = pm.eot_score
+            }
+          }
+        }
+        if (Array.isArray(b.theology_marks)) {
+          for (const pm of b.theology_marks) {
+            const target = nextT.find((r) => r.subject_id === pm.subject_id)
+            if (target) {
+              if (pm.mot_score !== undefined) target.mot_score = pm.mot_score
+              if (pm.eot_score !== undefined) target.eot_score = pm.eot_score
+            }
+          }
+        }
+      }
+      return { circular: nextC, theology: nextT }
+    } catch {
+      return { circular: circRows, theology: theoRows }
+    }
   }
 
   useEffect(() => {
@@ -168,26 +252,36 @@ export function AdminMarksEntryClient({
         }>(url, {
           cacheKey: `marks_sheet_${cacheKey}`,
           timeoutMs: 25000,
-          onBackgroundRefresh: (fresh: any) => {
+          onBackgroundRefresh: async (fresh: any) => {
             if (cancelled || reqId !== activeMarksReqIdRef.current || !fresh) return
-            const nextC = fresh.circular_marks ?? []
-            const nextT = fresh.theology_marks ?? []
-            setCircularMarks(nextC)
-            setTheologyMarks(nextT)
+            const overlaid = await applyPendingOutboxOverlay(
+              selectedEnrollmentId,
+              selectedTermId,
+              fresh.circular_marks ?? [],
+              fresh.theology_marks ?? []
+            )
+            if (cancelled || reqId !== activeMarksReqIdRef.current) return
+            setCircularMarks(overlaid.circular)
+            setTheologyMarks(overlaid.theology)
             marksCacheRef.current.set(cacheKey, {
-              circular_marks: nextC,
-              theology_marks: nextT,
+              circular_marks: overlaid.circular,
+              theology_marks: overlaid.theology,
             })
           },
         })
         if (cancelled || reqId !== activeMarksReqIdRef.current) return
-        const nextCircular = data?.circular_marks ?? []
-        const nextTheology = data?.theology_marks ?? []
-        setCircularMarks(nextCircular)
-        setTheologyMarks(nextTheology)
+        const overlaid = await applyPendingOutboxOverlay(
+          selectedEnrollmentId,
+          selectedTermId,
+          data?.circular_marks ?? [],
+          data?.theology_marks ?? []
+        )
+        if (cancelled || reqId !== activeMarksReqIdRef.current) return
+        setCircularMarks(overlaid.circular)
+        setTheologyMarks(overlaid.theology)
         marksCacheRef.current.set(cacheKey, {
-          circular_marks: nextCircular,
-          theology_marks: nextTOrEmpty(nextTheology),
+          circular_marks: overlaid.circular,
+          theology_marks: nextTOrEmpty(overlaid.theology),
         })
       } catch (err: any) {
         if (cancelled || reqId !== activeMarksReqIdRef.current) return
@@ -229,7 +323,31 @@ export function AdminMarksEntryClient({
     return () => {
       cancelled = true
     }
-  }, [selectedEnrollmentId, selectedTermId])
+  }, [selectedEnrollmentId, selectedTermId, reloadNonce])
+
+  const handleFlushOutbox = async () => {
+    if (isFlushingOutbox) return
+    setIsFlushingOutbox(true)
+    try {
+      const res = await flushOfflineOutbox()
+      await refreshPendingOutboxAndFlush(false)
+      if (res.synced > 0) {
+        marksCacheRef.current.clear()
+        invalidateClientCache()
+        setReloadNonce((n) => n + 1)
+        router.refresh()
+        toast.success(`Synced ${res.synced} queued mark save(s) to Postgres!`)
+      } else if (res.failed > 0) {
+        toast.error(`Sync attempted but ${res.failed} item(s) still failed. Check network or permissions.`)
+      } else {
+        toast.info('All local marks are already synced with the server.')
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to sync local marks')
+    } finally {
+      setIsFlushingOutbox(false)
+    }
+  }
 
   const handleSaveMarks = async (event?: React.FormEvent<HTMLFormElement>) => {
     if (event) event.preventDefault()
@@ -290,10 +408,14 @@ export function AdminMarksEntryClient({
       })
 
       setSuccess(true)
+      await refreshPendingOutboxAndFlush(false)
       if (res.queued) {
         toast.info('Saved locally (Offline Mode). Will auto-sync when connection is restored.')
       } else {
-        toast.success('Marks saved successfully!')
+        if (Array.isArray(res.data?.circular_marks) || Array.isArray(res.data?.theology_marks)) {
+          invalidateClientCache()
+        }
+        toast.success('Marks verified & saved to server!')
         router.refresh()
       }
       setTimeout(() => setSuccess(false), 3500)
@@ -333,6 +455,9 @@ export function AdminMarksEntryClient({
       assignedSubjects={assignedSubjects}
       roleLabel={roleLabel}
       gradingConfig={gradingConfig}
+      pendingOutboxCount={pendingOutboxCount}
+      isFlushingOutbox={isFlushingOutbox}
+      onFlushOutbox={handleFlushOutbox}
     />
   )
 }

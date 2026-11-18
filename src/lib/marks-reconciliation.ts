@@ -48,6 +48,7 @@ export interface ReconciledMarkEntry {
   mot_score: number | null
   eot_score: number | null
   source_table?: 'circular_marks' | 'marks' | 'theology_marks' | 'merged'
+  [key: string]: unknown
 }
 
 /**
@@ -202,6 +203,72 @@ export async function resolveEquivalentTerms(
   }
 }
 
+async function resolveBidirectionalEnrollments(
+  supabase: SupabaseClient,
+  enrollmentIds: string[],
+  studentIds: string[]
+): Promise<{
+  allEnrollmentIds: Set<string>
+  allStudentIds: Set<string>
+  enrollmentToStudentMap: Map<string, string>
+}> {
+  const allEnrollmentIds = new Set<string>(enrollmentIds.filter(Boolean))
+  const allStudentIds = new Set<string>(studentIds.filter(Boolean))
+  const enrollmentToStudentMap = new Map<string, string>()
+
+  const initialEnrollments = Array.from(allEnrollmentIds)
+  if (initialEnrollments.length > 0) {
+    for (let i = 0; i < initialEnrollments.length; i += 100) {
+      const chunk = initialEnrollments.slice(i, i + 100)
+      const { data: matched, error } = await supabase
+        .from('enrollments')
+        .select('id, student_id')
+        .in('id', chunk)
+      if (!error && matched) {
+        for (const e of matched) {
+          if (e.id && e.student_id) {
+            allStudentIds.add(e.student_id)
+            enrollmentToStudentMap.set(e.id, e.student_id)
+          }
+        }
+      }
+    }
+  }
+
+  const targetStudents = Array.from(allStudentIds)
+  if (targetStudents.length > 0) {
+    for (let i = 0; i < targetStudents.length; i += 100) {
+      const chunk = targetStudents.slice(i, i + 100)
+      const { data: siblingEnrollments, error } = await supabase
+        .from('enrollments')
+        .select('id, student_id')
+        .in('student_id', chunk)
+      if (!error && siblingEnrollments) {
+        for (const e of siblingEnrollments) {
+          if (e.id) {
+            allEnrollmentIds.add(e.id)
+            if (e.student_id) {
+              enrollmentToStudentMap.set(e.id, e.student_id)
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return { allEnrollmentIds, allStudentIds, enrollmentToStudentMap }
+}
+
+function getReconciledSubjectCode(
+  name: string | null | undefined,
+  curriculum?: 'secular' | 'theology'
+): string {
+  if (!name) return ''
+  if (curriculum === 'theology') return canonicalTheologySubjectCode(name)
+  if (curriculum === 'secular') return canonicalSecularSubjectCode(name)
+  return canonicalSecularSubjectCode(name) || canonicalTheologySubjectCode(name)
+}
+
 /**
  * Universal Secular Marks Fetcher & Reconciler
  * Queries both `circular_marks` and legacy `marks` using `fetchAllSupabaseRows`,
@@ -215,28 +282,26 @@ export async function fetchAndReconcileSecularMarks(
   if (termIds.length === 0) return []
 
   const marksList: any[] = []
-  const allEnrollmentIds = new Set<string>(enrollmentIds.filter(Boolean))
-  const enrollmentToStudentMap = new Map<string, string>()
+  const { allEnrollmentIds, allStudentIds, enrollmentToStudentMap } =
+    await resolveBidirectionalEnrollments(supabase, enrollmentIds, studentIds)
 
-  // Resolve any student_ids to corresponding enrollment_ids
-  if (studentIds.length > 0) {
-    for (let i = 0; i < studentIds.length; i += 100) {
-      const chunk = studentIds.slice(i, i + 100)
-      const { data: matchedEnrollments, error: enrollErr } = await supabase
-        .from('enrollments')
-        .select('id, student_id')
-        .in('student_id', chunk)
-      if (!enrollErr && matchedEnrollments) {
-        for (const e of matchedEnrollments) {
-          if (e.id) {
-            allEnrollmentIds.add(e.id)
-            if (e.student_id) {
-              enrollmentToStudentMap.set(e.id, e.student_id)
-            }
-          }
-        }
+  // Fetch secular subject metadata so every reconciled mark carries canonical subject_name/code
+  const subjectMetaMap = new Map<string, { name: string; code: string }>()
+  try {
+    const [circSubsRes, legacySubsRes] = await Promise.all([
+      supabase.from('circular_subjects').select('id, subject_name'),
+      supabase.from('subjects').select('id, subject_name').eq('curriculum', 'secular'),
+    ])
+    for (const s of [...(circSubsRes.data || []), ...(legacySubsRes.data || [])]) {
+      if (s?.id && s?.subject_name && !subjectMetaMap.has(s.id)) {
+        subjectMetaMap.set(s.id, {
+          name: String(s.subject_name),
+          code: canonicalSecularSubjectCode(s.subject_name),
+        })
       }
     }
+  } catch {
+    // Non-fatal metadata enrichment fallback
   }
 
   // 1. Fetch from circular_marks by enrollment_id (circular_marks table does not have student_id column)
@@ -256,10 +321,11 @@ export async function fetchAndReconcileSecularMarks(
   }
 
   // 2. Fetch from legacy marks table if it exists (legacy marks has student_id column)
+  const targetStudentList = Array.from(allStudentIds)
   try {
-    if (studentIds.length > 0) {
-      for (let i = 0; i < studentIds.length; i += 100) {
-        const chunk = studentIds.slice(i, i + 100)
+    if (targetStudentList.length > 0) {
+      for (let i = 0; i < targetStudentList.length; i += 100) {
+        const chunk = targetStudentList.slice(i, i + 100)
         const rows = await fetchAllSupabaseRows(() =>
           supabase
             .from('marks')
@@ -308,6 +374,7 @@ export async function fetchAndReconcileSecularMarks(
       ? `${targetEnrollmentId}:${targetSubjectId}`
       : `${targetStudentId}:${targetSubjectId}`
 
+    const meta = subjectMetaMap.get(targetSubjectId)
     const botScore = getMarkScore(raw, 'bot')
     const motScore = getMarkScore(raw, 'mot')
     const eotScore = getMarkScore(raw, 'eot')
@@ -319,6 +386,8 @@ export async function fetchAndReconcileSecularMarks(
         enrollment_id: targetEnrollmentId,
         student_id: targetStudentId,
         subject_id: targetSubjectId,
+        subject_name: meta?.name,
+        subject_code: meta?.code,
         bot_score: botScore,
         mot_score: motScore,
         eot_score: eotScore,
@@ -349,28 +418,32 @@ export async function fetchAndReconcileTheologyMarks(
   if (termIds.length === 0) return []
 
   const marksList: any[] = []
-  const allEnrollmentIds = new Set<string>(enrollmentIds.filter(Boolean))
-  const enrollmentToStudentMap = new Map<string, string>()
+  const { allEnrollmentIds, enrollmentToStudentMap } =
+    await resolveBidirectionalEnrollments(supabase, enrollmentIds, studentIds)
 
-  // Resolve any student_ids to corresponding enrollment_ids
-  if (studentIds.length > 0) {
-    for (let i = 0; i < studentIds.length; i += 100) {
-      const chunk = studentIds.slice(i, i + 100)
-      const { data: matchedEnrollments, error: enrollErr } = await supabase
-        .from('enrollments')
-        .select('id, student_id')
-        .in('student_id', chunk)
-      if (!enrollErr && matchedEnrollments) {
-        for (const e of matchedEnrollments) {
-          if (e.id) {
-            allEnrollmentIds.add(e.id)
-            if (e.student_id) {
-              enrollmentToStudentMap.set(e.id, e.student_id)
-            }
-          }
-        }
+  // Fetch theology subject metadata so every reconciled mark carries canonical subject_name/code
+  const subjectMetaMap = new Map<string, { name: string; code: string }>()
+  try {
+    const [theoSubsRes, legacyTheoSubsRes] = await Promise.all([
+      supabase.from('theology_subjects').select('id, subject_name_arabic, subject_name'),
+      supabase.from('subjects').select('id, subject_name').eq('curriculum', 'theology'),
+    ])
+    const allTheoSubs = [...(theoSubsRes.data || []), ...(legacyTheoSubsRes.data || [])] as Array<{
+      id?: string
+      subject_name_arabic?: string | null
+      subject_name?: string | null
+    }>
+    for (const s of allTheoSubs) {
+      const sName = s?.subject_name_arabic || s?.subject_name
+      if (s?.id && sName && !subjectMetaMap.has(s.id)) {
+        subjectMetaMap.set(s.id, {
+          name: String(sName),
+          code: canonicalTheologySubjectCode(sName),
+        })
       }
     }
+  } catch {
+    // Non-fatal metadata enrichment fallback
   }
 
   // Fetch from theology_marks by enrollment_id (theology_marks table does not have student_id column)
@@ -402,6 +475,7 @@ export async function fetchAndReconcileTheologyMarks(
       ? `${targetEnrollmentId}:${targetSubjectId}`
       : `${targetStudentId}:${targetSubjectId}`
 
+    const meta = subjectMetaMap.get(targetSubjectId)
     const motScore = getMarkScore(raw, 'mot')
     const eotScore = getMarkScore(raw, 'eot')
 
@@ -412,6 +486,8 @@ export async function fetchAndReconcileTheologyMarks(
         enrollment_id: targetEnrollmentId,
         student_id: targetStudentId,
         subject_id: targetSubjectId,
+        subject_name: meta?.name,
+        subject_code: meta?.code,
         bot_score: null,
         mot_score: motScore,
         eot_score: eotScore,
@@ -428,7 +504,8 @@ export async function fetchAndReconcileTheologyMarks(
 
 /**
  * Resilient lookup helper: looks up a mark for a student and subject,
- * falling back across enrollment_id vs student_id, and subject UUID vs subject code.
+ * falling back across enrollment_id vs student_id, and subject UUID vs canonical subject code.
+ * Merges non-null scores across matching candidates so a sibling enrollment or alias ID is never shadowed by nulls.
  */
 export function findReconciledMark(
   reconciledMarks: ReconciledMarkEntry[],
@@ -438,39 +515,51 @@ export function findReconciledMark(
     subjectId?: string | null
     subjectCode?: string | null
     subjectName?: string | null
+    curriculum?: 'secular' | 'theology'
   }
 ): ReconciledMarkEntry | undefined {
-  const { studentId, enrollmentId, subjectId, subjectCode, subjectName } = lookup
+  const { studentId, enrollmentId, subjectId, subjectCode, subjectName, curriculum } = lookup
+  if (!enrollmentId && !studentId) return undefined
 
-  // 1. Exact enrollment_id + subject_id match
-  if (enrollmentId && subjectId) {
-    const m = reconciledMarks.find(
-      (r) => r.enrollment_id === enrollmentId && r.subject_id === subjectId
-    )
-    if (m) return m
+  const targetCode = subjectCode || getReconciledSubjectCode(subjectName, curriculum)
+
+  const exactEnrollmentMatches =
+    enrollmentId && subjectId
+      ? reconciledMarks.filter((r) => r.enrollment_id === enrollmentId && r.subject_id === subjectId)
+      : []
+
+  const exactStudentMatches =
+    studentId && subjectId
+      ? reconciledMarks.filter(
+          (r) =>
+            r.student_id === studentId &&
+            r.subject_id === subjectId &&
+            (!enrollmentId || r.enrollment_id !== enrollmentId)
+        )
+      : []
+
+  const codeMatches = targetCode
+    ? reconciledMarks.filter((r) => {
+        const matchOwner =
+          (enrollmentId && r.enrollment_id === enrollmentId) ||
+          (studentId && r.student_id === studentId)
+        if (!matchOwner) return false
+        if (subjectId && r.subject_id === subjectId) return false
+        const rCode = r.subject_code || getReconciledSubjectCode(r.subject_name, curriculum)
+        return rCode !== '' && rCode === targetCode
+      })
+    : []
+
+  const candidates = [...exactEnrollmentMatches, ...exactStudentMatches, ...codeMatches]
+  if (candidates.length === 0) return undefined
+  if (candidates.length === 1) return candidates[0]
+
+  const merged: ReconciledMarkEntry = { ...candidates[0] }
+  for (let i = 1; i < candidates.length; i++) {
+    const next = candidates[i]
+    if (merged.bot_score === null && next.bot_score !== null) merged.bot_score = next.bot_score
+    if (merged.mot_score === null && next.mot_score !== null) merged.mot_score = next.mot_score
+    if (merged.eot_score === null && next.eot_score !== null) merged.eot_score = next.eot_score
   }
-
-  // 2. Exact student_id + subject_id match
-  if (studentId && subjectId) {
-    const m = reconciledMarks.find(
-      (r) => r.student_id === studentId && r.subject_id === subjectId
-    )
-    if (m) return m
-  }
-
-  // 3. Fallback by canonical subject code
-  const targetCode = subjectCode || canonicalSecularSubjectCode(subjectName)
-  if (targetCode && (enrollmentId || studentId)) {
-    const m = reconciledMarks.find((r) => {
-      const matchOwner =
-        (enrollmentId && r.enrollment_id === enrollmentId) ||
-        (studentId && r.student_id === studentId)
-      if (!matchOwner) return false
-      const rCode = r.subject_code || canonicalSecularSubjectCode(r.subject_name)
-      return rCode === targetCode
-    })
-    if (m) return m
-  }
-
-  return undefined
+  return merged
 }

@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
     }
 
     const supabaseAdmin = createAdminClient(cookieStore)
-    let classesQuery = supabase
+    let classesQuery = supabaseAdmin
       .from('theology_classes')
       .select('id, class_name_arabic, class_name_english, level')
       .order('level', { ascending: true })
@@ -74,13 +74,13 @@ export async function GET(request: NextRequest) {
 
     const [permittedClassesRes, termMetaRes, schoolSettings, subjectsRes] = await Promise.all([
       classesQuery,
-      supabase
+      supabaseAdmin
         .from('terms')
         .select('id, academic_year, term_number, label, is_current')
         .eq('id', termId)
         .maybeSingle(),
       fetchMergedSchoolSettings(supabaseAdmin),
-      supabase
+      supabaseAdmin
         .from('theology_subjects')
         .select('id, subject_name_arabic, level, sort_order')
         .order('sort_order', { ascending: true }),
@@ -100,7 +100,7 @@ export async function GET(request: NextRequest) {
       sectionClassIds && sectionClassIds.length === 0
         ? []
         : await fetchAllSupabaseRows(() => {
-            let query = supabase
+            let query = supabaseAdmin
               .from('enrollments')
               .select(`
                 id,
@@ -132,7 +132,7 @@ export async function GET(request: NextRequest) {
     // Resilient fallback to `subjects` table if `theology_subjects` errored or is empty
     if (subjectsRes.error || subjects.length === 0) {
       console.warn('theology_subjects primary lookup returned empty/error, trying fallback:', subjectsRes.error?.message)
-      const fallbackQuery = await supabase
+      const fallbackQuery = await supabaseAdmin
         .from('subjects')
         .select('id, subject_name, curriculum, section')
         .eq('curriculum', 'theology')
@@ -196,12 +196,12 @@ export async function GET(request: NextRequest) {
 
     let termInfo = { termIds: [termId], termAliases: [] as string[], academicYear: new Date().getFullYear() }
     try {
-      termInfo = await resolveEquivalentTerms(supabase, termId)
+      termInfo = await resolveEquivalentTerms(supabaseAdmin, termId)
     } catch (e) {
       console.warn('Theology Hub resolveEquivalentTerms fallback:', e)
     }
 
-    const reconciledMarks = await fetchAndReconcileTheologyMarks(supabase, {
+    const reconciledMarks = await fetchAndReconcileTheologyMarks(supabaseAdmin, {
       enrollmentIds,
       studentIds,
       termIds: termInfo.termIds,
@@ -214,6 +214,8 @@ export async function GET(request: NextRequest) {
       enrollment_id: mark.enrollment_id,
       student_id: mark.student_id,
       subject_id: mark.subject_id,
+      subject_name: mark.subject_name,
+      subject_code: mark.subject_code,
       mot_score: mark.mot_score,
       eot_score: mark.eot_score,
     }))

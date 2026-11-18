@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
     }
 
     const supabaseAdmin = createAdminClient(cookieStore)
-    let classesQuery = supabase
+    let classesQuery = supabaseAdmin
       .from('circular_classes')
       .select('id, class_name, section')
       .order('section', { ascending: true })
@@ -72,13 +72,13 @@ export async function GET(request: NextRequest) {
 
     const [permittedClassesRes, termMetaRes, schoolSettings, circularSubjectsRes] = await Promise.all([
       classesQuery,
-      supabase
+      supabaseAdmin
         .from('terms')
         .select('id, academic_year, term_number, label, is_current')
         .eq('id', termId)
         .maybeSingle(),
       fetchMergedSchoolSettings(supabaseAdmin),
-      supabase
+      supabaseAdmin
         .from('circular_subjects')
         .select('id, subject_name, section')
         .order('subject_name', { ascending: true }),
@@ -98,7 +98,7 @@ export async function GET(request: NextRequest) {
       sectionClassIds && sectionClassIds.length === 0
         ? []
         : await fetchAllSupabaseRows(() => {
-            let query = supabase
+            let query = supabaseAdmin
               .from('enrollments')
               .select(`
                 id,
@@ -139,7 +139,7 @@ export async function GET(request: NextRequest) {
 
     // Fallback to legacy `subjects` table if `circular_subjects` is empty or errored
     if (circularSubjectsRes.error || subjects.length === 0) {
-      const legacySubjects = await supabase
+      const legacySubjects = await supabaseAdmin
         .from('subjects')
         .select('id, subject_name, section, curriculum')
         .eq('curriculum', 'secular')
@@ -183,13 +183,13 @@ export async function GET(request: NextRequest) {
 
     let termInfo = { termIds: [termId], termAliases: [] as string[], academicYear: new Date().getFullYear() }
     try {
-      termInfo = await resolveEquivalentTerms(supabase, termId)
+      termInfo = await resolveEquivalentTerms(supabaseAdmin, termId)
     } catch (e) {
       console.warn('Secular Hub resolveEquivalentTerms fallback:', e)
     }
     const studentIds = normalizedEnrollments.map((e: any) => e.student_id).filter(Boolean) as string[]
 
-    const reconciledMarks = await fetchAndReconcileSecularMarks(supabase, {
+    const reconciledMarks = await fetchAndReconcileSecularMarks(supabaseAdmin, {
       enrollmentIds,
       studentIds,
       termIds: termInfo.termIds,
@@ -202,6 +202,8 @@ export async function GET(request: NextRequest) {
       enrollment_id: mark.enrollment_id,
       student_id: mark.student_id,
       subject_id: mark.subject_id,
+      subject_name: mark.subject_name,
+      subject_code: mark.subject_code,
       bot_score: mark.bot_score,
       mot_score: mark.mot_score,
       eot_score: mark.eot_score,

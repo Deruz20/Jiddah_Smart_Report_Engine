@@ -9,7 +9,7 @@ import {
   buildClassStatuses,
   buildDashboardAlerts,
   computeExamBreakdown,
-  filterMarksByMatchingTerms,
+  fetchScopedReconciledDashboardMarks,
   hasScoreAnomaly,
   resolveActiveTermAndMatchingIds,
   resolveActivityRows,
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
 
     let enrollQuery = reader
       .from("enrollments")
-      .select("id, circular_class_id, theology_class_id, students!inner(id, is_archived)", { count: "exact" })
+      .select("id, student_id, circular_class_id, theology_class_id, students!inner(id, is_archived)", { count: "exact" })
       .eq("is_active", true)
       .eq("students.is_archived", false);
     let classQuery = reader.from("circular_classes").select("id, class_name, section");
@@ -152,48 +152,13 @@ export async function GET(request: NextRequest) {
     const { activeTerm, matchingTermIds } = resolveActiveTermAndMatchingIds(terms || []);
     const matchingTermIdArray = Array.from(matchingTermIds);
     const enrollRows = enrollments ?? [];
-    const scopedEnrollmentIds = enrollRows.map((e: any) => e.id).filter(Boolean);
-    const allowedEnrollmentIdSet = new Set(scopedEnrollmentIds);
 
-    let circMarksQuery = reader
-      .from("circular_marks")
-      .select("id, enrollment_id, subject_id, term_id, bot_score, mot_score, eot_score");
-    let theoMarksQuery = reader
-      .from("theology_marks")
-      .select("id, enrollment_id, subject_id, term_id, mot_score, eot_score");
-
-    if (matchingTermIdArray.length === 1) {
-      circMarksQuery = circMarksQuery.eq("term_id", matchingTermIdArray[0]);
-      theoMarksQuery = theoMarksQuery.eq("term_id", matchingTermIdArray[0]);
-    } else if (matchingTermIdArray.length > 1) {
-      circMarksQuery = circMarksQuery.in("term_id", matchingTermIdArray);
-      theoMarksQuery = theoMarksQuery.in("term_id", matchingTermIdArray);
-    }
-
-    if (validCirc !== null && scopedEnrollmentIds.length > 0 && scopedEnrollmentIds.length <= 250) {
-      circMarksQuery = circMarksQuery.in("enrollment_id", scopedEnrollmentIds);
-    }
-    if (validTheo !== null && scopedEnrollmentIds.length > 0 && scopedEnrollmentIds.length <= 250) {
-      theoMarksQuery = theoMarksQuery.in("enrollment_id", scopedEnrollmentIds);
-    }
-
-    const [{ data: rawCircularMarks }, { data: rawTheologyMarks }] = await Promise.all([
-      scope.canAccessSecular && (validCirc === null || scopedEnrollmentIds.length > 0)
-        ? circMarksQuery
-        : Promise.resolve({ data: [] }),
-      scope.canAccessTheology && (validTheo === null || scopedEnrollmentIds.length > 0)
-        ? theoMarksQuery
-        : Promise.resolve({ data: [] }),
-    ]);
-
-    const circularMarks = filterMarksByMatchingTerms(
-      (rawCircularMarks || []).filter((m: any) => allowedEnrollmentIdSet.has(m.enrollment_id)),
-      matchingTermIds
-    );
-    const theologyMarks = filterMarksByMatchingTerms(
-      (rawTheologyMarks || []).filter((m: any) => allowedEnrollmentIdSet.has(m.enrollment_id)),
-      matchingTermIds
-    );
+    const { circularMarks, theologyMarks } = await fetchScopedReconciledDashboardMarks(reader, {
+      enrollments: enrollRows,
+      termIds: matchingTermIdArray,
+      canAccessSecular: scope.canAccessSecular && (validCirc === null || enrollRows.length > 0),
+      canAccessTheology: scope.canAccessTheology && (validTheo === null || enrollRows.length > 0),
+    });
 
     const {
       secularClassStatuses,

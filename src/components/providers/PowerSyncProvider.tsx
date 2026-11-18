@@ -52,6 +52,14 @@ export const PowerSyncProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     let active = true;
     const tier = applyDeviceTierToDom();
+    let offlineGraceTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const clearOfflineTimer = () => {
+      if (offlineGraceTimer) {
+        clearTimeout(offlineGraceTimer);
+        offlineGraceTimer = null;
+      }
+    };
 
     const refreshSnapshot = async () => {
       const snap = await getOfflineSyncStatus();
@@ -71,6 +79,12 @@ export const PowerSyncProvider = ({ children }: { children: ReactNode }) => {
     }
 
     const handleOnline = () => {
+      clearOfflineTimer();
+      setRuntimeState((prev) => ({
+        ...prev,
+        isOnline: true,
+        isConnected: true,
+      }));
       flushOfflineOutbox()
         .catch(() => {})
         .finally(() => {
@@ -79,7 +93,14 @@ export const PowerSyncProvider = ({ children }: { children: ReactNode }) => {
     };
 
     const handleOffline = () => {
-      refreshSnapshot();
+      // Grace period prevents false disconnect flashes on weak mobile data handoffs
+      clearOfflineTimer();
+      offlineGraceTimer = setTimeout(() => {
+        if (!active) return;
+        if (typeof navigator === "undefined" || !navigator.onLine) {
+          refreshSnapshot();
+        }
+      }, 2500);
     };
 
     const handleSyncChanged = (event: Event) => {
@@ -101,6 +122,7 @@ export const PowerSyncProvider = ({ children }: { children: ReactNode }) => {
 
     return () => {
       active = false;
+      clearOfflineTimer();
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
       window.removeEventListener(OFFLINE_SYNC_EVENT, handleSyncChanged);

@@ -1,4 +1,4 @@
-import { createClient } from "@/utils/supabase/server";
+import { createAdminClient, createClient } from "@/utils/supabase/server";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { corsPreflight, withCors } from "@/lib/api-cors";
@@ -46,44 +46,59 @@ export async function GET(request: NextRequest) {
     }
 
     const scope = resolveUserScope(access);
+    const reader = createAdminClient(cookieStore);
     const allowedCirc = classIdsForType(access, "circular");
     const allowedTheo = classIdsForType(access, "theology");
     const isUuid = (id: string) =>
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
-    let enrollQuery = supabase
+    let enrollQuery = reader
       .from("enrollments")
       .select("id, circular_class_id, theology_class_id, students!inner(id, is_archived)", { count: "exact" })
       .eq("is_active", true)
       .eq("students.is_archived", false);
-    let classQuery = supabase.from("circular_classes").select("id, class_name, section");
-    let theoClassQuery = supabase
+    let classQuery = reader.from("circular_classes").select("id, class_name, section");
+    let theoClassQuery = reader
       .from("theology_classes")
       .select("id, class_name_english, class_name_arabic, level");
 
-    if (allowedCirc !== null || allowedTheo !== null) {
-      const validCirc = (allowedCirc || []).filter(isUuid);
-      const validTheo = (allowedTheo || []).filter(isUuid);
-      const orParts = [
-        ...(validCirc.length ? [`circular_class_id.in.(${validCirc.join(",")})`] : []),
-        ...(validTheo.length ? [`theology_class_id.in.(${validTheo.join(",")})`] : []),
-      ];
+    const validCirc = allowedCirc === null ? null : allowedCirc.filter(isUuid);
+    const validTheo = allowedTheo === null ? null : allowedTheo.filter(isUuid);
+
+    if (validCirc !== null || validTheo !== null) {
+      const orParts: string[] = [];
+      if (validCirc === null) {
+        if (scope.canAccessSecular) orParts.push("circular_class_id.not.is.null");
+      } else if (validCirc.length > 0) {
+        orParts.push(`circular_class_id.in.(${validCirc.join(",")})`);
+      }
+
+      if (validTheo === null) {
+        if (scope.canAccessTheology) orParts.push("theology_class_id.not.is.null");
+      } else if (validTheo.length > 0) {
+        orParts.push(`theology_class_id.in.(${validTheo.join(",")})`);
+      }
+
       if (orParts.length > 0) {
         enrollQuery = enrollQuery.or(orParts.join(","));
       } else {
         enrollQuery = enrollQuery.eq("circular_class_id", "00000000-0000-0000-0000-000000000000");
       }
 
-      if (validCirc.length > 0) {
-        classQuery = classQuery.in("id", validCirc);
-      } else if (allowedCirc !== null) {
-        classQuery = classQuery.eq("id", "00000000-0000-0000-0000-000000000000");
+      if (validCirc !== null) {
+        if (validCirc.length > 0) {
+          classQuery = classQuery.in("id", validCirc);
+        } else {
+          classQuery = classQuery.eq("id", "00000000-0000-0000-0000-000000000000");
+        }
       }
 
-      if (validTheo.length > 0) {
-        theoClassQuery = theoClassQuery.in("id", validTheo);
-      } else if (allowedTheo !== null) {
-        theoClassQuery = theoClassQuery.eq("id", "00000000-0000-0000-0000-000000000000");
+      if (validTheo !== null) {
+        if (validTheo.length > 0) {
+          theoClassQuery = theoClassQuery.in("id", validTheo);
+        } else {
+          theoClassQuery = theoClassQuery.eq("id", "00000000-0000-0000-0000-000000000000");
+        }
       }
     }
 
@@ -102,46 +117,48 @@ export async function GET(request: NextRequest) {
       mergedSettings,
     ] = await Promise.all([
       enrollQuery,
-      supabase
+      reader
         .from("teachers")
         .select("id, auth_user_id, name, email, role, subject, status")
         .eq("status", "active"),
       scope.canAccessSecular ? classQuery : Promise.resolve({ data: [] }),
       scope.canAccessTheology ? theoClassQuery : Promise.resolve({ data: [] }),
-      supabase.from("terms").select("*").order("academic_year", { ascending: false }),
-      supabase
+      reader.from("terms").select("*").order("academic_year", { ascending: false }),
+      reader
         .from("activity_logs")
         .select("*", { count: "exact", head: true })
         .ilike("action", "%report%"),
-      supabase.from("attendance").select("status, date").limit(500),
+      reader.from("attendance").select("status, date").limit(500),
       scope.canAccessSecular
-        ? supabase.from("circular_subjects").select("id, section")
+        ? reader.from("circular_subjects").select("id, section")
         : Promise.resolve({ data: [] }),
       scope.canAccessTheology
-        ? supabase.from("theology_subjects").select("id, level")
+        ? reader.from("theology_subjects").select("id, level")
         : Promise.resolve({ data: [] }),
-      supabase
+      reader
         .from("activity_logs")
         .select("id, user_id, action, metadata, created_at")
         .neq("action", "school_customization_config")
         .order("created_at", { ascending: false })
         .limit(12),
-      supabase
+      reader
         .from("notifications")
         .select("id, title, message, read, created_at")
         .order("created_at", { ascending: false })
         .limit(6),
-      fetchMergedSchoolSettings(supabase),
+      fetchMergedSchoolSettings(reader),
     ]);
 
     const { activeTerm, matchingTermIds } = resolveActiveTermAndMatchingIds(terms || []);
     const matchingTermIdArray = Array.from(matchingTermIds);
     const enrollRows = enrollments ?? [];
+    const scopedEnrollmentIds = enrollRows.map((e: any) => e.id).filter(Boolean);
+    const allowedEnrollmentIdSet = new Set(scopedEnrollmentIds);
 
-    let circMarksQuery = supabase
+    let circMarksQuery = reader
       .from("circular_marks")
       .select("id, enrollment_id, subject_id, term_id, bot_score, mot_score, eot_score");
-    let theoMarksQuery = supabase
+    let theoMarksQuery = reader
       .from("theology_marks")
       .select("id, enrollment_id, subject_id, term_id, mot_score, eot_score");
 
@@ -153,13 +170,30 @@ export async function GET(request: NextRequest) {
       theoMarksQuery = theoMarksQuery.in("term_id", matchingTermIdArray);
     }
 
+    if (validCirc !== null && scopedEnrollmentIds.length > 0 && scopedEnrollmentIds.length <= 250) {
+      circMarksQuery = circMarksQuery.in("enrollment_id", scopedEnrollmentIds);
+    }
+    if (validTheo !== null && scopedEnrollmentIds.length > 0 && scopedEnrollmentIds.length <= 250) {
+      theoMarksQuery = theoMarksQuery.in("enrollment_id", scopedEnrollmentIds);
+    }
+
     const [{ data: rawCircularMarks }, { data: rawTheologyMarks }] = await Promise.all([
-      scope.canAccessSecular ? circMarksQuery : Promise.resolve({ data: [] }),
-      scope.canAccessTheology ? theoMarksQuery : Promise.resolve({ data: [] }),
+      scope.canAccessSecular && (validCirc === null || scopedEnrollmentIds.length > 0)
+        ? circMarksQuery
+        : Promise.resolve({ data: [] }),
+      scope.canAccessTheology && (validTheo === null || scopedEnrollmentIds.length > 0)
+        ? theoMarksQuery
+        : Promise.resolve({ data: [] }),
     ]);
 
-    const circularMarks = filterMarksByMatchingTerms(rawCircularMarks || [], matchingTermIds);
-    const theologyMarks = filterMarksByMatchingTerms(rawTheologyMarks || [], matchingTermIds);
+    const circularMarks = filterMarksByMatchingTerms(
+      (rawCircularMarks || []).filter((m: any) => allowedEnrollmentIdSet.has(m.enrollment_id)),
+      matchingTermIds
+    );
+    const theologyMarks = filterMarksByMatchingTerms(
+      (rawTheologyMarks || []).filter((m: any) => allowedEnrollmentIdSet.has(m.enrollment_id)),
+      matchingTermIds
+    );
 
     const {
       secularClassStatuses,

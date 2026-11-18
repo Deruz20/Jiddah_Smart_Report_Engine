@@ -616,6 +616,131 @@ WHERE id = 'e16b9c2c-ead3-45d6-94c6-98cd3285254c'
     WHERE theology_class_id = 'e16b9c2c-ead3-45d6-94c6-98cd3285254c'
   );
 
+-- -----------------------------------------------------------------------------
+-- 6. IDEMPOTENT SCOPED SELECT RLS POLICIES FOR LEADERSHIP, DOS & TEACHERS
+--    (Covers environments without SUPABASE_SERVICE_ROLE_KEY / cookie JWT reads)
+-- -----------------------------------------------------------------------------
+DROP POLICY IF EXISTS "staff_scoped_select_students" ON public.students;
+CREATE POLICY "staff_scoped_select_students"
+ON public.students
+FOR SELECT
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1
+    FROM public.teachers t
+    WHERE (t.auth_user_id = auth.uid() OR t.id = auth.uid())
+      AND COALESCE(lower(t.status), 'active') NOT IN ('inactive', 'suspended', 'deactivated', 'banned')
+      AND (
+        t.role IN ('Administrator', 'admin', 'Principal', 'Head Teacher', 'Deputy Head Teacher', 'DOS Secular', 'DOS Theology', 'DOS')
+        OR EXISTS (
+          SELECT 1
+          FROM public.enrollments e
+          LEFT JOIN public.circular_classes cc ON cc.id = e.circular_class_id
+          WHERE e.student_id = students.id
+            AND (
+              (cc.id IS NOT NULL AND cc.class_teacher_id = t.id)
+              OR EXISTS (
+                SELECT 1 FROM public.teacher_class_assignments tca
+                WHERE tca.teacher_id = t.id
+                  AND (tca.class_id = e.circular_class_id OR tca.class_id = e.theology_class_id)
+              )
+              OR (e.circular_class_id IS NOT NULL AND e.circular_class_id::text = ANY(COALESCE(t.classes::text[], ARRAY[]::text[])))
+              OR (e.theology_class_id IS NOT NULL AND e.theology_class_id::text = ANY(COALESCE(t.classes::text[], ARRAY[]::text[])))
+            )
+        )
+      )
+  )
+);
+
+DROP POLICY IF EXISTS "staff_scoped_select_enrollments" ON public.enrollments;
+CREATE POLICY "staff_scoped_select_enrollments"
+ON public.enrollments
+FOR SELECT
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1
+    FROM public.teachers t
+    WHERE (t.auth_user_id = auth.uid() OR t.id = auth.uid())
+      AND COALESCE(lower(t.status), 'active') NOT IN ('inactive', 'suspended', 'deactivated', 'banned')
+      AND (
+        t.role IN ('Administrator', 'admin', 'Principal', 'Head Teacher', 'Deputy Head Teacher')
+        OR (
+          (t.role = 'DOS Secular' OR (t.role = 'DOS' AND lower(coalesce(t.subject, '')) LIKE '%secular%'))
+          AND enrollments.circular_class_id IS NOT NULL
+        )
+        OR (
+          (t.role = 'DOS Theology' OR (t.role = 'DOS' AND lower(coalesce(t.subject, '')) NOT LIKE '%secular%'))
+          AND enrollments.theology_class_id IS NOT NULL
+        )
+        OR EXISTS (
+          SELECT 1 FROM public.circular_classes cc
+          WHERE cc.id = enrollments.circular_class_id AND cc.class_teacher_id = t.id
+        )
+        OR EXISTS (
+          SELECT 1 FROM public.teacher_class_assignments tca
+          WHERE tca.teacher_id = t.id
+            AND (tca.class_id = enrollments.circular_class_id OR tca.class_id = enrollments.theology_class_id)
+        )
+        OR (enrollments.circular_class_id IS NOT NULL AND enrollments.circular_class_id::text = ANY(COALESCE(t.classes::text[], ARRAY[]::text[])))
+        OR (enrollments.theology_class_id IS NOT NULL AND enrollments.theology_class_id::text = ANY(COALESCE(t.classes::text[], ARRAY[]::text[])))
+      )
+  )
+);
+
+DROP POLICY IF EXISTS "staff_scoped_select_circular_marks" ON public.circular_marks;
+CREATE POLICY "staff_scoped_select_circular_marks"
+ON public.circular_marks
+FOR SELECT
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1
+    FROM public.enrollments e
+    JOIN public.teachers t ON (t.auth_user_id = auth.uid() OR t.id = auth.uid())
+    LEFT JOIN public.circular_classes cc ON cc.id = e.circular_class_id
+    WHERE e.id = circular_marks.enrollment_id
+      AND COALESCE(lower(t.status), 'active') NOT IN ('inactive', 'suspended', 'deactivated', 'banned')
+      AND (
+        t.role IN ('Administrator', 'admin', 'Principal', 'Head Teacher', 'Deputy Head Teacher', 'DOS Secular')
+        OR (t.role = 'DOS' AND lower(coalesce(t.subject, '')) <> 'theology')
+        OR (cc.id IS NOT NULL AND cc.class_teacher_id = t.id)
+        OR EXISTS (
+          SELECT 1 FROM public.teacher_class_assignments tca
+          WHERE tca.teacher_id = t.id AND tca.class_id = e.circular_class_id
+        )
+        OR (e.circular_class_id IS NOT NULL AND e.circular_class_id::text = ANY(COALESCE(t.classes::text[], ARRAY[]::text[])))
+      )
+  )
+);
+
+DROP POLICY IF EXISTS "staff_scoped_select_theology_marks" ON public.theology_marks;
+CREATE POLICY "staff_scoped_select_theology_marks"
+ON public.theology_marks
+FOR SELECT
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1
+    FROM public.enrollments e
+    JOIN public.teachers t ON (t.auth_user_id = auth.uid() OR t.id = auth.uid())
+    LEFT JOIN public.circular_classes cc ON cc.id = e.circular_class_id
+    WHERE e.id = theology_marks.enrollment_id
+      AND COALESCE(lower(t.status), 'active') NOT IN ('inactive', 'suspended', 'deactivated', 'banned')
+      AND (
+        t.role IN ('Administrator', 'admin', 'Principal', 'Head Teacher', 'Deputy Head Teacher', 'DOS Theology')
+        OR (t.role = 'DOS' AND lower(coalesce(t.subject, '')) <> 'secular')
+        OR (cc.id IS NOT NULL AND cc.class_teacher_id = t.id)
+        OR EXISTS (
+          SELECT 1 FROM public.teacher_class_assignments tca
+          WHERE tca.teacher_id = t.id AND tca.class_id = e.theology_class_id
+        )
+        OR (e.theology_class_id IS NOT NULL AND e.theology_class_id::text = ANY(COALESCE(t.classes::text[], ARRAY[]::text[])))
+      )
+  )
+);
+
 COMMIT;
 
 -- =============================================================================

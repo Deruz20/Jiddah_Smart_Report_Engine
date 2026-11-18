@@ -27,6 +27,7 @@ export interface CustomPillSelectProps {
   disabled?: boolean
   id?: string
   dataTestId?: string
+  fitContent?: boolean
 }
 
 export function CustomPillSelect({
@@ -44,6 +45,7 @@ export function CustomPillSelect({
   disabled = false,
   id,
   dataTestId,
+  fitContent = false,
 }: CustomPillSelectProps) {
   const [open, setOpen] = useState(false)
   const resolvedAriaLabel = ariaLabel || ariaLabelProp || placeholder
@@ -67,12 +69,13 @@ export function CustomPillSelect({
             'h-9.5 px-3.5 sm:px-4 rounded-full inline-flex flex-row flex-nowrap items-center justify-between gap-1.5 whitespace-nowrap shrink-0 text-xs sm:text-[13px] font-semibold transition-all active:scale-[0.98] outline-none',
             'bg-white dark:bg-[#1E1F20] text-[#1F1F1F] dark:text-[#E3E3E3]',
             'border border-black/[0.08] dark:border-white/[0.08] hover:border-[#0D5C3A]/30 dark:hover:border-[#F59E0B]/30 shadow-2xs cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed',
+            fitContent && 'w-auto min-w-max max-w-none',
             triggerClassName,
             className
           )}
         >
           {prefix}
-          <span className="truncate">
+          <span className={fitContent ? 'whitespace-nowrap' : 'truncate'}>
             {selectedOption ? selectedOption.label : placeholder}
           </span>
           {selectedOption?.count !== undefined && (

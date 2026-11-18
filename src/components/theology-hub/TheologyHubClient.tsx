@@ -156,8 +156,8 @@ export default function TheologyHubClient({
   const initialSectionParam = searchParams.get('section_id')
   const validInitialSection: HubSectionId | '' =
     initialSectionParam === 'nursery' ||
-    initialSectionParam === 'lower_primary' ||
-    initialSectionParam === 'upper_primary'
+      initialSectionParam === 'lower_primary' ||
+      initialSectionParam === 'upper_primary'
       ? initialSectionParam
       : ''
 
@@ -181,7 +181,7 @@ export default function TheologyHubClient({
   const [activeSectionId, setActiveSectionId] = useState<HubSectionId | ''>(validInitialSection)
   const [activeClassId, setActiveClassId] = useState<string>(
     searchParams.get('class_id') ||
-      (validInitialSection || initialScope === 'school' ? '' : theologyClasses[0]?.id || '')
+    (validInitialSection || initialScope === 'school' ? '' : theologyClasses[0]?.id || '')
   )
   const [activeLevel, setActiveLevel] = useState<string>(
     searchParams.get('level') || (theologyClasses[0]?.level != null ? String(theologyClasses[0].level) : 'raudha')
@@ -741,12 +741,12 @@ export default function TheologyHubClient({
       <div className="print:hidden shrink-0 px-2 sm:px-4 lg:px-6 pt-2 pb-0 w-full max-w-[1920px] mx-auto">
         <div
           data-testid="theology-hub-banner"
-          className="w-full h-auto py-2 sm:py-1.5 xl:py-0 sm:min-h-12 xl:h-12 bg-white dark:bg-[#151D1A] rounded-2xl px-2.5 sm:px-3 border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 flex flex-col sm:flex-row sm:flex-wrap xl:flex-nowrap sm:items-center sm:justify-between gap-1.5 2xl:gap-2 shadow-2xs"
+          className="w-full h-auto py-2 min-[1600px]:py-0 min-h-12 min-[1600px]:h-12 bg-white dark:bg-[#151D1A] rounded-2xl px-2.5 sm:px-3.5 border border-[#0D5C3A]/15 dark:border-[#F59E0B]/20 flex flex-col sm:flex-row sm:flex-wrap min-[1600px]:flex-nowrap sm:items-center sm:justify-between gap-2 shadow-2xs"
         >
-          {/* Row 1 (Mobile) / Left+Selectors Container */}
-          <div className="flex items-center justify-between gap-2 min-w-0 w-full sm:w-auto shrink-0">
+          {/* Row 1 (Mobile & <1600px Desktop Tier 1) / Left+Selectors Container */}
+          <div className="flex items-center justify-between gap-2 min-w-0 w-full sm:w-auto sm:flex-1 min-[1600px]:flex-none sm:order-1 shrink-0">
             {/* Brand + Back (+ inline desktop selectors) */}
-            <div className="flex items-center gap-1.5 min-w-0 shrink-0">
+            <div className="flex flex-wrap lg:flex-nowrap items-center gap-1.5 min-w-0">
               <Link
                 href="/admin"
                 className="w-8 h-8 rounded-full flex items-center justify-center text-stone-500 dark:text-stone-400 hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer shrink-0"
@@ -756,26 +756,27 @@ export default function TheologyHubClient({
               </Link>
 
               {/* Title pill */}
-              <div className="flex items-center gap-1.5 shrink-0 bg-[#D97706]/15 dark:bg-[#D97706]/10 rounded-lg px-1.5 py-0.5">
+              <div className="flex items-center gap-1.5 shrink-0 bg-[#D97706]/15 dark:bg-[#D97706]/10 rounded-lg px-2 py-0.5">
                 <div className="w-6 h-6 rounded-lg bg-[#0D5C3A] flex items-center justify-center shrink-0">
                   <BookOpen className="w-3.5 h-3.5 text-white" strokeWidth={2.25} />
                 </div>
-                <span className="inline sm:hidden 2xl:inline text-[11px] sm:text-xs font-black text-stone-800 dark:text-stone-100 tracking-tight whitespace-nowrap">
+                <span className="inline text-[11px] sm:text-xs font-black text-stone-800 dark:text-stone-100 tracking-tight whitespace-nowrap">
                   Theology Hub
                 </span>
               </div>
 
-              <div className="hidden 2xl:block w-px h-5 bg-stone-200 dark:bg-white/10 mx-0.5 shrink-0" />
+              <div className="hidden min-[1600px]:block w-px h-5 bg-stone-200 dark:bg-white/10 mx-0.5 shrink-0" />
 
-              {/* Desktop inline selectors */}
-              <div className="hidden sm:flex items-center gap-1.5 shrink-0">
+              {/* Desktop inline selectors — fitContent prevents any truncation of All Sections / Arabic class names */}
+              <div className="hidden sm:flex flex-wrap lg:flex-nowrap items-center gap-1.5 shrink-0">
                 <CustomPillSelect
                   id="theology-hub-term-select-desktop"
                   ariaLabel="Academic Term"
                   value={activeTermId}
                   onChange={(val) => setActiveTermId(val)}
                   options={termOptions}
-                  className="h-8 w-auto min-w-[136px] rounded-xl bg-stone-50 dark:bg-white/5 border border-stone-200 dark:border-white/10 text-xs font-semibold text-stone-800 dark:text-stone-100 whitespace-nowrap"
+                  fitContent
+                  className="h-8 rounded-xl bg-stone-50 dark:bg-white/5 border border-stone-200 dark:border-white/10 text-xs font-semibold text-stone-800 dark:text-stone-100 whitespace-nowrap"
                 />
 
                 <CustomPillSelect
@@ -786,7 +787,8 @@ export default function TheologyHubClient({
                   onChange={handleSelectSection}
                   options={sectionOptions}
                   placeholder="Section..."
-                  className="h-8 min-w-[154px] w-auto rounded-xl bg-stone-50 dark:bg-white/5 border border-stone-200 dark:border-white/10 text-xs font-semibold text-stone-800 dark:text-stone-100 whitespace-nowrap"
+                  fitContent
+                  className="h-8 rounded-xl bg-stone-50 dark:bg-white/5 border border-stone-200 dark:border-white/10 text-xs font-semibold text-stone-800 dark:text-stone-100 whitespace-nowrap"
                 />
 
                 <CustomPillSelect
@@ -796,7 +798,8 @@ export default function TheologyHubClient({
                   onChange={handleSelectClass}
                   options={classOptions}
                   placeholder="Select Class..."
-                  className="h-8 min-w-[136px] max-w-[170px] w-auto rounded-xl bg-stone-50 dark:bg-white/5 border border-stone-200 dark:border-white/10 text-xs font-semibold text-stone-800 dark:text-stone-100 whitespace-nowrap"
+                  fitContent
+                  className="h-8 rounded-xl bg-stone-50 dark:bg-white/5 border border-stone-200 dark:border-white/10 text-xs font-semibold text-stone-800 dark:text-stone-100 whitespace-nowrap"
                 />
               </div>
             </div>
@@ -882,8 +885,8 @@ export default function TheologyHubClient({
             />
           </div>
 
-          {/* CENTER: Exam Phase + View Mode — hidden on mobile, shown sm+ */}
-          <div className="hidden sm:flex items-center gap-1 shrink-0">
+          {/* TIER 2 (<1600px) / CENTER (>=1600px): Exam Phase + View Mode — hidden on mobile, shown sm+ */}
+          <div className="hidden sm:flex flex-wrap items-center justify-between min-[1600px]:justify-start gap-2 shrink-0 sm:basis-full sm:order-3 sm:pt-1.5 sm:border-t sm:border-stone-100 dark:sm:border-white/5 min-[1600px]:basis-auto min-[1600px]:order-2 min-[1600px]:pt-0 min-[1600px]:border-t-0">
             {/* Exam Phase — inline pill group */}
             <div className="flex items-center bg-stone-100 dark:bg-white/5 rounded-full p-0.5 border border-stone-200/80 dark:border-white/10 gap-0.5">
               {(['bot', 'mot', 'eot'] as const).map((phase) => (
@@ -891,7 +894,7 @@ export default function TheologyHubClient({
                   key={phase}
                   type="button"
                   onClick={() => setExamPhase(phase)}
-                  className={`h-7 px-2 2xl:px-2.5 rounded-full text-[11px] font-bold uppercase tracking-wide transition-all cursor-pointer ${examPhase === phase
+                  className={`h-7 px-2.5 rounded-full text-[11px] font-bold uppercase tracking-wide transition-all cursor-pointer ${examPhase === phase
                     ? phase === 'eot'
                       ? 'bg-[#0D5C3A] text-white shadow-xs'
                       : 'bg-stone-700 text-white shadow-xs'
@@ -908,7 +911,7 @@ export default function TheologyHubClient({
               <button
                 type="button"
                 onClick={() => handleTabChange('assessment')}
-                className={`h-7 px-2 2xl:px-2.5 rounded-full flex items-center gap-1 text-[11px] font-bold transition-all cursor-pointer ${activeTab === 'assessment'
+                className={`h-7 px-2.5 rounded-full flex items-center gap-1 text-[11px] font-bold transition-all cursor-pointer ${activeTab === 'assessment'
                   ? 'bg-[#D97706] text-white shadow-xs'
                   : 'text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-white'
                   }`}
@@ -919,7 +922,7 @@ export default function TheologyHubClient({
               <button
                 type="button"
                 onClick={() => handleTabChange('analysis')}
-                className={`h-7 px-2 2xl:px-2.5 rounded-full flex items-center gap-1 text-[11px] font-bold transition-all cursor-pointer ${activeTab === 'analysis'
+                className={`h-7 px-2.5 rounded-full flex items-center gap-1 text-[11px] font-bold transition-all cursor-pointer ${activeTab === 'analysis'
                   ? 'bg-[#D97706] text-white shadow-xs'
                   : 'text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-white'
                   }`}
@@ -930,7 +933,7 @@ export default function TheologyHubClient({
               <button
                 type="button"
                 onClick={() => handleTabChange('top_students')}
-                className={`h-7 px-2 2xl:px-2.5 rounded-full flex items-center gap-1 text-[11px] font-bold transition-all cursor-pointer ${activeTab === 'top_students'
+                className={`h-7 px-2.5 rounded-full flex items-center gap-1 text-[11px] font-bold transition-all cursor-pointer ${activeTab === 'top_students'
                   ? 'bg-[#D97706] text-white shadow-xs'
                   : 'text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-white'
                   }`}
@@ -942,20 +945,19 @@ export default function TheologyHubClient({
                 type="button"
                 data-testid="tab-detailed-report"
                 onClick={() => handleTabChange('detailed_report')}
-                className={`h-7 px-2 2xl:px-2.5 rounded-full flex items-center gap-1 text-[11px] font-bold transition-all cursor-pointer ${activeTab === 'detailed_report'
+                className={`h-7 px-2.5 rounded-full flex items-center gap-1 text-[11px] font-bold transition-all cursor-pointer ${activeTab === 'detailed_report'
                   ? 'bg-[#0F4D25] text-white shadow-xs'
                   : 'text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-white'
                   }`}
               >
                 <FileText className="w-3 h-3" strokeWidth={2.25} />
-                <span className="2xl:hidden">Detailed</span>
-                <span className="hidden 2xl:inline">Detailed Report</span>
+                <span>Detailed Report</span>
               </button>
             </div>
           </div>
 
-          {/* RIGHT: Export CSV + Customize + Print Broadsheet (Desktop sm+) */}
-          <div className="hidden sm:flex items-center gap-1.5 shrink-0">
+          {/* RIGHT: Export CSV + Customize + Print Broadsheet (Desktop sm+, sits on Tier 1 right when <1600px) */}
+          <div className="hidden sm:flex items-center gap-1.5 shrink-0 sm:order-2 min-[1600px]:order-3">
             <button
               onClick={activeTab === 'detailed_report' ? handleExportDetailedReportCsv : handleExportCSV}
               disabled={
@@ -985,7 +987,7 @@ export default function TheologyHubClient({
               className="h-8 px-2.5 rounded-full bg-[#D97706]/12 text-[#B45309] dark:bg-[#F59E0B]/20 dark:text-[#FCD34D] border border-[#D97706]/30 hover:bg-[#D97706]/20 dark:hover:bg-[#F59E0B]/30 text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer transition disabled:opacity-40 shrink-0 focus:outline-none focus:ring-2 focus:ring-[#D97706]"
             >
               <Sliders className="size-3.5" />
-              <span className="hidden 2xl:inline font-bold text-[11px]">Customize</span>
+              <span className="hidden md:inline font-bold text-[11px]">Customize</span>
             </button>
 
             <button
@@ -1086,11 +1088,10 @@ export default function TheologyHubClient({
             <button
               type="button"
               onClick={() => handleSelectClass('')}
-              className={`h-6.5 px-2.5 rounded-full text-[11px] font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
-                activeClassId === ''
-                  ? 'bg-[#0D5C3A] text-white shadow-xs'
-                  : 'bg-stone-100 dark:bg-white/5 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-white/10'
-              }`}
+              className={`h-6.5 px-2.5 rounded-full text-[11px] font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${activeClassId === ''
+                ? 'bg-[#0D5C3A] text-white shadow-xs'
+                : 'bg-stone-100 dark:bg-white/5 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-white/10'
+                }`}
             >
               جميع فصول {activeSectionObj?.label_arabic || 'القسم'}
             </button>
@@ -1099,11 +1100,10 @@ export default function TheologyHubClient({
                 key={cls.id}
                 type="button"
                 onClick={() => handleSelectClass(cls.id)}
-                className={`h-6.5 px-2.5 rounded-full text-[11px] font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
-                  activeClassId === cls.id
-                    ? 'bg-[#0D5C3A] text-white shadow-xs'
-                    : 'bg-stone-100 dark:bg-white/5 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-white/10'
-                }`}
+                className={`h-6.5 px-2.5 rounded-full text-[11px] font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${activeClassId === cls.id
+                  ? 'bg-[#0D5C3A] text-white shadow-xs'
+                  : 'bg-stone-100 dark:bg-white/5 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-white/10'
+                  }`}
               >
                 {cls.class_name_arabic || cls.class_name_english}
               </button>
@@ -1412,9 +1412,9 @@ export default function TheologyHubClient({
                         )}
                       </tbody>
 
-                      {/* ——— FOOTER: Class averages + pass rate ——— */}
+                      {/* ——— FOOTER: Class averages + pass rate (relative flow prevents overlapping final tbody row) ——— */}
                       {broadsheetSummary && (
-                        <tfoot className="sticky bottom-0 z-20 bg-stone-100 dark:bg-[#1A2621] border-t-2 border-[#0D5C3A]/30 font-arabic">
+                        <tfoot className="relative z-20 bg-stone-100 dark:bg-[#1A2621] border-t-2 border-[#0D5C3A]/30 font-arabic">
                           <tr className="text-[11px] font-extrabold text-stone-700 dark:text-stone-200">
                             <td
                               colSpan={2}

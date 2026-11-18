@@ -2,6 +2,7 @@
 
 import React from 'react'
 import { OfficialPrintLetterhead, OfficialPrintSignaturesFooter } from '@/components/print/OfficialPrintLetterhead'
+import { ExecutiveBreakdownPacket } from './ExecutiveBreakdownPacket'
 import {
   clampSupportThreshold,
   filterNeedsSupportLearners,
@@ -113,6 +114,9 @@ export function DetailedReportPrintDocument({
           },
         ]}
       />
+
+      {/* EXECUTIVE BREAKDOWN PACKET AT TOP OF PORTRAIT PRINT ("النظر الدقيق على النتائج") */}
+      <ExecutiveBreakdownPacket report={report} variant="print" />
 
       {/* KPI Summary Strip */}
       <div

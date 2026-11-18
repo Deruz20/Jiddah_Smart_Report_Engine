@@ -134,15 +134,15 @@ export function getSubjectsForHubClass(
       exactMatched.length > 0
         ? exactMatched
         : allSubjects.filter((s) => {
-            const sLvl =
-              s.level !== null && s.level !== undefined && s.level !== ''
-                ? String(s.level).trim().toLowerCase()
-                : ''
-            const sSec = String(s.section ?? '').trim().toLowerCase()
-            if (!sLvl && !sSec) return true
-            if (effectiveSection && (sLvl === effectiveSection || sSec === effectiveSection)) return true
-            return false
-          })
+          const sLvl =
+            s.level !== null && s.level !== undefined && s.level !== ''
+              ? String(s.level).trim().toLowerCase()
+              : ''
+          const sSec = String(s.section ?? '').trim().toLowerCase()
+          if (!sLvl && !sSec) return true
+          if (effectiveSection && (sLvl === effectiveSection || sSec === effectiveSection)) return true
+          return false
+        })
 
     return [...matched].sort((a, b) => {
       const nameA = a.subject_name_arabic || a.subject_name || ''
@@ -612,6 +612,11 @@ export function computeHubCohortMetrics(params: {
           if (clsIsNursery) {
             const g = getNurseryGrade(Math.round(normalizedScore)).grade
             if (g === 'A' || g === 'B' || g === 'C') passedCount++
+            if (g === 'A') clsDivCounts.I++
+            else if (g === 'B') clsDivCounts.II++
+            else if (g === 'C') clsDivCounts.III++
+            else if (g === 'D') clsDivCounts.IV++
+            else clsDivCounts.U++
           } else {
             if (div === 'I' || div === 'II' || div === 'III' || div === 'IV') passedCount++
             if (div === 'I') clsDivCounts.I++
@@ -721,11 +726,11 @@ export function computeHubCohortMetrics(params: {
 
   const rankedRaw = isNormalizedRanking
     ? computeConfigurableRankings(rankCandidates, {
-        method: 'standard',
-        basis: 'average',
-        tiebreak: 'none',
-        show_rank: true,
-      })
+      method: 'standard',
+      basis: 'average',
+      tiebreak: 'none',
+      show_rank: true,
+    })
     : computeStandardRankings(rankCandidates)
 
   const rankedStudents: HubStudentRow[] = rankedRaw.map((p) => {

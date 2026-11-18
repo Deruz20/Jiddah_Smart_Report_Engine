@@ -30,6 +30,7 @@ import {
   type DetailedReportScope,
 } from '@/lib/hub-detailed-report'
 import { HubCandidateNaCard, HubDataQualityBanners } from './HubCohortPanels'
+import { ExecutiveBreakdownPacket } from './ExecutiveBreakdownPacket'
 import {
   DEFAULT_HUB_SECTIONS,
   formatClassDisplayName,
@@ -394,6 +395,9 @@ export function HubDetailedReportView({
             isNormalizedRanking={report.meta.isNormalized}
             showRankingMethod={report.performance.n > 0}
           />
+
+          {/* EXECUTIVE BREAKDOWN PACKET ("النظر الدقيق على النتائج") */}
+          <ExecutiveBreakdownPacket report={report} variant="screen" />
 
           {/* 2. DETERMINISTIC INSIGHTS */}
           <section

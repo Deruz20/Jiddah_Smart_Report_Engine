@@ -96,6 +96,8 @@ export interface StudioFormattingConfig {
   arabicFontScale: number // 85 to 120, default 100
   fontScale: number // 85 to 115, default 100
   boldScores: boolean // default true
+  italicizeText: boolean // default false
+  useDosRemarkOverrides: boolean // default true
   commentFontSize: StudioCommentFontSize // default 'large'
   showStamp: boolean // default true
   stampMode: 'digital' | 'uploaded' // default 'digital'
@@ -369,6 +371,8 @@ export const DEFAULT_STUDIO_CONFIG: StudioFormattingConfig = {
   arabicFontScale: 100,
   fontScale: 100,
   boldScores: true,
+  italicizeText: false,
+  useDosRemarkOverrides: true,
   commentFontSize: 'large',
   showStamp: true,
   stampMode: 'digital',
@@ -647,6 +651,14 @@ export function normalizeStudioConfig(
     arabicFontScale,
     fontScale,
     boldScores,
+    italicizeText:
+      raw.italicizeText !== undefined
+        ? Boolean(raw.italicizeText)
+        : DEFAULT_STUDIO_CONFIG.italicizeText,
+    useDosRemarkOverrides:
+      raw.useDosRemarkOverrides !== undefined
+        ? Boolean(raw.useDosRemarkOverrides)
+        : DEFAULT_STUDIO_CONFIG.useDosRemarkOverrides,
     commentFontSize,
     showStamp,
     stampMode,
@@ -1134,6 +1146,8 @@ export interface StudioConfigStoreState {
   showSignatures: boolean
   showAdmissionId: boolean
   showSubjectGrades: boolean
+  italicizeText: boolean
+  useDosRemarkOverrides: boolean
   reportDateOverride: string
   nextTermBeginsOverride: string
   hubLayoutPrefs: Record<BroadsheetCurriculum, PersistedHubLayoutPrefs>
@@ -1153,6 +1167,8 @@ export interface StudioConfigStoreState {
     nurseryTheme?: NurseryReportTheme
     showStamp?: boolean
     showSignatures?: boolean
+    italicizeText?: boolean
+    useDosRemarkOverrides?: boolean
     stampDateOverride?: string
     reportDateOverride?: string
     nextTermBeginsOverride?: string
@@ -1177,6 +1193,8 @@ export const useStudioConfigStore = create<StudioConfigStoreState>()(
       showSignatures: true,
       showAdmissionId: false,
       showSubjectGrades: true,
+      italicizeText: false,
+      useDosRemarkOverrides: true,
       reportDateOverride: '',
       nextTermBeginsOverride: '',
       hubLayoutPrefs: {
@@ -1237,6 +1255,8 @@ export const useStudioConfigStore = create<StudioConfigStoreState>()(
           nurseryTheme: patch.nurseryTheme ?? state.nurseryTheme,
           showStamp: patch.showStamp ?? state.showStamp,
           showSignatures: patch.showSignatures ?? state.showSignatures,
+          italicizeText: patch.italicizeText ?? state.italicizeText,
+          useDosRemarkOverrides: patch.useDosRemarkOverrides ?? state.useDosRemarkOverrides,
           stampDateOverride:
             patch.stampDateOverride !== undefined ? patch.stampDateOverride : state.stampDateOverride,
           reportDateOverride:
@@ -1382,6 +1402,8 @@ export const useStudioConfigStore = create<StudioConfigStoreState>()(
         showSignatures: state.showSignatures,
         showAdmissionId: state.showAdmissionId,
         showSubjectGrades: state.showSubjectGrades,
+        italicizeText: state.italicizeText,
+        useDosRemarkOverrides: state.useDosRemarkOverrides,
         reportDateOverride: state.reportDateOverride,
         nextTermBeginsOverride: state.nextTermBeginsOverride,
         hubLayoutPrefs: state.hubLayoutPrefs,

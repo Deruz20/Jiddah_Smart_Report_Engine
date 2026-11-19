@@ -449,6 +449,10 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
           score_type: phase.toLowerCase(),
           curriculum: effectiveCurriculum,
           stamp_date: studioFormatting.stampDate || filterState.stampDate || undefined,
+          use_dos_remark_overrides: studioFormatting.useDosRemarkOverrides !== false,
+          studioFormatting: {
+            useDosRemarkOverrides: studioFormatting.useDosRemarkOverrides !== false,
+          },
         }),
       })
       const data = await response.json()

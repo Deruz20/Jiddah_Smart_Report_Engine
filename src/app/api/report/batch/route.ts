@@ -59,7 +59,10 @@ const batchReportSchema = z.object({
   term_id: pgUuidSchema,
   score_type: z.enum(['bot', 'mot', 'eot']).default('mot'),
   curriculum: z.enum(['secular', 'theology', 'combined']).default('secular'),
-  stamp_date: z.string().optional()
+  stamp_date: z.string().optional(),
+  use_dos_remark_overrides: z.boolean().optional(),
+  useDosRemarkOverrides: z.boolean().optional(),
+  studioFormatting: z.record(z.string(), z.any()).optional(),
 })
 
 export const dynamic = 'force-dynamic'
@@ -109,13 +112,30 @@ export async function POST(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Invalid payload', details: parsed.error.format() }, { status: 400 }))
     }
 
-    const { enrollment_ids, term_id, score_type, curriculum, stamp_date } = parsed.data
+    const {
+      enrollment_ids,
+      term_id,
+      score_type,
+      curriculum,
+      stamp_date,
+      use_dos_remark_overrides,
+      useDosRemarkOverrides: bodyUseDosRemarkOverrides,
+      studioFormatting: bodyStudioFormatting,
+    } = parsed.data
     const supabaseAdmin = createAdminClient(cookieStore)
 
     const { data: gradingCriteriaData } = await supabaseAdmin.from('grading_criteria').select('*')
     const gradingCriteria = (gradingCriteriaData as GradingCriterion[]) || []
 
     const schoolSettings = await fetchMergedSchoolSettings(supabaseAdmin, gradingCriteria)
+    const useDosRemarkOverrides =
+      bodyStudioFormatting?.useDosRemarkOverrides !== undefined
+        ? Boolean(bodyStudioFormatting.useDosRemarkOverrides)
+        : use_dos_remark_overrides !== undefined
+          ? use_dos_remark_overrides
+          : bodyUseDosRemarkOverrides !== undefined
+            ? bodyUseDosRemarkOverrides
+            : (schoolSettings as any)?.report_studio_config?.useDosRemarkOverrides !== false
 
     // Helper to fetch in chunks to avoid URL length limits and timeouts
     const fetchInChunks = async (table: string, select: string, column: string, ids: string[], extraBuilder?: (query: any) => any) => {
@@ -695,19 +715,21 @@ export async function POST(request: NextRequest) {
           ? getTheologyComment(
             hasAnyTheoScore ? theoTotal : null,
             studentData?.gender,
-            schoolSettings?.theology_remarks,
+            useDosRemarkOverrides ? schoolSettings?.theology_remarks : undefined,
             theologyDivision,
             theoScoredCount
           )
           : ''
-        const theoHeadRule = evaluateCriteria(
-          theologyAggregate ?? null,
-          'head_comment',
-          'theology',
-          enrollment.theology_class_id,
-          gradingCriteria,
-          'comment'
-        )
+        const theoHeadRule = useDosRemarkOverrides
+          ? evaluateCriteria(
+              theologyAggregate ?? null,
+              'head_comment',
+              'theology',
+              enrollment.theology_class_id,
+              gradingCriteria,
+              'comment'
+            )
+          : ''
         const resolvedTheoComments = isTheologyNursery
           ? resolveDistinctNurseryTheologyComments({
               teacherComment: theologyComment,
@@ -811,22 +833,26 @@ export async function POST(request: NextRequest) {
         : []
       const nurseryCommentDefault =
         nurseryGradesForComments.length > 0 ? getNurseryTeacherComment(nurseryGradesForComments) : ''
-      const classTeacherGradingRule = evaluateCriteria(
-        reportAggregate ?? null,
-        'aggregate',
-        'secular',
-        enrollment.circular_class_id,
-        gradingCriteria,
-        'comment'
-      )
-      const rawHeadTeacherGradingRule = evaluateCriteria(
-        reportAggregate ?? null,
-        'head_comment',
-        'secular',
-        enrollment.circular_class_id,
-        gradingCriteria,
-        'comment'
-      )
+      const classTeacherGradingRule = useDosRemarkOverrides
+        ? evaluateCriteria(
+            reportAggregate ?? null,
+            'aggregate',
+            'secular',
+            enrollment.circular_class_id,
+            gradingCriteria,
+            'comment'
+          )
+        : ''
+      const rawHeadTeacherGradingRule = useDosRemarkOverrides
+        ? evaluateCriteria(
+            reportAggregate ?? null,
+            'head_comment',
+            'secular',
+            enrollment.circular_class_id,
+            gradingCriteria,
+            'comment'
+          )
+        : ''
       const headTeacherGradingRule =
         sectionType === 'nursery' ? rawHeadTeacherGradingRule : (rawHeadTeacherGradingRule || classTeacherGradingRule)
       const distinctNurserySecularComments =
@@ -839,14 +865,16 @@ export async function POST(request: NextRequest) {
               isTerm3,
             })
           : null
-      const conductGradingRule = evaluateCriteria(
-        reportAggregate ?? null,
-        'conduct',
-        'secular',
-        enrollment.circular_class_id,
-        gradingCriteria,
-        'comment'
-      )
+      const conductGradingRule = useDosRemarkOverrides
+        ? evaluateCriteria(
+            reportAggregate ?? null,
+            'conduct',
+            'secular',
+            enrollment.circular_class_id,
+            gradingCriteria,
+            'comment'
+          )
+        : ''
 
       return {
         id: enrollment.id,
@@ -890,7 +918,11 @@ export async function POST(request: NextRequest) {
           conduct_remark: score_type === 'mot'
             ? ''
             : conductGradingRule ||
-            getConductRemark(division, schoolSettings?.division_boundaries, schoolSettings?.promotion_comments?.default_conduct),
+            getConductRemark(
+              division,
+              schoolSettings?.division_boundaries,
+              useDosRemarkOverrides ? schoolSettings?.promotion_comments?.default_conduct : undefined
+            ),
           class_teacher_comment: sectionType === 'nursery'
             ? distinctNurserySecularComments?.classTeacherComment || nurseryCommentDefault
             : getClassTeacherReportComment({
@@ -902,7 +934,7 @@ export async function POST(request: NextRequest) {
               scores: sortedCircularSubjects.filter(row => row.is_core).map(row => row.score),
               gradingBands: schoolSettings?.grading_scale,
               divisionBoundaries: schoolSettings?.division_boundaries,
-              promotionComments: schoolSettings?.promotion_comments,
+              promotionComments: useDosRemarkOverrides ? schoolSettings?.promotion_comments : undefined,
             }),
           head_teacher_comment: sectionType === 'nursery'
             ? distinctNurserySecularComments?.headTeacherComment || ''

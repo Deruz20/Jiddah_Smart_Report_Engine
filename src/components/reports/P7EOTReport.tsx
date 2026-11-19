@@ -410,7 +410,7 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
           font-weight: ${effective.scoreFontWeight};
           color: #0F172A;
         }
-        .p7-eot-report .remark-cell { font-style: italic; font-weight: 800; font-size: 11.5px; }
+        .p7-eot-report .remark-cell { font-style: ${studioFormatting?.italicizeText ? 'italic' : 'normal'}; font-weight: 800; font-size: 11.5px; }
         .p7-eot-report .total-row td { background-color: #f1f5f9; font-weight: 800; font-size: 14px; padding: 10px 8px; }
 
         /* Grading Table + UNEB Strip */
@@ -484,7 +484,7 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
         .p7-eot-report .comment-val {
           border-bottom: 1px dotted #94a3b8;
           flex: 1;
-          font-style: italic;
+          font-style: ${studioFormatting?.italicizeText ? 'italic' : 'normal'};
           font-weight: 700;
           color: #1d4ed8;
           padding-left: 4px;
@@ -585,7 +585,7 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
                     <p data-testid="report-school-phone">Tel: {effective.schoolHeader.phone}</p>
                     <p style={{ textTransform: 'lowercase' }} data-testid="report-school-email">{effective.schoolHeader.email}</p>
                     {effective.schoolHeader.motto ? (
-                      <p style={{ fontStyle: 'italic' }} data-testid="report-school-motto">
+                      <p style={{ fontStyle: studioFormatting?.italicizeText ? 'italic' : 'normal' }} data-testid="report-school-motto">
                         &ldquo;{effective.schoolHeader.motto}&rdquo;
                       </p>
                     ) : null}

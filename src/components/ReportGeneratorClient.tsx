@@ -10,6 +10,7 @@ import { TopToolbar, StudioFormattingState, DEFAULT_STUDIO_FORMATTING } from './
 import {
   useSyncedStudioConfig,
   StudioFormattingProvider,
+  useGlobalSchoolSettingsSync,
 } from '@/lib/studio-config-store'
 import { resolveEffectiveStampDate } from '@/lib/stamp-date'
 import { PrePrintQaModal, auditPrePrintIssues } from './reports/PrePrintQaModal'
@@ -603,6 +604,10 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
     return activeClassEnrollments.find((e) => e.enrollment_id === activeReportId) || activeClassEnrollments[0]
   }, [activeClassEnrollments, activeReportId])
 
+  const globalPrintDefaults = useGlobalSchoolSettingsSync(() => {
+    void executeGeneration()
+  })
+
   const qaAuditSummary = useMemo(
     () =>
       auditPrePrintIssues({
@@ -803,7 +808,10 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
             stamp_config: {
               ...rep.settings?.print_preferences?.stamp_config,
               ink_color: studioFormatting.stampInkColor,
-              date: resolveEffectiveStampDate(studioFormatting.stampDate, rep?.term?.end_date),
+              date: resolveEffectiveStampDate(
+                studioFormatting.stampDate,
+                globalPrintDefaults.stampDate || rep?.settings?.stamp_date || rep?.term?.end_date
+              ),
             },
           },
         },

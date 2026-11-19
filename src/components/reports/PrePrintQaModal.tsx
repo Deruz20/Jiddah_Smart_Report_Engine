@@ -18,7 +18,13 @@ import {
 import { toast } from 'sonner'
 import type { EnrollmentItem, ReportData } from '@/components/figma-ui/types'
 
-export type QaIssueCategory = 'arabic_name' | 'missing_marks' | 'remarks'
+export type QaIssueCategory = 'arabic_name' | 'adab_al_tasmiyah' | 'missing_marks' | 'remarks'
+
+export interface AdabSuggestionChip {
+  label: string
+  value: string
+  kind: 'full' | 'prefix'
+}
 
 export interface StudentQaAuditRow {
   enrollment: EnrollmentItem
@@ -32,14 +38,206 @@ export interface StudentQaAuditRow {
     message: string
   }[]
   suggestedArabicName?: string
+  adabSuggestions: AdabSuggestionChip[]
 }
 
 const LATIN_CHAR_RE = /[A-Za-z]/
 const HARSH_ENGLISH_NURSERY_RE = /\b(poor|fail|failed|failure|weak|hopeless|lazy)\b/i
 const HARSH_ARABIC_NURSERY_RE = /(ضعيف|راسب|دون المستوى)/
+const ARABIC_DIACRITICS_RE = /[\u064B-\u065F\u0670\u0640]/g
 
-const KNOWN_ARABIC_SUGGESTIONS: Record<string, string> = {
-  'HAMAN RASHEED': 'هامان رشيد',
+/**
+ * Standalone Divine Attributes (الأسماء الحسنى) that require the prefix "عبد"
+ * under Islamic naming etiquette (Adab al-Tasmiyah).
+ */
+export const STANDALONE_DIVINE_ATTRIBUTES_AR = [
+  'رشيد',
+  'كريم',
+  'حكيم',
+  'رحيم',
+  'رحمن',
+  'رزاق',
+  'غفور',
+  'لطيف',
+  'صمد',
+  'خالق',
+] as const
+
+const DIVINE_ATTRIBUTE_SET_AR = new Set<string>(STANDALONE_DIVINE_ATTRIBUTES_AR)
+
+const ENGLISH_DIVINE_ATTRIBUTE_MAP: Record<string, string> = {
+  RASHEED: 'رشيد',
+  RASHID: 'رشيد',
+  KAREEM: 'كريم',
+  KARIM: 'كريم',
+  HAKEEM: 'حكيم',
+  HAKIM: 'حكيم',
+  RAHEEM: 'رحيم',
+  RAHIM: 'رحيم',
+  RAHMAN: 'رحمن',
+  RAHMAAN: 'رحمن',
+  RAZZAQ: 'رزاق',
+  RAZAQ: 'رزاق',
+  GHAFOOR: 'غفور',
+  GHAFUR: 'غفور',
+  LATEEF: 'لطيف',
+  LATIF: 'لطيف',
+  SAMAD: 'صمد',
+  KHALIQ: 'خالق',
+  KHALIK: 'خالق',
+}
+
+function normalizeArabicToken(token: string): string {
+  return token
+    .replace(ARABIC_DIACRITICS_RE, '')
+    .replace(/[أإآ]/g, 'ا')
+    .trim()
+}
+
+function isServantPrefix(token?: string): boolean {
+  if (!token) return false
+  const norm = normalizeArabicToken(token)
+  return norm === 'عبد' || norm === 'امة' || norm === 'أمة'
+}
+
+export function analyzeAdabAlTasmiyah(
+  englishName: string,
+  arabicName: string
+): {
+  issues: { category: 'adab_al_tasmiyah'; severity: 'high' | 'medium'; message: string }[]
+  suggestions: AdabSuggestionChip[]
+} {
+  const issues: { category: 'adab_al_tasmiyah'; severity: 'high' | 'medium'; message: string }[] = []
+  const suggestions: AdabSuggestionChip[] = []
+  const seenValues = new Set<string>()
+  const addChip = (chip: AdabSuggestionChip) => {
+    const val = chip.value.trim()
+    if (!val || seenValues.has(val)) return
+    seenValues.add(val)
+    suggestions.push({ ...chip, value: val })
+  }
+
+  const trimmedAr = (arabicName || '').trim()
+  const trimmedEn = (englishName || '').trim()
+  const enUpperTokens = trimmedEn
+    .toUpperCase()
+    .split(/[\s\-']+/)
+    .filter(Boolean)
+
+  const arTokens = trimmedAr ? trimmedAr.split(/\s+/).filter(Boolean) : []
+  const normArTokens = arTokens.map(normalizeArabicToken)
+
+  const hasHamanAr = normArTokens.some((t) => t === 'هامان')
+  const hasHamanEn = enUpperTokens.some((t) => t === 'HAMAN')
+  const hasHamdanEn = enUpperTokens.some((t) => t === 'HAMDAN' || t === 'HAMMAM' || t === 'AMAN')
+
+  // 1. Flag phonetic trap "هامان" (Pharaoh's minister)
+  if (hasHamanAr || (hasHamanEn && (!trimmedAr || LATIN_CHAR_RE.test(trimmedAr)))) {
+    issues.push({
+      category: 'adab_al_tasmiyah',
+      severity: 'high',
+      message:
+        'Adab al-Tasmiyah: Avoid phonetic "هامان" (Pharaoh\'s minister) — select the intended Islamic name (حمدان / همام / أمان).',
+    })
+  }
+
+  // 2. Detect standalone Divine Attributes without "عبد" in Arabic name
+  const standaloneFoundAr: { index: number; raw: string; bare: string }[] = []
+  for (let i = 0; i < arTokens.length; i++) {
+    const norm = normArTokens[i]
+    // Skip fused forms like "عبدالرشيد" / "عبدالكريم"
+    if (norm.startsWith('عبد')) continue
+    const bare = norm.replace(/^ال/, '')
+    if (DIVINE_ATTRIBUTE_SET_AR.has(bare) && !isServantPrefix(arTokens[i - 1])) {
+      standaloneFoundAr.push({ index: i, raw: arTokens[i], bare })
+    }
+  }
+
+  // Also check English tokens for standalone divine attributes when Arabic is missing or Latin
+  const standaloneFoundEn: string[] = []
+  for (let i = 0; i < enUpperTokens.length; i++) {
+    const tok = enUpperTokens[i]
+    const mappedAr = ENGLISH_DIVINE_ATTRIBUTE_MAP[tok]
+    if (!mappedAr) continue
+    const prev = enUpperTokens[i - 1] || ''
+    const hasAbdPrev =
+      prev === 'ABD' ||
+      prev === 'ABDUL' ||
+      prev === 'ABDAL' ||
+      prev === 'ABDEL' ||
+      prev === 'ABDULL' ||
+      prev === 'ABDU' ||
+      tok.startsWith('ABD')
+    if (!hasAbdPrev) {
+      standaloneFoundEn.push(mappedAr)
+    }
+  }
+
+  if (standaloneFoundAr.length > 0) {
+    const labels = standaloneFoundAr.map((f) => `"${f.raw}"`).join('، ')
+    issues.push({
+      category: 'adab_al_tasmiyah',
+      severity: 'high',
+      message: `Adab al-Tasmiyah: Standalone Divine Attribute ${labels} without "عبد" — prefix with "عبد ال${standaloneFoundAr[0].bare}".`,
+    })
+  } else if (standaloneFoundEn.length > 0 && (!trimmedAr || LATIN_CHAR_RE.test(trimmedAr))) {
+    issues.push({
+      category: 'adab_al_tasmiyah',
+      severity: 'medium',
+      message: `Adab al-Tasmiyah: English slip contains standalone Divine Attribute (${standaloneFoundEn[0]}) — ensure Arabic form includes "عبد ال${standaloneFoundEn[0]}".`,
+    })
+  }
+
+  // 3. Build 1-click theological suggestion chips
+  const hasRasheedRoot =
+    normArTokens.some((t) => t.replace(/^ال/, '') === 'رشيد' || t === 'عبدالرشيد') ||
+    enUpperTokens.some((t) => t === 'RASHEED' || t === 'RASHID')
+
+  if ((hasHamanAr || hasHamanEn || hasHamdanEn) && hasRasheedRoot) {
+    addChip({ label: 'حمدان عبد الرشيد', value: 'حمدان عبد الرشيد', kind: 'full' })
+    addChip({ label: 'همام عبد الرشيد', value: 'همام عبد الرشيد', kind: 'full' })
+    addChip({ label: 'أمان عبد الرشيد', value: 'أمان عبد الرشيد', kind: 'full' })
+  } else if (hasHamanAr || hasHamanEn) {
+    const remainingAr = arTokens
+      .filter((_, idx) => normArTokens[idx] !== 'هامان')
+      .map((tok, idx, arr) => {
+        const bare = normalizeArabicToken(tok).replace(/^ال/, '')
+        if (DIVINE_ATTRIBUTE_SET_AR.has(bare) && !isServantPrefix(arr[idx - 1])) {
+          return `عبد ال${bare}`
+        }
+        return tok
+      })
+      .join(' ')
+      .trim()
+    const suffix = remainingAr ? ` ${remainingAr}` : ''
+    addChip({ label: `حمدان${suffix}`, value: `حمدان${suffix}`, kind: 'full' })
+    addChip({ label: `همام${suffix}`, value: `همام${suffix}`, kind: 'full' })
+    addChip({ label: `أمان${suffix}`, value: `أمان${suffix}`, kind: 'full' })
+  }
+
+  // Build "[+ إضافة عبد]" chip whenever any standalone Divine Attribute is detected
+  if (standaloneFoundAr.length > 0) {
+    const fixedTokens = arTokens.map((tok, idx) => {
+      const hit = standaloneFoundAr.find((f) => f.index === idx)
+      if (!hit) return tok
+      return `عبد ال${hit.bare}`
+    })
+    const prefixedValue = fixedTokens.join(' ').trim()
+    addChip({
+      label: '+ إضافة عبد',
+      value: prefixedValue,
+      kind: 'prefix',
+    })
+  } else if (standaloneFoundEn.length > 0 && (!trimmedAr || LATIN_CHAR_RE.test(trimmedAr))) {
+    const attr = standaloneFoundEn[0]
+    addChip({
+      label: '+ إضافة عبد',
+      value: `عبد ال${attr}`,
+      kind: 'prefix',
+    })
+  }
+
+  return { issues, suggestions }
 }
 
 export function auditPrePrintIssues({
@@ -58,6 +256,7 @@ export function auditPrePrintIssues({
   counts: {
     totalFlagged: number
     arabicName: number
+    adabAlTasmiyah: number
     missingMarks: number
     remarks: number
   }
@@ -94,6 +293,7 @@ export function auditPrePrintIssues({
   }
 
   let arabicNameCount = 0
+  let adabAlTasmiyahCount = 0
   let missingMarksCount = 0
   let remarksCount = 0
 
@@ -125,6 +325,12 @@ export function auditPrePrintIssues({
           message: `Untransliterated Latin text in Arabic name ("${arabicName}").`,
         })
       }
+    }
+
+    // Islamic Naming Etiquette (Adab al-Tasmiyah) check
+    const adabAnalysis = analyzeAdabAlTasmiyah(englishName, arabicName)
+    if (adabAnalysis.issues.length > 0) {
+      issues.push(...adabAnalysis.issues)
     }
 
     if (report) {
@@ -233,10 +439,11 @@ export function auditPrePrintIssues({
     }
 
     if (issues.some((i) => i.category === 'arabic_name')) arabicNameCount += 1
+    if (issues.some((i) => i.category === 'adab_al_tasmiyah')) adabAlTasmiyahCount += 1
     if (issues.some((i) => i.category === 'missing_marks')) missingMarksCount += 1
     if (issues.some((i) => i.category === 'remarks')) remarksCount += 1
 
-    const suggestedArabicName = KNOWN_ARABIC_SUGGESTIONS[englishName.toUpperCase()]
+    const suggestedArabicName = adabAnalysis.suggestions[0]?.value
 
     return {
       enrollment,
@@ -246,6 +453,7 @@ export function auditPrePrintIssues({
       englishName,
       issues,
       suggestedArabicName,
+      adabSuggestions: adabAnalysis.suggestions,
     }
   })
 
@@ -257,6 +465,7 @@ export function auditPrePrintIssues({
     counts: {
       totalFlagged: flaggedRows.length,
       arabicName: arabicNameCount,
+      adabAlTasmiyah: adabAlTasmiyahCount,
       missingMarks: missingMarksCount,
       remarks: remarksCount,
     },
@@ -290,7 +499,7 @@ export function PrePrintQaModal({
   onStudentUpdated,
   onSelectStudent,
 }: PrePrintQaModalProps) {
-  const [filterTab, setFilterTab] = useState<'flagged' | 'arabic_name' | 'missing_marks' | 'remarks' | 'all'>('flagged')
+  const [filterTab, setFilterTab] = useState<'flagged' | 'adab_al_tasmiyah' | 'arabic_name' | 'missing_marks' | 'remarks' | 'all'>('flagged')
   const [searchQuery, setSearchQuery] = useState('')
   const [draftNames, setDraftNames] = useState<Record<string, { name: string; arabic_name: string }>>({})
   const [savingId, setSavingId] = useState<string | null>(null)
@@ -306,7 +515,10 @@ export function PrePrintQaModal({
     return audit.rows.filter((row) => {
       if (filterTab === 'flagged' && row.issues.length === 0) return false
       if (
-        (filterTab === 'arabic_name' || filterTab === 'missing_marks' || filterTab === 'remarks') &&
+        (filterTab === 'adab_al_tasmiyah' ||
+          filterTab === 'arabic_name' ||
+          filterTab === 'missing_marks' ||
+          filterTab === 'remarks') &&
         !row.issues.some((i) => i.category === filterTab)
       ) {
         return false
@@ -337,18 +549,31 @@ export function PrePrintQaModal({
     setSavedIds((prev) => ({ ...prev, [enrollmentId]: false }))
   }
 
-  const handleSaveStudent = async (row: StudentQaAuditRow) => {
+  const handleSaveStudent = async (
+    row: StudentQaAuditRow,
+    explicitOverride?: { name?: string; arabic_name?: string }
+  ) => {
     const targetId = row.studentId
     if (!targetId) {
       toast.error('Student record ID unavailable for inline edit. Refresh enrollments and try again.')
       return
     }
     const draft = getDraft(row)
-    const trimmedName = draft.name.trim()
-    const trimmedArabic = draft.arabic_name.trim()
+    const trimmedName = (explicitOverride?.name ?? draft.name).trim()
+    const trimmedArabic = (explicitOverride?.arabic_name ?? draft.arabic_name).trim()
     if (!trimmedName) {
       toast.error('English name cannot be empty.')
       return
+    }
+
+    if (explicitOverride) {
+      setDraftNames((prev) => ({
+        ...prev,
+        [row.enrollment.enrollment_id]: {
+          name: trimmedName,
+          arabic_name: trimmedArabic,
+        },
+      }))
     }
 
     setSavingId(row.enrollment.enrollment_id)
@@ -421,6 +646,7 @@ export function PrePrintQaModal({
             {(
               [
                 { id: 'flagged', label: `Issues (${audit.counts.totalFlagged})` },
+                { id: 'adab_al_tasmiyah', label: `Adab al-Tasmiyah (${audit.counts.adabAlTasmiyah})` },
                 { id: 'arabic_name', label: `Arabic Names (${audit.counts.arabicName})` },
                 { id: 'missing_marks', label: `Missing Marks (${audit.counts.missingMarks})` },
                 { id: 'remarks', label: `Remarks (${audit.counts.remarks})` },
@@ -530,7 +756,7 @@ export function PrePrintQaModal({
                               : 'text-amber-800 dark:text-amber-300'
                           }`}
                         >
-                          {issue.category === 'arabic_name' ? (
+                          {issue.category === 'arabic_name' || issue.category === 'adab_al_tasmiyah' ? (
                             <Languages className="size-3.5 shrink-0 mt-0.5" />
                           ) : issue.category === 'missing_marks' ? (
                             <FileWarning className="size-3.5 shrink-0 mt-0.5" />
@@ -561,27 +787,49 @@ export function PrePrintQaModal({
                         <label className="block text-[10px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
                           Arabic Name (الاسم بالعربية)
                         </label>
-                        {row.suggestedArabicName && draft.arabic_name.trim() !== row.suggestedArabicName && (
-                          <button
-                            type="button"
-                            onClick={() => updateDraft(eid, row, { arabic_name: row.suggestedArabicName! })}
-                            className="inline-flex items-center gap-1 text-[10px] font-bold text-[#0D5C3A] dark:text-[#34D399] hover:underline cursor-pointer"
-                          >
-                            <Sparkles className="size-2.5" />
-                            Use {row.suggestedArabicName}
-                          </button>
-                        )}
                       </div>
                       <input
                         type="text"
                         dir="rtl"
                         value={draft.arabic_name}
                         onChange={(e) => updateDraft(eid, row, { arabic_name: e.target.value })}
-                        placeholder="مثال: هامان رشيد"
+                        placeholder="مثال: حمدان عبد الرشيد"
                         className="w-full h-8.5 px-2.5 rounded-lg border border-stone-200 dark:border-white/15 bg-white dark:bg-[#111815] text-sm font-bold text-stone-900 dark:text-stone-100 font-arabic focus:outline-none focus:ring-2 focus:ring-[#0D5C3A]/35"
                       />
                     </div>
                   </div>
+
+                  {/* 1-Click Islamic Naming Etiquette (Adab al-Tasmiyah) Suggestion Chips */}
+                  {row.adabSuggestions.length > 0 && (
+                    <div
+                      data-testid={`qa-adab-suggestions-${eid}`}
+                      className="rounded-xl bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/40 px-2.5 py-2 space-y-1.5"
+                    >
+                      <div className="flex items-center gap-1.5 text-[10.5px] font-extrabold text-[#0D5C3A] dark:text-emerald-300">
+                        <Sparkles className="size-3 shrink-0" />
+                        <span>Adab al-Tasmiyah — 1-Click Save &amp; Refresh:</span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1.5" dir="rtl">
+                        {row.adabSuggestions.map((chip) => (
+                          <button
+                            key={`${chip.kind}-${chip.label}-${chip.value}`}
+                            type="button"
+                            disabled={isSaving}
+                            data-testid={`qa-adab-chip-${eid}`}
+                            title={`Save "${chip.value}" and refresh preview immediately`}
+                            onClick={() => handleSaveStudent(row, { arabic_name: chip.value })}
+                            className={`px-2.5 py-1 rounded-full text-xs font-bold font-arabic transition cursor-pointer border disabled:opacity-50 ${
+                              chip.kind === 'prefix'
+                                ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-300 dark:bg-amber-900/40 dark:text-amber-200 dark:border-amber-700/50'
+                                : 'bg-white hover:bg-[#0D5C3A] hover:text-white text-[#0D5C3A] border-[#0D5C3A]/35 dark:bg-[#14201B] dark:text-emerald-200 dark:border-emerald-700/50'
+                            }`}
+                          >
+                            {chip.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   <div className="flex items-center justify-between gap-2 pt-0.5">
                     <span className="text-[10.5px] text-stone-500 dark:text-stone-400">

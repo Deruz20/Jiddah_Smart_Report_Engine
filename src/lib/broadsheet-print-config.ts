@@ -1,5 +1,5 @@
 export type BroadsheetCurriculum = 'secular' | 'theology'
-export type BroadsheetFontScale = 'compact' | 'readable' | 'large'
+export type BroadsheetFontScale = 'compact' | 'readable' | 'standard' | 'large' | 'xlarge'
 export type BroadsheetDensity = 'tight' | 'comfortable' | 'spacious'
 export type BroadsheetOrientation = 'landscape' | 'portrait'
 export type BroadsheetHeaderStyle = 'official' | 'compact' | 'none'
@@ -12,6 +12,8 @@ export type BroadsheetSubjectDisplayMode = 'split' | 'combined' | 'marks_only'
 
 export interface BroadsheetPrintConfig {
   fontScale: BroadsheetFontScale
+  /** Optional explicit font-size stepper override (12px–26px). Null/undefined follows preset. */
+  fontSizeBase?: number | null
   density: BroadsheetDensity
   orientation: BroadsheetOrientation
   colorTheme: BroadsheetColorTheme
@@ -42,6 +44,8 @@ export interface BroadsheetPrintConfig {
   showCohortSummaryBox: boolean
   showSignatures: boolean
   showStamp: boolean
+  /** Session-only overrides (NEVER persisted to localStorage) */
+  stampDateOverride?: string
   customTitle: string
   customFooterNote: string
   signatory1: string
@@ -53,6 +57,7 @@ export function getDefaultBroadsheetPrintConfig(curriculum: BroadsheetCurriculum
   if (curriculum === 'theology') {
     return {
       fontScale: 'readable',
+      fontSizeBase: null,
       density: 'comfortable',
       orientation: 'landscape',
       colorTheme: 'emerald',
@@ -83,6 +88,7 @@ export function getDefaultBroadsheetPrintConfig(curriculum: BroadsheetCurriculum
       showCohortSummaryBox: true,
       showSignatures: true,
       showStamp: true,
+      stampDateOverride: '',
       customTitle: '',
       customFooterNote: '',
       signatory1: 'مُعدّ الكشف: معلم الفصل',
@@ -93,6 +99,7 @@ export function getDefaultBroadsheetPrintConfig(curriculum: BroadsheetCurriculum
 
   return {
     fontScale: 'readable',
+    fontSizeBase: null,
     density: 'comfortable',
     orientation: 'landscape',
     colorTheme: 'emerald',
@@ -123,6 +130,7 @@ export function getDefaultBroadsheetPrintConfig(curriculum: BroadsheetCurriculum
     showCohortSummaryBox: true,
     showSignatures: true,
     showStamp: true,
+    stampDateOverride: '',
     customTitle: '',
     customFooterNote: '',
     signatory1: 'Compiled By: Class Teacher',
@@ -133,6 +141,7 @@ export function getDefaultBroadsheetPrintConfig(curriculum: BroadsheetCurriculum
 
 export interface BroadsheetTypographyTokens {
   bodyFontPx: number
+  studentNameFontPx: number
   headerFontPx: number
   subHeaderFontPx: number
   titleFontPx: number
@@ -146,9 +155,28 @@ export interface BroadsheetTypographyTokens {
   lineHeight: number
 }
 
+export function getPresetFontSizePx(
+  fontScale: BroadsheetFontScale,
+  curriculum: BroadsheetCurriculum = 'secular'
+): number {
+  const normalized = fontScale === 'standard' ? 'readable' : fontScale
+  if (curriculum === 'theology') {
+    if (normalized === 'compact') return 14
+    if (normalized === 'large') return 20
+    if (normalized === 'xlarge') return 23
+    return 17
+  }
+  if (normalized === 'compact') return 10.5
+  if (normalized === 'large') return 14
+  if (normalized === 'xlarge') return 16
+  return 12
+}
+
 export function getBroadsheetTypographyTokens(
   fontScale: BroadsheetFontScale,
-  density: BroadsheetDensity
+  density: BroadsheetDensity,
+  curriculum: BroadsheetCurriculum = 'secular',
+  fontSizeBase?: number | null
 ): BroadsheetTypographyTokens {
   const paddingMap: Record<BroadsheetDensity, { cell: string; header: string }> = {
     tight: { cell: '4px 6px', header: '5px 6px' },
@@ -157,9 +185,121 @@ export function getBroadsheetTypographyTokens(
   }
   const pad = paddingMap[density] || paddingMap.comfortable
 
-  if (fontScale === 'large') {
+  if (typeof fontSizeBase === 'number' && Number.isFinite(fontSizeBase) && fontSizeBase >= 12 && fontSizeBase <= 26) {
+    const body = Math.round(fontSizeBase)
+    const studentName = Math.min(27, body + 1)
+    return {
+      bodyFontPx: body,
+      studentNameFontPx: studentName,
+      headerFontPx: Math.max(11, Math.round(body * 0.94)),
+      subHeaderFontPx: Math.max(10, Math.round(body * 0.8)),
+      titleFontPx: Math.max(18, Math.round(body + 5)),
+      subtitleFontPx: Math.max(14, Math.round(body + 1)),
+      badgeFontPx: Math.max(11, Math.round(body * 0.88)),
+      metaFontPx: Math.max(11, Math.round(body * 0.86)),
+      summaryFontPx: Math.max(12, Math.round(body * 0.94)),
+      footerFontPx: Math.max(11, Math.round(body * 0.82)),
+      cellPadding: pad.cell,
+      headerPadding: pad.header,
+      lineHeight: body >= 20 ? 1.42 : 1.38,
+    }
+  }
+
+  const normalizedScale = fontScale === 'standard' ? 'readable' : fontScale
+
+  // Arabic script renders ~25% smaller visually than Latin; apply explicit Arabic readability scale
+  if (curriculum === 'theology') {
+    if (normalizedScale === 'compact') {
+      return {
+        bodyFontPx: 14,
+        studentNameFontPx: 15,
+        headerFontPx: 14,
+        subHeaderFontPx: 12,
+        titleFontPx: 20,
+        subtitleFontPx: 16,
+        badgeFontPx: 13,
+        metaFontPx: 13,
+        summaryFontPx: 14,
+        footerFontPx: 13,
+        cellPadding: pad.cell,
+        headerPadding: pad.header,
+        lineHeight: 1.35,
+      }
+    }
+    if (normalizedScale === 'large') {
+      return {
+        bodyFontPx: 20,
+        studentNameFontPx: 21,
+        headerFontPx: 18.5,
+        subHeaderFontPx: 15,
+        titleFontPx: 24,
+        subtitleFontPx: 20,
+        badgeFontPx: 17.5,
+        metaFontPx: 16,
+        summaryFontPx: 18.5,
+        footerFontPx: 15.5,
+        cellPadding: pad.cell,
+        headerPadding: pad.header,
+        lineHeight: 1.42,
+      }
+    }
+    if (normalizedScale === 'xlarge') {
+      return {
+        bodyFontPx: 23,
+        studentNameFontPx: 24,
+        headerFontPx: 21,
+        subHeaderFontPx: 17,
+        titleFontPx: 26,
+        subtitleFontPx: 22,
+        badgeFontPx: 19.5,
+        metaFontPx: 18,
+        summaryFontPx: 21,
+        footerFontPx: 17,
+        cellPadding: pad.cell,
+        headerPadding: pad.header,
+        lineHeight: 1.45,
+      }
+    }
+    // New Theology Standard Default: 17px cell / 18px bold student name
+    return {
+      bodyFontPx: 17,
+      studentNameFontPx: 18,
+      headerFontPx: 16,
+      subHeaderFontPx: 13.5,
+      titleFontPx: 22,
+      subtitleFontPx: 18,
+      badgeFontPx: 15.5,
+      metaFontPx: 14.5,
+      summaryFontPx: 16,
+      footerFontPx: 14,
+      cellPadding: pad.cell,
+      headerPadding: pad.header,
+      lineHeight: 1.4,
+    }
+  }
+
+  if (normalizedScale === 'xlarge') {
+    return {
+      bodyFontPx: 16,
+      studentNameFontPx: 17,
+      headerFontPx: 15,
+      subHeaderFontPx: 12.5,
+      titleFontPx: 21,
+      subtitleFontPx: 17,
+      badgeFontPx: 14,
+      metaFontPx: 13.5,
+      summaryFontPx: 14.5,
+      footerFontPx: 13,
+      cellPadding: pad.cell,
+      headerPadding: pad.header,
+      lineHeight: 1.42,
+    }
+  }
+
+  if (normalizedScale === 'large') {
     return {
       bodyFontPx: 14,
+      studentNameFontPx: 15,
       headerFontPx: 13,
       subHeaderFontPx: 11,
       titleFontPx: 19,
@@ -174,9 +314,10 @@ export function getBroadsheetTypographyTokens(
     }
   }
 
-  if (fontScale === 'compact') {
+  if (normalizedScale === 'compact') {
     return {
       bodyFontPx: 10.5,
+      studentNameFontPx: 11.5,
       headerFontPx: 10.5,
       subHeaderFontPx: 9,
       titleFontPx: 15,
@@ -194,6 +335,7 @@ export function getBroadsheetTypographyTokens(
   // 'readable' default — crystal clear 12px (9pt) print body
   return {
     bodyFontPx: 12,
+    studentNameFontPx: 13,
     headerFontPx: 11.5,
     subHeaderFontPx: 10,
     titleFontPx: 17,
@@ -212,6 +354,13 @@ export function getBroadsheetStorageKey(curriculum: BroadsheetCurriculum): strin
   return `jiddah:hub_print_config_v2:${curriculum}`
 }
 
+export function stripDynamicBroadsheetOverrides(
+  config: BroadsheetPrintConfig
+): Omit<BroadsheetPrintConfig, 'stampDateOverride' | 'customTitle' | 'customFooterNote'> {
+  const { stampDateOverride: _sd, customTitle: _ct, customFooterNote: _cf, ...persistedLayout } = config
+  return persistedLayout
+}
+
 export function loadBroadsheetPrintConfig(curriculum: BroadsheetCurriculum): BroadsheetPrintConfig {
   const defaults = getDefaultBroadsheetPrintConfig(curriculum)
   if (typeof window === 'undefined') return defaults
@@ -223,6 +372,10 @@ export function loadBroadsheetPrintConfig(curriculum: BroadsheetCurriculum): Bro
     return {
       ...defaults,
       ...parsed,
+      // Dynamic global/session fields are NEVER restored from stale localStorage
+      stampDateOverride: '',
+      customTitle: '',
+      customFooterNote: '',
       // Enforce raw subject marks only for Theology broadsheets regardless of older saved preferences
       showSubjectGrades:
         curriculum === 'theology'
@@ -243,7 +396,8 @@ export function saveBroadsheetPrintConfig(
 ): void {
   if (typeof window === 'undefined') return
   try {
-    window.localStorage.setItem(getBroadsheetStorageKey(curriculum), JSON.stringify(config))
+    const persistable = stripDynamicBroadsheetOverrides(config)
+    window.localStorage.setItem(getBroadsheetStorageKey(curriculum), JSON.stringify(persistable))
   } catch {
     // Ignore private-browsing quota issues
   }

@@ -49,6 +49,8 @@ import {
   type MergedSchoolSettings,
 } from "@/lib/school-settings-helper";
 import { invalidateClientCache } from "@/lib/client-cache";
+import { broadcastGlobalSchoolSettingsUpdate } from "@/lib/studio-config-store";
+import { getLiveStampDateString } from "@/lib/stamp-date";
 import { ConfirmDestructiveDialog } from "@/components/ConfirmDestructiveDialog";
 import TermsClient, { type AcademicTerm } from "@/components/layout/terms-client";
 import SignaturesClient, { type SignatureSlot } from "@/components/layout/signatures-client";
@@ -78,9 +80,9 @@ interface CategoryDef {
 const SETTINGS_CATEGORIES: CategoryDef[] = [
   {
     id: "identity",
-    label: "School Identity & Active Term",
-    shortLabel: "Identity & Term",
-    subtitle: "Branding, contact profile, active term & calendar",
+    label: "School Identity & Print Defaults",
+    shortLabel: "Identity & Print",
+    subtitle: "School Name, Motto, Active Term & Global Print/Stamp Defaults",
     icon: Building2,
     keywords: [
       "school",
@@ -112,11 +114,16 @@ const SETTINGS_CATEGORIES: CategoryDef[] = [
       "boarding",
       "nursery",
       "primary",
+      "stamp",
+      "stamp date",
+      "headteacher",
+      "signature",
+      "print defaults",
     ],
   },
   {
     id: "secular_grading",
-    label: "Secular Grading & Divisions (PLE)",
+    label: "Secular Grading (PLE)",
     shortLabel: "Secular (PLE)",
     subtitle: "D1–F9 score scale & 4–36 PLE aggregate divisions",
     icon: Award,
@@ -138,7 +145,7 @@ const SETTINGS_CATEGORIES: CategoryDef[] = [
   },
   {
     id: "theology_grading",
-    label: "Theology Grading & Divisions (IPLE)",
+    label: "Theology Grading (IPLE)",
     shortLabel: "Theology (IPLE)",
     subtitle: "1–9 point weights & 4–36 IPLE Arabic divisions",
     icon: Sliders,
@@ -157,8 +164,8 @@ const SETTINGS_CATEGORIES: CategoryDef[] = [
   },
   {
     id: "comments",
-    label: "Comments, Conduct & Remarks Rules",
-    shortLabel: "Comments & Conduct",
+    label: "Remarks Engine",
+    shortLabel: "Remarks Engine",
     subtitle: "Grading & Remarks Engine — Teacher, Headteacher & Promotion templates",
     icon: CalendarRange,
     keywords: [
@@ -325,11 +332,23 @@ export default function SettingsClient({
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [resettingDefaults, setResettingDefaults] = useState(false);
 
-  // 5. Print Preferences State (Optimistic Auto-Saving Switches)
-  const [printPrefs, setPrintPrefs] = useState<PrintPreferencesConfig>({
+  // 5. Print Preferences & Global Print/Stamp Defaults State
+  const initialPrintPrefs: PrintPreferencesConfig = {
     ...DEFAULT_PRINT_PREFERENCES,
     ...(initialSettings?.print_preferences || {}),
-  });
+    stamp_date:
+      (initialSettings as any)?.stamp_date ||
+      initialSettings?.print_preferences?.stamp_date ||
+      "",
+    default_headteacher_name:
+      initialSettings?.print_preferences?.default_headteacher_name || "",
+    default_signature_url:
+      initialSettings?.print_preferences?.default_signature_url || "",
+  };
+  const [printPrefs, setPrintPrefs] = useState<PrintPreferencesConfig>(initialPrintPrefs);
+  const [savedPrintPrefs, setSavedPrintPrefs] = useState<PrintPreferencesConfig>(initialPrintPrefs);
+  const [savingGlobalPrintDefaults, setSavingGlobalPrintDefaults] = useState(false);
+  const [uploadingDefaultSig, setUploadingDefaultSig] = useState(false);
   const [savingPrintPrefKey, setSavingPrintPrefKey] = useState<string | null>(null);
 
   // 6. Marks Entry & Access Locks State (Optimistic Auto-Saving Switches)
@@ -387,8 +406,20 @@ export default function SettingsClient({
             setPromotionComments({ ...DEFAULT_PROMOTION_COMMENTS, ...d.promotion_comments });
             setSavedPromotionComments({ ...DEFAULT_PROMOTION_COMMENTS, ...d.promotion_comments });
           }
-          if (d.print_preferences) {
-            setPrintPrefs({ ...DEFAULT_PRINT_PREFERENCES, ...d.print_preferences });
+          if (d.print_preferences || (d as any).stamp_date !== undefined) {
+            const nextPrintPrefs: PrintPreferencesConfig = {
+              ...DEFAULT_PRINT_PREFERENCES,
+              ...(d.print_preferences || {}),
+              stamp_date:
+                (d as any).stamp_date || d.print_preferences?.stamp_date || "",
+              default_headteacher_name:
+                d.print_preferences?.default_headteacher_name || "",
+              default_signature_url:
+                d.print_preferences?.default_signature_url || "",
+            };
+            setPrintPrefs(nextPrintPrefs);
+            setSavedPrintPrefs(nextPrintPrefs);
+            broadcastGlobalSchoolSettingsUpdate(d as any);
           }
           if (d.marks_locks) {
             setMarksLocks({ ...DEFAULT_MARKS_LOCKS, ...d.marks_locks });
@@ -406,6 +437,12 @@ export default function SettingsClient({
 
   // Dirty-state checks
   const isIdentityDirty = JSON.stringify(identity) !== JSON.stringify(savedIdentity);
+  const isGlobalPrintDefaultsDirty =
+    (printPrefs.stamp_date || "") !== (savedPrintPrefs.stamp_date || "") ||
+    (printPrefs.default_headteacher_name || "") !== (savedPrintPrefs.default_headteacher_name || "") ||
+    (printPrefs.default_signature_url || "") !== (savedPrintPrefs.default_signature_url || "") ||
+    Boolean(printPrefs.includeStamp) !== Boolean(savedPrintPrefs.includeStamp) ||
+    Boolean(printPrefs.includeSignatures) !== Boolean(savedPrintPrefs.includeSignatures);
   const isSecularScaleDirty = JSON.stringify(secularScale) !== JSON.stringify(savedSecularScale);
   const isTheologyDirty =
     JSON.stringify(theologyScale) !== JSON.stringify(savedTheologyScale) ||
@@ -462,7 +499,82 @@ export default function SettingsClient({
     }
 
     invalidateClientCache();
+    broadcastGlobalSchoolSettingsUpdate(verifyPayload.data);
     return verifyPayload.data as MergedSchoolSettings;
+  };
+
+  // Save Global Print & Stamp Defaults (Source of Truth for Hubs & Reports)
+  const handleSaveGlobalPrintDefaults = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingGlobalPrintDefaults(true);
+    try {
+      const normalizedStampDate = (printPrefs.stamp_date || "").trim().toUpperCase();
+      const nextPrintPayload: PrintPreferencesConfig = {
+        ...printPrefs,
+        stamp_date: normalizedStampDate,
+        default_headteacher_name: (printPrefs.default_headteacher_name || "").trim(),
+        default_signature_url: (printPrefs.default_signature_url || "").trim(),
+      };
+      const confirmed = await saveAndVerifySettingsPatch(
+        {
+          stamp_date: normalizedStampDate,
+          print_preferences: nextPrintPayload,
+        },
+        "Failed to save global print and stamp defaults"
+      );
+      const verifiedPrint: PrintPreferencesConfig = {
+        ...DEFAULT_PRINT_PREFERENCES,
+        ...(confirmed.print_preferences || nextPrintPayload),
+        stamp_date:
+          (confirmed as any).stamp_date ||
+          confirmed.print_preferences?.stamp_date ||
+          normalizedStampDate,
+      };
+      setPrintPrefs(verifiedPrint);
+      setSavedPrintPrefs(verifiedPrint);
+      toast.success("Global Print & Stamp defaults saved and synced to all Hubs & Reports.");
+      router.refresh();
+    } catch (err: any) {
+      toast.error(err.message || "Unable to save global print defaults");
+    } finally {
+      setSavingGlobalPrintDefaults(false);
+    }
+  };
+
+  // Upload Default Headteacher Signature
+  const handleUploadDefaultSignature = async (file: File) => {
+    if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
+      toast.error("Please upload a PNG, JPG, or WEBP signature image.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Signature image must be smaller than 5MB.");
+      return;
+    }
+    setUploadingDefaultSig(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("slot_key", "head-teacher");
+      const res = await fetch("/api/signatures/upload", {
+        method: "POST",
+        body: formData,
+      });
+      const payload = await res.json();
+      if (!res.ok) {
+        throw new Error(payload?.error || "Signature upload failed");
+      }
+      const publicUrl = payload?.data?.public_url;
+      if (publicUrl) {
+        const nextUrl = `${publicUrl}?t=${Date.now()}`;
+        setPrintPrefs((prev) => ({ ...prev, default_signature_url: nextUrl }));
+        toast.success("Default Headteacher signature uploaded. Click Save Print Defaults to publish.");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Signature upload failed");
+    } finally {
+      setUploadingDefaultSig(false);
+    }
   };
 
   // Save Identity Handler
@@ -812,7 +924,7 @@ export default function SettingsClient({
   const shouldShowCategory = (id: SettingsCategoryKey) => visibleCategories.includes(id);
 
   const tabDirtyMap: Record<string, boolean> = {
-    identity: isIdentityDirty,
+    identity: isIdentityDirty || isGlobalPrintDefaultsDirty,
     secular_grading: isSecularScaleDirty || isDivisionDirty,
     theology_grading: isTheologyDirty || isTheologyDivisionDirty,
     comments: isDivisionDirty || isTheologyDirty || isPromotionCommentsDirty,
@@ -1286,7 +1398,213 @@ export default function SettingsClient({
                 </form>
               </div>
 
-              {/* Embedded Academic Terms & Calendar inside Tab 1: School Identity & Active Term */}
+              {/* Dedicated Global Print & Stamp Defaults Card (Single Source of Truth) */}
+              <div
+                data-testid="settings-card-global-print-defaults"
+                className="bg-white dark:bg-[#131A16] rounded-2xl border border-[#E3E8E3] dark:border-[#24332E] shadow-[0_1px_3px_rgba(15,41,30,0.04)] p-6"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+                  <div>
+                    <h2 className="text-[15px] font-semibold text-[#111827] dark:text-[#F4F7F5]">
+                      Global Print &amp; Stamp Defaults
+                    </h2>
+                    <p className="text-xs text-[#6B7280] dark:text-[#9AA7A0] mt-0.5">
+                      Authoritative school-wide baseline inherited immediately by Secular Hub, Theology Hub, and Report Cards.
+                    </p>
+                  </div>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/50 px-3 py-1 text-xs font-semibold text-amber-800 dark:text-amber-300">
+                    <Stamp className="w-3.5 h-3.5" />
+                    <span>Global Print Truth</span>
+                  </span>
+                </div>
+
+                <form onSubmit={handleSaveGlobalPrintDefaults} className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <label className="block text-xs font-semibold text-[#374151] dark:text-[#CBD5E1]">
+                          Global Stamp Date
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPrintPrefs((prev) => ({
+                                ...prev,
+                                stamp_date: getLiveStampDateString(),
+                              }))
+                            }
+                            className="text-[10.5px] font-bold text-[#0D5C3A] dark:text-emerald-400 hover:underline cursor-pointer"
+                          >
+                            Use Today
+                          </button>
+                          {printPrefs.stamp_date && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setPrintPrefs((prev) => ({ ...prev, stamp_date: "" }))
+                              }
+                              className="text-[10.5px] font-bold text-stone-500 hover:text-stone-800 hover:underline cursor-pointer"
+                            >
+                              Auto Live Date
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <input
+                        type="text"
+                        data-testid="settings-global-stamp-date"
+                        value={printPrefs.stamp_date || ""}
+                        onChange={(e) =>
+                          setPrintPrefs((prev) => ({
+                            ...prev,
+                            stamp_date: e.target.value.toUpperCase(),
+                          }))
+                        }
+                        placeholder={`Auto Live Date (${getLiveStampDateString()})`}
+                        className="w-full h-9 rounded-lg border border-[#D5DFD5] dark:border-[#2A3B35] bg-white dark:bg-[#0D1412] px-3 text-xs sm:text-sm font-mono text-[#111827] dark:text-[#F4F7F5] focus:border-[#0D5C3A] dark:focus:border-emerald-500 focus:ring-2 focus:ring-[#0D5C3A]/15 outline-none"
+                      />
+                      <p className="text-[10.5px] text-[#6B7280] dark:text-[#9AA7A0] mt-1">
+                        Leave blank to stamp today&rsquo;s live date automatically, or set an official closing date (e.g., <code>{getLiveStampDateString()}</code>).
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-[#374151] dark:text-[#CBD5E1] mb-1.5">
+                        Default Headteacher Name
+                      </label>
+                      <input
+                        type="text"
+                        data-testid="settings-default-headteacher-name"
+                        value={printPrefs.default_headteacher_name || ""}
+                        onChange={(e) =>
+                          setPrintPrefs((prev) => ({
+                            ...prev,
+                            default_headteacher_name: e.target.value,
+                          }))
+                        }
+                        placeholder="e.g. Hajji / Ustadh Headteacher Name"
+                        className="w-full h-9 rounded-lg border border-[#D5DFD5] dark:border-[#2A3B35] bg-white dark:bg-[#0D1412] px-3 text-xs sm:text-sm text-[#111827] dark:text-[#F4F7F5] focus:border-[#0D5C3A] dark:focus:border-emerald-500 focus:ring-2 focus:ring-[#0D5C3A]/15 outline-none"
+                      />
+                      <p className="text-[10.5px] text-[#6B7280] dark:text-[#9AA7A0] mt-1">
+                        Used as the default Head Teacher signatory line when resetting Hub sheets.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Default Headteacher Signature Row */}
+                  <div className="rounded-xl border border-[#E3E8E3] dark:border-[#24332E] bg-[#F8FAF8] dark:bg-[#0D1412] p-3.5 flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-24 h-12 rounded-lg bg-white dark:bg-[#131A16] border border-[#D5DFD5] dark:border-[#2A3B35] flex items-center justify-center overflow-hidden shrink-0 px-2">
+                        {printPrefs.default_signature_url ? (
+                          <img
+                            src={printPrefs.default_signature_url}
+                            alt="Default Headteacher Signature"
+                            className="max-h-10 max-w-full object-contain"
+                          />
+                        ) : (
+                          <span className="text-[10px] font-semibold text-stone-400">
+                            No Signature
+                          </span>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-[#111827] dark:text-[#F4F7F5]">
+                          Default Headteacher Signature
+                        </div>
+                        <p className="text-[11px] text-[#6B7280] dark:text-[#9AA7A0]">
+                          Clean PNG/JPG ink scan printed across report cards and official sheets.
+                        </p>
+                      </div>
+                    </div>
+                    <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-[#D5DFD5] dark:border-[#2A3B35] bg-white dark:bg-[#131A16] hover:bg-[#EEF3EE] px-3 py-1.5 text-xs font-semibold text-[#374151] dark:text-[#E5ECE8] transition shrink-0">
+                      {uploadingDefaultSig ? (
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#0D5C3A]" />
+                      ) : (
+                        <Upload className="w-3.5 h-3.5 text-[#0D5C3A]" />
+                      )}
+                      <span>{uploadingDefaultSig ? "Uploading..." : "Upload Signature"}</span>
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) void handleUploadDefaultSignature(file);
+                        }}
+                      />
+                    </label>
+                  </div>
+
+                  {/* Quick Global Toggle Defaults */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    <div className="flex items-center justify-between gap-3 rounded-xl border border-[#E3E8E3] dark:border-[#24332E] px-3.5 py-2.5">
+                      <div>
+                        <div className="text-xs font-semibold text-[#111827] dark:text-[#F4F7F5]">
+                          Show Official Stamp by Default
+                        </div>
+                        <div className="text-[10.5px] text-[#6B7280]">
+                          Physical 55mm × 32mm school stamp
+                        </div>
+                      </div>
+                      <Switch.Root
+                        checked={Boolean(printPrefs.includeStamp)}
+                        onCheckedChange={(checked) =>
+                          setPrintPrefs((prev) => ({ ...prev, includeStamp: checked }))
+                        }
+                        className="w-9 h-5 rounded-full bg-stone-300 data-[state=checked]:bg-[#0D5C3A] transition-colors relative cursor-pointer shrink-0"
+                      >
+                        <Switch.Thumb className="block w-4 h-4 rounded-full bg-white shadow transition-transform translate-x-0.5 data-[state=checked]:translate-x-[18px]" />
+                      </Switch.Root>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 rounded-xl border border-[#E3E8E3] dark:border-[#24332E] px-3.5 py-2.5">
+                      <div>
+                        <div className="text-xs font-semibold text-[#111827] dark:text-[#F4F7F5]">
+                          Show Signatures by Default
+                        </div>
+                        <div className="text-[10.5px] text-[#6B7280]">
+                          Class teacher &amp; headteacher signature blocks
+                        </div>
+                      </div>
+                      <Switch.Root
+                        checked={Boolean(printPrefs.includeSignatures)}
+                        onCheckedChange={(checked) =>
+                          setPrintPrefs((prev) => ({ ...prev, includeSignatures: checked }))
+                        }
+                        className="w-9 h-5 rounded-full bg-stone-300 data-[state=checked]:bg-[#0D5C3A] transition-colors relative cursor-pointer shrink-0"
+                      >
+                        <Switch.Thumb className="block w-4 h-4 rounded-full bg-white shadow transition-transform translate-x-0.5 data-[state=checked]:translate-x-[18px]" />
+                      </Switch.Root>
+                    </div>
+                  </div>
+
+                  {/* Save Global Print Defaults Footer */}
+                  <div className="flex items-center justify-between pt-3 border-t border-[#F1F5F1] dark:border-[#1E2B25]">
+                    <span className="text-xs text-[#6B7280] dark:text-[#9AA7A0]">
+                      {isGlobalPrintDefaultsDirty
+                        ? "Unsaved changes to global print & stamp defaults"
+                        : "Synced live with Secular Hub, Theology Hub & Report Center"}
+                    </span>
+                    <button
+                      type="submit"
+                      data-testid="settings-save-print-defaults"
+                      disabled={!isGlobalPrintDefaultsDirty || savingGlobalPrintDefaults}
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-[#0D5C3A] hover:bg-[#0A472C] px-4 py-2 text-xs font-semibold text-white transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                      {savingGlobalPrintDefaults ? (
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Printer className="w-3.5 h-3.5" />
+                      )}
+                      <span>
+                        {savingGlobalPrintDefaults ? "Syncing..." : "Save Print & Stamp Defaults"}
+                      </span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              {/* Embedded Academic Terms & Calendar inside Tab 1: School Identity & Print Defaults */}
               <TermsClient
                 initialTerms={normalizedTerms}
                 initialFeeStructure={feeStructure}

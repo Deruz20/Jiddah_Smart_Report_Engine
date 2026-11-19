@@ -183,10 +183,21 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Term not found' }, { status: 404 }))
     }
 
+    const globalSettingsStampDate =
+      typeof (schoolSettings as any)?.stamp_date === 'string' &&
+      !isStaleHardcodedStampDate((schoolSettings as any).stamp_date)
+        ? String((schoolSettings as any).stamp_date).trim()
+        : typeof schoolSettings?.print_preferences?.stamp_date === 'string' &&
+            !isStaleHardcodedStampDate(schoolSettings.print_preferences.stamp_date)
+          ? String(schoolSettings.print_preferences.stamp_date).trim()
+          : undefined
     const validStampOverride =
       stamp_date && !isStaleHardcodedStampDate(stamp_date) ? stamp_date.trim() : undefined
-    term.end_date = validStampOverride || getLiveIsoDateString()
-    const resolvedResponseStampDate = resolveEffectiveStampDate(validStampOverride, term.end_date)
+    term.end_date = validStampOverride || globalSettingsStampDate || getLiveIsoDateString()
+    const resolvedResponseStampDate = resolveEffectiveStampDate(
+      validStampOverride || globalSettingsStampDate,
+      term.end_date
+    )
 
     // Reconcile equivalent terms by academic_year and term_number
     const termInfo = await resolveEquivalentTerms(supabaseAdmin, termId)

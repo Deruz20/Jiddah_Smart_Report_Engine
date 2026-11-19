@@ -19,15 +19,18 @@ function toArabicDigits(val: number | string | null | undefined): string {
 interface DetailedReportPrintDocumentProps {
   report: DetailedReportResult | null
   supportThreshold: number
+  globalStampDate?: string
 }
 
 export function DetailedReportPrintDocument({
   report,
   supportThreshold,
+  globalStampDate,
 }: DetailedReportPrintDocumentProps) {
   if (!report) return null
 
   const isArabic = report.meta.curriculum === 'theology'
+  const effectiveStampDate = resolveEffectiveStampDate(null, globalStampDate || null)
   const threshold = clampSupportThreshold(supportThreshold ?? report.learners.supportThreshold)
   const needsSupport = filterNeedsSupportLearners(
     report.learners.eligibleLearners,
@@ -44,10 +47,10 @@ export function DetailedReportPrintDocument({
   }
 
   const sectionHeadingStyle: React.CSSProperties = {
-    fontSize: '10.5px',
-    fontWeight: 800,
-    textTransform: 'uppercase',
-    letterSpacing: '0.04em',
+    fontSize: isArabic ? '20px' : '10.5px',
+    fontWeight: 900,
+    textTransform: isArabic ? 'none' : 'uppercase',
+    letterSpacing: isArabic ? '0' : '0.04em',
     color: '#0F4D25',
     borderBottom: '1.5px solid #0F4D25',
     paddingBottom: '3px',
@@ -56,20 +59,21 @@ export function DetailedReportPrintDocument({
   }
 
   const thStyle: React.CSSProperties = {
-    padding: '4px 6px',
+    padding: isArabic ? '5px 7px' : '4px 6px',
     border: '1px solid #D6D3D1',
     backgroundColor: '#F5F5F4',
     color: '#1C1917',
-    fontSize: '9px',
-    fontWeight: 800,
+    fontSize: isArabic ? '14.5px' : '9px',
+    fontWeight: 900,
     textAlign: isArabic ? 'right' : 'left',
   }
 
   const tdStyle: React.CSSProperties = {
-    padding: '3.5px 6px',
+    padding: isArabic ? '4.5px 7px' : '3.5px 6px',
     border: '1px solid #E7E5E4',
     color: '#1C1917',
-    fontSize: '9px',
+    fontSize: isArabic ? '14px' : '9px',
+    fontWeight: isArabic ? 700 : 400,
     fontVariantNumeric: 'tabular-nums',
   }
 
@@ -406,7 +410,7 @@ export function DetailedReportPrintDocument({
           reportData={{
             stamp_config: {
               ink_color: '#1B3B8B',
-              date: resolveEffectiveStampDate(),
+              date: effectiveStampDate,
             },
           }}
           maxWidth={208}

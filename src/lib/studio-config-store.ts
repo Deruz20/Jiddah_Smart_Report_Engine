@@ -1,6 +1,15 @@
 'use client'
 
 import React, { createContext, useContext, useEffect, useState } from 'react'
+import { create } from 'zustand'
+import { persist, createJSONStorage } from 'zustand/middleware'
+import {
+  type BroadsheetCurriculum,
+  type BroadsheetPrintConfig,
+  type BroadsheetTableStyle,
+  getDefaultBroadsheetPrintConfig,
+  stripDynamicBroadsheetOverrides,
+} from './broadsheet-print-config'
 import {
   formatStampDisplayDate,
   getLiveHeaderDateString,
@@ -932,7 +941,9 @@ export function saveStudioConfigToStorage(config: Partial<StudioFormattingConfig
   const normalized = normalizeStudioConfig(config)
   if (typeof window !== 'undefined') {
     try {
-      const serialized = JSON.stringify(normalized)
+      // Never persist session stampDate overrides to localStorage — global /admin/settings or live Date() drives baseline
+      const persistable = { ...normalized, stampDate: '' }
+      const serialized = JSON.stringify(persistable)
       localStorage.setItem(STUDIO_STORAGE_KEY, serialized)
       localStorage.setItem(LEGACY_STUDIO_STORAGE_KEY, serialized)
       window.dispatchEvent(new CustomEvent(STUDIO_UPDATE_EVENT, { detail: normalized }))
@@ -1050,4 +1061,415 @@ export function useSyncedStudioConfig(initial?: Partial<StudioFormattingConfig>)
   )
 
   return [config, updateConfig]
+}
+
+// =============================================================================
+// HIERARCHICAL PRINT STATE & ZUSTAND PERSIST STORE (`jiddah-print-prefs`)
+// =============================================================================
+
+export const GLOBAL_SETTINGS_SYNC_EVENT = 'jiddah-school-settings-updated'
+export const GLOBAL_SETTINGS_BROADCAST_CHANNEL = 'jiddah-settings-sync'
+export const ZUSTAND_PRINT_PREFS_KEY = 'jiddah-print-prefs'
+
+export interface GlobalPrintDefaults {
+  schoolName: string
+  arabicName: string
+  motto: string
+  /** Global stamp date configured in /admin/settings (empty = live new Date()) */
+  stampDate: string
+  defaultHeadteacherName: string
+  defaultSignatureUrl: string
+  includeStamp: boolean
+  includeSignatures: boolean
+  updatedAt?: string
+}
+
+export const DEFAULT_GLOBAL_PRINT_DEFAULTS: GlobalPrintDefaults = {
+  schoolName: 'Jiddah Islamic Nursery & Primary School',
+  arabicName: 'مدرسة جدة الإسلامية للروضة والابتدائية',
+  motto: 'Striving for Life & The Hereafter',
+  stampDate: '',
+  defaultHeadteacherName: '',
+  defaultSignatureUrl: '',
+  includeStamp: true,
+  includeSignatures: true,
+}
+
+export type PersistedHubLayoutPrefs = Omit<
+  BroadsheetPrintConfig,
+  'stampDateOverride' | 'customTitle' | 'customFooterNote'
+>
+
+export interface HubSessionOverrides {
+  stampDateOverride: string
+  customTitle: string
+  customFooterNote: string
+}
+
+const EMPTY_SESSION_OVERRIDES: HubSessionOverrides = {
+  stampDateOverride: '',
+  customTitle: '',
+  customFooterNote: '',
+}
+
+export interface StudioConfigStoreState {
+  // Persisted UI Layout Preferences ONLY (serialized under `jiddah-print-prefs`)
+  theme: StudioThemeId
+  nurseryTheme: NurseryReportTheme
+  tableStyle: BroadsheetTableStyle
+  fontSizeBase: number | null
+  showStamp: boolean
+  showSignatures: boolean
+  showAdmissionId: boolean
+  showSubjectGrades: boolean
+  hubLayoutPrefs: Record<BroadsheetCurriculum, PersistedHubLayoutPrefs>
+
+  // Dynamic Global & Session State (NEVER persisted in localStorage)
+  globalDefaults: GlobalPrintDefaults
+  stampDateOverride: string
+  customTitle: string
+  customFooter: string
+  hubSessionOverrides: Record<BroadsheetCurriculum, HubSessionOverrides>
+
+  // Actions
+  setGlobalDefaults: (incoming: Partial<GlobalPrintDefaults>) => void
+  hydrateFromSchoolSettings: (schoolSettings?: Record<string, any> | null) => void
+  setStudioPreferences: (patch: {
+    theme?: StudioThemeId
+    nurseryTheme?: NurseryReportTheme
+    showStamp?: boolean
+    showSignatures?: boolean
+    stampDateOverride?: string
+  }) => void
+  updateHubConfig: (curriculum: BroadsheetCurriculum, next: Partial<BroadsheetPrintConfig>) => void
+  setHubSessionStampDate: (curriculum: BroadsheetCurriculum, dateValue: string) => void
+  resetHubToGlobalDefaults: (curriculum: BroadsheetCurriculum) => void
+  getEffectiveHubConfig: (curriculum: BroadsheetCurriculum) => BroadsheetPrintConfig
+  getEffectiveStampDate: (curriculum?: BroadsheetCurriculum) => string
+}
+
+export const useStudioConfigStore = create<StudioConfigStoreState>()(
+  persist(
+    (set, get) => ({
+      theme: DEFAULT_STUDIO_CONFIG.themeId,
+      nurseryTheme: DEFAULT_STUDIO_CONFIG.nurseryTheme,
+      tableStyle: 'double_border',
+      fontSizeBase: null,
+      showStamp: true,
+      showSignatures: true,
+      showAdmissionId: false,
+      showSubjectGrades: true,
+      hubLayoutPrefs: {
+        secular: stripDynamicBroadsheetOverrides(getDefaultBroadsheetPrintConfig('secular')),
+        theology: stripDynamicBroadsheetOverrides(getDefaultBroadsheetPrintConfig('theology')),
+      },
+
+      globalDefaults: { ...DEFAULT_GLOBAL_PRINT_DEFAULTS },
+      stampDateOverride: '',
+      customTitle: '',
+      customFooter: '',
+      hubSessionOverrides: {
+        secular: { ...EMPTY_SESSION_OVERRIDES },
+        theology: { ...EMPTY_SESSION_OVERRIDES },
+      },
+
+      setGlobalDefaults: (incoming) =>
+        set((state) => ({
+          globalDefaults: {
+            ...state.globalDefaults,
+            ...incoming,
+            stampDate:
+              incoming.stampDate !== undefined
+                ? isStaleHardcodedStampDate(incoming.stampDate)
+                  ? ''
+                  : incoming.stampDate.trim()
+                : state.globalDefaults.stampDate,
+          },
+        })),
+
+      hydrateFromSchoolSettings: (schoolSettings) => {
+        if (!schoolSettings || typeof schoolSettings !== 'object') return
+        const pp = (schoolSettings.print_preferences || {}) as Record<string, any>
+        const rawStampDate =
+          typeof schoolSettings.stamp_date === 'string' && schoolSettings.stamp_date.trim()
+            ? schoolSettings.stamp_date.trim()
+            : typeof pp.stamp_date === 'string'
+              ? pp.stamp_date.trim()
+              : ''
+        get().setGlobalDefaults({
+          schoolName: schoolSettings.school_name || schoolSettings.name || DEFAULT_GLOBAL_PRINT_DEFAULTS.schoolName,
+          arabicName: schoolSettings.arabic_name || DEFAULT_GLOBAL_PRINT_DEFAULTS.arabicName,
+          motto: schoolSettings.motto || DEFAULT_GLOBAL_PRINT_DEFAULTS.motto,
+          stampDate: isStaleHardcodedStampDate(rawStampDate) ? '' : rawStampDate,
+          defaultHeadteacherName:
+            typeof pp.default_headteacher_name === 'string' ? pp.default_headteacher_name.trim() : '',
+          defaultSignatureUrl:
+            typeof pp.default_signature_url === 'string' ? pp.default_signature_url.trim() : '',
+          includeStamp: pp.includeStamp !== undefined ? Boolean(pp.includeStamp) : true,
+          includeSignatures: pp.includeSignatures !== undefined ? Boolean(pp.includeSignatures) : true,
+          updatedAt: schoolSettings.updated_at || new Date().toISOString(),
+        })
+      },
+
+      setStudioPreferences: (patch) =>
+        set((state) => ({
+          theme: patch.theme ?? state.theme,
+          nurseryTheme: patch.nurseryTheme ?? state.nurseryTheme,
+          showStamp: patch.showStamp ?? state.showStamp,
+          showSignatures: patch.showSignatures ?? state.showSignatures,
+          stampDateOverride:
+            patch.stampDateOverride !== undefined ? patch.stampDateOverride : state.stampDateOverride,
+        })),
+
+      updateHubConfig: (curriculum, patch) =>
+        set((state) => {
+          const currentLayout =
+            state.hubLayoutPrefs[curriculum] ||
+            stripDynamicBroadsheetOverrides(getDefaultBroadsheetPrintConfig(curriculum))
+          const currentSession = state.hubSessionOverrides[curriculum] || { ...EMPTY_SESSION_OVERRIDES }
+
+          const { stampDateOverride, customTitle, customFooterNote, ...layoutPatch } = patch
+
+          const nextLayout: PersistedHubLayoutPrefs = {
+            ...currentLayout,
+            ...layoutPatch,
+            // Enforce raw marks on Theology broadsheets
+            showSubjectGrades:
+              curriculum === 'theology'
+                ? false
+                : layoutPatch.showSubjectGrades !== undefined
+                  ? Boolean(layoutPatch.showSubjectGrades)
+                  : currentLayout.showSubjectGrades,
+          }
+
+          const nextSession: HubSessionOverrides = {
+            stampDateOverride:
+              stampDateOverride !== undefined ? stampDateOverride : currentSession.stampDateOverride,
+            customTitle: customTitle !== undefined ? customTitle : currentSession.customTitle,
+            customFooterNote:
+              customFooterNote !== undefined ? customFooterNote : currentSession.customFooterNote,
+          }
+
+          return {
+            tableStyle: nextLayout.tableStyle,
+            fontSizeBase: nextLayout.fontSizeBase ?? null,
+            showStamp: nextLayout.showStamp,
+            showSignatures: nextLayout.showSignatures,
+            showAdmissionId: nextLayout.showAdmissionId,
+            showSubjectGrades: nextLayout.showSubjectGrades,
+            customTitle: nextSession.customTitle,
+            customFooter: nextSession.customFooterNote,
+            hubLayoutPrefs: {
+              ...state.hubLayoutPrefs,
+              [curriculum]: nextLayout,
+            },
+            hubSessionOverrides: {
+              ...state.hubSessionOverrides,
+              [curriculum]: nextSession,
+            },
+          }
+        }),
+
+      setHubSessionStampDate: (curriculum, dateValue) =>
+        set((state) => ({
+          hubSessionOverrides: {
+            ...state.hubSessionOverrides,
+            [curriculum]: {
+              ...(state.hubSessionOverrides[curriculum] || { ...EMPTY_SESSION_OVERRIDES }),
+              stampDateOverride: dateValue,
+            },
+          },
+        })),
+
+      resetHubToGlobalDefaults: (curriculum) =>
+        set((state) => {
+          const defaults = getDefaultBroadsheetPrintConfig(curriculum)
+          const g = state.globalDefaults
+          const headSuffix = g.defaultHeadteacherName
+            ? curriculum === 'theology'
+              ? `معتمد: ${g.defaultHeadteacherName} (مدير المدرسة والختم)`
+              : `Approved By: ${g.defaultHeadteacherName} (Head Teacher & Stamp)`
+            : defaults.signatory3
+
+          const freshLayout: PersistedHubLayoutPrefs = {
+            ...stripDynamicBroadsheetOverrides(defaults),
+            showStamp: g.includeStamp,
+            showSignatures: g.includeSignatures,
+            signatory3: headSuffix,
+          }
+
+          return {
+            tableStyle: freshLayout.tableStyle,
+            fontSizeBase: null,
+            showStamp: freshLayout.showStamp,
+            showSignatures: freshLayout.showSignatures,
+            showAdmissionId: freshLayout.showAdmissionId,
+            showSubjectGrades: freshLayout.showSubjectGrades,
+            stampDateOverride: '',
+            customTitle: '',
+            customFooter: '',
+            hubLayoutPrefs: {
+              ...state.hubLayoutPrefs,
+              [curriculum]: freshLayout,
+            },
+            hubSessionOverrides: {
+              ...state.hubSessionOverrides,
+              [curriculum]: { ...EMPTY_SESSION_OVERRIDES },
+            },
+          }
+        }),
+
+      getEffectiveHubConfig: (curriculum) => {
+        const state = get()
+        const base = getDefaultBroadsheetPrintConfig(curriculum)
+        const layout = state.hubLayoutPrefs[curriculum]
+        const session = state.hubSessionOverrides[curriculum] || EMPTY_SESSION_OVERRIDES
+        return {
+          ...base,
+          ...(layout || {}),
+          showSubjectGrades: curriculum === 'theology' ? false : (layout?.showSubjectGrades ?? base.showSubjectGrades),
+          stampDateOverride: session.stampDateOverride || '',
+          customTitle: session.customTitle || '',
+          customFooterNote: session.customFooterNote || '',
+        }
+      },
+
+      getEffectiveStampDate: (curriculum) => {
+        const state = get()
+        const sessionOverride = curriculum
+          ? state.hubSessionOverrides[curriculum]?.stampDateOverride
+          : state.stampDateOverride
+        return resolveEffectiveStampDate(sessionOverride, state.globalDefaults.stampDate || null)
+      },
+    }),
+    {
+      name: ZUSTAND_PRINT_PREFS_KEY,
+      storage: createJSONStorage(() => localStorage),
+      // Strictly persist ONLY user UI layout preferences — NEVER dynamic global/session data
+      partialize: (state) => ({
+        theme: state.theme,
+        nurseryTheme: state.nurseryTheme,
+        tableStyle: state.tableStyle,
+        fontSizeBase: state.fontSizeBase,
+        showStamp: state.showStamp,
+        showSignatures: state.showSignatures,
+        showAdmissionId: state.showAdmissionId,
+        showSubjectGrades: state.showSubjectGrades,
+        hubLayoutPrefs: state.hubLayoutPrefs,
+      }),
+    }
+  )
+)
+
+/**
+ * Broadcasts freshly saved `/admin/settings` global defaults immediately to the current tab
+ * and any other open Hub / Report Center tabs via BroadcastChannel + CustomEvent.
+ */
+export function broadcastGlobalSchoolSettingsUpdate(schoolSettings: Record<string, any>): void {
+  useStudioConfigStore.getState().hydrateFromSchoolSettings(schoolSettings)
+  if (typeof window === 'undefined') return
+  try {
+    window.dispatchEvent(new CustomEvent(GLOBAL_SETTINGS_SYNC_EVENT, { detail: schoolSettings }))
+  } catch {}
+  try {
+    if (typeof BroadcastChannel !== 'undefined') {
+      const ch = new BroadcastChannel(GLOBAL_SETTINGS_BROADCAST_CHANNEL)
+      ch.postMessage(schoolSettings)
+      ch.close()
+    }
+  } catch {}
+}
+
+/**
+ * Subscribes a Hub or Report page to live `/admin/settings` updates across same-tab and cross-tab saves.
+ */
+export function useGlobalSchoolSettingsSync(onUpdated?: (settings: Record<string, any>) => void): GlobalPrintDefaults {
+  const globalDefaults = useStudioConfigStore((s) => s.globalDefaults)
+  const hydrate = useStudioConfigStore((s) => s.hydrateFromSchoolSettings)
+
+  useEffect(() => {
+    const handleSettings = (settings: Record<string, any>) => {
+      if (!settings || typeof settings !== 'object') return
+      hydrate(settings)
+      onUpdated?.(settings)
+    }
+
+    const onWindowEvent = (e: Event) => {
+      const custom = e as CustomEvent<Record<string, any>>
+      if (custom.detail) handleSettings(custom.detail)
+    }
+    window.addEventListener(GLOBAL_SETTINGS_SYNC_EVENT, onWindowEvent)
+
+    let channel: BroadcastChannel | null = null
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        channel = new BroadcastChannel(GLOBAL_SETTINGS_BROADCAST_CHANNEL)
+        channel.onmessage = (evt) => {
+          if (evt?.data) handleSettings(evt.data)
+        }
+      }
+    } catch {}
+
+    return () => {
+      window.removeEventListener(GLOBAL_SETTINGS_SYNC_EVENT, onWindowEvent)
+      try {
+        channel?.close()
+      } catch {}
+    }
+  }, [hydrate, onUpdated])
+
+  return globalDefaults
+}
+
+/**
+ * Hook used by SecularHubClient & TheologyHubClient for hierarchical persisted UI layout
+ * + dynamic global/session overrides.
+ */
+export function useHubPrintConfig(curriculum: BroadsheetCurriculum) {
+  const hubLayout = useStudioConfigStore((s) => s.hubLayoutPrefs[curriculum])
+  const hubSession = useStudioConfigStore((s) => s.hubSessionOverrides[curriculum])
+  const globalDefaults = useStudioConfigStore((s) => s.globalDefaults)
+  const updateHubConfig = useStudioConfigStore((s) => s.updateHubConfig)
+  const resetHubToGlobalDefaults = useStudioConfigStore((s) => s.resetHubToGlobalDefaults)
+  const hydrateFromSchoolSettings = useStudioConfigStore((s) => s.hydrateFromSchoolSettings)
+
+  const config: BroadsheetPrintConfig = React.useMemo(() => {
+    const defaults = getDefaultBroadsheetPrintConfig(curriculum)
+    return {
+      ...defaults,
+      ...(hubLayout || {}),
+      showSubjectGrades:
+        curriculum === 'theology'
+          ? false
+          : (hubLayout?.showSubjectGrades ?? defaults.showSubjectGrades),
+      stampDateOverride: hubSession?.stampDateOverride || '',
+      customTitle: hubSession?.customTitle || '',
+      customFooterNote: hubSession?.customFooterNote || '',
+    }
+  }, [curriculum, hubLayout, hubSession])
+
+  const effectiveStampDate = React.useMemo(
+    () => resolveEffectiveStampDate(hubSession?.stampDateOverride, globalDefaults.stampDate || null),
+    [hubSession?.stampDateOverride, globalDefaults.stampDate]
+  )
+
+  const setConfig = React.useCallback(
+    (next: BroadsheetPrintConfig) => {
+      updateHubConfig(curriculum, next)
+    },
+    [curriculum, updateHubConfig]
+  )
+
+  const resetToGlobalDefaults = React.useCallback(() => {
+    resetHubToGlobalDefaults(curriculum)
+  }, [curriculum, resetHubToGlobalDefaults])
+
+  return {
+    config,
+    setConfig,
+    resetToGlobalDefaults,
+    globalDefaults,
+    effectiveStampDate,
+    hydrateFromSchoolSettings,
+  }
 }

@@ -221,9 +221,8 @@ function DigitalSignaturePad({
                     type="button"
                     aria-label={opt.label}
                     onClick={() => setInkColor(opt.hex)}
-                    className={`w-4 h-4 rounded-full border-2 transition-transform cursor-pointer ${
-                      inkColor === opt.hex ? 'scale-110 border-[#D97706] shadow-2xs' : 'border-white/70 opacity-80'
-                    }`}
+                    className={`w-4 h-4 rounded-full border-2 transition-transform cursor-pointer ${inkColor === opt.hex ? 'scale-110 border-[#D97706] shadow-2xs' : 'border-white/70 opacity-80'
+                      }`}
                     style={{ backgroundColor: opt.hex }}
                   />
                 </TooltipTrigger>
@@ -242,11 +241,10 @@ function DigitalSignaturePad({
                 key={item.label}
                 type="button"
                 onClick={() => setStrokeWidth(item.width)}
-                className={`px-1.5 py-0.5 rounded-md cursor-pointer transition-colors ${
-                  strokeWidth === item.width
-                    ? 'bg-[#0D5C3A] text-white'
-                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                }`}
+                className={`px-1.5 py-0.5 rounded-md cursor-pointer transition-colors ${strokeWidth === item.width
+                  ? 'bg-[#0D5C3A] text-white'
+                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                  }`}
               >
                 {item.label}
               </button>
@@ -619,12 +617,17 @@ export default function UploadClient({
     [metrics.totalBytes]
   )
 
+  const isTheologySlotKey = (slotKey: string) =>
+    slotKey.startsWith('theology_class_teacher_') ||
+    slotKey.startsWith('theology-teacher-') ||
+    slotKey === 'dos-theology'
+
   const secularSlots = useMemo(
-    () => signatureRoleSlots.filter((slot) => !slot.slot_key.startsWith('theology-teacher-')),
+    () => signatureRoleSlots.filter((slot) => !isTheologySlotKey(slot.slot_key)),
     [signatureRoleSlots]
   )
   const theologySlots = useMemo(
-    () => signatureRoleSlots.filter((slot) => slot.slot_key.startsWith('theology-teacher-')),
+    () => signatureRoleSlots.filter((slot) => isTheologySlotKey(slot.slot_key)),
     [signatureRoleSlots]
   )
   const uploadedSignatureAssets = useMemo(
@@ -636,7 +639,7 @@ export default function UploadClient({
   const filteredRoleSlots = useMemo(() => {
     const q = roleSearch.trim().toLowerCase()
     return signatureRoleSlots.filter((slot) => {
-      const isTheology = slot.slot_key.startsWith('theology-teacher-')
+      const isTheology = isTheologySlotKey(slot.slot_key)
       if (curriculumFilter === 'secular' && isTheology) return false
       if (curriculumFilter === 'theology' && !isTheology) return false
       if (roleFilter === 'uploaded' && !slot.uploaded) return false
@@ -699,17 +702,15 @@ export default function UploadClient({
                 role="tab"
                 aria-selected={active}
                 onClick={() => setCategory(cat)}
-                className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-colors cursor-pointer inline-flex items-center gap-1.5 ${
-                  active
-                    ? 'bg-[#0D5C3A] text-white shadow-xs'
-                    : 'text-[var(--text-secondary)] hover:text-[#0D5C3A] dark:hover:text-white'
-                }`}
+                className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-colors cursor-pointer inline-flex items-center gap-1.5 ${active
+                  ? 'bg-[#0D5C3A] text-white shadow-xs'
+                  : 'text-[var(--text-secondary)] hover:text-[#0D5C3A] dark:hover:text-white'
+                  }`}
               >
                 <span>{cat}</span>
                 <span
-                  className={`text-[10px] font-extrabold tabular-nums px-1.5 py-0.2 rounded-full ${
-                    active ? 'bg-[#D97706] text-white' : 'bg-[#0D5C3A]/10 text-[#0D5C3A] dark:bg-white/10 dark:text-stone-200'
-                  }`}
+                  className={`text-[10px] font-extrabold tabular-nums px-1.5 py-0.2 rounded-full ${active ? 'bg-[#D97706] text-white' : 'bg-[#0D5C3A]/10 text-[#0D5C3A] dark:bg-white/10 dark:text-stone-200'
+                    }`}
                 >
                   {count}
                 </span>
@@ -813,16 +814,14 @@ export default function UploadClient({
 
           <div className="flex items-center gap-2 shrink-0">
             <span
-              className={`px-2.5 py-1 rounded-full text-[11px] font-bold inline-flex items-center gap-1.5 ${
-                selectedSlotInfo?.uploaded
-                  ? 'bg-emerald-400/20 text-emerald-100 border border-emerald-300/35'
-                  : 'bg-[#D97706]/25 text-amber-100 border border-amber-300/35'
-              }`}
+              className={`px-2.5 py-1 rounded-full text-[11px] font-bold inline-flex items-center gap-1.5 ${selectedSlotInfo?.uploaded
+                ? 'bg-emerald-400/20 text-emerald-100 border border-emerald-300/35'
+                : 'bg-[#D97706]/25 text-amber-100 border border-amber-300/35'
+                }`}
             >
               <span
-                className={`w-1.5 h-1.5 rounded-full ${
-                  selectedSlotInfo?.uploaded ? 'bg-emerald-300' : 'bg-amber-300'
-                }`}
+                className={`w-1.5 h-1.5 rounded-full ${selectedSlotInfo?.uploaded ? 'bg-emerald-300' : 'bg-amber-300'
+                  }`}
               />
               {selectedSlotInfo?.uploaded
                 ? `Signed & Active${selectedSlotInfo?.size ? ` • ${formatSize(selectedSlotInfo.size)}` : ''}`
@@ -835,11 +834,10 @@ export default function UploadClient({
               type="button"
               onClick={() => setSignatureMode('upload')}
               aria-label="Upload and Auto-Clean Photo"
-              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                signatureMode === 'upload'
-                  ? 'bg-gradient-to-r from-[#D97706] to-[#EA580C] text-white shadow-xs'
-                  : 'text-white/80 hover:text-white'
-              }`}
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${signatureMode === 'upload'
+                ? 'bg-gradient-to-r from-[#D97706] to-[#EA580C] text-white shadow-xs'
+                : 'text-white/80 hover:text-white'
+                }`}
             >
               <Upload className="w-3.5 h-3.5" />
               <span>Upload Photo</span>
@@ -849,11 +847,10 @@ export default function UploadClient({
               type="button"
               onClick={() => setSignatureMode('draw')}
               aria-label="Draw Digital Signature"
-              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                signatureMode === 'draw'
-                  ? 'bg-gradient-to-r from-[#D97706] to-[#EA580C] text-white shadow-xs'
-                  : 'text-white/80 hover:text-white'
-              }`}
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${signatureMode === 'draw'
+                ? 'bg-gradient-to-r from-[#D97706] to-[#EA580C] text-white shadow-xs'
+                : 'text-white/80 hover:text-white'
+                }`}
             >
               <PenTool className="w-3.5 h-3.5" />
               <span>Draw Signature</span>
@@ -870,18 +867,16 @@ export default function UploadClient({
         <button
           type="button"
           onClick={() => setMobilePane('capture')}
-          className={`py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
-            mobilePane === 'capture' ? 'bg-[#0D5C3A] text-white shadow-xs' : 'text-[var(--text-secondary)]'
-          }`}
+          className={`py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${mobilePane === 'capture' ? 'bg-[#0D5C3A] text-white shadow-xs' : 'text-[var(--text-secondary)]'
+            }`}
         >
           Upload / Draw
         </button>
         <button
           type="button"
           onClick={() => setMobilePane('gallery')}
-          className={`py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
-            mobilePane === 'gallery' ? 'bg-[#0D5C3A] text-white shadow-xs' : 'text-[var(--text-secondary)]'
-          }`}
+          className={`py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${mobilePane === 'gallery' ? 'bg-[#0D5C3A] text-white shadow-xs' : 'text-[var(--text-secondary)]'
+            }`}
         >
           {category === 'Signatures'
             ? `Roster (${uploadedSignatureAssets.length})`
@@ -892,9 +887,8 @@ export default function UploadClient({
       {/* Zone 3: 2-Pane Split Workspace (lg:col-span-4 Left Studio + lg:col-span-8 Right Roster Matrix) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
         <section
-          className={`lg:col-span-4 rounded-2xl border border-[#0D5C3A]/15 dark:border-white/10 bg-white dark:bg-[#151D1A] p-4 shadow-xs space-y-3 ${
-            mobilePane === 'capture' ? 'block' : 'hidden lg:block'
-          }`}
+          className={`lg:col-span-4 rounded-2xl border border-[#0D5C3A]/15 dark:border-white/10 bg-white dark:bg-[#151D1A] p-4 shadow-xs space-y-3 ${mobilePane === 'capture' ? 'block' : 'hidden lg:block'
+            }`}
         >
           {/* Live Active Role Transparent Preview */}
           {category === 'Signatures' && selectedSlotInfo?.uploaded && selectedSlotInfo?.public_url && (
@@ -986,11 +980,10 @@ export default function UploadClient({
             />
           ) : (
             <div
-              className={`rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all p-5 sm:p-6 ${
-                dragOver
-                  ? 'border-[#0D5C3A] bg-[#0D5C3A]/10'
-                  : 'border-[#0D5C3A]/20 dark:border-white/15 bg-[#F8FAF9] dark:bg-[#111916] hover:border-[#0D5C3A]/45'
-              }`}
+              className={`rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all p-5 sm:p-6 ${dragOver
+                ? 'border-[#0D5C3A] bg-[#0D5C3A]/10'
+                : 'border-[#0D5C3A]/20 dark:border-white/15 bg-[#F8FAF9] dark:bg-[#111916] hover:border-[#0D5C3A]/45'
+                }`}
               onDragOver={(event) => {
                 event.preventDefault()
                 setDragOver(true)
@@ -1048,9 +1041,8 @@ export default function UploadClient({
 
         {/* Right Pane (lg:col-span-8 — School Signature Roster Matrix / Repository) */}
         <section
-          className={`lg:col-span-8 rounded-2xl border border-[#0D5C3A]/15 dark:border-white/10 bg-white dark:bg-[#151D1A] shadow-xs overflow-hidden ${
-            mobilePane === 'gallery' ? 'block' : 'hidden lg:block'
-          }`}
+          className={`lg:col-span-8 rounded-2xl border border-[#0D5C3A]/15 dark:border-white/10 bg-white dark:bg-[#151D1A] shadow-xs overflow-hidden ${mobilePane === 'gallery' ? 'block' : 'hidden lg:block'
+            }`}
         >
           {category === 'Signatures' ? (
             <>
@@ -1069,11 +1061,10 @@ export default function UploadClient({
                         key={item.id}
                         type="button"
                         onClick={() => setCurriculumFilter(item.id as 'all' | 'secular' | 'theology')}
-                        className={`px-2.5 py-0.5 rounded-full cursor-pointer transition-colors ${
-                          curriculumFilter === item.id
-                            ? 'bg-[#0D5C3A] text-white'
-                            : 'text-[var(--text-secondary)] hover:text-[#0D5C3A] dark:hover:text-white'
-                        }`}
+                        className={`px-2.5 py-0.5 rounded-full cursor-pointer transition-colors ${curriculumFilter === item.id
+                          ? 'bg-[#0D5C3A] text-white'
+                          : 'text-[var(--text-secondary)] hover:text-[#0D5C3A] dark:hover:text-white'
+                          }`}
                       >
                         {item.label}
                       </button>
@@ -1086,33 +1077,30 @@ export default function UploadClient({
                     <button
                       type="button"
                       onClick={() => setRoleFilter('all')}
-                      className={`px-2.5 py-0.5 rounded-full cursor-pointer transition-colors ${
-                        roleFilter === 'all'
-                          ? 'bg-slate-800 text-white dark:bg-white dark:text-slate-900'
-                          : 'text-[var(--text-secondary)]'
-                      }`}
+                      className={`px-2.5 py-0.5 rounded-full cursor-pointer transition-colors ${roleFilter === 'all'
+                        ? 'bg-slate-800 text-white dark:bg-white dark:text-slate-900'
+                        : 'text-[var(--text-secondary)]'
+                        }`}
                     >
                       All
                     </button>
                     <button
                       type="button"
                       onClick={() => setRoleFilter('uploaded')}
-                      className={`px-2.5 py-0.5 rounded-full cursor-pointer transition-colors ${
-                        roleFilter === 'uploaded'
-                          ? 'bg-[#0D5C3A] text-white'
-                          : 'text-[#0D5C3A] dark:text-emerald-300'
-                      }`}
+                      className={`px-2.5 py-0.5 rounded-full cursor-pointer transition-colors ${roleFilter === 'uploaded'
+                        ? 'bg-[#0D5C3A] text-white'
+                        : 'text-[#0D5C3A] dark:text-emerald-300'
+                        }`}
                     >
                       Signed ({uploadedSignatureAssets.length})
                     </button>
                     <button
                       type="button"
                       onClick={() => setRoleFilter('missing')}
-                      className={`px-2.5 py-0.5 rounded-full cursor-pointer transition-colors ${
-                        roleFilter === 'missing'
-                          ? 'bg-[#EA580C] text-white'
-                          : 'text-[#EA580C] dark:text-amber-300'
-                      }`}
+                      className={`px-2.5 py-0.5 rounded-full cursor-pointer transition-colors ${roleFilter === 'missing'
+                        ? 'bg-[#EA580C] text-white'
+                        : 'text-[#EA580C] dark:text-amber-300'
+                        }`}
                     >
                       Missing ({missingSignatureCount})
                     </button>
@@ -1145,11 +1133,10 @@ export default function UploadClient({
                         <div
                           key={slot.slot_key}
                           onClick={() => setSelectedSlot(slot.slot_key)}
-                          className={`rounded-2xl p-3 border transition-all flex flex-col justify-between gap-2 cursor-pointer ${
-                            isSelected
-                              ? 'border-[#0D5C3A] ring-2 ring-[#0D5C3A]/20 bg-gradient-to-b from-white to-[#F4FBF7] dark:from-[#151D1A] dark:to-[#111C17] shadow-sm'
-                              : 'border-[#0D5C3A]/25 bg-gradient-to-b from-white to-[#F4FBF7] dark:from-[#151D1A] dark:to-[#111C17] shadow-2xs hover:shadow-md'
-                          }`}
+                          className={`rounded-2xl p-3 border transition-all flex flex-col justify-between gap-2 cursor-pointer ${isSelected
+                            ? 'border-[#0D5C3A] ring-2 ring-[#0D5C3A]/20 bg-gradient-to-b from-white to-[#F4FBF7] dark:from-[#151D1A] dark:to-[#111C17] shadow-sm'
+                            : 'border-[#0D5C3A]/25 bg-gradient-to-b from-white to-[#F4FBF7] dark:from-[#151D1A] dark:to-[#111C17] shadow-2xs hover:shadow-md'
+                            }`}
                         >
                           <div className="flex items-start justify-between gap-1.5">
                             <div className="min-w-0">
@@ -1157,20 +1144,18 @@ export default function UploadClient({
                                 {slot.label}
                               </p>
                               <p className="text-[10px] text-[var(--text-muted)] font-mono truncate">
-                                {slot.size ? formatSize(slot.size) : 'Stored'}
+                                {slot.role} · {slot.slot_key} · {slot.size ? formatSize(slot.size) : 'Stored'}
                               </p>
                             </div>
                             <span
-                              className={`shrink-0 rounded-full px-2 py-0.5 text-[9.5px] font-extrabold inline-flex items-center gap-1 ${
-                                slot.active
-                                  ? 'bg-[#0D5C3A]/12 text-[#0D5C3A] dark:text-emerald-300'
-                                  : 'bg-amber-500/15 text-amber-700 dark:text-amber-300'
-                              }`}
+                              className={`shrink-0 rounded-full px-2 py-0.5 text-[9.5px] font-extrabold inline-flex items-center gap-1 ${slot.active
+                                ? 'bg-[#0D5C3A]/12 text-[#0D5C3A] dark:text-emerald-300'
+                                : 'bg-amber-500/15 text-amber-700 dark:text-amber-300'
+                                }`}
                             >
                               <span
-                                className={`w-1.5 h-1.5 rounded-full ${
-                                  slot.active ? 'bg-[#0D5C3A] dark:bg-emerald-400' : 'bg-amber-500'
-                                }`}
+                                className={`w-1.5 h-1.5 rounded-full ${slot.active ? 'bg-[#0D5C3A] dark:bg-emerald-400' : 'bg-amber-500'
+                                  }`}
                               />
                               {slot.active ? 'Active' : 'Hidden'}
                             </span>
@@ -1238,11 +1223,10 @@ export default function UploadClient({
                       <div
                         key={slot.slot_key}
                         onClick={() => setSelectedSlot(slot.slot_key)}
-                        className={`rounded-2xl p-3 border border-dashed transition-all flex flex-col justify-between gap-3 cursor-pointer ${
-                          isSelected
-                            ? 'border-[#EA580C] bg-[#FFF7ED] dark:bg-[#1D1814]'
-                            : 'border-slate-300 dark:border-white/15 hover:border-[#EA580C] bg-[#FAFBFB] dark:bg-[#141A18]'
-                        }`}
+                        className={`rounded-2xl p-3 border border-dashed transition-all flex flex-col justify-between gap-3 cursor-pointer ${isSelected
+                          ? 'border-[#EA580C] bg-[#FFF7ED] dark:bg-[#1D1814]'
+                          : 'border-slate-300 dark:border-white/15 hover:border-[#EA580C] bg-[#FAFBFB] dark:bg-[#141A18]'
+                          }`}
                       >
                         <div className="flex items-start justify-between gap-1.5">
                           <div className="min-w-0">
@@ -1250,7 +1234,7 @@ export default function UploadClient({
                               {slot.label}
                             </p>
                             <p className="text-[10px] text-[var(--text-muted)] truncate">
-                              {slot.role}
+                              {slot.role} · <span className="font-mono">{slot.slot_key}</span>
                             </p>
                           </div>
                           <span className="shrink-0 rounded-full px-2 py-0.5 text-[9.5px] font-extrabold bg-[#EA580C]/12 text-[#EA580C] dark:text-amber-300">

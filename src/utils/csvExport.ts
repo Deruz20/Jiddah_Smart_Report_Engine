@@ -19,17 +19,23 @@ export const escapeCSV = (val: any) => {
 
 // Download function
 export const downloadCSV = (csvContent: string, filename: string) => {
-  // CRITICAL: Prepend UTF-8 Byte Order Mark (BOM) for Excel Arabic support
-  const bom = '\uFEFF'
-  const blob = new Blob([bom + csvContent], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  
-  const link = document.createElement('a')
-  link.setAttribute('href', url)
-  link.setAttribute('download', filename)
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
+  try {
+    // CRITICAL: Prepend UTF-8 Byte Order Mark (BOM) for Excel Arabic support
+    const bom = '\uFEFF'
+    const blob = new Blob([bom + (csvContent ?? '')], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+
+    const link = document.createElement('a')
+    link.setAttribute('href', url)
+    link.setAttribute('download', filename || 'export.csv')
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+  } catch (err) {
+    console.error('downloadCSV error:', err)
+    throw err
+  }
 }
 
 // ----------------------------------------------------

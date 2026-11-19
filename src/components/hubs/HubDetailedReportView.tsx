@@ -422,17 +422,26 @@ export function HubDetailedReportView({
                     <th className={`px-3 py-2 font-extrabold ${isArabic ? 'text-right' : 'text-left'}`}>
                       {isArabic ? 'اسم التلميذ' : 'Student Name'}
                     </th>
-                    <th className="px-3 py-2 font-extrabold text-center">
-                      {isArabic ? 'بداية الفترة (BOT)' : 'BOT Score/Grade'}
+                    <th className="px-2.5 py-2 font-extrabold text-center">
+                      {isArabic ? 'بداية الفترة (BOT)' : 'BOT (Marks/Grade)'}
                     </th>
-                    <th className="px-3 py-2 font-extrabold text-center">
-                      {isArabic ? 'منتصف الفترة (MOT)' : 'MOT Score/Grade'}
+                    <th className="px-2.5 py-2 font-extrabold text-center">
+                      {isArabic ? 'منتصف الفترة (MOT)' : 'MOT (Marks/Grade)'}
                     </th>
-                    <th className="px-3 py-2 font-extrabold text-center">
-                      {isArabic ? 'نهاية الفترة (EOT)' : 'EOT Score/Grade'}
+                    <th className="px-2.5 py-2 font-extrabold text-center">
+                      {isArabic ? 'نهاية الفترة (EOT)' : 'EOT (Marks/Grade)'}
                     </th>
-                    <th className="px-3 py-2 font-extrabold text-center">
-                      {isArabic ? 'المجموع الكلي' : 'Overall Total'}
+                    <th className="px-2.5 py-2 font-extrabold text-center">
+                      {isArabic ? 'المتوسط العام' : 'Overall Average'}
+                    </th>
+                    <th className="px-2.5 py-2 font-extrabold text-center">
+                      {isArabic ? 'مجموع التقدير' : 'Aggregate Score'}
+                    </th>
+                    <th className="px-2.5 py-2 font-extrabold text-center">
+                      {isArabic ? 'التقدير' : 'Division'}
+                    </th>
+                    <th className="px-2.5 py-2 font-extrabold text-center">
+                      {isArabic ? 'الترتيب' : 'Class Rank'}
                     </th>
                   </tr>
                 </thead>
@@ -442,7 +451,7 @@ export function HubDetailedReportView({
                     if (rows.length === 0) {
                       return (
                         <tr>
-                          <td colSpan={5} className="px-4 py-6 text-center text-xs text-[#57534E] dark:text-stone-400">
+                          <td colSpan={8} className="px-4 py-6 text-center text-xs text-[#57534E] dark:text-stone-400">
                             {isArabic ? 'لا توجد بيانات متاحة بعد' : 'No data available yet'}
                           </td>
                         </tr>
@@ -458,17 +467,26 @@ export function HubDetailedReportView({
                             </span>
                           ) : null}
                         </td>
-                        <td className="px-3 py-2 text-center tabular-nums">
+                        <td className="px-2.5 py-2 text-center tabular-nums">
                           {student?.bot_score ?? '--'}
                         </td>
-                        <td className="px-3 py-2 text-center tabular-nums">
+                        <td className="px-2.5 py-2 text-center tabular-nums">
                           {student?.mot_score ?? '--'}
                         </td>
-                        <td className="px-3 py-2 text-center tabular-nums">
+                        <td className="px-2.5 py-2 text-center tabular-nums">
                           {student?.eot_score ?? '--'}
                         </td>
-                        <td className="px-3 py-2 text-center font-extrabold tabular-nums text-[#0F4D25] dark:text-emerald-400">
-                          {student?.overall_total ?? student?.total ?? '--'}
+                        <td className="px-2.5 py-2 text-center font-bold tabular-nums text-[#0F4D25] dark:text-emerald-400">
+                          {student?.overall_average ?? (student?.normalizedScore != null ? `${Math.round(student.normalizedScore)}%` : '--')}
+                        </td>
+                        <td className="px-2.5 py-2 text-center tabular-nums font-semibold">
+                          {student?.aggregate ?? '--'}
+                        </td>
+                        <td className="px-2.5 py-2 text-center font-bold">
+                          {student?.division || '--'}
+                        </td>
+                        <td className="px-2.5 py-2 text-center font-mono font-extrabold tabular-nums">
+                          {student?.position ?? '--'}
                         </td>
                       </tr>
                     ))

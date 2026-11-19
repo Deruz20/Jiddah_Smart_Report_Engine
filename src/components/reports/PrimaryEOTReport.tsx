@@ -72,32 +72,13 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
     effective.showSignatures &&
     (printPrefs?.includeSignatures !== undefined ? Boolean(printPrefs.includeSignatures) : true)
 
-  const sigMap = reportData?.signatures || {}
-  const secTeacherKey = getClassTeacherSignatureKey(reportData?.student?.class_name, false)
-  const secularClassTeacherSigUrl =
-    sigMap['secular_class_teacher'] ||
-    (secTeacherKey ? sigMap[secTeacherKey] : null) ||
-    null
+  const secularClassTeacherSigUrl = reportData?.signatures?.secular_class_teacher ?? null
   const headTeacherSigUrl =
-    sigMap['head_teacher'] ||
-    sigMap['head-teacher'] ||
+    reportData?.signatures?.head_teacher ??
+    reportData?.signatures?.['head-teacher'] ??
     null
-
-  const theoClassRaw =
-    reportData?.student?.theology_class_english ||
-    reportData?.student?.theology_class_arabic ||
-    reportData?.student?.class_name ||
-    ''
-  const theoTeacherKey = getClassTeacherSignatureKey(theoClassRaw, true)
-  const theologyTeacherSigUrl =
-    sigMap['theology_class_teacher'] ||
-    (theoTeacherKey ? sigMap[theoTeacherKey] : null) ||
-    null
-  const theologyDosSigUrl =
-    sigMap['dos_theology'] ||
-    sigMap['dos-theology'] ||
-    sigMap['theology-head'] ||
-    null
+  const theologyTeacherSigUrl = reportData?.signatures?.theology_class_teacher ?? null
+  const theologyDosSigUrl = reportData?.signatures?.dos_theology ?? null
   const includeStamp =
     effective.showStamp &&
     (printPrefs?.includeStamp !== undefined ? Boolean(printPrefs.includeStamp) : true)

@@ -232,6 +232,8 @@ function CleanSignatureImageInner({
         style={{
           mixBlendMode: 'multiply',
           backgroundColor: 'transparent',
+          WebkitPrintColorAdjust: 'exact',
+          printColorAdjust: 'exact',
           objectFit: 'contain',
           maxHeight: '45px',
           width: '100%',

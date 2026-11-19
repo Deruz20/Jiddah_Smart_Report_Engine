@@ -39,25 +39,23 @@ export default function NurseryTheologyEOTReport({ reportData, studioFormatting:
     reportData?.class_name ||
     ''
   const theoTeacherKey = getClassTeacherSignatureKey(rawClassName, true)
-  const secTeacherKey = getClassTeacherSignatureKey(rawClassName, false)
   const sigMap = reportData?.signatures || {}
   const fallbackTeacherSig =
-    sigMap['class-teacher-baby'] ||
-    sigMap['class-teacher-middle'] ||
-    sigMap['class-teacher-top'] ||
-    sigMap['theology-teacher-baby'] ||
-    sigMap['theology-teacher-middle'] ||
-    sigMap['theology-teacher-top'] ||
+    sigMap?.['theology-teacher-baby'] ||
+    sigMap?.['theology-teacher-middle'] ||
+    sigMap?.['theology-teacher-top'] ||
     Object.entries(sigMap).find(
-      ([k, v]) => (k.startsWith('class-teacher-') || k.startsWith('theology-teacher-')) && Boolean(v)
+      ([k, v]) => k.startsWith('theology-teacher-') && Boolean(v)
     )?.[1] ||
     null
   const classTeacherSignatureUrl =
-    (theoTeacherKey && sigMap[theoTeacherKey]) ||
-    (secTeacherKey && sigMap[secTeacherKey]) ||
-    sigMap['theology-head'] ||
+    sigMap?.['theology_class_teacher'] ||
+    (theoTeacherKey ? sigMap?.[theoTeacherKey] : null) ||
+    sigMap?.['theology-head'] ||
     fallbackTeacherSig ||
     null
+  const headTeacherSignatureUrl =
+    sigMap?.['head_teacher'] ?? sigMap?.['head-teacher'] ?? null
 
   const toAr = (val: number | string | null | undefined): string => {
     if (val == null) return '--'
@@ -685,11 +683,11 @@ export default function NurseryTheologyEOTReport({ reportData, studioFormatting:
                 borderBottom: '1.5px dotted #334155',
               }}
             >
-              {includeSignatures && reportData?.signatures?.['head-teacher'] && (
+              {includeSignatures && headTeacherSignatureUrl && (
                 <CleanSignatureImage
-                  src={reportData.signatures['head-teacher']}
+                  src={headTeacherSignatureUrl}
                   alt="Signature"
-                  style={{ height: '34px', width: '112px', objectFit: 'contain', marginBottom: '-5px' }}
+                  style={{ maxHeight: '45px', width: '100%', maxWidth: '140px', objectFit: 'contain', mixBlendMode: 'multiply', marginBottom: '-5px' }}
                   studioFormatting={effectiveStudioPass}
                 />
               )}

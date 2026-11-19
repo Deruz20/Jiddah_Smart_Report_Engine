@@ -411,6 +411,110 @@ export function getPromotionStatus(division: Division, manualOverride?: 'Try Nex
   return 'Repeat'
 }
 
+export const SECULAR_PROMOTION_MAP: Record<string, string> = {
+  'baby': 'Middle Class',
+  'middle': 'Top Class',
+  'top': 'P.1',
+  'nursery': 'P.1',
+  'p.1': 'P.2',
+  'p1': 'P.2',
+  'primary 1': 'P.2',
+  'p.2': 'P.3',
+  'p2': 'P.3',
+  'primary 2': 'P.3',
+  'p.3': 'P.4',
+  'p3': 'P.4',
+  'primary 3': 'P.4',
+  'p.4': 'P.5',
+  'p4': 'P.5',
+  'primary 4': 'P.5',
+  'p.5': 'P.6',
+  'p5': 'P.6',
+  'primary 5': 'P.6',
+  'p.6': 'P.7',
+  'p6': 'P.7',
+  'primary 6': 'P.7',
+}
+
+export const THEOLOGY_PROMOTION_MAP: Record<string, string> = {
+  'الروضة السفلى': 'الروضة الوسطى',
+  'الروضة الوسطى': 'الروضة العليا',
+  'الروضة العليا': 'الصف الأول',
+  'الروضة': 'الصف الأول',
+  'الصف الأول': 'الصف الثاني',
+  'الصف الاول': 'الصف الثاني',
+  'الصف الثاني': 'الصف الثالث',
+  'الصف الثالث': 'الصف الرابع',
+  'الصف الرابع': 'الصف الخامس',
+  'الصف الخامس': 'الصف السادس',
+  'الصف السادس': 'الصف السابع',
+}
+
+export function resolveNextSecularClass(className?: string | null): { current: string; next: string | null } {
+  const raw = (className ?? '').trim()
+  const lower = raw.toLowerCase()
+  if (!raw) return { current: 'current class', next: null }
+  if (lower.includes('baby')) return { current: 'Baby Class', next: 'Middle Class' }
+  if (lower.includes('middle')) return { current: 'Middle Class', next: 'Top Class' }
+  if (lower.includes('top')) return { current: 'Top Class', next: 'P.1' }
+  if (lower.includes('nursery')) return { current: 'Nursery', next: 'P.1' }
+  for (const num of ['1', '2', '3', '4', '5', '6', '7']) {
+    if (lower === num || lower.includes(`p.${num}`) || lower.includes(`p${num}`) || lower.includes(`primary ${num}`)) {
+      const current = `P.${num}`
+      const next = Number(num) < 7 ? `P.${Number(num) + 1}` : null
+      return { current, next }
+    }
+  }
+  return { current: raw, next: SECULAR_PROMOTION_MAP[lower] ?? null }
+}
+
+export function resolveNextTheologyClass(className?: string | null): { current: string; next: string | null } {
+  const raw = (className ?? '').trim()
+  if (!raw) return { current: 'الصف الحالي', next: null }
+  for (const [key, nextVal] of Object.entries(THEOLOGY_PROMOTION_MAP)) {
+    if (raw.includes(key)) {
+      return { current: key, next: nextVal }
+    }
+  }
+  const lower = raw.toLowerCase()
+  if (lower.includes('nursery') || lower.includes('top')) return { current: 'الروضة', next: 'الصف الأول' }
+  if (lower.includes('p.1') || lower.includes('p1')) return { current: 'الصف الأول', next: 'الصف الثاني' }
+  if (lower.includes('p.2') || lower.includes('p2')) return { current: 'الصف الثاني', next: 'الصف الثالث' }
+  if (lower.includes('p.3') || lower.includes('p3')) return { current: 'الصف الثالث', next: 'الصف الرابع' }
+  if (lower.includes('p.4') || lower.includes('p4')) return { current: 'الصف الرابع', next: 'الصف الخامس' }
+  if (lower.includes('p.5') || lower.includes('p5')) return { current: 'الصف الخامس', next: 'الصف السادس' }
+  if (lower.includes('p.6') || lower.includes('p6')) return { current: 'الصف السادس', next: 'الصف السابع' }
+  return { current: raw, next: null }
+}
+
+export function getDynamicSecularPromotionText(
+  className: string | null | undefined,
+  promotionStatus: string
+): string {
+  const { current, next } = resolveNextSecularClass(className)
+  if (promotionStatus === 'Repeat') {
+    return `ADVISED TO REPEAT ${current.toUpperCase()}.`
+  }
+  if (next) {
+    return `PROMOTED TO ${next.toUpperCase()}.`
+  }
+  return promotionStatus === 'Probation' ? 'PROMOTED ON PROBATION.' : 'PROMOTED TO THE NEXT CLASS.'
+}
+
+export function getDynamicTheologyPromotionText(
+  theologyClassName: string | null | undefined,
+  isPromoted: boolean
+): string {
+  const { current, next } = resolveNextTheologyClass(theologyClassName)
+  if (!isPromoted) {
+    return `ينصح بإعادة ${current}`
+  }
+  if (next) {
+    return `مترفع إلى ${next}`
+  }
+  return 'مترفع إلى الصف التالي'
+}
+
 /**
  * Canonical helper to detect Nursery / Pre-Primary classes and levels.
  * Detects baby, middle, top, nursery, pre-primary, kg, or ece (case-insensitive).
@@ -606,22 +710,19 @@ export function getClassTeacherComment(
 
   const performance = getReportCommentBand(scores, gradingBands)
   if (performance) {
-    const remark = getBandRemark(performance.band)
-    if (performance.tier <= 1) return `${remark} performance. Keep it up!`
-    if (performance.tier <= 3) return `${remark} performance. Keep working hard.`
-    if (performance.tier <= 5) return `${remark} performance. More practice will help you improve.`
-    if (performance.tier === 6) return `${remark} is needed. Practise regularly and ask for help.`
-    if (performance.tier === 7) return `${remark}. Practise regularly and ask for support to improve.`
-    return `${remark} performance. Work closely with your teachers to improve.`
+    if (performance.tier <= 1) return 'An excellent and well-deserved result. Keep up the high standard.'
+    if (performance.tier <= 5) return 'A solid performance. Consistent revision and focus are required to maintain this standard.'
+    if (performance.tier <= 7) return 'A fair attempt, but there is significant room for improvement. More parental support and serious revision are needed.'
+    return 'A weak performance. Urgent academic intervention and strict parental follow-up are required next term.'
   }
 
   switch (division) {
-    case 'I': return 'Outstanding performance. Keep it up!'
-    case 'II': return 'Very good performance. Keep it up.'
-    case 'III': return 'Average performance. Keep practising to improve.'
-    case 'IV': return 'Promising result. More effort will bring progress.'
-    case 'U': return 'Strive harder. Practise regularly and ask for help.'
-    default: return 'Keep practising and strive for improvement.'
+    case 'I': return 'An excellent and well-deserved result. Keep up the high standard.'
+    case 'II': return 'A solid performance. Consistent revision and focus are required to maintain this standard.'
+    case 'III': return 'A solid performance. Consistent revision and focus are required to maintain this standard.'
+    case 'IV': return 'A fair attempt, but there is significant room for improvement. More parental support and serious revision are needed.'
+    case 'U': return 'A weak performance. Urgent academic intervention and strict parental follow-up are required next term.'
+    default: return 'A solid performance. Consistent revision and focus are required to maintain this standard.'
   }
 }
 
@@ -640,22 +741,19 @@ export function getHeadTeacherComment(
 
   const performance = getReportCommentBand(scores, gradingBands)
   if (performance) {
-    const remark = getBandRemark(performance.band)
-    if (performance.tier === 0) return `${remark} result. Maintain this high standard.`
-    if (performance.tier === 1) return `${remark} result. Continue working toward excellence.`
-    if (performance.tier <= 3) return `${remark} result. Consistent practice will support further progress.`
-    if (performance.tier <= 6) return `${remark}. Regular practice will help you make progress.`
-    if (performance.tier === 7) return `${remark}. Work with your teachers to improve.`
-    return `${remark} performance. Work closely with your teachers to make progress.`
+    if (performance.tier <= 1) return 'An excellent and well-deserved result. Keep up the high standard.'
+    if (performance.tier <= 5) return 'A solid performance. Consistent revision and focus are required to maintain this standard.'
+    if (performance.tier <= 7) return 'A fair attempt, but there is significant room for improvement. More parental support and serious revision are needed.'
+    return 'A weak performance. Urgent academic intervention and strict parental follow-up are required next term.'
   }
 
   switch (division) {
-    case 'I': return 'Excellent achievement. Keep up the high standard.'
-    case 'II': return 'Very good result. Continue working toward excellence.'
-    case 'III': return 'Fair result. Consistent practice will help you improve.'
-    case 'IV': return 'Promising result. Work harder to make stronger progress.'
-    case 'U': return 'Strive harder. Seek support from your teachers.'
-    default: return 'Continue working diligently toward improvement.'
+    case 'I': return 'An excellent and well-deserved result. Keep up the high standard.'
+    case 'II': return 'A solid performance. Consistent revision and focus are required to maintain this standard.'
+    case 'III': return 'A solid performance. Consistent revision and focus are required to maintain this standard.'
+    case 'IV': return 'A fair attempt, but there is significant room for improvement. More parental support and serious revision are needed.'
+    case 'U': return 'A weak performance. Urgent academic intervention and strict parental follow-up are required next term.'
+    default: return 'A solid performance. Consistent revision and focus are required to maintain this standard.'
   }
 }
 
@@ -669,6 +767,8 @@ export function getClassTeacherReportComment({
   gradingBands,
   divisionBoundaries,
   promotionComments,
+  className,
+  useDosRemarkOverrides = true,
 }: {
   scoreType: 'bot' | 'mot' | 'eot'
   termNumber: number
@@ -679,16 +779,25 @@ export function getClassTeacherReportComment({
   gradingBands?: ReportCommentBands
   divisionBoundaries?: DivisionBoundaryItem[]
   promotionComments?: PromotionCommentsConfig
+  className?: string | null
+  useDosRemarkOverrides?: boolean
 }): string {
   if (scoreType === 'eot' && termNumber === 3 && promotionStatus) {
-    const pCfg = promotionComments || DEFAULT_PROMOTION_COMMENTS
-    let promoText = pCfg.try_next_class || 'Try next class.'
-    if (promotionStatus === 'Promote') promoText = pCfg.promoted || 'Promoted to the next class.'
-    else if (promotionStatus === 'Repeat') promoText = pCfg.repeat || 'Advised to repeat the class.'
-    else if (promotionStatus === 'Probation') promoText = pCfg.promoted_probation || 'Promoted on probation.'
-    else if (promotionStatus === 'Try Next Class') promoText = pCfg.try_next_class || 'Try next class.'
+    const pCfg = useDosRemarkOverrides ? promotionComments : undefined
+    let promoText = getDynamicSecularPromotionText(className, promotionStatus)
+    if (pCfg) {
+      if (promotionStatus === 'Promote' && pCfg.promoted && pCfg.promoted !== DEFAULT_PROMOTION_COMMENTS.promoted) {
+        promoText = pCfg.promoted
+      } else if (promotionStatus === 'Repeat' && pCfg.repeat && pCfg.repeat !== DEFAULT_PROMOTION_COMMENTS.repeat) {
+        promoText = pCfg.repeat
+      } else if (promotionStatus === 'Probation' && pCfg.promoted_probation && pCfg.promoted_probation !== DEFAULT_PROMOTION_COMMENTS.promoted_probation) {
+        promoText = pCfg.promoted_probation
+      } else if (promotionStatus === 'Try Next Class' && pCfg.try_next_class && pCfg.try_next_class !== DEFAULT_PROMOTION_COMMENTS.try_next_class) {
+        promoText = pCfg.try_next_class
+      }
+    }
 
-    if (pCfg.append_division_comment) {
+    if (pCfg?.append_division_comment) {
       const divComment = getClassTeacherComment(division, scores, gradingBands, divisionBoundaries)
       if (divComment) {
         return `${promoText} ${divComment}`

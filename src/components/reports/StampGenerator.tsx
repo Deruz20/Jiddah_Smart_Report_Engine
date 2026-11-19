@@ -271,7 +271,10 @@ export const VectorStamp = React.memo(function VectorStamp({
           width: merged.shape === "rectangle" && renderedW >= 200 ? "55mm" : `${renderedW}px`,
           height: merged.shape === "rectangle" && renderedH >= 115 ? "32mm" : `${renderedH}px`,
           overflow: "visible",
-          filter: useFilter ? `url(#${filterId})` : undefined,
+          filter: useFilter ? `url(#${filterId}) contrast(1.25) saturate(1.1)` : "contrast(1.25) saturate(1.1)",
+          WebkitPrintColorAdjust: "exact",
+          printColorAdjust: "exact",
+          backgroundColor: "transparent",
           direction: "ltr",
           unicodeBidi: "isolate",
         }}
@@ -720,7 +723,9 @@ export const OfficialReportStamp = React.memo(function OfficialReportStamp({
               objectFit: "contain",
               mixBlendMode: "multiply",
               opacity: studioOpacity,
-              filter: "contrast(1.65) brightness(1.12)",
+              filter: "contrast(1.25) saturate(1.1)",
+              WebkitPrintColorAdjust: "exact",
+              printColorAdjust: "exact",
               backgroundColor: "transparent",
             }}
           />

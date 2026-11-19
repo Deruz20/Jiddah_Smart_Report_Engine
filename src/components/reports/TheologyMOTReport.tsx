@@ -530,12 +530,14 @@ export function TheologyCard({
               {includeSignatures && theologyTeacherSigUrl ? (
                 <div
                   style={{
-                    width: '92px',
-                    height: '36px',
+                    width: '96px',
+                    height: '100%',
+                    minHeight: '36px',
                     display: 'flex',
                     alignItems: 'flex-end',
                     justifyContent: 'center',
                     borderBottom: '1.5px dotted #334155',
+                    backgroundColor: 'transparent',
                     flexShrink: 0,
                     overflow: 'visible',
                   }}
@@ -543,7 +545,7 @@ export function TheologyCard({
                   <CleanSignatureImage
                     src={theologyTeacherSigUrl}
                     alt="Theology Teacher Signature"
-                    style={{ height: '34px', width: '90px', objectFit: 'contain', marginBottom: '-4px' }}
+                    style={{ maxHeight: '40px', width: '100%', maxWidth: '96px', objectFit: 'contain', mixBlendMode: 'multiply', backgroundColor: 'transparent', marginBottom: '-4px' }}
                     studioFormatting={effectiveStudioPass}
                   />
                 </div>

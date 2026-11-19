@@ -16,6 +16,7 @@ import {
   getDivision,
   getTheologyDivision,
   getPromotionStatus,
+  getDynamicTheologyPromotionText,
   getConductRemark,
   getClassTeacherReportComment,
   getHeadTeacherComment,
@@ -734,6 +735,14 @@ export async function POST(request: NextRequest) {
                 : 'نتيجة مشرفة وجهد مبارك، نتمنى له/لها دوام التفوق والنجاح.',
           }
 
+        const tClsForPromo = Array.isArray(enrollment.theology_classes) ? enrollment.theology_classes[0] : (enrollment.theology_classes as any)
+        const theologyPromoSuffix =
+          isTerm3 && score_type === 'eot' && theologyDivision
+            ? ` — ${getDynamicTheologyPromotionText(
+                tClsForPromo?.class_name_arabic || tClsForPromo?.class_name_english,
+                theologyDivision !== 'ضعيف' && theologyDivision !== 'U'
+              )}`
+            : ''
         theologySectionData = {
           subjects: sortedTheoSubjects,
           total: theoTotal,
@@ -741,7 +750,7 @@ export async function POST(request: NextRequest) {
           eot_total: theoEotTotal,
           aggregate: theologyAggregate,
           division: theologyDivision,
-          teacher_comment: resolvedTheoComments.teacherComment,
+          teacher_comment: `${resolvedTheoComments.teacherComment}${theologyPromoSuffix}`.trim(),
           head_teacher_comment: resolvedTheoComments.headTeacherComment,
         }
       }
@@ -910,7 +919,7 @@ export async function POST(request: NextRequest) {
             : conductGradingRule ||
             getConductRemark(
               division,
-              schoolSettings?.division_boundaries,
+              useDosRemarkOverrides ? schoolSettings?.division_boundaries : undefined,
               useDosRemarkOverrides ? schoolSettings?.promotion_comments?.default_conduct : undefined
             ),
           class_teacher_comment: sectionType === 'nursery'
@@ -923,14 +932,16 @@ export async function POST(request: NextRequest) {
               division,
               scores: sortedCircularSubjects.filter(row => row.is_core).map(row => row.score),
               gradingBands: schoolSettings?.grading_scale,
-              divisionBoundaries: schoolSettings?.division_boundaries,
+              divisionBoundaries: useDosRemarkOverrides ? schoolSettings?.division_boundaries : undefined,
               promotionComments: useDosRemarkOverrides ? schoolSettings?.promotion_comments : undefined,
+              className,
+              useDosRemarkOverrides,
             }),
           head_teacher_comment: sectionType === 'nursery'
             ? distinctNurserySecularComments?.headTeacherComment || ''
             : score_type === 'mot'
               ? headTeacherGradingRule || getGradingRemarkForScores(sortedCircularSubjects.filter(row => row.is_core).map(row => row.score), schoolSettings?.grading_scale)
-              : headTeacherGradingRule || (division ? getHeadTeacherComment(division, sortedCircularSubjects.filter(row => row.is_core).map(row => row.score), schoolSettings?.grading_scale, schoolSettings?.division_boundaries) : ''),
+              : headTeacherGradingRule || (division ? getHeadTeacherComment(division, sortedCircularSubjects.filter(row => row.is_core).map(row => row.score), schoolSettings?.grading_scale, useDosRemarkOverrides ? schoolSettings?.division_boundaries : undefined) : ''),
           position,
           total_students,
         },

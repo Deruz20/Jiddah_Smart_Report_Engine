@@ -853,14 +853,16 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
                               display: 'flex',
                               alignItems: 'flex-end',
                               justifyContent: 'center',
-                              height: '42px',
+                              height: '100%',
+                              minHeight: '42px',
+                              backgroundColor: 'transparent',
                               overflow: 'visible',
                             }}
                           >
                             {includeSignatures && theologyTeacherSigUrl ? (
                               <CleanSignatureImage
                                 src={theologyTeacherSigUrl}
-                                style={{ maxHeight: '45px', width: '100%', maxWidth: '140px', objectFit: 'contain', mixBlendMode: 'multiply', marginBottom: '-5px' }}
+                                style={{ maxHeight: '45px', width: '100%', maxWidth: '140px', objectFit: 'contain', mixBlendMode: 'multiply', backgroundColor: 'transparent', marginBottom: '-4px' }}
                                 alt="Theology Class Teacher Signature"
                                 studioFormatting={effectiveStudioPass}
                               />
@@ -875,14 +877,16 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
                               display: 'flex',
                               alignItems: 'flex-end',
                               justifyContent: 'center',
-                              height: '42px',
+                              height: '100%',
+                              minHeight: '42px',
+                              backgroundColor: 'transparent',
                               overflow: 'visible',
                             }}
                           >
                             {includeSignatures && theologyDosSigUrl ? (
                               <CleanSignatureImage
                                 src={theologyDosSigUrl}
-                                style={{ maxHeight: '45px', width: '100%', maxWidth: '140px', objectFit: 'contain', mixBlendMode: 'multiply', marginBottom: '-5px' }}
+                                style={{ maxHeight: '45px', width: '100%', maxWidth: '140px', objectFit: 'contain', mixBlendMode: 'multiply', backgroundColor: 'transparent', marginBottom: '-4px' }}
                                 alt="DOS Theology Signature"
                                 studioFormatting={effectiveStudioPass}
                               />
@@ -906,9 +910,9 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
                         <span className="c-label">CLASS TEACHER&apos;S COMMENT:</span>
                         <div className="c-value" style={{ textTransform: 'uppercase' }}>{teacherComment}</div>
                         <span className="c-label">SIGNATURE:</span>
-                        <div className="c-sig" style={{ position: 'relative', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', height: '42px', minWidth: '140px', borderBottom: '1.5px dotted #334155', overflow: 'visible' }}>
+                        <div className="c-sig" style={{ position: 'relative', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', height: '100%', minHeight: '42px', minWidth: '140px', borderBottom: '1.5px dotted #334155', backgroundColor: 'transparent', overflow: 'visible' }}>
                           {includeSignatures && secularClassTeacherSigUrl ? (
-                            <CleanSignatureImage src={secularClassTeacherSigUrl} style={{ maxHeight: '45px', width: '100%', maxWidth: '140px', objectFit: 'contain', mixBlendMode: 'multiply', marginBottom: '-6px' }} alt="Secular Class Teacher Signature" studioFormatting={effectiveStudioPass} />
+                            <CleanSignatureImage src={secularClassTeacherSigUrl} style={{ maxHeight: '45px', width: '100%', maxWidth: '140px', objectFit: 'contain', mixBlendMode: 'multiply', backgroundColor: 'transparent', marginBottom: '-4px' }} alt="Secular Class Teacher Signature" studioFormatting={effectiveStudioPass} />
                           ) : null}
                         </div>
                       </div>
@@ -916,9 +920,9 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
                         <span className="c-label">HEAD TEACHER&apos;S COMMENT:</span>
                         <div className="c-value" style={{ textTransform: 'uppercase' }}>{headComment}</div>
                         <span className="c-label">SIGNATURE:</span>
-                        <div className="c-sig" style={{ position: 'relative', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', height: '42px', minWidth: '140px', borderBottom: '1.5px dotted #334155', overflow: 'visible' }}>
+                        <div className="c-sig" style={{ position: 'relative', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', height: '100%', minHeight: '42px', minWidth: '140px', borderBottom: '1.5px dotted #334155', backgroundColor: 'transparent', overflow: 'visible' }}>
                           {includeSignatures && headTeacherSigUrl ? (
-                            <CleanSignatureImage src={headTeacherSigUrl} style={{ maxHeight: '45px', width: '100%', maxWidth: '140px', objectFit: 'contain', mixBlendMode: 'multiply', marginBottom: '-6px' }} alt="Head Teacher Signature" studioFormatting={effectiveStudioPass} />
+                            <CleanSignatureImage src={headTeacherSigUrl} style={{ maxHeight: '45px', width: '100%', maxWidth: '140px', objectFit: 'contain', mixBlendMode: 'multiply', backgroundColor: 'transparent', marginBottom: '-4px' }} alt="Head Teacher Signature" studioFormatting={effectiveStudioPass} />
                           ) : null}
                         </div>
                       </div>

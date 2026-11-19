@@ -148,6 +148,21 @@
     color: #0f172a !important;
   }
 
+  /* Forced Print-Perfect Color & Transparency for Signatures & Official Stamps */
+  img[alt*="Signature"],
+  [data-testid="official-stamp-anchor-slot"],
+  [data-testid="official-stamp-anchor-slot"] img,
+  [data-testid="official-stamp-anchor-slot"] svg {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    background-color: transparent !important;
+  }
+
+  [data-testid="official-stamp-anchor-slot"] img,
+  [data-testid="official-stamp-anchor-slot"] svg {
+    filter: contrast(1.25) saturate(1.1) !important;
+  }
+
   /* 0. Multi-Page Batch Print: Unconstrain all ancestors so Chrome prints all N sheets */
   html,
   body,

@@ -683,6 +683,78 @@ export default function SecularHubClient({
     }
   }
 
+  const handleExportActiveViewCsv = () => {
+    try {
+      if (activeTab === 'detailed_report') {
+        handleExportDetailedReportCsv()
+        return
+      }
+      if (activeTab === 'top_students') {
+        const list = top10Data ?? []
+        if (!list.length) {
+          toast.error('No Top 10 data available to export.')
+          return
+        }
+        const headers = ['Rank', 'Student Name', 'Admission No', 'Class', 'Avg %', 'Total', 'Aggregate', 'Division']
+        const rows = list.map((st) => [
+          st?.position ?? '-',
+          st?.name || '-',
+          st?.admission_number || '-',
+          st?.className || '-',
+          st?.normalizedScore != null ? `${st.normalizedScore}%` : '-',
+          st?.total ?? '-',
+          st?.aggregate ?? '-',
+          st?.division || '-',
+        ])
+        const csvContent = [
+          `"JIDDAH SECULAR TOP 10 MERIT ROLL — ${currentScopeLabel || ''}"`,
+          headers.map(escapeCSV).join(','),
+          ...rows.map((r) => r.map(escapeCSV).join(',')),
+        ].join('\n')
+        downloadCSV(csvContent, `Jiddah_Secular_Top10_${(currentScopeLabel || 'Cohort').replace(/\s+/g, '_')}.csv`)
+        toast.success('Top 10 Merit Roll exported to CSV!')
+        return
+      }
+      if (activeTab === 'analysis') {
+        const classes = cohortMetrics?.classBreakdown ?? []
+        const subjects = assessmentData?.orderedSubjects ?? []
+        const headers = ['Category', 'Name', 'Enrolled / Sat', 'Mean / Avg', 'Pass Rate %']
+        const rows: unknown[][] = [
+          ...classes.map((c) => [
+            'Class',
+            c?.className || '-',
+            `${c?.satComplete ?? 0}/${c?.totalEnrolled ?? 0}`,
+            c?.meanPct != null ? `${c.meanPct}%` : '-',
+            c?.passRate != null ? `${c.passRate}%` : '-',
+          ]),
+          ...subjects.map((s) => [
+            'Subject',
+            s?.subject_name || '-',
+            broadsheetSummary?.subjectStats?.[s.id]?.count ?? '-',
+            broadsheetSummary?.subjectStats?.[s.id]?.avg ?? '-',
+            broadsheetSummary?.subjectStats?.[s.id]?.passRate != null ? `${broadsheetSummary.subjectStats[s.id].passRate}%` : '-',
+          ]),
+        ]
+        if (!rows.length) {
+          toast.error('No analysis data available to export.')
+          return
+        }
+        const csvContent = [
+          `"JIDDAH SECULAR ANALYSIS — ${currentScopeLabel || ''}"`,
+          headers.map(escapeCSV).join(','),
+          ...rows.map((r) => r.map(escapeCSV).join(',')),
+        ].join('\n')
+        downloadCSV(csvContent, `Jiddah_Secular_Analysis_${(currentScopeLabel || 'Cohort').replace(/\s+/g, '_')}.csv`)
+        toast.success('Analysis exported to CSV!')
+        return
+      }
+      handleExportCSV()
+    } catch (err) {
+      console.error('Export active view CSV error:', err)
+      toast.error('Failed to export CSV.')
+    }
+  }
+
   const handleExportCSV = () => {
     try {
       if (cohortMetrics?.isSingleClassCandidateExcluded) {
@@ -876,7 +948,7 @@ export default function SecularHubClient({
             {/* Mobile right actions */}
             <div className="flex sm:hidden items-center gap-1 shrink-0">
               <button
-                onClick={activeTab === 'detailed_report' ? handleExportDetailedReportCsv : handleExportCSV}
+                onClick={handleExportActiveViewCsv}
                 disabled={
                   activeTab === 'detailed_report'
                     ? detailedLoading || !detailedReport
@@ -1028,7 +1100,7 @@ export default function SecularHubClient({
           {/* RIGHT: Export CSV + Customize + Print Broadsheet (Desktop sm+, sits on Tier 1 right when <1600px) */}
           <div className="hidden sm:flex items-center gap-1.5 shrink-0 sm:order-2 min-[1600px]:order-3">
             <button
-              onClick={activeTab === 'detailed_report' ? handleExportDetailedReportCsv : handleExportCSV}
+              onClick={handleExportActiveViewCsv}
               disabled={
                 activeTab === 'detailed_report'
                   ? detailedLoading || !detailedReport

@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-const SUPPORTED_SIGNATURE_FILENAME = /^[a-z0-9-]+\.(?:png|jpe?g|webp)$/i;
+const SUPPORTED_SIGNATURE_FILENAME = /^[a-z0-9_-]+\.(?:png|jpe?g|webp)$/i;
 
 export interface SignatureStorageObject {
   name: string;
@@ -152,36 +152,43 @@ export async function deleteSignatureSlotObject(
   return { success: true }
 }
 
-export function getClassTeacherSignatureKey(className: string | undefined | null, isTheology: boolean = false): string | null {
+function resolveBaseClassSlug(className: string | undefined | null): string | null {
   if (!className) return null;
   const c = className.toLowerCase().trim();
-  
-  let baseClass = '';
 
   if (c.includes('baby') || c.includes('lower kindergarten') || c.includes('الروضة السفلى')) {
-    baseClass = 'baby';
+    return 'baby';
   } else if (c.includes('middle') || c.includes('middle kindergarten') || c.includes('الروضة الوسطى')) {
-    baseClass = 'middle';
+    return 'middle';
   } else if (c.includes('top') || c.includes('upper kindergarten') || c.includes('الروضة العليا')) {
-    baseClass = 'top';
+    return 'top';
   } else if (c === '1' || c.includes('p.1') || c.includes('p1') || c.includes('primary 1') || c.includes('primary one') || c.includes('الصف الأول') || c.includes('الأول') || c.includes('الأولى')) {
-    baseClass = 'p1';
+    return 'p1';
   } else if (c === '2' || c.includes('p.2') || c.includes('p2') || c.includes('primary 2') || c.includes('primary two') || c.includes('الصف الثاني') || c.includes('الثاني') || c.includes('الثانية')) {
-    baseClass = 'p2';
+    return 'p2';
   } else if (c === '3' || c.includes('p.3') || c.includes('p3') || c.includes('primary 3') || c.includes('primary three') || c.includes('الصف الثالث') || c.includes('الثالث') || c.includes('الثالثة')) {
-    baseClass = 'p3';
+    return 'p3';
   } else if (c === '4' || c.includes('p.4') || c.includes('p4') || c.includes('primary 4') || c.includes('primary four') || c.includes('الصف الرابع') || c.includes('الرابع') || c.includes('الرابعة')) {
-    baseClass = 'p4';
+    return 'p4';
   } else if (c === '5' || c.includes('p.5') || c.includes('p5') || c.includes('primary 5') || c.includes('primary five') || c.includes('الصف الخامس') || c.includes('الخامس') || c.includes('الخامسة')) {
-    baseClass = 'p5';
+    return 'p5';
   } else if (c === '6' || c.includes('p.6') || c.includes('p6') || c.includes('primary 6') || c.includes('primary six') || c.includes('الصف السادس') || c.includes('السادس') || c.includes('السادسة')) {
-    baseClass = 'p6';
+    return 'p6';
   } else if (c === '7' || c.includes('p.7') || c.includes('p7') || c.includes('primary 7') || c.includes('primary seven') || c.includes('الصف السابع') || c.includes('السابع') || c.includes('السابعة')) {
-    baseClass = 'p7';
-  } else {
-    return null;
+    return 'p7';
   }
+  return null;
+}
 
+export function getClassTeacherSignatureKey(className: string | undefined | null, isTheology: boolean = false): string | null {
+  const baseClass = resolveBaseClassSlug(className);
+  if (!baseClass) return null;
+  return isTheology ? `theology_class_teacher_${baseClass}` : `secular_class_teacher_${baseClass}`;
+}
+
+export function getLegacyClassTeacherSignatureKey(className: string | undefined | null, isTheology: boolean = false): string | null {
+  const baseClass = resolveBaseClassSlug(className);
+  if (!baseClass) return null;
   return isTheology ? `theology-teacher-${baseClass}` : `class-teacher-${baseClass}`;
 }
 
@@ -202,6 +209,8 @@ export function getReportSignatureKeys(): string[] {
   const classTeacherKeys = classNames.flatMap((className) => [
     getClassTeacherSignatureKey(className),
     getClassTeacherSignatureKey(className, true),
+    getLegacyClassTeacherSignatureKey(className),
+    getLegacyClassTeacherSignatureKey(className, true),
   ]);
 
   return [
@@ -227,10 +236,21 @@ export function buildStudentReportSignatures(
 ): Record<string, string | null> {
   const secKey = getClassTeacherSignatureKey(secularClassName, false);
   const theoKey = getClassTeacherSignatureKey(theologyClassName, true);
+  const legacySecKey = getLegacyClassTeacherSignatureKey(secularClassName, false);
+  const legacyTheoKey = getLegacyClassTeacherSignatureKey(theologyClassName, true);
 
   const headTeacherUrl = baseSignatures['head-teacher'] ?? baseSignatures['head_teacher'] ?? null;
   const dosSecularUrl = baseSignatures['dos-secular'] ?? baseSignatures['dos_secular'] ?? null;
   const dosTheologyUrl = baseSignatures['dos-theology'] ?? baseSignatures['dos_theology'] ?? null;
+
+  const secularTeacherUrl =
+    (secKey ? baseSignatures[secKey] : null) ??
+    (legacySecKey ? baseSignatures[legacySecKey] : null) ??
+    null;
+  const theologyTeacherUrl =
+    (theoKey ? baseSignatures[theoKey] : null) ??
+    (legacyTheoKey ? baseSignatures[legacyTheoKey] : null) ??
+    null;
 
   return {
     ...baseSignatures,
@@ -238,8 +258,8 @@ export function buildStudentReportSignatures(
     head_teacher: headTeacherUrl,
     dos_secular: dosSecularUrl,
     dos_theology: dosTheologyUrl,
-    secular_class_teacher: secKey ? (baseSignatures[secKey] ?? null) : null,
-    theology_class_teacher: theoKey ? (baseSignatures[theoKey] ?? null) : null,
+    secular_class_teacher: secularTeacherUrl,
+    theology_class_teacher: theologyTeacherUrl,
   };
 }
 
@@ -261,7 +281,7 @@ export function buildBaseSignaturesFromStorageObjects(
   });
   for (const object of sorted) {
     if (!object?.name) continue;
-    const match = object.name.match(/^([a-z0-9-]+?)(?:__\d+)?\.(?:png|jpe?g|webp)$/i);
+    const match = object.name.match(/^([a-z0-9_-]+?)(?:__\d+)?\.(?:png|jpe?g|webp)$/i);
     if (match) {
       const publicUrl = supabase.storage.from('signatures').getPublicUrl(object.name).data?.publicUrl ?? null;
       signatures[match[1]] = publicUrl ? withSignatureVersion(publicUrl, object.updated_at ?? object.name) : null;
@@ -417,6 +437,15 @@ export async function getDynamicSignatureSlots(supabase: SupabaseClient) {
 
   const getTheologyArabicSuffix = (key: string) => {
     const map: Record<string, string> = {
+      'theology_class_teacher_baby': 'الروضة السفلى',
+      'theology_class_teacher_middle': 'الروضة الوسطى',
+      'theology_class_teacher_top': 'الروضة العليا',
+      'theology_class_teacher_p1': 'الصف الأول',
+      'theology_class_teacher_p2': 'الصف الثاني',
+      'theology_class_teacher_p3': 'الصف الثالث',
+      'theology_class_teacher_p4': 'الصف الرابع',
+      'theology_class_teacher_p5': 'الصف الخامس',
+      'theology_class_teacher_p6': 'الصف السادس',
       'theology-teacher-baby': 'الروضة السفلى',
       'theology-teacher-middle': 'الروضة الوسطى',
       'theology-teacher-top': 'الروضة العليا',
@@ -440,14 +469,14 @@ export async function getDynamicSignatureSlots(supabase: SupabaseClient) {
       const key = getClassTeacherSignatureKey(name, isTheology);
       if (!key || slots.some((slot) => slot.slot_key === key)) continue;
       // P.7 sits PLE only under the Secular curriculum; Theology stops at P.6.
-      if (isTheology && key === 'theology-teacher-p7') continue;
+      if (isTheology && (key === 'theology_class_teacher_p7' || key === 'theology-teacher-p7')) continue;
       const prettyName = name.trim();
       const arabicSuffix = isTheology ? getTheologyArabicSuffix(key) : '';
       slots.push({
         slot_key: key,
-        label: `${isTheology ? 'Theology Teacher' : 'Class Teacher'} — ${prettyName}${arabicSuffix}`,
-        role: isTheology ? 'Theology Teacher' : 'Class Teacher',
-        description: `Signature for ${prettyName}${isTheology ? ' Theology' : ''} reports.`,
+        label: `${isTheology ? 'Theology Class Teacher' : 'Secular Class Teacher'} — ${prettyName}${arabicSuffix}`,
+        role: isTheology ? 'Theology Class Teacher' : 'Secular Class Teacher',
+        description: `Signature for ${prettyName}${isTheology ? ' Theology' : ' Secular'} reports.`,
         required: true,
       });
     }
@@ -520,9 +549,12 @@ export async function resolveAllowedSignatureSlotsForUser(
     allowed.add('dos-secular');
     for (const c of circClasses) {
       const key = getClassTeacherSignatureKey(c.class_name, false);
+      const legacyKey = getLegacyClassTeacherSignatureKey(c.class_name, false);
       if (key) allowed.add(key);
+      if (legacyKey) allowed.add(legacyKey);
     }
     for (const base of ['baby', 'middle', 'top', 'p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7']) {
+      allowed.add(`secular_class_teacher_${base}`);
       allowed.add(`class-teacher-${base}`);
     }
     return allowed;
@@ -535,9 +567,15 @@ export async function resolveAllowedSignatureSlotsForUser(
         getClassTeacherSignatureKey(t.class_name_english, true) ||
         getClassTeacherSignatureKey(t.class_name_arabic, true) ||
         (t.level ? getClassTeacherSignatureKey(String(t.level), true) : null);
-      if (key && key !== 'theology-teacher-p7') allowed.add(key);
+      const legacyKey =
+        getLegacyClassTeacherSignatureKey(t.class_name_english, true) ||
+        getLegacyClassTeacherSignatureKey(t.class_name_arabic, true) ||
+        (t.level ? getLegacyClassTeacherSignatureKey(String(t.level), true) : null);
+      if (key && key !== 'theology_class_teacher_p7') allowed.add(key);
+      if (legacyKey && legacyKey !== 'theology-teacher-p7') allowed.add(legacyKey);
     }
     for (const base of ['baby', 'middle', 'top', 'p1', 'p2', 'p3', 'p4', 'p5', 'p6']) {
+      allowed.add(`theology_class_teacher_${base}`);
       allowed.add(`theology-teacher-${base}`);
     }
     return allowed;

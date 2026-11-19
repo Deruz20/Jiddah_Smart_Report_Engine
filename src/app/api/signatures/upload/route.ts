@@ -102,7 +102,14 @@ export async function POST(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Processed image is too large. Please upload a smaller image.' }, { status: 400 }))
     }
 
-    const filePath = `${slotKey}.png`
+    const rawSlotKey = String(slotKey).trim()
+    // Enforce explicit curriculum-prefixed storage filenames so dual-curriculum classes never overwrite each other
+    const normalizedSlotKey = rawSlotKey.startsWith('class-teacher-')
+      ? `secular_class_teacher_${rawSlotKey.slice('class-teacher-'.length)}`
+      : rawSlotKey.startsWith('theology-teacher-')
+        ? `theology_class_teacher_${rawSlotKey.slice('theology-teacher-'.length)}`
+        : rawSlotKey
+    const filePath = `${normalizedSlotKey}.png`
 
     const { error: uploadError } = await supabaseAdmin.storage.from(BUCKET).upload(filePath, transparentPng, {
       upsert: true,
@@ -116,7 +123,7 @@ export async function POST(request: NextRequest) {
 
     const storage = supabaseAdmin.storage.from(BUCKET)
     const { data: disabledObjects } = await storage.list('disabled', { limit: 1000 })
-    const disabledPaths = getSignatureObjectNamesForSlot(disabledObjects ?? [], slotKey)
+    const disabledPaths = getSignatureObjectNamesForSlot(disabledObjects ?? [], normalizedSlotKey)
       .map((name) => `disabled/${name}`)
     if (disabledPaths.length > 0) {
       await storage.remove(disabledPaths)
@@ -134,7 +141,7 @@ export async function POST(request: NextRequest) {
     }
 
     const stalePaths = (objects ?? [])
-      .filter((object) => object.name.startsWith(`${slotKey}.`) && object.name !== filePath)
+      .filter((object) => object.name.startsWith(`${normalizedSlotKey}.`) && object.name !== filePath)
       .map((object) => object.name)
     if (stalePaths.length > 0) {
       await storage.remove(stalePaths)
@@ -149,9 +156,9 @@ export async function POST(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Failed to generate signature URL' }, { status: 500 }))
     }
 
-    await recordActivity(supabase, user.id, 'upload_signature', { slot_key: slotKey, file_path: filePath })
+    await recordActivity(supabase, user.id, 'upload_signature', { slot_key: normalizedSlotKey, file_path: filePath })
     return withCors(request, NextResponse.json({
-      data: { slot_key: slotKey, public_url, size: transparentPng.length },
+      data: { slot_key: normalizedSlotKey, public_url, size: transparentPng.length },
     }))
   } catch (err: any) {
     console.error('signatures/upload POST exception:', err)

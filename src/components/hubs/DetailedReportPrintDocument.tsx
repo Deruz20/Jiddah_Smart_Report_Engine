@@ -135,10 +135,13 @@ export function DetailedReportPrintDocument({
           <thead>
             <tr>
               <th style={thStyle}>{isArabic ? 'اسم التلميذ' : 'Student Name'}</th>
-              <th style={{ ...thStyle, textAlign: 'center' }}>{isArabic ? 'بداية الفترة (BOT)' : 'BOT Score/Grade'}</th>
-              <th style={{ ...thStyle, textAlign: 'center' }}>{isArabic ? 'منتصف الفترة (MOT)' : 'MOT Score/Grade'}</th>
-              <th style={{ ...thStyle, textAlign: 'center' }}>{isArabic ? 'نهاية الفترة (EOT)' : 'EOT Score/Grade'}</th>
-              <th style={{ ...thStyle, textAlign: 'center' }}>{isArabic ? 'المجموع الكلي' : 'Overall Total'}</th>
+              <th style={{ ...thStyle, textAlign: 'center' }}>{isArabic ? 'بداية الفترة (BOT)' : 'BOT (Marks/Grade)'}</th>
+              <th style={{ ...thStyle, textAlign: 'center' }}>{isArabic ? 'منتصف الفترة (MOT)' : 'MOT (Marks/Grade)'}</th>
+              <th style={{ ...thStyle, textAlign: 'center' }}>{isArabic ? 'نهاية الفترة (EOT)' : 'EOT (Marks/Grade)'}</th>
+              <th style={{ ...thStyle, textAlign: 'center' }}>{isArabic ? 'المتوسط العام' : 'Overall Average'}</th>
+              <th style={{ ...thStyle, textAlign: 'center' }}>{isArabic ? 'مجموع التقدير' : 'Aggregate Score'}</th>
+              <th style={{ ...thStyle, textAlign: 'center' }}>{isArabic ? 'التقدير' : 'Division'}</th>
+              <th style={{ ...thStyle, textAlign: 'center' }}>{isArabic ? 'الترتيب' : 'Class Rank'}</th>
             </tr>
           </thead>
           <tbody>
@@ -147,7 +150,7 @@ export function DetailedReportPrintDocument({
               if (rows.length === 0) {
                 return (
                   <tr>
-                    <td colSpan={5} style={{ ...tdStyle, textAlign: 'center' }}>
+                    <td colSpan={8} style={{ ...tdStyle, textAlign: 'center' }}>
                       {isArabic ? 'لا توجد بيانات متاحة بعد' : 'No data available yet'}
                     </td>
                   </tr>
@@ -162,9 +165,12 @@ export function DetailedReportPrintDocument({
                   <td style={{ ...tdStyle, textAlign: 'center' }}>{student?.bot_score ?? '--'}</td>
                   <td style={{ ...tdStyle, textAlign: 'center' }}>{student?.mot_score ?? '--'}</td>
                   <td style={{ ...tdStyle, textAlign: 'center' }}>{student?.eot_score ?? '--'}</td>
-                  <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 800 }}>
-                    {student?.overall_total ?? student?.total ?? '--'}
+                  <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 700 }}>
+                    {student?.overall_average ?? (student?.normalizedScore != null ? `${Math.round(student.normalizedScore)}%` : '--')}
                   </td>
+                  <td style={{ ...tdStyle, textAlign: 'center' }}>{student?.aggregate ?? '--'}</td>
+                  <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 700 }}>{student?.division || '--'}</td>
+                  <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 800 }}>{student?.position ?? '--'}</td>
                 </tr>
               ))
             })()}

@@ -76,6 +76,7 @@ export interface LearnerReportSummary {
   mot_score?: string | number | null
   eot_score?: string | number | null
   overall_total?: number | null
+  overall_average?: string | number | null
 }
 
 export interface SubjectClassComparisonCell {
@@ -1040,16 +1041,26 @@ export function computeHubDetailedReport(params: ComputeDetailedReportParams): D
     const botVal = p && p.botCount > 0 ? Math.round(p.botSum) : null
     const motVal = p && p.motCount > 0 ? Math.round(p.motSum) : null
     const eotVal = p && p.eotCount > 0 ? Math.round(p.eotSum) : null
+    const botAvg = p && p.botCount > 0 ? Math.round(p.botSum / p.botCount) : null
+    const motAvg = p && p.motCount > 0 ? Math.round(p.motSum / p.motCount) : null
+    const eotAvg = p && p.eotCount > 0 ? Math.round(p.eotSum / p.eotCount) : null
     const overallVal =
       botVal !== null || motVal !== null || eotVal !== null
         ? (botVal ?? 0) + (motVal ?? 0) + (eotVal ?? 0)
         : st.total ?? null
+    const overallAvg =
+      st.normalizedScore != null
+        ? `${Math.round(st.normalizedScore)}%`
+        : st.average != null
+          ? `${Math.round(st.average)}%`
+          : null
     return {
       ...st,
-      bot_score: botVal,
-      mot_score: motVal,
-      eot_score: eotVal,
+      bot_score: botVal !== null ? `${botVal} (${botAvg}%)` : null,
+      mot_score: motVal !== null ? `${motVal} (${motAvg}%)` : null,
+      eot_score: eotVal !== null ? `${eotVal} (${eotAvg}%)` : null,
       overall_total: overallVal,
+      overall_average: overallAvg,
     }
   })
   const eligibleRows = cohort.students.filter(
@@ -2047,12 +2058,29 @@ export function buildDetailedReportCsv(
   }
   lines.push('')
 
-  row(['SECTION 6: TOP 10 MERIT ROLL'])
-  row(['Rank', 'Student', 'Adm No', 'Class', 'Normalized %', 'Total', 'Aggregate', 'Division'])
-  for (const st of report.learners.top10) {
-    row([st.position, st.name, st.admissionNumber || '-', st.className, st.normalizedScore ?? '-', st.total ?? '-', st.aggregate ?? '-', st.division])
-  }
-  lines.push('')
+    row(['SECTION 6: TOP 10 MERIT ROLL'])
+    row(['Rank', 'Student', 'Adm No', 'Class', 'Normalized %', 'Total', 'Aggregate', 'Division'])
+    for (const st of report?.learners?.top10 ?? []) {
+      row([st?.position ?? '-', st?.name ?? '-', st?.admissionNumber || '-', st?.className ?? '-', st?.normalizedScore ?? '-', st?.total ?? '-', st?.aggregate ?? '-', st?.division ?? '-'])
+    }
+    lines.push('')
+
+    row(['SECTION 6B: CURRENT-TERM COHORT MASTER SHEET (BOT, MOT, EOT)'])
+    row(['Student Name', 'Class', 'BOT (Marks/Grade)', 'MOT (Marks/Grade)', 'EOT (Marks/Grade)', 'Overall Average', 'Aggregate Score', 'Division', 'Class Rank'])
+    for (const st of report?.learners?.cohortStudents ?? report?.learners?.eligibleLearners ?? []) {
+      row([
+        st?.name ?? '-',
+        st?.className ?? '-',
+        st?.bot_score ?? '--',
+        st?.mot_score ?? '--',
+        st?.eot_score ?? '--',
+        st?.overall_average ?? (st?.normalizedScore != null ? `${Math.round(st.normalizedScore)}%` : '--'),
+        st?.aggregate ?? '--',
+        st?.division || '--',
+        st?.position ?? '--',
+      ])
+    }
+    lines.push('')
 
   row([`SECTION 7: NEEDS SUPPORT (< ${threshold}%)`])
   row(['Student', 'Adm No', 'Class', 'Normalized %', 'Total', 'Aggregate', 'Division'])

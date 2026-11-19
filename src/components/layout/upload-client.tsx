@@ -511,35 +511,26 @@ export default function UploadClient({
     const selectedFiles = Array.from(fileList)
 
     selectedFiles.forEach((file) => {
-      if (!ACCEPTED_TYPES.includes(file.type)) {
-        toast.error(`${file.name} is not a supported file type.`)
-        const normalizedType = file.type === 'image/jpg' ? 'image/jpeg' : file.type
-        const hasValidExt = /\.(png|jpe?g|webp|pdf)$/i.test(file.name)
-        if (normalizedType ? !ACCEPTED_TYPES.includes(normalizedType) : !hasValidExt) {
-          toast.error(`${file.name} is not a supported file type. Use PNG, JPG, or WEBP.`)
-          toast.error(`${file.name} is not a supported file type. Use PNG, JPG, or WEBP.`)
-          return
-        }
+      const normalizedType = file.type === 'image/jpg' ? 'image/jpeg' : file.type
+      const hasValidExt = /\.(png|jpe?g|webp|pdf)$/i.test(file.name)
+      if (normalizedType ? !ACCEPTED_TYPES.includes(normalizedType) : !hasValidExt) {
+        toast.error(`${file.name} is not a supported file type. Use PNG, JPG, or WEBP.`)
+        return
+      }
 
-        if ((category === 'Signatures' || category === 'Stamps') && file.size > 5 * 1024 * 1024) {
-          toast.error(`${file.name} exceeds 5MB. Signature and stamp assets must be 5MB or smaller.`)
-          return
-        }
+      if (file.size > MAX_FILE_SIZE) {
+        toast.error(`${file.name} must be smaller than 10MB.`)
+        return
+      }
 
-        if (file.size > MAX_FILE_SIZE) {
-          toast.error(`${file.name} must be smaller than 10MB.`)
-          return
-        }
+      const isImageFile = normalizedType.startsWith('image/') || /\.(png|jpe?g|webp)$/i.test(file.name)
+      if (category === 'Signatures' && isImageFile && selectedSlot !== 'school-stamp') {
+        setPendingSignatureFile(file)
+        return
+      }
 
-        if (category === 'Signatures' && file.type.startsWith('image/') && selectedSlot !== 'school-stamp') {
-          const isImageFile = normalizedType.startsWith('image/') || /\.(png|jpe?g|webp)$/i.test(file.name)
-          if (category === 'Signatures' && isImageFile && selectedSlot !== 'school-stamp') {
-            setPendingSignatureFile(file)
-            return
-          }
-
-          void startUploadFile(file, category)
-        })
+      void startUploadFile(file, category)
+    })
   }
 
   const removeFile = (id: string, name: string) => {
@@ -626,12 +617,17 @@ export default function UploadClient({
     [metrics.totalBytes]
   )
 
+  const isTheologySlotKey = (slotKey: string) =>
+    slotKey.startsWith('theology_class_teacher_') ||
+    slotKey.startsWith('theology-teacher-') ||
+    slotKey === 'dos-theology'
+
   const secularSlots = useMemo(
-    () => signatureRoleSlots.filter((slot) => !slot.slot_key.startsWith('theology-teacher-') && slot.slot_key !== 'dos-theology'),
+    () => signatureRoleSlots.filter((slot) => !isTheologySlotKey(slot.slot_key)),
     [signatureRoleSlots]
   )
   const theologySlots = useMemo(
-    () => signatureRoleSlots.filter((slot) => slot.slot_key.startsWith('theology-teacher-') || slot.slot_key === 'dos-theology'),
+    () => signatureRoleSlots.filter((slot) => isTheologySlotKey(slot.slot_key)),
     [signatureRoleSlots]
   )
   const uploadedSignatureAssets = useMemo(
@@ -643,7 +639,7 @@ export default function UploadClient({
   const filteredRoleSlots = useMemo(() => {
     const q = roleSearch.trim().toLowerCase()
     return signatureRoleSlots.filter((slot) => {
-      const isTheology = slot.slot_key.startsWith('theology-teacher-') || slot.slot_key === 'dos-theology'
+      const isTheology = isTheologySlotKey(slot.slot_key)
       if (curriculumFilter === 'secular' && isTheology) return false
       if (curriculumFilter === 'theology' && !isTheology) return false
       if (roleFilter === 'uploaded' && !slot.uploaded) return false
@@ -1148,7 +1144,7 @@ export default function UploadClient({
                                 {slot.label}
                               </p>
                               <p className="text-[10px] text-[var(--text-muted)] font-mono truncate">
-                                {slot.size ? formatSize(slot.size) : 'Stored'}
+                                {slot.role} · {slot.slot_key} · {slot.size ? formatSize(slot.size) : 'Stored'}
                               </p>
                             </div>
                             <span
@@ -1238,7 +1234,7 @@ export default function UploadClient({
                               {slot.label}
                             </p>
                             <p className="text-[10px] text-[var(--text-muted)] truncate">
-                              {slot.role}
+                              {slot.role} · <span className="font-mono">{slot.slot_key}</span>
                             </p>
                           </div>
                           <span className="shrink-0 rounded-full px-2 py-0.5 text-[9.5px] font-extrabold bg-[#EA580C]/12 text-[#EA580C] dark:text-amber-300">

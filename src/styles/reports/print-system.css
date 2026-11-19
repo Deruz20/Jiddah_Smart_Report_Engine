@@ -148,16 +148,17 @@
     color: #0f172a !important;
   }
 
-  /* Forced Print-Perfect Color & Transparency for Signatures & Official Stamps */
+  /* Forced Monochrome Solid-Black Print Override for Signatures ONLY */
   img[data-signature-img="true"],
   img[alt*="Signature"] {
-    mix-blend-mode: normal !important;
+    mix-blend-mode: multiply !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
     background-color: transparent !important;
-    filter: drop-shadow(0px 0px 1px #000080) contrast(150%) saturate(150%) brightness(80%) !important;
+    filter: grayscale(100%) contrast(2000%) brightness(50%) drop-shadow(0px 0px 1px black) !important;
   }
 
+  /* Keep Official Stamp in Original Dual-Ink Colors (Blue/Red + Crest) with Exact Print Color Adjust */
   [data-testid="official-stamp-anchor-slot"],
   [data-testid="official-stamp-anchor-slot"] img,
   [data-testid="official-stamp-anchor-slot"] svg {
@@ -166,14 +167,9 @@
     background-color: transparent !important;
   }
 
-  [data-testid="official-stamp-anchor-slot"] img,
-  [data-testid="official-stamp-anchor-slot"] svg {
-    filter: contrast(1.25) saturate(1.1) !important;
-  }
-
-  /* Deep Navy Ink & Thickened Vector Strokes for Physical Printing */
-  [data-testid="official-stamp-anchor-slot"] svg [stroke]:not([stroke="none"]) {
-    stroke: #000080 !important;
+  [data-testid="official-stamp-anchor-slot"] img {
+    mix-blend-mode: multiply !important;
+    filter: contrast(1.25) saturate(1.15) !important;
   }
 
   [data-testid="official-stamp-anchor-slot"] svg circle,
@@ -187,12 +183,8 @@
     stroke-width: 3.5px !important;
   }
 
-  [data-testid="official-stamp-anchor-slot"] svg [fill]:not([fill="none"]):not([data-stamp-date="true"]) {
-    fill: #000080 !important;
-  }
-
   [data-testid="official-stamp-anchor-slot"] svg image {
-    filter: contrast(1.35) saturate(1.25) !important;
+    filter: contrast(1.2) saturate(1.1) !important;
   }
 
   /* 0. Multi-Page Batch Print: Unconstrain all ancestors so Chrome prints all N sheets */

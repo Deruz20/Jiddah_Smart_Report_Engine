@@ -1507,6 +1507,52 @@ export function ReportStudioClient({
                       </div>
                     </div>
                   </div>
+
+                  {/* Typography & Remarks Section */}
+                  <div className="space-y-3 pt-2 border-t border-stone-200 dark:border-white/10">
+                    <SectionHeaderWithReset
+                      title="Typography & Remarks"
+                      onReset={() =>
+                        updateStudio({
+                          italicizeText: false,
+                          useDosRemarkOverrides: true,
+                        })
+                      }
+                    />
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-[#F0F4F9] dark:bg-[#1E2623]">
+                      <div>
+                        <div className="font-bold text-stone-800 dark:text-stone-100">Italicize Comments &amp; Remarks</div>
+                        <div className="text-[10px] text-stone-500">Off by default so Arabic &amp; print remarks stay crisp</div>
+                      </div>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={Boolean(studioConfig.italicizeText)}
+                        onClick={() => updateStudio({ italicizeText: !studioConfig.italicizeText })}
+                        className={`w-10 h-5.5 rounded-full p-0.5 flex items-center transition cursor-pointer ${studioConfig.italicizeText ? 'bg-[#0D5C3A] justify-end' : 'bg-stone-300 justify-start'
+                          }`}
+                      >
+                        <span className="w-4.5 h-4.5 rounded-full bg-white shadow-xs" />
+                      </button>
+                    </div>
+
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-[#F0F4F9] dark:bg-[#1E2623]">
+                      <div>
+                        <div className="font-bold text-stone-800 dark:text-stone-100">Use DOS Custom Remarks (From Settings)</div>
+                        <div className="text-[10px] text-stone-500">Disable to use built-in system fallback remarks</div>
+                      </div>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={studioConfig.useDosRemarkOverrides !== false}
+                        onClick={() => updateStudio({ useDosRemarkOverrides: studioConfig.useDosRemarkOverrides === false })}
+                        className={`w-10 h-5.5 rounded-full p-0.5 flex items-center transition cursor-pointer ${studioConfig.useDosRemarkOverrides !== false ? 'bg-[#0D5C3A] justify-end' : 'bg-stone-300 justify-start'
+                          }`}
+                      >
+                        <span className="w-4.5 h-4.5 rounded-full bg-white shadow-xs" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
 

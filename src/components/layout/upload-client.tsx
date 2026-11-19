@@ -513,13 +513,10 @@ export default function UploadClient({
     const selectedFiles = Array.from(fileList)
 
     selectedFiles.forEach((file) => {
-      if (!ACCEPTED_TYPES.includes(file.type)) {
+      const normalizedType = file.type === 'image/jpg' ? 'image/jpeg' : file.type
+      const hasValidExt = /\.(png|jpe?g|webp|pdf)$/i.test(file.name)
+      if (normalizedType ? !ACCEPTED_TYPES.includes(normalizedType) : !hasValidExt) {
         toast.error(`${file.name} is not a supported file type. Use PNG, JPG, or WEBP.`)
-        return
-      }
-
-      if ((category === 'Signatures' || category === 'Stamps') && file.size > 5 * 1024 * 1024) {
-        toast.error(`${file.name} exceeds 5MB. Signature and stamp assets must be 5MB or smaller.`)
         return
       }
 
@@ -528,7 +525,8 @@ export default function UploadClient({
         return
       }
 
-      if (category === 'Signatures' && file.type.startsWith('image/') && selectedSlot !== 'school-stamp') {
+      const isImageFile = normalizedType.startsWith('image/') || /\.(png|jpe?g|webp)$/i.test(file.name)
+      if (category === 'Signatures' && isImageFile && selectedSlot !== 'school-stamp') {
         setPendingSignatureFile(file)
         return
       }

@@ -15,7 +15,7 @@ import { sniffImageMimeType } from '@/lib/image-sniff'
 import { createTransparentSignaturePng } from '@/lib/signature-image'
 const BUCKET = 'signatures'
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp']
-const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB limit for signatures
+const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB limit (>= 5MB) to accommodate mobile phone camera uploads
 
 export async function OPTIONS(request: NextRequest) {
   return apiOptions(request)
@@ -72,12 +72,13 @@ export async function POST(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Invalid signature slot' }, { status: 400 }))
     }
 
-    if (!ACCEPTED_TYPES.includes(file.type)) {
+    const normalizedType = file.type === 'image/jpg' ? 'image/jpeg' : file.type
+    if (normalizedType && !ACCEPTED_TYPES.includes(normalizedType)) {
       return withCors(request, NextResponse.json({ error: 'Unsupported file type. Use PNG, JPG, or WEBP' }, { status: 400 }))
     }
 
     if (file.size > MAX_FILE_SIZE) {
-      return withCors(request, NextResponse.json({ error: 'File must be smaller than 5MB' }, { status: 400 }))
+      return withCors(request, NextResponse.json({ error: 'File must be smaller than 10MB' }, { status: 400 }))
     }
 
     const arrayBuffer = await file.arrayBuffer()

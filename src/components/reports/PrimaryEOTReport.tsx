@@ -431,7 +431,7 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
           padding-left: 10px !important;
         }
         .grade-cell { font-weight: ${effective.scoreFontWeight}; color: #1e293b; }
-        .remark-cell { font-style: italic; font-weight: 800; }
+        .remark-cell { font-style: ${studioFormatting?.italicizeText ? 'italic' : 'normal'}; font-weight: 800; }
         .total-row td { background-color: #f1f5f9; font-weight: 800; }
 
         /* Grading Table */
@@ -458,7 +458,7 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
         }
         .t-note-row { display: flex; align-items: flex-end; gap: 8px; margin-bottom: 2px; }
         .t-note-lbl { font-weight: 700; white-space: nowrap; }
-        .t-note-val { border-bottom: 1.5px dotted #94a3b8; flex: 1; min-width: 50px; font-style: italic; font-weight: 700; color: #ea580c; text-align: right; padding-bottom: 1px; font-size: ${effective.arabicCommentFontSizePx}px; }
+        .t-note-val { border-bottom: 1.5px dotted #94a3b8; flex: 1; min-width: 50px; font-style: normal; font-weight: 700; color: #ea580c; text-align: right; padding-bottom: 1px; font-size: ${effective.arabicCommentFontSizePx}px; }
 
         /* ── FOOTER SECTION ── */
         .footer-section {
@@ -501,7 +501,7 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
           border-bottom: 1.5px dotted #94a3b8;
           font-size: ${effective.commentFontSizePx}px;
           font-weight: 800;
-          font-style: italic;
+          font-style: ${studioFormatting?.italicizeText ? 'italic' : 'normal'};
           color: #0ea5e9;
           padding-bottom: 2px;
           min-width: 50px;
@@ -614,7 +614,7 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
                     <p data-testid="report-school-address">{effective.schoolHeader.address}</p>
                     <p data-testid="report-school-phone">Tel: {effective.schoolHeader.phone}</p>
                     <p style={{ textTransform: 'lowercase' }} data-testid="report-school-email">{effective.schoolHeader.email}</p>
-                    {effective.schoolHeader.motto ? <p style={{ fontStyle: 'italic' }} data-testid="report-school-motto">&ldquo;{effective.schoolHeader.motto}&rdquo;</p> : null}
+                    {effective.schoolHeader.motto ? <p style={{ fontStyle: studioFormatting?.italicizeText ? 'italic' : 'normal' }} data-testid="report-school-motto">&ldquo;{effective.schoolHeader.motto}&rdquo;</p> : null}
                   </div>
 
                   <div className="header-center">

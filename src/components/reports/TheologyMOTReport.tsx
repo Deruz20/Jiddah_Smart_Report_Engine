@@ -318,7 +318,7 @@ const theologyCSS = `
     align-items: center;
     padding: 0 12px 2px;
     color: #0369a1;
-    font-style: italic;
+    font-style: normal;
     font-weight: 900;
     font-size: var(--tc-comment-size);
     overflow: hidden;

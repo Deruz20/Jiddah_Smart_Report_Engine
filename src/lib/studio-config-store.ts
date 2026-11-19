@@ -1,6 +1,23 @@
 'use client'
 
 import React, { createContext, useContext, useEffect, useState } from 'react'
+import {
+  formatStampDisplayDate,
+  getLiveHeaderDateString,
+  getLiveIsoDateString,
+  getLiveStampDateString,
+  isStaleHardcodedStampDate,
+  resolveEffectiveStampDate,
+} from './stamp-date'
+
+export {
+  formatStampDisplayDate,
+  getLiveHeaderDateString,
+  getLiveIsoDateString,
+  getLiveStampDateString,
+  isStaleHardcodedStampDate,
+  resolveEffectiveStampDate,
+}
 
 export type StudioThemeId =
   | 'jiddah-classic'
@@ -50,13 +67,14 @@ export type StudioArabicFontFamily =
 
 export type StudioCommentFontSize = 'normal' | 'large' | 'xlarge'
 export type StudioWatermarkStyle = 'crest' | 'crest-star' | 'laurel-seal' | 'none'
-export type NurseryReportTheme = 'playful' | 'lineart' | 'classic'
+export type NurseryReportTheme = 'islamic-garden' | 'playful' | 'lineart' | 'classic'
 export type StudioArtPreset =
   | 'default'
   | 'safari'
   | 'abc-literacy'
   | 'stem-explorers'
   | 'islamic-arabesque'
+  | 'islamic-nursery'
   | 'certificate-filigree'
   | 'none'
 
@@ -519,7 +537,8 @@ export function normalizeStudioConfig(
   const stampDateInkColor = String(raw.stampDateInkColor || DEFAULT_STUDIO_CONFIG.stampDateInkColor)
   const stampNaturalRealism =
     raw.stampNaturalRealism !== undefined ? Boolean(raw.stampNaturalRealism) : DEFAULT_STUDIO_CONFIG.stampNaturalRealism
-  const stampDate = typeof raw.stampDate === 'string' ? raw.stampDate : DEFAULT_STUDIO_CONFIG.stampDate
+  const rawStampDate = typeof raw.stampDate === 'string' ? raw.stampDate.trim() : ''
+  const stampDate = isStaleHardcodedStampDate(rawStampDate) ? '' : rawStampDate
 
   const rawStampRot = Number(raw.stampRotation ?? DEFAULT_STUDIO_CONFIG.stampRotation)
   const stampRotation = Number.isFinite(rawStampRot) ? Math.min(25, Math.max(-25, rawStampRot)) : -2
@@ -568,13 +587,24 @@ export function normalizeStudioConfig(
     : DEFAULT_STUDIO_CONFIG.watermarkOpacity
 
   const showNurseryArt = raw.showNurseryArt !== undefined ? Boolean(raw.showNurseryArt) : true
+  const defaultNurseryThemeForTpl: NurseryReportTheme =
+    templateId === 'nursery-theology-eot' ? 'islamic-garden' : 'playful'
+  const hasExplicitTplNurseryTheme = Boolean(overrideSlice?.nurseryTheme)
   const nurseryTheme: NurseryReportTheme =
-    raw.nurseryTheme === 'lineart' || raw.nurseryTheme === 'classic' ? raw.nurseryTheme : 'playful'
+    templateId === 'nursery-theology-eot' && !hasExplicitTplNurseryTheme && (!raw.nurseryTheme || raw.nurseryTheme === 'playful')
+      ? 'islamic-garden'
+      : raw.nurseryTheme === 'islamic-garden' ||
+          raw.nurseryTheme === 'playful' ||
+          raw.nurseryTheme === 'lineart' ||
+          raw.nurseryTheme === 'classic'
+        ? raw.nurseryTheme
+        : defaultNurseryThemeForTpl
   const artPreset: StudioArtPreset =
     raw.artPreset === 'safari' ||
     raw.artPreset === 'abc-literacy' ||
     raw.artPreset === 'stem-explorers' ||
     raw.artPreset === 'islamic-arabesque' ||
+    raw.artPreset === 'islamic-nursery' ||
     raw.artPreset === 'certificate-filigree' ||
     raw.artPreset === 'none'
       ? raw.artPreset

@@ -13,22 +13,26 @@ export interface NurseryEducativeWatermarkProps {
   studioFormatting?: Record<string, any> | null
   includeEducativeArt?: boolean
   templateId?: ReportTemplateId
+  variant?: 'secular' | 'theology'
 }
 
 /**
  * Zero-layout-shift watermark & blended vector art backdrop for all Nursery & Primary templates.
  * - Layer 1: Central Watermark (Official Crest, Crest + Islamic Star Frame, Academic Laurel Seal, or None)
  * - Layer 2: Selected Background Illustration Preset (Safari Wildlife, ABC & 123 Literacy, STEM Explorers,
- *   Islamic Geometric Arabesque, Classic Certificate Filigree, or None)
+ *   Islamic Garden & Arabic Alphabet, Islamic Geometric Arabesque, Classic Certificate Filigree, or None)
  */
 export function NurseryEducativeWatermark({
   logoUrl = '/logo-512h.png',
   studioFormatting,
   includeEducativeArt = true,
   templateId,
+  variant,
 }: NurseryEducativeWatermarkProps) {
   const formatting = useStudioFormatting(studioFormatting)
   const effective = resolveEffectiveStudioStyle(formatting, undefined, templateId)
+  const isTheologyVariant =
+    variant === 'theology' || templateId === 'nursery-theology-eot' || templateId === 'theology-mot'
 
   const crestOpacity = effective.watermarkStyle === 'none' ? 0 : effective.watermarkOpacity
   const wmScale = Number((effective.watermarkScale / 100).toFixed(2))
@@ -38,7 +42,9 @@ export function NurseryEducativeWatermark({
       : effective.artPreset !== 'default'
         ? effective.artPreset
         : includeEducativeArt
-          ? 'safari'
+          ? isTheologyVariant
+            ? 'islamic-nursery'
+            : 'safari'
           : 'none'
 
   const showArt =
@@ -261,6 +267,142 @@ export function NurseryEducativeWatermark({
                 <path d="M52 10 C70 30, 74 62, 66 88 H38 C30 62, 34 30, 52 10 Z" fill={strokeColor} fillOpacity="0.08" />
                 <circle cx="52" cy="48" r="8" fill={accentColor} fillOpacity="0.2" />
                 <path d="M38 72 L24 92 L38 88 M66 72 L80 92 L66 88" />
+              </g>
+            </>
+          )}
+
+          {resolvedPreset === 'islamic-nursery' && (
+            <>
+              {/* Upper-Left Margin: Arabic Alphabet Outlined Tiles */}
+              <g transform="translate(22, 150)" stroke={strokeColor} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                {[
+                  { ch: 'أ', x: 0, y: 0, accent: false },
+                  { ch: 'ب', x: 48, y: 12, accent: true },
+                  { ch: 'ت', x: 14, y: 50, accent: false },
+                  { ch: 'ج', x: 64, y: 56, accent: true },
+                  { ch: 'س', x: 20, y: 98, accent: false },
+                  { ch: 'ق', x: 70, y: 102, accent: false },
+                ].map((item) => (
+                  <g key={item.ch} transform={`translate(${item.x}, ${item.y})`}>
+                    <rect
+                      x="0"
+                      y="0"
+                      width="42"
+                      height="42"
+                      rx="9"
+                      fill={(item.accent ? accentColor : strokeColor)}
+                      fillOpacity="0.06"
+                      stroke={item.accent ? accentColor : strokeColor}
+                    />
+                    <text
+                      x="21"
+                      y="29"
+                      textAnchor="middle"
+                      fontSize="24"
+                      fontWeight="900"
+                      fill={item.accent ? accentColor : strokeColor}
+                      stroke="none"
+                      fontFamily="Amiri, Cairo, sans-serif"
+                    >
+                      {item.ch}
+                    </text>
+                  </g>
+                ))}
+              </g>
+
+              {/* Upper-Right Margin: Eastern Arabic Numerals & Fanous Lantern */}
+              <g transform="translate(652, 148)" stroke={strokeColor} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                {[
+                  { num: '١', x: 0, y: 6, accent: false },
+                  { num: '٢', x: 52, y: 18, accent: true },
+                  { num: '٣', x: 10, y: 58, accent: true },
+                  { num: '٤', x: 60, y: 70, accent: false },
+                  { num: '٥', x: 20, y: 112, accent: false },
+                ].map((item) => (
+                  <g key={item.num} transform={`translate(${item.x}, ${item.y})`}>
+                    <circle
+                      cx="20"
+                      cy="20"
+                      r="19"
+                      fill={(item.accent ? accentColor : strokeColor)}
+                      fillOpacity="0.06"
+                      stroke={item.accent ? accentColor : strokeColor}
+                    />
+                    <text
+                      x="20"
+                      y="28"
+                      textAnchor="middle"
+                      fontSize="23"
+                      fontWeight="900"
+                      fill={item.accent ? accentColor : strokeColor}
+                      stroke="none"
+                      fontFamily="Amiri, Cairo, sans-serif"
+                    >
+                      {item.num}
+                    </text>
+                  </g>
+                ))}
+                {/* Outlined Fanous Lantern & Crescent */}
+                <g transform="translate(86, 8)" stroke={accentColor}>
+                  <path d="M18 4 C11 6, 10 15, 16 19 C20 21, 24 20, 26 17 C21 18, 17 14, 17 9 Z" />
+                  <path d="M10 34 L26 34 L29 42 L7 42 Z" />
+                  <rect x="8" y="42" width="20" height="28" rx="4" fill={accentColor} fillOpacity="0.05" />
+                  <path d="M10 70 L26 70 L22 78 L14 78 Z" />
+                </g>
+              </g>
+
+              {/* Mid-Left Margin: Noble Mushaf on Rehal + Honeybee & Butterfly */}
+              <g transform="translate(22, 462)" stroke={strokeColor} strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 92 L58 64 L98 92" stroke={accentColor} strokeWidth="3" />
+                <path d="M58 26 C40 16, 16 16, 4 24 L4 70 C16 62, 40 62, 58 72 C76 62, 100 62, 112 70 L112 24 C100 16, 76 16, 58 26 Z" fill={strokeColor} fillOpacity="0.05" />
+                <line x1="58" y1="26" x2="58" y2="72" />
+                <path d="M16 38 H44 M16 49 H42 M72 38 H100 M72 49 H98" stroke={accentColor} strokeWidth="1.9" />
+                {/* Honeybee & Butterfly */}
+                <g transform="translate(18, 106)">
+                  <ellipse cx="22" cy="18" rx="14" ry="9" fill={accentColor} fillOpacity="0.08" stroke={accentColor} />
+                  <ellipse cx="18" cy="7" rx="8" ry="6" />
+                  <ellipse cx="28" cy="7" rx="8" ry="6" />
+                  <line x1="18" y1="9" x2="18" y2="27" />
+                  <line x1="25" y1="10" x2="25" y2="26" />
+                </g>
+              </g>
+
+              {/* Mid-Right Margin: Crowned Hoopoe (Hudhud) & Fish */}
+              <g transform="translate(650, 470)" stroke={strokeColor} strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+                <ellipse cx="54" cy="46" rx="22" ry="15" fill={accentColor} fillOpacity="0.07" />
+                <circle cx="76" cy="30" r="11" fill={strokeColor} fillOpacity="0.06" />
+                <path d="M68 20 L64 8 M74 19 L74 6 M80 20 L84 9" stroke={accentColor} />
+                <path d="M87 30 L106 27 L87 35" />
+                <path d="M32 48 L14 60 L32 42" />
+                {/* Gentle Fish below */}
+                <g transform="translate(30, 86)" stroke={accentColor}>
+                  <path d="M18 18 C32 4, 58 4, 74 18 C58 32, 32 32, 18 18 Z" fill={accentColor} fillOpacity="0.06" />
+                  <path d="M18 18 L4 8 V28 Z" />
+                  <circle cx="60" cy="15" r="2.2" fill={strokeColor} />
+                </g>
+              </g>
+
+              {/* Bottom-Left Corner: Date Palm, Gentle Camel & Numerals ٦..١٠ */}
+              <g transform="translate(22, 815)" stroke={strokeColor} strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M34 115 Q40 76 34 38" stroke={accentColor} strokeWidth="4" />
+                <path d="M34 38 C16 20, 4 26, 2 38 M34 38 C22 14, 38 10, 42 22 M34 38 C52 18, 66 26, 62 38 M34 38 C50 36, 56 48, 50 54" stroke={strokeColor} strokeWidth="2.8" />
+                <g transform="translate(56, 54)" stroke={accentColor}>
+                  <path d="M8 46 V24 C8 14, 18 10, 26 16 C32 4, 46 4, 52 16 L60 20 L62 6 C62 0, 72 0, 74 6 C74 12, 70 14, 67 16 L64 34 H58 V54 H50 V38 H24 V54 H16 V38 H8 Z" fill={accentColor} fillOpacity="0.06" />
+                </g>
+                <text x="12" y="138" fontSize="18" fontWeight="900" fill={strokeColor} stroke="none" fontFamily="Amiri, Cairo, sans-serif">٦  ٧  ٨  ٩  ١٠</text>
+              </g>
+
+              {/* Bottom-Right Corner: Mosque Dome, Rub el Hizb & Gentle Sheep */}
+              <g transform="translate(646, 810)" stroke={strokeColor} strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M32 48 C32 22, 82 22, 82 48 Z" fill={strokeColor} fillOpacity="0.06" />
+                <line x1="57" y1="8" x2="57" y2="24" stroke={accentColor} />
+                <rect x="24" y="48" width="66" height="30" rx="4" />
+                <path d="M48 78 V62 C48 54, 66 54, 66 62 V78" stroke={accentColor} />
+                <g transform="translate(6, 94)" stroke={accentColor}>
+                  <rect x="12" y="8" width="32" height="32" rx="4" />
+                  <rect x="12" y="8" width="32" height="32" rx="4" transform="rotate(45 28 24)" />
+                </g>
+                <text x="58" y="132" fontSize="19" fontWeight="900" fill={accentColor} stroke="none" fontFamily="Amiri, Cairo, sans-serif">ك  ل  م  ن  ي</text>
               </g>
             </>
           )}

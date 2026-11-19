@@ -2,6 +2,8 @@
 
 import React from 'react'
 import { OfficialPrintLetterhead, OfficialPrintSignaturesFooter } from '@/components/print/OfficialPrintLetterhead'
+import { OfficialReportStamp } from '@/components/reports/StampGenerator'
+import { resolveEffectiveStampDate } from '@/lib/stamp-date'
 import { ExecutiveBreakdownPacket } from './ExecutiveBreakdownPacket'
 import {
   clampSupportThreshold,
@@ -389,6 +391,27 @@ export function DetailedReportPrintDocument({
             • <strong>{isArabic ? o.labelArabic : o.label}:</strong> {isArabic ? o.reasonArabic : o.reason}
           </div>
         ))}
+      </div>
+
+      <div
+        className="hub-print-keep-together"
+        style={{
+          marginTop: '10px',
+          display: 'flex',
+          justifyContent: isArabic ? 'flex-start' : 'flex-end',
+          alignItems: 'center',
+        }}
+      >
+        <OfficialReportStamp
+          reportData={{
+            stamp_config: {
+              ink_color: '#1B3B8B',
+              date: resolveEffectiveStampDate(),
+            },
+          }}
+          maxWidth={208}
+          maxHeight={121}
+        />
       </div>
 
       <OfficialPrintSignaturesFooter rtl={isArabic} />

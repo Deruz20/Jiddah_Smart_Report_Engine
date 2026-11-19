@@ -655,7 +655,7 @@ export default function NurseryEOTReport({ reportData, studioFormatting: studioF
                 </tr>
                 <tr>
                   <td style={{ textAlign: 'left', background: '#F8FAFC', fontWeight: 800 }}>Grade &amp; Descriptor</td>
-                  <td style={{ fontWeight: 900, color: isLineArt ? '#0F172A' : '#DC2626' }}>E (Poor)</td>
+                  <td style={{ fontWeight: 900, color: isLineArt ? '#0F172A' : '#DC2626' }}>E (Emerging)</td>
                   <td style={{ fontWeight: 900, color: isLineArt ? '#0F172A' : '#D97706' }}>D (Fair)</td>
                   <td style={{ fontWeight: 900, color: isLineArt ? '#0F172A' : '#0284C7' }}>C (Good)</td>
                   <td style={{ fontWeight: 900, color: isLineArt ? '#0F172A' : '#059669' }}>B (V. Good)</td>

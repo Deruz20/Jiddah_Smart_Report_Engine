@@ -319,8 +319,15 @@ export async function PATCH(
     const studentId = (await params).id
     const body = await request.json()
 
-    if (body.is_archived === undefined) {
-       return withCors(request, NextResponse.json({ error: 'is_archived is required' }, { status: 400 }))
+    const hasArchiveUpdate = body.is_archived !== undefined
+    const hasNameUpdate =
+      body.name !== undefined || body.arabic_name !== undefined || body.name_arabic !== undefined
+
+    if (!hasArchiveUpdate && !hasNameUpdate) {
+      return withCors(
+        request,
+        NextResponse.json({ error: 'is_archived or name/arabic_name is required' }, { status: 400 })
+      )
     }
 
     const cookieStore = await cookies()
@@ -332,7 +339,11 @@ export async function PATCH(
     }
 
     const authRes = await verifyDataAccess(supabase, user, 'read')
-    if (!authRes.isAuthorized || !hasPermission(authRes, 'write_students')) {
+    const canArchive = hasPermission(authRes, 'write_students')
+    const canQuickFixName =
+      hasPermission(authRes, 'write_students') || hasPermission(authRes, 'read_reports')
+
+    if (!authRes.isAuthorized || (hasArchiveUpdate && !canArchive) || (hasNameUpdate && !canQuickFixName)) {
       return withCors(
         request,
         NextResponse.json(
@@ -361,20 +372,37 @@ export async function PATCH(
       return withCors(request, NextResponse.json({ error: 'Unauthorized to update this student' }, { status: 403 }))
     }
 
-    const nextArchived = Boolean(body.is_archived)
-    const { error: archiveError } = await supabaseAdmin
-      .from('students')
-      .update({
-        is_archived: nextArchived,
-        archived_at: nextArchived ? new Date().toISOString() : null,
-      })
-      .eq('id', studentId)
-
-    if (archiveError) {
-      return withCors(request, NextResponse.json({ error: archiveError.message }, { status: 500 }))
+    const updatePayload: Record<string, any> = {}
+    if (hasArchiveUpdate) {
+      const nextArchived = Boolean(body.is_archived)
+      updatePayload.is_archived = nextArchived
+      updatePayload.archived_at = nextArchived ? new Date().toISOString() : null
+    }
+    if (body.name !== undefined) {
+      const trimmedName = String(body.name || '').trim()
+      if (!trimmedName) {
+        return withCors(request, NextResponse.json({ error: 'Student name cannot be empty' }, { status: 400 }))
+      }
+      updatePayload.name = trimmedName
+    }
+    if (body.arabic_name !== undefined || body.name_arabic !== undefined) {
+      const rawArabic = body.arabic_name !== undefined ? body.arabic_name : body.name_arabic
+      const trimmedArabic = rawArabic == null ? '' : String(rawArabic).trim()
+      updatePayload.arabic_name = trimmedArabic || null
     }
 
-    return withCors(request, NextResponse.json({ success: true }))
+    const { data: updatedStudent, error: updateError } = await supabaseAdmin
+      .from('students')
+      .update(updatePayload)
+      .eq('id', studentId)
+      .select('id, name, arabic_name, is_archived')
+      .single()
+
+    if (updateError) {
+      return withCors(request, NextResponse.json({ error: updateError.message }, { status: 500 }))
+    }
+
+    return withCors(request, NextResponse.json({ success: true, student: updatedStudent }))
   } catch (err) {
     console.error('API error:', err)
     const message = err instanceof Error ? err.message : 'Internal server error'

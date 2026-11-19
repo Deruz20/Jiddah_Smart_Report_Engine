@@ -6,6 +6,7 @@ import {
   getNurseryGrade,
   getSubjectGradeNumber,
   getTheologyDivision,
+  isCoreSubject,
   isGradableSubject,
   isNurseryClass,
 } from './grading'
@@ -511,8 +512,40 @@ export function computeHubCohortMetrics(params: {
     const completePcts: number[] = []
     const clsDivCounts = { I: 0, II: 0, III: 0, IV: 0, U: 0, unranked: 0 }
 
-    const expectedCount = clsSubjects.length
-    const maxPossibleTotal = clsSubjects.reduce((acc, s) => acc + (Number(s.max_score) || 100), 0)
+    // Determine actively assessed subjects for this class & exam phase so unassessed optional subjects (e.g. COMP)
+    // do not turn complete learners into "0 / 23 Complete" or zero out ranks/means.
+    const assessedSubjectsRaw = clsSubjects.filter((sub) => {
+      const subName =
+        curriculum === 'theology'
+          ? sub.subject_name_arabic || sub.subject_name
+          : sub.subject_name
+      return clsEnrollments.some((enrollment) => {
+        const eMarks = marks.filter(
+          (m) => m.enrollment_id === enrollment.id || (m.student_id && m.student_id === enrollment.student_id)
+        )
+        const mark = findReconciledMark(eMarks, {
+          studentId: enrollment.student_id,
+          enrollmentId: enrollment.id,
+          subjectId: sub.id,
+          subjectName: subName,
+          curriculum,
+        })
+        const rawScore = mark?.[scoreKey]
+        return rawScore != null && String(rawScore) !== '' && !isNaN(Number(rawScore))
+      })
+    })
+    const fallbackSubjects =
+      curriculum === 'secular' && !clsIsNursery
+        ? (() => {
+            const coreOnly = clsSubjects.filter((s) => isCoreSubject(String(s.subject_name || ''), clsSectionToken))
+            return coreOnly.length > 0 ? coreOnly : clsSubjects
+          })()
+        : clsSubjects
+    const activeAssessedSubjects = assessedSubjectsRaw.length > 0 ? assessedSubjectsRaw : fallbackSubjects
+    const activeAssessedIdSet = new Set(activeAssessedSubjects.map((s) => s.id))
+
+    const expectedCount = activeAssessedSubjects.length
+    const maxPossibleTotal = activeAssessedSubjects.reduce((acc, s) => acc + (Number(s.max_score) || 100), 0)
 
     for (const enrollment of clsEnrollments) {
       const eMarks = marks.filter(
@@ -545,6 +578,7 @@ export function computeHubCohortMetrics(params: {
           rawScore != null && String(rawScore) !== '' && !isNaN(Number(rawScore)) ? Number(rawScore) : null
         const targetSubId = canonicalUnionIdBySubId.get(sub.id) ?? sub.id
         subjectScores[targetSubId] = numericScore
+        const isAssessedForClass = activeAssessedIdSet.has(sub.id)
         const subLabel =
           curriculum === 'theology'
             ? String(sub.subject_name_arabic || sub.subject_name || 'Subject')
@@ -552,8 +586,10 @@ export function computeHubCohortMetrics(params: {
 
         if (numericScore != null) {
           total += numericScore
-          satMaxSum += Number(sub.max_score) || 100
-          satCount++
+          if (isAssessedForClass) {
+            satMaxSum += Number(sub.max_score) || 100
+            satCount++
+          }
           if (curriculum === 'secular') {
             if (clsIsNursery) {
               subjectGrades[targetSubId] = getNurseryGrade(numericScore).grade
@@ -567,7 +603,9 @@ export function computeHubCohortMetrics(params: {
           }
         } else {
           subjectGrades[targetSubId] = null
-          missingSubNames.push(subLabel)
+          if (isAssessedForClass) {
+            missingSubNames.push(subLabel)
+          }
         }
 
         if (curriculum === 'theology') {
@@ -733,7 +771,7 @@ export function computeHubCohortMetrics(params: {
     })
     : computeStandardRankings(rankCandidates)
 
-  const rankedStudents: HubStudentRow[] = rankedRaw.map((p) => {
+  const rankedStudentsUnsorted: HubStudentRow[] = rankedRaw.map((p) => {
     const orig = allRows.find((r) => r.id === p.id)
     return {
       ...p,
@@ -741,6 +779,37 @@ export function computeHubCohortMetrics(params: {
       rank: p.rank,
       position: p.rank,
     }
+  })
+
+  // Canonical sheet sort:
+  // 1) Complete assessed learners first (by Rank ascending, then Total desc, then Name)
+  // 2) Partially assessed learners next (by Total descending, then subjects sat desc, then Name)
+  // 3) Unassessed (0 marks) learners ALWAYS at the bottom
+  // 4) Candidate-excluded rows after active rows
+  const rowTier = (row: HubStudentRow): number => {
+    if (row.isCandidateExcluded) return 3
+    if (row.isCompleteMarks && row.position !== '-') return 0
+    if (row.satSubjectCount > 0 || (row.total != null && row.total > 0)) return 1
+    return 2
+  }
+  const rankedStudents: HubStudentRow[] = [...rankedStudentsUnsorted].sort((a, b) => {
+    const ta = rowTier(a)
+    const tb = rowTier(b)
+    if (ta !== tb) return ta - tb
+    if (ta === 0) {
+      const ra = typeof a.position === 'number' ? a.position : Number(a.position) || 999999
+      const rb = typeof b.position === 'number' ? b.position : Number(b.position) || 999999
+      if (ra !== rb) return ra - rb
+      return (b.total ?? 0) - (a.total ?? 0) || a.name.localeCompare(b.name)
+    }
+    if (ta === 1) {
+      return (
+        (b.total ?? -1) - (a.total ?? -1) ||
+        b.satSubjectCount - a.satSubjectCount ||
+        a.name.localeCompare(b.name)
+      )
+    }
+    return a.name.localeCompare(b.name)
   })
 
   const eligibleRanked = rankedStudents.filter(

@@ -259,6 +259,8 @@ export interface BroadsheetStudentLike {
   aggregate?: number | null
   division?: string | null
   position?: number | string
+  isCandidateExcluded?: boolean
+  subjectsSat?: number
   subjectScores: Record<string, number | null | undefined>
   subjectGrades: Record<string, string | null | undefined>
 }
@@ -270,6 +272,17 @@ export function prepareBroadsheetStudents<T extends BroadsheetStudentLike>(
 ): T[] {
   let base = config.rowScope === 'filtered' ? [...filteredStudents] : [...allStudents]
 
+  const hasAnyMark = (st: T) =>
+    (st.subjectsSat ?? 0) > 0 ||
+    Object.values(st.subjectScores || {}).some((val) => typeof val === 'number')
+
+  const getRankTier = (st: T): number => {
+    if (st.isCandidateExcluded) return 3
+    if (typeof st.position === 'number') return 0
+    if (hasAnyMark(st)) return 1
+    return 2
+  }
+
   if (config.sortBy === 'name') {
     base.sort((a, b) => (a.arabic_name || a.name).localeCompare(b.arabic_name || b.name))
   } else if (config.sortBy === 'aggregate') {
@@ -280,12 +293,16 @@ export function prepareBroadsheetStudents<T extends BroadsheetStudentLike>(
       return (b.total ?? -1) - (a.total ?? -1)
     })
   } else {
-    // 'rank' keeps standard competition ranking order; ranked items before unranked
+    // 'rank' keeps 4-tier order: complete ranked -> partial with marks -> 0 marks -> excluded
     base.sort((a, b) => {
-      const rA = typeof a.position === 'number' ? a.position : 999999
-      const rB = typeof b.position === 'number' ? b.position : 999999
-      if (rA !== rB) return rA - rB
-      return (b.total ?? -1) - (a.total ?? -1)
+      const tierDiff = getRankTier(a) - getRankTier(b)
+      if (tierDiff !== 0) return tierDiff
+      if (typeof a.position === 'number' && typeof b.position === 'number' && a.position !== b.position) {
+        return a.position - b.position
+      }
+      const totalDiff = (b.total ?? -1) - (a.total ?? -1)
+      if (totalDiff !== 0) return totalDiff
+      return (a.arabic_name || a.name).localeCompare(b.arabic_name || b.name)
     })
   }
 

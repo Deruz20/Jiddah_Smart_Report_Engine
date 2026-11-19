@@ -1097,3 +1097,15 @@ WHERE tc.class_name_english ILIKE '%6%'
    OR tc.class_name_arabic ILIKE '%سادس%'
    OR tc.level::text = '6'
 ORDER BY tc.class_name_english;
+
+-- =============================================================================
+-- 5. DATA QUALITY FIX: HAMAN RASHEED ARABIC NAME (IDEMPOTENT)
+-- =============================================================================
+UPDATE public.students
+SET arabic_name = 'هامان رشيد'
+WHERE UPPER(TRIM(name)) = 'HAMAN RASHEED'
+  AND (
+    arabic_name IS NULL
+    OR TRIM(arabic_name) = ''
+    OR arabic_name ~ '[A-Za-z]'
+  );

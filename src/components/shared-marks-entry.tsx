@@ -393,6 +393,10 @@ export interface SharedMarksEntryProps {
   pendingOutboxCount?: number
   isFlushingOutbox?: boolean
   onFlushOutbox?: () => void
+  cachedPhoneSyncCount?: number
+  cachedPhoneUnsyncedScoresCount?: number
+  isSyncingCachedPhoneMarks?: boolean
+  onSyncCachedPhoneMarks?: () => void
 }
 
 function computeTheologyBadge(
@@ -625,6 +629,10 @@ export function SharedMarksEntry({
   pendingOutboxCount = 0,
   isFlushingOutbox = false,
   onFlushOutbox,
+  cachedPhoneSyncCount = 0,
+  cachedPhoneUnsyncedScoresCount = 0,
+  isSyncingCachedPhoneMarks = false,
+  onSyncCachedPhoneMarks,
 }: SharedMarksEntryProps) {
   const selectedEnrollment = (Array.isArray(enrollments) ? enrollments.find((e) => e.id === selectedEnrollmentId) : null) || null
 
@@ -1753,6 +1761,43 @@ export function SharedMarksEntry({
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isFlushingOutbox ? 'animate-spin' : ''}`} />
                 <span>{isFlushingOutbox ? 'Syncing...' : 'Sync Local Marks to Server'}</span>
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* IndexedDB Phone Cache-vs-Server Bulk Recovery Banner */}
+        {cachedPhoneSyncCount > 0 && (
+          <div
+            data-testid="marks-cached-phone-sync-banner"
+            className="flex flex-wrap items-center justify-between gap-2.5 px-3.5 py-2.5 rounded-2xl bg-emerald-500/12 border border-emerald-600/35 text-emerald-950 dark:text-emerald-100 text-xs"
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <Upload className="w-4 h-4 text-[#0D5C3A] dark:text-[#34D399] shrink-0" />
+              <div className="min-w-0">
+                <span className="font-bold">
+                  Phone cache has {cachedPhoneSyncCount} student{cachedPhoneSyncCount === 1 ? '' : 's'}
+                  {cachedPhoneUnsyncedScoresCount > 0 ? ` (${cachedPhoneUnsyncedScoresCount} score entries)` : ''} not yet saved on the server
+                </span>
+                <span className="hidden sm:inline text-[11px] opacity-85 ml-1.5">
+                  — tap to upload cached marks from this device to Supabase.
+                </span>
+              </div>
+            </div>
+            {onSyncCachedPhoneMarks && (
+              <button
+                type="button"
+                onClick={onSyncCachedPhoneMarks}
+                disabled={isSyncingCachedPhoneMarks}
+                data-testid="sync-cached-phone-marks-btn"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#0D5C3A] hover:bg-[#09472C] text-white font-bold text-[11px] shadow-xs transition active:scale-[0.98] cursor-pointer disabled:opacity-50 shrink-0"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isSyncingCachedPhoneMarks ? 'animate-spin' : ''}`} />
+                <span>
+                  {isSyncingCachedPhoneMarks
+                    ? 'Syncing Cached Phone Marks...'
+                    : `Sync All Cached Phone Marks to Server (${cachedPhoneSyncCount} unsynced)`}
+                </span>
               </button>
             )}
           </div>

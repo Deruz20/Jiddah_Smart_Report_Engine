@@ -3,6 +3,7 @@
 import React from 'react'
 import { OfficialPrintLetterhead, OfficialPrintSignaturesFooter } from '@/components/print/OfficialPrintLetterhead'
 import { OfficialReportStamp } from '@/components/reports/StampGenerator'
+import { resolveEffectiveStampDate } from '@/lib/stamp-date'
 import {
   type BroadsheetCurriculum,
   type BroadsheetPrintConfig,
@@ -1068,13 +1069,13 @@ export function BroadsheetPrintDocument({
               </div>
             </div>
 
-            {/* Column 2: Signature Lines + Official Circular Stamp */}
+            {/* Column 2: Signature Lines + Official Stamp */}
             <div
               style={{
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '10px',
-                paddingInlineEnd: config.showStamp ? '108px' : '0',
+                paddingInlineEnd: config.showStamp ? '218px' : '0',
               }}
             >
               {config.showSignatures &&
@@ -1107,11 +1108,12 @@ export function BroadsheetPrintDocument({
                   reportData={{
                     stamp_config: {
                       ink_color: isMono ? '#111827' : '#0D5C3A',
+                      date: resolveEffectiveStampDate(),
                       scale: 85,
                     },
                   }}
-                  maxWidth={110}
-                  maxHeight={52}
+                  maxWidth={208}
+                  maxHeight={121}
                 />
               </div>
             )}

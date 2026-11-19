@@ -8,6 +8,7 @@ import { SharedMarksEntry, ExamType } from './shared-marks-entry'
 import { TermData, EnrollmentData, CircularMarkRow, TheologyMarkRow } from '@/types/models'
 import {
   broadcastMarksUpdated,
+  detectAndSyncCachedPhoneMarks,
   flushOfflineOutbox,
   getPendingOutboxItems,
   OFFLINE_SYNC_EVENT,
@@ -60,6 +61,9 @@ export function AdminMarksEntryClient({
   const [success, setSuccess] = useState(false)
   const [pendingOutboxCount, setPendingOutboxCount] = useState(0)
   const [isFlushingOutbox, setIsFlushingOutbox] = useState(false)
+  const [cachedPhoneSyncCount, setCachedPhoneSyncCount] = useState(0)
+  const [cachedPhoneUnsyncedScoresCount, setCachedPhoneUnsyncedScoresCount] = useState(0)
+  const [isSyncingCachedPhoneMarks, setIsSyncingCachedPhoneMarks] = useState(false)
   const [reloadNonce, setReloadNonce] = useState(0)
   const [isPending] = useTransition()
 
@@ -107,6 +111,49 @@ export function AdminMarksEntryClient({
       return () => window.removeEventListener(OFFLINE_SYNC_EVENT, onSyncChanged)
     }
   }, [])
+
+  const runCachedPhoneMarksRecovery = async (autoPush = false, showEmptyToast = false) => {
+    if (!selectedTermId) return
+    if (autoPush && (typeof navigator !== 'undefined' && navigator.onLine === false)) return
+    setIsSyncingCachedPhoneMarks(true)
+    try {
+      const enrollmentIds = enrollments.map((e) => e.id).filter(Boolean)
+      const res = await detectAndSyncCachedPhoneMarks({
+        termId: selectedTermId,
+        enrollmentIds: enrollmentIds.length > 0 ? enrollmentIds : undefined,
+        autoPush,
+      })
+      setCachedPhoneSyncCount(res.unsyncedStudents)
+      setCachedPhoneUnsyncedScoresCount(res.unsyncedScores)
+      if (res.pushedStudents > 0) {
+        marksCacheRef.current.clear()
+        invalidateClientCache()
+        setReloadNonce((n) => n + 1)
+        router.refresh()
+        toast.success(
+          `Uploaded ${res.pushedScores} cached mark score(s) across ${res.pushedStudents} student(s) to the server!`
+        )
+      } else if (showEmptyToast) {
+        if (res.failedStudents > 0 && res.lastError) {
+          toast.error(`Phone cache sync hit an error: ${res.lastError}`)
+        } else {
+          toast.info('All locally cached phone marks match the live server.')
+        }
+      }
+    } catch (err: any) {
+      if (showEmptyToast) {
+        toast.error(err?.message || 'Failed to sync cached phone marks')
+      }
+    } finally {
+      setIsSyncingCachedPhoneMarks(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!selectedTermId) return
+    // Automatically compare IndexedDB read cache + outbox against live server (?bypass_cache=1) and push missing scores
+    runCachedPhoneMarksRecovery(true, false)
+  }, [selectedTermId, enrollments.length])
 
   const applyPendingOutboxOverlay = async (
     enrollmentId: string,
@@ -261,6 +308,27 @@ export function AdminMarksEntryClient({
               fresh.theology_marks ?? []
             )
             if (cancelled || reqId !== activeMarksReqIdRef.current) return
+            // Guard against wiping non-null cached phone scores if live Postgres returned empty/null rows
+            const prevLocal = marksCacheRef.current.get(cacheKey)
+            const hasLostCircScores = (prevLocal?.circular_marks ?? []).some((pm) => {
+              const sm = overlaid.circular.find((r) => r.subject_id === pm.subject_id)
+              return (
+                (typeof pm.bot_score === 'number' && sm?.bot_score == null) ||
+                (typeof pm.mot_score === 'number' && sm?.mot_score == null) ||
+                (typeof pm.eot_score === 'number' && sm?.eot_score == null)
+              )
+            })
+            const hasLostTheoScores = (prevLocal?.theology_marks ?? []).some((pm) => {
+              const sm = overlaid.theology.find((r) => r.subject_id === pm.subject_id)
+              return (
+                (typeof pm.mot_score === 'number' && sm?.mot_score == null) ||
+                (typeof pm.eot_score === 'number' && sm?.eot_score == null)
+              )
+            })
+            if (hasLostCircScores || hasLostTheoScores) {
+              runCachedPhoneMarksRecovery(true, false)
+              return
+            }
             setCircularMarks(overlaid.circular)
             setTheologyMarks(overlaid.theology)
             marksCacheRef.current.set(cacheKey, {
@@ -458,6 +526,10 @@ export function AdminMarksEntryClient({
       pendingOutboxCount={pendingOutboxCount}
       isFlushingOutbox={isFlushingOutbox}
       onFlushOutbox={handleFlushOutbox}
+      cachedPhoneSyncCount={cachedPhoneSyncCount}
+      cachedPhoneUnsyncedScoresCount={cachedPhoneUnsyncedScoresCount}
+      isSyncingCachedPhoneMarks={isSyncingCachedPhoneMarks}
+      onSyncCachedPhoneMarks={() => runCachedPhoneMarksRecovery(true, true)}
     />
   )
 }

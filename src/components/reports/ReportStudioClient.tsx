@@ -25,6 +25,11 @@ import {
   Move,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  getLiveIsoDateString,
+  getLiveStampDateString,
+  resolveEffectiveStampDate,
+} from '@/lib/stamp-date';
 
 import PrimaryEOTReport from '@/components/reports/PrimaryEOTReport';
 import P7EOTReport from '@/components/reports/P7EOTReport';
@@ -217,7 +222,8 @@ const SAMPLE_PROFILES: {
   ];
 
 const ART_PRESET_OPTIONS: { id: StudioArtPreset; label: string; desc: string }[] = [
-  { id: 'default', label: 'Template Default', desc: 'Safari & Literacy on Nursery; Clean Academic on Primary' },
+  { id: 'default', label: 'Template Default', desc: 'Islamic Garden on Theology; Safari & Literacy on Secular Nursery' },
+  { id: 'islamic-nursery', label: 'Islamic Garden & Arabic Alphabet', desc: 'Arabic letters أ ب ت, numerals ١–١٠, Mushaf on Rehal, fanous & palm' },
   { id: 'safari', label: 'Safari Wildlife & Nature', desc: 'Giraffe, Lion Cub, Baby Elephant, Acacia & Stars' },
   { id: 'abc-literacy', label: 'ABC & 123 Early Literacy', desc: 'Alphabet blocks, counting numerals, abacus, books' },
   { id: 'stem-explorers', label: 'STEM & Little Explorers', desc: 'Globe, telescope, rocket, atoms & science badges' },
@@ -762,8 +768,8 @@ export function ReportStudioClient({
       term: {
         name: 'Term 1',
         term_number: 1,
-        academic_year: '2026',
-        end_date: '2026-04-24',
+        academic_year: String(new Date().getFullYear()),
+        end_date: getLiveIsoDateString(),
         next_term_start: '2026-05-18',
         next_term_start_boarders: '2026-05-16',
         next_term_start_day: '2026-05-18',
@@ -803,7 +809,7 @@ export function ReportStudioClient({
             ...initialPrintPreferences?.stamp_config,
             ink_color: studioConfig.stampInkColor,
             date_ink_color: studioConfig.stampDateInkColor,
-            date: studioConfig.stampDate || '24 APR 2026',
+            date: resolveEffectiveStampDate(studioConfig.stampDate),
           },
         },
       },
@@ -861,7 +867,7 @@ export function ReportStudioClient({
         theology_total_students: 38,
       },
       signatures: liveSignatures,
-      stamp_date: studioConfig.stampDate || '24 APR 2026',
+      stamp_date: resolveEffectiveStampDate(studioConfig.stampDate),
     };
   }, [
     activeTemplate,
@@ -1623,8 +1629,9 @@ export function ReportStudioClient({
                       <span className="text-[10.5px] font-bold text-stone-800 dark:text-stone-100">
                         Nursery EOT Card Illustration Style
                       </span>
-                      <div className="grid grid-cols-3 gap-1.5" data-testid="studio-nursery-theme-selector">
+                      <div className="grid grid-cols-2 gap-1.5" data-testid="studio-nursery-theme-selector">
                         {([
+                          { id: 'islamic-garden', label: 'Islamic Garden' },
                           { id: 'playful', label: 'Playful Color' },
                           { id: 'lineart', label: 'Line-Art B&W' },
                           { id: 'classic', label: 'Classic' },
@@ -1823,7 +1830,7 @@ export function ReportStudioClient({
                             type="text"
                             value={studioConfig.stampDate}
                             onChange={(e) => updateStudio({ stampDate: e.target.value.toUpperCase() })}
-                            placeholder="24 APR 2026"
+                            placeholder={getLiveStampDateString()}
                             className="w-full h-8 px-2.5 rounded-lg bg-white dark:bg-[#151D1A] border border-stone-200 dark:border-white/10 text-xs font-bold"
                           />
                         </div>

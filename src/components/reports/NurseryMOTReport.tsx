@@ -8,6 +8,7 @@ import { formatDateWithOrdinal } from '@/utils/dateHelpers';
 import { getClassTeacherSignatureKey } from "@/utils/signatures";
 import { NurseryEducativeWatermark } from "@/components/reports/NurseryEducativeWatermark";
 import { useStudioFormatting, resolveEffectiveStudioStyle } from "@/lib/studio-config-store";
+import { getLiveIsoDateString } from "@/lib/stamp-date";
 
 export default function NurseryMOTReport({ reportData, studioFormatting: studioFormattingProp }: any) {
   const studioFormatting = useStudioFormatting(studioFormattingProp, reportData?.settings?.report_studio_config)
@@ -296,11 +297,9 @@ export default function NurseryMOTReport({ reportData, studioFormatting: studioF
         border: 1.5px solid ${effective.secondaryColor};
     }
     .nursery-mot-report .stamp-box {
-        width: 135px;
-        height: 68px;
-        max-width: 135px;
-        max-height: 68px;
-        overflow: hidden;
+        width: 208px;
+        height: 121px;
+        overflow: visible;
         border: none;
         display: flex;
         flex-direction: column;
@@ -357,7 +356,7 @@ export default function NurseryMOTReport({ reportData, studioFormatting: studioF
             </div>
             <div className="info-box">
               <div className="info-row"><span className="label">Class</span><div className="line" style={{ fontSize: '14.5px', fontWeight: 800, color: '#0F172A' }}>{reportData?.student?.class_name}</div></div>
-              <div className="info-row"><span className="label">Date</span><div className="line" style={{ fontSize: '13.5px', fontWeight: 800, color: '#0F172A' }}>{reportData?.term?.end_date ? formatDate(reportData.term.end_date) : '_________________'}</div></div>
+              <div className="info-row"><span className="label">Date</span><div className="line" style={{ fontSize: '13.5px', fontWeight: 800, color: '#0F172A' }}>{formatDate(reportData?.term?.end_date || getLiveIsoDateString())}</div></div>
             </div>
           </div>
 
@@ -446,9 +445,9 @@ export default function NurseryMOTReport({ reportData, studioFormatting: studioF
               </div>
             </div>
 
-            <div className="stamp-box" style={{ width: '135px', height: '64px', minWidth: '135px', minHeight: '64px', position: 'relative', overflow: 'visible', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <div className="stamp-box" style={{ width: '208px', height: '121px', minWidth: '208px', minHeight: '121px', position: 'relative', overflow: 'visible', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               {includeStamp ? (
-                <OfficialReportStamp reportData={reportData} studioFormatting={effectiveStudioPass} maxWidth={135} maxHeight={64} />
+                <OfficialReportStamp reportData={reportData} studioFormatting={effectiveStudioPass} maxWidth={208} maxHeight={121} />
               ) : null}
             </div>
           </div>

@@ -24,9 +24,11 @@ export default function NurseryTheologyEOTReport({ reportData, studioFormatting:
   const studioFormatting = useStudioFormatting(studioFormattingProp, reportData?.settings?.report_studio_config)
   const effective = resolveEffectiveStudioStyle(studioFormatting, reportData, 'nursery-theology-eot')
   const effectiveStudioPass = { ...studioFormatting, ...effective, stampInkColor: effective.stampColor }
-  const nurseryTheme = effective.nurseryTheme || 'playful'
+  const nurseryTheme = effective.nurseryTheme || 'islamic-garden'
   const isLineArt = nurseryTheme === 'lineart' || studioFormatting.themeId === 'monochrome'
-  const isPlayful = nurseryTheme === 'playful' && !isLineArt
+  const isIslamicGarden = nurseryTheme === 'islamic-garden' && !isLineArt
+  const isPlayful = (nurseryTheme === 'playful' || nurseryTheme === 'islamic-garden') && !isLineArt
+  const decorVariant = nurseryTheme === 'playful' ? 'secular' : 'islamic-garden'
   const includeSignatures = effective.showSignatures
   const includeStamp = effective.showStamp
 
@@ -160,7 +162,7 @@ export default function NurseryTheologyEOTReport({ reportData, studioFormatting:
     background: ${isLineArt ? '#FFFFFF' : 'linear-gradient(180deg, #ECFDF5 0%, #FFFBEB 100%)'};
     padding: 8px 14px 10px 14px;
     border-radius: 18px;
-    border: 2.5px solid var(--nursery-gold);
+    border: 2.5px solid ${isLineArt ? '#334155' : isIslamicGarden ? '#047857' : '#D97706'};
     color: var(--primary-green);
     flex-shrink: 0;
 }
@@ -254,7 +256,7 @@ export default function NurseryTheologyEOTReport({ reportData, studioFormatting:
     display: flex;
     flex-direction: column;
     justify-content: space-evenly;
-    gap: 8px;
+    gap: 5px;
 }
 
 .nursery-theology-eot-report .table-head {
@@ -277,8 +279,8 @@ export default function NurseryTheologyEOTReport({ reportData, studioFormatting:
     align-items: center;
     background: #FFFFFF;
     border: 1.5px solid #CBD5E1;
-    border-radius: 14px;
-    padding: 9px 12px;
+    border-radius: 12px;
+    padding: 6px 12px;
     color: #0F172A;
 }
 
@@ -299,16 +301,16 @@ export default function NurseryTheologyEOTReport({ reportData, studioFormatting:
 
 .nursery-theology-eot-report .grade-circle {
     position: relative;
-    width: 44px;
-    height: 44px;
-    border: 2.5px solid var(--nursery-gold);
+    width: 40px;
+    height: 40px;
+    border: 2.5px solid ${isLineArt ? '#334155' : isIslamicGarden ? '#047857' : '#D97706'};
     border-radius: 50%;
     background: #FFFFFF;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 900;
-    font-size: 17px;
+    font-size: 16.5px;
     color: var(--nursery-gold);
 }
 
@@ -392,8 +394,8 @@ export default function NurseryTheologyEOTReport({ reportData, studioFormatting:
 }
 
 .nursery-theology-eot-report .footer-stamp {
-    width: 135px;
-    height: 68px;
+    width: 208px;
+    height: 121px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -412,16 +414,17 @@ export default function NurseryTheologyEOTReport({ reportData, studioFormatting:
         <div className="watermark-bg" />
         <NurseryEducativeWatermark
           templateId="nursery-theology-eot"
+          variant="theology"
           logoUrl={normalizeSchoolLogoUrl(reportData?.settings?.logo_url)}
           studioFormatting={effectiveStudioPass}
           includeEducativeArt={nurseryTheme !== 'classic'}
         />
-        {nurseryTheme !== 'classic' && <NurseryCornerDecor lineArt={isLineArt} />}
+        {nurseryTheme !== 'classic' && <NurseryCornerDecor lineArt={isLineArt} variant={decorVariant} />}
 
         {/* HEADER */}
         <div className="header">
           {nurseryTheme !== 'classic' ? (
-            <NurseryPlayfulHeaderArt side="right" lineArt={isLineArt} width={96} height={74} />
+            <NurseryPlayfulHeaderArt side="right" variant={decorVariant} lineArt={isLineArt} width={96} height={74} />
           ) : (
             <div style={{ width: '48px' }} />
           )}
@@ -450,7 +453,7 @@ export default function NurseryTheologyEOTReport({ reportData, studioFormatting:
           </div>
 
           {nurseryTheme !== 'classic' ? (
-            <NurseryPlayfulHeaderArt side="left" lineArt={isLineArt} width={96} height={74} />
+            <NurseryPlayfulHeaderArt side="left" variant={decorVariant} lineArt={isLineArt} width={96} height={74} />
           ) : (
             <div className="header-badge" style={{ visibility: 'hidden' }}>
               <img src="/school_logo.svg" alt="" />
@@ -577,7 +580,7 @@ export default function NurseryTheologyEOTReport({ reportData, studioFormatting:
           <span>جيد جداً: ٧٥ – ٨٤</span>
           <span>جيد: ٦٥ – ٧٤</span>
           <span>مقبول: ٥٠ – ٦٤</span>
-          <span>ضعيف: أقل من ٥٠</span>
+          <span>يحتاج لمتابعة: أقل من ٥٠</span>
         </div>
 
         {/* DISTINCT CLASS TEACHER & HEAD TEACHER REMARKS */}
@@ -651,10 +654,10 @@ export default function NurseryTheologyEOTReport({ reportData, studioFormatting:
           <div
             className="footer-stamp"
             style={{
-              width: '135px',
-              height: '64px',
-              minWidth: '135px',
-              minHeight: '64px',
+              width: '208px',
+              height: '121px',
+              minWidth: '208px',
+              minHeight: '121px',
               position: 'relative',
               overflow: 'visible',
               display: 'flex',
@@ -664,7 +667,7 @@ export default function NurseryTheologyEOTReport({ reportData, studioFormatting:
             }}
           >
             {includeStamp ? (
-              <OfficialReportStamp reportData={reportData} studioFormatting={effectiveStudioPass} maxWidth={135} maxHeight={64} />
+              <OfficialReportStamp reportData={reportData} studioFormatting={effectiveStudioPass} maxWidth={208} maxHeight={121} />
             ) : null}
           </div>
 

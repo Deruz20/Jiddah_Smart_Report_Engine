@@ -436,7 +436,7 @@ export function getNurseryGrade(mark: number): { grade: NurseryGrade; remark: st
   if (mark >= 80) return { grade: 'B', remark: 'Very Good' }
   if (mark >= 70) return { grade: 'C', remark: 'Good' }
   if (mark >= 50) return { grade: 'D', remark: 'Fair' }
-  return { grade: 'E', remark: 'Poor' }
+  return { grade: 'E', remark: 'Emerging' }
 }
 
 export function computeNurseryBadge(score: number | null | undefined): {
@@ -482,7 +482,7 @@ export function computeNurseryBadge(score: number | null | undefined): {
   }
   return {
     grade: 'E',
-    remark: 'Poor',
+    remark: 'Emerging',
     bg: 'bg-[#E11D48]/12 dark:bg-[#FB7185]/20',
     text: 'text-[#BE123C] dark:text-[#FDA4AF]',
   }
@@ -734,7 +734,7 @@ export function getNurseryTeacherComment(grades: string[]): string {
   if (avg >= 3.5) return 'Very good progress. Keep it up!'
   if (avg >= 2.5) return 'Good effort. Room for improvement.'
   if (avg >= 1.5) return 'Fair progress. Needs more practice.'
-  return 'Needs significant support at home.'
+  return 'Developing steadily; needs gentle support and daily practice at home.'
 }
 
 /**
@@ -807,7 +807,7 @@ export function getNurseryTheologySubjectRemark(
     if (num >= 75) return 'جيد جداً'
     if (num >= 65) return 'جيد'
     if (num >= 50) return 'مقبول'
-    return 'ضعيف'
+    return 'يحتاج إلى متابعة وتشجيع'
   }
   const cleaned = String(rawRemark || '').trim()
   if (!cleaned) return ''
@@ -815,7 +815,7 @@ export function getNurseryTheologySubjectRemark(
   if (cleaned === 'جدارة عالية') return 'جيد جداً'
   if (cleaned === 'جدارة حسنة' || cleaned === 'جدارة متوسطة') return 'جيد'
   if (cleaned === 'جدارة أساسية' || cleaned === 'اجتياز كافٍ' || cleaned === 'اجتياز حدّي') return 'مقبول'
-  if (cleaned === 'دون المستوى' || cleaned === 'راسب') return 'ضعيف'
+  if (cleaned === 'دون المستوى' || cleaned === 'راسب' || cleaned === 'ضعيف') return 'يحتاج إلى متابعة وتشجيع'
   return cleaned
 }
 

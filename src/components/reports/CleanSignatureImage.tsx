@@ -224,6 +224,7 @@ function CleanSignatureImageInner({
         </svg>
       )}
       <img
+        data-signature-img="true"
         src={resolvedSrc}
         alt={alt}
         className={className}

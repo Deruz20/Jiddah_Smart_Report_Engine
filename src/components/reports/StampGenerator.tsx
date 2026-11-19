@@ -412,6 +412,7 @@ export const VectorStamp = React.memo(function VectorStamp({
 
             {/* Column 2: Center Crimson Red Dater-Stamp Date (#C81E1E) */}
             <text
+              data-stamp-date="true"
               x={195 + dateOffsetX}
               y={115 + dateOffsetY}
               textAnchor="middle"

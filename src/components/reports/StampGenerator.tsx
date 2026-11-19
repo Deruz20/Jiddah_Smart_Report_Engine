@@ -4,6 +4,19 @@ import React, { useId, useState, useEffect } from "react";
 import { Sliders, Save, RefreshCw, Check, Calendar } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
+import {
+  formatStampDisplayDate,
+  getLiveStampDateString,
+  isStaleHardcodedStampDate,
+  resolveEffectiveStampDate,
+} from "@/lib/stamp-date";
+
+export { formatStampDisplayDate };
+
+export const STAMP_PHYSICAL_WIDTH_MM = 55;
+export const STAMP_PHYSICAL_HEIGHT_MM = 32;
+export const STAMP_PHYSICAL_WIDTH_PX = 208;
+export const STAMP_PHYSICAL_HEIGHT_PX = 121;
 
 export interface StampConfig {
   id?: string;
@@ -39,7 +52,7 @@ export const DEFAULT_STAMP_CONFIG: StampConfig = {
   opacity: 0.92,
   grain_realism: true,
   grunge_intensity: 35,
-  date: "26 OCT 2026",
+  date: "",
   date_offset_x: 0,
   date_offset_y: 0,
   date_font_size: 10,
@@ -53,24 +66,6 @@ const STAMP_COLOR_PRESETS = [
   { label: "Archival Crimson", hex: "#D92626" },
   { label: "Jet Black", hex: "#0F172A" },
 ];
-
-export function formatStampDisplayDate(rawDate?: string | null): string {
-  const trimmed = typeof rawDate === "string" ? rawDate.trim() : "";
-  if (!trimmed) return DEFAULT_STAMP_CONFIG.date || "26 OCT 2026";
-
-  // Convert ISO YYYY-MM-DD cleanly into uppercase stamp format "26 OCT 2026"
-  if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
-    const d = new Date(trimmed.slice(0, 10) + "T12:00:00");
-    if (!Number.isNaN(d.getTime())) {
-      const day = String(d.getDate()).padStart(2, "0");
-      const month = d.toLocaleString("en-US", { month: "short" }).toUpperCase();
-      const year = d.getFullYear();
-      return `${day} ${month} ${year}`;
-    }
-  }
-
-  return trimmed.toUpperCase();
-}
 
 function splitStampSchoolHeader(name: string): [string, string] {
   const clean = (name || "JIDDAH ISLAMIC NURSERY & PRIMARY SCHOOL").trim().toUpperCase();
@@ -239,22 +234,19 @@ export const VectorStamp = React.memo(function VectorStamp({
   const baseW = merged.shape === "circle" ? 136 : merged.shape === "oval" ? 182 : 380;
   const baseH = merged.shape === "circle" ? 136 : merged.shape === "oval" ? 124 : 220;
 
-  const fitRatio =
-    maxWidth && maxHeight
-      ? Math.min(maxWidth / baseW, maxHeight / baseH, 1)
-      : maxWidth
-      ? Math.min(maxWidth / baseW, 1)
-      : maxHeight
-      ? Math.min(maxHeight / baseH, 1)
-      : 1;
+  const targetW = maxWidth ?? STAMP_PHYSICAL_WIDTH_PX;
+  const targetH = maxHeight ?? STAMP_PHYSICAL_HEIGHT_PX;
+  const fitRatio = Math.min(targetW / baseW, targetH / baseH, 1);
 
-  const effectiveScale = Number((scale * fitRatio).toFixed(3));
+  const renderedW = Math.round(baseW * fitRatio);
+  const renderedH = Math.round(baseH * fitRatio);
   const pathTopId = `circle-text-top-${safeUid}`;
   const pathBottomId = `circle-text-bottom-${safeUid}`;
 
   return (
     <div
       data-testid="official-vector-stamp"
+      data-physical-size={`${STAMP_PHYSICAL_WIDTH_MM}mmx${STAMP_PHYSICAL_HEIGHT_MM}mm`}
       dir="ltr"
       style={{
         display: "inline-flex",
@@ -262,7 +254,7 @@ export const VectorStamp = React.memo(function VectorStamp({
         justifyContent: "center",
         userSelect: "none",
         backgroundColor: "transparent",
-        transform: `rotate(${rotation}deg) scale(${effectiveScale})`,
+        transform: `rotate(${rotation}deg) scale(${scale})`,
         opacity,
         transformOrigin: "center center",
         mixBlendMode: "multiply",
@@ -271,11 +263,13 @@ export const VectorStamp = React.memo(function VectorStamp({
       }}
     >
       <svg
-        width={baseW}
-        height={baseH}
+        width={renderedW}
+        height={renderedH}
         viewBox={`0 0 ${baseW} ${baseH}`}
         direction="ltr"
         style={{
+          width: merged.shape === "rectangle" && renderedW >= 200 ? "55mm" : `${renderedW}px`,
+          height: merged.shape === "rectangle" && renderedH >= 115 ? "32mm" : `${renderedH}px`,
           overflow: "visible",
           filter: useFilter ? `url(#${filterId})` : undefined,
           direction: "ltr",
@@ -614,8 +608,8 @@ export const VectorStamp = React.memo(function VectorStamp({
 export const OfficialReportStamp = React.memo(function OfficialReportStamp({
   reportData,
   studioFormatting,
-  maxWidth = 135,
-  maxHeight = 64,
+  maxWidth = STAMP_PHYSICAL_WIDTH_PX,
+  maxHeight = STAMP_PHYSICAL_HEIGHT_PX,
 }: {
   reportData: any;
   studioFormatting?: any;
@@ -664,13 +658,16 @@ export const OfficialReportStamp = React.memo(function OfficialReportStamp({
     size_scale: 1,
   };
 
-  const resolvedDate =
-    studioFormatting?.stampDate ||
-    reportData?.stamp_date ||
-    reportData?.settings?.stamp_date ||
-    config.date ||
-    reportData?.term?.end_date ||
-    DEFAULT_STAMP_CONFIG.date;
+  const resolvedDate = resolveEffectiveStampDate(
+    studioFormatting?.stampDate,
+    [reportData?.stamp_date, reportData?.settings?.stamp_date, config.date].find(
+      (candidate) => candidate && !isStaleHardcodedStampDate(candidate)
+    ) || getLiveStampDateString()
+  );
+
+  // Enforce physical 55mm x 32mm (208px x 121px) stamp size across all templates including locked slots
+  const physicalW = config.shape === "rectangle" ? Math.max(maxWidth, STAMP_PHYSICAL_WIDTH_PX) : maxWidth;
+  const physicalH = config.shape === "rectangle" ? Math.max(maxHeight, STAMP_PHYSICAL_HEIGHT_PX) : maxHeight;
 
   const isUploadedMode =
     studioFormatting?.stampMode === "uploaded" ||
@@ -681,6 +678,7 @@ export const OfficialReportStamp = React.memo(function OfficialReportStamp({
   return (
     <div
       data-testid="official-stamp-anchor-slot"
+      data-stamp-size="55mmx32mm"
       style={{
         width: `${maxWidth}px`,
         height: `${maxHeight}px`,
@@ -698,12 +696,15 @@ export const OfficialReportStamp = React.memo(function OfficialReportStamp({
         data-testid="official-stamp-transform-layer"
         style={{
           position: "absolute",
-          inset: 0,
+          left: "50%",
+          top: "50%",
+          width: `${physicalW}px`,
+          height: `${physicalH}px`,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           pointerEvents: "auto",
-          transform: `translate(${stampOffsetX}px, ${stampOffsetY}px) rotate(${studioRotation}deg) scale(${totalScale})`,
+          transform: `translate(-50%, -50%) translate(${stampOffsetX}px, ${stampOffsetY}px) rotate(${studioRotation}deg) scale(${totalScale})`,
           transformOrigin: "center center",
         }}
       >
@@ -712,8 +713,10 @@ export const OfficialReportStamp = React.memo(function OfficialReportStamp({
             src={reportData.signatures["school-stamp"]}
             alt="Official School Stamp"
             style={{
-              maxWidth: "100%",
-              maxHeight: "100%",
+              width: config.shape === "rectangle" ? "55mm" : `${physicalW}px`,
+              height: config.shape === "rectangle" ? "32mm" : `${physicalH}px`,
+              maxWidth: "none",
+              maxHeight: "none",
               objectFit: "contain",
               mixBlendMode: "multiply",
               opacity: studioOpacity,
@@ -724,9 +727,9 @@ export const OfficialReportStamp = React.memo(function OfficialReportStamp({
         ) : (
           <VectorStamp
             config={config}
-            date={resolvedDate}
-            maxWidth={maxWidth}
-            maxHeight={maxHeight}
+            date={formatStampDisplayDate(resolvedDate)}
+            maxWidth={physicalW}
+            maxHeight={physicalH}
           />
         )}
       </div>
@@ -858,7 +861,7 @@ export function StampGeneratorPanel({
           type="text"
           value={merged.date || ""}
           onChange={(e) => onChange({ ...merged, date: e.target.value.toUpperCase() })}
-          placeholder="26 OCT 2026"
+          placeholder={getLiveStampDateString()}
           className={inputCls}
         />
       </div>

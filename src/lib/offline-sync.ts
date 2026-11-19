@@ -567,3 +567,350 @@ export async function flushOfflineOutbox(
   const remaining = await getPendingOutboxCount();
   return { synced, remaining, failed };
 }
+
+export interface CachedPhoneMarksCandidate {
+  enrollment_id: string;
+  term_id: string;
+  circular_marks: Array<{ subject_id: string; bot_score?: number; mot_score?: number; eot_score?: number }>;
+  theology_marks: Array<{ subject_id: string; mot_score?: number; eot_score?: number }>;
+  unsyncedScoreCount: number;
+}
+
+export interface CachedPhoneMarksSyncResult {
+  unsyncedStudents: number;
+  unsyncedScores: number;
+  pushedStudents: number;
+  pushedScores: number;
+  failedStudents: number;
+  lastError: string | null;
+}
+
+async function idbListAllReadCacheEntries(): Promise<ReadCacheEntry[]> {
+  const byKey = new Map<string, ReadCacheEntry>();
+  for (const [k, v] of memoryReadStore.entries()) {
+    byKey.set(k, v);
+  }
+  if (hasIndexedDb()) {
+    try {
+      const db = await openOfflineDb();
+      const rows = await new Promise<ReadCacheEntry[]>((resolve, reject) => {
+        const tx = db.transaction(OFFLINE_READ_STORE, "readonly");
+        const store = tx.objectStore(OFFLINE_READ_STORE);
+        const req = store.getAll();
+        req.onsuccess = () => resolve((req.result as ReadCacheEntry[]) ?? []);
+        req.onerror = () => reject(req.error);
+      });
+      for (const row of rows) {
+        if (row && typeof row.key === "string") {
+          const existing = byKey.get(row.key);
+          if (!existing || (row.updatedAt ?? 0) >= (existing.updatedAt ?? 0)) {
+            byKey.set(row.key, row);
+          }
+        }
+      }
+    } catch {
+      // Fall back to memory read cache
+    }
+  }
+  return Array.from(byKey.values());
+}
+
+function isValidNumericMark(val: unknown): val is number {
+  return typeof val === "number" && Number.isFinite(val) && val >= 0 && val <= 100;
+}
+
+/**
+ * Compares all locally cached student marks in IndexedDB (`read_cache` + `outbox`)
+ * for `termId` against live Postgres (`GET /api/marks?bypass_cache=1`), and optionally
+ * pushes any scores missing/`null` on the live server up to `POST /api/marks`.
+ */
+export async function detectAndSyncCachedPhoneMarks(input: {
+  termId: string;
+  enrollmentIds?: string[];
+  autoPush?: boolean;
+  fetcher?: typeof fetch;
+}): Promise<CachedPhoneMarksSyncResult> {
+  const { termId, enrollmentIds, autoPush = false } = input;
+  if (!termId) {
+    return { unsyncedStudents: 0, unsyncedScores: 0, pushedStudents: 0, pushedScores: 0, failedStudents: 0, lastError: null };
+  }
+
+  const runFetch = input.fetcher ?? fetch;
+  const allowedIds = enrollmentIds ? new Set(enrollmentIds) : null;
+
+  type LocalScoreMap = {
+    circ: Map<string, { bot_score?: number; mot_score?: number; eot_score?: number }>;
+    theo: Map<string, { mot_score?: number; eot_score?: number }>;
+    cacheKeys: string[];
+  };
+
+  const localByEnrollment = new Map<string, LocalScoreMap>();
+  const ensureLocal = (eid: string): LocalScoreMap => {
+    let entry = localByEnrollment.get(eid);
+    if (!entry) {
+      entry = { circ: new Map(), theo: new Map(), cacheKeys: [] };
+      localByEnrollment.set(eid, entry);
+    }
+    return entry;
+  };
+
+  // 1) Collect cached GET /api/marks sheets from IndexedDB read_cache
+  const readEntries = await idbListAllReadCacheEntries();
+  for (const entry of readEntries) {
+    if (!entry.key.startsWith("marks_sheet_")) continue;
+    const rawKey = entry.key.slice("marks_sheet_".length);
+    const sepIdx = rawKey.lastIndexOf(":");
+    if (sepIdx <= 0) continue;
+    const eid = rawKey.slice(0, sepIdx);
+    const tid = rawKey.slice(sepIdx + 1);
+    if (tid !== termId) continue;
+    if (allowedIds && !allowedIds.has(eid)) continue;
+
+    const payload = entry.data as {
+      circular_marks?: Array<{ subject_id?: string; bot_score?: number | null; mot_score?: number | null; eot_score?: number | null }>;
+      theology_marks?: Array<{ subject_id?: string; mot_score?: number | null; eot_score?: number | null }>;
+    } | null;
+    if (!payload) continue;
+
+    const target = ensureLocal(eid);
+    target.cacheKeys.push(entry.key);
+
+    if (Array.isArray(payload.circular_marks)) {
+      for (const m of payload.circular_marks) {
+        if (!m?.subject_id) continue;
+        const patch: { bot_score?: number; mot_score?: number; eot_score?: number } = target.circ.get(m.subject_id) ?? {};
+        if (isValidNumericMark(m.bot_score)) patch.bot_score = m.bot_score;
+        if (isValidNumericMark(m.mot_score)) patch.mot_score = m.mot_score;
+        if (isValidNumericMark(m.eot_score)) patch.eot_score = m.eot_score;
+        if (patch.bot_score !== undefined || patch.mot_score !== undefined || patch.eot_score !== undefined) {
+          target.circ.set(m.subject_id, patch);
+        }
+      }
+    }
+    if (Array.isArray(payload.theology_marks)) {
+      for (const m of payload.theology_marks) {
+        if (!m?.subject_id) continue;
+        const patch: { mot_score?: number; eot_score?: number } = target.theo.get(m.subject_id) ?? {};
+        if (isValidNumericMark(m.mot_score)) patch.mot_score = m.mot_score;
+        if (isValidNumericMark(m.eot_score)) patch.eot_score = m.eot_score;
+        if (patch.mot_score !== undefined || patch.eot_score !== undefined) {
+          target.theo.set(m.subject_id, patch);
+        }
+      }
+    }
+  }
+
+  // 2) Also overlay any outbox mark batches targeting this term
+  const outboxItems = await idbListOutbox();
+  for (const item of outboxItems) {
+    if (!item.url.includes("/api/marks")) continue;
+    const body = item.body as {
+      enrollment_id?: string;
+      term_id?: string;
+      circular_marks?: Array<{ subject_id?: string; bot_score?: number | null; mot_score?: number | null; eot_score?: number | null }>;
+      theology_marks?: Array<{ subject_id?: string; mot_score?: number | null; eot_score?: number | null }>;
+    } | null;
+    if (!body?.enrollment_id || body.term_id !== termId) continue;
+    if (allowedIds && !allowedIds.has(body.enrollment_id)) continue;
+
+    const target = ensureLocal(body.enrollment_id);
+    if (Array.isArray(body.circular_marks)) {
+      for (const m of body.circular_marks) {
+        if (!m?.subject_id) continue;
+        const patch = target.circ.get(m.subject_id) ?? {};
+        if (isValidNumericMark(m.bot_score)) patch.bot_score = m.bot_score;
+        if (isValidNumericMark(m.mot_score)) patch.mot_score = m.mot_score;
+        if (isValidNumericMark(m.eot_score)) patch.eot_score = m.eot_score;
+        if (patch.bot_score !== undefined || patch.mot_score !== undefined || patch.eot_score !== undefined) {
+          target.circ.set(m.subject_id, patch);
+        }
+      }
+    }
+    if (Array.isArray(body.theology_marks)) {
+      for (const m of body.theology_marks) {
+        if (!m?.subject_id) continue;
+        const patch = target.theo.get(m.subject_id) ?? {};
+        if (isValidNumericMark(m.mot_score)) patch.mot_score = m.mot_score;
+        if (isValidNumericMark(m.eot_score)) patch.eot_score = m.eot_score;
+        if (patch.mot_score !== undefined || patch.eot_score !== undefined) {
+          target.theo.set(m.subject_id, patch);
+        }
+      }
+    }
+  }
+
+  // Keep only enrollments with actual non-null scores
+  const candidates = Array.from(localByEnrollment.entries()).filter(
+    ([, v]) => v.circ.size > 0 || v.theo.size > 0
+  );
+
+  if (candidates.length === 0) {
+    return { unsyncedStudents: 0, unsyncedScores: 0, pushedStudents: 0, pushedScores: 0, failedStudents: 0, lastError: null };
+  }
+
+  if (isBrowserOffline()) {
+    let totalScores = 0;
+    for (const [, v] of candidates) {
+      for (const p of v.circ.values()) totalScores += Object.keys(p).length;
+      for (const p of v.theo.values()) totalScores += Object.keys(p).length;
+    }
+    return {
+      unsyncedStudents: candidates.length,
+      unsyncedScores: totalScores,
+      pushedStudents: 0,
+      pushedScores: 0,
+      failedStudents: 0,
+      lastError: "Device is offline.",
+    };
+  }
+
+  // 3) Compare each candidate against live Postgres (?bypass_cache=1) in small chunks
+  const diffs: CachedPhoneMarksCandidate[] = [];
+  const CHUNK_SIZE = 5;
+  let lastError: string | null = null;
+
+  for (let i = 0; i < candidates.length; i += CHUNK_SIZE) {
+    const slice = candidates.slice(i, i + CHUNK_SIZE);
+    await Promise.all(
+      slice.map(async ([eid, local]) => {
+        try {
+          const res = await runFetch(
+            `/api/marks?enrollment_id=${encodeURIComponent(eid)}&term_id=${encodeURIComponent(termId)}&bypass_cache=1`,
+            { cache: "no-store" }
+          );
+          if (!res.ok) return;
+          const serverJson = (await res.json()) as {
+            circular_marks?: Array<{ subject_id: string; bot_score: number | null; mot_score: number | null; eot_score: number | null }>;
+            theology_marks?: Array<{ subject_id: string; mot_score: number | null; eot_score: number | null }>;
+          };
+
+          const serverCircBySub = new Map((serverJson.circular_marks ?? []).map((r) => [r.subject_id, r]));
+          const serverTheoBySub = new Map((serverJson.theology_marks ?? []).map((r) => [r.subject_id, r]));
+
+          const circDiff: CachedPhoneMarksCandidate["circular_marks"] = [];
+          let missingScoreCount = 0;
+
+          for (const [subId, localPatch] of local.circ.entries()) {
+            const srv = serverCircBySub.get(subId);
+            if (!srv) continue; // Ignore subjects user cannot access
+            const subPayload: { subject_id: string; bot_score?: number; mot_score?: number; eot_score?: number } = {
+              subject_id: subId,
+            };
+            if (localPatch.bot_score !== undefined && srv.bot_score == null) {
+              subPayload.bot_score = localPatch.bot_score;
+              missingScoreCount++;
+            }
+            if (localPatch.mot_score !== undefined && srv.mot_score == null) {
+              subPayload.mot_score = localPatch.mot_score;
+              missingScoreCount++;
+            }
+            if (localPatch.eot_score !== undefined && srv.eot_score == null) {
+              subPayload.eot_score = localPatch.eot_score;
+              missingScoreCount++;
+            }
+            if (Object.keys(subPayload).length > 1) {
+              circDiff.push(subPayload);
+            }
+          }
+
+          const theoDiff: CachedPhoneMarksCandidate["theology_marks"] = [];
+          for (const [subId, localPatch] of local.theo.entries()) {
+            const srv = serverTheoBySub.get(subId);
+            if (!srv) continue;
+            const subPayload: { subject_id: string; mot_score?: number; eot_score?: number } = {
+              subject_id: subId,
+            };
+            if (localPatch.mot_score !== undefined && srv.mot_score == null) {
+              subPayload.mot_score = localPatch.mot_score;
+              missingScoreCount++;
+            }
+            if (localPatch.eot_score !== undefined && srv.eot_score == null) {
+              subPayload.eot_score = localPatch.eot_score;
+              missingScoreCount++;
+            }
+            if (Object.keys(subPayload).length > 1) {
+              theoDiff.push(subPayload);
+            }
+          }
+
+          if (missingScoreCount > 0) {
+            diffs.push({
+              enrollment_id: eid,
+              term_id: termId,
+              circular_marks: circDiff,
+              theology_marks: theoDiff,
+              unsyncedScoreCount: missingScoreCount,
+            });
+          }
+        } catch (err) {
+          lastError = err instanceof Error ? err.message : "Cache check failed";
+        }
+      })
+    );
+  }
+
+  const totalUnsyncedScores = diffs.reduce((s, d) => s + d.unsyncedScoreCount, 0);
+  if (!autoPush || diffs.length === 0) {
+    return {
+      unsyncedStudents: diffs.length,
+      unsyncedScores: totalUnsyncedScores,
+      pushedStudents: 0,
+      pushedScores: 0,
+      failedStudents: 0,
+      lastError,
+    };
+  }
+
+  // 4) Batch-push diffs cleanly to POST /api/marks
+  let pushedStudents = 0;
+  let pushedScores = 0;
+  let failedStudents = 0;
+
+  for (let i = 0; i < diffs.length; i += 3) {
+    const slice = diffs.slice(i, i + 3);
+    await Promise.all(
+      slice.map(async (item) => {
+        try {
+          const res = await runFetch("/api/marks", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              enrollment_id: item.enrollment_id,
+              term_id: item.term_id,
+              score_type: "all",
+              circular_marks: item.circular_marks,
+              theology_marks: item.theology_marks,
+            }),
+          });
+          if (res.ok) {
+            pushedStudents++;
+            pushedScores += item.unsyncedScoreCount;
+          } else {
+            const errJson = (await res.json().catch(() => ({}))) as { error?: string };
+            lastError = errJson.error || `HTTP ${res.status}`;
+            failedStudents++;
+          }
+        } catch (err) {
+          lastError = err instanceof Error ? err.message : "Failed to push cached marks";
+          failedStudents++;
+        }
+      })
+    );
+  }
+
+  if (pushedStudents > 0) {
+    lastSyncedTimestamp = Date.now();
+    invalidateClientCache();
+    broadcastMarksUpdated({ source: "phone-cache-recovery", pushedStudents, pushedScores });
+    await notifySyncListeners();
+  }
+
+  return {
+    unsyncedStudents: Math.max(0, diffs.length - pushedStudents),
+    unsyncedScores: Math.max(0, totalUnsyncedScores - pushedScores),
+    pushedStudents,
+    pushedScores,
+    failedStudents,
+    lastError,
+  };
+}

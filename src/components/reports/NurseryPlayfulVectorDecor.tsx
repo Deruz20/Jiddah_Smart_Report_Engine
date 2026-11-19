@@ -1,19 +1,23 @@
 import React from 'react'
 
+export type NurseryArtVariant = 'secular' | 'theology' | 'islamic-garden'
+
 export interface NurseryHeaderArtProps {
   side: 'left' | 'right'
   lineArt?: boolean
+  variant?: NurseryArtVariant
   width?: number
   height?: number
 }
 
 /**
  * Pure inline-SVG early-childhood illustrations for Nursery EOT report headers.
- * Renders either joyful pastel colors ('playful') or crisp monochrome strokes ('lineart').
+ * Renders secular joyful pastel/lineart art OR Islamic Garden Arabic/Quranic motifs.
  */
 export function NurseryPlayfulHeaderArt({
   side,
   lineArt = false,
+  variant = 'secular',
   width = 112,
   height = 84,
 }: NurseryHeaderArtProps) {
@@ -29,6 +33,144 @@ export function NurseryPlayfulHeaderArt({
   const starFill = lineArt ? '#FFFFFF' : '#FBBF24'
   const pencilBody = lineArt ? '#F1F5F9' : '#F59E0B'
   const pencilTip = lineArt ? '#CBD5E1' : '#FB7185'
+
+  const isIslamic = variant === 'islamic-garden' || variant === 'theology'
+  const emerald = lineArt ? ink : '#047857'
+  const emeraldFill = lineArt ? '#FFFFFF' : '#D1FAE5'
+  const gold = lineArt ? ink : '#D97706'
+  const goldFill = lineArt ? '#FFFFFF' : '#FEF3C7'
+  const sandFill = lineArt ? '#FFFFFF' : '#FDE68A'
+
+  if (isIslamic && side === 'right') {
+    return (
+      <svg
+        width={width}
+        height={height}
+        viewBox="0 0 120 90"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        aria-hidden="true"
+        data-testid="nursery-islamic-art-right"
+      >
+        {/* Crescent Moon & Twinkling Stars */}
+        <path
+          d="M20 12 C11 14, 9 27, 18 33 C23 36, 29 34, 31 30 C24 31, 18 26, 18 19 C18 16, 19 14, 20 12 Z"
+          fill={goldFill}
+          stroke={gold}
+          strokeWidth="1.7"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M34 11 L35.6 15 L39.8 15.5 L36.6 18.3 L37.5 22.5 L34 20.3 L30.5 22.5 L31.4 18.3 L28.2 15.5 L32.4 15 Z"
+          fill={starFill}
+          stroke={ink}
+          strokeWidth="1.1"
+        />
+
+        {/* Hanging Islamic Fanous Lantern */}
+        <g transform="translate(88, 2)">
+          <line x1="12" y1="0" x2="12" y2="8" stroke={gold} strokeWidth="1.6" />
+          <path d="M8 8 L16 8 L18 14 L6 14 Z" fill={goldFill} stroke={gold} strokeWidth="1.4" />
+          <rect x="6" y="14" width="12" height="16" rx="3" fill={lineArt ? '#FFFFFF' : '#FEF08A'} stroke={gold} strokeWidth="1.5" />
+          <path d="M12 16 V28 M9 19 L15 19" stroke={emerald} strokeWidth="1.2" />
+          <path d="M7 30 L17 30 L14 35 L10 35 Z" fill={goldFill} stroke={gold} strokeWidth="1.4" />
+        </g>
+
+        {/* Smiling Boy in Kufi & Girl in Hijab Reading Mushaf on Rehal */}
+        <g transform="translate(18, 26)">
+          {/* Girl in Emerald Hijab */}
+          <path d="M22 4 C11 4, 5 12, 5 24 C5 33, 8 40, 11 45 H33 C36 40, 39 33, 39 24 C39 12, 33 4, 22 4 Z" fill={lineArt ? '#F1F5F9' : '#34D399'} stroke={ink} strokeWidth="1.5" />
+          <circle cx="22" cy="19" r="9.5" fill={skin} stroke={ink} strokeWidth="1.4" />
+          <circle cx="18.5" cy="18.5" r="1.2" fill={ink} />
+          <circle cx="25.5" cy="18.5" r="1.2" fill={ink} />
+          <path d="M19 22.5 Q22 25.5 25 22.5" stroke={ink} strokeWidth="1.3" strokeLinecap="round" />
+
+          {/* Boy in Kufi */}
+          <g transform="translate(36, 0)">
+            <path d="M6 45 C6 36, 13 32, 22 32 C31 32, 38 36, 38 45 Z" fill={emeraldFill} stroke={ink} strokeWidth="1.5" />
+            <circle cx="22" cy="19" r="10.5" fill={skin} stroke={ink} strokeWidth="1.5" />
+            <path d="M12 15 C12 8, 32 8, 32 15 Z" fill={boyCap} stroke={ink} strokeWidth="1.4" />
+            <path d="M12.5 14.5 H31.5" stroke={gold} strokeWidth="2" strokeLinecap="round" />
+            <circle cx="18.5" cy="19" r="1.2" fill={ink} />
+            <circle cx="25.5" cy="19" r="1.2" fill={ink} />
+            <path d="M19 23 Q22 26 25 23" stroke={ink} strokeWidth="1.3" strokeLinecap="round" />
+          </g>
+
+          {/* Open Mushaf resting on Rehal Stand */}
+          <g transform="translate(22, 35)">
+            <path d="M8 22 L20 12 L32 22" stroke={gold} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M20 8 C14 4, 5 4, 1 7 V17 C5 14, 14 14, 20 18 C26 14, 35 14, 39 17 V7 C35 4, 26 4, 20 8 Z" fill="#FFFFFF" stroke={emerald} strokeWidth="1.6" strokeLinejoin="round" />
+            <line x1="20" y1="8" x2="20" y2="18" stroke={emerald} strokeWidth="1.4" />
+            <path d="M6 10 H15 M6 13 H14 M25 10 H34 M26 13 H34" stroke={gold} strokeWidth="1.2" strokeLinecap="round" />
+          </g>
+        </g>
+      </svg>
+    )
+  }
+
+  if (isIslamic && side === 'left') {
+    return (
+      <svg
+        width={width}
+        height={height}
+        viewBox="0 0 120 90"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        aria-hidden="true"
+        data-testid="nursery-islamic-art-left"
+      >
+        {/* Floating Arabic Letters أ ب ت & Numerals ١ ٢ ٣ */}
+        <text x="12" y="18" fontSize="12" fontWeight="900" fill={emerald} fontFamily="Cairo, sans-serif">أ</text>
+        <text x="26" y="15" fontSize="11" fontWeight="900" fill={gold} fontFamily="Cairo, sans-serif">ب</text>
+        <text x="39" y="19" fontSize="11" fontWeight="900" fill={emerald} fontFamily="Cairo, sans-serif">ت</text>
+        <text x="86" y="16" fontSize="11" fontWeight="900" fill={gold} fontFamily="Cairo, sans-serif">١ ٢ ٣</text>
+
+        {/* Mosque Dome + Crescent Finial */}
+        <g transform="translate(46, 8)">
+          <line x1="14" y1="3" x2="14" y2="8" stroke={gold} strokeWidth="1.4" />
+          <circle cx="14" cy="2.5" r="2" stroke={gold} strokeWidth="1.2" />
+          <path d="M4 22 C4 11, 24 11, 24 22 Z" fill={emeraldFill} stroke={emerald} strokeWidth="1.5" />
+          <rect x="3" y="22" width="22" height="10" rx="1.5" fill="#FFFFFF" stroke={emerald} strokeWidth="1.4" />
+          <path d="M11 32 V27 C11 25, 17 25, 17 27 V32" fill={goldFill} stroke={gold} strokeWidth="1.2" />
+        </g>
+
+        {/* Date Palm Tree */}
+        <g transform="translate(6, 26)">
+          <path d="M16 56 Q19 40 16 24" stroke={gold} strokeWidth="3.2" strokeLinecap="round" />
+          <path d="M16 24 C8 16, 2 18, 1 23 M16 24 C10 12, 18 10, 20 15 M16 24 C24 14, 30 18, 29 24 M16 24 C24 22, 27 28, 24 31" stroke={emerald} strokeWidth="2.2" strokeLinecap="round" />
+        </g>
+
+        {/* Friendly Baby Camel */}
+        <g transform="translate(34, 44)">
+          <path
+            d="M8 28 V18 C8 13, 14 11, 18 14 C21 8, 28 8, 31 14 L36 16 L36 8 C36 4, 42 4, 43 8 C43 11, 41 12, 39 13 L38 22 H34 V32 H30 V24 H16 V32 H12 V24 H8 Z"
+            fill={sandFill}
+            stroke={gold}
+            strokeWidth="1.6"
+            strokeLinejoin="round"
+          />
+          <circle cx="39.5" cy="7.5" r="1" fill={ink} />
+        </g>
+
+        {/* Crowned Hoopoe (Hudhud) & Honeybee */}
+        <g transform="translate(76, 36)">
+          {/* Hoopoe */}
+          <ellipse cx="14" cy="24" rx="8" ry="6" fill={lineArt ? '#FFFFFF' : '#FDBA74'} stroke={ink} strokeWidth="1.4" />
+          <circle cx="20" cy="18" r="4.5" fill={lineArt ? '#FFFFFF' : '#FED7AA'} stroke={ink} strokeWidth="1.4" />
+          <path d="M17 14 L15 8 M19.5 13.5 L20 7 M22 14 L24 9" stroke={gold} strokeWidth="1.4" strokeLinecap="round" />
+          <path d="M24 18 L31 17 L24 20" stroke={ink} strokeWidth="1.3" strokeLinejoin="round" />
+          <path d="M6 25 L1 29 L6 22" fill={ink} />
+          {/* Little Honeybee */}
+          <g transform="translate(26, 2)">
+            <ellipse cx="7" cy="8" rx="5" ry="3.5" fill={lineArt ? '#FFFFFF' : '#FACC15'} stroke={ink} strokeWidth="1.2" />
+            <ellipse cx="6" cy="4" rx="2.5" ry="2" fill="#E0F2FE" stroke={ink} strokeWidth="1" />
+            <line x1="6" y1="5" x2="6" y2="11" stroke={ink} strokeWidth="1.1" />
+            <line x1="9" y1="5.5" x2="9" y2="10.5" stroke={ink} strokeWidth="1.1" />
+          </g>
+        </g>
+      </svg>
+    )
+  }
 
   if (side === 'left') {
     return (
@@ -207,11 +349,67 @@ export function NurseryPlayfulHeaderArt({
 /**
  * Corner storybook, star award ribbon, cloud & paper airplane vectors anchored gently in corners.
  */
-export function NurseryCornerDecor({ lineArt = false }: { lineArt?: boolean }) {
+export function NurseryCornerDecor({
+  lineArt = false,
+  variant = 'secular',
+}: {
+  lineArt?: boolean
+  variant?: NurseryArtVariant
+}) {
   const ink = '#334155'
   const gold = lineArt ? ink : '#D97706'
   const blue = lineArt ? ink : '#0284C7'
   const emerald = lineArt ? ink : '#059669'
+
+  if (variant === 'islamic-garden' || variant === 'theology') {
+    return (
+      <div
+        data-testid="nursery-corner-decor"
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          inset: 0,
+          pointerEvents: 'none',
+          zIndex: 1,
+          overflow: 'hidden',
+        }}
+      >
+        {/* Bottom-Left: Open Noble Mushaf on Rehal Stand & Crescent */}
+        <svg
+          width="74"
+          height="58"
+          viewBox="0 0 80 62"
+          fill="none"
+          style={{ position: 'absolute', bottom: '8px', left: '12px', opacity: lineArt ? 0.35 : 0.65 }}
+        >
+          <path d="M22 50 L40 34 L58 50" stroke={gold} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+          <path
+            d="M40 20 C29 14, 14 14, 6 19 V40 C14 35, 29 35, 40 41 C51 35, 66 35, 74 40 V19 C66 14, 51 14, 40 20 Z"
+            fill={lineArt ? '#FFFFFF' : '#ECFDF5'}
+            stroke={emerald}
+            strokeWidth="1.9"
+            strokeLinejoin="round"
+          />
+          <line x1="40" y1="20" x2="40" y2="41" stroke={emerald} strokeWidth="1.6" />
+          <path d="M14 26 H32 M14 32 H30 M48 26 H66 M48 32 H64" stroke={gold} strokeWidth="1.5" strokeLinecap="round" />
+          <path d="M62 4 C56 6, 55 13, 60 16 C63 18, 67 17, 68 15 C64 15, 60 12, 60 8 Z" fill={lineArt ? '#FFFFFF' : '#FDE68A'} stroke={gold} strokeWidth="1.4" />
+        </svg>
+
+        {/* Bottom-Right: Rub el Hizb Islamic Star & Palm Medallion */}
+        <svg
+          width="66"
+          height="58"
+          viewBox="0 0 68 62"
+          fill="none"
+          style={{ position: 'absolute', bottom: '8px', right: '12px', opacity: lineArt ? 0.35 : 0.65 }}
+        >
+          <rect x="19" y="15" width="30" height="30" rx="2" fill={lineArt ? '#FFFFFF' : '#FEF3C7'} stroke={gold} strokeWidth="1.8" />
+          <rect x="19" y="15" width="30" height="30" rx="2" transform="rotate(45 34 30)" fill={lineArt ? '#FFFFFF' : '#ECFDF5'} stroke={emerald} strokeWidth="1.8" />
+          <circle cx="34" cy="30" r="8.5" fill={lineArt ? '#FFFFFF' : '#FDE68A'} stroke={gold} strokeWidth="1.6" />
+        </svg>
+      </div>
+    )
+  }
 
   return (
     <div

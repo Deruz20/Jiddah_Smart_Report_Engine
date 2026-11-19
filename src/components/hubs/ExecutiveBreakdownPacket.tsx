@@ -59,6 +59,15 @@ export function ExecutiveBreakdownPacket({ report, variant }: ExecutiveBreakdown
   const mintBg = '#DCEFE9'
   const creamBg = '#EDE6D6'
 
+  // Bold Arabic typography scale for "النظر الدقيق على النتائج" (22px–26px headers, 16px–18px cells)
+  const schoolHeadingFontPx = isArabic ? (isPrint ? 24 : 26) : (isPrint ? 12 : 15)
+  const bannerTitleFontPx = isArabic ? (isPrint ? 20 : 22) : (isPrint ? 10.5 : 13)
+  const sectionHeaderFontPx = isArabic ? (isPrint ? 22 : 24) : (isPrint ? 10 : 12)
+  const sectionCountFontPx = isArabic ? (isPrint ? 16 : 17) : (isPrint ? 8.5 : 10.5)
+  const matrixCellFontPx = isArabic ? (isPrint ? 16 : 18) : (isPrint ? 9.5 : 11.5)
+  const achieversCellFontPx = isArabic ? (isPrint ? 16 : 18) : (isPrint ? 9.5 : 12)
+  const achieversClassFontPx = isArabic ? (isPrint ? 14 : 15) : (isPrint ? 8.5 : 10.5)
+
   return (
     <section
       data-testid="executive-breakdown-packet"
@@ -108,7 +117,7 @@ export function ExecutiveBreakdownPacket({ report, variant }: ExecutiveBreakdown
           <div style={{ textAlign: 'center', flex: 1, minWidth: 0 }}>
             <div
               style={{
-                fontSize: isPrint ? '12px' : '15px',
+                fontSize: `${schoolHeadingFontPx}px`,
                 fontWeight: 900,
                 color: borderOuter,
                 lineHeight: 1.25,
@@ -122,12 +131,12 @@ export function ExecutiveBreakdownPacket({ report, variant }: ExecutiveBreakdown
               style={{
                 display: 'inline-block',
                 marginTop: '3px',
-                padding: isPrint ? '2px 10px' : '3px 14px',
+                padding: isPrint ? '3px 12px' : '4px 16px',
                 borderRadius: '4px',
                 backgroundColor: '#F0FDF4',
                 border: `1px solid ${borderInnerBlue}`,
-                fontSize: isPrint ? '10.5px' : '13px',
-                fontWeight: 800,
+                fontSize: `${bannerTitleFontPx}px`,
+                fontWeight: 900,
                 color: borderInnerBlue,
               }}
             >
@@ -178,8 +187,8 @@ export function ExecutiveBreakdownPacket({ report, variant }: ExecutiveBreakdown
                 style={{
                   backgroundColor: borderOuter,
                   color: '#FFFFFF',
-                  padding: isPrint ? '4px 8px' : '6px 10px',
-                  fontSize: isPrint ? '10px' : '12px',
+                  padding: isPrint ? '5px 10px' : '7px 12px',
+                  fontSize: `${sectionHeaderFontPx}px`,
                   fontWeight: 900,
                   display: 'flex',
                   alignItems: 'center',
@@ -187,7 +196,7 @@ export function ExecutiveBreakdownPacket({ report, variant }: ExecutiveBreakdown
                 }}
               >
                 <span>{isArabic ? matrix.labelArabic : `${matrix.label} Section`}</span>
-                <span style={{ fontSize: isPrint ? '8.5px' : '10.5px', opacity: 0.9 }}>
+                <span style={{ fontSize: `${sectionCountFontPx}px`, opacity: 0.95 }}>
                   {isArabic
                     ? `الطلبة: ${fmt(matrix.rowTotals.total)}`
                     : `n = ${matrix.rowTotals.total}`}
@@ -198,7 +207,8 @@ export function ExecutiveBreakdownPacket({ report, variant }: ExecutiveBreakdown
                 style={{
                   width: '100%',
                   borderCollapse: 'collapse',
-                  fontSize: isPrint ? '9.5px' : '11.5px',
+                  fontSize: `${matrixCellFontPx}px`,
+                  fontWeight: isArabic ? 800 : 600,
                   fontVariantNumeric: 'tabular-nums',
                 }}
               >
@@ -389,8 +399,8 @@ export function ExecutiveBreakdownPacket({ report, variant }: ExecutiveBreakdown
             style={{
               backgroundColor: borderInnerBlue,
               color: '#FFFFFF',
-              padding: isPrint ? '4px 8px' : '6px 10px',
-              fontSize: isPrint ? '10px' : '12px',
+              padding: isPrint ? '5px 10px' : '7px 12px',
+              fontSize: `${sectionHeaderFontPx}px`,
               fontWeight: 900,
               display: 'flex',
               alignItems: 'center',
@@ -408,7 +418,8 @@ export function ExecutiveBreakdownPacket({ report, variant }: ExecutiveBreakdown
             style={{
               width: '100%',
               borderCollapse: 'collapse',
-              fontSize: isPrint ? '9.5px' : '12px',
+              fontSize: `${achieversCellFontPx}px`,
+              fontWeight: isArabic ? 800 : 600,
               fontVariantNumeric: 'tabular-nums',
             }}
           >
@@ -488,7 +499,7 @@ export function ExecutiveBreakdownPacket({ report, variant }: ExecutiveBreakdown
                               {isArabic ? `${toArabicDigits(l.rank)}.` : `${l.rank}.`}
                             </span>{' '}
                             {isArabic ? l.arabicName || l.name : l.name}{' '}
-                            <span style={{ color: '#475569', fontWeight: 600, fontSize: isPrint ? '8.5px' : '10.5px' }}>
+                            <span style={{ color: '#475569', fontWeight: 700, fontSize: `${achieversClassFontPx}px` }}>
                               ({l.className})
                             </span>
                           </div>

@@ -36,6 +36,11 @@ import { fetchMergedSchoolSettings } from '@/lib/school-settings-helper'
 import { getReportSignatures } from '@/utils/signatures'
 import { resolveEquivalentTerms, fetchAndReconcileSecularMarks, fetchAndReconcileTheologyMarks, findReconciledMark } from '@/lib/marks-reconciliation'
 import { isNonMuslimStudent } from '@/lib/student-religion'
+import {
+  getLiveIsoDateString,
+  isStaleHardcodedStampDate,
+  resolveEffectiveStampDate,
+} from '@/lib/stamp-date'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -178,9 +183,21 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Term not found' }, { status: 404 }))
     }
 
-    if (stamp_date) {
-      term.end_date = stamp_date
-    }
+    const globalSettingsStampDate =
+      typeof (schoolSettings as any)?.stamp_date === 'string' &&
+      !isStaleHardcodedStampDate((schoolSettings as any).stamp_date)
+        ? String((schoolSettings as any).stamp_date).trim()
+        : typeof schoolSettings?.print_preferences?.stamp_date === 'string' &&
+            !isStaleHardcodedStampDate(schoolSettings.print_preferences.stamp_date)
+          ? String(schoolSettings.print_preferences.stamp_date).trim()
+          : undefined
+    const validStampOverride =
+      stamp_date && !isStaleHardcodedStampDate(stamp_date) ? stamp_date.trim() : undefined
+    term.end_date = validStampOverride || globalSettingsStampDate || getLiveIsoDateString()
+    const resolvedResponseStampDate = resolveEffectiveStampDate(
+      validStampOverride || globalSettingsStampDate,
+      term.end_date
+    )
 
     // Reconcile equivalent terms by academic_year and term_number
     const termInfo = await resolveEquivalentTerms(supabaseAdmin, termId)
@@ -404,7 +421,31 @@ export async function GET(request: NextRequest) {
         })
 
         if (classMarks && classMarks.length > 0) {
-          const totals: number[] = []
+          // Only consider actively assessed subjects for complete-set ranking (e.g. skip completely blank COMP)
+          const assessedSubjectIds = new Set(
+            (circularSubjects || [])
+              .filter((subject: any) =>
+                classEnrollments.some((e) => {
+                  const existing = findReconciledMark(classMarks, {
+                    studentId: (e as any).student_id || null,
+                    enrollmentId: e.id,
+                    subjectId: subject.id,
+                    subjectName: subject.subject_name,
+                    curriculum: 'secular',
+                  })
+                  const s =
+                    scoreType === 'mot'
+                      ? existing?.mot_score
+                      : scoreType === 'bot'
+                        ? existing?.bot_score
+                        : existing?.eot_score
+                  return typeof s === 'number'
+                })
+              )
+              .map((s: any) => s.id)
+          )
+
+          const entries: { id: string; total: number; isComplete: boolean }[] = []
 
           for (const e of classEnrollments) {
             const eStudentId = (e as any).student_id || null
@@ -419,21 +460,37 @@ export async function GET(request: NextRequest) {
               const score = scoreType === 'mot'
                 ? existing?.mot_score ?? null
                 : scoreType === 'bot' ? existing?.bot_score ?? null : existing?.eot_score ?? null
-              return { subject_name: subject.subject_name, score: typeof score === 'number' ? score : null }
+              return { id: subject.id, subject_name: subject.subject_name, score: typeof score === 'number' ? score : null }
             })
 
-            const eTotal = eRows.reduce((sum, row) => sum + (typeof row.score === 'number' ? row.score : 0), 0)
+            const gradableAssessed = eRows.filter(
+              (r) => isGradableSubject(r.subject_name, className) && (assessedSubjectIds.size === 0 || assessedSubjectIds.has(r.id))
+            )
             const hasMarks = eRows.some((row) => typeof row.score === 'number')
-
             if (hasMarks) {
-              totals.push(eTotal)
+              const eTotal = eRows
+                .filter((row) => isGradableSubject(row.subject_name, className))
+                .reduce((sum, row) => sum + (typeof row.score === 'number' ? row.score : 0), 0)
+              const isComplete =
+                gradableAssessed.length > 0 && gradableAssessed.every((row) => typeof row.score === 'number')
+              entries.push({ id: e.id, total: eTotal, isComplete })
             }
           }
 
-          if (totals.length > 0) {
+          const completeEntries = entries.filter((item) => item.isComplete)
+          const pool = (completeEntries.length > 0 ? completeEntries : entries).sort((a, b) => b.total - a.total)
+
+          if (pool.length > 0) {
             total_students = classEnrollments.length
-            totals.sort((a, b) => b - a) // Highest total is best
-            position = totals.indexOf(targetTotal) + 1
+            const myEntry = pool.find((item) => item.id === enrollmentId)
+            if (myEntry) {
+              // Standard competition ranking (1, 2, 2, 4)
+              const firstIdx = pool.findIndex((item) => item.total === myEntry.total)
+              position = firstIdx !== -1 ? firstIdx + 1 : null
+            } else if (hasAnyRelevantMark) {
+              const higherCount = pool.filter((item) => item.total > targetTotal).length
+              position = higherCount + 1
+            }
           }
         }
       }
@@ -760,7 +817,7 @@ export async function GET(request: NextRequest) {
         },
         signatures,
         settings: schoolSettings,
-        stamp_date: stamp_date || term.end_date || null,
+        stamp_date: resolvedResponseStampDate,
         debug: {
           enrollmentId: enrollment.id,
           circularMarksCount: 0,
@@ -896,7 +953,7 @@ export async function GET(request: NextRequest) {
       },
       signatures,
       settings: schoolSettings,
-      stamp_date: stamp_date || term.end_date || null,
+      stamp_date: resolvedResponseStampDate,
       debug: {
         circularMarksCount: circularMarks?.length || 0,
         enrollmentId,

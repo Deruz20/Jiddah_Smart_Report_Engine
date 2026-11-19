@@ -177,6 +177,9 @@ export interface PrintPreferencesConfig {
   watermarkEnabled: boolean;
   highFidelityColors: boolean;
   showClassPosition: boolean;
+  stamp_date?: string;
+  default_headteacher_name?: string;
+  default_signature_url?: string;
   stamp_config?: Record<string, any>;
 }
 
@@ -186,6 +189,9 @@ export const DEFAULT_PRINT_PREFERENCES: PrintPreferencesConfig = {
   watermarkEnabled: false,
   highFidelityColors: true,
   showClassPosition: true,
+  stamp_date: '',
+  default_headteacher_name: '',
+  default_signature_url: '',
 };
 
 export const DEFAULT_MARKS_LOCKS: MarksLocksConfig = {
@@ -667,13 +673,24 @@ export async function fetchMergedSchoolSettings(
     return cachedMergedSettingsEntry.data;
   }
 
+  const mergedPrintPreferences: PrintPreferencesConfig = {
+    ...DEFAULT_PRINT_PREFERENCES,
+    ...(rawSchoolSettings?.print_preferences || {}),
+    ...(customConfig?.print_preferences || {}),
+  };
+
+  const resolvedGlobalStampDate =
+    (typeof customConfig?.stamp_date === 'string' ? customConfig.stamp_date.trim() : '') ||
+    (typeof mergedPrintPreferences?.stamp_date === 'string' ? mergedPrintPreferences.stamp_date.trim() : '') ||
+    (typeof rawSchoolSettings?.stamp_date === 'string' ? rawSchoolSettings.stamp_date.trim() : '');
+
   const merged = {
     ...(rawSchoolSettings || {}),
     ...customConfig,
+    stamp_date: resolvedGlobalStampDate,
     print_preferences: {
-      ...DEFAULT_PRINT_PREFERENCES,
-      ...(rawSchoolSettings?.print_preferences || {}),
-      ...(customConfig?.print_preferences || {}),
+      ...mergedPrintPreferences,
+      stamp_date: resolvedGlobalStampDate,
     },
     marks_locks: {
       ...DEFAULT_MARKS_LOCKS,

@@ -43,11 +43,12 @@ import {
 } from '@/lib/hub-detailed-report'
 import {
   type BroadsheetPrintConfig,
-  getDefaultBroadsheetPrintConfig,
-  loadBroadsheetPrintConfig,
-  saveBroadsheetPrintConfig,
   prepareBroadsheetStudents,
 } from '@/lib/broadsheet-print-config'
+import {
+  useHubPrintConfig,
+  useGlobalSchoolSettingsSync,
+} from '@/lib/studio-config-store'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { downloadCSV, escapeCSV } from '@/utils/csvExport'
 import { computeStandardRankings } from '@/lib/ranking'
@@ -215,25 +216,24 @@ export default function TheologyHubClient({
   const [divisionFilter, setDivisionFilter] = useState<string>('all')
   const [showExcludedCandidates, setShowExcludedCandidates] = useState(false)
 
-  // Document customization & advanced print layout state (persisted locally)
-  const [printConfig, setPrintConfig] = useState<BroadsheetPrintConfig>(() =>
-    getDefaultBroadsheetPrintConfig('theology')
-  )
+  // Hierarchical print state: persisted UI layout prefs (Zustand `jiddah-print-prefs`) + dynamic global defaults
+  const {
+    config: printConfig,
+    setConfig: handleChangePrintConfig,
+    resetToGlobalDefaults,
+    globalDefaults,
+    hydrateFromSchoolSettings,
+  } = useHubPrintConfig('theology')
   const [printStudioOpen, setPrintStudioOpen] = useState(false)
   const showEnglishNames = printConfig.showBilingualNames
-
-  useEffect(() => {
-    setPrintConfig(loadBroadsheetPrintConfig('theology'))
-  }, [])
-
-  const handleChangePrintConfig = (next: BroadsheetPrintConfig) => {
-    setPrintConfig(next)
-    saveBroadsheetPrintConfig('theology', next)
-  }
 
   const [isLoading, setIsLoading] = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [reloadNonce, setReloadNonce] = useState(0)
+
+  useGlobalSchoolSettingsSync(() => {
+    setReloadNonce((n) => n + 1)
+  })
   const [, setIsPrinting] = useState(false)
   const [data, setData] = useState<{
     enrollments: any[]
@@ -471,6 +471,9 @@ export default function TheologyHubClient({
         const json = await res.json()
         if (!cancelled) {
           setData(json)
+          if (json?.schoolSettings) {
+            hydrateFromSchoolSettings(json.schoolSettings)
+          }
         }
       } catch (err) {
         console.error('Theology Hub load error:', err)
@@ -1926,6 +1929,8 @@ export default function TheologyHubClient({
         sectionLabel={activeSectionObj?.label_arabic || activeSectionObj?.label || undefined}
         examPhase={examPhase}
         summary={broadsheetSummary}
+        globalStampDate={globalDefaults.stampDate}
+        onResetToGlobalDefaults={resetToGlobalDefaults}
       />
 
       <PrintPortal
@@ -1944,6 +1949,7 @@ export default function TheologyHubClient({
           <DetailedReportPrintDocument
             report={detailedReport}
             supportThreshold={supportThreshold}
+            globalStampDate={globalDefaults.stampDate}
           />
         ) : (
           <BroadsheetPrintDocument
@@ -1957,6 +1963,7 @@ export default function TheologyHubClient({
             sectionLabel={activeSectionObj?.label_arabic || activeSectionObj?.label || undefined}
             examPhase={examPhase}
             summary={broadsheetSummary}
+            globalStampDate={globalDefaults.stampDate}
           />
         )}
       </PrintPortal>

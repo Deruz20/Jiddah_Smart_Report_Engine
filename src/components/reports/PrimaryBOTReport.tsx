@@ -279,8 +279,8 @@ export default function PrimaryBOTReport({ reportData, studioFormatting: studioF
         }
 
         .bot-stamp {
-            width: 148px;
-            height: 92px;
+            width: 208px;
+            height: 121px;
             border: none;
             display: flex;
             justify-content: center;
@@ -440,9 +440,9 @@ export default function PrimaryBOTReport({ reportData, studioFormatting: studioF
           </div>
 
           <div className="bot-footer-stamp">
-            <div className="bot-stamp" style={{ width: '135px', height: '64px', minWidth: '135px', minHeight: '64px', position: 'relative', overflow: 'visible', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <div className="bot-stamp" style={{ width: '208px', height: '121px', minWidth: '208px', minHeight: '121px', position: 'relative', overflow: 'visible', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               {includeStamp ? (
-                <OfficialReportStamp reportData={reportData} studioFormatting={effectiveStudioPass} maxWidth={135} maxHeight={64} />
+                <OfficialReportStamp reportData={reportData} studioFormatting={effectiveStudioPass} maxWidth={208} maxHeight={121} />
               ) : null}
             </div>
           </div>

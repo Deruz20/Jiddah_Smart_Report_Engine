@@ -46,11 +46,12 @@ import {
 } from '@/lib/hub-detailed-report'
 import {
   type BroadsheetPrintConfig,
-  getDefaultBroadsheetPrintConfig,
-  loadBroadsheetPrintConfig,
-  saveBroadsheetPrintConfig,
   prepareBroadsheetStudents,
 } from '@/lib/broadsheet-print-config'
+import {
+  useHubPrintConfig,
+  useGlobalSchoolSettingsSync,
+} from '@/lib/studio-config-store'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { downloadCSV, escapeCSV } from '@/utils/csvExport'
 import { computeStandardRankings } from '@/lib/ranking'
@@ -218,24 +219,23 @@ export default function SecularHubClient({
   const [showGrades, setShowGrades] = useState(true)
   const [showExcludedCandidates, setShowExcludedCandidates] = useState(false)
 
-  // Advanced print & broadsheet customization state (persisted locally)
-  const [printConfig, setPrintConfig] = useState<BroadsheetPrintConfig>(() =>
-    getDefaultBroadsheetPrintConfig('secular')
-  )
+  // Hierarchical print state: persisted UI layout prefs (Zustand `jiddah-print-prefs`) + dynamic global defaults
+  const {
+    config: printConfig,
+    setConfig: handleChangePrintConfig,
+    resetToGlobalDefaults,
+    globalDefaults,
+    hydrateFromSchoolSettings,
+  } = useHubPrintConfig('secular')
   const [printStudioOpen, setPrintStudioOpen] = useState(false)
-
-  useEffect(() => {
-    setPrintConfig(loadBroadsheetPrintConfig('secular'))
-  }, [])
-
-  const handleChangePrintConfig = (next: BroadsheetPrintConfig) => {
-    setPrintConfig(next)
-    saveBroadsheetPrintConfig('secular', next)
-  }
 
   const [isLoading, setIsLoading] = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [reloadNonce, setReloadNonce] = useState(0)
+
+  useGlobalSchoolSettingsSync(() => {
+    setReloadNonce((n) => n + 1)
+  })
   const [isPrinting, setIsPrinting] = useState(false)
   const [data, setData] = useState<{
     enrollments: any[]
@@ -473,6 +473,9 @@ export default function SecularHubClient({
         const json = await res.json()
         if (!cancelled) {
           setData(json)
+          if (json?.schoolSettings) {
+            hydrateFromSchoolSettings(json.schoolSettings)
+          }
         }
       } catch (err) {
         console.error('Secular Hub load error:', err)
@@ -2081,6 +2084,8 @@ export default function SecularHubClient({
         examPhase={examPhase}
         isNursery={isNursery}
         summary={broadsheetSummary}
+        globalStampDate={globalDefaults.stampDate}
+        onResetToGlobalDefaults={resetToGlobalDefaults}
       />
 
       <PrintPortal
@@ -2099,6 +2104,7 @@ export default function SecularHubClient({
           <DetailedReportPrintDocument
             report={detailedReport}
             supportThreshold={supportThreshold}
+            globalStampDate={globalDefaults.stampDate}
           />
         ) : (
           <BroadsheetPrintDocument
@@ -2113,6 +2119,7 @@ export default function SecularHubClient({
             examPhase={examPhase}
             isNursery={isNursery}
             summary={broadsheetSummary}
+            globalStampDate={globalDefaults.stampDate}
           />
         )}
       </PrintPortal>

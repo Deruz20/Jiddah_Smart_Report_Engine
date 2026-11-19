@@ -4,13 +4,16 @@ import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { toast } from 'sonner'
 import { motion, AnimatePresence } from 'motion/react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { FileSpreadsheet, Printer, Users, FileText, Sliders, Settings, History, ChevronDown, LayoutGrid, Menu, Palette, Sun, Moon, Download, CheckSquare } from 'lucide-react'
+import { FileSpreadsheet, Printer, Users, FileText, Sliders, Settings, History, ChevronDown, LayoutGrid, Menu, Palette, Sun, Moon, Download, CheckSquare, ShieldCheck } from 'lucide-react'
 import { generateReportBroadsheetCSV } from '@/utils/csvExport'
 import { TopToolbar, StudioFormattingState, DEFAULT_STUDIO_FORMATTING } from './figma-ui/TopToolbar'
 import {
   useSyncedStudioConfig,
   StudioFormattingProvider,
+  useGlobalSchoolSettingsSync,
 } from '@/lib/studio-config-store'
+import { resolveEffectiveStampDate } from '@/lib/stamp-date'
+import { PrePrintQaModal, auditPrePrintIssues } from './reports/PrePrintQaModal'
 import { MoreActionsMenu } from '@/components/ui/more-actions-menu'
 import { isNonMuslimStudent, shouldUseSecularPortraitTemplate } from '@/lib/student-religion'
 import { DocumentCanvas } from './figma-ui/DocumentCanvas'
@@ -54,8 +57,10 @@ type TermData = {
 }
 
 type RawEnrollment = {
+  id?: string
   enrollment_id: string
   name: string
+  arabic_name?: string | null
   admission_number: string
   circular_class: string
   section: string | null
@@ -206,6 +211,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
   const [printScope, setPrintScope] = useState<'current' | 'all' | string[]>('current')
   const [printRequest, setPrintRequest] = useState<{ title: string } | null>(null)
   const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false)
+  const [isQaModalOpen, setIsQaModalOpen] = useState(false)
   const [visualSelectMode, setVisualSelectMode] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
   const [completionCache, setCompletionCache] = useState<Record<string, StudentCompletionStatus>>({})
@@ -269,8 +275,9 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
 
       eList.push({
         enrollment_id: id,
+        student_id: e.id,
         name: e.name,
-        arabic_name: '',
+        arabic_name: e.arabic_name || '',
         admission_number: e.admission_number,
         circular_class: clsName,
         section_type: sectionType,
@@ -441,7 +448,7 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
           term_id: termObj.id,
           score_type: phase.toLowerCase(),
           curriculum: effectiveCurriculum,
-          stamp_date: filterState.stampDate,
+          stamp_date: studioFormatting.stampDate || filterState.stampDate || undefined,
         }),
       })
       const data = await response.json()
@@ -596,6 +603,49 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
   const activeStudent = useMemo(() => {
     return activeClassEnrollments.find((e) => e.enrollment_id === activeReportId) || activeClassEnrollments[0]
   }, [activeClassEnrollments, activeReportId])
+
+  const globalPrintDefaults = useGlobalSchoolSettingsSync(() => {
+    void executeGeneration()
+  })
+
+  const qaAuditSummary = useMemo(
+    () =>
+      auditPrePrintIssues({
+        enrollments: activeClassEnrollments,
+        reports: rawReports,
+        curriculum: filterState.curriculum,
+        phase: filterState.phase || 'EOT',
+      }),
+    [activeClassEnrollments, rawReports, filterState.curriculum, filterState.phase]
+  )
+
+  const handleQaStudentUpdated = useCallback(
+    async (studentId: string, enrollmentId: string, patch: { name: string; arabic_name: string }) => {
+      setEnrollments((prev) =>
+        prev.map((row) =>
+          row.enrollment_id === enrollmentId || (studentId && row.id === studentId)
+            ? { ...row, name: patch.name, arabic_name: patch.arabic_name }
+            : row
+        )
+      )
+      setRawReports((prev) =>
+        prev.map((rep) =>
+          rep.id === enrollmentId
+            ? {
+                ...rep,
+                student: {
+                  ...rep.student,
+                  name: patch.name,
+                  arabic_name: patch.arabic_name,
+                },
+              }
+            : rep
+        )
+      )
+      await executeGeneration()
+    },
+    [executeGeneration]
+  )
 
   // Primary Print Action
   const handlePrintSelected = useCallback(async () => {
@@ -758,7 +808,10 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
             stamp_config: {
               ...rep.settings?.print_preferences?.stamp_config,
               ink_color: studioFormatting.stampInkColor,
-              date: studioFormatting.stampDate || rep?.term?.end_date,
+              date: resolveEffectiveStampDate(
+                studioFormatting.stampDate,
+                globalPrintDefaults.stampDate || rep?.settings?.stamp_date || rep?.term?.end_date
+              ),
             },
           },
         },
@@ -1132,6 +1185,8 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
           onPrintCurrent={handlePrintCurrent}
           visualSelectMode={visualSelectMode}
           onToggleVisualSelect={() => setVisualSelectMode((v) => !v)}
+          onOpenQaAuditor={() => setIsQaModalOpen(true)}
+          qaIssueCount={qaAuditSummary.counts.totalFlagged}
           isGenerating={isGenerating}
         />
       </div>
@@ -1315,6 +1370,14 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
           triggerClassName="w-7 h-7 shrink-0 rounded-full bg-[#F0F4F9] dark:bg-[#1E2623] border border-black/[0.04] dark:border-white/[0.06] text-stone-700 dark:text-stone-200"
           items={[
             {
+              label:
+                qaAuditSummary.counts.totalFlagged > 0
+                  ? `🛡️ QA & Name Check (${qaAuditSummary.counts.totalFlagged})`
+                  : '🛡️ QA & Name Check',
+              icon: ShieldCheck,
+              onClick: () => setIsQaModalOpen(true),
+            },
+            {
               label: '🎨 Customize Studio & Stamp',
               icon: Palette,
               onClick: () => {
@@ -1495,6 +1558,28 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
           </PrintPortal>
         )
       })()}
+
+      <PrePrintQaModal
+        open={isQaModalOpen}
+        onClose={() => setIsQaModalOpen(false)}
+        classLabel={
+          filterState.classIds[0] && filterState.classIds[0] !== 'all'
+            ? filterState.classIds[0]
+            : `All Classes (${activeClassEnrollments.length})`
+        }
+        phase={filterState.phase || 'EOT'}
+        curriculum={filterState.curriculum}
+        enrollments={activeClassEnrollments}
+        reports={rawReports}
+        onStudentUpdated={handleQaStudentUpdated}
+        onSelectStudent={(id) => {
+          setActiveReportId(id)
+          if (filterState.layout === 'grid') {
+            const el = document.querySelector(`[data-report-id="${id}"]`)
+            el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          }
+        }}
+      />
     </div>
   )
 }

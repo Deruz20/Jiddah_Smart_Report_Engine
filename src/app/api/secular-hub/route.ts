@@ -176,6 +176,13 @@ export async function GET(request: NextRequest) {
           hub_sections: schoolSettings.hub_sections,
           candidate_class_rules: schoolSettings.candidate_class_rules,
         },
+        schoolSettings: {
+          school_name: schoolSettings.school_name || schoolSettings.name || '',
+          arabic_name: schoolSettings.arabic_name || '',
+          motto: schoolSettings.motto || '',
+          stamp_date: (schoolSettings as any).stamp_date || schoolSettings.print_preferences?.stamp_date || '',
+          print_preferences: schoolSettings.print_preferences,
+        },
       })
       emptyRes.headers.set('Cache-Control', 'no-store, max-age=0')
       return withCors(request, emptyRes)
@@ -221,6 +228,13 @@ export async function GET(request: NextRequest) {
         division_boundaries: schoolSettings.division_boundaries,
         hub_sections: schoolSettings.hub_sections,
         candidate_class_rules: schoolSettings.candidate_class_rules,
+      },
+      schoolSettings: {
+        school_name: schoolSettings.school_name || schoolSettings.name || '',
+        arabic_name: schoolSettings.arabic_name || '',
+        motto: schoolSettings.motto || '',
+        stamp_date: (schoolSettings as any).stamp_date || schoolSettings.print_preferences?.stamp_date || '',
+        print_preferences: schoolSettings.print_preferences,
       },
     })
     response.headers.set('Cache-Control', 'no-store, max-age=0')

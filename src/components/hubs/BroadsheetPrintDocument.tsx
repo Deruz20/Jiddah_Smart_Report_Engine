@@ -3,6 +3,7 @@
 import React from 'react'
 import { OfficialPrintLetterhead, OfficialPrintSignaturesFooter } from '@/components/print/OfficialPrintLetterhead'
 import { OfficialReportStamp } from '@/components/reports/StampGenerator'
+import { resolveEffectiveStampDate } from '@/lib/stamp-date'
 import {
   type BroadsheetCurriculum,
   type BroadsheetPrintConfig,
@@ -38,6 +39,7 @@ interface BroadsheetPrintDocumentProps {
   isNursery?: boolean
   summary?: BroadsheetCohortStats | null
   forPreview?: boolean
+  globalStampDate?: string
 }
 
 function toArabicDigitsStr(val: number | string | null | undefined): string {
@@ -58,6 +60,7 @@ export function BroadsheetPrintDocument({
   isNursery = false,
   summary,
   forPreview = false,
+  globalStampDate,
 }: BroadsheetPrintDocumentProps) {
   const isTheology = curriculum === 'theology'
   const effectiveTableStyle = config.tableStyle || (config.colorTheme === 'monochrome' ? 'toner_saver' : 'clean_grid')
@@ -65,7 +68,8 @@ export function BroadsheetPrintDocument({
   const isMono = isTonerSaver
   const isDoubleBorder = effectiveTableStyle === 'double_border'
   const useZebra = config.zebraStripes || effectiveTableStyle === 'zebra_banded'
-  const tokens = getBroadsheetTypographyTokens(config.fontScale, config.density)
+  const tokens = getBroadsheetTypographyTokens(config.fontScale, config.density, curriculum, config.fontSizeBase)
+  const effectiveStampDate = resolveEffectiveStampDate(config.stampDateOverride, globalStampDate || null)
 
   const formatNum = (val: number | string | null | undefined): string => {
     if (val == null || val === '' || (typeof val === 'number' && Number.isNaN(val))) return '—'
@@ -130,7 +134,8 @@ export function BroadsheetPrintDocument({
     return div
   }
 
-  const dataCellFontPx = Math.max(13, tokens.bodyFontPx)
+  const dataCellFontPx = tokens.bodyFontPx
+  const studentNameFontPx = tokens.studentNameFontPx
 
   const examPhaseLabelAr =
     examPhase === 'eot'
@@ -677,8 +682,8 @@ export function BroadsheetPrintDocument({
                       border: `1px solid ${cellBorder}`,
                       padding: tokens.cellPadding,
                       textAlign: isTheology ? 'right' : 'left',
-                      fontWeight: 800,
-                      fontSize: `${dataCellFontPx}px`,
+                      fontWeight: isTheology ? 900 : 800,
+                      fontSize: `${studentNameFontPx}px`,
                       color: '#0F172A',
                     }}
                   >
@@ -1068,13 +1073,13 @@ export function BroadsheetPrintDocument({
               </div>
             </div>
 
-            {/* Column 2: Signature Lines + Official Circular Stamp */}
+            {/* Column 2: Signature Lines + Official Stamp */}
             <div
               style={{
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '10px',
-                paddingInlineEnd: config.showStamp ? '108px' : '0',
+                paddingInlineEnd: config.showStamp ? '218px' : '0',
               }}
             >
               {config.showSignatures &&
@@ -1107,11 +1112,12 @@ export function BroadsheetPrintDocument({
                   reportData={{
                     stamp_config: {
                       ink_color: isMono ? '#111827' : '#0D5C3A',
+                      date: effectiveStampDate,
                       scale: 85,
                     },
                   }}
-                  maxWidth={110}
-                  maxHeight={52}
+                  maxWidth={208}
+                  maxHeight={121}
                 />
               </div>
             )}

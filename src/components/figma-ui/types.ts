@@ -77,6 +77,7 @@ export interface ReportData {
 
 export interface EnrollmentItem {
   enrollment_id: string;
+  student_id?: string;
   name: string;
   arabic_name: string;
   admission_number: string;

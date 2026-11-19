@@ -14,15 +14,22 @@ import {
   Check,
   ZoomIn,
   ZoomOut,
+  Minus,
+  Plus,
+  Calendar,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import {
   type BroadsheetCurriculum,
+  type BroadsheetFontScale,
   type BroadsheetPrintConfig,
   type BroadsheetStudentLike,
   type BroadsheetTableStyle,
   getDefaultBroadsheetPrintConfig,
+  getPresetFontSizePx,
   prepareBroadsheetStudents,
 } from '@/lib/broadsheet-print-config'
+import { getLiveStampDateString, resolveEffectiveStampDate } from '@/lib/stamp-date'
 import {
   BroadsheetPrintDocument,
   type BroadsheetSubjectItem,
@@ -46,6 +53,8 @@ interface BroadsheetPrintStudioModalProps {
   examPhase: 'bot' | 'mot' | 'eot'
   isNursery?: boolean
   summary?: BroadsheetCohortStats | null
+  globalStampDate?: string
+  onResetToGlobalDefaults?: () => void
 }
 
 function ToggleRow({
@@ -99,6 +108,8 @@ export function BroadsheetPrintStudioModal({
   examPhase,
   isNursery = false,
   summary,
+  globalStampDate,
+  onResetToGlobalDefaults,
 }: BroadsheetPrintStudioModalProps) {
   const [section, setSection] = useState<'layout' | 'columns' | 'rows' | 'header'>('layout')
   const [mobileView, setMobileView] = useState<'controls' | 'preview'>('controls')
@@ -110,15 +121,36 @@ export function BroadsheetPrintStudioModal({
   const update = (patch: Partial<BroadsheetPrintConfig>) => onChangeConfig({ ...config, ...patch })
   const previewStudents = prepareBroadsheetStudents(allStudents, filteredStudents, config)
   const visibleSubjectCount = subjects.filter((s) => !config.hiddenSubjectIds.includes(s.id)).length
+  const effectiveCellFontPx =
+    typeof config.fontSizeBase === 'number' && Number.isFinite(config.fontSizeBase)
+      ? Math.min(26, Math.max(12, Math.round(config.fontSizeBase)))
+      : getPresetFontSizePx(config.fontScale, curriculum)
+  const globalBaselineDate = resolveEffectiveStampDate(null, globalStampDate || null)
+
+  const stepFontSize = (delta: number) => {
+    const current = Math.round(effectiveCellFontPx)
+    const nextPx = Math.min(26, Math.max(12, current + delta))
+    update({ fontSizeBase: nextPx })
+  }
+
+  const handleResetToGlobal = () => {
+    if (onResetToGlobalDefaults) {
+      onResetToGlobalDefaults()
+    } else {
+      onChangeConfig(getDefaultBroadsheetPrintConfig(curriculum))
+    }
+    toast.success('Sheet reset to Global Defaults from School Settings.')
+  }
 
   const applyPreset = (preset: 'readable' | 'large' | 'bw' | 'draft') => {
     const base = getDefaultBroadsheetPrintConfig(curriculum)
     if (preset === 'readable') {
-      onChangeConfig(base)
+      onChangeConfig({ ...base, fontSizeBase: null })
     } else if (preset === 'large') {
       onChangeConfig({
         ...config,
         fontScale: 'large',
+        fontSizeBase: null,
         density: 'spacious',
         zebraStripes: true,
         showAdmissionId: false,
@@ -171,7 +203,7 @@ export function BroadsheetPrintStudioModal({
               </h2>
               <p className="text-[11px] text-stone-500 dark:text-stone-400 truncate">
                 {classNameLabel} · {previewStudents.length} students · {visibleSubjectCount} subjects ·{' '}
-                {config.fontScale === 'large' ? '14px Large Print' : config.fontScale === 'compact' ? '10.5px Compact' : '12px Readable'}
+                {effectiveCellFontPx}px {isTheology ? 'Arabic Bold' : 'Print'}
               </p>
             </div>
           </div>
@@ -186,7 +218,7 @@ export function BroadsheetPrintStudioModal({
               onClick={() => applyPreset('readable')}
               className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-[#0D5C3A] hover:bg-emerald-100 border border-emerald-200 cursor-pointer transition"
             >
-              Readable (12px)
+              {isTheology ? 'Standard (17px)' : 'Standard (12px)'}
             </button>
             <button
               type="button"
@@ -194,7 +226,7 @@ export function BroadsheetPrintStudioModal({
               className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200 cursor-pointer transition inline-flex items-center gap-1"
             >
               <Sparkles className="w-3 h-3" />
-              Eye Comfort (14px)
+              {isTheology ? 'Large Arabic (20px)' : 'Eye Comfort (14px)'}
             </button>
             <button
               type="button"
@@ -215,12 +247,13 @@ export function BroadsheetPrintStudioModal({
 
             <button
               type="button"
-              onClick={() => onChangeConfig(getDefaultBroadsheetPrintConfig(curriculum))}
-              className="h-8 px-2.5 rounded-full text-xs font-bold text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-white/10 inline-flex items-center gap-1 cursor-pointer transition"
-              title="Reset to clean defaults"
+              data-testid="broadsheet-reset-global-defaults"
+              onClick={handleResetToGlobal}
+              className="h-8 px-2.5 rounded-full text-xs font-bold text-stone-700 dark:text-stone-200 bg-stone-100 dark:bg-white/5 hover:bg-stone-200 dark:hover:bg-white/10 border border-stone-200 dark:border-white/10 inline-flex items-center gap-1 cursor-pointer transition"
+              title="Clear local overrides and inherit straight from /admin/settings"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Reset</span>
+              <span>Reset to Global Defaults</span>
             </button>
 
             <button
@@ -309,32 +342,100 @@ export function BroadsheetPrintStudioModal({
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {section === 'layout' && (
                 <>
-                  <div>
-                    <label className="block text-[11px] font-extrabold uppercase tracking-wider text-stone-500 mb-2">
-                      Font Size &amp; Eye Comfort
-                    </label>
-                    <div className="grid grid-cols-3 gap-1.5">
-                      {(
-                        [
-                          { id: 'compact', title: 'Compact', sub: '10.5px' },
-                          { id: 'readable', title: 'Readable', sub: '12px Default' },
-                          { id: 'large', title: 'Large Print', sub: '14px Easy-Read' },
-                        ] as const
-                      ).map((opt) => (
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <label className="block text-[11px] font-extrabold uppercase tracking-wider text-stone-500">
+                        {isTheology ? 'Arabic Font Scale & Live Stepper' : 'Font Size & Eye Comfort'}
+                      </label>
+                      {typeof config.fontSizeBase === 'number' && (
                         <button
-                          key={opt.id}
                           type="button"
-                          onClick={() => update({ fontScale: opt.id })}
-                          className={`p-2.5 rounded-xl border text-center cursor-pointer transition ${
-                            config.fontScale === opt.id
-                              ? 'border-[#0D5C3A] bg-emerald-50/80 dark:bg-emerald-950/30 text-[#0D5C3A] dark:text-emerald-300'
-                              : 'border-stone-200 dark:border-white/10 text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-white/5'
-                          }`}
+                          onClick={() => update({ fontSizeBase: null })}
+                          className="text-[10px] font-bold text-[#0D5C3A] hover:underline cursor-pointer"
                         >
-                          <div className="text-xs font-extrabold">{opt.title}</div>
-                          <div className="text-[10px] opacity-75 mt-0.5">{opt.sub}</div>
+                          Snap to preset
                         </button>
-                      ))}
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {(isTheology
+                        ? ([
+                            { id: 'compact', title: 'Compact', sub: '14px cell · 15px name' },
+                            { id: 'readable', title: 'Standard (Default)', sub: '17px cell · 18px bold' },
+                            { id: 'large', title: 'Large', sub: '20px cell · 21px bold' },
+                            { id: 'xlarge', title: 'X-Large', sub: '23px cell · 24px bold' },
+                          ] as { id: BroadsheetFontScale; title: string; sub: string }[])
+                        : ([
+                            { id: 'compact', title: 'Compact', sub: '10.5px' },
+                            { id: 'readable', title: 'Standard', sub: '12px Default' },
+                            { id: 'large', title: 'Large Print', sub: '14px Easy-Read' },
+                            { id: 'xlarge', title: 'X-Large', sub: '16px Bold' },
+                          ] as { id: BroadsheetFontScale; title: string; sub: string }[])
+                      ).map((opt) => {
+                        const isSelected =
+                          config.fontSizeBase == null &&
+                          (config.fontScale === opt.id || (opt.id === 'readable' && config.fontScale === 'standard'))
+                        return (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            data-testid={`font-preset-${opt.id}`}
+                            onClick={() => update({ fontScale: opt.id, fontSizeBase: null })}
+                            className={`p-2 rounded-xl border text-center cursor-pointer transition ${
+                              isSelected
+                                ? 'border-[#0D5C3A] bg-emerald-50/80 dark:bg-emerald-950/30 text-[#0D5C3A] dark:text-emerald-300'
+                                : 'border-stone-200 dark:border-white/10 text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-white/5'
+                            }`}
+                          >
+                            <div className="text-xs font-extrabold">{opt.title}</div>
+                            <div className="text-[10px] opacity-80 mt-0.5">{opt.sub}</div>
+                          </button>
+                        )
+                      })}
+                    </div>
+
+                    {/* Explicit Live Pixel Font Size Stepper (12px – 26px) */}
+                    <div
+                      data-testid="broadsheet-font-size-stepper"
+                      className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-stone-50 dark:bg-white/[0.03] border border-stone-200 dark:border-white/10"
+                    >
+                      <div className="min-w-0">
+                        <div className="text-[11px] font-bold text-stone-800 dark:text-stone-100">
+                          Exact Font Size Stepper
+                        </div>
+                        <div className="text-[10px] text-stone-500 dark:text-stone-400">
+                          12px–26px · Name renders {Math.min(27, Math.round(effectiveCellFontPx) + 1)}px bold
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          data-testid="font-stepper-decrease"
+                          onClick={() => stepFontSize(-1)}
+                          disabled={effectiveCellFontPx <= 12}
+                          aria-label="Decrease font size"
+                          className="w-7 h-7 rounded-lg border border-stone-300 dark:border-white/15 bg-white dark:bg-[#19241F] flex items-center justify-center text-stone-800 dark:text-stone-100 hover:bg-stone-100 disabled:opacity-35 cursor-pointer"
+                        >
+                          <Minus className="w-3.5 h-3.5" />
+                        </button>
+                        <span
+                          data-testid="font-stepper-value"
+                          className="min-w-[44px] text-center text-xs font-mono font-black text-[#0D5C3A] dark:text-emerald-300"
+                        >
+                          {effectiveCellFontPx}px
+                        </span>
+                        <button
+                          type="button"
+                          data-testid="font-stepper-increase"
+                          onClick={() => stepFontSize(1)}
+                          disabled={effectiveCellFontPx >= 26}
+                          aria-label="Increase font size"
+                          className="w-7 h-7 rounded-lg border border-stone-300 dark:border-white/15 bg-white dark:bg-[#19241F] flex items-center justify-center text-stone-800 dark:text-stone-100 hover:bg-stone-100 disabled:opacity-35 cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   </div>
 
@@ -773,8 +874,41 @@ export function BroadsheetPrintStudioModal({
 
                   <div className="space-y-2.5 pt-2 border-t border-stone-200 dark:border-white/10">
                     <div>
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <label className="text-[11px] font-bold text-stone-600 dark:text-stone-300 inline-flex items-center gap-1">
+                          <Calendar className="w-3 h-3 text-[#0D5C3A]" />
+                          <span>Session Stamp Date Override</span>
+                        </label>
+                        {config.stampDateOverride ? (
+                          <button
+                            type="button"
+                            onClick={() => update({ stampDateOverride: '' })}
+                            className="text-[10px] font-bold text-[#0D5C3A] hover:underline cursor-pointer"
+                          >
+                            Inherit Global ({globalBaselineDate})
+                          </button>
+                        ) : (
+                          <span className="text-[10px] text-stone-500">
+                            Global: <strong>{globalBaselineDate}</strong>
+                          </span>
+                        )}
+                      </div>
+                      <input
+                        type="text"
+                        data-testid="broadsheet-session-stamp-date"
+                        placeholder={`Inherits ${globalBaselineDate} (session-only override)`}
+                        value={config.stampDateOverride || ''}
+                        onChange={(e) => update({ stampDateOverride: e.target.value.toUpperCase() })}
+                        className="w-full h-8 px-2.5 rounded-lg border border-stone-200 dark:border-white/15 bg-stone-50 dark:bg-black/20 text-xs font-mono text-stone-900 dark:text-white"
+                      />
+                      <p className="text-[10px] text-stone-500 mt-1">
+                        Applies only to this session. Edit permanently in School Settings.
+                      </p>
+                    </div>
+
+                    <div>
                       <label className="block text-[11px] font-bold text-stone-600 dark:text-stone-300 mb-1">
-                        Custom Sheet Title (optional)
+                        Custom Sheet Title (session only)
                       </label>
                       <input
                         type="text"
@@ -895,6 +1029,7 @@ export function BroadsheetPrintStudioModal({
                   examPhase={examPhase}
                   isNursery={isNursery}
                   summary={summary}
+                  globalStampDate={globalStampDate}
                   forPreview
                 />
               </div>

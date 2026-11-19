@@ -26,6 +26,7 @@ import {
   Check,
   Sparkles,
   FileText,
+  ShieldCheck,
 } from 'lucide-react'
 import Link from 'next/link'
 import * as Tooltip from '@radix-ui/react-tooltip'
@@ -67,7 +68,7 @@ export const DEFAULT_STUDIO_FORMATTING: StudioFormattingState = {
   signaturesEnabled: true,
   watermarkOpacity: 4,
   showNurseryArt: true,
-  nurseryTheme: 'playful',
+  nurseryTheme: undefined,
   nurseryArtOpacity: 7,
   signatureThreshold: 210,
   stampScale: 100,
@@ -127,6 +128,8 @@ interface TopToolbarProps {
   onPrintCurrent?: () => void
   visualSelectMode?: boolean
   onToggleVisualSelect?: () => void
+  onOpenQaAuditor?: () => void
+  qaIssueCount?: number
 }
 
 export function TopToolbar({
@@ -158,6 +161,8 @@ export function TopToolbar({
   onPrintCurrent,
   visualSelectMode = false,
   onToggleVisualSelect,
+  onOpenQaAuditor,
+  qaIssueCount = 0,
 }: TopToolbarProps) {
   let sidebar: { toggleSidebar: () => void } | null = null
   try {
@@ -449,8 +454,9 @@ export function TopToolbar({
           <span className="text-[11px] font-medium text-stone-700 dark:text-stone-200">
             Nursery Card Style
           </span>
-          <div className="flex items-center bg-[#F0F4F9] dark:bg-[#1E2623] rounded-lg p-0.5 border border-black/[0.06] dark:border-white/[0.08] gap-0.5">
+          <div className="flex flex-wrap items-center bg-[#F0F4F9] dark:bg-[#1E2623] rounded-lg p-0.5 border border-black/[0.06] dark:border-white/[0.08] gap-0.5">
             {([
+              { id: 'islamic-garden', label: 'Islamic Garden' },
               { id: 'playful', label: 'Playful' },
               { id: 'lineart', label: 'Line-Art B&W' },
               { id: 'classic', label: 'Classic' },
@@ -579,6 +585,37 @@ export function TopToolbar({
                   </button>
                 </Tooltip.Trigger>
                 <TooltipContent>Select report cards visually on canvas</TooltipContent>
+              </Tooltip.Root>
+            )}
+
+            {/* Pre-Print QA & Name Check Button */}
+            {onOpenQaAuditor && (
+              <Tooltip.Root>
+                <Tooltip.Trigger asChild>
+                  <button
+                    type="button"
+                    data-testid="qa-name-check-trigger"
+                    onClick={onOpenQaAuditor}
+                    className={`h-8 px-2.5 rounded-full text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer transition shrink-0 border ${
+                      qaIssueCount > 0
+                        ? 'bg-amber-500/15 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300 border-amber-500/35 hover:bg-amber-500/25'
+                        : 'bg-[#0D5C3A]/10 text-[#0D5C3A] dark:bg-[#10B981]/15 dark:text-[#34D399] border-[#0D5C3A]/25 hover:bg-[#0D5C3A]/18'
+                    }`}
+                  >
+                    <ShieldCheck className="size-3.5 shrink-0" />
+                    <span className="font-bold hidden lg:inline">QA &amp; Name Check</span>
+                    {qaIssueCount > 0 && (
+                      <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-amber-600 text-white text-[10px] font-black tabular-nums">
+                        {qaIssueCount}
+                      </span>
+                    )}
+                  </button>
+                </Tooltip.Trigger>
+                <TooltipContent>
+                  {qaIssueCount > 0
+                    ? `Pre-Print QA & Name Check (${qaIssueCount} item${qaIssueCount === 1 ? '' : 's'} flagged)`
+                    : 'Pre-Print QA & Name Check — All checks clear'}
+                </TooltipContent>
               </Tooltip.Root>
             )}
 

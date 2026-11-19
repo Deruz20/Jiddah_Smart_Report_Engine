@@ -195,10 +195,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    return withCors(request, NextResponse.json({
+    const response = NextResponse.json({
       circular_marks,
       theology_marks,
-    }))
+    })
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+    return withCors(request, response)
   } catch (err) {
     console.error('Marks API GET error:', err)
     return withCors(request, NextResponse.json({ error: 'Internal server error' }, { status: 500 }))

@@ -43,6 +43,11 @@ import {
   findReconciledMark,
 } from '@/lib/marks-reconciliation'
 import { applyRateLimit, rateLimitResponse } from '@/utils/rate-limit'
+import {
+  getLiveIsoDateString,
+  isStaleHardcodedStampDate,
+  resolveEffectiveStampDate,
+} from '@/lib/stamp-date'
 import { z } from 'zod'
 
 const pgUuidSchema = z
@@ -186,9 +191,21 @@ export async function POST(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Term not found' }, { status: 404 }))
     }
 
-    if (stamp_date) {
-      term.end_date = stamp_date;
-    }
+    const globalSettingsStampDate =
+      typeof (schoolSettings as any)?.stamp_date === 'string' &&
+      !isStaleHardcodedStampDate((schoolSettings as any).stamp_date)
+        ? String((schoolSettings as any).stamp_date).trim()
+        : typeof schoolSettings?.print_preferences?.stamp_date === 'string' &&
+            !isStaleHardcodedStampDate(schoolSettings.print_preferences.stamp_date)
+          ? String(schoolSettings.print_preferences.stamp_date).trim()
+          : undefined
+    const validStampOverride =
+      stamp_date && !isStaleHardcodedStampDate(stamp_date) ? stamp_date.trim() : undefined
+    term.end_date = validStampOverride || globalSettingsStampDate || getLiveIsoDateString()
+    const resolvedResponseStampDate = resolveEffectiveStampDate(
+      validStampOverride || globalSettingsStampDate,
+      term.end_date
+    )
 
     // Reconcile equivalent terms by academic_year and term_number
     const termInfo = await resolveEquivalentTerms(supabaseAdmin, term_id)
@@ -259,12 +276,29 @@ export async function POST(request: NextRequest) {
       for (const cId of circularClassIds) {
         const classMembers = allClassmates.filter(c => c.circular_class_id === cId)
         const firstCircClass = Array.isArray(classMembers[0]?.circular_classes) ? classMembers[0]?.circular_classes[0] : classMembers[0]?.circular_classes
-        const memberSectionType = resolveSectionType(firstCircClass?.section, firstCircClass?.class_name)
+        const memberClassName = firstCircClass?.class_name || ''
+        const memberSectionType = resolveSectionType(firstCircClass?.section, memberClassName)
         const memberSubjects = circularSubjectsCache[memberSectionType] || []
-        const memberTotals: { id: string, total: number }[] = []
+        const assessedMemberSubIds = new Set(
+          memberSubjects
+            .filter((sub: any) =>
+              classMembers.some((member) => {
+                const rec = findReconciledMark(allCircularMarks, {
+                  studentId: member.student_id,
+                  enrollmentId: member.id,
+                  subjectId: sub.id,
+                  subjectName: sub.subject_name,
+                  curriculum: 'secular',
+                })
+                return getMarkScore(rec, score_type) !== null
+              })
+            )
+            .map((s: any) => s.id)
+        )
+        const memberEntries: { id: string; total: number; isComplete: boolean }[] = []
 
         for (const member of classMembers) {
-          const memberScores = memberSubjects.length > 0
+          const memberRows = memberSubjects.length > 0
             ? memberSubjects.map((sub: any) => {
                 const rec = findReconciledMark(allCircularMarks, {
                   studentId: member.student_id,
@@ -273,19 +307,27 @@ export async function POST(request: NextRequest) {
                   subjectName: sub.subject_name,
                   curriculum: 'secular',
                 })
-                return getMarkScore(rec, score_type)
+                return { id: sub.id, subject_name: sub.subject_name, score: getMarkScore(rec, score_type) }
               })
             : allCircularMarks
                 .filter(m => m.enrollment_id === member.id || (member.student_id && m.student_id === member.student_id))
-                .map(m => getMarkScore(m, score_type))
-          const hasMarks = memberScores.some(score => score !== null)
+                .map(m => ({ id: m.subject_id, subject_name: m.subject_name || '', score: getMarkScore(m, score_type) }))
+          const hasMarks = memberRows.some(r => r.score !== null)
           if (hasMarks) {
-            const eTotal = memberScores.reduce((sum, score) => sum + (score ?? 0), 0)
-            memberTotals.push({ id: member.id, total: eTotal })
+            const eTotal = memberRows
+              .filter(r => !r.subject_name || isGradableSubject(r.subject_name, memberClassName))
+              .reduce((sum, r) => sum + (r.score ?? 0), 0)
+            const assessedRows = memberRows.filter(
+              r => (!r.subject_name || isGradableSubject(r.subject_name, memberClassName)) && (assessedMemberSubIds.size === 0 || assessedMemberSubIds.has(r.id))
+            )
+            const isComplete = assessedRows.length > 0 && assessedRows.every(r => r.score !== null)
+            memberEntries.push({ id: member.id, total: eTotal, isComplete })
           }
         }
 
-        classRankings[cId] = memberTotals.sort((a, b) => b.total - a.total)
+        const completeEntries = memberEntries.filter(m => m.isComplete)
+        const pool = (completeEntries.length > 0 ? completeEntries : memberEntries).sort((a, b) => b.total - a.total)
+        classRankings[cId] = pool.map(({ id, total }) => ({ id, total }))
         circularClassSizes[cId] = classMembers.length
       }
     }
@@ -745,7 +787,7 @@ export async function POST(request: NextRequest) {
           },
           signatures,
           settings: schoolSettings,
-          stamp_date: stamp_date || term.end_date || null,
+          stamp_date: resolvedResponseStampDate,
           debug: {
             enrollmentId: enrollment.id,
             circularMarksCount: 0,
@@ -872,7 +914,7 @@ export async function POST(request: NextRequest) {
         },
         signatures,
         settings: schoolSettings,
-        stamp_date: stamp_date || term.end_date || null,
+        stamp_date: resolvedResponseStampDate,
         debug: {
           enrollmentId: enrollment.id,
           circularMarksCount: eCircularMarks.length,

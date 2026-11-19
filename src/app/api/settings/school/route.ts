@@ -161,6 +161,10 @@ export async function PATCH(request: NextRequest) {
     const jsonCustomizationPayload: Record<string, any> = {}
 
     Object.entries(body).forEach(([key, value]) => {
+      if (key === 'stamp_date' && typeof value === 'string') {
+        jsonCustomizationPayload.stamp_date = value.trim()
+        return
+      }
       if (allowedJsonKeys.includes(key) && value !== undefined && value !== null && typeof value === 'object') {
         jsonCustomizationPayload[key] = value
         return
@@ -175,6 +179,14 @@ export async function PATCH(request: NextRequest) {
         }
       }
     })
+
+    if (
+      jsonCustomizationPayload.print_preferences &&
+      typeof jsonCustomizationPayload.print_preferences.stamp_date === 'string' &&
+      jsonCustomizationPayload.stamp_date === undefined
+    ) {
+      jsonCustomizationPayload.stamp_date = jsonCustomizationPayload.print_preferences.stamp_date.trim()
+    }
 
     if (updatePayload.email && typeof updatePayload.email === 'string' && !isValidEmail(updatePayload.email)) {
       return withCors(request, NextResponse.json({ error: 'Invalid school email address' }, { status: 400 }))

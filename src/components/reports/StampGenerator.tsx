@@ -659,7 +659,7 @@ export const OfficialReportStamp = React.memo(function OfficialReportStamp({
   };
 
   const resolvedDate = resolveEffectiveStampDate(
-    studioFormatting?.stampDate,
+    studioFormatting?.stampDate || studioFormatting?.reportDateOverride,
     [reportData?.stamp_date, reportData?.settings?.stamp_date, config.date].find(
       (candidate) => candidate && !isStaleHardcodedStampDate(candidate)
     ) || getLiveStampDateString()

@@ -103,6 +103,8 @@ export interface StudioFormattingConfig {
   stampDateInkColor: string // default '#C81E1E'
   stampNaturalRealism: boolean // default true
   stampDate: string // default ''
+  reportDateOverride?: string // Quick override for report card Date, default ''
+  nextTermBeginsOverride?: string // Quick override for Next Term Begins, default ''
   stampRotation: number // -25 to +25, default -2
   stampOpacity: number // 50 to 100, default 92
   stampOffsetX: number // -120 to 120, default 0
@@ -374,6 +376,8 @@ export const DEFAULT_STUDIO_CONFIG: StudioFormattingConfig = {
   stampDateInkColor: '#C81E1E',
   stampNaturalRealism: true,
   stampDate: '',
+  reportDateOverride: '',
+  nextTermBeginsOverride: '',
   stampRotation: -2,
   stampOpacity: 92,
   stampOffsetX: 0,
@@ -650,6 +654,14 @@ export function normalizeStudioConfig(
     stampDateInkColor,
     stampNaturalRealism,
     stampDate,
+    reportDateOverride:
+      raw.reportDateOverride !== undefined
+        ? String(raw.reportDateOverride).trim()
+        : DEFAULT_STUDIO_CONFIG.reportDateOverride || '',
+    nextTermBeginsOverride:
+      raw.nextTermBeginsOverride !== undefined
+        ? String(raw.nextTermBeginsOverride).trim()
+        : DEFAULT_STUDIO_CONFIG.nextTermBeginsOverride || '',
     stampRotation,
     stampOpacity,
     stampOffsetX,
@@ -1122,6 +1134,8 @@ export interface StudioConfigStoreState {
   showSignatures: boolean
   showAdmissionId: boolean
   showSubjectGrades: boolean
+  reportDateOverride: string
+  nextTermBeginsOverride: string
   hubLayoutPrefs: Record<BroadsheetCurriculum, PersistedHubLayoutPrefs>
 
   // Dynamic Global & Session State (NEVER persisted in localStorage)
@@ -1140,7 +1154,11 @@ export interface StudioConfigStoreState {
     showStamp?: boolean
     showSignatures?: boolean
     stampDateOverride?: string
+    reportDateOverride?: string
+    nextTermBeginsOverride?: string
   }) => void
+  setReportDateOverride: (date: string) => void
+  setNextTermBeginsOverride: (date: string) => void
   updateHubConfig: (curriculum: BroadsheetCurriculum, next: Partial<BroadsheetPrintConfig>) => void
   setHubSessionStampDate: (curriculum: BroadsheetCurriculum, dateValue: string) => void
   resetHubToGlobalDefaults: (curriculum: BroadsheetCurriculum) => void
@@ -1159,6 +1177,8 @@ export const useStudioConfigStore = create<StudioConfigStoreState>()(
       showSignatures: true,
       showAdmissionId: false,
       showSubjectGrades: true,
+      reportDateOverride: '',
+      nextTermBeginsOverride: '',
       hubLayoutPrefs: {
         secular: stripDynamicBroadsheetOverrides(getDefaultBroadsheetPrintConfig('secular')),
         theology: stripDynamicBroadsheetOverrides(getDefaultBroadsheetPrintConfig('theology')),
@@ -1219,7 +1239,14 @@ export const useStudioConfigStore = create<StudioConfigStoreState>()(
           showSignatures: patch.showSignatures ?? state.showSignatures,
           stampDateOverride:
             patch.stampDateOverride !== undefined ? patch.stampDateOverride : state.stampDateOverride,
+          reportDateOverride:
+            patch.reportDateOverride !== undefined ? patch.reportDateOverride : state.reportDateOverride,
+          nextTermBeginsOverride:
+            patch.nextTermBeginsOverride !== undefined ? patch.nextTermBeginsOverride : state.nextTermBeginsOverride,
         })),
+
+      setReportDateOverride: (date) => set({ reportDateOverride: date }),
+      setNextTermBeginsOverride: (date) => set({ nextTermBeginsOverride: date }),
 
       updateHubConfig: (curriculum, patch) =>
         set((state) => {
@@ -1355,6 +1382,8 @@ export const useStudioConfigStore = create<StudioConfigStoreState>()(
         showSignatures: state.showSignatures,
         showAdmissionId: state.showAdmissionId,
         showSubjectGrades: state.showSubjectGrades,
+        reportDateOverride: state.reportDateOverride,
+        nextTermBeginsOverride: state.nextTermBeginsOverride,
         hubLayoutPrefs: state.hubLayoutPrefs,
       }),
     }

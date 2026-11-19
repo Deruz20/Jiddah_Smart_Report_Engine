@@ -356,7 +356,7 @@ export default function NurseryMOTReport({ reportData, studioFormatting: studioF
             </div>
             <div className="info-box">
               <div className="info-row"><span className="label">Class</span><div className="line" style={{ fontSize: '14.5px', fontWeight: 800, color: '#0F172A' }}>{reportData?.student?.class_name}</div></div>
-              <div className="info-row"><span className="label">Date</span><div className="line" style={{ fontSize: '13.5px', fontWeight: 800, color: '#0F172A' }}>{formatDate(reportData?.term?.end_date || getLiveIsoDateString())}</div></div>
+              <div className="info-row"><span className="label">Date</span><div className="line" style={{ fontSize: '13.5px', fontWeight: 800, color: '#0F172A' }}>{studioFormatting?.reportDateOverride || formatDate(reportData?.term?.end_date || reportData?.term?.endDate || getLiveIsoDateString())}</div></div>
             </div>
           </div>
 
@@ -440,7 +440,7 @@ export default function NurseryMOTReport({ reportData, studioFormatting: studioF
               </div>
               <div style={{ marginTop: '16px', display: 'flex', gap: '16px' }}>
                 <div className="info-row" style={{ flex: 1 }}><span className="label">Next Term Begins</span><div className="line" style={{ fontSize: '11px', color: '#1E40AF', fontWeight: 'bold' }}>
-                  {reportData?.term?.next_term_start ? formatDateWithOrdinal(reportData.term.next_term_start) : '______________________'}
+                  {studioFormatting?.nextTermBeginsOverride || ((reportData?.term?.next_term_start || reportData?.term?.nextTermBegins || reportData?.term?.next_term_begins) ? formatDateWithOrdinal(reportData?.term?.next_term_start || reportData?.term?.nextTermBegins || reportData?.term?.next_term_begins) : '______________________')}
                 </div></div>
               </div>
             </div>

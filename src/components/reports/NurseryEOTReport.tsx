@@ -492,7 +492,7 @@ export default function NurseryEOTReport({ reportData, studioFormatting: studioF
               <div className="info-row">
                 <span className="label">Date</span>
                 <div className="line" style={{ fontSize: '12.5px', fontWeight: 800 }}>
-                  {reportData?.term?.end_date ? formatDate(reportData.term.end_date) : '_________________'}
+                  {studioFormatting?.reportDateOverride || (reportData?.term?.end_date || reportData?.term?.endDate ? formatDate(reportData?.term?.end_date || reportData?.term?.endDate) : '_________________')}
                 </div>
               </div>
             </div>
@@ -776,9 +776,9 @@ export default function NurseryEOTReport({ reportData, studioFormatting: studioF
                 <div className="info-row" style={{ flex: 1 }}>
                   <span className="label">Next Term Begins</span>
                   <div className="line" style={{ fontSize: '11px', color: accentSky, fontWeight: 800 }}>
-                    {reportData?.term?.next_term_start
-                      ? formatDateWithOrdinal(reportData.term.next_term_start)
-                      : '______________________'}
+                    {studioFormatting?.nextTermBeginsOverride || ((reportData?.term?.next_term_start || reportData?.term?.nextTermBegins || reportData?.term?.next_term_begins)
+                      ? formatDateWithOrdinal(reportData?.term?.next_term_start || reportData?.term?.nextTermBegins || reportData?.term?.next_term_begins)
+                      : '______________________')}
                   </div>
                 </div>
               </div>

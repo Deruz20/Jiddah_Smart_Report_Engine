@@ -632,13 +632,13 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
         prev.map((rep) =>
           rep.id === enrollmentId
             ? {
-                ...rep,
-                student: {
-                  ...rep.student,
-                  name: patch.name,
-                  arabic_name: patch.arabic_name,
-                },
-              }
+              ...rep,
+              student: {
+                ...rep.student,
+                name: patch.name,
+                arabic_name: patch.arabic_name,
+              },
+            }
             : rep
         )
       )

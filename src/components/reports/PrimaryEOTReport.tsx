@@ -885,11 +885,11 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
                   <div className="dates-row">
                     <div className="date-box date-red">
                       <span>THIS TERM ENDS ON:</span>
-                      <span>{formatDate(reportData?.term?.end_date)}</span>
+                      <span>{studioFormatting?.reportDateOverride || formatDate(reportData?.term?.end_date || reportData?.term?.endDate)}</span>
                     </div>
                     <div className="date-box date-blue">
                       <span>NEXT TERM BEGINS ON:</span>
-                      <span>{formatDate(reportData?.term?.next_term_start)}</span>
+                      <span>{studioFormatting?.nextTermBeginsOverride || formatDate(reportData?.term?.next_term_start || reportData?.term?.nextTermBegins || reportData?.term?.next_term_begins)}</span>
                     </div>
                   </div>
 

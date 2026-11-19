@@ -1361,3 +1361,29 @@ Report Card JSX (remark fallback)
 - `npx tsc --noEmit` → **0 errors**
 - Tests → **376/376 pass, 0 fail** across 66 suites
 - `npm run build` → **exit 0**, all routes compiled cleanly
+
+---
+
+### Milestone: Final Print-Readiness Pass (DB Term Dates Wiring, Studio Quick Overrides & Secretary QA)
+**Commit:** `0bfe428` (`work-order-2026-11-17`)
+**Scope:**
+1. **DB Term Dates Wiring (`/api/report` & `/api/report/batch`):**
+   - Fixed bug where `term.end_date` from `public.terms` was clobbered by the stamp date fallback.
+   - Separated `dbTermEndDate` and `dbNextTermStart` (`next_term_start` / `next_term_begins`), preserving database dates while reserving stamp date overrides exclusively for the stamp ink layer.
+   - Attached aliases `endDate`, `nextTermBegins`, `next_term_begins` to report payload.
+2. **Quick Date Overrides in Report Studio (`studio-config-store.ts` & `ReportStudioClient.tsx`):**
+   - Added `reportDateOverride` and `nextTermBeginsOverride` to `StudioFormattingConfig`, `DEFAULT_STUDIO_CONFIG`, `normalizeStudioConfig`, and Zustand `persist` slice (`jiddah-print-prefs`).
+   - Added dedicated "Quick Date Overrides" card with reset controls to the Studio sidebar.
+   - Wired live Studio sample preview to update dates immediately upon typing.
+3. **Report Card Templates Date Consumption:**
+   - Updated `PrimaryEOTReport`, `P7EOTReport`, `NurseryEOTReport`, and `NurseryMOTReport` to consume `studioFormatting?.reportDateOverride` and `studioFormatting?.nextTermBeginsOverride` with fallback to database term dates.
+   - Maintained 100% strict 1-page A4 print geometry with inline styles untouched.
+   - Updated `OfficialReportStamp` to react to `reportDateOverride` for stamp ink dater.
+4. **Secretary Role Signature Upload QA:**
+   - Verified `Secretary` canonical role has unrestricted access (`allowedSlots === null`) in `resolveAllowedSignatureSlotsForUser`.
+   - Verified `/admin/upload` and `/admin/uploads` allow Secretary access.
+   - Added 5MB client-side toast verification for signature/stamp assets in `upload-client.tsx` matching server boundary.
+5. **Verification Gate:**
+   - `npm run typecheck` → **0 errors** (exit code 0)
+   - `npm run build` → **69/69 routes compiled successfully** (exit code 0)
+

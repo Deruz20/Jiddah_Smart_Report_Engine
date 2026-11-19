@@ -23,6 +23,7 @@ import {
   Layers,
   ShieldCheck,
   Move,
+  Calendar,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -767,12 +768,16 @@ export function ReportStudioClient({
       student,
       term: {
         name: 'Term 1',
+        label: 'Term 1',
         term_number: 1,
         academic_year: String(new Date().getFullYear()),
-        end_date: getLiveIsoDateString(),
-        next_term_start: '2026-05-18',
+        end_date: studioConfig.reportDateOverride || getLiveIsoDateString(),
+        next_term_start: studioConfig.nextTermBeginsOverride || '2026-05-18',
         next_term_start_boarders: '2026-05-16',
-        next_term_start_day: '2026-05-18',
+        next_term_start_day: studioConfig.nextTermBeginsOverride || '2026-05-18',
+        endDate: studioConfig.reportDateOverride || getLiveIsoDateString(),
+        nextTermBegins: studioConfig.nextTermBeginsOverride || '2026-05-18',
+        next_term_begins: studioConfig.nextTermBeginsOverride || '2026-05-18',
       },
       branding: {
         schoolName: branding.schoolName,
@@ -1704,6 +1709,48 @@ export function ReportStudioClient({
                       <p className="text-[11px] text-stone-500 mt-0.5">
                         Scale, rotate, recolor, and drag-to-position without shifting report layout.
                       </p>
+                    </div>
+                  </div>
+
+                  {/* Section: Quick Date Overrides */}
+                  <div className="p-3 rounded-xl bg-stone-50 dark:bg-[#1E2623]/70 border border-stone-200 dark:border-white/10 space-y-3">
+                    <SectionHeaderWithReset
+                      title="Quick Date Overrides"
+                      onReset={() =>
+                        updateStudio({
+                          reportDateOverride: '',
+                          nextTermBeginsOverride: '',
+                        })
+                      }
+                    />
+                    <p className="text-[10.5px] text-stone-500 dark:text-stone-400 leading-relaxed">
+                      Override printed Report Date or Next Term Begins for quick batches without modifying school database terms.
+                    </p>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300">
+                        Report Date (Leave blank for DB Term End Date)
+                      </label>
+                      <input
+                        type="text"
+                        value={studioConfig.reportDateOverride || ''}
+                        onChange={(e) => updateStudio({ reportDateOverride: e.target.value })}
+                        placeholder="e.g. 05/12/2026 or leave blank"
+                        className="w-full h-8 px-2.5 rounded-lg bg-white dark:bg-[#151D1A] border border-stone-200 dark:border-white/10 text-xs font-medium"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300">
+                        Next Term Begins (Leave blank for DB Next Term Date)
+                      </label>
+                      <input
+                        type="text"
+                        value={studioConfig.nextTermBeginsOverride || ''}
+                        onChange={(e) => updateStudio({ nextTermBeginsOverride: e.target.value })}
+                        placeholder="e.g. 02/02/2027 or leave blank"
+                        className="w-full h-8 px-2.5 rounded-lg bg-white dark:bg-[#151D1A] border border-stone-200 dark:border-white/10 text-xs font-medium"
+                      />
                     </div>
                   </div>
 

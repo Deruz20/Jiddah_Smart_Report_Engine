@@ -514,7 +514,12 @@ export default function UploadClient({
 
     selectedFiles.forEach((file) => {
       if (!ACCEPTED_TYPES.includes(file.type)) {
-        toast.error(`${file.name} is not a supported file type.`)
+        toast.error(`${file.name} is not a supported file type. Use PNG, JPG, or WEBP.`)
+        return
+      }
+
+      if ((category === 'Signatures' || category === 'Stamps') && file.size > 5 * 1024 * 1024) {
+        toast.error(`${file.name} exceeds 5MB. Signature and stamp assets must be 5MB or smaller.`)
         return
       }
 

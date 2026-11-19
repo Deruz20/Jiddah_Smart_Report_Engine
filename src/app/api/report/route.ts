@@ -183,6 +183,9 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Term not found' }, { status: 404 }))
     }
 
+    const dbTermEndDate = term.end_date
+    const dbNextTermStart = term.next_term_start || (term as any).next_term_begins || null
+
     const globalSettingsStampDate =
       typeof (schoolSettings as any)?.stamp_date === 'string' &&
       !isStaleHardcodedStampDate((schoolSettings as any).stamp_date)
@@ -193,10 +196,12 @@ export async function GET(request: NextRequest) {
           : undefined
     const validStampOverride =
       stamp_date && !isStaleHardcodedStampDate(stamp_date) ? stamp_date.trim() : undefined
-    term.end_date = validStampOverride || globalSettingsStampDate || getLiveIsoDateString()
+    
+    // Preserve database term end_date if set; otherwise fallback to stamp date or live ISO date
+    const effectiveReportEndDate = dbTermEndDate || validStampOverride || globalSettingsStampDate || getLiveIsoDateString()
     const resolvedResponseStampDate = resolveEffectiveStampDate(
       validStampOverride || globalSettingsStampDate,
-      term.end_date
+      effectiveReportEndDate
     )
 
     // Reconcile equivalent terms by academic_year and term_number
@@ -802,8 +807,11 @@ export async function GET(request: NextRequest) {
           term_number: term.term_number,
           academic_year: term.academic_year,
           start_date: term.start_date,
-          end_date: term.end_date,
-          next_term_start: term.next_term_start,
+          end_date: effectiveReportEndDate,
+          next_term_start: dbNextTermStart,
+          endDate: effectiveReportEndDate,
+          nextTermBegins: dbNextTermStart,
+          next_term_begins: dbNextTermStart,
         },
         score_type,
         section_type: sectionType,
@@ -900,8 +908,11 @@ export async function GET(request: NextRequest) {
         term_number: term.term_number,
         academic_year: term.academic_year,
         start_date: term.start_date,
-        end_date: term.end_date,
-        next_term_start: term.next_term_start,
+        end_date: effectiveReportEndDate,
+        next_term_start: dbNextTermStart,
+        endDate: effectiveReportEndDate,
+        nextTermBegins: dbNextTermStart,
+        next_term_begins: dbNextTermStart,
       },
       score_type,
       section_type: sectionType,

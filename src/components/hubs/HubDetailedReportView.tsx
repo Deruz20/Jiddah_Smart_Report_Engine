@@ -399,6 +399,85 @@ export function HubDetailedReportView({
           {/* EXECUTIVE BREAKDOWN PACKET ("النظر الدقيق على النتائج") */}
           <ExecutiveBreakdownPacket report={report} variant="screen" />
 
+          {/* CURRENT-TERM COHORT TABLE (BOT, MOT, EOT ONLY) */}
+          <section
+            data-testid="detailed-report-current-cohort-table"
+            className="rounded-2xl border border-[#E7E5E4] dark:border-white/10 bg-white dark:bg-[#151F1B] shadow-2xs overflow-hidden"
+          >
+            <div className="px-4 py-3 border-b border-[#E7E5E4] dark:border-white/10 flex items-center justify-between gap-2 bg-[#FAF7F2] dark:bg-white/[0.02]">
+              <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#0F4D25] dark:text-emerald-300">
+                {isArabic
+                  ? 'كشف نتائج التلاميذ للفترة الحالية (BOT / MOT / EOT)'
+                  : 'Current Term Cohort Summary (BOT, MOT, EOT)'}
+              </h3>
+              <span className="text-[11px] font-bold text-[#57534E] dark:text-stone-300 tabular-nums">
+                {fmtNum((report?.learners?.cohortStudents ?? report?.learners?.eligibleLearners ?? []).length)}{' '}
+                {isArabic ? 'تلميذ' : 'students'}
+              </span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs border-collapse">
+                <thead>
+                  <tr className="bg-[#F5F5F4] dark:bg-white/5 text-[#1C1917] dark:text-stone-200 border-b border-[#E7E5E4] dark:border-white/10">
+                    <th className={`px-3 py-2 font-extrabold ${isArabic ? 'text-right' : 'text-left'}`}>
+                      {isArabic ? 'اسم التلميذ' : 'Student Name'}
+                    </th>
+                    <th className="px-3 py-2 font-extrabold text-center">
+                      {isArabic ? 'بداية الفترة (BOT)' : 'BOT Score/Grade'}
+                    </th>
+                    <th className="px-3 py-2 font-extrabold text-center">
+                      {isArabic ? 'منتصف الفترة (MOT)' : 'MOT Score/Grade'}
+                    </th>
+                    <th className="px-3 py-2 font-extrabold text-center">
+                      {isArabic ? 'نهاية الفترة (EOT)' : 'EOT Score/Grade'}
+                    </th>
+                    <th className="px-3 py-2 font-extrabold text-center">
+                      {isArabic ? 'المجموع الكلي' : 'Overall Total'}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#E7E5E4] dark:divide-white/10">
+                  {(() => {
+                    const rows = report?.learners?.cohortStudents ?? report?.learners?.eligibleLearners ?? []
+                    if (rows.length === 0) {
+                      return (
+                        <tr>
+                          <td colSpan={5} className="px-4 py-6 text-center text-xs text-[#57534E] dark:text-stone-400">
+                            {isArabic ? 'لا توجد بيانات متاحة بعد' : 'No data available yet'}
+                          </td>
+                        </tr>
+                      )
+                    }
+                    return rows.map((student, idx) => (
+                      <tr key={student?.id || idx} className="hover:bg-[#FAF7F2] dark:hover:bg-white/[0.02]">
+                        <td className="px-3 py-2 font-bold text-[#1C1917] dark:text-white">
+                          {isArabic ? (student?.arabicName || student?.name || '--') : (student?.name || '--')}
+                          {student?.className ? (
+                            <span className="ml-1.5 text-[10px] font-semibold text-[#57534E] dark:text-stone-400">
+                              ({student.className})
+                            </span>
+                          ) : null}
+                        </td>
+                        <td className="px-3 py-2 text-center tabular-nums">
+                          {student?.bot_score ?? '--'}
+                        </td>
+                        <td className="px-3 py-2 text-center tabular-nums">
+                          {student?.mot_score ?? '--'}
+                        </td>
+                        <td className="px-3 py-2 text-center tabular-nums">
+                          {student?.eot_score ?? '--'}
+                        </td>
+                        <td className="px-3 py-2 text-center font-extrabold tabular-nums text-[#0F4D25] dark:text-emerald-400">
+                          {student?.overall_total ?? student?.total ?? '--'}
+                        </td>
+                      </tr>
+                    ))
+                  })()}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
           {/* 2. DETERMINISTIC INSIGHTS */}
           <section
             data-testid="detailed-report-insights"
@@ -634,133 +713,6 @@ export function HubDetailedReportView({
               )}
             </section>
           </div>
-
-          {/* 5. TREND COMPARISONS (VS PREVIOUS EXAM & VS PREVIOUS TERM) */}
-          <section
-            data-testid="detailed-report-trends"
-            className="rounded-2xl border border-[#E7E5E4] dark:border-white/10 bg-white dark:bg-[#151F1B] p-4 shadow-2xs"
-          >
-            <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#1C1917] dark:text-white flex items-center gap-1.5 mb-3">
-              <TrendingUp className="w-4 h-4 text-[#0F4D25] dark:text-emerald-400" />
-              <span>{isArabic ? 'الاتجاه الزمني والمقارنة مع الفترات السابقة' : 'Performance Trends & Most Improved / Declined Learners'}</span>
-            </h3>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {[report.trends.previousExam, report.trends.previousTerm].map((trend) => (
-                <div
-                  key={trend.kind}
-                  data-testid={`trend-block-${trend.kind}`}
-                  className="rounded-xl border border-[#E7E5E4] dark:border-white/10 bg-[#FAF7F2] dark:bg-white/[0.02] p-3.5"
-                >
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <span className="text-xs font-extrabold text-[#1C1917] dark:text-white">
-                      {isArabic
-                        ? `مقارنة مع: ${trend.baselineLabelArabic}`
-                        : `vs ${trend.baselineLabel}`}
-                    </span>
-                    {trend.available && trend.deltaMeanPct !== null && (
-                      <span
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-black tabular-nums ${
-                          trend.deltaMeanPct >= 0
-                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                            : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
-                        }`}
-                      >
-                        {trend.deltaMeanPct >= 0 ? (
-                          <ArrowUpRight className="w-3 h-3" />
-                        ) : (
-                          <ArrowDownRight className="w-3 h-3" />
-                        )}
-                        {trend.deltaMeanPct >= 0 ? '+' : ''}
-                        {fmtNum(trend.deltaMeanPct)} pp
-                      </span>
-                    )}
-                  </div>
-
-                  {!trend.available ? (
-                    <p className="text-xs text-[#57534E] dark:text-stone-300">
-                      {isArabic ? trend.reasonArabic : trend.reason}
-                    </p>
-                  ) : (
-                    <>
-                      <div className="grid grid-cols-3 gap-2 text-center my-2 tabular-nums">
-                        <div className="rounded-lg bg-white dark:bg-white/5 border border-[#E7E5E4] dark:border-white/10 p-2">
-                          <div className="text-[10px] text-[#57534E] dark:text-stone-300">
-                            {isArabic ? 'السابق' : 'Baseline Mean'}
-                          </div>
-                          <div className="text-sm font-black">{fmtNum(trend.previousMeanPct, '%')}</div>
-                        </div>
-                        <div className="rounded-lg bg-white dark:bg-white/5 border border-[#E7E5E4] dark:border-white/10 p-2">
-                          <div className="text-[10px] text-[#57534E] dark:text-stone-300">
-                            {isArabic ? 'الحالي' : 'Current Mean'}
-                          </div>
-                          <div className="text-sm font-black">{fmtNum(trend.currentMeanPct, '%')}</div>
-                        </div>
-                        <div className="rounded-lg bg-white dark:bg-white/5 border border-[#E7E5E4] dark:border-white/10 p-2">
-                          <div className="text-[10px] text-[#57534E] dark:text-stone-300">
-                            {isArabic ? 'المطابقون' : 'Matched n'}
-                          </div>
-                          <div className="text-sm font-black">{fmtNum(trend.matchedLearnerCount)}</div>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2.5">
-                        <div>
-                          <div className="text-[10px] font-extrabold uppercase text-[#0F4D25] dark:text-emerald-400 mb-1">
-                            {isArabic ? 'الأكثر تحسناً' : 'Most Improved'}
-                          </div>
-                          {trend.improvedLearners.length === 0 ? (
-                            <p className="text-[11px] text-[#57534E] dark:text-stone-400">—</p>
-                          ) : (
-                            <ul className="space-y-1 text-[11px]">
-                              {trend.improvedLearners.map((l) => (
-                                <li
-                                  key={l.studentId}
-                                  className="flex items-center justify-between gap-2 bg-white dark:bg-white/5 px-2 py-1 rounded-md border border-[#E7E5E4] dark:border-white/10"
-                                >
-                                  <span className="truncate font-semibold">
-                                    {isArabic ? l.arabicName || l.name : l.name}
-                                  </span>
-                                  <span className="font-mono font-bold text-emerald-700 dark:text-emerald-300 shrink-0 tabular-nums">
-                                    +{fmtNum(l.deltaPct)} pp
-                                  </span>
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </div>
-
-                        <div>
-                          <div className="text-[10px] font-extrabold uppercase text-rose-700 dark:text-rose-300 mb-1">
-                            {isArabic ? 'الأكثر تراجعاً' : 'Most Declined'}
-                          </div>
-                          {trend.declinedLearners.length === 0 ? (
-                            <p className="text-[11px] text-[#57534E] dark:text-stone-400">—</p>
-                          ) : (
-                            <ul className="space-y-1 text-[11px]">
-                              {trend.declinedLearners.map((l) => (
-                                <li
-                                  key={l.studentId}
-                                  className="flex items-center justify-between gap-2 bg-white dark:bg-white/5 px-2 py-1 rounded-md border border-[#E7E5E4] dark:border-white/10"
-                                >
-                                  <span className="truncate font-semibold">
-                                    {isArabic ? l.arabicName || l.name : l.name}
-                                  </span>
-                                  <span className="font-mono font-bold text-rose-700 dark:text-rose-300 shrink-0 tabular-nums">
-                                    {fmtNum(l.deltaPct)} pp
-                                  </span>
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-              ))}
-            </div>
-          </section>
 
           {/* 6. SECTION VS SECTION + CLASS VS CLASS COMPARISON */}
           {report.comparisons.sectionVsSection.length > 0 && (

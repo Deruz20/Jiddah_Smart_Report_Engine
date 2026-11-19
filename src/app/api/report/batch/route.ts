@@ -35,7 +35,7 @@ import { evaluateCriteria, GradingCriterion } from '@/lib/grading-engine'
 import { fetchMergedSchoolSettings } from '@/lib/school-settings-helper'
 import { getMarkScore } from '@/lib/mark-scores'
 import { fetchAllSupabaseRows } from '@/lib/supabase-pagination'
-import { getReportSignatures } from '@/utils/signatures'
+import { buildStudentReportSignatures, getReportSignatures } from '@/utils/signatures'
 import {
   resolveEquivalentTerms,
   fetchAndReconcileSecularMarks,
@@ -216,15 +216,15 @@ export async function POST(request: NextRequest) {
 
     const globalSettingsStampDate =
       typeof (schoolSettings as any)?.stamp_date === 'string' &&
-      !isStaleHardcodedStampDate((schoolSettings as any).stamp_date)
+        !isStaleHardcodedStampDate((schoolSettings as any).stamp_date)
         ? String((schoolSettings as any).stamp_date).trim()
         : typeof schoolSettings?.print_preferences?.stamp_date === 'string' &&
-            !isStaleHardcodedStampDate(schoolSettings.print_preferences.stamp_date)
+          !isStaleHardcodedStampDate(schoolSettings.print_preferences.stamp_date)
           ? String(schoolSettings.print_preferences.stamp_date).trim()
           : undefined
     const validStampOverride =
       stamp_date && !isStaleHardcodedStampDate(stamp_date) ? stamp_date.trim() : undefined
-    
+
     // Preserve database term end_date if set; otherwise fallback to stamp date or live ISO date
     const effectiveReportEndDate = dbTermEndDate || validStampOverride || globalSettingsStampDate || getLiveIsoDateString()
     const resolvedResponseStampDate = resolveEffectiveStampDate(
@@ -325,18 +325,18 @@ export async function POST(request: NextRequest) {
         for (const member of classMembers) {
           const memberRows = memberSubjects.length > 0
             ? memberSubjects.map((sub: any) => {
-                const rec = findReconciledMark(allCircularMarks, {
-                  studentId: member.student_id,
-                  enrollmentId: member.id,
-                  subjectId: sub.id,
-                  subjectName: sub.subject_name,
-                  curriculum: 'secular',
-                })
-                return { id: sub.id, subject_name: sub.subject_name, score: getMarkScore(rec, score_type) }
+              const rec = findReconciledMark(allCircularMarks, {
+                studentId: member.student_id,
+                enrollmentId: member.id,
+                subjectId: sub.id,
+                subjectName: sub.subject_name,
+                curriculum: 'secular',
               })
+              return { id: sub.id, subject_name: sub.subject_name, score: getMarkScore(rec, score_type) }
+            })
             : allCircularMarks
-                .filter(m => m.enrollment_id === member.id || (member.student_id && m.student_id === member.student_id))
-                .map(m => ({ id: m.subject_id, subject_name: m.subject_name || '', score: getMarkScore(m, score_type) }))
+              .filter(m => m.enrollment_id === member.id || (member.student_id && m.student_id === member.student_id))
+              .map(m => ({ id: m.subject_id, subject_name: m.subject_name || '', score: getMarkScore(m, score_type) }))
           const hasMarks = memberRows.some(r => r.score !== null)
           if (hasMarks) {
             const eTotal = memberRows
@@ -430,18 +430,18 @@ export async function POST(request: NextRequest) {
           for (const member of classMembers) {
             const memberScores = tSubjects.length > 0
               ? tSubjects.map((sub: any) => {
-                  const rec = findReconciledMark(allTheoMarks, {
-                    studentId: member.student_id,
-                    enrollmentId: member.id,
-                    subjectId: sub.id,
-                    subjectName: sub.subject_name_arabic,
-                    curriculum: 'theology',
-                  })
-                  return getMarkScore(rec, score_type)
+                const rec = findReconciledMark(allTheoMarks, {
+                  studentId: member.student_id,
+                  enrollmentId: member.id,
+                  subjectId: sub.id,
+                  subjectName: sub.subject_name_arabic,
+                  curriculum: 'theology',
                 })
+                return getMarkScore(rec, score_type)
+              })
               : allTheoMarks
-                  .filter(m => m.enrollment_id === member.id || (member.student_id && m.student_id === member.student_id))
-                  .map(m => getMarkScore(m, score_type))
+                .filter(m => m.enrollment_id === member.id || (member.student_id && m.student_id === member.student_id))
+                .map(m => getMarkScore(m, score_type))
             const hasMarks = memberScores.some(score => score !== null)
             if (hasMarks) {
               const eTotal = memberScores.reduce((sum, score) => sum + (score ?? 0), 0)
@@ -468,7 +468,7 @@ export async function POST(request: NextRequest) {
       'school-stamp': null,
     }
     for (const object of signatureObjects ?? []) {
-      const match = object.name.match(/^([a-z0-9-]+)\.(?:png|jpe?g|webp)$/i)
+      const match = object.name.match(/^([a-z0-9-]+?)(?:__\d+)?\.(?:png|jpe?g|webp)$/i)
       if (match) {
         signatures[match[1]] = supabaseAdmin.storage.from('signatures').getPublicUrl(object.name).data.publicUrl
       }
@@ -722,27 +722,27 @@ export async function POST(request: NextRequest) {
           : ''
         const theoHeadRule = useDosRemarkOverrides
           ? evaluateCriteria(
-              theologyAggregate ?? null,
-              'head_comment',
-              'theology',
-              enrollment.theology_class_id,
-              gradingCriteria,
-              'comment'
-            )
+            theologyAggregate ?? null,
+            'head_comment',
+            'theology',
+            enrollment.theology_class_id,
+            gradingCriteria,
+            'comment'
+          )
           : ''
         const resolvedTheoComments = isTheologyNursery
           ? resolveDistinctNurseryTheologyComments({
-              teacherComment: theologyComment,
-              headComment: theoHeadRule,
-              gender: studentData?.gender,
-            })
+            teacherComment: theologyComment,
+            headComment: theoHeadRule,
+            gender: studentData?.gender,
+          })
           : {
-              teacherComment: theologyComment,
-              headTeacherComment:
-                theoHeadRule && theoHeadRule !== theologyComment
-                  ? theoHeadRule
-                  : 'نتيجة مشرفة وجهد مبارك، نتمنى له/لها دوام التفوق والنجاح.',
-            }
+            teacherComment: theologyComment,
+            headTeacherComment:
+              theoHeadRule && theoHeadRule !== theologyComment
+                ? theoHeadRule
+                : 'نتيجة مشرفة وجهد مبارك، نتمنى له/لها دوام التفوق والنجاح.',
+          }
 
         theologySectionData = {
           subjects: sortedTheoSubjects,
@@ -815,7 +815,7 @@ export async function POST(request: NextRequest) {
             position: theologyPosition,
             total_students: totalTheologyStudents,
           },
-          signatures,
+          signatures: buildStudentReportSignatures(signatures, null, theologyClassEnglish ?? theologyClassArabic),
           settings: schoolSettings,
           stamp_date: resolvedResponseStampDate,
           debug: {
@@ -835,45 +835,45 @@ export async function POST(request: NextRequest) {
         nurseryGradesForComments.length > 0 ? getNurseryTeacherComment(nurseryGradesForComments) : ''
       const classTeacherGradingRule = useDosRemarkOverrides
         ? evaluateCriteria(
-            reportAggregate ?? null,
-            'aggregate',
-            'secular',
-            enrollment.circular_class_id,
-            gradingCriteria,
-            'comment'
-          )
+          reportAggregate ?? null,
+          'aggregate',
+          'secular',
+          enrollment.circular_class_id,
+          gradingCriteria,
+          'comment'
+        )
         : ''
       const rawHeadTeacherGradingRule = useDosRemarkOverrides
         ? evaluateCriteria(
-            reportAggregate ?? null,
-            'head_comment',
-            'secular',
-            enrollment.circular_class_id,
-            gradingCriteria,
-            'comment'
-          )
+          reportAggregate ?? null,
+          'head_comment',
+          'secular',
+          enrollment.circular_class_id,
+          gradingCriteria,
+          'comment'
+        )
         : ''
       const headTeacherGradingRule =
         sectionType === 'nursery' ? rawHeadTeacherGradingRule : (rawHeadTeacherGradingRule || classTeacherGradingRule)
       const distinctNurserySecularComments =
         sectionType === 'nursery'
           ? resolveDistinctNurserySecularComments({
-              classRule: classTeacherGradingRule,
-              headRule: rawHeadTeacherGradingRule,
-              defaultComment: nurseryCommentDefault,
-              grades: nurseryGradesForComments,
-              isTerm3,
-            })
+            classRule: classTeacherGradingRule,
+            headRule: rawHeadTeacherGradingRule,
+            defaultComment: nurseryCommentDefault,
+            grades: nurseryGradesForComments,
+            isTerm3,
+          })
           : null
       const conductGradingRule = useDosRemarkOverrides
         ? evaluateCriteria(
-            reportAggregate ?? null,
-            'conduct',
-            'secular',
-            enrollment.circular_class_id,
-            gradingCriteria,
-            'comment'
-          )
+          reportAggregate ?? null,
+          'conduct',
+          'secular',
+          enrollment.circular_class_id,
+          gradingCriteria,
+          'comment'
+        )
         : ''
 
       return {
@@ -955,7 +955,7 @@ export async function POST(request: NextRequest) {
           theology_position: theologyPosition,
           theology_total_students: totalTheologyStudents,
         },
-        signatures,
+        signatures: buildStudentReportSignatures(signatures, className, theologyClassEnglish ?? theologyClassArabic),
         settings: schoolSettings,
         stamp_date: resolvedResponseStampDate,
         debug: {

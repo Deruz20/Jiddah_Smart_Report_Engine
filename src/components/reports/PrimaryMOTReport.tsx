@@ -43,12 +43,16 @@ export default function PrimaryMOTReport({ reportData, studioFormatting: studioF
     getConductRemark(reportData?.circular?.division ?? null, reportData?.settings?.division_boundaries, reportData?.settings?.promotion_comments?.default_conduct);
 
   const classTeacherSigKey = reportData?.student?.class_name
-    ? getClassTeacherSignatureKey(reportData.student.class_name) ?? ''
+    ? getClassTeacherSignatureKey(reportData.student.class_name, false) ?? ''
     : '';
-  const classTeacherSig = classTeacherSigKey
-    ? reportData?.signatures?.[classTeacherSigKey]
-    : null;
-  const headTeacherSig = reportData?.signatures?.['head-teacher'] ?? null;
+  const classTeacherSig =
+    reportData?.signatures?.['secular_class_teacher'] ??
+    (classTeacherSigKey ? reportData?.signatures?.[classTeacherSigKey] : null) ??
+    null;
+  const headTeacherSig =
+    reportData?.signatures?.['head_teacher'] ??
+    reportData?.signatures?.['head-teacher'] ??
+    null;
 
   const renderSubjectRow = (subject: any) => (
     <tr key={subject.subject_name}>
@@ -432,9 +436,9 @@ export default function PrimaryMOTReport({ reportData, studioFormatting: studioF
             <span className="mot-comment-label">Class Teacher&apos;s Comment:</span>
             <div className="mot-comment-value">{teacherComment}</div>
             <span className="mot-sig-label">Signature:</span>
-            <div className="mot-sig-line" style={{ position: 'relative', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', height: '36px', minWidth: '120px', borderBottom: '1.5px dotted #334155' }}>
+            <div className="mot-sig-line" style={{ position: 'relative', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', height: '42px', minWidth: '140px', borderBottom: '1.5px dotted #334155', overflow: 'visible' }}>
               {includeSignatures && classTeacherSig && (
-                <CleanSignatureImage src={classTeacherSig} alt="Class Teacher Signature" style={{ height: '36px', width: '112px', objectFit: 'contain', marginBottom: '-6px' }} studioFormatting={effectiveStudioPass} />
+                <CleanSignatureImage src={classTeacherSig} alt="Secular Class Teacher Signature" style={{ maxHeight: '45px', width: '100%', maxWidth: '140px', objectFit: 'contain', mixBlendMode: 'multiply', marginBottom: '-6px' }} studioFormatting={effectiveStudioPass} />
               )}
             </div>
           </div>
@@ -443,9 +447,9 @@ export default function PrimaryMOTReport({ reportData, studioFormatting: studioF
             <span className="mot-comment-label">Head Teacher&apos;s Comment:</span>
             <div className="mot-comment-value">{headComment}</div>
             <span className="mot-sig-label">Signature:</span>
-            <div className="mot-sig-line" style={{ position: 'relative', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', height: '36px', minWidth: '120px', borderBottom: '1.5px dotted #334155' }}>
+            <div className="mot-sig-line" style={{ position: 'relative', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', height: '42px', minWidth: '140px', borderBottom: '1.5px dotted #334155', overflow: 'visible' }}>
               {includeSignatures && headTeacherSig && (
-                <CleanSignatureImage src={headTeacherSig} alt="Head Teacher Signature" style={{ height: '36px', width: '112px', objectFit: 'contain', marginBottom: '-6px' }} studioFormatting={effectiveStudioPass} />
+                <CleanSignatureImage src={headTeacherSig} alt="Head Teacher Signature" style={{ maxHeight: '45px', width: '100%', maxWidth: '140px', objectFit: 'contain', mixBlendMode: 'multiply', marginBottom: '-6px' }} studioFormatting={effectiveStudioPass} />
               )}
             </div>
           </div>

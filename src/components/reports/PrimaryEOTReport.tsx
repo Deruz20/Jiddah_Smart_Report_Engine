@@ -71,6 +71,27 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
   const includeSignatures =
     effective.showSignatures &&
     (printPrefs?.includeSignatures !== undefined ? Boolean(printPrefs.includeSignatures) : true)
+
+  const sigMap = reportData?.signatures || {}
+  const theoClassRaw =
+    reportData?.student?.theology_class_english ||
+    reportData?.student?.theology_class_arabic ||
+    reportData?.student?.class_name ||
+    ''
+  const theoTeacherKey = getClassTeacherSignatureKey(theoClassRaw, true)
+  const theologyTeacherSigUrl =
+    (theoTeacherKey && sigMap[theoTeacherKey]) ||
+    sigMap['theology_class_teacher'] ||
+    sigMap['theology-head'] ||
+    sigMap['dos_theology'] ||
+    sigMap['dos-theology'] ||
+    null
+  const theologyDosSigUrl =
+    sigMap['dos_theology'] ||
+    sigMap['dos-theology'] ||
+    sigMap['theology-head'] ||
+    sigMap['head-teacher'] ||
+    null
   const includeStamp =
     effective.showStamp &&
     (printPrefs?.includeStamp !== undefined ? Boolean(printPrefs.includeStamp) : true)
@@ -837,8 +858,49 @@ export default function PrimaryEOTReport({ reportData, studioFormatting: studioF
                         </div>
                         <div className="t-note-row">
                           <span className="t-note-lbl">التوقيع والختم:</span>
-                          <div className="t-note-val" style={{ flex: 1 }}></div>
-                          <div className="t-note-val" style={{ flex: 0.6, borderBottom: 'none' }}></div>
+                          <div
+                            className="t-note-val"
+                            style={{
+                              flex: 1,
+                              position: 'relative',
+                              display: 'flex',
+                              alignItems: 'flex-end',
+                              justifyContent: 'center',
+                              height: '30px',
+                              overflow: 'visible',
+                            }}
+                          >
+                            {includeSignatures && theologyTeacherSigUrl ? (
+                              <CleanSignatureImage
+                                src={theologyTeacherSigUrl}
+                                style={{ height: '30px', width: '98px', objectFit: 'contain', marginBottom: '-4px' }}
+                                alt="Theology Class Teacher Signature"
+                                studioFormatting={effectiveStudioPass}
+                              />
+                            ) : null}
+                          </div>
+                          <div
+                            className="t-note-val"
+                            style={{
+                              flex: 0.7,
+                              borderBottom: 'none',
+                              position: 'relative',
+                              display: 'flex',
+                              alignItems: 'flex-end',
+                              justifyContent: 'center',
+                              height: '30px',
+                              overflow: 'visible',
+                            }}
+                          >
+                            {includeSignatures && theologyDosSigUrl && theologyDosSigUrl !== theologyTeacherSigUrl ? (
+                              <CleanSignatureImage
+                                src={theologyDosSigUrl}
+                                style={{ height: '30px', width: '98px', objectFit: 'contain', marginBottom: '-4px' }}
+                                alt="DOS Theology Signature"
+                                studioFormatting={effectiveStudioPass}
+                              />
+                            ) : null}
+                          </div>
                         </div>
                       </div>
                     </div>

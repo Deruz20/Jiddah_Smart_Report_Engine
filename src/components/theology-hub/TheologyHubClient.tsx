@@ -603,7 +603,7 @@ export default function TheologyHubClient({
     [assessmentData.students.length, assessmentData.orderedSubjects.length, cohortMetrics.summary]
   )
 
-  const top10Data = cohortMetrics.top10
+  const top10Data = cohortMetrics?.top10 ?? []
 
   const currentScopeLabel = isSectionMode
     ? `${activeSectionObj?.label_arabic || activeSectionObj?.label || activeSectionId}`
@@ -633,107 +633,152 @@ export default function TheologyHubClient({
   }
 
   const handlePrintDetailedReport = () => {
-    if (!detailedReport) {
-      return toast.error('No detailed report loaded to print.')
-    }
-    setPrintMode('detailed_report')
-    setIsPrinting(true)
-    setTimeout(() => {
-      window.print()
+    try {
+      if (!detailedReport) {
+        return toast.error('No detailed report loaded to print.')
+      }
+      setPrintMode('detailed_report')
+      setIsPrinting(true)
+      setTimeout(() => {
+        window.print()
+        setIsPrinting(false)
+      }, 250)
+    } catch (err) {
+      console.error('Print detailed report error:', err)
       setIsPrinting(false)
-    }, 250)
+      toast.error('Unable to open print dialog.')
+    }
+  }
+
+  const handlePrintActiveView = () => {
+    try {
+      if (activeTab === 'detailed_report') {
+        handlePrintDetailedReport()
+        return
+      }
+      if (activeTab === 'top_students' || activeTab === 'analysis') {
+        setPrintMode('broadsheet')
+        setIsPrinting(true)
+        setTimeout(() => {
+          window.print()
+          setIsPrinting(false)
+        }, 250)
+        return
+      }
+      handlePrintBroadsheet()
+    } catch (err) {
+      console.error('Print view error:', err)
+      setIsPrinting(false)
+      toast.error('Unable to open print dialog.')
+    }
   }
 
   const handleExportDetailedReportCsv = () => {
-    if (!detailedReport) return
-    const csv = buildDetailedReportCsv(detailedReport, supportThreshold)
-    const safeScope = detailedReport.meta.scopeLabel.replace(/[^a-zA-Z0-9_-]/g, '_')
-    downloadCSV(csv, `Jiddah_Theology_Detailed_Report_${safeScope}_${examPhase.toUpperCase()}.csv`)
+    try {
+      if (!detailedReport) {
+        toast.error('Detailed report is not loaded yet.')
+        return
+      }
+      const csv = buildDetailedReportCsv(detailedReport, supportThreshold)
+      const safeScope = (detailedReport?.meta?.scopeLabel || 'Cohort').replace(/[^a-zA-Z0-9_-]/g, '_')
+      downloadCSV(csv, `Jiddah_Theology_Detailed_Report_${safeScope}_${examPhase.toUpperCase()}.csv`)
+      toast.success('Detailed Report exported cleanly to CSV!')
+    } catch (err) {
+      console.error('Export detailed report CSV error:', err)
+      toast.error('Failed to export detailed report CSV.')
+    }
   }
 
   const handleExportCSV = () => {
-    if (cohortMetrics.isSingleClassCandidateExcluded) {
-      return toast.info('N/A — candidate class: P.7 has no Term 3 EOT.')
-    }
-    if (!assessmentData.students.length) {
-      return toast.error('No assessment data to export.')
-    }
-    const termLabel = activeTerm ? activeTerm.label.replace(/\s+/g, '_') : 'Term'
-    const classLabel = currentScopeLabel.replace(/\s+/g, '_')
-    const filename = `Jiddah_Theology_Broadsheet_${classLabel}_${termLabel}_${examPhase.toUpperCase()}_2026.csv`
+    try {
+      if (cohortMetrics?.isSingleClassCandidateExcluded) {
+        return toast.info('N/A — candidate class: P.7 has no Term 3 EOT.')
+      }
+      const studentsList = assessmentData?.students ?? []
+      if (!studentsList.length) {
+        return toast.error('No assessment data to export.')
+      }
+      const orderedSubjects = assessmentData?.orderedSubjects ?? []
+      const termLabel = activeTerm?.label ? activeTerm.label.replace(/\s+/g, '_') : 'Term'
+      const classLabel = (currentScopeLabel || 'Cohort').replace(/\s+/g, '_')
+      const filename = `Jiddah_Theology_Broadsheet_${classLabel}_${termLabel}_${examPhase.toUpperCase()}_2026.csv`
 
-    const headers = [
-      'Rank',
-      ...(isSectionMode ? ['Class'] : []),
-      'Admission No',
-      'Student Name',
-      'Arabic Name',
-      'Gender',
-      ...assessmentData.orderedSubjects.map((s) => `${s.subject_name_arabic || s.subject_name} (Mark)`),
-      'Total Score',
-      ...(cohortMetrics.isNormalizedRanking ? ['Avg %'] : []),
-      'Aggregate',
-      'Division',
-    ]
+      const headers = [
+        'Rank',
+        ...(isSectionMode ? ['Class'] : []),
+        'Admission No',
+        'Student Name',
+        'Arabic Name',
+        'Gender',
+        ...orderedSubjects.map((s) => `${s?.subject_name_arabic || s?.subject_name || 'Subject'} (Mark)`),
+        'Total Score',
+        ...(cohortMetrics?.isNormalizedRanking ? ['Avg %'] : []),
+        'Aggregate',
+        'Division',
+      ]
 
-    const rows = assessmentData.students.map((st) => [
-      st.position,
-      ...(isSectionMode ? [st.className] : []),
-      st.admission_number || '-',
-      st.name,
-      st.arabic_name || '-',
-      st.gender || '-',
-      ...assessmentData.orderedSubjects.map((s) => st.subjectScores[s.id] ?? '-'),
-      st.total != null ? st.total : '-',
-      ...(cohortMetrics.isNormalizedRanking
-        ? [st.normalizedScore != null ? `${st.normalizedScore}%` : '-']
-        : []),
-      st.aggregate ?? '-',
-      st.division || '-',
-    ])
-
-    if (broadsheetSummary) {
-      rows.push([])
-      rows.push([
-        'SUMMARY',
-        ...(isSectionMode ? [''] : []),
-        '',
-        'CLASS AVERAGE',
-        '',
-        '',
-        ...assessmentData.orderedSubjects.map((s) => broadsheetSummary.subjectStats[s.id]?.avg ?? '-'),
-        broadsheetSummary.classAverageTotal,
-        ...(cohortMetrics.isNormalizedRanking
-          ? [broadsheetSummary.meanNormalizedPct != null ? `${broadsheetSummary.meanNormalizedPct}%` : '-']
+      const rows = studentsList.map((st) => [
+        st?.position ?? '-',
+        ...(isSectionMode ? [st?.className ?? '-'] : []),
+        st?.admission_number || '-',
+        st?.name || '-',
+        st?.arabic_name || '-',
+        st?.gender || '-',
+        ...orderedSubjects.map((s) => st?.subjectScores?.[s.id] ?? '-'),
+        st?.total != null ? st.total : '-',
+        ...(cohortMetrics?.isNormalizedRanking
+          ? [st?.normalizedScore != null ? `${st.normalizedScore}%` : '-']
           : []),
-        '',
-        '',
+        st?.aggregate ?? '-',
+        st?.division || '-',
       ])
-      rows.push([
-        'SUMMARY',
-        ...(isSectionMode ? [''] : []),
+
+      if (broadsheetSummary) {
+        rows.push([])
+        rows.push([
+          'SUMMARY',
+          ...(isSectionMode ? [''] : []),
+          '',
+          'CLASS AVERAGE',
+          '',
+          '',
+          ...orderedSubjects.map((s) => broadsheetSummary?.subjectStats?.[s.id]?.avg ?? '-'),
+          broadsheetSummary?.classAverageTotal ?? '-',
+          ...(cohortMetrics?.isNormalizedRanking
+            ? [broadsheetSummary?.meanNormalizedPct != null ? `${broadsheetSummary.meanNormalizedPct}%` : '-']
+            : []),
+          '',
+          '',
+        ])
+        rows.push([
+          'SUMMARY',
+          ...(isSectionMode ? [''] : []),
+          '',
+          'PASS RATE (%)',
+          '',
+          '',
+          ...orderedSubjects.map((s) => `${broadsheetSummary?.subjectStats?.[s.id]?.passRate ?? 0}%`),
+          '',
+          ...(cohortMetrics?.isNormalizedRanking ? [''] : []),
+          '',
+          '',
+        ])
+      }
+
+      const csvContent = [
+        `"JIDDAH ISLAMIC NURSERY & PRIMARY SCHOOL — THEOLOGY BROADSHEET"`,
+        `"Scope: ${currentScopeLabel || ''} | Term: ${activeTerm?.label || ''} | Phase: ${examPhase.toUpperCase()} | Generated: ${new Date().toLocaleDateString()}"`,
         '',
-        'PASS RATE (%)',
-        '',
-        '',
-        ...assessmentData.orderedSubjects.map((s) => `${broadsheetSummary.subjectStats[s.id]?.passRate ?? 0}%`),
-        '',
-        ...(cohortMetrics.isNormalizedRanking ? [''] : []),
-        '',
-        '',
-      ])
+        headers.map(escapeCSV).join(','),
+        ...rows.map((row) => row.map(escapeCSV).join(',')),
+      ].join('\n')
+
+      downloadCSV(csvContent, filename)
+      toast.success('Theology Broadsheet exported cleanly to CSV!')
+    } catch (err) {
+      console.error('Export Theology CSV error:', err)
+      toast.error('Failed to export CSV. Please try again.')
     }
-
-    const csvContent = [
-      `"JIDDAH ISLAMIC NURSERY & PRIMARY SCHOOL — THEOLOGY BROADSHEET"`,
-      `"Scope: ${currentScopeLabel} | Term: ${activeTerm?.label || ''} | Phase: ${examPhase.toUpperCase()} | Generated: ${new Date().toLocaleDateString()}"`,
-      '',
-      headers.map(escapeCSV).join(','),
-      ...rows.map((row) => row.map(escapeCSV).join(',')),
-    ].join('\n')
-
-    downloadCSV(csvContent, filename)
-    toast.success('Theology Broadsheet exported cleanly to CSV!')
   }
 
   return (
@@ -840,7 +885,7 @@ export default function TheologyHubClient({
               </button>
 
               <button
-                onClick={activeTab === 'detailed_report' ? handlePrintDetailedReport : handlePrintBroadsheet}
+                onClick={handlePrintActiveView}
                 disabled={
                   activeTab === 'detailed_report'
                     ? detailedLoading || !detailedReport
@@ -994,7 +1039,7 @@ export default function TheologyHubClient({
             </button>
 
             <button
-              onClick={activeTab === 'detailed_report' ? handlePrintDetailedReport : handlePrintBroadsheet}
+              onClick={handlePrintActiveView}
               disabled={
                 activeTab === 'detailed_report'
                   ? detailedLoading || !detailedReport

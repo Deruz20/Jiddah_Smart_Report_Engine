@@ -124,6 +124,54 @@ export function DetailedReportPrintDocument({
       {/* EXECUTIVE BREAKDOWN PACKET AT TOP OF PORTRAIT PRINT ("النظر الدقيق على النتائج") */}
       <ExecutiveBreakdownPacket report={report} variant="print" />
 
+      {/* CURRENT-TERM COHORT TABLE (BOT, MOT, EOT ONLY) */}
+      <div style={{ breakInside: 'avoid', marginBottom: '10px' }}>
+        <div style={sectionHeadingStyle}>
+          {isArabic
+            ? 'كشف نتائج التلاميذ للفترة الحالية (BOT / MOT / EOT)'
+            : 'Current Term Cohort Summary (BOT, MOT, EOT)'}
+        </div>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr>
+              <th style={thStyle}>{isArabic ? 'اسم التلميذ' : 'Student Name'}</th>
+              <th style={{ ...thStyle, textAlign: 'center' }}>{isArabic ? 'بداية الفترة (BOT)' : 'BOT Score/Grade'}</th>
+              <th style={{ ...thStyle, textAlign: 'center' }}>{isArabic ? 'منتصف الفترة (MOT)' : 'MOT Score/Grade'}</th>
+              <th style={{ ...thStyle, textAlign: 'center' }}>{isArabic ? 'نهاية الفترة (EOT)' : 'EOT Score/Grade'}</th>
+              <th style={{ ...thStyle, textAlign: 'center' }}>{isArabic ? 'المجموع الكلي' : 'Overall Total'}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(() => {
+              const rows = report?.learners?.cohortStudents ?? report?.learners?.eligibleLearners ?? []
+              if (rows.length === 0) {
+                return (
+                  <tr>
+                    <td colSpan={5} style={{ ...tdStyle, textAlign: 'center' }}>
+                      {isArabic ? 'لا توجد بيانات متاحة بعد' : 'No data available yet'}
+                    </td>
+                  </tr>
+                )
+              }
+              return rows.map((student, idx) => (
+                <tr key={student?.id || idx}>
+                  <td style={{ ...tdStyle, fontWeight: 700 }}>
+                    {isArabic ? (student?.arabicName || student?.name || '--') : (student?.name || '--')}
+                    {student?.className ? ` (${student.className})` : ''}
+                  </td>
+                  <td style={{ ...tdStyle, textAlign: 'center' }}>{student?.bot_score ?? '--'}</td>
+                  <td style={{ ...tdStyle, textAlign: 'center' }}>{student?.mot_score ?? '--'}</td>
+                  <td style={{ ...tdStyle, textAlign: 'center' }}>{student?.eot_score ?? '--'}</td>
+                  <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 800 }}>
+                    {student?.overall_total ?? student?.total ?? '--'}
+                  </td>
+                </tr>
+              ))
+            })()}
+          </tbody>
+        </table>
+      </div>
+
       {/* KPI Summary Strip */}
       <div
         style={{

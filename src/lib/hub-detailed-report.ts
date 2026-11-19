@@ -72,6 +72,10 @@ export interface LearnerReportSummary {
   isCandidateExcluded: boolean
   candidateBadge: string | null
   missingSubjects: string[]
+  bot_score?: string | number | null
+  mot_score?: string | number | null
+  eot_score?: string | number | null
+  overall_total?: number | null
 }
 
 export interface SubjectClassComparisonCell {
@@ -362,6 +366,7 @@ export interface DetailedReportResult {
   learners: {
     top10: LearnerReportSummary[]
     eligibleLearners: LearnerReportSummary[]
+    cohortStudents?: LearnerReportSummary[]
     needsSupport: LearnerReportSummary[]
     supportThreshold: number
     needsSupportDefinition: string
@@ -1005,6 +1010,48 @@ export function computeHubDetailedReport(params: ComputeDetailedReportParams): D
   }
 
   const allSummaries = cohort.students.map(toLearnerSummary)
+  const phaseMap = new Map<
+    string,
+    { botSum: number; botCount: number; motSum: number; motCount: number; eotSum: number; eotCount: number }
+  >()
+  for (const m of marks || []) {
+    const eid = String(m?.enrollment_id || '')
+    if (!eid) continue
+    let entry = phaseMap.get(eid)
+    if (!entry) {
+      entry = { botSum: 0, botCount: 0, motSum: 0, motCount: 0, eotSum: 0, eotCount: 0 }
+      phaseMap.set(eid, entry)
+    }
+    if (typeof m?.bot_score === 'number' && Number.isFinite(m.bot_score)) {
+      entry.botSum += m.bot_score
+      entry.botCount += 1
+    }
+    if (typeof m?.mot_score === 'number' && Number.isFinite(m.mot_score)) {
+      entry.motSum += m.mot_score
+      entry.motCount += 1
+    }
+    if (typeof m?.eot_score === 'number' && Number.isFinite(m.eot_score)) {
+      entry.eotSum += m.eot_score
+      entry.eotCount += 1
+    }
+  }
+  const cohortStudents: LearnerReportSummary[] = allSummaries.map((st) => {
+    const p = phaseMap.get(String(st.id))
+    const botVal = p && p.botCount > 0 ? Math.round(p.botSum) : null
+    const motVal = p && p.motCount > 0 ? Math.round(p.motSum) : null
+    const eotVal = p && p.eotCount > 0 ? Math.round(p.eotSum) : null
+    const overallVal =
+      botVal !== null || motVal !== null || eotVal !== null
+        ? (botVal ?? 0) + (motVal ?? 0) + (eotVal ?? 0)
+        : st.total ?? null
+    return {
+      ...st,
+      bot_score: botVal,
+      mot_score: motVal,
+      eot_score: eotVal,
+      overall_total: overallVal,
+    }
+  })
   const eligibleRows = cohort.students.filter(
     (s) => !s.isCandidateExcluded && s.isCompleteMarks && s.normalizedScore !== null
   )
@@ -1825,6 +1872,7 @@ export function computeHubDetailedReport(params: ComputeDetailedReportParams): D
     learners: {
       top10,
       eligibleLearners: eligibleSummaries,
+      cohortStudents,
       needsSupport,
       supportThreshold,
       needsSupportDefinition: supportDef.en,
@@ -1908,12 +1956,13 @@ export function buildDetailedReportCsv(
   report: DetailedReportResult,
   activeSupportThreshold?: number
 ): string {
-  const threshold = clampSupportThreshold(activeSupportThreshold ?? report.learners.supportThreshold)
-  const needsSupport = filterNeedsSupportLearners(
-    report.learners.eligibleLearners,
-    report.meta.curriculum,
-    threshold
-  )
+  try {
+    const threshold = clampSupportThreshold(activeSupportThreshold ?? report?.learners?.supportThreshold)
+    const needsSupport = filterNeedsSupportLearners(
+      report?.learners?.eligibleLearners ?? [],
+      report?.meta?.curriculum ?? 'secular',
+      threshold
+    )
 
   const lines: string[] = []
   const row = (cells: unknown[]) => lines.push(cells.map(escapeCsvCell).join(','))
@@ -2012,11 +2061,15 @@ export function buildDetailedReportCsv(
   }
   lines.push('')
 
-  row(['SECTION 8: DATA QUALITY & MISSING MARKS'])
-  row(['Missing Marks Learners', report.dataQuality.missingMarksStudentsCount, 'Out of Range Scores', report.dataQuality.outOfRangeScores.length, 'Duplicate Mark Rows', report.dataQuality.duplicateMarkRows.length, 'Unmapped Classes', report.dataQuality.unmappedClasses.length])
-  for (const m of report.cohort.missingLearners) {
-    row([m.studentName, m.className, `${m.satCount}/${m.expectedCount}`, m.missingSubjects.join('; ')])
-  }
+    row(['SECTION 8: DATA QUALITY & MISSING MARKS'])
+    row(['Missing Marks Learners', report?.dataQuality?.missingMarksStudentsCount ?? 0, 'Out of Range Scores', report?.dataQuality?.outOfRangeScores?.length ?? 0, 'Duplicate Mark Rows', report?.dataQuality?.duplicateMarkRows?.length ?? 0, 'Unmapped Classes', report?.dataQuality?.unmappedClasses?.length ?? 0])
+    for (const m of report?.cohort?.missingLearners ?? []) {
+      row([m?.studentName ?? '-', m?.className ?? '-', `${m?.satCount ?? 0}/${m?.expectedCount ?? 0}`, (m?.missingSubjects ?? []).join('; ')])
+    }
 
-  return lines.join('\n')
+    return lines.join('\n')
+  } catch (err) {
+    console.error('buildDetailedReportCsv fallback error:', err)
+    return 'Student Name,Class,Status\nNo data available,,'
+  }
 }

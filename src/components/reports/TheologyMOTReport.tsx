@@ -1,6 +1,8 @@
 import { getTheologyComment } from '@/lib/grading'
 import { ReportContainer } from '@/components/reports/shared/ReportContainer'
 import { OfficialReportStamp } from '@/components/reports/StampGenerator'
+import { CleanSignatureImage } from '@/components/reports/CleanSignatureImage'
+import { getClassTeacherSignatureKey } from '@/utils/signatures'
 import { useStudioFormatting, resolveEffectiveStudioStyle } from '@/lib/studio-config-store'
 import { NurseryEducativeWatermark } from '@/components/reports/NurseryEducativeWatermark'
 
@@ -403,6 +405,21 @@ export function TheologyCard({
   })()
 
   const includeStamp = effective.showStamp
+  const includeSignatures = effective.showSignatures
+  const sigMap = reportData?.signatures || {}
+  const theoClassRaw =
+    reportData?.student?.theology_class_english ||
+    reportData?.student?.theology_class_arabic ||
+    reportData?.student?.class_name ||
+    ''
+  const theoTeacherKey = getClassTeacherSignatureKey(theoClassRaw, true)
+  const theologyTeacherSigUrl =
+    (theoTeacherKey && sigMap[theoTeacherKey]) ||
+    sigMap['theology_class_teacher'] ||
+    sigMap['theology-head'] ||
+    sigMap['dos_theology'] ||
+    sigMap['dos-theology'] ||
+    null
 
   return (
     <div
@@ -502,7 +519,7 @@ export function TheologyCard({
               <div className="tc-rank-field tc-rank-val">{toAr(position)}</div>
             </div>
 
-            {/* COMMENT + STAMP */}
+            {/* COMMENT + SIGNATURE + STAMP */}
             <div className="tc-footer">
               <div className="tc-comment">
                 <span className="tc-comment-label">تقرير مرب الفصل :</span>
@@ -510,6 +527,27 @@ export function TheologyCard({
                   {reportData?.theology?.teacher_comment || getTheologyComment(totalScore, reportData?.student?.gender, reportData?.settings?.theology_remarks, reportData?.theology?.division, subjects.length || 4)}
                 </div>
               </div>
+              {includeSignatures && theologyTeacherSigUrl ? (
+                <div
+                  style={{
+                    width: '92px',
+                    height: '36px',
+                    display: 'flex',
+                    alignItems: 'flex-end',
+                    justifyContent: 'center',
+                    borderBottom: '1.5px dotted #334155',
+                    flexShrink: 0,
+                    overflow: 'visible',
+                  }}
+                >
+                  <CleanSignatureImage
+                    src={theologyTeacherSigUrl}
+                    alt="Theology Teacher Signature"
+                    style={{ height: '34px', width: '90px', objectFit: 'contain', marginBottom: '-4px' }}
+                    studioFormatting={effectiveStudioPass}
+                  />
+                </div>
+              ) : null}
               <div className="tc-stamp" style={{ width: '135px', height: '64px', minWidth: '135px', minHeight: '64px', position: 'relative', overflow: 'visible', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 {includeStamp ? (
                   <OfficialReportStamp reportData={reportData} studioFormatting={effectiveStudioPass} maxWidth={135} maxHeight={64} />

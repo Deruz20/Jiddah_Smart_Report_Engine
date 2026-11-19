@@ -812,9 +812,8 @@ export function StampGeneratorPanel({
   return (
     <div className="p-4 space-y-4 text-xs font-sans">
       <div
-        className={`flex items-center justify-between pb-2.5 border-b ${
-          isDark ? "border-white/10" : "border-[#E6ECE8] dark:border-[#1C2622]"
-        }`}
+        className={`flex items-center justify-between pb-2.5 border-b ${isDark ? "border-white/10" : "border-[#E6ECE8] dark:border-[#1C2622]"
+          }`}
       >
         <div className="flex items-center gap-2">
           <Sliders className="size-4 text-[#0D5C3A] dark:text-[#10B981]" strokeWidth={1.75} />
@@ -875,15 +874,14 @@ export function StampGeneratorPanel({
               key={s}
               type="button"
               onClick={() => onChange({ ...merged, shape: s })}
-              className={`h-8 rounded-lg border text-center font-bold capitalize transition cursor-pointer ${
-                merged.shape === s
-                  ? isDark
-                    ? "bg-emerald-500/20 border-emerald-400 text-emerald-300"
-                    : "bg-[#0D5C3A]/10 border-[#0D5C3A] text-[#0D5C3A] dark:bg-emerald-500/15 dark:border-emerald-400 dark:text-emerald-300"
-                  : isDark
+              className={`h-8 rounded-lg border text-center font-bold capitalize transition cursor-pointer ${merged.shape === s
+                ? isDark
+                  ? "bg-emerald-500/20 border-emerald-400 text-emerald-300"
+                  : "bg-[#0D5C3A]/10 border-[#0D5C3A] text-[#0D5C3A] dark:bg-emerald-500/15 dark:border-emerald-400 dark:text-emerald-300"
+                : isDark
                   ? "bg-white/5 border-white/10 text-stone-400 hover:text-white"
                   : "bg-white dark:bg-[#0D1412] border-[#D5DDD8] dark:border-[#24332E] text-[#6B7280] dark:text-[#9CA3AF]"
-              }`}
+                }`}
             >
               {s}
             </button>
@@ -902,11 +900,10 @@ export function StampGeneratorPanel({
               onClick={() => onChange({ ...merged, ink_color: c.hex })}
               title={c.label}
               aria-label={c.label}
-              className={`size-7 rounded-full border-2 transition-transform cursor-pointer ${
-                merged.ink_color === c.hex
-                  ? "scale-110 border-[#0D5C3A] ring-2 ring-[#0D5C3A]/30"
-                  : "border-transparent opacity-80 hover:opacity-100"
-              }`}
+              className={`size-7 rounded-full border-2 transition-transform cursor-pointer ${merged.ink_color === c.hex
+                ? "scale-110 border-[#0D5C3A] ring-2 ring-[#0D5C3A]/30"
+                : "border-transparent opacity-80 hover:opacity-100"
+                }`}
               style={{ backgroundColor: c.hex }}
             />
           ))}
@@ -958,9 +955,8 @@ export function StampGeneratorPanel({
 
       {/* Fine Position, Font Size, Rotation & Grunge */}
       <div
-        className={`space-y-3 pt-3 border-t ${
-          isDark ? "border-white/10" : "border-[#E6ECE8] dark:border-[#1C2622]"
-        }`}
+        className={`space-y-3 pt-3 border-t ${isDark ? "border-white/10" : "border-[#E6ECE8] dark:border-[#1C2622]"
+          }`}
       >
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">

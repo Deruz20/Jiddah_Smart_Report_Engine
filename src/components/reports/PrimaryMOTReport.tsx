@@ -42,15 +42,9 @@ export default function PrimaryMOTReport({ reportData, studioFormatting: studioF
     reportData?.circular?.conduct_remark ??
     getConductRemark(reportData?.circular?.division ?? null, reportData?.settings?.division_boundaries, reportData?.settings?.promotion_comments?.default_conduct);
 
-  const classTeacherSigKey = reportData?.student?.class_name
-    ? getClassTeacherSignatureKey(reportData.student.class_name, false) ?? ''
-    : '';
-  const classTeacherSig =
-    reportData?.signatures?.['secular_class_teacher'] ??
-    (classTeacherSigKey ? reportData?.signatures?.[classTeacherSigKey] : null) ??
-    null;
+  const classTeacherSig = reportData?.signatures?.secular_class_teacher ?? null;
   const headTeacherSig =
-    reportData?.signatures?.['head_teacher'] ??
+    reportData?.signatures?.head_teacher ??
     reportData?.signatures?.['head-teacher'] ??
     null;
 

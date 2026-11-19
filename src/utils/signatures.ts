@@ -230,11 +230,7 @@ export function buildStudentReportSignatures(
 
   const headTeacherUrl = baseSignatures['head-teacher'] ?? baseSignatures['head_teacher'] ?? null;
   const dosSecularUrl = baseSignatures['dos-secular'] ?? baseSignatures['dos_secular'] ?? null;
-  const dosTheologyUrl =
-    baseSignatures['dos-theology'] ??
-    baseSignatures['dos_theology'] ??
-    baseSignatures['theology-head'] ??
-    null;
+  const dosTheologyUrl = baseSignatures['dos-theology'] ?? baseSignatures['dos_theology'] ?? null;
 
   return {
     ...baseSignatures,
@@ -245,6 +241,33 @@ export function buildStudentReportSignatures(
     secular_class_teacher: secKey ? (baseSignatures[secKey] ?? null) : null,
     theology_class_teacher: theoKey ? (baseSignatures[theoKey] ?? null) : null,
   };
+}
+
+export function buildBaseSignaturesFromStorageObjects(
+  supabase: SupabaseClient,
+  objects: SignatureStorageObject[] | null | undefined
+): Record<string, string | null> {
+  const signatures: Record<string, string | null> = {
+    'head-teacher': null,
+    'principal': null,
+    'school-stamp': null,
+    'dos-secular': null,
+    'dos-theology': null,
+  };
+  const sorted = [...(objects ?? [])].sort((a, b) => {
+    const tA = Date.parse(a?.updated_at ?? '') || 0;
+    const tB = Date.parse(b?.updated_at ?? '') || 0;
+    return tA - tB;
+  });
+  for (const object of sorted) {
+    if (!object?.name) continue;
+    const match = object.name.match(/^([a-z0-9-]+?)(?:__\d+)?\.(?:png|jpe?g|webp)$/i);
+    if (match) {
+      const publicUrl = supabase.storage.from('signatures').getPublicUrl(object.name).data?.publicUrl ?? null;
+      signatures[match[1]] = publicUrl ? withSignatureVersion(publicUrl, object.updated_at ?? object.name) : null;
+    }
+  }
+  return signatures;
 }
 
 export function mapLatestSignatureObjects(
@@ -316,6 +339,20 @@ export async function getDynamicSignatureSlots(supabase: SupabaseClient) {
       role: 'Head Teacher',
       description: 'Authorized signature of the Headteacher rendered across all secular and theology reports.',
       required: true,
+    },
+    {
+      slot_key: 'dos-secular',
+      label: 'DOS Secular Signature',
+      role: 'DOS Secular',
+      description: 'Authorized signature of the Director of Studies (Secular Curriculum).',
+      required: false,
+    },
+    {
+      slot_key: 'dos-theology',
+      label: 'DOS Theology Signature',
+      role: 'DOS Theology',
+      description: 'Authorized signature of the Director of Studies (Theology / Arabic Curriculum).',
+      required: false,
     },
     {
       slot_key: 'school-stamp',
@@ -480,6 +517,7 @@ export async function resolveAllowedSignatureSlotsForUser(
   const theoClasses = theoRes.data ?? [];
 
   if (canonical === 'DOS Secular') {
+    allowed.add('dos-secular');
     for (const c of circClasses) {
       const key = getClassTeacherSignatureKey(c.class_name, false);
       if (key) allowed.add(key);
@@ -491,6 +529,7 @@ export async function resolveAllowedSignatureSlotsForUser(
   }
 
   if (canonical === 'DOS Theology') {
+    allowed.add('dos-theology');
     for (const t of theoClasses) {
       const key =
         getClassTeacherSignatureKey(t.class_name_english, true) ||

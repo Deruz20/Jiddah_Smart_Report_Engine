@@ -33,7 +33,7 @@ import { hasRequiredClassForReport } from '@/lib/report-class-context'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { evaluateCriteria, GradingCriterion } from '@/lib/grading-engine'
 import { fetchMergedSchoolSettings } from '@/lib/school-settings-helper'
-import { buildStudentReportSignatures, getReportSignatures } from '@/utils/signatures'
+import { buildBaseSignaturesFromStorageObjects, buildStudentReportSignatures, getReportSignatures } from '@/utils/signatures'
 import { resolveEquivalentTerms, fetchAndReconcileSecularMarks, fetchAndReconcileTheologyMarks, findReconciledMark } from '@/lib/marks-reconciliation'
 import { isNonMuslimStudent } from '@/lib/student-religion'
 import {
@@ -769,18 +769,8 @@ export async function GET(request: NextRequest) {
         ; (theologySectionData as any).theology_total_students = totalTheologyStudents
     }
 
-    const { data: signatureObjects } = await supabaseAdmin.storage.from('signatures').list('', { limit: 100 })
-    const signatures: Record<string, string | null> = {
-      'head-teacher': null,
-      'principal': null,
-      'school-stamp': null,
-    }
-    for (const object of signatureObjects ?? []) {
-      const match = object.name.match(/^([a-z0-9-]+?)(?:__\d+)?\.(?:png|jpe?g|webp)$/i)
-      if (match) {
-        signatures[match[1]] = supabaseAdmin.storage.from('signatures').getPublicUrl(object.name).data.publicUrl
-      }
-    }
+    const { data: signatureObjects } = await supabaseAdmin.storage.from('signatures').list('', { limit: 1000 })
+    const signatures = buildBaseSignaturesFromStorageObjects(supabaseAdmin, signatureObjects)
 
     // Only return data for the requested curriculum
     if (curriculum === 'theology') {

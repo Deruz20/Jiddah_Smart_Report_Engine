@@ -35,7 +35,7 @@ import { evaluateCriteria, GradingCriterion } from '@/lib/grading-engine'
 import { fetchMergedSchoolSettings } from '@/lib/school-settings-helper'
 import { getMarkScore } from '@/lib/mark-scores'
 import { fetchAllSupabaseRows } from '@/lib/supabase-pagination'
-import { buildStudentReportSignatures, getReportSignatures } from '@/utils/signatures'
+import { buildBaseSignaturesFromStorageObjects, buildStudentReportSignatures, getReportSignatures } from '@/utils/signatures'
 import {
   resolveEquivalentTerms,
   fetchAndReconcileSecularMarks,
@@ -461,18 +461,8 @@ export async function POST(request: NextRequest) {
     }
     const theologyOrder = ['القرآن الكريم', 'اللغة العربية', 'الفقه', 'التربية الإسلامية']
 
-    const { data: signatureObjects } = await supabaseAdmin.storage.from('signatures').list('', { limit: 100 })
-    const signatures: Record<string, string | null> = {
-      'head-teacher': null,
-      'principal': null,
-      'school-stamp': null,
-    }
-    for (const object of signatureObjects ?? []) {
-      const match = object.name.match(/^([a-z0-9-]+?)(?:__\d+)?\.(?:png|jpe?g|webp)$/i)
-      if (match) {
-        signatures[match[1]] = supabaseAdmin.storage.from('signatures').getPublicUrl(object.name).data.publicUrl
-      }
-    }
+    const { data: signatureObjects } = await supabaseAdmin.storage.from('signatures').list('', { limit: 1000 })
+    const signatures = buildBaseSignaturesFromStorageObjects(supabaseAdmin, signatureObjects)
 
     const { data: initialsData } = await supabaseAdmin.from('teacher_initials').select('*')
     const teacherInitialsMap: Record<string, string> = {}

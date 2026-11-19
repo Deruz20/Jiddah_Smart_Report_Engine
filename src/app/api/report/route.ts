@@ -33,7 +33,7 @@ import { hasRequiredClassForReport } from '@/lib/report-class-context'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { evaluateCriteria, GradingCriterion } from '@/lib/grading-engine'
 import { fetchMergedSchoolSettings } from '@/lib/school-settings-helper'
-import { getReportSignatures } from '@/utils/signatures'
+import { buildStudentReportSignatures, getReportSignatures } from '@/utils/signatures'
 import { resolveEquivalentTerms, fetchAndReconcileSecularMarks, fetchAndReconcileTheologyMarks, findReconciledMark } from '@/lib/marks-reconciliation'
 import { isNonMuslimStudent } from '@/lib/student-religion'
 import {
@@ -194,15 +194,15 @@ export async function GET(request: NextRequest) {
 
     const globalSettingsStampDate =
       typeof (schoolSettings as any)?.stamp_date === 'string' &&
-      !isStaleHardcodedStampDate((schoolSettings as any).stamp_date)
+        !isStaleHardcodedStampDate((schoolSettings as any).stamp_date)
         ? String((schoolSettings as any).stamp_date).trim()
         : typeof schoolSettings?.print_preferences?.stamp_date === 'string' &&
-            !isStaleHardcodedStampDate(schoolSettings.print_preferences.stamp_date)
+          !isStaleHardcodedStampDate(schoolSettings.print_preferences.stamp_date)
           ? String(schoolSettings.print_preferences.stamp_date).trim()
           : undefined
     const validStampOverride =
       stamp_date && !isStaleHardcodedStampDate(stamp_date) ? stamp_date.trim() : undefined
-    
+
     // Preserve database term end_date if set; otherwise fallback to stamp date or live ISO date
     const effectiveReportEndDate = dbTermEndDate || validStampOverride || globalSettingsStampDate || getLiveIsoDateString()
     const resolvedResponseStampDate = resolveEffectiveStampDate(
@@ -650,36 +650,36 @@ export async function GET(request: NextRequest) {
       const hasAnyTheoScore = sortedTheologySubjects.some((row) => typeof row.score === 'number')
       const theologyComment = hasAnyTheoScore || theologyDivision
         ? getTheologyComment(
-            hasAnyTheoScore ? theoTotal : null,
-            studentDataForTheo?.gender,
-            useDosRemarkOverrides ? schoolSettings?.theology_remarks : undefined,
-            theologyDivision,
-            theoScoredCount
-          )
+          hasAnyTheoScore ? theoTotal : null,
+          studentDataForTheo?.gender,
+          useDosRemarkOverrides ? schoolSettings?.theology_remarks : undefined,
+          theologyDivision,
+          theoScoredCount
+        )
         : ''
       const theoHeadRule = useDosRemarkOverrides
         ? evaluateCriteria(
-            theologyAggregate ?? null,
-            'head_comment',
-            'theology',
-            enrollment.theology_class_id,
-            gradingCriteria,
-            'comment'
-          )
+          theologyAggregate ?? null,
+          'head_comment',
+          'theology',
+          enrollment.theology_class_id,
+          gradingCriteria,
+          'comment'
+        )
         : ''
       const resolvedTheoComments = isTheologyNursery
         ? resolveDistinctNurseryTheologyComments({
-            teacherComment: theologyComment,
-            headComment: theoHeadRule,
-            gender: studentDataForTheo?.gender,
-          })
+          teacherComment: theologyComment,
+          headComment: theoHeadRule,
+          gender: studentDataForTheo?.gender,
+        })
         : {
-            teacherComment: theologyComment,
-            headTeacherComment:
-              theoHeadRule && theoHeadRule !== theologyComment
-                ? theoHeadRule
-                : 'نتيجة مشرفة وجهد مبارك، نتمنى له/لها دوام التفوق والنجاح.',
-          }
+          teacherComment: theologyComment,
+          headTeacherComment:
+            theoHeadRule && theoHeadRule !== theologyComment
+              ? theoHeadRule
+              : 'نتيجة مشرفة وجهد مبارك، نتمنى له/لها دوام التفوق والنجاح.',
+        }
 
       theologySectionData = {
         subjects: sortedTheologySubjects,
@@ -776,7 +776,7 @@ export async function GET(request: NextRequest) {
       'school-stamp': null,
     }
     for (const object of signatureObjects ?? []) {
-      const match = object.name.match(/^([a-z0-9-]+)\.(?:png|jpe?g|webp)$/i)
+      const match = object.name.match(/^([a-z0-9-]+?)(?:__\d+)?\.(?:png|jpe?g|webp)$/i)
       if (match) {
         signatures[match[1]] = supabaseAdmin.storage.from('signatures').getPublicUrl(object.name).data.publicUrl
       }
@@ -831,7 +831,7 @@ export async function GET(request: NextRequest) {
           position: theologyPosition,
           total_students: totalTheologyStudents,
         },
-        signatures,
+        signatures: buildStudentReportSignatures(signatures, null, theologyClassEnglish ?? theologyClassArabic),
         settings: schoolSettings,
         stamp_date: resolvedResponseStampDate,
         debug: {
@@ -853,52 +853,52 @@ export async function GET(request: NextRequest) {
 
     const nurseryGradesForComments = sectionType === 'nursery'
       ? sortedCircularSubjects
-          .filter((row) => typeof row.score === 'number')
-          .map((row) => getNurseryGrade(row.score as number).grade)
+        .filter((row) => typeof row.score === 'number')
+        .map((row) => getNurseryGrade(row.score as number).grade)
       : []
     const nurseryCommentDefault =
       nurseryGradesForComments.length > 0 ? getNurseryTeacherComment(nurseryGradesForComments) : ''
     const classTeacherGradingRule = useDosRemarkOverrides
       ? evaluateCriteria(
-          reportAggregate ?? null,
-          'aggregate',
-          'secular',
-          enrollment.circular_class_id,
-          gradingCriteria,
-          'comment'
-        )
+        reportAggregate ?? null,
+        'aggregate',
+        'secular',
+        enrollment.circular_class_id,
+        gradingCriteria,
+        'comment'
+      )
       : ''
     const rawHeadTeacherGradingRule = useDosRemarkOverrides
       ? evaluateCriteria(
-          reportAggregate ?? null,
-          'head_comment',
-          'secular',
-          enrollment.circular_class_id,
-          gradingCriteria,
-          'comment'
-        )
+        reportAggregate ?? null,
+        'head_comment',
+        'secular',
+        enrollment.circular_class_id,
+        gradingCriteria,
+        'comment'
+      )
       : ''
     const headTeacherGradingRule =
       sectionType === 'nursery' ? rawHeadTeacherGradingRule : (rawHeadTeacherGradingRule || classTeacherGradingRule)
     const distinctNurserySecularComments =
       sectionType === 'nursery'
         ? resolveDistinctNurserySecularComments({
-            classRule: classTeacherGradingRule,
-            headRule: rawHeadTeacherGradingRule,
-            defaultComment: nurseryCommentDefault,
-            grades: nurseryGradesForComments,
-            isTerm3,
-          })
+          classRule: classTeacherGradingRule,
+          headRule: rawHeadTeacherGradingRule,
+          defaultComment: nurseryCommentDefault,
+          grades: nurseryGradesForComments,
+          isTerm3,
+        })
         : null
     const conductGradingRule = useDosRemarkOverrides
       ? evaluateCriteria(
-          reportAggregate ?? null,
-          'conduct',
-          'secular',
-          enrollment.circular_class_id,
-          gradingCriteria,
-          'comment'
-        )
+        reportAggregate ?? null,
+        'conduct',
+        'secular',
+        enrollment.circular_class_id,
+        gradingCriteria,
+        'comment'
+      )
       : ''
 
     const reportData = {
@@ -943,24 +943,24 @@ export async function GET(request: NextRequest) {
         conduct_remark: scoreType === 'mot'
           ? ''
           : conductGradingRule ||
-            getConductRemark(
-              division,
-              schoolSettings?.division_boundaries,
-              useDosRemarkOverrides ? schoolSettings?.promotion_comments?.default_conduct : undefined
-            ),
+          getConductRemark(
+            division,
+            schoolSettings?.division_boundaries,
+            useDosRemarkOverrides ? schoolSettings?.promotion_comments?.default_conduct : undefined
+          ),
         class_teacher_comment: sectionType === 'nursery'
           ? distinctNurserySecularComments?.classTeacherComment || nurseryCommentDefault
           : getClassTeacherReportComment({
-              scoreType,
-              termNumber: term.term_number,
-              promotionStatus: promotion_status,
-              gradingComment: classTeacherGradingRule,
-              division,
-              scores: sortedCircularSubjects.filter(row => row.is_core).map(row => row.score),
-              gradingBands: schoolSettings?.grading_scale,
-              divisionBoundaries: schoolSettings?.division_boundaries,
-              promotionComments: useDosRemarkOverrides ? schoolSettings?.promotion_comments : undefined,
-            }),
+            scoreType,
+            termNumber: term.term_number,
+            promotionStatus: promotion_status,
+            gradingComment: classTeacherGradingRule,
+            division,
+            scores: sortedCircularSubjects.filter(row => row.is_core).map(row => row.score),
+            gradingBands: schoolSettings?.grading_scale,
+            divisionBoundaries: schoolSettings?.division_boundaries,
+            promotionComments: useDosRemarkOverrides ? schoolSettings?.promotion_comments : undefined,
+          }),
         head_teacher_comment: sectionType === 'nursery'
           ? distinctNurserySecularComments?.headTeacherComment || ''
           : scoreType === 'mot'
@@ -980,7 +980,7 @@ export async function GET(request: NextRequest) {
         theology_position: theologyPosition,
         theology_total_students: totalTheologyStudents,
       },
-      signatures,
+      signatures: buildStudentReportSignatures(signatures, className, theologyClassEnglish ?? theologyClassArabic),
       settings: schoolSettings,
       stamp_date: resolvedResponseStampDate,
       debug: {

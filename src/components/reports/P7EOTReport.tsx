@@ -101,10 +101,10 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
       <td className="grade-cell">{subject.eot_grade_display ?? subject.eot_agg ?? subject.grade ?? '--'}</td>
       <td className="remark-cell" style={{ color: remarkColor(subject.remark) }}>
         {subject.remark || (subject.eot_score != null
-            ? getSubjectRemark(getSubjectGradeNumber(subject.eot_score, gradingBands), gradingBands)
-            : subject.mot_score != null
-              ? getSubjectRemark(getSubjectGradeNumber(subject.mot_score, gradingBands), gradingBands)
-              : '')}
+          ? getSubjectRemark(getSubjectGradeNumber(subject.eot_score, gradingBands), gradingBands)
+          : subject.mot_score != null
+            ? getSubjectRemark(getSubjectGradeNumber(subject.mot_score, gradingBands), gradingBands)
+            : '')}
       </td>
       <td
         style={{
@@ -844,14 +844,18 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
                       <span className="comment-val">{teacherComment}</span>
                       <div className="sig-box">
                         <span className="comment-lbl" style={{ paddingBottom: '2px' }}>Sig:</span>
-                        <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'flex-end', height: '36px', borderBottom: '1.5px dotted #334155' }}>
+                        <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', height: '42px', minWidth: '130px', borderBottom: '1.5px dotted #334155', overflow: 'visible' }}>
                           {includeSignatures &&
-                            reportData?.student?.class_name &&
-                            reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.class_name) ?? ''] && (
+                            (reportData?.signatures?.['secular_class_teacher'] ||
+                              (reportData?.student?.class_name &&
+                                reportData?.signatures?.[getClassTeacherSignatureKey(reportData.student.class_name, false) ?? ''])) && (
                               <CleanSignatureImage
-                                src={reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name)!]}
-                                alt="Class Teacher Signature"
-                                style={{ maxHeight: '38px', marginBottom: '-6px' }}
+                                src={
+                                  reportData?.signatures?.['secular_class_teacher'] ||
+                                  reportData.signatures[getClassTeacherSignatureKey(reportData.student.class_name, false)!]
+                                }
+                                alt="Secular Class Teacher Signature"
+                                style={{ maxHeight: '45px', width: '100%', maxWidth: '140px', objectFit: 'contain', mixBlendMode: 'multiply', marginBottom: '-6px' }}
                                 studioFormatting={effectiveStudioPass}
                               />
                             )}
@@ -864,12 +868,12 @@ export default function P7EOTReport({ reportData, studioFormatting }: any) {
                       <span className="comment-val">{headComment}</span>
                       <div className="sig-box">
                         <span className="comment-lbl" style={{ paddingBottom: '2px' }}>Sig:</span>
-                        <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'flex-end', height: '36px', borderBottom: '1.5px dotted #334155' }}>
-                          {includeSignatures && reportData?.signatures?.['head-teacher'] && (
+                        <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', height: '42px', minWidth: '130px', borderBottom: '1.5px dotted #334155', overflow: 'visible' }}>
+                          {includeSignatures && (reportData?.signatures?.['head_teacher'] || reportData?.signatures?.['head-teacher']) && (
                             <CleanSignatureImage
-                              src={reportData.signatures['head-teacher']}
+                              src={reportData.signatures['head_teacher'] || reportData.signatures['head-teacher']}
                               alt="Head Teacher Signature"
-                              style={{ maxHeight: '38px', marginBottom: '-6px' }}
+                              style={{ maxHeight: '45px', width: '100%', maxWidth: '140px', objectFit: 'contain', mixBlendMode: 'multiply', marginBottom: '-6px' }}
                               studioFormatting={effectiveStudioPass}
                             />
                           )}

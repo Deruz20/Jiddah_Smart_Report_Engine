@@ -229,9 +229,12 @@ function CleanSignatureImageInner({
         crossOrigin="anonymous"
         onError={() => setHidden(true)}
         style={{
-          mixBlendMode: isProcessed ? undefined : 'multiply',
+          mixBlendMode: 'multiply',
           backgroundColor: 'transparent',
           objectFit: 'contain',
+          maxHeight: '45px',
+          width: '100%',
+          maxWidth: '140px',
           transform: transformParts.length > 0 ? transformParts.join(' ') : undefined,
           transformOrigin: 'center bottom',
           filter: useCustomInkFilter

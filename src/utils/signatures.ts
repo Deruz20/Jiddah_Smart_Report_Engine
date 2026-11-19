@@ -204,8 +204,47 @@ export function getReportSignatureKeys(): string[] {
     getClassTeacherSignatureKey(className, true),
   ]);
 
-  return ['head-teacher', 'principal', 'school-stamp', ...classTeacherKeys]
-    .filter((key): key is string => Boolean(key));
+  return [
+    'head-teacher',
+    'principal',
+    'school-stamp',
+    'dos-secular',
+    'dos-theology',
+    'theology-head',
+    ...classTeacherKeys,
+  ].filter((key): key is string => Boolean(key));
+}
+
+/**
+ * Strictly separates dual-curriculum signature keys for a single student report
+ * so secular class teacher, theology class teacher, DOS secular, DOS theology,
+ * and head teacher NEVER cross-wire or overwrite one another.
+ */
+export function buildStudentReportSignatures(
+  baseSignatures: Record<string, string | null>,
+  secularClassName?: string | null,
+  theologyClassName?: string | null
+): Record<string, string | null> {
+  const secKey = getClassTeacherSignatureKey(secularClassName, false);
+  const theoKey = getClassTeacherSignatureKey(theologyClassName, true);
+
+  const headTeacherUrl = baseSignatures['head-teacher'] ?? baseSignatures['head_teacher'] ?? null;
+  const dosSecularUrl = baseSignatures['dos-secular'] ?? baseSignatures['dos_secular'] ?? null;
+  const dosTheologyUrl =
+    baseSignatures['dos-theology'] ??
+    baseSignatures['dos_theology'] ??
+    baseSignatures['theology-head'] ??
+    null;
+
+  return {
+    ...baseSignatures,
+    'head-teacher': headTeacherUrl,
+    head_teacher: headTeacherUrl,
+    dos_secular: dosSecularUrl,
+    dos_theology: dosTheologyUrl,
+    secular_class_teacher: secKey ? (baseSignatures[secKey] ?? null) : null,
+    theology_class_teacher: theoKey ? (baseSignatures[theoKey] ?? null) : null,
+  };
 }
 
 export function mapLatestSignatureObjects(

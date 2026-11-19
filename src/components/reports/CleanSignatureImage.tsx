@@ -140,22 +140,23 @@ function CleanSignatureImageInner({
     let active = true;
     setHidden(false);
 
-    if (!src) {
+    const trimmedSrc = typeof src === 'string' ? src.trim() : '';
+    if (!trimmedSrc) {
       setResolvedSrc(null);
       return;
     }
 
     if (!cleanEnabled) {
-      setResolvedSrc(src);
+      setResolvedSrc(trimmedSrc);
       return;
     }
 
-    const cached = src.startsWith('data:')
-      ? src
+    const cached = trimmedSrc.startsWith('data:')
+      ? trimmedSrc
       : signatureDataUrlCache.get(memoKey) ??
-        getCachedSignatureUrl(src, { inkMode: resolvedInkMode, boldness: effectiveBoldness });
+        getCachedSignatureUrl(trimmedSrc, { inkMode: resolvedInkMode, boldness: effectiveBoldness });
     if (cached) {
-      if (!src.startsWith('data:') && memoKey && !signatureDataUrlCache.has(memoKey)) {
+      if (!trimmedSrc.startsWith('data:') && memoKey && !signatureDataUrlCache.has(memoKey)) {
         signatureDataUrlCache.set(memoKey, cached);
       }
       setResolvedSrc(cached);
@@ -164,7 +165,7 @@ function CleanSignatureImageInner({
 
     setResolvedSrc(null);
 
-    extractSignatureInk(src, { inkMode: resolvedInkMode, boldness: effectiveBoldness })
+    extractSignatureInk(trimmedSrc, { inkMode: resolvedInkMode, boldness: effectiveBoldness })
       .then((cleaned) => {
         if (cleaned && memoKey) {
           if (signatureDataUrlCache.size >= MAX_SIGNATURE_MEMO_ENTRIES) {
@@ -179,7 +180,7 @@ function CleanSignatureImageInner({
       })
       .catch(() => {
         if (active) {
-          setResolvedSrc(src);
+          setResolvedSrc(trimmedSrc);
         }
       });
 
@@ -188,7 +189,7 @@ function CleanSignatureImageInner({
     };
   }, [src, memoKey, resolvedInkMode, effectiveBoldness, cleanEnabled]);
 
-  if (!resolvedSrc || hidden) return null;
+  if (!src || typeof src !== 'string' || !src.trim() || !resolvedSrc || hidden) return null;
 
   const isProcessed = Boolean(resolvedSrc?.startsWith('data:'));
   const sigScale = Number(studioFormatting?.signatureScale ?? 100) / 100;

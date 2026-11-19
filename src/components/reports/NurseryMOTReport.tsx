@@ -28,15 +28,16 @@ export default function NurseryMOTReport({ reportData, studioFormatting: studioF
     reportData?.class ||
     ''
   const secTeacherKey = getClassTeacherSignatureKey(rawClassName, false)
-  const theoTeacherKey = getClassTeacherSignatureKey(rawClassName, true)
   const sigMap = reportData?.signatures || {}
   const classTeacherSignatureUrl =
-    (secTeacherKey && sigMap[secTeacherKey]) ||
-    (theoTeacherKey && sigMap[theoTeacherKey]) ||
-    sigMap['class-teacher-baby'] ||
-    sigMap['class-teacher-middle'] ||
-    sigMap['class-teacher-top'] ||
+    sigMap?.['secular_class_teacher'] ||
+    (secTeacherKey ? sigMap?.[secTeacherKey] : null) ||
+    sigMap?.['class-teacher-baby'] ||
+    sigMap?.['class-teacher-middle'] ||
+    sigMap?.['class-teacher-top'] ||
     null
+  const headTeacherSignatureUrl =
+    sigMap?.['head_teacher'] ?? sigMap?.['head-teacher'] ?? null
   const subjects = (reportData?.circular?.subjects || []).filter((s: any) => {
     if (reportData?.student?.class_name?.toLowerCase().includes('top') && s.subject_name.toLowerCase().includes('writing')) {
       return false;
@@ -356,6 +357,7 @@ export default function NurseryMOTReport({ reportData, studioFormatting: studioF
             </div>
             <div className="info-box">
               <div className="info-row"><span className="label">Class</span><div className="line" style={{ fontSize: '14.5px', fontWeight: 800, color: '#0F172A' }}>{reportData?.student?.class_name}</div></div>
+              <div className="info-row"><span className="label">Date</span><div className="line" style={{ fontSize: '13.5px', fontWeight: 800, color: '#0F172A' }}>{formatDate(reportData?.term?.end_date || getLiveIsoDateString())}</div></div>
               <div className="info-row"><span className="label">Date</span><div className="line" style={{ fontSize: '13.5px', fontWeight: 800, color: '#0F172A' }}>{studioFormatting?.reportDateOverride || formatDate(reportData?.term?.end_date || reportData?.term?.endDate || getLiveIsoDateString())}</div></div>
             </div>
           </div>
@@ -433,13 +435,14 @@ export default function NurseryMOTReport({ reportData, studioFormatting: studioF
                 </div>
                 <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#475569', flexShrink: 0, paddingBottom: '2px' }}>SIG:</span>
                 <div style={{ borderBottom: '1.5px dotted #334155', minWidth: '95px', width: '108px', height: '28px', display: 'inline-flex', alignItems: 'flex-end', justifyContent: 'center', position: 'relative', flexShrink: 0 }}>
-                  {includeSignatures && reportData?.signatures?.['head-teacher'] && (
-                    <CleanSignatureImage src={reportData.signatures['head-teacher']} alt="Signature" style={{ maxHeight: '34px', width: '104px', objectFit: 'contain', marginBottom: '-6px' }} studioFormatting={effectiveStudioPass} />
+                  {includeSignatures && headTeacherSignatureUrl && (
+                    <CleanSignatureImage src={headTeacherSignatureUrl} alt="Signature" style={{ maxHeight: '45px', width: '100%', maxWidth: '140px', objectFit: 'contain', mixBlendMode: 'multiply', marginBottom: '-6px' }} studioFormatting={effectiveStudioPass} />
                   )}
                 </div>
               </div>
               <div style={{ marginTop: '16px', display: 'flex', gap: '16px' }}>
                 <div className="info-row" style={{ flex: 1 }}><span className="label">Next Term Begins</span><div className="line" style={{ fontSize: '11px', color: '#1E40AF', fontWeight: 'bold' }}>
+                  {reportData?.term?.next_term_start ? formatDateWithOrdinal(reportData.term.next_term_start) : '______________________'}
                   {studioFormatting?.nextTermBeginsOverride || ((reportData?.term?.next_term_start || reportData?.term?.nextTermBegins || reportData?.term?.next_term_begins) ? formatDateWithOrdinal(reportData?.term?.next_term_start || reportData?.term?.nextTermBegins || reportData?.term?.next_term_begins) : '______________________')}
                 </div></div>
               </div>

@@ -45,15 +45,16 @@ export default function NurseryEOTReport({ reportData, studioFormatting: studioF
     reportData?.class ||
     ''
   const secTeacherKey = getClassTeacherSignatureKey(rawClassName, false)
-  const theoTeacherKey = getClassTeacherSignatureKey(rawClassName, true)
   const sigMap = reportData?.signatures || {}
   const classTeacherSignatureUrl =
-    (secTeacherKey && sigMap[secTeacherKey]) ||
-    (theoTeacherKey && sigMap[theoTeacherKey]) ||
-    sigMap['class-teacher-baby'] ||
-    sigMap['class-teacher-middle'] ||
-    sigMap['class-teacher-top'] ||
+    sigMap?.['secular_class_teacher'] ||
+    (secTeacherKey ? sigMap?.[secTeacherKey] : null) ||
+    sigMap?.['class-teacher-baby'] ||
+    sigMap?.['class-teacher-middle'] ||
+    sigMap?.['class-teacher-top'] ||
     null
+  const headTeacherSignatureUrl =
+    sigMap?.['head_teacher'] ?? sigMap?.['head-teacher'] ?? null
 
   const subjects = (reportData?.circular?.subjects || []).filter((s: any) => {
     if (reportData?.student?.class_name?.toLowerCase().includes('top') && s.subject_name.toLowerCase().includes('writing')) {
@@ -761,11 +762,11 @@ export default function NurseryEOTReport({ reportData, studioFormatting: studioF
                     flexShrink: 0,
                   }}
                 >
-                  {includeSignatures && reportData?.signatures?.['head-teacher'] && (
+                  {includeSignatures && headTeacherSignatureUrl && (
                     <CleanSignatureImage
-                      src={reportData.signatures['head-teacher']}
+                      src={headTeacherSignatureUrl}
                       alt="Signature"
-                      style={{ maxHeight: '32px', width: '100px', objectFit: 'contain', marginBottom: '-5px' }}
+                      style={{ maxHeight: '45px', width: '100%', maxWidth: '140px', objectFit: 'contain', mixBlendMode: 'multiply', marginBottom: '-5px' }}
                       studioFormatting={effectiveStudioPass}
                     />
                   )}

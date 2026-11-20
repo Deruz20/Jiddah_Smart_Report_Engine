@@ -395,10 +395,10 @@ export default function NurseryEOTReport({ reportData, studioFormatting: studioF
     }
 
     .nursery-eot-report .stamp-box {
-        width: 132px;
-        height: 66px;
-        min-width: 132px;
-        min-height: 66px;
+        width: 208px;
+        height: 121px;
+        min-width: 208px;
+        min-height: 121px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -785,9 +785,23 @@ export default function NurseryEOTReport({ reportData, studioFormatting: studioF
               </div>
             </div>
 
-            <div className="stamp-box" style={{ position: 'relative' }}>
+            <div
+              className="stamp-box"
+              style={{
+                width: '208px',
+                height: '121px',
+                minWidth: '208px',
+                minHeight: '121px',
+                position: 'relative',
+                overflow: 'visible',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
               {includeStamp ? (
-                <OfficialReportStamp reportData={reportData} studioFormatting={effectiveStudioPass} maxWidth={132} maxHeight={64} />
+                <OfficialReportStamp reportData={reportData} studioFormatting={effectiveStudioPass} maxWidth={208} maxHeight={121} />
               ) : null}
             </div>
           </div>

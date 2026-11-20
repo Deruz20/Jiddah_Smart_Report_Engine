@@ -183,18 +183,19 @@ This backlog breaks down the transformation from a single-school prototype into 
 ### EPIC 4: ENTERPRISE STATE MANAGEMENT & DATA LAYER PARITY
 
 > **Objective:** Eliminate redundant network round-trips, prevent DOM memory exhaustion, and implement robust error boundaries.
+> **Status:** [IN PROGRESS / IMPLEMENTED ON BRANCH `feature/epic-4-react-query`] — TanStack Query global provider, typed query hooks (`useStudents`, `useEnrollments`, `useMarks`, `useAnalytics`), server-side database pagination with `.range(from, to)` and `{ count: 'exact' }` on `/api/students` and `/api/enrollments`, and 44x44px touch target pagination controls deployed with 100% clean typecheck and build.
 
 #### Tasks:
-* [ ] **Task 4.1: TanStack Query (React Query) Integration**
+* [x] **Task 4.1: TanStack Query (React Query) Integration**
   - Install `@tanstack/react-query` and `@tanstack/react-query-devtools`.
-  - Replace ad-hoc `useEffect` queries with typed query hooks (`useStudentRoster`, `useActiveTerm`, `useClassMarks`).
-  - Configure global `staleTime: 5 * 60 * 1000` (5 minutes) and garbage collection timeouts to eliminate redundant Supabase reads.
-* [ ] **Task 4.2: Server-Side Keyset / Cursor Pagination**
-  - Implement cursor-based pagination across all high-volume tables:
-    - `/api/students`: `limit=50&cursor=...`
-    - `/api/marks`: class-chunked pagination
-    - `/api/activity`: `limit=25&before=timestamp`
-  - Upgrade `StudentsListClient` and `SecularHubClient` to consume server-paginated data with virtualization (`@tanstack/react-virtual`) for smooth scrolling over 5,000+ records.
+  - Create global `QueryProvider.tsx` and wrap Next.js root layout.
+  - Implement custom typed React Query hooks (`useStudents`, `useEnrollments`, `useMarks`, `useAnalyticsDashboard`).
+  - Configure global `staleTime` and garbage collection timeouts to eliminate redundant network round-trips.
+* [x] **Task 4.2: Server-Side Database Pagination & Touch Target Controls**
+  - Update `/api/students` and `/api/enrollments` to accept `page` and `limit` URL search params.
+  - Enforce database-level pagination via Supabase `.range(from, to)` with exact counts.
+  - Upgrade `StudentsListClient.tsx` Data Table with accessible Next/Previous pagination controls (44x44px touch targets).
+  - Add skeleton loading states (`isLoading`) and error recovery banners (`isError`).
 * [ ] **Task 4.3: Granular React Error Boundaries**
   - Wrap all critical UI regions with localized error boundaries:
     - `<SidebarErrorBoundary>`: Prevents layout crashes from navigation bugs.

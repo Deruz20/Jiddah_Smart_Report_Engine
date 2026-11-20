@@ -31,7 +31,24 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    const { searchParams } = new URL(request.url)
+    const pageParam = searchParams.get('page')
+    const limitParam = searchParams.get('limit')
+    const searchParam = searchParams.get('search')?.trim()
+    const classIdParam = searchParams.get('class_id')
+
+    const isPaginated = pageParam !== null || limitParam !== null
+    const page = Math.max(1, parseInt(pageParam || '1', 10))
+    const limit = Math.min(100, Math.max(1, parseInt(limitParam || '20', 10)))
+    const from = (page - 1) * limit
+    const to = from + limit - 1
+
     const schoolId = await resolveCurrentSchoolId(supabase, user, request)
+
+    let selectOptions: { count?: 'exact' } = {}
+    if (isPaginated) {
+      selectOptions = { count: 'exact' }
+    }
 
     let query = supabase
       .from('enrollments')
@@ -44,11 +61,19 @@ export async function GET(request: NextRequest) {
         circular_classes ( id, class_name, section ),
         theology_classes ( id, class_name_arabic, class_name_english, level ),
         students!inner ( id, name, admission_number, created_at, arabic_name, is_archived, is_muslim )
-      `)
+      `, selectOptions)
       .eq('is_active', true)
       .order('academic_year', { ascending: false })
 
     query = applyTenantScope(query, schoolId)
+
+    if (searchParam) {
+      query = query.or(`students.name.ilike.%${searchParam}%,students.admission_number.ilike.%${searchParam}%`)
+    }
+
+    if (classIdParam && classIdParam !== 'all') {
+      query = query.or(`circular_class_id.eq.${classIdParam},theology_class_id.eq.${classIdParam}`)
+    }
 
     if (authRes.filterByClasses) {
       const circularClassIds = classIdsForType(authRes, 'circular') ?? []
@@ -64,7 +89,7 @@ export async function GET(request: NextRequest) {
           : []),
       ]
       if (filters.length === 0) {
-        return withCors(request, NextResponse.json([]))
+        return withCors(request, NextResponse.json(isPaginated ? { data: [], pagination: { page, limit, total: 0, totalPages: 1, hasNextPage: false, hasPrevPage: false } } : []))
       }
       query = query.or(filters.join(','))
     } else if (authRes.filterByDepartment) {
@@ -75,7 +100,11 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const { data, error } = await query
+    if (isPaginated) {
+      query = query.range(from, to)
+    }
+
+    const { data, count, error } = await query
 
     if (error) {
       console.error('Supabase error:', error)
@@ -89,6 +118,22 @@ export async function GET(request: NextRequest) {
 
     const reshaped =
       activeRows.map((e) => reshapeEnrollmentRow(e)).filter((row): row is NonNullable<typeof row> => row != null) ?? []
+
+    if (isPaginated) {
+      const total = count ?? reshaped.length
+      const totalPages = Math.max(1, Math.ceil(total / limit))
+      return withCors(request, NextResponse.json({
+        data: reshaped,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+        }
+      }))
+    }
 
     return withCors(request, NextResponse.json(reshaped))
   } catch (err) {

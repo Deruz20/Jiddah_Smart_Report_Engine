@@ -8,6 +8,7 @@ import {
 } from "recharts";
 import { HeroSection } from "@/components/HeroSection";
 import { toast } from "sonner";
+import { useAnalyticsDashboard } from "@/hooks/queries";
 
 export interface AnalyticsData {
   summaryKpis?: {
@@ -24,8 +25,10 @@ export interface AnalyticsData {
   gradeDistribution: { grade: string; count: number; fill: string }[];
 }
 
-export default function AnalyticsContent({ data }: { data: AnalyticsData }) {
+export default function AnalyticsContent({ data: initialData }: { data: AnalyticsData }) {
   const [period, setPeriod] = useState("2024/2025");
+  const { data: liveData, isError, error, refetch, isFetching } = useAnalyticsDashboard();
+  const data = (liveData as unknown as AnalyticsData) || initialData;
 
   const handleExport = () => {
     try {

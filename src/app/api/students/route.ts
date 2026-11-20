@@ -39,8 +39,24 @@ export async function GET(request: NextRequest) {
     const archivedParam = searchParams.get('archived')
     const includeAll = archivedParam === 'all'
     const isArchived = archivedParam === 'true'
+    const pageParam = searchParams.get('page')
+    const limitParam = searchParams.get('limit')
+    const searchParam = searchParams.get('search')?.trim()
+    const classIdParam = searchParams.get('class_id')
+    const statusParam = searchParams.get('status')
+
+    const isPaginated = pageParam !== null || limitParam !== null
+    const page = Math.max(1, parseInt(pageParam || '1', 10))
+    const limit = Math.min(100, Math.max(1, parseInt(limitParam || '20', 10)))
+    const from = (page - 1) * limit
+    const to = from + limit - 1
 
     const schoolId = await resolveCurrentSchoolId(supabase, user, request)
+
+    let selectOptions: { count?: 'exact' } = {}
+    if (isPaginated) {
+      selectOptions = { count: 'exact' }
+    }
 
     let query = supabase
       .from('enrollments')
@@ -48,10 +64,12 @@ export async function GET(request: NextRequest) {
         id,
         academic_year,
         is_active,
+        circular_class_id,
+        theology_class_id,
         circular_classes ( id, class_name, section ),
         theology_classes ( id, class_name_arabic, class_name_english ),
-        students!inner ( id, name, admission_number, created_at, is_archived )
-      `)
+        students!inner ( id, name, admission_number, created_at, is_archived, gender, is_muslim, arabic_name )
+      `, selectOptions)
       .eq('is_active', true)
       .order('academic_year', { ascending: false })
 
@@ -61,10 +79,28 @@ export async function GET(request: NextRequest) {
       query = query.eq('students.is_archived', isArchived)
     }
 
+    if (searchParam) {
+      query = query.or(`students.name.ilike.%${searchParam}%,students.admission_number.ilike.%${searchParam}%`)
+    }
+
+    if (classIdParam && classIdParam !== 'all') {
+      query = query.or(`circular_class_id.eq.${classIdParam},theology_class_id.eq.${classIdParam}`)
+    }
+
+    if (statusParam && statusParam !== 'All') {
+      if (statusParam === 'Nursery') {
+        query = query.eq('circular_classes.section', 'nursery')
+      } else if (statusParam === 'Primary') {
+        query = query.in('circular_classes.section', ['lower_primary', 'upper_primary'])
+      } else if (statusParam === 'Theology') {
+        query = query.not('theology_class_id', 'is', null)
+      }
+    }
+
     if (authRes.filterByClasses) {
       const classFilters = rosterClassFilters(authRes)
       if (classFilters.length === 0) {
-        return withCors(request, NextResponse.json([]))
+        return withCors(request, NextResponse.json(isPaginated ? { data: [], pagination: { page, limit, total: 0, totalPages: 1, hasNextPage: false, hasPrevPage: false } } : []))
       }
       const filters = classFilters.map(({ column, classIds }) => `${column}.in.(${classIds.join(',')})`)
       query = query.or(filters.join(','))
@@ -76,11 +112,52 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const { data, error } = await query
+    if (isPaginated) {
+      query = query.range(from, to)
+    }
+
+    const { data, count, error } = await query
 
     if (error) {
       console.error('Supabase error:', error)
       return withCors(request, NextResponse.json({ error: error.message }, { status: 500 }))
+    }
+
+    if (isPaginated) {
+      const reshaped = (data || []).map((e: any) => ({
+        id: e.students?.id || e.id,
+        name: e.students?.name || 'Unknown',
+        admission_number: e.students?.admission_number ?? '—',
+        created_at: e.students?.created_at,
+        circular_class: e.circular_classes?.class_name ?? '—',
+        circular_class_id: e.circular_classes?.id ?? null,
+        section: e.circular_classes?.section ?? null,
+        theology_class_arabic: e.theology_classes?.class_name_arabic ?? null,
+        theology_class_english: e.theology_classes?.class_name_english ?? null,
+        theology_class_id: e.theology_classes?.id ?? null,
+        academic_year: e.academic_year,
+        status: (e.circular_classes ? (e.circular_classes.section?.toLowerCase() === 'nursery' ? 'Nursery' : 'Primary') : 'Theology') as 'Nursery' | 'Primary' | 'Theology',
+        is_theology_enrolled: !!e.theology_classes,
+        gender: e.students?.gender,
+        is_archived: e.students?.is_archived ?? false,
+        is_muslim: e.students?.is_muslim ?? false,
+        arabic_name: e.students?.arabic_name ?? null,
+      }))
+
+      const total = count ?? reshaped.length
+      const totalPages = Math.max(1, Math.ceil(total / limit))
+
+      return withCors(request, NextResponse.json({
+        data: reshaped,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+        }
+      }))
     }
 
     const reshaped =

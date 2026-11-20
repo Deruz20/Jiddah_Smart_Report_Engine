@@ -4,6 +4,7 @@ import "./globals.css";
 
 import { Toaster } from "sonner";
 import { PowerSyncProvider } from "../components/providers/PowerSyncProvider";
+import { QueryProvider } from "../components/providers/QueryProvider";
 import { VersionChecker } from "@/components/system/version-checker";
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { Analytics } from '@vercel/analytics/next';
@@ -77,17 +78,19 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col bg-[var(--bg-canvas,#F8FAFC)] text-[var(--text-primary,#0F172A)] transition-colors duration-150">
-        <PowerSyncProvider>
-          {children}
-          <VersionChecker />
-          <Toaster
-          position="top-center"
-          richColors
-          toastOptions={{
-            className: "mt-1 sm:mt-2 shadow-lg",
-          }}
-        />
-        </PowerSyncProvider>
+        <QueryProvider>
+          <PowerSyncProvider>
+            {children}
+            <VersionChecker />
+            <Toaster
+              position="top-center"
+              richColors
+              toastOptions={{
+                className: "mt-1 sm:mt-2 shadow-lg",
+              }}
+            />
+          </PowerSyncProvider>
+        </QueryProvider>
         <SpeedInsights />
         <Analytics />
       </body>

@@ -9,6 +9,8 @@ import { EditStudentModal } from './EditStudentModal';
 import { ConfirmDestructiveDialog } from '@/components/ui/confirm-destructive-dialog';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
+import { useStudents, useArchiveStudent, useDeleteStudent } from '@/hooks/queries';
 
 export type Student = {
   id: string;
@@ -63,22 +65,12 @@ interface StudentsTableProps {
 }
 
 export function StudentsListClient({ students: initialStudents, department, currentAcademicYear = '2026' }: StudentsTableProps) {
-  const [students, setStudents] = useState<Student[]>(initialStudents);
-  useEffect(() => {
-    setStudents(initialStudents);
-  }, [initialStudents]);
+  const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const initialSearch = searchParams?.get('search') || '';
   const [searchTerm, setSearchTerm] = useState(initialSearch);
   const deferredSearchTerm = useDeferredValue(searchTerm);
 
-  useEffect(() => {
-    const q = searchParams?.get('search');
-    if (q !== null && q !== undefined) {
-      setSearchTerm(q);
-      setPage(1);
-    }
-  }, [searchParams]);
   const [activeTab, setActiveTab] = useState<FilterTab>('All');
   const [sortKey, setSortKey] = useState<SortKey>('created_at');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
@@ -91,6 +83,54 @@ export function StudentsListClient({ students: initialStudents, department, curr
     mode: 'archive' | 'delete';
   }>({ open: false, student: null, mode: 'archive' });
   const router = useRouter();
+
+  useEffect(() => {
+    const q = searchParams?.get('search');
+    if (q !== null && q !== undefined) {
+      setSearchTerm(q);
+      setPage(1);
+    }
+  }, [searchParams]);
+
+  const {
+    data: queryResult,
+    isLoading,
+    isError,
+    error,
+    isFetching,
+    refetch,
+  } = useStudents({
+    page,
+    limit: PAGE_SIZE,
+    search: deferredSearchTerm,
+    classId: selectedClassFilter,
+    status: activeTab,
+    archived: activeTab === 'Archived' ? true : activeTab === 'All' ? 'all' : false,
+    initialData: initialStudents?.length
+      ? {
+          data: initialStudents,
+          pagination: {
+            page: 1,
+            limit: PAGE_SIZE,
+            total: initialStudents.length,
+            totalPages: Math.max(1, Math.ceil(initialStudents.length / PAGE_SIZE)),
+            hasNextPage: initialStudents.length > PAGE_SIZE,
+            hasPrevPage: false,
+          },
+        }
+      : undefined,
+  });
+
+  const archiveMutation = useArchiveStudent();
+  const deleteMutation = useDeleteStudent();
+
+  const students = useMemo(() => {
+    return (queryResult?.data as Student[]) ?? initialStudents ?? [];
+  }, [queryResult?.data, initialStudents]);
+
+  const pagination = queryResult?.pagination;
+  const totalPages = pagination?.totalPages ?? Math.max(1, Math.ceil((pagination?.total ?? students.length) / PAGE_SIZE));
+  const totalCount = pagination?.total ?? students.length;
 
   const tabs: FilterTab[] = useMemo(() => {
     if (department === 'secular') return ['All', 'Primary', 'Nursery', 'Archived'];
@@ -172,16 +212,12 @@ export function StudentsListClient({ students: initialStudents, department, curr
     return list;
   }, [students, activeTab, deferredSearchTerm, sortKey, sortDir]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const isServerPaginated = Boolean(pagination && pagination.total > 0 && pagination.limit === PAGE_SIZE);
+  const paginated = isServerPaginated ? filtered : filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const executeArchive = async (student: Student) => {
     try {
-      const res = await fetch(`/api/students/${student.id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Failed to archive student');
-      setStudents((prev) =>
-        prev.map((s) => (s.id === student.id ? { ...s, is_archived: true } : s))
-      );
+      await archiveMutation.mutateAsync(student.id);
       setDestructiveDialog({ open: false, student: null, mode: 'archive' });
       toast.success(`${student.name} has been archived`);
       router.refresh();
@@ -192,9 +228,7 @@ export function StudentsListClient({ students: initialStudents, department, curr
 
   const executeHardDelete = async (student: Student) => {
     try {
-      const res = await fetch(`/api/students/${student.id}?hard_delete=true`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Failed to delete student permanently');
-      setStudents((prev) => prev.filter((s) => s.id !== student.id));
+      await deleteMutation.mutateAsync(student.id);
       setDestructiveDialog({ open: false, student: null, mode: 'delete' });
       toast.success(`${student.name} has been permanently deleted`);
       router.refresh();
@@ -219,9 +253,8 @@ export function StudentsListClient({ students: initialStudents, department, curr
         body: JSON.stringify({ is_archived: false })
       });
       if (!res.ok) throw new Error('Failed to restore student');
-      setStudents((prev) =>
-        prev.map((s) => (s.id === student.id ? { ...s, is_archived: false } : s))
-      );
+      queryClient.invalidateQueries({ queryKey: ['students'] });
+      queryClient.invalidateQueries({ queryKey: ['enrollments'] });
       toast.success(`${student.name} has been restored to the active roster`);
       router.refresh();
     } catch {
@@ -450,6 +483,19 @@ export function StudentsListClient({ students: initialStudents, department, curr
         </div>
       </div>
 
+      {isError && (
+        <div className="p-3.5 mx-3 sm:mx-4 my-2.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 flex items-center justify-between gap-3 text-xs">
+          <span>Failed to load pupil directory: {error?.message || 'Network error'}</span>
+          <button
+            type="button"
+            onClick={() => refetch()}
+            className="px-3 py-1.5 min-h-[36px] bg-rose-600 text-white rounded-lg font-bold hover:bg-rose-700 transition-colors shrink-0 cursor-pointer"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Keep the full row accessible on narrow screens instead of clipping action columns. */}
       <div
         role="region"
@@ -475,6 +521,36 @@ export function StudentsListClient({ students: initialStudents, department, curr
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-stone-100">
+            {isLoading && paginated.length === 0 && (
+              Array.from({ length: 5 }).map((_, i) => (
+                <tr key={`skeleton-${i}`} className="animate-pulse">
+                  <td className="px-3 py-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="h-8 w-8 rounded-xl bg-stone-200" />
+                      <div className="space-y-1">
+                        <div className="h-3 w-28 bg-stone-200 rounded" />
+                        <div className="h-2 w-16 bg-stone-100 rounded" />
+                      </div>
+                    </div>
+                  </td>
+                  <td className="hidden sm:table-cell px-3 py-3">
+                    <div className="h-4 w-16 bg-stone-200 rounded" />
+                  </td>
+                  <td className="px-3 py-3">
+                    <div className="h-4 w-20 bg-stone-200 rounded" />
+                  </td>
+                  <td className="hidden lg:table-cell px-3 py-3">
+                    <div className="h-4 w-12 bg-stone-200 rounded" />
+                  </td>
+                  <td className="hidden md:table-cell px-3 py-3">
+                    <div className="h-4 w-14 bg-stone-200 rounded" />
+                  </td>
+                  <td className="px-3 py-3 text-right">
+                    <div className="h-6 w-6 bg-stone-200 rounded ml-auto" />
+                  </td>
+                </tr>
+              ))
+            )}
             {paginated.map((student) => (
               <tr
                 key={student.id}
@@ -609,7 +685,7 @@ export function StudentsListClient({ students: initialStudents, department, curr
           </tbody>
         </table>
 
-        {filtered.length === 0 && (
+        {filtered.length === 0 && !isLoading && (
           <div className="py-10 text-center flex flex-col items-center justify-center">
             <div className="w-11 h-11 bg-stone-50 border border-stone-200 rounded-2xl flex items-center justify-center mb-3 text-stone-400">
               <UserX size={20} />
@@ -620,44 +696,48 @@ export function StudentsListClient({ students: initialStudents, department, curr
         )}
       </div>
 
-      {/* Pagination */}
-      <div className="px-3 sm:px-4 py-2.5 border-t border-stone-200/80 bg-[#F8FAFC] flex items-center justify-between flex-wrap gap-2">
-        <div className="text-xs text-stone-500 tabular-nums">
-          Showing{' '}
-          <span className="font-bold text-stone-800">{Math.min((page - 1) * PAGE_SIZE + 1, filtered.length)}</span>
-          –
-          <span className="font-bold text-stone-800">{Math.min(page * PAGE_SIZE, filtered.length)}</span>
-          {' '}of{' '}
-          <span className="font-bold text-stone-800">{filtered.length}</span>
+      {/* Pagination Controls with 44x44px touch targets */}
+      <div className="px-3 sm:px-4 py-3 border-t border-stone-200/80 bg-[#F8FAFC] flex items-center justify-between flex-wrap gap-3">
+        <div className="text-xs text-stone-500 tabular-nums flex items-center gap-2">
+          <span>
+            Showing{' '}
+            <span className="font-bold text-stone-800">
+              {totalCount === 0 ? 0 : (page - 1) * PAGE_SIZE + 1}
+            </span>
+            –
+            <span className="font-bold text-stone-800">
+              {Math.min(page * PAGE_SIZE, totalCount)}
+            </span>
+            {' '}of{' '}
+            <span className="font-bold text-stone-800">{totalCount}</span>
+            {' '}pupils
+          </span>
+          {isFetching && !isLoading && (
+            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#059669]">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#059669] animate-ping" />
+              Syncing
+            </span>
+          )}
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           <button
             type="button"
-            disabled={page === 1}
-            onClick={() => setPage((p) => p - 1)}
-            className="px-2.5 py-1 text-xs font-semibold text-stone-600 bg-white border border-stone-200 rounded-lg hover:bg-stone-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+            disabled={page <= 1 || isLoading}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            className="min-h-[44px] min-w-[44px] px-3.5 py-2 text-xs font-bold text-stone-700 bg-white border border-stone-200 rounded-xl hover:bg-stone-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center shadow-xs"
+            aria-label="Previous Page"
           >
-            Prev
+            Previous
           </button>
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => setPage(p)}
-              className={`w-7 h-7 text-xs font-bold rounded-lg transition-all cursor-pointer tabular-nums ${
-                p === page
-                  ? 'bg-[#059669] text-white shadow-xs'
-                  : 'bg-white border border-stone-200 text-stone-600 hover:bg-stone-50'
-              }`}
-            >
-              {p}
-            </button>
-          ))}
+          <span className="min-h-[44px] px-3.5 py-2 text-xs font-bold text-stone-600 bg-stone-100/90 rounded-xl flex items-center justify-center tabular-nums select-none border border-stone-200/60">
+            Page {page} of {totalPages}
+          </span>
           <button
             type="button"
-            disabled={page === totalPages}
-            onClick={() => setPage((p) => p + 1)}
-            className="px-2.5 py-1 text-xs font-semibold text-stone-600 bg-white border border-stone-200 rounded-lg hover:bg-stone-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+            disabled={page >= totalPages || isLoading}
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            className="min-h-[44px] min-w-[44px] px-3.5 py-2 text-xs font-bold text-stone-700 bg-white border border-stone-200 rounded-xl hover:bg-stone-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center shadow-xs"
+            aria-label="Next Page"
           >
             Next
           </button>
@@ -668,7 +748,10 @@ export function StudentsListClient({ students: initialStudents, department, curr
         isOpen={!!editingStudent}
         onClose={() => setEditingStudent(null)}
         student={editingStudent}
-        onSaved={() => router.refresh()}
+        onSaved={() => {
+          queryClient.invalidateQueries({ queryKey: ['students'] });
+          router.refresh();
+        }}
       />
 
       <ConfirmDestructiveDialog

@@ -16,6 +16,7 @@ import {
   submitMutationWithOfflineFallback,
 } from '@/lib/offline-sync'
 import { invalidateClientCache } from '@/lib/client-cache'
+import { useEnrollments } from '@/hooks/queries'
 
 interface AdminMarksEntryClientProps {
   terms: TermData[]
@@ -54,6 +55,19 @@ export function AdminMarksEntryClient({
   const [examType, setExamType] = useState<ExamType>('mot')
   const [circularMarks, setCircularMarks] = useState<CircularMarkRow[]>([])
   const [theologyMarks, setTheologyMarks] = useState<TheologyMarkRow[]>([])
+
+  const { data: remoteEnrollmentsData } = useEnrollments({
+    enabled: !hasInitial,
+  })
+
+  useEffect(() => {
+    if (!hasInitial && remoteEnrollmentsData?.data && remoteEnrollmentsData.data.length > 0) {
+      setEnrollments(remoteEnrollmentsData.data)
+      setSelectedEnrollmentId((prev) => prev || remoteEnrollmentsData.data[0].id)
+      setIsFetching(false)
+    }
+  }, [hasInitial, remoteEnrollmentsData?.data])
+
   const [isFetching, setIsFetching] = useState(!hasInitial)
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)

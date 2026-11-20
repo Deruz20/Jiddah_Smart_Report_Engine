@@ -102,14 +102,36 @@ export function canonicalTheologySubjectCode(name: string | null | undefined): s
   return n
 }
 
+interface CachedTermResolution {
+  result: ReconciledTermInfo
+  expiresAt: number
+}
+
+const termResolutionCache = new Map<string, CachedTermResolution>()
+
+export function invalidateTermResolutionCache(termId?: string): void {
+  if (termId) {
+    termResolutionCache.delete(termId)
+  } else {
+    termResolutionCache.clear()
+  }
+}
+
 /**
  * Resolves all sibling term UUIDs and textual aliases sharing the same
  * (academic_year, term_number) given any term identifier (UUID, number, or label).
+ * Cached in memory for 5 minutes to eliminate redundant database queries.
  */
 export async function resolveEquivalentTerms(
   supabase: SupabaseClient,
   termInput: string | number | null | undefined
 ): Promise<ReconciledTermInfo> {
+  const cacheKey = termInput ? String(termInput) : '__CURRENT__'
+  const cached = termResolutionCache.get(cacheKey)
+  if (cached && Date.now() < cached.expiresAt) {
+    return cached.result
+  }
+
   const isUuid = (val: string) =>
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val)
 
@@ -193,7 +215,7 @@ export async function resolveEquivalentTerms(
     primaryTerm?.label,
   ].filter((a): a is string => Boolean(a))
 
-  return {
+  const result: ReconciledTermInfo = {
     primaryTerm,
     termIds,
     termAliases: [...new Set(termAliases)],
@@ -201,6 +223,13 @@ export async function resolveEquivalentTerms(
     termNumber,
     label: primaryTerm?.label || `Term ${termNumber}, ${academicYear}`,
   }
+
+  termResolutionCache.set(cacheKey, {
+    result,
+    expiresAt: Date.now() + 300000, // 5 minutes TTL
+  })
+
+  return result
 }
 
 async function resolveBidirectionalEnrollments(

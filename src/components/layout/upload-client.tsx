@@ -212,17 +212,18 @@ function DigitalSignaturePad({
           </h3>
         </div>
 
-        <div className="flex flex-wrap items-center gap-1.5">
-          <div className="flex items-center gap-1 rounded-lg border border-[#0D5C3A]/15 bg-white dark:bg-[#151D1A] px-1.5 py-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-2 py-1 min-h-[40px]">
             {DRAW_INK_OPTIONS.map((opt) => (
               <Tooltip key={opt.hex}>
                 <TooltipTrigger asChild>
                   <button
                     type="button"
-                    aria-label={opt.label}
+                    aria-label={`Select ink color: ${opt.label}`}
                     onClick={() => setInkColor(opt.hex)}
-                    className={`w-4 h-4 rounded-full border-2 transition-transform cursor-pointer ${inkColor === opt.hex ? 'scale-110 border-[#D97706] shadow-2xs' : 'border-white/70 opacity-80'
-                      }`}
+                    className={`size-6 rounded-full border-2 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 ${
+                      inkColor === opt.hex ? 'scale-110 border-slate-900 dark:border-white shadow-xs' : 'border-white/70 opacity-70 hover:opacity-100'
+                    }`}
                     style={{ backgroundColor: opt.hex }}
                   />
                 </TooltipTrigger>
@@ -231,7 +232,7 @@ function DigitalSignaturePad({
             ))}
           </div>
 
-          <div className="flex items-center gap-0.5 rounded-lg border border-[#0D5C3A]/15 bg-white dark:bg-[#151D1A] p-0.5 text-[10px] font-bold">
+          <div className="flex items-center gap-1 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-1 min-h-[40px] text-xs font-bold">
             {[
               { label: 'Fine', width: 2.4 },
               { label: 'Med', width: 3.5 },
@@ -240,11 +241,13 @@ function DigitalSignaturePad({
               <button
                 key={item.label}
                 type="button"
+                aria-label={`Stroke thickness: ${item.label}`}
                 onClick={() => setStrokeWidth(item.width)}
-                className={`px-1.5 py-0.5 rounded-md cursor-pointer transition-colors ${strokeWidth === item.width
-                  ? 'bg-[#0D5C3A] text-white'
-                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                  }`}
+                className={`min-h-[32px] px-2.5 rounded-lg cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 ${
+                  strokeWidth === item.width
+                    ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
               >
                 {item.label}
               </button>
@@ -276,25 +279,27 @@ function DigitalSignaturePad({
         )}
       </div>
 
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex items-center justify-between gap-3 pt-1">
         <button
           type="button"
           onClick={handleClear}
           disabled={!hasStrokes || saving}
-          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold border border-[#0D5C3A]/15 text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] disabled:opacity-45 cursor-pointer"
+          aria-label="Clear drawn signature canvas"
+          className="inline-flex min-h-[44px] items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-45 cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
         >
-          <Eraser className="w-3.5 h-3.5" />
-          Clear
+          <Eraser className="size-4" />
+          Clear Canvas
         </button>
 
         <button
           type="button"
           onClick={handleSave}
           disabled={!hasStrokes || saving}
-          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-extrabold bg-[#0D5C3A] text-white hover:bg-[#093D26] disabled:opacity-50 shadow-xs cursor-pointer"
+          aria-label="Save and commit signature"
+          className="inline-flex min-h-[44px] items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold bg-slate-900 text-white dark:bg-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 disabled:opacity-50 shadow-xs cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
         >
-          <Check className="w-3.5 h-3.5" />
-          {saving ? 'Saving...' : 'Save Signature'}
+          <Check className="size-4" />
+          {saving ? 'Saving Signature...' : 'Save Signature'}
         </button>
       </div>
     </div>
@@ -862,25 +867,37 @@ export default function UploadClient({
       {/* Mobile View Switcher (< lg) */}
       <div
         data-testid="upload-mobile-view-switcher"
-        className="lg:hidden grid grid-cols-2 gap-1.5 rounded-xl bg-[#F0F4F5] dark:bg-[#1E2623] p-1 border border-[#0D5C3A]/15"
+        className="lg:hidden grid grid-cols-2 gap-2 rounded-2xl bg-slate-100 dark:bg-slate-800/60 p-1.5 border border-slate-200 dark:border-slate-700/60"
       >
         <button
           type="button"
           onClick={() => setMobilePane('capture')}
-          className={`py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${mobilePane === 'capture' ? 'bg-[#0D5C3A] text-white shadow-xs' : 'text-[var(--text-secondary)]'
-            }`}
+          aria-label="Switch to Upload or Draw pane"
+          className={`min-h-[44px] py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 ${
+            mobilePane === 'capture'
+              ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+          }`}
         >
-          Upload / Draw
+          <PenTool className="size-4" />
+          <span>Upload / Draw</span>
         </button>
         <button
           type="button"
           onClick={() => setMobilePane('gallery')}
-          className={`py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${mobilePane === 'gallery' ? 'bg-[#0D5C3A] text-white shadow-xs' : 'text-[var(--text-secondary)]'
-            }`}
+          aria-label="Switch to Roster Gallery pane"
+          className={`min-h-[44px] py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 ${
+            mobilePane === 'gallery'
+              ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+          }`}
         >
-          {category === 'Signatures'
-            ? `Roster (${uploadedSignatureAssets.length})`
-            : `Files (${filteredRepositoryFiles.length})`}
+          <FolderKanban className="size-4" />
+          <span>
+            {category === 'Signatures'
+              ? `Roster (${uploadedSignatureAssets.length})`
+              : `Files (${filteredRepositoryFiles.length})`}
+          </span>
         </button>
       </div>
 

@@ -603,6 +603,15 @@ export function invalidateSchoolSettingsCache(): void {
   cachedCustomizationRowFingerprint = null;
   cachedCustomizationObject = {};
   cachedMergedSettingsEntry = null;
+  try {
+    // Attempt Next.js tag invalidation if in server environment
+    const { revalidateTag } = require('next/cache');
+    if (typeof revalidateTag === 'function') {
+      revalidateTag('school_settings');
+    }
+  } catch {
+    // Non-Next.js or test context fallback
+  }
 }
 
 export async function readLatestSchoolCustomizationConfig(reader: any): Promise<Record<string, any>> {
@@ -807,7 +816,7 @@ export async function fetchMergedSchoolSettings(
 
   cachedMergedSettingsEntry = {
     fingerprint: mergedFingerprint,
-    expiresAt: Date.now() + 8000,
+    expiresAt: Date.now() + 300000, // 5 minutes TTL
     data: merged,
   };
 

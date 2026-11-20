@@ -351,25 +351,27 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
             type="button"
             onClick={refreshTelemetry}
             disabled={isRefreshing}
-            title="Refresh live telemetry"
-            className="h-9 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#151922] hover:bg-slate-50 dark:hover:bg-[#1A1F2C] text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-60"
+            aria-label="Refresh live cohort telemetry"
+            className="min-h-[44px] px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/80 text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2 transition-colors cursor-pointer disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 dark:focus-visible:ring-slate-300"
           >
             <RefreshCw className={cn("size-3.5 text-slate-500", isRefreshing && "animate-spin")} />
             <span className="hidden sm:inline">Refresh</span>
           </button>
           <Link
             href="/admin/marks"
-            className="h-9 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#151922] hover:border-emerald-500/50 hover:bg-slate-50 dark:hover:bg-[#1A1F2C] text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2 transition-all shadow-xs"
+            aria-label="Enter Student Marks"
+            className="min-h-[44px] px-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-emerald-500/50 hover:bg-slate-50 dark:hover:bg-slate-800/80 text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2 transition-all shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
           >
-            <ClipboardEdit className="size-3.5 text-emerald-600 dark:text-emerald-400" strokeWidth={2} />
+            <ClipboardEdit className="size-4 text-emerald-600 dark:text-emerald-400" strokeWidth={2} />
             <span>Enter Marks</span>
           </Link>
           {liveData.canAccessReports !== false && (
             <Link
               href="/admin/reports/studio"
-              className="h-9 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white dark:bg-gradient-to-r dark:from-emerald-500 dark:to-lime-500 dark:text-slate-950 font-black text-xs flex items-center gap-2 hover:brightness-105 active:scale-95 transition-all shadow-md"
+              aria-label="Open Report Studio"
+              className="min-h-[44px] px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-white dark:text-slate-900 font-bold text-xs flex items-center gap-2 transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
             >
-              <Sparkles className="size-3.5" strokeWidth={2.2} />
+              <Sparkles className="size-4 text-amber-400 dark:text-amber-500" strokeWidth={2.2} />
               <span>Report Studio</span>
             </Link>
           )}
@@ -385,30 +387,30 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
       )}
 
       {/* ─── ZONE 1: 4 CENTER TOP KPI CARDS ─────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* KPI 1: Marks Completion Rate Ring */}
-        <div className="p-4 rounded-3xl card-jiddah border border-[#D97706]/18 dark:border-[#F59E0B]/16 flex items-center justify-between shadow-xs">
-          <div className="space-y-1">
-            <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition-all">
+          <div className="space-y-1.5">
+            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               Marks Pipeline
             </span>
             <div className="flex items-baseline gap-1.5">
               <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 tabular-nums">
                 {overallCyclePercent}%
               </span>
-              <span className="text-[11px] text-slate-600 dark:text-slate-400 font-medium">recorded</span>
+              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">recorded</span>
             </div>
-            <p className="text-[11px] text-slate-600 dark:text-slate-400 font-medium tabular-nums">
+            <p className="text-xs text-slate-600 dark:text-slate-400 font-medium tabular-nums">
               {totalEnteredAll} / {totalRequiredAll} entries logged
             </p>
           </div>
-          <div className="relative size-13 shrink-0 flex items-center justify-center">
-            <svg className="size-13 -rotate-90" viewBox="0 0 80 80">
+          <div className="relative size-14 shrink-0 flex items-center justify-center">
+            <svg className="size-14 -rotate-90" viewBox="0 0 80 80">
               <circle
                 cx="40"
                 cy="40"
                 r={radius}
-                className="stroke-slate-200 dark:stroke-slate-800"
+                className="stroke-slate-100 dark:stroke-slate-800"
                 strokeWidth="6"
                 fill="none"
               />
@@ -424,25 +426,25 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
                 fill="none"
               />
             </svg>
-            <span className="absolute text-[10px] font-black text-slate-800 dark:text-slate-200 tabular-nums">
+            <span className="absolute text-[11px] font-black text-slate-800 dark:text-slate-200 tabular-nums">
               {overallCyclePercent}%
             </span>
           </div>
         </div>
 
         {/* KPI 2: Active Students */}
-        <div className="p-4 rounded-3xl card-jiddah border border-[#D97706]/18 dark:border-[#F59E0B]/16 flex items-center justify-between shadow-xs">
-          <div className="space-y-1">
-            <span className="text-[11px] font-bold text-sky-700 dark:text-sky-400 uppercase tracking-wider flex items-center gap-1.5">
+        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition-all">
+          <div className="space-y-1.5">
+            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
               <Users className="size-3.5" strokeWidth={2} />
               Enrolled Learners
             </span>
             <div className="text-2xl font-black text-slate-900 dark:text-white tabular-nums">
               {totalStudents}
             </div>
-            <div className="flex items-center gap-2 text-[11px] text-slate-600 dark:text-slate-400 font-medium tabular-nums">
+            <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 font-medium tabular-nums">
               <span>{classStatuses.length} cohorts active</span>
-              <span className="size-1 rounded-full bg-slate-400" />
+              <span className="size-1 rounded-full bg-slate-300 dark:bg-slate-700" />
               <span className="text-sky-700 dark:text-sky-400 font-semibold">
                 {data.department === "theology"
                   ? "Theology Track"
@@ -452,46 +454,46 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
               </span>
             </div>
           </div>
-          <div className="size-11 rounded-xl bg-sky-50 dark:bg-sky-500/10 border border-sky-200 dark:border-sky-500/20 flex items-center justify-center text-sky-600 dark:text-sky-400 shrink-0">
-            <GraduationCap className="size-5" strokeWidth={1.8} />
+          <div className="size-12 rounded-xl bg-sky-50 dark:bg-sky-950/40 border border-sky-100 dark:border-sky-800/50 flex items-center justify-center text-sky-600 dark:text-sky-400 shrink-0">
+            <GraduationCap className="size-6" strokeWidth={1.8} />
           </div>
         </div>
 
         {/* KPI 3: Report Dossiers Ready */}
-        <div className="p-4 rounded-3xl card-jiddah border border-[#D97706]/18 dark:border-[#F59E0B]/16 flex items-center justify-between shadow-xs">
-          <div className="space-y-1">
-            <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition-all">
+          <div className="space-y-1.5">
+            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
               <FileText className="size-3.5" strokeWidth={2} />
               Report Dossiers
             </span>
             <div className="text-2xl font-black text-slate-900 dark:text-white tabular-nums">
               {reportsGenerated}
             </div>
-            <p className="text-[11px] text-slate-600 dark:text-slate-400 font-medium tabular-nums">
+            <p className="text-xs text-slate-600 dark:text-slate-400 font-medium tabular-nums">
               {totalMissingMarks === 0 ? "Ready for batch print" : `${totalMissingMarks} scores remaining`}
             </p>
           </div>
-          <div className="size-11 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">
-            <Printer className="size-5" strokeWidth={1.8} />
+          <div className="size-12 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-100 dark:border-amber-800/50 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">
+            <Printer className="size-6" strokeWidth={1.8} />
           </div>
         </div>
 
         {/* KPI 4: Active Teaching Staff */}
-        <div className="p-4 rounded-3xl card-jiddah border border-[#D97706]/18 dark:border-[#F59E0B]/16 flex items-center justify-between shadow-xs">
-          <div className="space-y-1">
-            <span className="text-[11px] font-bold text-purple-700 dark:text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
+        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition-all">
+          <div className="space-y-1.5">
+            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
               <CalendarCheck className="size-3.5" strokeWidth={2} />
               Staff Deployment
             </span>
             <div className="text-2xl font-black text-slate-900 dark:text-white tabular-nums">
               {activeTeachers}
             </div>
-            <p className="text-[11px] text-slate-600 dark:text-slate-400 font-medium tabular-nums">
+            <p className="text-xs text-slate-600 dark:text-slate-400 font-medium tabular-nums">
               Active assigned instructors
             </p>
           </div>
-          <div className="size-11 rounded-xl bg-purple-50 dark:bg-purple-500/10 border border-purple-200 dark:border-purple-500/20 flex items-center justify-center text-purple-600 dark:text-purple-400 shrink-0">
-            <Users className="size-5" strokeWidth={1.8} />
+          <div className="size-12 rounded-xl bg-purple-50 dark:bg-purple-950/40 border border-purple-100 dark:border-purple-800/50 flex items-center justify-center text-purple-600 dark:text-purple-400 shrink-0">
+            <Users className="size-6" strokeWidth={1.8} />
           </div>
         </div>
       </div>

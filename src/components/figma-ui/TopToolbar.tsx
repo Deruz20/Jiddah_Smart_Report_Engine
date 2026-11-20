@@ -645,22 +645,62 @@ export function TopToolbar({
               </PopoverContent>
             </Popover>
 
-            {/* Download / Export Icon */}
-            {onDownload && (
-              <Tooltip.Root>
-                <Tooltip.Trigger asChild>
-                  <button
-                    type="button"
-                    data-testid="toolbar-download-btn"
-                    onClick={onDownload}
-                    aria-label="Download / Export Reports"
-                    className="w-8 h-8 rounded-full flex items-center justify-center bg-[#F0F4F9] dark:bg-[#1E2623] text-stone-700 dark:text-stone-200 hover:bg-[#E4EAE6] dark:hover:bg-[#282A2C] border border-black/[0.04] dark:border-white/[0.06] transition cursor-pointer shrink-0"
+            {/* Download / Export Icon with optional Options Popover */}
+            {(onDownload || (downloadOptions && downloadOptions.length > 0)) && (
+              downloadOptions && downloadOptions.length > 0 ? (
+                <Popover>
+                  <Tooltip.Root>
+                    <Tooltip.Trigger asChild>
+                      <PopoverTrigger asChild>
+                        <button
+                          type="button"
+                          data-testid="toolbar-download-btn"
+                          aria-label="Download / Export Reports"
+                          className="w-8 h-8 rounded-full flex items-center justify-center bg-[#F0F4F9] dark:bg-[#1E2623] text-stone-700 dark:text-stone-200 hover:bg-[#E4EAE6] dark:hover:bg-[#282A2C] border border-black/[0.04] dark:border-white/[0.06] transition cursor-pointer shrink-0"
+                        >
+                          <Download size={15} />
+                        </button>
+                      </PopoverTrigger>
+                    </Tooltip.Trigger>
+                    <TooltipContent>Download / Batch Export</TooltipContent>
+                  </Tooltip.Root>
+                  <PopoverContent
+                    align="end"
+                    sideOffset={8}
+                    className="w-64 p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl z-50 space-y-1"
                   >
-                    <Download size={15} />
-                  </button>
-                </Tooltip.Trigger>
-                <TooltipContent>Download PDF / CSV</TooltipContent>
-              </Tooltip.Root>
+                    <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      Export Options
+                    </div>
+                    {downloadOptions.map((opt, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={opt.onClick}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition text-left cursor-pointer"
+                      >
+                        {opt.icon || <Download className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />}
+                        <span>{opt.label}</span>
+                      </button>
+                    ))}
+                  </PopoverContent>
+                </Popover>
+              ) : (
+                <Tooltip.Root>
+                  <Tooltip.Trigger asChild>
+                    <button
+                      type="button"
+                      data-testid="toolbar-download-btn"
+                      onClick={onDownload}
+                      aria-label="Download / Export Reports"
+                      className="w-8 h-8 rounded-full flex items-center justify-center bg-[#F0F4F9] dark:bg-[#1E2623] text-stone-700 dark:text-stone-200 hover:bg-[#E4EAE6] dark:hover:bg-[#282A2C] border border-black/[0.04] dark:border-white/[0.06] transition cursor-pointer shrink-0"
+                    >
+                      <Download size={15} />
+                    </button>
+                  </Tooltip.Trigger>
+                  <TooltipContent>Download PDF / CSV</TooltipContent>
+                </Tooltip.Root>
+              )
             )}
 
             {/* Primary Print CTA (opens Print Configuration Modal) */}

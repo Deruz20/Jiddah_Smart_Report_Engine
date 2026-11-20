@@ -4,8 +4,10 @@ import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { toast } from 'sonner'
 import { motion, AnimatePresence } from 'motion/react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { FileSpreadsheet, Printer, Users, FileText, Sliders, Settings, History, ChevronDown, LayoutGrid, Menu, Palette, Sun, Moon, Download, CheckSquare, ShieldCheck } from 'lucide-react'
+import { FileSpreadsheet, Printer, Users, FileText, Sliders, Settings, History, ChevronDown, LayoutGrid, Menu, Palette, Sun, Moon, Download, CheckSquare, ShieldCheck, FileArchive } from 'lucide-react'
 import { generateReportBroadsheetCSV } from '@/utils/csvExport'
+import { useTriggerBatchExport } from '@/hooks/queries/usePdfExportJobs'
+import { ReportExportManager } from '@/components/reports/ReportExportManager'
 import { TopToolbar, StudioFormattingState, DEFAULT_STUDIO_FORMATTING } from './figma-ui/TopToolbar'
 import {
   useSyncedStudioConfig,
@@ -218,6 +220,10 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
 
   // Studio formatting and customisation state (shared across Report Center & Report Studio 2.0)
   const [studioFormatting, setStudioFormatting] = useSyncedStudioConfig()
+
+  // Batch PDF background export state & mutation
+  const [activeExportJobId, setActiveExportJobId] = useState<string | null>(null)
+  const { mutate: triggerBatchExport } = useTriggerBatchExport()
 
   // Multi-selection state for student checklist
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([])
@@ -731,6 +737,37 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
     toast.success('Broadsheet downloaded!')
   }, [rawReports])
 
+  const handleTriggerBatchPdfExport = useCallback(() => {
+    if (rawReports.length === 0) {
+      toast.error('No reports loaded. Please generate or select reports first.')
+      return
+    }
+
+    const enrollmentIds = rawReports
+      .map((r: any) => r.enrollment_id || r.id)
+      .filter((id): id is string => typeof id === 'string' && id.length > 0)
+
+    triggerBatchExport(
+      {
+        enrollment_ids: enrollmentIds,
+        class_id: filterState.classIds?.[0] !== 'all' ? filterState.classIds?.[0] : null,
+        term_id: currentTerm?.id || null,
+        score_type: (filterState.phase?.toLowerCase() as any) || 'mot',
+        curriculum: (filterState.curriculum as any) || 'secular',
+        studioFormatting,
+      },
+      {
+        onSuccess: (data) => {
+          toast.success('Batch PDF export job accepted! Processing in background.')
+          setActiveExportJobId(data.job_id)
+        },
+        onError: (err) => {
+          toast.error(err.message || 'Failed to initialize batch export job.')
+        },
+      }
+    )
+  }, [rawReports, filterState, currentTerm, studioFormatting, triggerBatchExport])
+
   const handlePrint = useCallback(() => {
     if (rawReports.length === 0) {
       toast.error('No reports loaded. Generate reports first.')
@@ -1174,6 +1211,18 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
           studioFormatting={studioFormatting}
           onStudioFormattingChange={setStudioFormatting}
           onDownload={handleDownload}
+          downloadOptions={[
+            {
+              label: 'Batch PDF Export (.ZIP)',
+              icon: <FileArchive className="h-4 w-4 text-indigo-500 shrink-0" />,
+              onClick: handleTriggerBatchPdfExport,
+            },
+            {
+              label: 'Download Broadsheet (CSV)',
+              icon: <Download className="h-4 w-4 text-emerald-500 shrink-0" />,
+              onClick: handleDownload,
+            },
+          ]}
           onPrint={handlePrint}
           onShare={handleShare}
           reportCount={rawReports.length}
@@ -1583,6 +1632,13 @@ export function ReportGeneratorClient({ terms }: ReportGeneratorClientProps) {
             el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
           }
         }}
+      />
+
+      {/* Persistent / Floating Batch PDF Export Progress Manager */}
+      <ReportExportManager
+        jobId={activeExportJobId}
+        onClose={() => setActiveExportJobId(null)}
+        onRetry={handleTriggerBatchPdfExport}
       />
     </div>
   )

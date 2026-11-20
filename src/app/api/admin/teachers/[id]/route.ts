@@ -6,6 +6,7 @@ import { isAdministratorRole, PERMISSION_KEYS } from '@/lib/teacher-access';
 import { isUsernameTaken, normalizeUsername, rememberTeacherUsernameMapping, validateUsernameFormat } from '@/lib/username';
 import { updateStaffAuthUser } from '@/lib/staff-auth-admin';
 import { recordActivity } from '@/lib/api-server';
+import { resolveCurrentSchoolId, applyTenantScope } from '@/lib/tenant-context';
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -42,19 +43,22 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const { name, role, email, username, phone, subject, classes, status, permissions } = body;
 
     const supabaseAdmin = createAdminClient(cookieStore);
+    const schoolId = await resolveCurrentSchoolId(supabaseAdmin, user, req);
 
-    let { data: currentTeacher, error: findErr } = await supabaseAdmin
+    let findQuery = supabaseAdmin
       .from('teachers')
       .select('id, auth_user_id, name, email, username, phone, role, subject, classes, status, permissions')
-      .eq('id', id)
-      .maybeSingle();
+      .eq('id', id);
+    findQuery = applyTenantScope(findQuery, schoolId);
+    let { data: currentTeacher, error: findErr } = await findQuery.maybeSingle();
 
     if (findErr && (findErr.message?.includes('permissions') || findErr.message?.includes('username'))) {
-      const retryFind = await supabaseAdmin
+      let retryQuery = supabaseAdmin
         .from('teachers')
         .select('id, auth_user_id, name, email, phone, role, subject, classes, status')
-        .eq('id', id)
-        .maybeSingle();
+        .eq('id', id);
+      retryQuery = applyTenantScope(retryQuery, schoolId);
+      const retryFind = await retryQuery.maybeSingle();
       currentTeacher = retryFind.data as any;
       findErr = retryFind.error;
     }
@@ -144,12 +148,13 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       }
     }
 
-    let { data: updatedRow, error: updateError } = await supabaseAdmin
+    let updateTeacherQuery = supabaseAdmin
       .from('teachers')
       .update(updatePayload)
       .eq('id', id)
-      .select()
-      .maybeSingle();
+      .select();
+    updateTeacherQuery = applyTenantScope(updateTeacherQuery, schoolId);
+    let { data: updatedRow, error: updateError } = await updateTeacherQuery.maybeSingle();
 
     // Compatibility fallback if DB role check only allows 'DOS' or lacks 'permissions' column
     if (updateError) {
@@ -164,12 +169,13 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         fallbackPayload.role = 'DOS';
         fallbackPayload.subject = nextRole === 'DOS Theology' ? 'Theology' : 'Secular';
       }
-      const retryUpdate = await supabaseAdmin
+      let retryUpdateQuery = supabaseAdmin
         .from('teachers')
         .update(fallbackPayload)
         .eq('id', id)
-        .select()
-        .maybeSingle();
+        .select();
+      retryUpdateQuery = applyTenantScope(retryUpdateQuery, schoolId);
+      const retryUpdate = await retryUpdateQuery.maybeSingle();
       updatedRow = retryUpdate.data;
       updateError = retryUpdate.error;
     }
@@ -286,7 +292,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         assignments: afterAssignments,
       },
       updated_at: new Date().toISOString(),
-    });
+    }, schoolId);
 
     return NextResponse.json({
       success: true,

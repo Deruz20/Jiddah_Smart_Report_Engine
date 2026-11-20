@@ -2,6 +2,7 @@ import { createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
+import { resolveCurrentSchoolId, applyTenantScope } from '@/lib/tenant-context'
 
 export async function OPTIONS(request: NextRequest) {
   return apiOptions(request)
@@ -14,12 +15,18 @@ export async function GET(request: NextRequest) {
   try {
     const cookieStore = await cookies()
     const supabase = createClient(cookieStore)
+    const { data: { user } } = await supabase.auth.getUser()
+    const schoolId = await resolveCurrentSchoolId(supabase, user, request)
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('terms')
       .select('id, academic_year, term_number, label, is_current, start_date, end_date, next_term_start')
       .order('academic_year', { ascending: false })
       .order('term_number', { ascending: true })
+
+    query = applyTenantScope(query, schoolId)
+
+    const { data, error } = await query
 
     if (error) {
       console.error('terms DB error:', error.message)

@@ -22,6 +22,7 @@ import {
   resolveUniqueUsernameFromEmail,
   validateUsernameFormat,
 } from '@/lib/username'
+import { resolveCurrentSchoolId, applyTenantScope, withTenantPayload } from '@/lib/tenant-context'
 
 const validRoles = [
   ...ALL_STAFF_ROLES,
@@ -59,13 +60,24 @@ export async function GET(request: NextRequest) {
     const role = request.nextUrl.searchParams.get('role')?.trim()
     const search = request.nextUrl.searchParams.get('search')?.trim()
 
+    const schoolId = await resolveCurrentSchoolId(supabase, user, request)
+
+    const circularClassQuery = applyTenantScope(
+      supabase.from('circular_classes').select('id, class_name, class_teacher_id'),
+      schoolId
+    )
+    const theologyClassQuery = applyTenantScope(
+      supabase.from('theology_classes').select('id, class_name_english, class_name_arabic'),
+      schoolId
+    )
+
     const [
       { data: circularClasses },
       { data: theologyClasses },
       { data: classAssignments },
     ] = await Promise.all([
-      supabase.from('circular_classes').select('id, class_name, class_teacher_id'),
-      supabase.from('theology_classes').select('id, class_name_english, class_name_arabic'),
+      circularClassQuery,
+      theologyClassQuery,
       supabase.from('teacher_class_assignments').select('teacher_id, class_id'),
     ]);
 
@@ -74,6 +86,7 @@ export async function GET(request: NextRequest) {
     (theologyClasses || []).forEach((c: any) => classMap.set(c.id, c.class_name_english || c.class_name_arabic));
 
     let query = supabase.from('teachers').select('*').order('name', { ascending: true })
+    query = applyTenantScope(query, schoolId)
 
     if (authRes.filterByDepartment === 'secular') {
       query = query.not('subject', 'ilike', '%Theology%');
@@ -214,7 +227,9 @@ export async function POST(request: NextRequest) {
       resolvedUsername = await resolveUniqueUsernameFromEmail(supabaseAdmin, email)
     }
 
-    const insertData: any = {
+    const schoolId = await resolveCurrentSchoolId(supabase, user, request)
+
+    const insertData: any = withTenantPayload({
       name,
       role,
       email: email || '',
@@ -224,7 +239,7 @@ export async function POST(request: NextRequest) {
       classes,
       status: validStatuses.includes(status) ? status : 'active',
       created_by: user.id,
-    }
+    }, schoolId)
 
     const { data, error } = await supabase.from('teachers').insert([insertData]).select()
     if (error) {
@@ -327,7 +342,11 @@ export async function PATCH(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'No valid fields provided for update' }, { status: 400 }))
     }
 
-    const { data, error } = await supabase.from('teachers').update(updates).eq('id', teacherId).select()
+    const schoolId = await resolveCurrentSchoolId(supabase, user, request)
+
+    let updateQuery = supabase.from('teachers').update(updates).eq('id', teacherId).select()
+    updateQuery = applyTenantScope(updateQuery, schoolId)
+    const { data, error } = await updateQuery
     if (error) {
       console.error('teachers PATCH error:', error.message)
       return withCors(request, NextResponse.json({ error: error.message }, { status: 500 }))

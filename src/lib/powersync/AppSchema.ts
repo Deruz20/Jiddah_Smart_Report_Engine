@@ -1,6 +1,16 @@
 import { column, Schema, Table } from '@powersync/web';
 
+const schools = new Table({
+  slug: column.text,
+  name: column.text,
+  domain: column.text,
+  subdomain: column.text,
+  status: column.text,
+  subscription_tier: column.text,
+});
+
 const teachers = new Table({
+  school_id: column.text,
   name: column.text,
   email: column.text,
   subject: column.text,
@@ -9,12 +19,14 @@ const teachers = new Table({
 });
 
 const subjects = new Table({
+  school_id: column.text,
   subject_name: column.text,
   curriculum: column.text,
   section: column.text,
 });
 
 const students = new Table({
+  school_id: column.text,
   name: column.text,
   full_name: column.text,
   admission_number: column.text,
@@ -25,17 +37,20 @@ const students = new Table({
 });
 
 const circular_classes = new Table({
+  school_id: column.text,
   class_name: column.text,
   class_teacher_id: column.text,
   section: column.text,
 });
 
 const theology_classes = new Table({
+  school_id: column.text,
   class_name_arabic: column.text,
   class_name_english: column.text,
 });
 
 const enrollments = new Table({
+  school_id: column.text,
   student_id: column.text,
   academic_year_id: column.text,
   term_id: column.text,
@@ -44,28 +59,37 @@ const enrollments = new Table({
   is_active: column.integer,
 });
 
-const circular_marks = new Table({
-  enrollment_id: column.text,
-  subject_id: column.text,
-  term_id: column.text,
-  bot_score: column.real,
-  mot_score: column.real,
-  eot_score: column.real,
-  updated_by: column.text,
-  device_id: column.text,
-}, { indexes: { enrollment_subject_term: ['enrollment_id', 'subject_id', 'term_id'] } });
+const circular_marks = new Table(
+  {
+    school_id: column.text,
+    enrollment_id: column.text,
+    subject_id: column.text,
+    term_id: column.text,
+    bot_score: column.real,
+    mot_score: column.real,
+    eot_score: column.real,
+    updated_by: column.text,
+    device_id: column.text,
+  },
+  { indexes: { enrollment_subject_term: ['enrollment_id', 'subject_id', 'term_id'] } }
+);
 
-const theology_marks = new Table({
-  enrollment_id: column.text,
-  subject_id: column.text,
-  term_id: column.text,
-  mot_score: column.real,
-  eot_score: column.real,
-  updated_by: column.text,
-  device_id: column.text,
-}, { indexes: { enrollment_subject_term: ['enrollment_id', 'subject_id', 'term_id'] } });
+const theology_marks = new Table(
+  {
+    school_id: column.text,
+    enrollment_id: column.text,
+    subject_id: column.text,
+    term_id: column.text,
+    mot_score: column.real,
+    eot_score: column.real,
+    updated_by: column.text,
+    device_id: column.text,
+  },
+  { indexes: { enrollment_subject_term: ['enrollment_id', 'subject_id', 'term_id'] } }
+);
 
 const activity_log = new Table({
+  school_id: column.text,
   teacher_id: column.text,
   action_type: column.text,
   target_table: column.text,
@@ -76,6 +100,7 @@ const activity_log = new Table({
 });
 
 const grading_standards = new Table({
+  school_id: column.text,
   grading_type: column.text,
   min_score: column.integer,
   max_score: column.integer,
@@ -86,6 +111,7 @@ const grading_standards = new Table({
 });
 
 const report_templates = new Table({
+  school_id: column.text,
   class_id: column.text,
   color_scheme: column.text,
   theme_mode: column.text,
@@ -94,23 +120,29 @@ const report_templates = new Table({
 });
 
 const exam_types = new Table({
+  school_id: column.text,
   name: column.text,
   description: column.text,
   created_at: column.text,
 });
 
-const special_exam_marks = new Table({
-  enrollment_id: column.text,
-  subject_id: column.text,
-  exam_type_id: column.text,
-  score: column.real,
-  updated_by: column.text,
-  device_id: column.text,
-  created_at: column.text,
-  updated_at: column.text,
-}, { indexes: { enrollment_subject_exam: ['enrollment_id', 'subject_id', 'exam_type_id'] } });
+const special_exam_marks = new Table(
+  {
+    school_id: column.text,
+    enrollment_id: column.text,
+    subject_id: column.text,
+    exam_type_id: column.text,
+    score: column.real,
+    updated_by: column.text,
+    device_id: column.text,
+    created_at: column.text,
+    updated_at: column.text,
+  },
+  { indexes: { enrollment_subject_exam: ['enrollment_id', 'subject_id', 'exam_type_id'] } }
+);
 
 export const AppSchema = new Schema({
+  schools,
   teachers,
   subjects,
   circular_classes,

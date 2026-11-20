@@ -2,6 +2,7 @@ import { createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
+import { resolveCurrentSchoolId, applyTenantScope, withTenantPayload } from '@/lib/tenant-context'
 
 export async function OPTIONS(request: NextRequest) {
   return apiOptions(request)
@@ -15,12 +16,19 @@ export async function GET(request: NextRequest) {
     const cookieStore = await cookies()
     const supabase = createClient(cookieStore)
 
-    const { data, error } = await supabase
+    const { data: { user } } = await supabase.auth.getUser()
+    const schoolId = await resolveCurrentSchoolId(supabase, user, request)
+
+    let query = supabase
       .from('subjects')
       .select('*')
       .order('section', { ascending: true })
       .order('curriculum', { ascending: true })
       .order('subject_name', { ascending: true })
+
+    query = applyTenantScope(query, schoolId)
+
+    const { data, error } = await query
 
     if (error) {
       console.error('Supabase error:', error)
@@ -71,12 +79,16 @@ export async function POST(request: NextRequest) {
 
     const cookieStore = await cookies()
     const supabase = createClient(cookieStore)
+    const { data: { user } } = await supabase.auth.getUser()
+    const schoolId = await resolveCurrentSchoolId(supabase, user, request)
 
     // Check for duplicate
     let duplicateQuery = supabase
       .from('subjects')
       .select('id')
       .ilike('subject_name', body.subject_name.trim())
+
+    duplicateQuery = applyTenantScope(duplicateQuery, schoolId)
 
     if (body.curriculum === 'secular') {
       duplicateQuery = duplicateQuery.eq('section', body.section)
@@ -94,11 +106,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Insert new subject
-    const insertData = {
+    const insertData = withTenantPayload({
       subject_name: body.subject_name.trim(),
       curriculum: body.curriculum,
       section: body.section || null,
-    }
+    }, schoolId)
 
     const { data, error } = await supabase.from('subjects').insert([insertData]).select()
 

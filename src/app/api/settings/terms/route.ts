@@ -3,6 +3,7 @@ import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { recordActivity } from '@/lib/api-server'
+import { resolveCurrentSchoolId, applyTenantScope, withTenantPayload } from '@/lib/tenant-context'
 
 export async function OPTIONS(request: NextRequest) {
   return apiOptions(request)
@@ -29,11 +30,17 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'Access Denied: Administrator only' }, { status: 403 }))
     }
 
-    const { data, error } = await supabase
+    const schoolId = await resolveCurrentSchoolId(supabase, user, request)
+
+    let query = supabase
       .from('terms')
       .select('id, label, academic_year, term_number, is_current, start_date, end_date, next_term_start')
       .order('academic_year', { ascending: false })
       .order('term_number', { ascending: true })
+
+    query = applyTenantScope(query, schoolId)
+
+    const { data, error } = await query
 
     if (error) {
       console.error('settings/terms GET error:', error)
@@ -78,7 +85,9 @@ export async function POST(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'term_number must be 1, 2, or 3' }, { status: 400 }))
     }
 
-    const insertPayload = {
+    const schoolId = await resolveCurrentSchoolId(supabase, user, request)
+
+    const insertPayload = withTenantPayload({
       academic_year,
       term_number,
       label,
@@ -86,7 +95,7 @@ export async function POST(request: NextRequest) {
       start_date: body.start_date || null,
       end_date: body.end_date || null,
       next_term_start: body.next_term_start || null,
-    }
+    }, schoolId)
 
     const { data, error } = await supabase
       .from('terms')
@@ -140,10 +149,15 @@ export async function PATCH(request: NextRequest) {
     if (end_date !== undefined) updatePayload.end_date = end_date || null
     if (next_term_start !== undefined) updatePayload.next_term_start = next_term_start || null
 
-    const { error } = await supabase
+    const schoolId = await resolveCurrentSchoolId(supabase, user, request)
+
+    let updateQuery = supabase
       .from('terms')
       .update(updatePayload)
       .eq('id', termId)
+    updateQuery = applyTenantScope(updateQuery, schoolId)
+
+    const { error } = await updateQuery
 
     if (error) {
       console.error('settings/terms PATCH error:', error.message)
@@ -190,12 +204,18 @@ export async function DELETE(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'termId is required' }, { status: 400 }))
     }
 
-    const { data: existing } = await supabase.from('terms').select('is_current, label').eq('id', termId).maybeSingle()
+    const schoolId = await resolveCurrentSchoolId(supabase, user, request)
+
+    let existingQuery = supabase.from('terms').select('is_current, label').eq('id', termId)
+    existingQuery = applyTenantScope(existingQuery, schoolId)
+    const { data: existing } = await existingQuery.maybeSingle()
     if (existing?.is_current) {
       return withCors(request, NextResponse.json({ error: 'Cannot archive or delete the currently active term. Switch active term first.' }, { status: 400 }))
     }
 
-    const { error } = await supabase.from('terms').delete().eq('id', termId)
+    let deleteQuery = supabase.from('terms').delete().eq('id', termId)
+    deleteQuery = applyTenantScope(deleteQuery, schoolId)
+    const { error } = await deleteQuery
     if (error) {
       return withCors(request, NextResponse.json({ error: error.message }, { status: 500 }))
     }

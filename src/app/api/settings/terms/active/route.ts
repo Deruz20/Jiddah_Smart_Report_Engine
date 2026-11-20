@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { recordActivity } from '@/lib/api-server'
 import { verifyDataAccess } from '@/lib/auth-server'
+import { resolveCurrentSchoolId, applyTenantScope } from '@/lib/tenant-context'
 
 export async function OPTIONS(request: NextRequest) {
   return apiOptions(request)
@@ -31,11 +32,16 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: authRes.message }, { status: 403 }))
     }
 
-    const { data, error } = await supabase
+    const schoolId = await resolveCurrentSchoolId(supabase, user, request)
+
+    let query = supabase
       .from('terms')
       .select('*')
       .eq('is_current', true)
-      .single()
+
+    query = applyTenantScope(query, schoolId)
+
+    const { data, error } = await query.maybeSingle()
 
     if (error && error.code !== 'P0002' && error.code !== 'PGRST116') {
       console.error('settings/terms/active GET error:', error)

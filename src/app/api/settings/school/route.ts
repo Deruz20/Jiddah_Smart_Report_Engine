@@ -11,6 +11,7 @@ import {
   SCHOOL_CUSTOMIZATION_ACTION,
   validateGradingBands,
 } from '@/lib/school-settings-helper'
+import { resolveCurrentSchoolId, applyTenantScope, withTenantPayload } from '@/lib/tenant-context'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -92,17 +93,21 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    const schoolId = await resolveCurrentSchoolId(supabase, user, request)
+
     const supabaseAdmin = createAdminClient(cookieStore)
-    const { data: gradingCriteria, error: criteriaErr } = await supabaseAdmin
+    let criteriaQuery = supabaseAdmin
       .from('grading_criteria')
       .select('*')
       .order('max_value', { ascending: false })
+    criteriaQuery = applyTenantScope(criteriaQuery, schoolId)
+    const { data: gradingCriteria, error: criteriaErr } = await criteriaQuery
 
     if (criteriaErr && criteriaErr.code !== '42P01') {
       console.error('settings/school grading_criteria error:', criteriaErr.message)
     }
 
-    const merged = await fetchMergedSchoolSettings(supabaseAdmin, gradingCriteria || [])
+    const merged = await fetchMergedSchoolSettings(supabaseAdmin, gradingCriteria || [], undefined, schoolId)
 
     const formattedData = {
       ...merged,
@@ -239,13 +244,16 @@ export async function PATCH(request: NextRequest) {
       return withCors(request, NextResponse.json({ error: 'No valid settings provided' }, { status: 400 }))
     }
 
+    const schoolId = await resolveCurrentSchoolId(supabase, user, request)
     const supabaseAdmin = createAdminClient(cookieStore)
 
     // 1. Update school_settings table if any scalar fields were sent
     if (Object.keys(updatePayload).length > 0) {
-      const { data: existing } = await supabaseAdmin.from('school_settings').select('id').limit(1).maybeSingle()
+      let existingQuery = supabaseAdmin.from('school_settings').select('id').limit(1)
+      existingQuery = applyTenantScope(existingQuery, schoolId)
+      const { data: existing } = await existingQuery.maybeSingle()
       const targetId = existing?.id || 'current'
-      const fullRecord = { id: targetId, ...updatePayload, updated_at: new Date().toISOString() }
+      const fullRecord = withTenantPayload({ id: targetId, ...updatePayload, updated_at: new Date().toISOString() }, schoolId)
       const { error } = await supabaseAdmin.from('school_settings').upsert([fullRecord], { onConflict: 'id' })
 
       if (error) {
@@ -257,7 +265,7 @@ export async function PATCH(request: NextRequest) {
           }
         }
         if (Object.keys(baseOnlyPayload).length > 0) {
-          const fallbackRecord = { id: targetId, ...baseOnlyPayload, updated_at: new Date().toISOString() }
+          const fallbackRecord = withTenantPayload({ id: targetId, ...baseOnlyPayload, updated_at: new Date().toISOString() }, schoolId)
           const { error: fallbackError } = await supabaseAdmin
             .from('school_settings')
             .upsert([fallbackRecord], { onConflict: 'id' })
@@ -270,7 +278,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     // 2. Merge and persist full customization snapshot cleanly in activity_logs.metadata
-    const prevConfig = await readLatestSchoolCustomizationConfig(supabaseAdmin)
+    const prevConfig = await readLatestSchoolCustomizationConfig(supabaseAdmin, schoolId)
     const savedAt = new Date().toISOString()
 
     const nextConfig = {
@@ -284,7 +292,8 @@ export async function PATCH(request: NextRequest) {
       supabaseAdmin,
       user.id,
       SCHOOL_CUSTOMIZATION_ACTION,
-      nextConfig
+      nextConfig,
+      schoolId
     )
     if (saveConfigError) {
       return withCors(
@@ -299,16 +308,18 @@ export async function PATCH(request: NextRequest) {
     await recordActivity(supabaseAdmin, user.id, 'update_school_settings', {
       ...updatePayload,
       ...Object.keys(jsonCustomizationPayload).reduce((acc, k) => ({ ...acc, [k]: 'updated' }), {}),
-    })
+    }, schoolId)
 
     // 3. Mandatory read-back verification before reporting success
     invalidateSchoolSettingsCache()
-    const { data: gradingCriteria } = await supabaseAdmin
+    let verifyCriteriaQuery = supabaseAdmin
       .from('grading_criteria')
       .select('*')
       .order('max_value', { ascending: false })
+    verifyCriteriaQuery = applyTenantScope(verifyCriteriaQuery, schoolId)
+    const { data: gradingCriteria } = await verifyCriteriaQuery
 
-    const verifiedMerged = await fetchMergedSchoolSettings(supabaseAdmin, gradingCriteria || [])
+    const verifiedMerged = await fetchMergedSchoolSettings(supabaseAdmin, gradingCriteria || [], undefined, schoolId)
     if ((verifiedMerged as any).updated_at !== savedAt) {
       return withCors(
         request,

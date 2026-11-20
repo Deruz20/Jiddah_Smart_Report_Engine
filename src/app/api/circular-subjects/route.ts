@@ -1,6 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
+import { resolveCurrentSchoolId, applyTenantScope } from '@/lib/tenant-context'
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
@@ -10,10 +11,15 @@ export async function GET(request: NextRequest) {
     const cookieStore = await cookies()
     const supabase = createClient(cookieStore)
 
+    const { data: { user } } = await supabase.auth.getUser()
+    const schoolId = await resolveCurrentSchoolId(supabase, user, request)
+
     let query = supabase
       .from('circular_subjects')
       .select('id, subject_name, section')
       .order('subject_name', { ascending: true })
+
+    query = applyTenantScope(query, schoolId)
 
     if (section) {
       if (!['nursery', 'lower_primary', 'upper_primary'].includes(section)) {

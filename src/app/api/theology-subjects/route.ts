@@ -1,6 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
+import { resolveCurrentSchoolId, applyTenantScope } from '@/lib/tenant-context'
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
@@ -16,10 +17,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const schoolId = await resolveCurrentSchoolId(supabase, user, request)
+
     let query = supabase
       .from('theology_subjects')
       .select('id, subject_name_arabic, level, sort_order')
       .order('sort_order', { ascending: true })
+
+    query = applyTenantScope(query, schoolId)
 
     if (level) {
       if (!['raudha', 'ibtidaai_lower', 'ibtidaai_upper'].includes(level)) {

@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { verifyDataAccess } from '@/lib/auth-server'
 import { classIdsForType } from '@/lib/teacher-access'
+import { resolveCurrentSchoolId, applyTenantScope } from '@/lib/tenant-context'
 
 export async function OPTIONS(request: NextRequest) {
   return apiOptions(request)
@@ -61,11 +62,15 @@ export async function GET(request: NextRequest) {
       allowedTheologyClassIds = []
     }
 
+    const schoolId = await resolveCurrentSchoolId(supabase, user, request)
+
     let query = supabase
       .from('theology_classes')
       .select('id, class_name_arabic, class_name_english, level')
       .order('level', { ascending: true })
       .order('class_name_arabic', { ascending: true })
+
+    query = applyTenantScope(query, schoolId)
 
     if (allowedTheologyClassIds !== null && allowedTheologyClassIds.length === 0) {
       return withCors(request, NextResponse.json({ data: [] }))

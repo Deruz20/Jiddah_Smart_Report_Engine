@@ -53,15 +53,17 @@ export async function recordActivity(
   supabase: SupabaseClient,
   userId: string,
   action: string,
-  metadata: unknown = null
+  metadata: unknown = null,
+  schoolId?: string
 ): Promise<{ data: any; error: any }> {
   try {
-    const payload = {
+    const { withTenantPayload } = await import('@/lib/tenant-context')
+    const payload = withTenantPayload({
       user_id: userId,
       action,
       metadata: metadata ?? null,
       created_at: new Date().toISOString(),
-    }
+    }, schoolId)
 
     const { data, error } = await supabase
       .from('activity_logs')

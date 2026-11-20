@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { verifyDataAccess, hasPermission } from '@/lib/auth-server'
 import { classIdsForType } from '@/lib/teacher-access'
+import { resolveCurrentSchoolId, applyTenantScope } from '@/lib/tenant-context'
 
 export async function OPTIONS(request: NextRequest) {
   return apiOptions(request)
@@ -30,6 +31,8 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    const schoolId = await resolveCurrentSchoolId(supabase, user, request)
+
     let query = supabase
       .from('enrollments')
       .select(`
@@ -44,6 +47,8 @@ export async function GET(request: NextRequest) {
       `)
       .eq('is_active', true)
       .order('academic_year', { ascending: false })
+
+    query = applyTenantScope(query, schoolId)
 
     if (authRes.filterByClasses) {
       const circularClassIds = classIdsForType(authRes, 'circular') ?? []

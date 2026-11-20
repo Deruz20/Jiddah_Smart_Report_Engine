@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyDataAccess } from "@/lib/auth-server";
 import { canAccessClass } from "@/lib/teacher-access";
 import { recordActivity } from "@/lib/api-server";
+import { resolveCurrentSchoolId, applyTenantScope, withTenantPayload } from "@/lib/tenant-context";
 
 export async function GET(request: NextRequest) {
   try {
@@ -42,9 +43,13 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    const schoolId = await resolveCurrentSchoolId(supabase, user, request);
+
     let query = supabase
       .from("attendance")
       .select("student_id, class_id, date, status, recorded_by, created_at, updated_at");
+
+    query = applyTenantScope(query, schoolId);
 
     if (class_id) query = query.eq("class_id", class_id);
     if (date) query = query.eq("date", date);
@@ -104,15 +109,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const schoolId = await resolveCurrentSchoolId(supabase, user, request);
     const validStatuses = new Set(["present", "absent", "late", "excused"]);
-    const sanitized = rows.map((row: any) => ({
+    const sanitized = rows.map((row: any) => withTenantPayload({
       student_id: String(row.student_id),
       class_id: String(class_id),
       date: String(date),
       status: validStatuses.has(row.status) ? row.status : "present",
       recorded_by: user.id,
       updated_at: new Date().toISOString(),
-    }));
+    }, schoolId));
 
     const { error } = await supabase
       .from("attendance")

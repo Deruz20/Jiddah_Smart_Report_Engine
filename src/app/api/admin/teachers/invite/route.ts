@@ -6,6 +6,7 @@ import { isAdministratorRole, PERMISSION_KEYS } from '@/lib/teacher-access';
 import { isUsernameTaken, normalizeUsername, rememberTeacherUsernameMapping, resolveUniqueUsernameFromEmail, validateUsernameFormat } from '@/lib/username';
 import { createStaffAuthUser, deleteStaffAuthUser } from '@/lib/staff-auth-admin';
 import { recordActivity } from '@/lib/api-server';
+import { resolveCurrentSchoolId, applyTenantScope, withTenantPayload } from '@/lib/tenant-context';
 
 export async function POST(req: Request) {
   try {
@@ -53,12 +54,14 @@ export async function POST(req: Request) {
     const classList = Array.isArray(classes) ? classes : [];
 
     const supabaseAdmin = createAdminClient(cookieStore);
+    const schoolId = await resolveCurrentSchoolId(supabaseAdmin, user, req);
 
-    const { data: existingTeacher, error: teacherLookupError } = await supabaseAdmin
+    let teacherLookupQuery = supabaseAdmin
       .from('teachers')
       .select('id')
       .eq('email', normalizedEmail)
-      .maybeSingle();
+    teacherLookupQuery = applyTenantScope(teacherLookupQuery, schoolId);
+    const { data: existingTeacher, error: teacherLookupError } = await teacherLookupQuery.maybeSingle();
     if (teacherLookupError) {
       console.error('Invite teacher lookup failed:', teacherLookupError.message);
       return NextResponse.json(
@@ -123,7 +126,7 @@ export async function POST(req: Request) {
         )
         : null;
 
-      const insertPayload: Record<string, any> = {
+      const insertPayload: Record<string, any> = withTenantPayload({
         id: newUserId,
         auth_user_id: newUserId,
         email: normalizedEmail,
@@ -135,7 +138,7 @@ export async function POST(req: Request) {
         classes: classList,
         status: 'active',
         ...(validPerms && validPerms.length > 0 ? { permissions: validPerms } : {}),
-      };
+      }, schoolId);
 
       let { data: createdTeacher, error: profileErr } = await supabaseAdmin
         .from('teachers')
@@ -220,13 +223,14 @@ export async function POST(req: Request) {
     }
 
     // Mode B: Invitation Flow (teacher_invites)
-    const { data: existingInvite, error: inviteLookupError } = await supabaseAdmin
+    let inviteLookupQuery = supabaseAdmin
       .from('teacher_invites')
       .select('id')
       .eq('email', normalizedEmail)
       .eq('status', 'pending')
-      .limit(1)
-      .maybeSingle();
+      .limit(1);
+    inviteLookupQuery = applyTenantScope(inviteLookupQuery, schoolId);
+    const { data: existingInvite, error: inviteLookupError } = await inviteLookupQuery.maybeSingle();
     if (inviteLookupError) {
       console.error('Pending invite lookup failed:', inviteLookupError.message);
       return NextResponse.json(
@@ -241,20 +245,20 @@ export async function POST(req: Request) {
       );
     }
 
+    const invitePayload = withTenantPayload({
+      email: normalizedEmail,
+      invited_by: authRes.teacherId,
+      role: finalRole,
+      subject: finalSubject,
+      name: finalName || null,
+      phone: phone || null,
+      classes: classList,
+      status: 'pending',
+    }, schoolId);
+
     let { data: newInvite, error: insertError } = await supabaseAdmin
       .from('teacher_invites')
-      .insert([
-        {
-          email: normalizedEmail,
-          invited_by: authRes.teacherId,
-          role: finalRole,
-          subject: finalSubject,
-          name: finalName || null,
-          phone: phone || null,
-          classes: classList,
-          status: 'pending',
-        },
-      ])
+      .insert([invitePayload])
       .select()
       .single();
 
@@ -262,13 +266,13 @@ export async function POST(req: Request) {
       const retryInvite = await supabaseAdmin
         .from('teacher_invites')
         .insert([
-          {
+          withTenantPayload({
             email: normalizedEmail,
             invited_by: authRes.teacherId,
             role: finalRole,
             classes: classList,
             status: 'pending',
-          },
+          }, schoolId)
         ])
         .select()
         .single();

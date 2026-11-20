@@ -10,6 +10,7 @@ import { canAccessClass, isAdministratorRole, subjectMatchesClassScope } from '@
 import { fetchMergedSchoolSettings, isExamSetLockedForUser } from '@/lib/school-settings-helper'
 import { resolveEquivalentTerms } from '@/lib/marks-reconciliation'
 import { verifyTheologySubjectScope } from '@/lib/services/marks-scope.service'
+import { resolveCurrentSchoolId, applyTenantScope, withTenantPayload } from '@/lib/tenant-context'
 
 export async function GET(request: NextRequest) {
   try {
@@ -33,6 +34,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized: Cannot access Theology marks' }, { status: 403 })
     }
 
+    const schoolId = await resolveCurrentSchoolId(supabase, user, request)
+
     let query = supabase
       .from('theology_marks')
       .select(`
@@ -54,6 +57,8 @@ export async function GET(request: NextRequest) {
       `)
       .eq('enrollments.is_active', true)
       .eq('enrollments.students.is_archived', false)
+
+    query = applyTenantScope(query, schoolId)
 
     if (term_id) {
       const termInfo = await resolveEquivalentTerms(supabase, term_id)
@@ -158,13 +163,14 @@ export async function POST(request: NextRequest) {
     if (mot_score !== undefined) updateData.mot_score = parseScore(mot_score)
     if (eot_score !== undefined) updateData.eot_score = parseScore(eot_score)
 
+    const schoolId = await resolveCurrentSchoolId(supabase, user, request)
     const dbWriteClient = getServiceRoleKey() ? createAdminClient(cookieStore) : supabase
-    const upsertRow = {
+    const upsertRow = withTenantPayload({
       enrollment_id,
       subject_id,
       term_id,
       ...updateData,
-    }
+    }, schoolId)
     const writeRes = await upsertAndVerifyMarks(dbWriteClient, 'theology_marks', [upsertRow], {
       enrollmentId: enrollment_id,
       termId: term_id,

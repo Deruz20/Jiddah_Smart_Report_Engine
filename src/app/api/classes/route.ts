@@ -3,6 +3,7 @@ import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { classIdsForType } from '@/lib/teacher-access'
+import { resolveCurrentSchoolId, applyTenantScope, withTenantPayload } from '@/lib/tenant-context'
 
 export async function OPTIONS(request: NextRequest) {
   return apiOptions(request)
@@ -31,11 +32,15 @@ export async function GET(request: NextRequest) {
       return withCors(request, NextResponse.json({ data: [] }))
     }
 
+    const schoolId = await resolveCurrentSchoolId(supabase, user, request)
+
     let query = supabase
       .from('circular_classes')
       .select('id, class_name, section')
       .order('section', { ascending: true })
       .order('class_name', { ascending: true })
+
+    query = applyTenantScope(query, schoolId)
 
     if (allowedClassIds !== null) {
       const validUuids = allowedClassIds.filter((c: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(c));
@@ -77,11 +82,16 @@ export async function POST(request: NextRequest) {
 
     const cookieStore = await cookies()
     const supabase = createClient(cookieStore)
+    const { data: { user } } = await supabase.auth.getUser()
+    const schoolId = await resolveCurrentSchoolId(supabase, user, request)
 
-    const { data: existingClasses } = await supabase
+    let existingQuery = supabase
       .from('circular_classes')
       .select('id')
       .eq('class_name', body.class_name.trim())
+
+    existingQuery = applyTenantScope(existingQuery, schoolId)
+    const { data: existingClasses } = await existingQuery
 
     if (existingClasses && existingClasses.length > 0) {
       return withCors(
@@ -90,10 +100,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const insertData = {
+    const insertData = withTenantPayload({
       class_name: body.class_name.trim(),
       section: body.section,
-    }
+    }, schoolId)
 
     const { data, error } = await supabase.from('circular_classes').insert([insertData]).select()
 

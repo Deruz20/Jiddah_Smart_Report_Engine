@@ -9,6 +9,7 @@ import {
   isAdministratorRole,
   resolveEnrollmentClassUpdate,
 } from '@/lib/teacher-access'
+import { resolveCurrentSchoolId, applyTenantScope, withTenantPayload } from '@/lib/tenant-context'
 
 export async function OPTIONS(request: NextRequest) {
   return apiOptions(request)
@@ -59,11 +60,15 @@ export async function PUT(
       )
     }
 
-    const { data: currentEnrollments, error: currentEnrollmentsError } = await supabaseAdmin
+    const schoolId = await resolveCurrentSchoolId(supabase, user, request)
+
+    let currentEnrollmentsQuery = supabaseAdmin
       .from('enrollments')
       .select('id, circular_class_id, theology_class_id, academic_year')
       .eq('student_id', studentId)
       .eq('is_active', true)
+    currentEnrollmentsQuery = applyTenantScope(currentEnrollmentsQuery, schoolId)
+    const { data: currentEnrollments, error: currentEnrollmentsError } = await currentEnrollmentsQuery
 
     if (currentEnrollmentsError) {
       console.error('Student enrollment access lookup failed:', currentEnrollmentsError.message)
@@ -115,7 +120,7 @@ export async function PUT(
     }
 
     // 1. Update the student record (use supabaseAdmin after verified RBAC check so scoped non-admin roles with write_students succeed)
-    const { error: studentUpdateError } = await supabaseAdmin
+    let studentUpdateQuery = supabaseAdmin
       .from('students')
       .update({
         name: body.name.trim(),
@@ -125,6 +130,8 @@ export async function PUT(
         is_muslim: isMuslim,
       })
       .eq('id', studentId)
+    studentUpdateQuery = applyTenantScope(studentUpdateQuery, schoolId)
+    const { error: studentUpdateError } = await studentUpdateQuery
 
     if (studentUpdateError) {
       console.error('Student update error:', studentUpdateError)
@@ -156,13 +163,13 @@ export async function PUT(
 
         const { error: newEnrollmentError } = await supabaseAdmin
           .from('enrollments')
-          .insert([{
+          .insert([withTenantPayload({
             student_id: studentId,
             circular_class_id: newCircularClass,
             theology_class_id: newTheologyClass,
             academic_year: currentEnrollment.academic_year,
             is_active: true,
-          }])
+          }, schoolId)])
 
         if (newEnrollmentError) {
           console.error('New enrollment insert error:', newEnrollmentError)
@@ -172,13 +179,13 @@ export async function PUT(
     } else {
       const { error: newEnrollmentError } = await supabaseAdmin
         .from('enrollments')
-        .insert([{
+        .insert([withTenantPayload({
           student_id: studentId,
           circular_class_id: newCircularClass,
           theology_class_id: newTheologyClass,
           academic_year: new Date().getFullYear(),
           is_active: true,
-        }])
+        }, schoolId)])
 
       if (newEnrollmentError) {
         return withCors(request, NextResponse.json({ error: newEnrollmentError.message }, { status: 500 }))
@@ -229,10 +236,13 @@ export async function DELETE(
       return withCors(request, NextResponse.json({ error: 'Only administrators may permanently delete student records.' }, { status: 403 }))
     }
 
+    const schoolId = await resolveCurrentSchoolId(supabase, user, request)
+
     let targetEnrollmentQuery = supabaseAdmin
       .from('enrollments')
       .select('id, circular_class_id, theology_class_id')
       .eq('student_id', studentId)
+    targetEnrollmentQuery = applyTenantScope(targetEnrollmentQuery, schoolId)
     if (!isHardDelete) {
       targetEnrollmentQuery = targetEnrollmentQuery.eq('is_active', true)
     }
@@ -254,46 +264,56 @@ export async function DELETE(
       if (targetEnrollments && targetEnrollments.length > 0) {
         const enrollmentIds = targetEnrollments.map(enrollment => enrollment.id)
         
-        const { error: circularMarksError } = await supabaseAdmin
+        let circularMarksDel = supabaseAdmin
           .from('circular_marks')
           .delete()
           .in('enrollment_id', enrollmentIds)
+        circularMarksDel = applyTenantScope(circularMarksDel, schoolId)
+        const { error: circularMarksError } = await circularMarksDel
         if (circularMarksError) {
           return withCors(request, NextResponse.json({ error: circularMarksError.message }, { status: 500 }))
         }
 
-        const { error: theologyMarksError } = await supabaseAdmin
+        let theologyMarksDel = supabaseAdmin
           .from('theology_marks')
           .delete()
           .in('enrollment_id', enrollmentIds)
+        theologyMarksDel = applyTenantScope(theologyMarksDel, schoolId)
+        const { error: theologyMarksError } = await theologyMarksDel
         if (theologyMarksError) {
           return withCors(request, NextResponse.json({ error: theologyMarksError.message }, { status: 500 }))
         }
 
-        const { error: enrollmentDeleteError } = await supabaseAdmin
+        let enrollmentsDel = supabaseAdmin
           .from('enrollments')
           .delete()
           .eq('student_id', studentId)
+        enrollmentsDel = applyTenantScope(enrollmentsDel, schoolId)
+        const { error: enrollmentDeleteError } = await enrollmentsDel
         if (enrollmentDeleteError) {
           return withCors(request, NextResponse.json({ error: enrollmentDeleteError.message }, { status: 500 }))
         }
       }
 
       // Finally, delete the student
-      const { error: deleteError } = await supabaseAdmin
+      let studentDel = supabaseAdmin
         .from('students')
         .delete()
         .eq('id', studentId)
+      studentDel = applyTenantScope(studentDel, schoolId)
+      const { error: deleteError } = await studentDel
 
       if (deleteError) {
         return withCors(request, NextResponse.json({ error: deleteError.message }, { status: 500 }))
       }
     } else {
       // Soft delete (Archive)
-      const { error: archiveError } = await supabaseAdmin
+      let studentArchiveQuery = supabaseAdmin
         .from('students')
         .update({ is_archived: true, archived_at: new Date().toISOString() })
         .eq('id', studentId)
+      studentArchiveQuery = applyTenantScope(studentArchiveQuery, schoolId)
+      const { error: archiveError } = await studentArchiveQuery
 
       if (archiveError) {
         return withCors(request, NextResponse.json({ error: archiveError.message }, { status: 500 }))
@@ -353,12 +373,16 @@ export async function PATCH(
       )
     }
 
+    const schoolId = await resolveCurrentSchoolId(supabase, user, request)
+
     const supabaseAdmin = createAdminClient(cookieStore)
-    const { data: activeEnrollments, error: enrollmentError } = await supabaseAdmin
+    let enrollmentsQuery = supabaseAdmin
       .from('enrollments')
       .select('circular_class_id, theology_class_id')
       .eq('student_id', studentId)
       .eq('is_active', true)
+    enrollmentsQuery = applyTenantScope(enrollmentsQuery, schoolId)
+    const { data: activeEnrollments, error: enrollmentError } = await enrollmentsQuery
 
     if (enrollmentError) {
       console.error('Student enrollment access lookup failed:', enrollmentError.message)
@@ -391,12 +415,13 @@ export async function PATCH(
       updatePayload.arabic_name = trimmedArabic || null
     }
 
-    const { data: updatedStudent, error: updateError } = await supabaseAdmin
+    let studentPatchQuery = supabaseAdmin
       .from('students')
       .update(updatePayload)
       .eq('id', studentId)
       .select('id, name, arabic_name, is_archived')
-      .single()
+    studentPatchQuery = applyTenantScope(studentPatchQuery, schoolId)
+    const { data: updatedStudent, error: updateError } = await studentPatchQuery.single()
 
     if (updateError) {
       return withCors(request, NextResponse.json({ error: updateError.message }, { status: 500 }))

@@ -6,6 +6,7 @@ import { apiOptions, corsPreflight, withCors } from '@/lib/api-cors'
 import { verifyDataAccess, hasPermission } from '@/lib/auth-server'
 import { recordActivity } from '@/lib/api-server'
 import { canAssignEnrollmentClasses, enrollmentMatchesRosterFilters, rosterClassFilters } from '@/lib/teacher-access'
+import { resolveCurrentSchoolId, applyTenantScope, withTenantPayload } from '@/lib/tenant-context'
 
 export async function OPTIONS(request: NextRequest) {
   return apiOptions(request)
@@ -39,6 +40,8 @@ export async function GET(request: NextRequest) {
     const includeAll = archivedParam === 'all'
     const isArchived = archivedParam === 'true'
 
+    const schoolId = await resolveCurrentSchoolId(supabase, user, request)
+
     let query = supabase
       .from('enrollments')
       .select(`
@@ -51,6 +54,8 @@ export async function GET(request: NextRequest) {
       `)
       .eq('is_active', true)
       .order('academic_year', { ascending: false })
+
+    query = applyTenantScope(query, schoolId)
 
     if (!includeAll) {
       query = query.eq('students.is_archived', isArchived)
@@ -174,15 +179,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const schoolId = await resolveCurrentSchoolId(supabaseAdmin, user, request);
+
     // 1. Insert new student with admission number. Postgres UNIQUE constraint prevents race conditions.
     const { data: studentData, error: studentError } = await supabaseAdmin
       .from('students')
-      .insert([{
+      .insert([withTenantPayload({
         name: body.name.trim(),
         gender: body.gender || null,
         admission_number: body.admission_number.trim(),
         is_muslim: isMuslim,
-      }])
+      }, schoolId)])
       .select('id, name, created_at')
 
     if (studentError) {
@@ -202,13 +209,13 @@ export async function POST(request: NextRequest) {
     const studentId = studentData[0].id
 
     // 2. Insert enrollment
-    const enrollmentInsertData = {
+    const enrollmentInsertData = withTenantPayload({
       student_id: studentId,
       circular_class_id: body.circular_class_id,
       theology_class_id: body.theology_class_id || null,
       academic_year: body.academic_year,
       is_active: true,
-    }
+    }, schoolId);
 
     const { data: enrollmentData, error: enrollmentError } = await supabaseAdmin
       .from('enrollments')

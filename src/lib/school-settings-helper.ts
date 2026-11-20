@@ -614,13 +614,20 @@ export function invalidateSchoolSettingsCache(): void {
   }
 }
 
-export async function readLatestSchoolCustomizationConfig(reader: any): Promise<Record<string, any>> {
-  const { data, error } = await reader
+export async function readLatestSchoolCustomizationConfig(reader: any, schoolId?: string): Promise<Record<string, any>> {
+  let query = reader
     .from('activity_logs')
     .select('id, metadata, created_at')
     .eq('action', SCHOOL_CUSTOMIZATION_ACTION)
     .order('created_at', { ascending: false })
     .limit(5);
+
+  if (schoolId) {
+    const { applyTenantScope } = await import('./tenant-context');
+    query = applyTenantScope(query, schoolId);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error('readLatestSchoolCustomizationConfig query error:', error.message);
@@ -656,12 +663,18 @@ export async function readLatestSchoolCustomizationConfig(reader: any): Promise<
 export async function fetchMergedSchoolSettings(
   supabase: any,
   gradingCriteria: any[] = [],
-  readClient?: any
+  readClient?: any,
+  schoolId?: string
 ) {
   const reader = readClient || supabase;
+  let schoolQuery = reader.from('school_settings').select('*').limit(1);
+  if (schoolId) {
+    const { applyTenantScope } = await import('./tenant-context');
+    schoolQuery = applyTenantScope(schoolQuery, schoolId);
+  }
   const [schoolRes, customConfig] = await Promise.all([
-    reader.from('school_settings').select('*').limit(1).maybeSingle(),
-    readLatestSchoolCustomizationConfig(reader),
+    schoolQuery.maybeSingle(),
+    readLatestSchoolCustomizationConfig(reader, schoolId),
   ]);
 
   if (schoolRes?.error) {

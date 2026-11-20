@@ -324,9 +324,9 @@ export default function TermsClient({
           <button
             type="button"
             onClick={() => setShowCreateForm((v) => !v)}
-            className="min-h-[40px] px-4 py-2 rounded-full bg-[#0D5C3A] hover:bg-[#0A472D] text-white text-xs font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+            className="min-h-[44px] h-11 px-5 rounded-full bg-[#0D5C3A] hover:bg-[#0A472D] text-white text-xs font-bold inline-flex items-center gap-2 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0D5C3A]"
           >
-            <Plus className="w-3.5 h-3.5" />
+            <Plus className="w-4 h-4" />
             {showCreateForm ? "Close Form" : "New Academic Term"}
           </button>
         </div>

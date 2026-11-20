@@ -18,11 +18,22 @@ export default async function CircularPage() {
   }
 
   // Fetch active term
-  const { data: activeTerm } = await supabase
+  let { data: activeTerm } = await supabase
     .from('terms')
     .select('*')
     .eq('is_current', true)
-    .single()
+    .maybeSingle()
+
+  if (!activeTerm) {
+    const { data: latestTerm } = await supabase
+      .from('terms')
+      .select('*')
+      .order('academic_year', { ascending: false })
+      .order('term_number', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    activeTerm = latestTerm
+  }
 
   let marksQuery = supabase
     .from('circular_marks')

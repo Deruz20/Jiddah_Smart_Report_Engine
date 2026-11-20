@@ -416,18 +416,18 @@ export function StudentsListClient({ students: initialStudents, department, curr
         </div>
 
       {/* Search + actions bar */}
-      <div className="px-3 sm:px-4 py-2.5 flex flex-col sm:flex-row justify-between items-center gap-2 bg-[#F8FAFC] border-b border-stone-200/80">
+      <div className="px-3 sm:px-4 py-3 flex flex-col sm:flex-row justify-between items-center gap-2.5 bg-[#F8FAFC] border-b border-stone-200/80">
         <div className="relative w-full sm:max-w-xs">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" />
+          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" />
           <input
             type="text"
             placeholder="Search by name, class, or ID…"
             value={searchTerm}
             onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
-            className="block w-full pl-8 pr-3 py-1.5 border border-stone-200 rounded-xl bg-white placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-[#059669] text-xs transition-all"
+            className="block w-full pl-9 pr-3.5 min-h-[44px] h-11 border border-stone-200 rounded-xl bg-white placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-[#059669]/20 focus:border-[#059669] text-xs transition-all"
           />
         </div>
-        <div className="flex items-center gap-1.5 w-full sm:w-auto">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <CustomPillSelect
             id="students-class-filter"
             ariaLabel="Class filter"
@@ -437,14 +437,14 @@ export function StudentsListClient({ students: initialStudents, department, curr
               setPage(1);
             }}
             options={classFilterOptions}
-            className="h-8.5 text-xs rounded-xl"
+            className="min-h-[44px] h-11 text-xs rounded-xl"
           />
           <button 
             type="button"
             onClick={handleExport}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-stone-200 rounded-xl text-xs font-semibold text-stone-600 hover:bg-stone-50 transition-all flex-1 sm:flex-none justify-center cursor-pointer"
+            className="flex items-center gap-2 px-4 min-h-[44px] h-11 bg-white border border-stone-200 rounded-xl text-xs font-bold text-stone-700 hover:bg-stone-50 transition-all flex-1 sm:flex-none justify-center cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#059669]"
           >
-            <Download size={13} className="text-stone-400" />
+            <Download size={14} className="text-stone-500" />
             Export CSV
           </button>
         </div>

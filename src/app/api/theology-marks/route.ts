@@ -9,29 +9,7 @@ import { recordActivity } from '@/lib/api-server'
 import { canAccessClass, isAdministratorRole, subjectMatchesClassScope } from '@/lib/teacher-access'
 import { fetchMergedSchoolSettings, isExamSetLockedForUser } from '@/lib/school-settings-helper'
 import { resolveEquivalentTerms } from '@/lib/marks-reconciliation'
-
-async function verifyTheologySubjectScope(
-  supabase: SupabaseClient,
-  classId: string | null,
-  subjectId: string
-) {
-  if (!classId) return { allowed: false, error: null }
-
-  const [{ data: theologyClass, error: classError }, { data: subject, error: subjectError }] =
-    await Promise.all([
-      supabase.from('theology_classes').select('level').eq('id', classId).maybeSingle(),
-      supabase.from('theology_subjects').select('level').eq('id', subjectId).maybeSingle(),
-    ])
-
-  if (classError || subjectError) {
-    return { allowed: false, error: classError?.message ?? subjectError?.message ?? 'Subject scope lookup failed.' }
-  }
-
-  return {
-    allowed: Boolean(theologyClass && subject && subjectMatchesClassScope(theologyClass.level, subject.level)),
-    error: null,
-  }
-}
+import { verifyTheologySubjectScope } from '@/lib/services/marks-scope.service'
 
 export async function GET(request: NextRequest) {
   try {

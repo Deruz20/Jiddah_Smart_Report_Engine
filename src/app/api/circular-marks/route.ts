@@ -9,32 +9,7 @@ import { canAccessClass, isAdministratorRole, subjectMatchesClassScope } from '@
 import { resolveSectionType } from '@/lib/section-type'
 import { fetchMergedSchoolSettings, isExamSetLockedForUser } from '@/lib/school-settings-helper'
 import { resolveEquivalentTerms } from '@/lib/marks-reconciliation'
-
-async function verifyCircularSubjectScope(
-  supabase: SupabaseClient,
-  classId: string | null,
-  subjectId: string
-) {
-  if (!classId) return { allowed: false, error: null }
-
-  const [{ data: circularClass, error: classError }, { data: subject, error: subjectError }] =
-    await Promise.all([
-      supabase.from('circular_classes').select('section, class_name').eq('id', classId).maybeSingle(),
-      supabase.from('circular_subjects').select('section').eq('id', subjectId).maybeSingle(),
-    ])
-
-  if (classError || subjectError) {
-    return { allowed: false, error: classError?.message ?? subjectError?.message ?? 'Subject scope lookup failed.' }
-  }
-
-  const classSection = circularClass
-    ? resolveSectionType(circularClass.section, circularClass.class_name)
-    : null
-  return {
-    allowed: Boolean(subject && subjectMatchesClassScope(classSection, subject.section)),
-    error: null,
-  }
-}
+import { verifyCircularSubjectScope } from '@/lib/services/marks-scope.service'
 
 export async function GET(request: NextRequest) {
   try {

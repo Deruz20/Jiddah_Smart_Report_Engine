@@ -64,7 +64,17 @@ export default async function StudentsManagementPage() {
 
   const { data: enrollments } = await query;
 
-  const { data: activeTerm } = await supabase.from('terms').select('*').eq('is_current', true).single();
+  let { data: activeTerm } = await supabase.from('terms').select('*').eq('is_current', true).maybeSingle();
+  if (!activeTerm) {
+    const { data: latestTerm } = await supabase
+      .from('terms')
+      .select('*')
+      .order('academic_year', { ascending: false })
+      .order('term_number', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    activeTerm = latestTerm;
+  }
   const currentAcademicYear = activeTerm?.academic_year || '2024–25';
 
   const students = (enrollments || [])

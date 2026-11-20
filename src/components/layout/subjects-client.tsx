@@ -227,7 +227,7 @@ export default function SubjectsClient({
               placeholder="Search subjects..." 
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 h-9 rounded-full bg-[#F0F4F9] dark:bg-[#1E1F20] border-0 text-xs text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus-visible:ring-1 focus-visible:ring-[#0D5C3A]" 
+              className="pl-9 min-h-[44px] h-11 rounded-full bg-[#F0F4F9] dark:bg-[#1E1F20] border-0 text-xs text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus-visible:ring-2 focus-visible:ring-[#0D5C3A]" 
             />
           </div>
           <CustomPillSelect
@@ -236,22 +236,22 @@ export default function SubjectsClient({
             value={selectedCurriculum}
             onChange={(val) => setSelectedCurriculum(val)}
             options={curriculumFilterOptions}
-            className="h-9 text-xs rounded-full shrink-0"
+            className="min-h-[44px] h-11 text-xs rounded-full shrink-0"
           />
-          <span className="shrink-0 px-2.5 py-1 rounded-full bg-[#F0F4F9] dark:bg-[#1E1F20] text-xs font-semibold text-stone-600 dark:text-stone-400 tabular-nums hidden sm:inline-block">
+          <span className="shrink-0 px-3 py-1.5 rounded-full bg-[#F0F4F9] dark:bg-[#1E1F20] text-xs font-semibold text-stone-600 dark:text-stone-400 tabular-nums hidden sm:inline-block">
             {filteredSubjects.length} of {subjects.length}
           </span>
         </div>
 
         {canManageSubjects && (
           <Button
-            className="rounded-full h-9 px-4 bg-[#0D5C3A] hover:bg-[#09472C] text-white text-xs font-semibold shadow-xs transition-all flex items-center gap-1.5"
+            className="rounded-full min-h-[44px] h-11 px-5 bg-[#0D5C3A] hover:bg-[#09472C] text-white text-xs font-bold shadow-xs transition-all flex items-center gap-2 cursor-pointer focus-visible:ring-2 focus-visible:ring-[#0D5C3A]"
             onClick={() => {
               setFormData({ subject_name: "", curriculum: defaultCurriculum, section: "nursery", theologyLevel: "raudha" });
               setIsCreateOpen(true);
             }}
           >
-            <Plus className="w-3.5 h-3.5" /> Add Subject
+            <Plus className="w-4 h-4" /> Add Subject
           </Button>
         )}
       </div>

@@ -890,10 +890,10 @@ export default function SecularHubClient({
             <div className="flex flex-wrap lg:flex-nowrap items-center gap-1.5 min-w-0">
               <Link
                 href="/admin"
-                className="w-8 h-8 rounded-full flex items-center justify-center text-stone-500 dark:text-stone-400 hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer shrink-0"
+                className="min-w-[44px] min-h-[44px] w-11 h-11 rounded-xl flex items-center justify-center text-stone-500 dark:text-stone-400 hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0D5C3A]"
                 aria-label="Back to Dashboard"
               >
-                <ArrowLeft size={16} />
+                <ArrowLeft size={18} />
               </Link>
 
               {/* Title pill */}

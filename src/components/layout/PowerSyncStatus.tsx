@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { SyncStatus, SyncState } from "./SyncStatus";
+import { SyncConflictModal } from "@/components/sync/SyncConflictModal";
 import {
   flushOfflineOutbox,
   getOfflineSyncStatus,
@@ -11,8 +12,11 @@ import {
 
 export function PowerSyncStatus() {
   const [mounted, setMounted] = useState(false);
+  const [isConflictModalOpen, setIsConflictModalOpen] = useState(false);
   const [status, setStatus] = useState<OfflineSyncStatusSnapshot>({
     pendingCount: 0,
+    dlqCount: 0,
+    conflictCount: 0,
     isOnline: true,
     isSyncing: false,
     lastError: null,
@@ -65,6 +69,8 @@ export function PowerSyncStatus() {
   let state: SyncState = "synced";
   if (status.isSyncing) {
     state = "syncing";
+  } else if (status.conflictCount > 0) {
+    state = "conflict";
   } else if (status.lastError && status.pendingCount > 0) {
     state = "error";
   } else if (!status.isOnline || status.pendingCount > 0) {
@@ -72,17 +78,25 @@ export function PowerSyncStatus() {
   }
 
   return (
-    <SyncStatus
-      state={state}
-      pendingCount={status.pendingCount}
-      isOnline={status.isOnline}
-      lastSyncedAt={status.lastSyncedAt ? new Date(status.lastSyncedAt) : undefined}
-      onSyncNow={async () => {
-        await flushOfflineOutbox();
-      }}
-      onResolveError={async () => {
-        await flushOfflineOutbox();
-      }}
-    />
+    <>
+      <SyncStatus
+        state={state}
+        pendingCount={status.pendingCount}
+        conflictCount={status.conflictCount}
+        isOnline={status.isOnline}
+        lastSyncedAt={status.lastSyncedAt ? new Date(status.lastSyncedAt) : undefined}
+        onSyncNow={async () => {
+          await flushOfflineOutbox();
+        }}
+        onResolveError={async () => {
+          await flushOfflineOutbox();
+        }}
+        onOpenConflicts={() => setIsConflictModalOpen(true)}
+      />
+      <SyncConflictModal
+        open={isConflictModalOpen}
+        onOpenChange={setIsConflictModalOpen}
+      />
+    </>
   );
 }

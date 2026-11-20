@@ -19,6 +19,8 @@ export interface OfflineRuntimeState extends OfflineSyncStatusSnapshot {
 
 const defaultState: OfflineRuntimeState = {
   pendingCount: 0,
+  dlqCount: 0,
+  conflictCount: 0,
   isOnline: true,
   isSyncing: false,
   lastError: null,

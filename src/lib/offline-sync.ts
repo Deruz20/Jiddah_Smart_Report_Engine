@@ -1,10 +1,13 @@
 "use client";
 
+import { openDB, type IDBPDatabase } from "idb";
 import { invalidateClientCache } from "./client-cache";
 
-export const OFFLINE_CACHE_DB = "jiddah_cache_v1";
+export const OFFLINE_CACHE_DB = "jiddah_cache_v2";
 export const OFFLINE_READ_STORE = "read_cache";
 export const OFFLINE_OUTBOX_STORE = "jiddah_mutation_outbox";
+export const OFFLINE_DLQ_STORE = "jiddah_dead_letter_queue";
+export const OFFLINE_CONFLICTS_STORE = "jiddah_sync_conflicts";
 export const OFFLINE_SYNC_EVENT = "jiddah:offline-sync-changed";
 export const MARKS_UPDATED_EVENT = "jiddah:marks-updated";
 
@@ -12,11 +15,32 @@ export interface OutboxMutation {
   id: string;
   url: string;
   method: "POST" | "PUT" | "PATCH" | "DELETE";
+  mutation_type?: string;
   body: unknown;
+  payload?: unknown;
+  timestamp: number;
   createdAt: number;
+  base_server_updated_at?: string | number | null;
+  version_hash?: string;
+  entity_type?: "circular_marks" | "theology_marks" | "students" | "attendance" | string;
+  entity_id?: string;
   label?: string;
   retries: number;
   lastError?: string | null;
+  status?: "pending" | "syncing" | "conflict" | "dlq";
+}
+
+export interface SyncConflict {
+  id: string; // mutation id
+  mutation: OutboxMutation;
+  entity_type: string;
+  entity_id: string;
+  local_data: any;
+  server_data: any;
+  local_timestamp: number;
+  server_updated_at: string;
+  flagged_at: number;
+  status: "unresolved" | "resolved";
 }
 
 interface ReadCacheEntry<T = unknown> {
@@ -27,61 +51,91 @@ interface ReadCacheEntry<T = unknown> {
 
 export interface OfflineSyncStatusSnapshot {
   pendingCount: number;
+  dlqCount: number;
+  conflictCount: number;
   isOnline: boolean;
   isSyncing: boolean;
   lastError: string | null;
   lastSyncedAt: number | null;
 }
 
-// Fallback memory store when running in restricted/non-IndexedDB environments (SSR/Node tests)
+// Fallback memory stores when running in restricted/non-IndexedDB environments (SSR/Node tests)
 const memoryReadStore = new Map<string, ReadCacheEntry>();
 const memoryOutboxStore = new Map<string, OutboxMutation>();
+const memoryDlqStore = new Map<string, OutboxMutation>();
+const memoryConflictStore = new Map<string, SyncConflict>();
+
 const pendingIdbWriteTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const recentRevalidateAt = new Map<string, number>();
 const REVALIDATE_COOLDOWN_MS = 30000;
-let cachedDbPromise: Promise<IDBDatabase> | null = null;
+let cachedDbPromise: Promise<IDBPDatabase<any>> | null = null;
 
 let syncInFlight = false;
 let lastSyncError: string | null = null;
 let lastSyncedTimestamp: number | null = null;
 
-function hasIndexedDb(): boolean {
+export function hasIndexedDb(): boolean {
   return typeof window !== "undefined" && typeof window.indexedDB !== "undefined";
 }
 
-function openOfflineDb(): Promise<IDBDatabase> {
+export function computeVersionHash(data: unknown): string {
+  try {
+    const str = JSON.stringify(data);
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = (hash << 5) - hash + char;
+      hash |= 0;
+    }
+    return "v_" + Math.abs(hash).toString(16);
+  } catch {
+    return "v_" + Date.now().toString(16);
+  }
+}
+
+/**
+ * Initializes and manages the IndexedDB connection with upgraded object stores.
+ */
+function openOfflineDb(): Promise<IDBPDatabase<any>> {
   if (!hasIndexedDb()) {
     return Promise.reject(new Error("IndexedDB unavailable"));
   }
-  if (cachedDbPromise) {
-    return cachedDbPromise;
-  }
-
-  cachedDbPromise = new Promise((resolve, reject) => {
-    const request = window.indexedDB.open(OFFLINE_CACHE_DB, 1);
-    request.onupgradeneeded = () => {
-      const db = request.result;
-      if (!db.objectStoreNames.contains(OFFLINE_READ_STORE)) {
-        db.createObjectStore(OFFLINE_READ_STORE, { keyPath: "key" });
-      }
-      if (!db.objectStoreNames.contains(OFFLINE_OUTBOX_STORE)) {
-        db.createObjectStore(OFFLINE_OUTBOX_STORE, { keyPath: "id" });
-      }
-    };
-    request.onsuccess = () => {
-      const db = request.result;
-      db.onclose = () => {
+  if (!cachedDbPromise) {
+    cachedDbPromise = openDB(OFFLINE_CACHE_DB, 2, {
+      upgrade(db) {
+        if (!db.objectStoreNames.contains(OFFLINE_READ_STORE)) {
+          db.createObjectStore(OFFLINE_READ_STORE, { keyPath: "key" });
+        }
+        if (!db.objectStoreNames.contains(OFFLINE_OUTBOX_STORE)) {
+          db.createObjectStore(OFFLINE_OUTBOX_STORE, { keyPath: "id" });
+        }
+        if (!db.objectStoreNames.contains(OFFLINE_DLQ_STORE)) {
+          db.createObjectStore(OFFLINE_DLQ_STORE, { keyPath: "id" });
+        }
+        if (!db.objectStoreNames.contains(OFFLINE_CONFLICTS_STORE)) {
+          db.createObjectStore(OFFLINE_CONFLICTS_STORE, { keyPath: "id" });
+        }
+      },
+      blocked() {
+        console.warn("IndexedDB upgrade blocked by another active tab");
+      },
+      blocking() {
+        if (cachedDbPromise) {
+          cachedDbPromise.then((db) => db.close());
+          cachedDbPromise = null;
+        }
+      },
+      terminated() {
         cachedDbPromise = null;
-      };
-      resolve(db);
-    };
-    request.onerror = () => {
-      cachedDbPromise = null;
-      reject(request.error ?? new Error("Failed to open IndexedDB"));
-    };
-  });
+      },
+    });
+  }
   return cachedDbPromise;
 }
+
+// ---------------------------------------------------------------------------
+// Read Cache Accessors
+// ---------------------------------------------------------------------------
 
 async function idbGetReadCache<T>(key: string): Promise<ReadCacheEntry<T> | null> {
   const memHit = memoryReadStore.get(key) as ReadCacheEntry<T> | undefined;
@@ -91,17 +145,9 @@ async function idbGetReadCache<T>(key: string): Promise<ReadCacheEntry<T> | null
   }
   try {
     const db = await openOfflineDb();
-    return await new Promise((resolve, reject) => {
-      const tx = db.transaction(OFFLINE_READ_STORE, "readonly");
-      const store = tx.objectStore(OFFLINE_READ_STORE);
-      const req = store.get(key);
-      req.onsuccess = () => {
-        const res = (req.result as ReadCacheEntry<T> | undefined) ?? null;
-        if (res) memoryReadStore.set(key, res);
-        resolve(res);
-      };
-      req.onerror = () => reject(req.error);
-    });
+    const res = (await db.get(OFFLINE_READ_STORE, key)) as ReadCacheEntry<T> | undefined;
+    if (res) memoryReadStore.set(key, res);
+    return res ?? null;
   } catch {
     return (memoryReadStore.get(key) as ReadCacheEntry<T> | undefined) ?? null;
   }
@@ -123,13 +169,7 @@ async function idbPutReadCache<T>(key: string, data: T): Promise<void> {
     const latest = memoryReadStore.get(key) ?? entry;
     try {
       const db = await openOfflineDb();
-      await new Promise<void>((resolve, reject) => {
-        const tx = db.transaction(OFFLINE_READ_STORE, "readwrite");
-        const store = tx.objectStore(OFFLINE_READ_STORE);
-        const req = store.put(latest);
-        req.onsuccess = () => resolve();
-        req.onerror = () => reject(req.error);
-      });
+      await db.put(OFFLINE_READ_STORE, latest);
     } catch {
       // Non-fatal cache write failure
     }
@@ -137,19 +177,17 @@ async function idbPutReadCache<T>(key: string, data: T): Promise<void> {
   pendingIdbWriteTimers.set(key, timer);
 }
 
+// ---------------------------------------------------------------------------
+// Outbox (Queue) Operations
+// ---------------------------------------------------------------------------
+
 async function idbListOutbox(): Promise<OutboxMutation[]> {
   if (!hasIndexedDb()) {
     return Array.from(memoryOutboxStore.values()).sort((a, b) => a.createdAt - b.createdAt);
   }
   try {
     const db = await openOfflineDb();
-    const rows = await new Promise<OutboxMutation[]>((resolve, reject) => {
-      const tx = db.transaction(OFFLINE_OUTBOX_STORE, "readonly");
-      const store = tx.objectStore(OFFLINE_OUTBOX_STORE);
-      const req = store.getAll();
-      req.onsuccess = () => resolve((req.result as OutboxMutation[]) ?? []);
-      req.onerror = () => reject(req.error);
-    });
+    const rows = (await db.getAll(OFFLINE_OUTBOX_STORE)) as OutboxMutation[];
     return rows.sort((a, b) => a.createdAt - b.createdAt);
   } catch {
     return Array.from(memoryOutboxStore.values()).sort((a, b) => a.createdAt - b.createdAt);
@@ -161,13 +199,7 @@ async function idbPutOutbox(item: OutboxMutation): Promise<void> {
   if (!hasIndexedDb()) return;
   try {
     const db = await openOfflineDb();
-    await new Promise<void>((resolve, reject) => {
-      const tx = db.transaction(OFFLINE_OUTBOX_STORE, "readwrite");
-      const store = tx.objectStore(OFFLINE_OUTBOX_STORE);
-      const req = store.put(item);
-      req.onsuccess = () => resolve();
-      req.onerror = () => reject(req.error);
-    });
+    await db.put(OFFLINE_OUTBOX_STORE, item);
   } catch {
     // Keep in-memory backup if IDB quota exceeded
   }
@@ -178,21 +210,233 @@ async function idbDeleteOutbox(id: string): Promise<void> {
   if (!hasIndexedDb()) return;
   try {
     const db = await openOfflineDb();
-    await new Promise<void>((resolve, reject) => {
-      const tx = db.transaction(OFFLINE_OUTBOX_STORE, "readwrite");
-      const store = tx.objectStore(OFFLINE_OUTBOX_STORE);
-      const req = store.delete(id);
-      req.onsuccess = () => resolve();
-      req.onerror = () => reject(req.error);
-    });
+    await db.delete(OFFLINE_OUTBOX_STORE, id);
   } catch {
     // Ignore delete error
   }
 }
 
+// ---------------------------------------------------------------------------
+// Dead-Letter Queue (DLQ) Operations
+// ---------------------------------------------------------------------------
+
+async function idbListDlq(): Promise<OutboxMutation[]> {
+  if (!hasIndexedDb()) {
+    return Array.from(memoryDlqStore.values()).sort((a, b) => a.createdAt - b.createdAt);
+  }
+  try {
+    const db = await openOfflineDb();
+    const rows = (await db.getAll(OFFLINE_DLQ_STORE)) as OutboxMutation[];
+    return rows.sort((a, b) => a.createdAt - b.createdAt);
+  } catch {
+    return Array.from(memoryDlqStore.values()).sort((a, b) => a.createdAt - b.createdAt);
+  }
+}
+
+async function idbPutDlq(item: OutboxMutation): Promise<void> {
+  item.status = "dlq";
+  memoryDlqStore.set(item.id, item);
+  if (!hasIndexedDb()) return;
+  try {
+    const db = await openOfflineDb();
+    await db.put(OFFLINE_DLQ_STORE, item);
+  } catch {
+    // Keep in-memory
+  }
+}
+
+async function idbDeleteDlq(id: string): Promise<void> {
+  memoryDlqStore.delete(id);
+  if (!hasIndexedDb()) return;
+  try {
+    const db = await openOfflineDb();
+    await db.delete(OFFLINE_DLQ_STORE, id);
+  } catch {
+    // Ignore
+  }
+}
+
+export async function getDeadLetterQueue(): Promise<OutboxMutation[]> {
+  return idbListDlq();
+}
+
+export async function getDeadLetterQueueCount(): Promise<number> {
+  const items = await idbListDlq();
+  return items.length;
+}
+
+export async function retryDlqItem(id: string): Promise<boolean> {
+  const items = await idbListDlq();
+  const item = items.find((i) => i.id === id);
+  if (!item) return false;
+
+  await idbDeleteDlq(id);
+  item.status = "pending";
+  item.retries = 0;
+  item.lastError = null;
+  await idbPutOutbox(item);
+  await notifySyncListeners();
+  return true;
+}
+
+export async function discardDlqItem(id: string): Promise<boolean> {
+  await idbDeleteDlq(id);
+  await notifySyncListeners();
+  return true;
+}
+
+export async function clearDeadLetterQueue(): Promise<void> {
+  memoryDlqStore.clear();
+  if (hasIndexedDb()) {
+    try {
+      const db = await openOfflineDb();
+      await db.clear(OFFLINE_DLQ_STORE);
+    } catch {
+      // Ignore
+    }
+  }
+  await notifySyncListeners();
+}
+
+// ---------------------------------------------------------------------------
+// Conflict Resolution Store Operations
+// ---------------------------------------------------------------------------
+
+async function idbListConflicts(): Promise<SyncConflict[]> {
+  if (!hasIndexedDb()) {
+    return Array.from(memoryConflictStore.values()).sort((a, b) => a.flagged_at - b.flagged_at);
+  }
+  try {
+    const db = await openOfflineDb();
+    const rows = (await db.getAll(OFFLINE_CONFLICTS_STORE)) as SyncConflict[];
+    return rows.sort((a, b) => a.flagged_at - b.flagged_at);
+  } catch {
+    return Array.from(memoryConflictStore.values()).sort((a, b) => a.flagged_at - b.flagged_at);
+  }
+}
+
+async function idbPutConflict(conflict: SyncConflict): Promise<void> {
+  memoryConflictStore.set(conflict.id, conflict);
+  if (!hasIndexedDb()) return;
+  try {
+    const db = await openOfflineDb();
+    await db.put(OFFLINE_CONFLICTS_STORE, conflict);
+  } catch {
+    // Keep in-memory
+  }
+}
+
+async function idbDeleteConflict(id: string): Promise<void> {
+  memoryConflictStore.delete(id);
+  if (!hasIndexedDb()) return;
+  try {
+    const db = await openOfflineDb();
+    await db.delete(OFFLINE_CONFLICTS_STORE, id);
+  } catch {
+    // Ignore
+  }
+}
+
+export async function getSyncConflicts(): Promise<SyncConflict[]> {
+  return idbListConflicts();
+}
+
+export async function getSyncConflictCount(): Promise<number> {
+  const items = await idbListConflicts();
+  return items.length;
+}
+
+export async function flagSyncConflict(conflict: SyncConflict): Promise<void> {
+  await idbPutConflict(conflict);
+  await notifySyncListeners();
+}
+
+export async function clearSyncConflicts(): Promise<void> {
+  memoryConflictStore.clear();
+  if (hasIndexedDb()) {
+    try {
+      const db = await openOfflineDb();
+      await db.clear(OFFLINE_CONFLICTS_STORE);
+    } catch {
+      // Ignore
+    }
+  }
+  await notifySyncListeners();
+}
+
+/**
+ * Resolves a flagged sync conflict by either discarding local changes (Keep Server)
+ * or force-pushing local changes (Overwrite With Mine).
+ */
+export async function resolveSyncConflict(
+  conflictId: string,
+  choice: "keep_server" | "overwrite_with_mine",
+  options: { fetcher?: typeof fetch } = {}
+): Promise<void> {
+  const conflicts = await getSyncConflicts();
+  const conflict = conflicts.find((c) => c.id === conflictId);
+  if (!conflict) return;
+
+  const runFetch = options.fetcher ?? fetch;
+
+  if (choice === "keep_server") {
+    // Discard local offline mutation and remove from conflict store
+    await idbDeleteConflict(conflictId);
+    invalidateClientCache();
+    broadcastMarksUpdated({ source: "conflict-resolved-keep-server", conflictId });
+  } else if (choice === "overwrite_with_mine") {
+    // Force push local data to the server with conflict override header
+    try {
+      const mutation = conflict.mutation;
+      const res = await runFetch(mutation.url, {
+        method: mutation.method,
+        headers: {
+          "Content-Type": "application/json",
+          "x-conflict-override": "true",
+          "x-client-timestamp": String(mutation.timestamp),
+        },
+        body: JSON.stringify(mutation.body ?? mutation.payload),
+      });
+
+      if (!res.ok) {
+        throw new Error(`Failed to overwrite server record: HTTP ${res.status}`);
+      }
+
+      await idbDeleteConflict(conflictId);
+      lastSyncedTimestamp = Date.now();
+      invalidateClientCache();
+      broadcastMarksUpdated({ source: "conflict-resolved-overwrite", conflictId });
+    } catch (err: any) {
+      lastSyncError = err instanceof Error ? err.message : "Failed to force overwrite";
+      throw err;
+    }
+  }
+
+  await notifySyncListeners();
+}
+
+/**
+ * Resolves all active conflicts with a single resolution strategy.
+ */
+export async function resolveAllConflicts(
+  choice: "keep_server" | "overwrite_with_mine",
+  options: { fetcher?: typeof fetch } = {}
+): Promise<void> {
+  const conflicts = await getSyncConflicts();
+  for (const c of conflicts) {
+    await resolveSyncConflict(c.id, choice, options);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Global Status, Cleanups & Listeners
+// ---------------------------------------------------------------------------
+
 export async function clearOfflineCaches(): Promise<void> {
   memoryReadStore.clear();
   memoryOutboxStore.clear();
+  memoryDlqStore.clear();
+  memoryConflictStore.clear();
   invalidateClientCache();
   if (!hasIndexedDb()) {
     await notifySyncListeners();
@@ -200,13 +444,12 @@ export async function clearOfflineCaches(): Promise<void> {
   }
   try {
     const db = await openOfflineDb();
-    await new Promise<void>((resolve) => {
-      const tx = db.transaction([OFFLINE_READ_STORE, OFFLINE_OUTBOX_STORE], "readwrite");
-      tx.objectStore(OFFLINE_READ_STORE).clear();
-      tx.objectStore(OFFLINE_OUTBOX_STORE).clear();
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => resolve();
-    });
+    await Promise.all([
+      db.clear(OFFLINE_READ_STORE).catch(() => {}),
+      db.clear(OFFLINE_OUTBOX_STORE).catch(() => {}),
+      db.clear(OFFLINE_DLQ_STORE).catch(() => {}),
+      db.clear(OFFLINE_CONFLICTS_STORE).catch(() => {}),
+    ]);
   } catch {
     // Ignore clear failure
   }
@@ -222,15 +465,19 @@ export async function getPendingOutboxItems(): Promise<OutboxMutation[]> {
   return idbListOutbox();
 }
 
-function isBrowserOffline(): boolean {
+export function isBrowserOffline(): boolean {
   return typeof navigator !== "undefined" && navigator.onLine === false;
 }
 
 export async function getOfflineSyncStatus(): Promise<OfflineSyncStatusSnapshot> {
   const pendingCount = await getPendingOutboxCount();
+  const dlqCount = await getDeadLetterQueueCount();
+  const conflictCount = await getSyncConflictCount();
   const isOnline = !isBrowserOffline();
   return {
     pendingCount,
+    dlqCount,
+    conflictCount,
     isOnline,
     isSyncing: syncInFlight,
     lastError: lastSyncError,
@@ -277,9 +524,7 @@ function isAbortError(err: unknown): boolean {
 }
 
 /**
- * Stale-While-Revalidate JSON fetcher backed by IndexedDB (`jiddah_cache_v1`).
- * Uses a mobile-safe 35000ms default timeout and throttled background
- * revalidation so weak mobile data does not falsely flip offline or spam requests.
+ * Stale-While-Revalidate JSON fetcher backed by IndexedDB.
  */
 export async function offlineFetchJson<T>(
   url: string,
@@ -312,7 +557,6 @@ export async function offlineFetchJson<T>(
   };
 
   if (cached && !options.forceNetwork) {
-    // Revalidate in background when online (throttled per key on weak connections)
     const now = Date.now();
     const lastReval = recentRevalidateAt.get(cacheKey) ?? 0;
     if (!isBrowserOffline() && now - lastReval > REVALIDATE_COOLDOWN_MS) {
@@ -336,7 +580,6 @@ export async function offlineFetchJson<T>(
       return { data: cached.data, fromCache: true, stale: true };
     }
     if (isAbortError(err)) {
-      // Retry once with an extended timeout on weak mobile links
       try {
         const retryFresh = await fetchWithTimeout(Math.max(timeoutMs, 45000));
         return { data: retryFresh, fromCache: false, stale: false };
@@ -385,18 +628,42 @@ export function isLikelyNetworkFailure(err: unknown, response?: Response | null)
 export async function enqueueOfflineMutation(input: {
   url: string;
   method?: "POST" | "PUT" | "PATCH" | "DELETE";
+  mutation_type?: string;
   body: unknown;
+  payload?: unknown;
+  base_server_updated_at?: string | number | null;
+  entity_type?: "circular_marks" | "theology_marks" | "students" | "attendance" | string;
+  entity_id?: string;
   label?: string;
 }): Promise<OutboxMutation> {
+  const payload = input.payload ?? input.body;
+  const mutationType =
+    input.mutation_type ||
+    (input.url.includes("marks")
+      ? "marks:save"
+      : input.url.includes("attendance")
+      ? "attendance:save"
+      : input.url.includes("students")
+      ? "students:update"
+      : "generic:mutation");
+
   const item: OutboxMutation = {
     id: buildMutationId(),
     url: input.url,
     method: input.method ?? "POST",
-    body: input.body,
+    mutation_type: mutationType,
+    body: payload,
+    payload,
+    timestamp: Date.now(),
     createdAt: Date.now(),
+    base_server_updated_at: input.base_server_updated_at ?? null,
+    version_hash: computeVersionHash(payload),
+    entity_type: input.entity_type,
+    entity_id: input.entity_id,
     label: input.label,
     retries: 0,
     lastError: null,
+    status: "pending",
   };
   await idbPutOutbox(item);
   await notifySyncListeners();
@@ -416,15 +683,31 @@ export interface SubmitWithOfflineFallbackResult<T = unknown> {
 export async function submitMutationWithOfflineFallback<T = unknown>(input: {
   url: string;
   method?: "POST" | "PUT" | "PATCH" | "DELETE";
+  mutation_type?: string;
   body: unknown;
+  payload?: unknown;
+  base_server_updated_at?: string | number | null;
+  entity_type?: "circular_marks" | "theology_marks" | "students" | "attendance" | string;
+  entity_id?: string;
   label?: string;
   timeoutMs?: number;
 }): Promise<SubmitWithOfflineFallbackResult<T>> {
   const method = input.method ?? "POST";
   const timeoutMs = input.timeoutMs ?? 25000;
+  const payload = input.payload ?? input.body;
 
   if (isBrowserOffline()) {
-    await enqueueOfflineMutation({ url: input.url, method, body: input.body, label: input.label });
+    await enqueueOfflineMutation({
+      url: input.url,
+      method,
+      mutation_type: input.mutation_type,
+      body: payload,
+      payload,
+      base_server_updated_at: input.base_server_updated_at,
+      entity_type: input.entity_type,
+      entity_id: input.entity_id,
+      label: input.label,
+    });
     return { queued: true };
   }
 
@@ -434,8 +717,13 @@ export async function submitMutationWithOfflineFallback<T = unknown>(input: {
   try {
     const response = await fetch(input.url, {
       method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input.body),
+      headers: {
+        "Content-Type": "application/json",
+        ...(input.base_server_updated_at
+          ? { "x-base-server-timestamp": String(input.base_server_updated_at) }
+          : {}),
+      },
+      body: JSON.stringify(payload),
       signal: controller.signal,
     });
 
@@ -447,16 +735,63 @@ export async function submitMutationWithOfflineFallback<T = unknown>(input: {
       return { queued: false, data };
     }
 
-    const errJson = await response.json().catch(() => null) as { error?: string } | null;
+    const errJson = (await response.json().catch(() => null)) as {
+      error?: string;
+      server_data?: any;
+      server_updated_at?: string;
+    } | null;
+
     const explicitError =
       errJson && typeof errJson.error === "string" && errJson.error.trim().length > 0
         ? errJson.error.trim()
         : null;
 
+    // Direct 409 conflict detection from API
+    if (response.status === 409) {
+      const conflictId = buildMutationId();
+      await flagSyncConflict({
+        id: conflictId,
+        mutation: {
+          id: conflictId,
+          url: input.url,
+          method,
+          body: payload,
+          payload,
+          timestamp: Date.now(),
+          createdAt: Date.now(),
+          base_server_updated_at: input.base_server_updated_at,
+          version_hash: computeVersionHash(payload),
+          entity_type: input.entity_type,
+          entity_id: input.entity_id,
+          label: input.label,
+          retries: 0,
+          status: "conflict",
+        },
+        entity_type: input.entity_type || "generic",
+        entity_id: input.entity_id || conflictId,
+        local_data: payload,
+        server_data: errJson?.server_data || null,
+        local_timestamp: Date.now(),
+        server_updated_at: errJson?.server_updated_at || new Date().toISOString(),
+        flagged_at: Date.now(),
+        status: "unresolved",
+      });
+      return { queued: false, error: "Sync conflict detected with server data." };
+    }
+
     // Only treat transient gateway/proxy outages (502/503/504 without an app error message) as offline queue candidates.
-    // Real application/database/RLS 500 errors MUST surface immediately instead of being masked as "Saved locally".
     if (response.status >= 502 && !explicitError) {
-      await enqueueOfflineMutation({ url: input.url, method, body: input.body, label: input.label });
+      await enqueueOfflineMutation({
+        url: input.url,
+        method,
+        mutation_type: input.mutation_type,
+        body: payload,
+        payload,
+        base_server_updated_at: input.base_server_updated_at,
+        entity_type: input.entity_type,
+        entity_id: input.entity_id,
+        label: input.label,
+      });
       return { queued: true };
     }
 
@@ -469,7 +804,17 @@ export async function submitMutationWithOfflineFallback<T = unknown>(input: {
     };
   } catch (err) {
     if (isLikelyNetworkFailure(err)) {
-      await enqueueOfflineMutation({ url: input.url, method, body: input.body, label: input.label });
+      await enqueueOfflineMutation({
+        url: input.url,
+        method,
+        mutation_type: input.mutation_type,
+        body: payload,
+        payload,
+        base_server_updated_at: input.base_server_updated_at,
+        entity_type: input.entity_type,
+        entity_id: input.entity_id,
+        label: input.label,
+      });
       return { queued: true };
     }
     return {
@@ -486,25 +831,33 @@ export interface FlushOutboxOptions {
 }
 
 /**
- * Replays queued outbox mutations sequentially in FIFO order.
+ * Replays queued outbox mutations with conflict verification and Dead-Letter Queue (DLQ) routing.
+ * 4xx client errors are moved to DLQ so other items continue syncing.
+ * Timestamp conflicts are flagged into `jiddah_sync_conflicts` for teacher resolution.
  */
 export async function flushOfflineOutbox(
   options: FlushOutboxOptions = {}
-): Promise<{ synced: number; remaining: number; failed: number }> {
+): Promise<{ synced: number; remaining: number; failed: number; conflicts: number; dlqCount: number }> {
   if (syncInFlight) {
     const remaining = await getPendingOutboxCount();
-    return { synced: 0, remaining, failed: 0 };
+    const dlqCount = await getDeadLetterQueueCount();
+    const conflicts = await getSyncConflictCount();
+    return { synced: 0, remaining, failed: 0, conflicts, dlqCount };
   }
   if (isBrowserOffline()) {
     const remaining = await getPendingOutboxCount();
-    return { synced: 0, remaining, failed: 0 };
+    const dlqCount = await getDeadLetterQueueCount();
+    const conflicts = await getSyncConflictCount();
+    return { synced: 0, remaining, failed: 0, conflicts, dlqCount };
   }
 
   const items = await idbListOutbox();
   if (items.length === 0) {
     lastSyncError = null;
     await notifySyncListeners();
-    return { synced: 0, remaining: 0, failed: 0 };
+    const dlqCount = await getDeadLetterQueueCount();
+    const conflicts = await getSyncConflictCount();
+    return { synced: 0, remaining: 0, failed: 0, conflicts, dlqCount };
   }
 
   const runFetch = options.fetcher ?? fetch;
@@ -514,15 +867,66 @@ export async function flushOfflineOutbox(
 
   let synced = 0;
   let failed = 0;
+  let conflictCount = 0;
   let touchedMarks = false;
 
   try {
     for (const item of items) {
       try {
+        // 1. Conflict Check: Validate timestamps before blindly overwriting
+        if (item.entity_id && item.base_server_updated_at && item.entity_type) {
+          try {
+            const valRes = await runFetch("/api/sync/validate-timestamps", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                items: [
+                  {
+                    id: item.id,
+                    entity_type: item.entity_type,
+                    entity_id: item.entity_id,
+                    client_timestamp: item.timestamp || item.createdAt,
+                    base_timestamp: item.base_server_updated_at,
+                  },
+                ],
+              }),
+            });
+
+            if (valRes.ok) {
+              const valJson = await valRes.json();
+              const match = valJson.validations?.[0];
+              if (match && match.has_conflict) {
+                // Isolate conflict to jiddah_sync_conflicts
+                await flagSyncConflict({
+                  id: item.id,
+                  mutation: item,
+                  entity_type: item.entity_type,
+                  entity_id: item.entity_id,
+                  local_data: item.payload ?? item.body,
+                  server_data: match.server_data,
+                  local_timestamp: item.timestamp || item.createdAt,
+                  server_updated_at: match.server_updated_at,
+                  flagged_at: Date.now(),
+                  status: "unresolved",
+                });
+                await idbDeleteOutbox(item.id);
+                conflictCount += 1;
+                continue; // Do not replay this conflicting item
+              }
+            }
+          } catch {
+            // If validation check fails due to network, attempt direct replay
+          }
+        }
+
+        // 2. Perform the mutation
         const res = await runFetch(item.url, {
           method: item.method,
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(item.body),
+          headers: {
+            "Content-Type": "application/json",
+            "x-version-hash": item.version_hash || computeVersionHash(item.body),
+          },
+          body: JSON.stringify(item.body ?? item.payload),
         });
 
         if (res.ok) {
@@ -531,14 +935,42 @@ export async function flushOfflineOutbox(
           if (item.url.includes("marks")) {
             touchedMarks = true;
           }
+        } else if (res.status === 409) {
+          // 409 Conflict from server
+          const conflictData = await res.json().catch(() => ({}));
+          await flagSyncConflict({
+            id: item.id,
+            mutation: item,
+            entity_type: item.entity_type || "generic",
+            entity_id: item.entity_id || item.id,
+            local_data: item.payload ?? item.body,
+            server_data: conflictData.server_data || conflictData,
+            local_timestamp: item.timestamp || item.createdAt,
+            server_updated_at: conflictData.server_updated_at || new Date().toISOString(),
+            flagged_at: Date.now(),
+            status: "unresolved",
+          });
+          await idbDeleteOutbox(item.id);
+          conflictCount += 1;
         } else if (res.status >= 400 && res.status < 500) {
-          // Validation / auth conflict cannot auto-resolve via infinite retries; keep error visible or drop after inspection
+          // 4xx Client / Auth / Validation error: Move to Dead-Letter Queue (DLQ)!
+          // Must not block the rest of the queue.
           const errPayload = await res.json().catch(() => ({}));
           const errMsg = (errPayload as { error?: string }).error || `HTTP ${res.status}`;
           lastSyncError = errMsg;
-          await idbPutOutbox({ ...item, retries: item.retries + 1, lastError: errMsg });
+
+          const dlqItem: OutboxMutation = {
+            ...item,
+            retries: item.retries + 1,
+            lastError: errMsg,
+            status: "dlq",
+          };
+          await idbPutDlq(dlqItem);
+          await idbDeleteOutbox(item.id);
           failed += 1;
+          // Continue to next mutation!
         } else {
+          // 5xx Server error: Transient failure. Retain in outbox for subsequent retry.
           lastSyncError = `Server returned HTTP ${res.status}`;
           await idbPutOutbox({ ...item, retries: item.retries + 1, lastError: lastSyncError });
           failed += 1;
@@ -565,8 +997,14 @@ export async function flushOfflineOutbox(
   }
 
   const remaining = await getPendingOutboxCount();
-  return { synced, remaining, failed };
+  const dlqCount = await getDeadLetterQueueCount();
+  const conflicts = await getSyncConflictCount();
+  return { synced, remaining, failed, conflicts, dlqCount };
 }
+
+// ---------------------------------------------------------------------------
+// Cached Phone Marks Reconciliation & Push
+// ---------------------------------------------------------------------------
 
 export interface CachedPhoneMarksCandidate {
   enrollment_id: string;
@@ -593,13 +1031,7 @@ async function idbListAllReadCacheEntries(): Promise<ReadCacheEntry[]> {
   if (hasIndexedDb()) {
     try {
       const db = await openOfflineDb();
-      const rows = await new Promise<ReadCacheEntry[]>((resolve, reject) => {
-        const tx = db.transaction(OFFLINE_READ_STORE, "readonly");
-        const store = tx.objectStore(OFFLINE_READ_STORE);
-        const req = store.getAll();
-        req.onsuccess = () => resolve((req.result as ReadCacheEntry[]) ?? []);
-        req.onerror = () => reject(req.error);
-      });
+      const rows = (await db.getAll(OFFLINE_READ_STORE)) as ReadCacheEntry[];
       for (const row of rows) {
         if (row && typeof row.key === "string") {
           const existing = byKey.get(row.key);
@@ -613,10 +1045,6 @@ async function idbListAllReadCacheEntries(): Promise<ReadCacheEntry[]> {
     }
   }
   return Array.from(byKey.values());
-}
-
-function isValidNumericMark(val: unknown): val is number {
-  return typeof val === "number" && Number.isFinite(val) && val >= 0 && val <= 100;
 }
 
 /**
@@ -654,92 +1082,50 @@ export async function detectAndSyncCachedPhoneMarks(input: {
     return entry;
   };
 
-  // 1) Collect cached GET /api/marks sheets from IndexedDB read_cache
+  // 1) Read cache scanning
   const readEntries = await idbListAllReadCacheEntries();
   for (const entry of readEntries) {
-    if (!entry.key.startsWith("marks_sheet_")) continue;
-    const rawKey = entry.key.slice("marks_sheet_".length);
-    const sepIdx = rawKey.lastIndexOf(":");
-    if (sepIdx <= 0) continue;
-    const eid = rawKey.slice(0, sepIdx);
-    const tid = rawKey.slice(sepIdx + 1);
-    if (tid !== termId) continue;
+    if (!entry.key || typeof entry.key !== "string") continue;
+    if (!entry.key.startsWith("/api/marks?")) continue;
+
+    const [pathname, search] = entry.key.split("?");
+    if (pathname !== "/api/marks" || !search) continue;
+
+    const params = new URLSearchParams(search);
+    const eid = params.get("enrollment_id");
+    const tId = params.get("term_id");
+
+    if (!eid || !tId || tId !== termId) continue;
     if (allowedIds && !allowedIds.has(eid)) continue;
 
-    const payload = entry.data as {
-      circular_marks?: Array<{ subject_id?: string; bot_score?: number | null; mot_score?: number | null; eot_score?: number | null }>;
-      theology_marks?: Array<{ subject_id?: string; mot_score?: number | null; eot_score?: number | null }>;
-    } | null;
-    if (!payload) continue;
+    const data = (entry.data as { data?: any })?.data ?? entry.data;
+    if (!data || typeof data !== "object") continue;
 
-    const target = ensureLocal(eid);
-    target.cacheKeys.push(entry.key);
+    const local = ensureLocal(eid);
+    local.cacheKeys.push(entry.key);
 
-    if (Array.isArray(payload.circular_marks)) {
-      for (const m of payload.circular_marks) {
-        if (!m?.subject_id) continue;
-        const patch: { bot_score?: number; mot_score?: number; eot_score?: number } = target.circ.get(m.subject_id) ?? {};
-        if (isValidNumericMark(m.bot_score)) patch.bot_score = m.bot_score;
-        if (isValidNumericMark(m.mot_score)) patch.mot_score = m.mot_score;
-        if (isValidNumericMark(m.eot_score)) patch.eot_score = m.eot_score;
-        if (patch.bot_score !== undefined || patch.mot_score !== undefined || patch.eot_score !== undefined) {
-          target.circ.set(m.subject_id, patch);
-        }
-      }
+    const circList = Array.isArray(data.circular_marks) ? data.circular_marks : [];
+    for (const row of circList) {
+      if (!row || !row.subject_id) continue;
+      const subId = String(row.subject_id);
+      const patch = local.circ.get(subId) ?? {};
+      if (typeof row.bot_score === "number") patch.bot_score = row.bot_score;
+      if (typeof row.mot_score === "number") patch.mot_score = row.mot_score;
+      if (typeof row.eot_score === "number") patch.eot_score = row.eot_score;
+      if (Object.keys(patch).length > 0) local.circ.set(subId, patch);
     }
-    if (Array.isArray(payload.theology_marks)) {
-      for (const m of payload.theology_marks) {
-        if (!m?.subject_id) continue;
-        const patch: { mot_score?: number; eot_score?: number } = target.theo.get(m.subject_id) ?? {};
-        if (isValidNumericMark(m.mot_score)) patch.mot_score = m.mot_score;
-        if (isValidNumericMark(m.eot_score)) patch.eot_score = m.eot_score;
-        if (patch.mot_score !== undefined || patch.eot_score !== undefined) {
-          target.theo.set(m.subject_id, patch);
-        }
-      }
+
+    const theoList = Array.isArray(data.theology_marks) ? data.theology_marks : [];
+    for (const row of theoList) {
+      if (!row || !row.subject_id) continue;
+      const subId = String(row.subject_id);
+      const patch = local.theo.get(subId) ?? {};
+      if (typeof row.mot_score === "number") patch.mot_score = row.mot_score;
+      if (typeof row.eot_score === "number") patch.eot_score = row.eot_score;
+      if (Object.keys(patch).length > 0) local.theo.set(subId, patch);
     }
   }
 
-  // 2) Also overlay any outbox mark batches targeting this term
-  const outboxItems = await idbListOutbox();
-  for (const item of outboxItems) {
-    if (!item.url.includes("/api/marks")) continue;
-    const body = item.body as {
-      enrollment_id?: string;
-      term_id?: string;
-      circular_marks?: Array<{ subject_id?: string; bot_score?: number | null; mot_score?: number | null; eot_score?: number | null }>;
-      theology_marks?: Array<{ subject_id?: string; mot_score?: number | null; eot_score?: number | null }>;
-    } | null;
-    if (!body?.enrollment_id || body.term_id !== termId) continue;
-    if (allowedIds && !allowedIds.has(body.enrollment_id)) continue;
-
-    const target = ensureLocal(body.enrollment_id);
-    if (Array.isArray(body.circular_marks)) {
-      for (const m of body.circular_marks) {
-        if (!m?.subject_id) continue;
-        const patch = target.circ.get(m.subject_id) ?? {};
-        if (isValidNumericMark(m.bot_score)) patch.bot_score = m.bot_score;
-        if (isValidNumericMark(m.mot_score)) patch.mot_score = m.mot_score;
-        if (isValidNumericMark(m.eot_score)) patch.eot_score = m.eot_score;
-        if (patch.bot_score !== undefined || patch.mot_score !== undefined || patch.eot_score !== undefined) {
-          target.circ.set(m.subject_id, patch);
-        }
-      }
-    }
-    if (Array.isArray(body.theology_marks)) {
-      for (const m of body.theology_marks) {
-        if (!m?.subject_id) continue;
-        const patch = target.theo.get(m.subject_id) ?? {};
-        if (isValidNumericMark(m.mot_score)) patch.mot_score = m.mot_score;
-        if (isValidNumericMark(m.eot_score)) patch.eot_score = m.eot_score;
-        if (patch.mot_score !== undefined || patch.eot_score !== undefined) {
-          target.theo.set(m.subject_id, patch);
-        }
-      }
-    }
-  }
-
-  // Keep only enrollments with actual non-null scores
   const candidates = Array.from(localByEnrollment.entries()).filter(
     ([, v]) => v.circ.size > 0 || v.theo.size > 0
   );
@@ -764,7 +1150,7 @@ export async function detectAndSyncCachedPhoneMarks(input: {
     };
   }
 
-  // 3) Compare each candidate against live Postgres (?bypass_cache=1) in small chunks
+  // 2) Compare candidates against live Postgres
   const diffs: CachedPhoneMarksCandidate[] = [];
   const CHUNK_SIZE = 5;
   let lastError: string | null = null;
@@ -792,7 +1178,7 @@ export async function detectAndSyncCachedPhoneMarks(input: {
 
           for (const [subId, localPatch] of local.circ.entries()) {
             const srv = serverCircBySub.get(subId);
-            if (!srv) continue; // Ignore subjects user cannot access
+            if (!srv) continue;
             const subPayload: { subject_id: string; bot_score?: number; mot_score?: number; eot_score?: number } = {
               subject_id: subId,
             };
@@ -861,7 +1247,7 @@ export async function detectAndSyncCachedPhoneMarks(input: {
     };
   }
 
-  // 4) Batch-push diffs cleanly to POST /api/marks
+  // 3) Push missing marks to POST /api/marks
   let pushedStudents = 0;
   let pushedScores = 0;
   let failedStudents = 0;

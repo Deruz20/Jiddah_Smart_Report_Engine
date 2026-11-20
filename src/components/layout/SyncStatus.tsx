@@ -1,27 +1,31 @@
 "use client";
 
 import React, { useState } from "react";
-import { RefreshCw, CheckCircle2, AlertCircle, WifiOff, Clock } from "lucide-react";
+import { RefreshCw, CheckCircle2, AlertCircle, WifiOff, Clock, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/figma-ui/ui/button";
 
-export type SyncState = "synced" | "pending" | "error" | "syncing";
+export type SyncState = "synced" | "pending" | "error" | "syncing" | "conflict";
 
 interface SyncStatusProps {
   state: SyncState;
   lastSyncedAt?: Date;
   pendingCount?: number;
+  conflictCount?: number;
   isOnline?: boolean;
   onSyncNow?: () => void;
   onResolveError?: () => void;
+  onOpenConflicts?: () => void;
 }
 
 export function SyncStatus({
   state,
   lastSyncedAt,
   pendingCount = 0,
+  conflictCount = 0,
   isOnline = true,
   onSyncNow,
   onResolveError,
+  onOpenConflicts,
 }: SyncStatusProps) {
   const [isManualSyncing, setIsManualSyncing] = useState(false);
 
@@ -99,13 +103,26 @@ export function SyncStatus({
               <Button
                 variant="link"
                 size="sm"
-                className="h-auto p-0 text-rose-600 underline text-xs"
+                className="h-auto p-0 text-rose-600 underline text-xs cursor-pointer"
                 onClick={onResolveError}
               >
                 Retry
               </Button>
             )}
           </>
+        )}
+
+        {state === "conflict" && (
+          <button
+            type="button"
+            onClick={onOpenConflicts}
+            className="flex items-center gap-1.5 cursor-pointer outline-none bg-transparent border-0 p-0"
+          >
+            <AlertTriangle className="w-3.5 h-3.5 text-amber-500 animate-pulse shrink-0" />
+            <span className="font-semibold text-amber-700 dark:text-amber-400 tabular-nums whitespace-nowrap hover:underline">
+              {conflictCount} Conflict{conflictCount > 1 ? "s" : ""}
+            </span>
+          </button>
         )}
       </div>
 

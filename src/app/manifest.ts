@@ -7,10 +7,10 @@ export default function manifest(): MetadataRoute.Manifest {
     description: 'Academic Assessment & Terminal Reporting System for Jiddah Islamic Nursery and Primary School',
     start_url: '/',
     display: 'standalone',
-    background_color: '#ffffff',
-    theme_color: '#039D4A',
+    background_color: '#0f172a',
+    theme_color: '#0B132B',
     orientation: 'portrait',
-    categories: ['education'],
+    categories: ['education', 'productivity'],
     icons: [
       {
         src: '/icon-192.png',
@@ -39,6 +39,29 @@ export default function manifest(): MetadataRoute.Manifest {
         src: '/favicon.svg',
         sizes: 'any',
         type: 'image/svg+xml',
+      },
+    ],
+    shortcuts: [
+      {
+        name: 'Marks Entry',
+        short_name: 'Marks',
+        description: 'Open Teacher Marks Entry',
+        url: '/admin/marks',
+        icons: [{ src: '/icon-192.png', sizes: '192x192' }],
+      },
+      {
+        name: 'Report Center',
+        short_name: 'Reports',
+        description: 'Open Academic Report Center',
+        url: '/admin/reports',
+        icons: [{ src: '/icon-192.png', sizes: '192x192' }],
+      },
+      {
+        name: 'Daily Roll Call',
+        short_name: 'Attendance',
+        description: 'Record Daily Roll Call',
+        url: '/teacher/roll-call',
+        icons: [{ src: '/icon-192.png', sizes: '192x192' }],
       },
     ],
   }

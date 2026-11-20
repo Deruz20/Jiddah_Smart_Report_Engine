@@ -343,22 +343,48 @@ export function calculateTheologyAggregateFromMarks(
 // Division from aggregate (Secular Roman numerals I-IV, U)
 export function getDivision(
   aggregate: number,
-  customBoundaries?: Pick<DivisionBoundaryItem, 'division' | 'min' | 'max'>[]
+  customBoundaries?: Pick<DivisionBoundaryItem, 'division' | 'min' | 'max'>[],
+  subjectGrades?: (number | string | null | undefined)[]
 ): Division {
   if (!Number.isFinite(aggregate) || aggregate < 4) return 'U'
-  const boundaries =
-    Array.isArray(customBoundaries) && customBoundaries.length > 0
-      ? customBoundaries
-      : DEFAULT_DIVISION_BOUNDARIES
-  const sorted = [...boundaries]
-    .filter((b) => Number.isFinite(b.min) && Number.isFinite(b.max))
-    .sort((a, b) => a.min - b.min)
-  for (const b of sorted) {
-    if (aggregate >= b.min && aggregate <= b.max) {
-      return b.division
+
+  let baseDivision: Division = 'U'
+  if (Array.isArray(customBoundaries) && customBoundaries.length > 0) {
+    const sorted = [...customBoundaries]
+      .filter((b) => Number.isFinite(b.min) && Number.isFinite(b.max))
+      .sort((a, b) => a.min - b.min)
+    for (const b of sorted) {
+      if (aggregate >= b.min && aggregate <= b.max) {
+        baseDivision = b.division
+        break
+      }
+    }
+  } else {
+    if (aggregate <= 12) baseDivision = 'I'
+    else if (aggregate <= 24) baseDivision = 'II'
+    else if (aggregate <= 29) baseDivision = 'III'
+    else if (aggregate <= 34) baseDivision = 'IV'
+    else baseDivision = 'U'
+  }
+
+  // UNEB F9 Penalty Logic — intentionally disabled for the current print run
+  const applyF9Penalty = false
+  if (applyF9Penalty && Array.isArray(subjectGrades) && subjectGrades.length > 0) {
+    const f9Count = subjectGrades.filter((g) => g === 9 || g === '9' || g === 'F9').length
+    if (f9Count >= 3) {
+      return 'U'
+    }
+    if (f9Count === 2) {
+      return baseDivision === 'U' ? 'U' : 'IV'
+    }
+    if (f9Count === 1) {
+      const order: Division[] = ['I', 'II', 'III', 'IV', 'U']
+      const idx = order.indexOf(baseDivision)
+      return order[Math.min(idx + 1, order.length - 1)]
     }
   }
-  return 'U'
+
+  return baseDivision
 }
 
 // Overall IPLE Theology Division from 4-core-subject aggregate (4-12 = ممتاز, 13-23 = جيد جداً, etc.)

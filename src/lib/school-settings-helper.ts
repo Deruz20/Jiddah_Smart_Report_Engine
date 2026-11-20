@@ -223,7 +223,7 @@ export const DEFAULT_DIVISION_BOUNDARIES: DivisionBoundaryItem[] = [
     division: 'II',
     label: 'Division II',
     min: 13,
-    max: 23,
+    max: 24,
     classTeacherComment: 'Very good performance. Keep it up.',
     headTeacherComment: 'Very good result. Continue working toward excellence.',
     conductRemark: 'Very good conduct. Well done!',
@@ -231,7 +231,7 @@ export const DEFAULT_DIVISION_BOUNDARIES: DivisionBoundaryItem[] = [
   {
     division: 'III',
     label: 'Division III',
-    min: 24,
+    min: 25,
     max: 29,
     classTeacherComment: 'Average performance. Keep practising to improve.',
     headTeacherComment: 'Fair result. Consistent practice will help you improve.',

@@ -59,7 +59,8 @@ const INDEPENDENT_DIVISION_ORACLE = [
   { agg: 25, expectedDiv: 'III' }, // boundary
   { agg: 29, expectedDiv: 'III' }, // boundary
   { agg: 30, expectedDiv: 'IV' }, // boundary
-  { agg: 34, expectedDiv: 'IV' }, // boundary
+  { agg: 33, expectedDiv: 'IV' }, // boundary
+  { agg: 34, expectedDiv: 'U' }, // boundary
   { agg: 35, expectedDiv: 'U' }, // boundary
   { agg: 36, expectedDiv: 'U' },
 ];

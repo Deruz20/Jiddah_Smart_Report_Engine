@@ -67,7 +67,8 @@ describe('2. Division Classification', () => {
     { aggregate: 25, expectedDivision: 'III' },
     { aggregate: 29, expectedDivision: 'III' },
     { aggregate: 30, expectedDivision: 'IV' },
-    { aggregate: 34, expectedDivision: 'IV' },
+    { aggregate: 33, expectedDivision: 'IV' },
+    { aggregate: 34, expectedDivision: 'U' },
     { aggregate: 35, expectedDivision: 'U' },
     { aggregate: 36, expectedDivision: 'U' },
   ];

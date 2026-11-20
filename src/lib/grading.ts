@@ -366,7 +366,7 @@ export function getDivision(
     if (aggregate <= 12) baseDivision = 'I'
     else if (aggregate > 12 && aggregate <= 24) baseDivision = 'II'
     else if (aggregate > 24 && aggregate <= 29) baseDivision = 'III'
-    else if (aggregate > 29 && aggregate <= 34) baseDivision = 'IV'
+    else if (aggregate > 29 && aggregate <= 33) baseDivision = 'IV'
     else baseDivision = 'U'
   }
 

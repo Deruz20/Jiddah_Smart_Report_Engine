@@ -68,7 +68,8 @@ describe('Phase 1.5 — 1. Boundary Proof (4–12 = Div I / Mamtaz, 13 = Div II)
     assert.equal(getDivision(25), 'III');
     assert.equal(getDivision(29), 'III');
     assert.equal(getDivision(30), 'IV');
-    assert.equal(getDivision(34), 'IV');
+    assert.equal(getDivision(33), 'IV');
+    assert.equal(getDivision(34), 'U');
     assert.equal(getDivision(35), 'U');
     assert.equal(getDivision(36), 'U');
   });

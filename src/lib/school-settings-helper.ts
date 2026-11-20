@@ -241,7 +241,7 @@ export const DEFAULT_DIVISION_BOUNDARIES: DivisionBoundaryItem[] = [
     division: 'IV',
     label: 'Division IV',
     min: 30,
-    max: 34,
+    max: 33,
     classTeacherComment: 'Promising result. More effort will bring progress.',
     headTeacherComment: 'Promising result. Work harder to make stronger progress.',
     conductRemark: 'Fair conduct. Be more disciplined.',
@@ -249,7 +249,7 @@ export const DEFAULT_DIVISION_BOUNDARIES: DivisionBoundaryItem[] = [
   {
     division: 'U',
     label: 'Ungraded (U)',
-    min: 35,
+    min: 34,
     max: 36,
     classTeacherComment: 'Strive harder. Practise regularly and ask for help.',
     headTeacherComment: 'Strive harder. Seek support from your teachers.',
@@ -716,12 +716,18 @@ export async function fetchMergedSchoolSettings(
           conductRemark: b.conductRemark ?? def?.conductRemark ?? 'Good conduct.',
         };
       });
-      // Upgrade legacy off-by-one snapshot (II: 13-23, III: 24-29) to UNEB standard (II: 13-24, III: 25-29)
+      // Upgrade legacy off-by-one snapshots to UNEB standard (II: 13-24, III: 25-29, IV: 30-33, U: 34-36)
       const div2 = mapped.find((b: any) => b.division === 'II');
       const div3 = mapped.find((b: any) => b.division === 'III');
       if (div2 && div3 && div2.max === 23 && div3.min === 24) {
         div2.max = 24;
         div3.min = 25;
+      }
+      const div4 = mapped.find((b: any) => b.division === 'IV');
+      const divU = mapped.find((b: any) => b.division === 'U');
+      if (div4 && divU && div4.max === 34 && divU.min === 35) {
+        div4.max = 33;
+        divU.min = 34;
       }
       return mapped;
     })(),

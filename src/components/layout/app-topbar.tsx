@@ -67,6 +67,7 @@ const ROUTE_LABELS: Record<string, string> = {
   "/admin/secular-hub": "Secular Hub",
   "/admin/theology-hub": "Theology Hub",
   "/admin/activity": "Activity Log",
+  "/admin/analytics": "Academic Analytics",
   "/admin/invites": "Invites",
   "/admin/upload": "Upload Center",
   "/admin/uploads": "Upload Center",

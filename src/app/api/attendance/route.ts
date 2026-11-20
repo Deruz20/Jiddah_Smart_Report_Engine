@@ -5,6 +5,64 @@ import { verifyDataAccess } from "@/lib/auth-server";
 import { canAccessClass } from "@/lib/teacher-access";
 import { recordActivity } from "@/lib/api-server";
 
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const class_id = searchParams.get("class_id");
+    const date = searchParams.get("date");
+
+    const cookieStore = await cookies();
+    const supabase = createClient(cookieStore);
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const authRes = await verifyDataAccess(supabase, user, "read");
+    if (!authRes.isAuthorized) {
+      return NextResponse.json({ error: authRes.message }, { status: 403 });
+    }
+
+    if (class_id) {
+      const { data: cls } = await supabase
+        .from("circular_classes")
+        .select("id, class_name")
+        .eq("id", class_id)
+        .maybeSingle();
+
+      if (!canAccessClass(authRes, "circular", class_id, cls?.class_name)) {
+        return NextResponse.json(
+          { error: "Forbidden: Class outside assigned teaching scope" },
+          { status: 403 }
+        );
+      }
+    }
+
+    let query = supabase
+      .from("attendance")
+      .select("student_id, class_id, date, status, recorded_by, created_at, updated_at");
+
+    if (class_id) query = query.eq("class_id", class_id);
+    if (date) query = query.eq("date", date);
+
+    const { data, error } = await query;
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
+    return NextResponse.json({ data: data || [] });
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: err?.message || "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();

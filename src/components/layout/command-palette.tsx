@@ -18,6 +18,7 @@ import {
   Search,
   Layers,
   GraduationCap,
+  BarChart3,
 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { resolveUserScope } from "@/lib/access-scope";
@@ -43,6 +44,7 @@ const STATIC_COMMAND_ITEMS: CommandItem[] = [
   { id: "subjects", label: "Subjects Curriculum", section: "Pages", href: "/admin/subjects", icon: GraduationCap, keywords: "courses papers curriculum" },
   { id: "reports", label: "Report Center", section: "Pages", href: "/admin/reports", icon: FileText, keywords: "report cards pdf print", requiresClassTeacher: true },
   { id: "studio", label: "Report Studio 2.0", section: "Pages", href: "/admin/reports/studio", icon: FileText, keywords: "customize template layout stamp", requiresClassTeacher: true },
+  { id: "analytics", label: "Academic Analytics", section: "Pages", href: "/admin/analytics", icon: BarChart3, keywords: "analytics performance charts grades statistics kpi", requiresClassTeacher: false },
   { id: "secular-hub", label: "Secular Hub", section: "Pages", href: "/admin/secular-hub", icon: ScrollText, keywords: "broadsheet secular primary nursery", department: "secular" },
   { id: "theology-hub", label: "Theology Hub", section: "Pages", href: "/admin/theology-hub", icon: BookOpen, keywords: "arabic islamic theology broadsheet", department: "theology" },
   { id: "roll-call", label: "Daily Roll Call", section: "Pages", href: "/teacher/roll-call", icon: CalendarCheck, keywords: "attendance register", requiresClassTeacher: true },

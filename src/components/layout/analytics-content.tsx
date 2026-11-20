@@ -10,6 +10,13 @@ import { HeroSection } from "@/components/HeroSection";
 import { toast } from "sonner";
 
 export interface AnalyticsData {
+  summaryKpis?: {
+    schoolAverage: number;
+    passRate: number;
+    topPerformer: string;
+    needsAttention: string;
+    totalScoresCount?: number;
+  };
   termPerformance: { term: string; average: number; highest: number; lowest: number }[];
   classPerformance: { class: string; avg: number }[];
   subjectPerformance: { subject: string; avg: number }[];
@@ -20,6 +27,30 @@ export interface AnalyticsData {
 export default function AnalyticsContent({ data }: { data: AnalyticsData }) {
   const [period, setPeriod] = useState("2024/2025");
 
+  const handleExport = () => {
+    try {
+      const csvRows = [
+        ["Category", "Name", "Average Score (%)"],
+        ...data.classPerformance.map((c) => ["Class", c.class, String(c.avg)]),
+        ...data.subjectPerformance.map((s) => ["Subject", s.subject, String(s.avg)]),
+        [],
+        ["Grade", "Count"],
+        ...data.gradeDistribution.map((g) => [g.grade, String(g.count)]),
+      ];
+      const csvContent = "data:text/csv;charset=utf-8," + csvRows.map((e) => e.join(",")).join("\n");
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `academic_analytics_${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success("Analytics report exported successfully");
+    } catch {
+      toast.error("Failed to export analytics report");
+    }
+  };
+
   return (
     <div className="w-full">
       <HeroSection
@@ -27,12 +58,12 @@ export default function AnalyticsContent({ data }: { data: AnalyticsData }) {
         subtitle="Academic performance insights and data visualizations"
         actions={
           <>
-            <div className="flex rounded-xl overflow-hidden border" style={{ borderColor: "#E5E7EB" }}>
+            <div className="flex rounded-xl overflow-hidden border border-slate-200 dark:border-white/10">
               {["2022/2023", "2023/2024", "2024/2025"].map((y) => (
                 <button
                   key={y}
                   onClick={() => setPeriod(y)}
-                  className="px-3 py-2 transition-all"
+                  className="px-3 py-2 transition-all min-h-[44px] cursor-pointer"
                   style={{
                     background: period === y ? "#10B981" : "white",
                     color: period === y ? "white" : "#6B7280",
@@ -45,9 +76,9 @@ export default function AnalyticsContent({ data }: { data: AnalyticsData }) {
               ))}
             </div>
             <button
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all min-h-[44px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800"
               style={{ border: "1px solid #E5E7EB", color: "#374151", fontSize: "13px", fontWeight: 600, background: "white" }}
-              onClick={() => toast.info("Preparing analytics export...")}
+              onClick={handleExport}
             >
               <Download className="w-4 h-4" /> Export Report
             </button>
@@ -58,10 +89,34 @@ export default function AnalyticsContent({ data }: { data: AnalyticsData }) {
       {/* Summary KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {[
-          { label: "School Average", value: "82%", trend: "+3.2%", up: true, color: "#10B981" },
-          { label: "Pass Rate", value: "96.3%", trend: "+1.4%", up: true, color: "#10B981" },
-          { label: "Top Performer", value: "Primary 5", trend: "88% avg", up: true, color: "#F59E0B" },
-          { label: "Needs Attention", value: "Primary 2", trend: "76% avg", up: false, color: "#EF4444" },
+          {
+            label: "School Average",
+            value: data.summaryKpis?.schoolAverage !== undefined ? `${data.summaryKpis.schoolAverage}%` : "82%",
+            trend: data.summaryKpis?.totalScoresCount ? `${data.summaryKpis.totalScoresCount} scores` : "Overall",
+            up: (data.summaryKpis?.schoolAverage ?? 82) >= 60,
+            color: "#10B981",
+          },
+          {
+            label: "Pass Rate",
+            value: data.summaryKpis?.passRate !== undefined ? `${data.summaryKpis.passRate}%` : "96.3%",
+            trend: "Passing (D1-P8)",
+            up: (data.summaryKpis?.passRate ?? 96) >= 70,
+            color: "#10B981",
+          },
+          {
+            label: "Top Performer",
+            value: data.summaryKpis?.topPerformer || "—",
+            trend: "Highest Avg",
+            up: true,
+            color: "#F59E0B",
+          },
+          {
+            label: "Needs Attention",
+            value: data.summaryKpis?.needsAttention || "—",
+            trend: "Lowest Avg",
+            up: false,
+            color: "#EF4444",
+          },
         ].map(({ label, value, trend, up, color }) => (
           <div key={label} className="rounded-2xl p-5" style={{ background: "white", border: "1px solid rgba(0,0,0,0.07)", boxShadow: "0 1px 8px rgba(0,0,0,0.04)" }}>
             <p style={{ fontSize: "12px", color: "#9CA3AF", textTransform: "uppercase", fontWeight: 600, letterSpacing: "0.05em" }}>{label}</p>

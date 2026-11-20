@@ -121,6 +121,7 @@ export const ROLE_GATED_NAV_ITEMS: NavItemConfig[] = [
     children: [
       { label: "Report Center", href: "/admin/reports", id: "reports-overview" },
       { label: "Report Studio 2.0", href: "/admin/reports/studio", id: "reports-studio" },
+      { label: "Academic Analytics", href: "/admin/analytics", id: "reports-analytics" },
     ],
   },
   {

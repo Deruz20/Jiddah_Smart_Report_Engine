@@ -697,24 +697,34 @@ export async function fetchMergedSchoolSettings(
       ...(rawSchoolSettings?.marks_locks || {}),
       ...(customConfig?.marks_locks || {}),
     },
-    division_boundaries: (
-      Array.isArray(customConfig?.division_boundaries) && customConfig.division_boundaries.length > 0
-        ? customConfig.division_boundaries
-        : Array.isArray(rawSchoolSettings?.division_boundaries) && rawSchoolSettings.division_boundaries.length > 0
-          ? rawSchoolSettings.division_boundaries
-          : DEFAULT_DIVISION_BOUNDARIES
-    ).map((b: any) => {
-      const def = DEFAULT_DIVISION_BOUNDARIES.find((d) => d.division === b.division);
-      return {
-        division: b.division,
-        label: b.label || def?.label || `Division ${b.division}`,
-        min: Number(b.min ?? def?.min ?? 0),
-        max: Number(b.max ?? def?.max ?? 36),
-        classTeacherComment: b.classTeacherComment ?? def?.classTeacherComment ?? '',
-        headTeacherComment: b.headTeacherComment ?? def?.headTeacherComment ?? '',
-        conductRemark: b.conductRemark ?? def?.conductRemark ?? 'Good conduct.',
-      };
-    }),
+    division_boundaries: (() => {
+      const mapped = (
+        Array.isArray(customConfig?.division_boundaries) && customConfig.division_boundaries.length > 0
+          ? customConfig.division_boundaries
+          : Array.isArray(rawSchoolSettings?.division_boundaries) && rawSchoolSettings.division_boundaries.length > 0
+            ? rawSchoolSettings.division_boundaries
+            : DEFAULT_DIVISION_BOUNDARIES
+      ).map((b: any) => {
+        const def = DEFAULT_DIVISION_BOUNDARIES.find((d) => d.division === b.division);
+        return {
+          division: b.division,
+          label: b.label || def?.label || `Division ${b.division}`,
+          min: Number(b.min ?? def?.min ?? 0),
+          max: Number(b.max ?? def?.max ?? 36),
+          classTeacherComment: b.classTeacherComment ?? def?.classTeacherComment ?? '',
+          headTeacherComment: b.headTeacherComment ?? def?.headTeacherComment ?? '',
+          conductRemark: b.conductRemark ?? def?.conductRemark ?? 'Good conduct.',
+        };
+      });
+      // Upgrade legacy off-by-one snapshot (II: 13-23, III: 24-29) to UNEB standard (II: 13-24, III: 25-29)
+      const div2 = mapped.find((b: any) => b.division === 'II');
+      const div3 = mapped.find((b: any) => b.division === 'III');
+      if (div2 && div3 && div2.max === 23 && div3.min === 24) {
+        div2.max = 24;
+        div3.min = 25;
+      }
+      return mapped;
+    })(),
     theology_division_boundaries: (
       Array.isArray(customConfig?.theology_division_boundaries) && customConfig.theology_division_boundaries.length > 0
         ? customConfig.theology_division_boundaries

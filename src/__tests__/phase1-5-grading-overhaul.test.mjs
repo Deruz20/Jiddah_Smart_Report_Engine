@@ -64,7 +64,8 @@ describe('Phase 1.5 — 1. Boundary Proof (4–12 = Div I / Mamtaz, 13 = Div II)
 
     // Full Secular boundary sweep (4..36)
     assert.equal(getDivision(23), 'II');
-    assert.equal(getDivision(24), 'III');
+    assert.equal(getDivision(24), 'II');
+    assert.equal(getDivision(25), 'III');
     assert.equal(getDivision(29), 'III');
     assert.equal(getDivision(30), 'IV');
     assert.equal(getDivision(34), 'IV');
@@ -183,7 +184,7 @@ describe('Phase 1.5 — 3. Configurable Thresholds & API/UI Wiring', () => {
       b.division === 'I'
         ? { ...b, min: 4, max: 10 }
         : b.division === 'II'
-          ? { ...b, min: 11, max: 23 }
+          ? { ...b, min: 11, max: 24 }
           : b
     );
     const customTheology = DEFAULT_THEOLOGY_DIVISION_BOUNDARIES.map((b) =>

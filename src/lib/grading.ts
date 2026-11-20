@@ -45,6 +45,8 @@ export function extractGradePoint(gradeValue: unknown): number | null {
 
 // UNEB subject grade (1-9) from mark (Secular)
 export function getSubjectGradeNumber(mark: number, customBands?: GradingBand[]): number {
+  if (typeof mark !== 'number' || !Number.isFinite(mark)) return 9
+
   if (customBands && customBands.length > 0) {
     const sorted = [...customBands]
       .filter((b) => Number.isFinite(b.min) && Number.isFinite(b.max))
@@ -240,7 +242,8 @@ export function calculateAggregate(
   const grades = coreGroups.map(variants => {
     const found = marks.find(m =>
       variants.some(v => v.toLowerCase() === m.subject_name.trim().toLowerCase()) &&
-      typeof m.score === 'number'
+      typeof m.score === 'number' &&
+      Number.isFinite(m.score)
     )
     return found ? getSubjectGradeNumber(found.score, customBands) : null
   })
@@ -361,9 +364,9 @@ export function getDivision(
     }
   } else {
     if (aggregate <= 12) baseDivision = 'I'
-    else if (aggregate <= 24) baseDivision = 'II'
-    else if (aggregate <= 29) baseDivision = 'III'
-    else if (aggregate <= 34) baseDivision = 'IV'
+    else if (aggregate > 12 && aggregate <= 24) baseDivision = 'II'
+    else if (aggregate > 24 && aggregate <= 29) baseDivision = 'III'
+    else if (aggregate > 29 && aggregate <= 34) baseDivision = 'IV'
     else baseDivision = 'U'
   }
 
